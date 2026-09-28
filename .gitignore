@@ -1,0 +1,23 @@
+# Private working notes — never published
+NOTES*.md
+
+# Secrets and local config
+.env
+.env.*
+!.env.example
+
+# Dependencies and build output
+node_modules/
+dist/
+web-build/
+
+# Logs
+*.log
+
+# Supabase CLI local state
+supabase/.temp/
+supabase/.branches/
+
+# OS files
+.DS_Store
+Thumbs.db
