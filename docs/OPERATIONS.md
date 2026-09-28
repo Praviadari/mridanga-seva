@@ -17,20 +17,43 @@ Keep the logins for these in one place the team controls, so the system never de
 
 ## Setting up a new environment
 
-1. **Create a Supabase project** (free plan). Choose a region close to India.
-2. **Run the schema:** open the SQL editor and run `supabase/migrations/0001_phase1.sql`, then any
-   later migrations in number order.
-   - If `create extension pg_cron` fails, enable **pg_cron** under Database → Extensions and run the file again.
-   - **Test project only:** then run `supabase/seed.sql` for fictional students, a placeholder
-     syllabus and sample visits. Never run it on the live project. Its header lists the steps it
-     cannot do (creating staff logins, assigning mentors).
-3. **Auth settings:** enable Email sign-in with password. Set the site URL to where the web version runs.
-4. **Email (SMTP):** in Brevo, verify the sender email and create an SMTP key. In Supabase, go to
+1. **Create a Supabase project** (free plan) inside the "Mridanga Seva" organisation. Region: South
+   Asia (Mumbai). Let Supabase generate the database password and keep it in a password manager —
+   never in this repository or a chat. Turn on **Enable automatic RLS**.
+2. **Create the tables** — step by step:
+   1. On GitHub, open [`supabase/migrations/0001_phase1.sql`](../supabase/migrations/0001_phase1.sql)
+      and click **Copy raw file** (the copy icon at the top right of the file).
+   2. In Supabase, open **SQL Editor → New query**, paste, and click **Run**.
+   3. You should see *Success. No rows returned.*
+   4. If it fails on `pg_cron`: open **Database → Extensions**, switch on **pg_cron**, and run the
+      same query again. A failed run changes nothing, so running it again is safe.
+   5. Later migrations (`0002_...`, `0003_...`) are run the same way, in number order.
+3. **Test project only — add the dummy data:** do the same with [`supabase/seed.sql`](../supabase/seed.sql)
+   in a new query. Check under **Table Editor → students**: 15 students, roll numbers
+   `MS-2026-0001` to `MS-2026-0015`. Never run the seed on the live project. Its header lists the
+   steps it cannot do (creating staff logins, assigning mentors).
+
+   **If the SQL editor only shows a spinning circle,** the network is blocking the editor's files
+   (common on office networks). Try Ctrl + F5, another browser, a private window, or another
+   network such as home Wi-Fi or a phone hotspot. As a last resort, use the Supabase CLI from a
+   terminal in the repository folder — it asks for the database password, which you type yourself:
+   ```bash
+   npx supabase login
+   npx supabase init
+   npx supabase link --project-ref <your-project-ref>
+   npx supabase db push
+   ```
+   The project ref is the part before `.supabase.co` in the project URL. `supabase init` creates
+   `supabase/config.toml`; commit it.
+4. **Auth settings:** under **Authentication → Sign In / Providers → Email**, keep Email enabled.
+   While testing without step 5, turn **Confirm email** off (the built-in email sends only 2 emails
+   an hour); turn it back on before real users join. Set the site URL to where the web version runs.
+5. **Email (SMTP):** in Brevo, verify the sender email and create an SMTP key. In Supabase, go to
    Authentication → SMTP settings and enter Brevo's host `smtp-relay.brevo.com`, port 587, login and key.
    Without this, Supabase sends only 2 emails an hour.
-5. **App settings:** copy `app/.env.example` to `app/.env` and fill in the project URL and the
-   anon / publishable key. Never use the `service_role` key in the app.
-6. **First Guru account:** sign up in the app, then in the Supabase Table Editor set that row's
+6. **App settings:** copy `app/.env.example` to `app/.env` and fill in the project URL and the
+   anon / publishable key (**Project Settings → API Keys**). Never use the `service_role` key in the app.
+7. **First Guru account:** sign up in the app, then in the Supabase Table Editor set that row's
    `role` in `profiles` to `guru`. After that, the Guru gives roles from the app.
 
 ## Weekly backup
