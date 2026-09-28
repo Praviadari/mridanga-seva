@@ -120,9 +120,11 @@ create index students_status_idx on students (status);
 create or replace function is_minor(s students) returns boolean
 language sql stable as $$ select s.dob is not null and s.dob > today_ist() - interval '18 years' $$;
 
--- roll number: MS-<year joined>-<4 digits>, never reused, never changed
+-- roll number: MS-<year joined>-<4 digits>, never reused, never changed.
+-- security definer: roll_counters has RLS with no policies (nobody touches it directly), so the
+-- trigger must run as the table owner to update it when a coordinator registers a student.
 create or replace function assign_roll_no() returns trigger
-language plpgsql as $$
+language plpgsql security definer set search_path = public as $$
 declare y int := extract(year from new.joined_on); n int;
 begin
   insert into roll_counters (year, last) values (y, 1)
@@ -134,8 +136,10 @@ end $$;
 create trigger students_roll_no before insert on students
   for each row execute function assign_roll_no();
 
+-- security definer: status_history is read-only for everyone (no insert policy), so writing the
+-- history row must run as the table owner. The checks below still use the caller's session flag.
 create or replace function guard_student_update() returns trigger
-language plpgsql as $$
+language plpgsql security definer set search_path = public as $$
 begin
   if new.roll_no is distinct from old.roll_no then
     raise exception 'roll_no is frozen once issued';
