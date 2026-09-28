@@ -1,0 +1,25 @@
+# Line endings: store and check out text files with LF on every platform, so contributors on
+# Windows, macOS and Linux produce identical files and diffs show only real changes.
+* text=auto eol=lf
+
+# Windows scripts need CRLF to run correctly.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Binary files: never convert or diff as text.
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.webp  binary
+*.ico   binary
+*.pdf   binary
+*.mp3   binary
+*.mp4   binary
+*.ttf   binary
+*.otf   binary
+*.woff  binary
+*.woff2 binary
+*.jks   binary
+*.keystore binary
