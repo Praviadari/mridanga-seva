@@ -1,0 +1,40 @@
+# Glossary
+
+## Mridanga and kirtan terms
+
+| Term | Meaning |
+|---|---|
+| Mridanga (mṛdaṅga) | Two-headed drum used in Gaudiya Vaishnava kirtan. Also called **khol** in Bengali. Not the South Indian *mridangam* |
+| Khol | Bengali name for the mridanga |
+| Dayan | The small, high-pitched head, played with the right hand |
+| Baya | The large bass head, played with the left hand |
+| Syahi | The black circle in the centre of a head |
+| Kinar, maidan | The outer ring and the middle field of a head |
+| Bol | A syllable naming one stroke, such as *tā*, *ghe*, *dhin* |
+| Taal (tala) | A rhythm cycle with a fixed number of beats, such as Kaherva (8) or Dasapahira (16) |
+| Kartal | Small hand cymbals that keep time with the mridanga |
+| Kirtan | Congregational singing of the holy names |
+| Seva | Voluntary service. The class and this app are seva |
+| Guru | The senior teacher who leads the class |
+| Sloka | A Sanskrit verse from scripture |
+| Ishtagoshti | A gathering of devotees to discuss scripture; in the app, the thematic sloka-study section |
+
+## App terms
+
+| Term | Meaning |
+|---|---|
+| Visit | One check-in (and later check-out) of a student at a centre. Attendance is counted in visits |
+| Centre | A place where the class runs. Today only Abids |
+| Roll number | Permanent student ID like `MS-2026-0001`. Never changed, never reused |
+| Level | Beginner, Intermediate or Advanced |
+| Syllabus item | One thing a student learns within a level; ticked by a coordinator when shown in class |
+| Mentor | The coordinator responsible for following up with a student |
+| Status | Where a student stands: New, Active, Irregular, Inactive, Paused, Left (see DATABASE.md) |
+| Irregular | No visit for 14 days (setting). A follow-up call is due |
+| Inactive | No visit for 30 days (setting). Overdue follow-ups are shown to the Guru |
+| Call log | Record of a follow-up call: outcome, reason, comment, next date |
+| Follow-up task | A reminder for a coordinator to call a student |
+| Group | A set of people who receive the same announcements; replaces a WhatsApp group |
+| Kiosk | The door tablet account (Phase 2), allowed only to check students in and out |
+| Pending | A new login that has no role yet |
+| RLS | Row-level security: database rules that decide which rows each person may read or change |

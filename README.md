@@ -51,7 +51,18 @@ Mridanga Seva puts class records, learning material and communication in one pla
 ```
 app/                   Expo app (screens live in app/src/app/)
 supabase/migrations/   Database schema, row-level security, functions and scheduled jobs
+docs/                  How it works and why — start with docs/README.md
 ```
+
+## Documentation
+
+| Read | To understand |
+|---|---|
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | How the app, database and roles fit together |
+| [docs/DATABASE.md](docs/DATABASE.md) | Tables, student status rules, database functions, scheduled jobs |
+| [docs/DECISIONS.md](docs/DECISIONS.md) | Why things are built this way |
+| [docs/GLOSSARY.md](docs/GLOSSARY.md) | Mridanga and app terms |
+| [docs/OPERATIONS.md](docs/OPERATIONS.md) | Setting up, backing up and handing over the live system |
 
 ## Getting started
 

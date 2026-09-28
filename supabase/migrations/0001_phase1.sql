@@ -3,6 +3,7 @@
 -- Scope: centres, people, students + guardians + consent, visits (attendance), follow-up
 -- (call logs, tasks, status), levels + syllabus progress, materials, announcements, settings, audit.
 -- Phase 2 (assessments, promotion workflow, events, polls, practice, Ishtagoshti, fund) comes later.
+-- How it works: docs/DATABASE.md. Why it is built this way: docs/DECISIONS.md.
 
 create extension if not exists pgcrypto;
 create extension if not exists pg_cron;
@@ -592,3 +593,42 @@ create policy guru_read on audit_log for select to authenticated using (is_guru(
 -- RPC access
 revoke execute on function toggle_visit, scan_qr, log_call, refresh_student_statuses, close_open_visits from public;
 grant execute on function toggle_visit, scan_qr, log_call to authenticated;
+
+-- ---------------------------------------------------------------- descriptions
+-- Shown in the Supabase dashboard next to each table and column. Keep them current (CONTRIBUTING.md).
+comment on table settings is 'Adjustable values (follow-up day limits, reasons for leaving). Change here, not in code.';
+comment on table centres is 'Places where the class runs, with GPS point, radius and opening hours. Abids today.';
+comment on table profiles is 'One row per login. role decides what the person can do; only the Guru can change it.';
+comment on column profiles.role is 'pending = no access yet; guru; coordinator (teacher); student; kiosk = door tablet (Phase 2).';
+comment on column profiles.is_treasurer is 'Permission for a coordinator to record fund entries (Phase 2). Not a separate role.';
+comment on table levels is 'Beginner, Intermediate, Advanced.';
+comment on table syllabus_items is 'What a student learns in each level, in teaching order.';
+comment on table roll_counters is 'Last roll number issued per year. Used only by the assign_roll_no trigger.';
+comment on table students is 'One row per student. Can exist without a login (profile_id empty).';
+comment on column students.roll_no is 'MS-<year>-<4 digits>. Set on insert, never changed, never reused (docs/DECISIONS.md #3).';
+comment on column students.status is 'new, active, irregular, inactive, paused, left. paused/left only via log_call (docs/DATABASE.md).';
+comment on column students.paused_until is 'Date a paused student comes back into follow-up.';
+comment on column students.mentor_id is 'Coordinator responsible for following up with this student.';
+comment on column students.qr_token is 'Secret value in the student''s QR code. Not the roll number, so a QR cannot be guessed.';
+comment on column students.area is 'Area only, never the full address (docs/DECISIONS.md #8).';
+comment on table guardians is 'Parent or guardian of a student, needed for minors.';
+comment on table consents is 'Parental consent records for minors (India DPDP Rules).';
+comment on column consents.method is 'written = parent wrote and signed; email_code = parent confirmed by email code (Phase 2).';
+comment on column consents.id_type_checked is 'Which ID the coordinator saw, e.g. Aadhaar. The ID number is never stored.';
+comment on table visits is 'Attendance: one row per check-in. check_out is empty while the student is still at the centre.';
+comment on column visits.method is 'qr = coordinator scanned the student''s QR; manual = tapped the name; face / phone = later phases.';
+comment on table call_logs is 'Every follow-up call a coordinator makes, with outcome, reason and comment.';
+comment on table follow_up_tasks is 'Reminders for a coordinator to call a student. escalated = shown to the Guru.';
+comment on table status_history is 'Every change of a student''s status, with who and when.';
+comment on table student_progress is 'Syllabus items a student has shown in class, ticked by a coordinator.';
+comment on table level_history is 'Every level change (promotion) with who approved it.';
+comment on table materials is 'Learning material: YouTube link, audio, PDF, notation image or note. approved_by empty = suggestion waiting for the Guru.';
+comment on table groups is 'Announcement groups that replace the WhatsApp groups.';
+comment on table announcements is 'Messages to all, a level, a coordinator''s mentees, staff, or a group.';
+comment on table announcement_reads is 'Who has read which announcement (for "seen by 23 of 40").';
+comment on table audit_log is 'Who changed students, profiles, call logs or levels, and when. Guru only.';
+comment on function toggle_visit is 'Check a student in, or out if already in. A check-in makes the student active and closes their follow-up tasks.';
+comment on function scan_qr is 'Look up a student by QR token and toggle their visit. Returns action = unknown for an unrecognised code.';
+comment on function log_call is 'Record a follow-up call and apply its outcome. The only way to set status paused or left.';
+comment on function refresh_student_statuses is 'Daily job (06:00 IST): end expired pauses, move quiet students on, create and escalate call tasks.';
+comment on function close_open_visits is 'Nightly job (21:00 IST): close visits left open, at the centre''s closing time.';
