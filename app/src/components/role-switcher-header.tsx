@@ -15,6 +15,7 @@ export const RoleSwitcherHeader: React.FC = () => {
     { id: 'coordinator', label: 'Coordinator' },
     { id: 'guru', label: 'Guru' },
     { id: 'student', label: 'Student' },
+    { id: 'kiosk', label: t('kiosk') },
   ];
 
   const languages: { code: Language; label: string }[] = [
@@ -133,7 +134,7 @@ const styles = StyleSheet.create({
   roleBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   roleLabel: {
     fontSize: 11,
@@ -143,11 +144,11 @@ const styles = StyleSheet.create({
   },
   pills: {
     flexDirection: 'row',
-    gap: 6,
+    gap: 4,
     flex: 1,
   },
   pill: {
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 14,
     backgroundColor: '#F1F5F9',
@@ -156,7 +157,7 @@ const styles = StyleSheet.create({
     backgroundColor: BrandColors.primary,
   },
   pillText: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#475569',
     fontWeight: '500',
   },

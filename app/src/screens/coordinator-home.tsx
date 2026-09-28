@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { RoleSwitcherHeader } from '../components/role-switcher-header';
 import { AttendanceScreen } from './attendance-screen';
@@ -8,20 +8,38 @@ import { FollowUpScreen } from './followup-screen';
 import { SyllabusScreen } from './syllabus-screen';
 import { AnnouncementsScreen } from './announcements-screen';
 import { ReportsScreen } from './reports-screen';
+import { GroupsScreen } from './groups-screen';
+import { MetronomeScreen } from './metronome-screen';
+import { KioskScreen } from './kiosk-screen';
 import { StudentPortalScreen } from './student-portal-screen';
 import { useAuth } from '../context/auth-context';
 import { useLanguage } from '../context/language-context';
 import { BrandColors } from '../constants/theme';
 
 export const CoordinatorHome: React.FC = () => {
-  const { isStudent } = useAuth();
+  const { role, switchDemoRole } = useAuth();
   const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<
-    'attendance' | 'students' | 'followup' | 'syllabus' | 'announcements' | 'reports'
+    'attendance' | 'students' | 'followup' | 'syllabus' | 'groups' | 'practice' | 'notices' | 'reports'
   >('attendance');
 
+  // If role is Kiosk / Door tablet
+  if (role === 'kiosk') {
+    return <KioskScreen onExit={() => switchDemoRole('coordinator')} />;
+  }
+
+  // If role is Student
+  if (role === 'student') {
+    return (
+      <View style={styles.container}>
+        <RoleSwitcherHeader />
+        <StudentPortalScreen />
+      </View>
+    );
+  }
+
   const tabs: {
-    id: 'attendance' | 'students' | 'followup' | 'syllabus' | 'announcements' | 'reports';
+    id: 'attendance' | 'students' | 'followup' | 'syllabus' | 'groups' | 'practice' | 'notices' | 'reports';
     label: string;
     icon: keyof typeof Ionicons.glyphMap;
   }[] = [
@@ -29,7 +47,9 @@ export const CoordinatorHome: React.FC = () => {
     { id: 'students', label: t('students'), icon: 'people-outline' },
     { id: 'followup', label: t('followUp'), icon: 'call-outline' },
     { id: 'syllabus', label: t('syllabus'), icon: 'book-outline' },
-    { id: 'announcements', label: t('notices'), icon: 'megaphone-outline' },
+    { id: 'groups', label: t('groups'), icon: 'albums-outline' },
+    { id: 'practice', label: t('practice'), icon: 'musical-notes-outline' },
+    { id: 'notices', label: t('notices'), icon: 'megaphone-outline' },
     { id: 'reports', label: t('reports'), icon: 'bar-chart-outline' },
   ];
 
@@ -40,34 +60,34 @@ export const CoordinatorHome: React.FC = () => {
 
       {/* Main Content Area */}
       <View style={styles.body}>
-        {isStudent ? (
-          <StudentPortalScreen />
-        ) : (
-          <>
-            {activeTab === 'attendance' && <AttendanceScreen />}
-            {activeTab === 'students' && <StudentsScreen />}
-            {activeTab === 'followup' && <FollowUpScreen />}
-            {activeTab === 'syllabus' && <SyllabusScreen />}
-            {activeTab === 'announcements' && <AnnouncementsScreen />}
-            {activeTab === 'reports' && <ReportsScreen />}
-          </>
-        )}
+        {activeTab === 'attendance' && <AttendanceScreen />}
+        {activeTab === 'students' && <StudentsScreen />}
+        {activeTab === 'followup' && <FollowUpScreen />}
+        {activeTab === 'syllabus' && <SyllabusScreen />}
+        {activeTab === 'groups' && <GroupsScreen />}
+        {activeTab === 'practice' && <MetronomeScreen />}
+        {activeTab === 'notices' && <AnnouncementsScreen />}
+        {activeTab === 'reports' && <ReportsScreen />}
       </View>
 
-      {/* Coordinator Bottom Tab Navigation Bar */}
-      {!isStudent && (
-        <View style={styles.bottomNav}>
+      {/* Coordinator Bottom Tab Navigation Bar with horizontal scrolling for clean fit */}
+      <View style={styles.bottomNavContainer}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.bottomNav}
+        >
           {tabs.map((tab) => {
             const isActive = activeTab === tab.id;
             return (
               <TouchableOpacity
                 key={tab.id}
-                style={styles.navItem}
+                style={[styles.navItem, isActive && styles.navItemActive]}
                 onPress={() => setActiveTab(tab.id)}
               >
                 <Ionicons
                   name={tab.icon}
-                  size={19}
+                  size={18}
                   color={isActive ? BrandColors.primary : '#64748B'}
                 />
                 <Text style={[styles.navText, isActive && styles.navTextActive]}>
@@ -76,8 +96,8 @@ export const CoordinatorHome: React.FC = () => {
               </TouchableOpacity>
             );
           })}
-        </View>
-      )}
+        </ScrollView>
+      </View>
     </View>
   );
 };
@@ -90,26 +110,34 @@ const styles = StyleSheet.create({
   body: {
     flex: 1,
   },
-  bottomNav: {
-    flexDirection: 'row',
+  bottomNavContainer: {
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
     borderTopColor: '#E2E8F0',
+  },
+  bottomNav: {
+    flexDirection: 'row',
     paddingVertical: 8,
-    paddingHorizontal: 2,
+    paddingHorizontal: 6,
+    gap: 4,
   },
   navItem: {
-    flex: 1,
     alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 8,
     gap: 3,
   },
+  navItemActive: {
+    backgroundColor: BrandColors.primaryLight,
+  },
   navText: {
-    fontSize: 9,
+    fontSize: 10,
     color: '#64748B',
     fontWeight: '500',
   },
   navTextActive: {
-    color: BrandColors.primary,
+    color: BrandColors.primaryDark,
     fontWeight: '700',
   },
 });
