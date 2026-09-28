@@ -1,8 +1,14 @@
 # Mridanga Seva
 
-Open-source class management app for mridanga (khol) kirtan classes: drop-in attendance, levels,
-coordinator follow-up, lessons, practice tools and announcements. Built with React Native (Expo)
-and Supabase.
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+![Status: Phase 1 in development](https://img.shields.io/badge/status-Phase%201%20in%20development-orange.svg)
+![Platforms: Android · iOS · Web](https://img.shields.io/badge/platforms-Android%20%C2%B7%20iOS%20%C2%B7%20Web-blue.svg)
+
+> Open-source class management app for mridanga (khol) kirtan classes: drop-in attendance, levels,
+> coordinator follow-up, lessons, practice tools and announcements. Built with React Native (Expo)
+> and Supabase.
+
+**Topics:** `mridanga` · `khol` · `kirtan` · `class-management` · `education` · `react-native` · `expo` · `supabase`
 
 **Status:** Phase 1 in development. A pilot with one class is planned for November 2026.
 
