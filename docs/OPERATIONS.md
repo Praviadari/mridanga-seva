@@ -21,6 +21,9 @@ Keep the logins for these in one place the team controls, so the system never de
 2. **Run the schema:** open the SQL editor and run `supabase/migrations/0001_phase1.sql`, then any
    later migrations in number order.
    - If `create extension pg_cron` fails, enable **pg_cron** under Database → Extensions and run the file again.
+   - **Test project only:** then run `supabase/seed.sql` for fictional students, a placeholder
+     syllabus and sample visits. Never run it on the live project. Its header lists the steps it
+     cannot do (creating staff logins, assigning mentors).
 3. **Auth settings:** enable Email sign-in with password. Set the site URL to where the web version runs.
 4. **Email (SMTP):** in Brevo, verify the sender email and create an SMTP key. In Supabase, go to
    Authentication → SMTP settings and enter Brevo's host `smtp-relay.brevo.com`, port 587, login and key.

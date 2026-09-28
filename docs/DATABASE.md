@@ -4,6 +4,10 @@ The whole schema is in [`supabase/migrations/0001_phase1.sql`](../supabase/migra
 Every table and important column also carries a `COMMENT ON` description, so you can read it in
 the Supabase dashboard (Table Editor → table → description).
 
+Dummy data for a test project is in [`supabase/seed.sql`](../supabase/seed.sql): a placeholder
+syllabus, 15 fictional students covering every status (some minors, with guardians and written
+consent), sample visits, groups and an announcement. Never run it on the live project.
+
 ## Tables by area
 
 | Area | Tables | Notes |
