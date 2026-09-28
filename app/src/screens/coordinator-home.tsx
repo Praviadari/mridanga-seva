@@ -7,29 +7,35 @@ import { StudentsScreen } from './students-screen';
 import { FollowUpScreen } from './followup-screen';
 import { SyllabusScreen } from './syllabus-screen';
 import { AnnouncementsScreen } from './announcements-screen';
+import { ReportsScreen } from './reports-screen';
 import { StudentPortalScreen } from './student-portal-screen';
 import { useAuth } from '../context/auth-context';
+import { useLanguage } from '../context/language-context';
 import { BrandColors } from '../constants/theme';
 
 export const CoordinatorHome: React.FC = () => {
   const { isStudent } = useAuth();
-  const [activeTab, setActiveTab] = useState<'attendance' | 'students' | 'followup' | 'syllabus' | 'announcements'>('attendance');
+  const { t } = useLanguage();
+  const [activeTab, setActiveTab] = useState<
+    'attendance' | 'students' | 'followup' | 'syllabus' | 'announcements' | 'reports'
+  >('attendance');
 
   const tabs: {
-    id: 'attendance' | 'students' | 'followup' | 'syllabus' | 'announcements';
+    id: 'attendance' | 'students' | 'followup' | 'syllabus' | 'announcements' | 'reports';
     label: string;
     icon: keyof typeof Ionicons.glyphMap;
   }[] = [
-    { id: 'attendance', label: 'Attendance', icon: 'checkbox-outline' },
-    { id: 'students', label: 'Students', icon: 'people-outline' },
-    { id: 'followup', label: 'Follow-Up', icon: 'call-outline' },
-    { id: 'syllabus', label: 'Syllabus', icon: 'book-outline' },
-    { id: 'announcements', label: 'Notices', icon: 'megaphone-outline' },
+    { id: 'attendance', label: t('attendance'), icon: 'checkbox-outline' },
+    { id: 'students', label: t('students'), icon: 'people-outline' },
+    { id: 'followup', label: t('followUp'), icon: 'call-outline' },
+    { id: 'syllabus', label: t('syllabus'), icon: 'book-outline' },
+    { id: 'announcements', label: t('notices'), icon: 'megaphone-outline' },
+    { id: 'reports', label: t('reports'), icon: 'bar-chart-outline' },
   ];
 
   return (
     <View style={styles.container}>
-      {/* Top Branding & View-As Selector */}
+      {/* Top Branding, Language Switcher & View-As Selector */}
       <RoleSwitcherHeader />
 
       {/* Main Content Area */}
@@ -43,6 +49,7 @@ export const CoordinatorHome: React.FC = () => {
             {activeTab === 'followup' && <FollowUpScreen />}
             {activeTab === 'syllabus' && <SyllabusScreen />}
             {activeTab === 'announcements' && <AnnouncementsScreen />}
+            {activeTab === 'reports' && <ReportsScreen />}
           </>
         )}
       </View>
@@ -60,7 +67,7 @@ export const CoordinatorHome: React.FC = () => {
               >
                 <Ionicons
                   name={tab.icon}
-                  size={20}
+                  size={19}
                   color={isActive ? BrandColors.primary : '#64748B'}
                 />
                 <Text style={[styles.navText, isActive && styles.navTextActive]}>
@@ -89,7 +96,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#E2E8F0',
     paddingVertical: 8,
-    paddingHorizontal: 4,
+    paddingHorizontal: 2,
   },
   navItem: {
     flex: 1,
@@ -97,7 +104,7 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   navText: {
-    fontSize: 10,
+    fontSize: 9,
     color: '#64748B',
     fontWeight: '500',
   },

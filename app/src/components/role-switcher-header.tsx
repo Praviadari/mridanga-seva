@@ -2,16 +2,25 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/auth-context';
+import { useLanguage } from '../context/language-context';
 import { BrandColors } from '../constants/theme';
 import { AppRole } from '../types/database';
+import { Language } from '../i18n/translations';
 
 export const RoleSwitcherHeader: React.FC = () => {
   const { role, profile, switchDemoRole } = useAuth();
+  const { language, setLanguage, t } = useLanguage();
 
   const roles: { id: AppRole; label: string }[] = [
     { id: 'coordinator', label: 'Coordinator' },
     { id: 'guru', label: 'Guru' },
     { id: 'student', label: 'Student' },
+  ];
+
+  const languages: { code: Language; label: string }[] = [
+    { code: 'en', label: 'EN' },
+    { code: 'te', label: 'తెలుగు' },
+    { code: 'hi', label: 'हिंदी' },
   ];
 
   return (
@@ -20,14 +29,32 @@ export const RoleSwitcherHeader: React.FC = () => {
         <View style={styles.branding}>
           <Ionicons name="musical-notes" size={22} color={BrandColors.primary} />
           <View>
-            <Text style={styles.title}>Mridanga Seva</Text>
-            <Text style={styles.subtitle}>Abids Centre • {profile?.full_name || 'Class'}</Text>
+            <Text style={styles.title}>{t('appName')}</Text>
+            <Text style={styles.subtitle}>{t('centre')} • {profile?.full_name || 'Class'}</Text>
           </View>
+        </View>
+
+        {/* Language selector chips */}
+        <View style={styles.langRow}>
+          {languages.map((lang) => {
+            const isSel = language === lang.code;
+            return (
+              <TouchableOpacity
+                key={lang.code}
+                style={[styles.langChip, isSel && styles.langChipActive]}
+                onPress={() => setLanguage(lang.code)}
+              >
+                <Text style={[styles.langText, isSel && styles.langTextActive]}>
+                  {lang.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
       </View>
 
       <View style={styles.roleBar}>
-        <Text style={styles.roleLabel}>VIEW AS:</Text>
+        <Text style={styles.roleLabel}>{t('viewAs')}</Text>
         <View style={styles.pills}>
           {roles.map((r) => {
             const isActive = role === r.id;
@@ -77,6 +104,31 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 12,
     color: '#64748B',
+  },
+  langRow: {
+    flexDirection: 'row',
+    gap: 4,
+  },
+  langChip: {
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 6,
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  langChipActive: {
+    backgroundColor: BrandColors.primaryLight,
+    borderColor: BrandColors.primary,
+  },
+  langText: {
+    fontSize: 11,
+    color: '#64748B',
+    fontWeight: '600',
+  },
+  langTextActive: {
+    color: BrandColors.primaryDark,
+    fontWeight: '700',
   },
   roleBar: {
     flexDirection: 'row',
