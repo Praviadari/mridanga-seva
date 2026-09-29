@@ -84,10 +84,13 @@ select id, 'call', today_ist() + 1 from students where status = 'irregular';
 -- Beginners who are active have ticked the first two items; intermediates all of level 1.
 insert into student_progress (student_id, item_id)
 select s.id, i.id from students s join syllabus_items i on i.level_id = 1 and i.sort <= 2
-where s.level_id = 1 and s.status = 'active';
+where s.level_id = 1 and s.status = 'active'
+on conflict (student_id, item_id) do nothing;
+
 insert into student_progress (student_id, item_id)
 select s.id, i.id from students s join syllabus_items i on i.level_id = 1
-where s.level_id >= 2;
+where s.level_id >= 2
+on conflict (student_id, item_id) do nothing;
 
 -- ---------------------------------------------------------------- groups, materials, announcement
 insert into groups (name, purpose) values
