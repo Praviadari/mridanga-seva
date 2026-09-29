@@ -281,3 +281,30 @@ side door around them.
 that a student sees only their own row in `student_overview` and that a signed-out visitor sees
 none. A future view that must show more than the tables allow (for example a report) needs its
 own decision entry and a security-definer function instead.
+
+## 21. The My QR card is drawn on the phone and works without internet — 29 Sep 2026
+
+**Context.** Students check in by showing *My QR* (screen S3) to a coordinator, who scans it
+(C5). The code carries `MS1:` and the student's secret `qr_token` (#17), which is what makes a
+check-in possible, so it must not leave the app. Phone signal inside the temple can be weak, and a student standing at
+the door with a spinner holds up the queue.
+
+**Decision.**
+- The QR code is made on the phone by the `qrcode-generator` library (MIT, plain JavaScript, no
+  other packages) and drawn with `react-native-svg` (an Expo module, included in Expo Go, works on
+  Android, iOS and web). No online QR image service is used.
+- It is always black on white with the standard four-square white border, in dark mode too, and
+  uses error-correction level Q.
+- The last card loaded (name, roll number, `qr_token`) is kept on the phone and shown, with a
+  note, when the server cannot be reached. It is shown only to the login it belongs to, deleted at
+  sign-out, and deleted when the server says the login has no student record.
+
+**Why.** An online QR image service would receive every student's secret. Many scanners cannot
+read light-on-dark codes. Level Q survives glare and cracked screens, and for this short text it
+gives no bigger a code than the usual level M. The saved copy is no more sensitive than the login
+session, which is kept on the phone already.
+
+**Consequences.** Code: `app/src/components/qr-code.tsx`, `app/src/data/my-student.ts`. A code
+shown from the saved copy stops working if its `qr_token` is changed on the server; the card
+updates the next time the phone is online. There is no screen yet to issue a new `qr_token` for a
+student whose code was shared.

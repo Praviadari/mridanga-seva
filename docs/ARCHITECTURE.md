@@ -133,8 +133,9 @@ read or write the person is not allowed, whatever the app shows.
 
 ## How attendance flows (Phase 1)
 
-1. The student opens *My QR* on their phone. The code holds `MS1:` and the student's secret
-   QR token ([DECISIONS.md #17](DECISIONS.md)).
+1. The student opens *My QR* (S3) on their phone. The code holds `MS1:` and the student's secret
+   QR token ([DECISIONS.md #17](DECISIONS.md)). It is drawn on the phone, and the last one loaded
+   is kept there, so it shows even without internet ([DECISIONS.md #21](DECISIONS.md)).
 2. The coordinator opens *Mark attendance* (C5) and scans it with their phone's camera
    (expo-camera). Without a camera, or on a laptop, they search the name and tap instead.
 3. A scan calls `scan_qr`, which toggles: in if the student has no open visit, otherwise out.

@@ -1,0 +1,126 @@
+// S3 My QR card. The student opens it at the door; the coordinator scans the code with their own
+// phone on Mark attendance (C5) to check the student in or out (docs/ARCHITECTURE.md "How
+// attendance flows"). The code holds the student's secret qr_token, never the roll number, so no
+// one can make a working code for another student from a class list. The name and roll number
+// are printed under it so the coordinator can see it is the right person.
+
+import { Stack } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
+
+import { useAuth } from '@/auth/auth-provider';
+import { AppText } from '@/components/app-text';
+import { Button } from '@/components/button';
+import { Notice } from '@/components/notice';
+import { QrCode } from '@/components/qr-code';
+import { Screen } from '@/components/screen';
+import { studentQrText } from '@/data/attendance';
+import { fetchMyCard, type MyCardResult } from '@/data/my-student';
+import { maxContentWidth, radius, spacing, useTheme } from '@/theme/use-theme';
+
+/**
+ * Largest QR code drawn, in pixels. Big enough to scan from arm's length; bigger only makes the
+ * coordinator step back.
+ */
+const MAX_QR_SIZE = 320;
+
+/** The student's QR code with their name and roll number, and what to do with it. */
+export default function MyQrScreen() {
+  const { t } = useTranslation();
+  const { profile } = useAuth();
+  const { colors } = useTheme();
+  const { width } = useWindowDimensions();
+
+  // undefined = still loading.
+  const [result, setResult] = useState<MyCardResult | undefined>(undefined);
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  const profileId = profile?.id;
+
+  useEffect(() => {
+    if (!profileId) return;
+    let cancelled = false;
+    fetchMyCard(profileId).then((loaded) => {
+      if (!cancelled) setResult(loaded);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [profileId, loadAttempt]);
+
+  // The page's side padding and the card's own padding come off the screen width.
+  const column = Math.min(width, maxContentWidth) - 2 * spacing.lg - 2 * spacing.md;
+  const qrSize = Math.min(column, MAX_QR_SIZE);
+
+  const header = <Stack.Screen options={{ title: t('myQr.title') }} />;
+
+  if (result === undefined) {
+    return (
+      <Screen underHeader centred>
+        {header}
+        <AppText tone="muted" style={styles.centreText}>
+          {t('common.loading')}
+        </AppText>
+      </Screen>
+    );
+  }
+
+  if (result.state === 'failed') {
+    return (
+      <Screen underHeader centred>
+        {header}
+        <Notice tone="error" title={t('myQr.loadFailed')}>
+          {t(result.errorKey)}
+        </Notice>
+        <Button label={t('common.tryAgain')} onPress={() => setLoadAttempt(loadAttempt + 1)} />
+      </Screen>
+    );
+  }
+
+  if (result.state === 'noRecord') {
+    return (
+      <Screen underHeader centred>
+        {header}
+        <Notice tone="error" title={t('myQr.noRecordTitle')}>
+          {t('myQr.noRecordBody')}
+        </Notice>
+      </Screen>
+    );
+  }
+
+  const { card, saved } = result;
+  return (
+    <Screen underHeader>
+      {header}
+      <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <AppText variant="label" tone="primary">
+          {t('app.name')}
+        </AppText>
+        <QrCode value={studentQrText(card.qrToken)} size={qrSize} label={t('myQr.qrLabel')} />
+        <AppText variant="subtitle" style={styles.centreText}>
+          {card.fullName}
+        </AppText>
+        {card.rollNo ? (
+          <AppText tone="muted">{t('myQr.rollNo', { rollNo: card.rollNo })}</AppText>
+        ) : null}
+      </View>
+
+      {saved ? <AppText tone="muted">{t('myQr.savedCopy')}</AppText> : null}
+      <AppText>{t('myQr.howTo')}</AppText>
+      <AppText tone="muted">{t('myQr.keepPrivate')}</AppText>
+    </Screen>
+  );
+}
+
+const styles = StyleSheet.create({
+  card: {
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: radius,
+    padding: spacing.md,
+    gap: spacing.sm,
+  },
+  centreText: {
+    textAlign: 'center',
+  },
+});

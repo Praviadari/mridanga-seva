@@ -19,8 +19,8 @@ Status: **Built** works end to end · **Placeholder** a simple stand-in exists �
 
 | # | Screen | Status | Code |
 |---|---|---|---|
-| S1 | Home: announcements, visits this week, My QR | Placeholder | `app/src/app/student/index.tsx` |
-| S3 | My QR card | | |
+| S1 | Home: announcements, visits this week, My QR | Placeholder (has the button to My QR) | `app/src/app/student/index.tsx` |
+| S3 | My QR card: the code the coordinator scans at the door; works without internet | Built | `app/src/app/student/my-qr.tsx`, `app/src/components/qr-code.tsx`, `app/src/data/my-student.ts` |
 | S4 | Learn: my level's syllabus and lessons | | |
 | S9 | Attendance history | | |
 | S10 | Announcements | | |
@@ -61,5 +61,5 @@ Coordinator screens that the Guru also uses live in `app/src/app/staff/`
 
 ## Build order
 
-~~A1~~ → ~~C2, C3~~ → ~~C5, C6~~ → ~~C7, C8~~ → ~~C10, C11~~ → C9 → G4, G5 → C15, S10 → S1, S3, S4, S9 →
+~~A1~~ → ~~C2, C3~~ → ~~C5, C6~~ → ~~C7, C8~~ → ~~C10, C11~~ → C9 → G4, G5 → C15, S10 → S1, ~~S3~~, S4, S9 →
 G1, C1, C21, G8 → G2, G3 → G9, G10, G11.

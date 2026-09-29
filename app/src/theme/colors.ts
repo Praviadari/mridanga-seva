@@ -50,6 +50,16 @@ export const lightPalette: Palette = {
   successSurface: '#ECFDF3',
 };
 
+/**
+ * Colours of a QR code, the same in light and dark mode. Scanners look for dark squares on a
+ * light background; many cannot read a code drawn light on dark, so the code never follows the
+ * dark theme.
+ */
+export const qrColours = {
+  dark: '#000000',
+  light: '#FFFFFF',
+} as const;
+
 export const darkPalette: Palette = {
   background: '#16120F',
   surface: '#221C18',

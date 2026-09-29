@@ -159,6 +159,18 @@
     "cancel": "Cancel",
     "allCheckedOut": "Checked out: {{number}}."
   },
+  "myQr": {
+    "title": "My QR card",
+    "open": "My QR card",
+    "qrLabel": "Your attendance QR code",
+    "rollNo": "Roll number: {{rollNo}}",
+    "howTo": "Show this code to the coordinator when you arrive and again when you leave. They scan it to check you in and out.",
+    "keepPrivate": "This code is only for you. Do not send a photo or screenshot of it to anyone.",
+    "savedCopy": "No internet right now. This is the copy saved on your phone; it can still be scanned.",
+    "loadFailed": "Could not load your QR card",
+    "noRecordTitle": "No student record found",
+    "noRecordBody": "Your login is not connected to a student record. Please speak to a coordinator."
+  },
   "levels": {
     "1": "Beginner",
     "2": "Intermediate",

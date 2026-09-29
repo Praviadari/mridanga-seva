@@ -26,3 +26,12 @@ export function writeLocal(key: string, value: string): void {
     // Storage blocked or full; the app still works, it just forgets the value.
   }
 }
+
+/** Deletes a saved value from this device, if it is there. Fails silently, like writeLocal. */
+export function removeLocal(key: string): void {
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    // Storage blocked; there is nothing we could delete anyway.
+  }
+}

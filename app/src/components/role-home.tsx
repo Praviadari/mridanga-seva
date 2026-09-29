@@ -21,6 +21,7 @@ export type RoleHomeProps = {
  * Greets the person, says which role they are signed in with, and offers sign-out. Guru and
  * coordinators also get the staff screens built so far: mark attendance (C5), who is here now
  * (C6), the student list (C7), the follow-up queue (C10) and register a student (C2).
+ * Students get a button to My QR (S3).
  */
 export function RoleHome({ role }: RoleHomeProps) {
   const { t } = useTranslation();
@@ -59,6 +60,9 @@ export function RoleHome({ role }: RoleHomeProps) {
             onPress={() => router.push('/staff/register')}
           />
         </>
+      ) : null}
+      {role === 'student' ? (
+        <Button label={t('myQr.open')} onPress={() => router.push('/student/my-qr')} />
       ) : null}
       <Button variant="secondary" label={t('common.signOut')} onPress={() => void signOut()} />
     </Screen>

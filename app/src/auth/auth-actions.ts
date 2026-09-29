@@ -13,6 +13,7 @@ import {
 import type { ParseKeys } from 'i18next';
 import { Platform } from 'react-native';
 
+import { clearSavedCard } from '@/data/my-student';
 import { supabase } from '@/lib/supabase';
 
 /** A translation key, for example 'authErrors.invalidCredentials'. */
@@ -120,8 +121,10 @@ export async function setNewPassword(password: string): Promise<AuthResult> {
 
 /**
  * Signs out on this device only. Supabase's default ('global') would also sign the person out
- * of every other phone and browser they use.
+ * of every other phone and browser they use. Also deletes the student's QR card saved on this
+ * device (src/data/my-student.ts), so the next person on a shared phone cannot use it.
  */
 export async function signOut(): Promise<void> {
+  clearSavedCard();
   await supabase.auth.signOut({ scope: 'local' });
 }

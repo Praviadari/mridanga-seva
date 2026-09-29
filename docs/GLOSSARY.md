@@ -29,6 +29,7 @@
 | Check out all | The button on *Who is here now* that closes every open visit at closing time |
 | Centre | A place where the class runs. Today only Abids |
 | Roll number | Permanent student ID like `MS-2026-0001`. Never changed, never reused |
+| My QR card | The screen (S3) that shows the student's QR code on their phone for the coordinator to scan at the door |
 | Level | Beginner, Intermediate or Advanced |
 | Syllabus item | One thing a student learns within a level; ticked by a coordinator when shown in class |
 | Mentor | The coordinator responsible for following up with a student |
