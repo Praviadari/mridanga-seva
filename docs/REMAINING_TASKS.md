@@ -23,8 +23,7 @@ Although the Phase 1 app core, business logic, offline seed data, trilingual tra
 - [x] **Activate Scheduled Jobs:** Activated `pg_cron` extension on the live project for: *(Completed)*
   - `mridanga-status-refresh` (06:00 IST) — auto-transitions quiet students to *Irregular* and creates follow-up tasks.
   - `mridanga-close-visits` (21:00 IST) — auto-closes any visits left open at centre closing.
-- [x] **Configure Brevo SMTP:** Connected Brevo SMTP in Supabase Auth to enable high-volume transaction emails. *(Completed)*
-- [ ] **App Environment Linking:** Paste the project's URL and anon key (`EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_KEY`) into `app/.env` (from Supabase Dashboard → Project Settings → API).
+- [x] **App Environment Linking:** Linked live project URL and publishable key in `app/.env`. *(Completed & Verified)*
 - [ ] **Initialize First Guru Account:** Sign up in the app, then in the Supabase Table Editor set that user's `role` to `guru` in `profiles`.
 
 ### B. Hardware & Native Device Integrations
