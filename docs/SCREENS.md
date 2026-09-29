@@ -32,8 +32,8 @@ Status: **Built** works end to end · **Placeholder** a simple stand-in exists �
 | C1 | Dashboard: here now, today's visits, follow-ups due, new joiners | Placeholder | `app/src/app/coordinator/index.tsx` |
 | C2 | Register a student (photo comes later) | Built | `app/src/app/staff/register.tsx`, `app/src/data/students.ts` |
 | C3 | Guardian consent (under 18): part of the C2 form, shown when the date of birth is under 18 | Built | same as C2 |
-| C5 | Mark attendance: scan QR or tap a name | | |
-| C6 | Who is here now | | |
+| C5 | Mark attendance: scan a QR code or search a name and tap | Built | `app/src/app/staff/attendance.tsx`, `app/src/data/attendance.ts` |
+| C6 | Who is here now, with "Check out all" for closing time | Built | `app/src/app/staff/here-now.tsx` |
 | C7 | Student list with filters | | |
 | C8 | Student profile | | |
 | C9 | Syllabus tick-off | | |
@@ -61,5 +61,5 @@ Coordinator screens that the Guru also uses live in `app/src/app/staff/`
 
 ## Build order
 
-~~A1~~ → ~~C2, C3~~ → C5, C6 → C7, C8 → C10, C11 → C9 → G4, G5 → C15, S10 → S1, S3, S4, S9 →
+~~A1~~ → ~~C2, C3~~ → ~~C5, C6~~ → C7, C8 → C10, C11 → C9 → G4, G5 → C15, S10 → S1, S3, S4, S9 →
 G1, C1, C21, G8 → G2, G3 → G9, G10, G11.

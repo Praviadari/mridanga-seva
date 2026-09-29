@@ -197,3 +197,45 @@ A future Excel import (G3) must bring the parent and consent for every minor in 
 Phase 1 consent is a paper form the parent fills in and signs; the coordinator ticks that it was
 received and records only which ID they looked at. A student photo needs its own consent
 (`scope = 'photo'`); taking photos is not built yet.
+
+## 17. A student's QR code holds `MS1:` and a secret token — 29 Sep 2026
+
+**Context.** Coordinators check students in by scanning a QR code shown on the student's phone
+(screen S3, and later the door tablet). The content of the code has to be fixed before the first
+code is shown, because every scanner must read it the same way.
+
+**Decision.** The code holds the text `MS1:` followed by the student's `qr_token` in capital
+letters, for example `MS1:3F2A…`. The token is a random value stored on the student's record; it
+is not the roll number. Scanners also accept a bare token without the prefix.
+
+**Why.** A random token cannot be guessed from a roll number. The prefix lets the scanner tell a
+student code from any other QR code (a payment code, a web link) and say so clearly. The `1` is a
+version: if codes change later, for example to codes that expire so a screenshot stops working,
+they get a new prefix and old and new codes cannot be confused. Capital letters and digits make a
+smaller QR code that scans more easily.
+
+**Consequences.** `studentQrText()` and `qrTokenFromScan()` in `app/src/data/attendance.ts` are
+the only places that know the format. A screenshot of someone's code works like the code itself,
+so the result card shows the name and roll number large, for the coordinator to check against the
+person in front of them. Phase 3 face attendance removes this weakness.
+
+## 18. A tap says in or out; only a scan toggles — 29 Sep 2026
+
+**Context.** `toggle_visit` checks a student in if they are out and out if they are in. That suits
+a QR scan. On a list, however, the button shows what was true when the list was loaded. If another
+coordinator has marked the student since, a toggle does the opposite of what the button said. The
+same problem would hit a "check out all" done as one toggle per student from the phone.
+
+**Decision.** Tapping a name calls `mark_visit(student, 'in' | 'out')`, which does what the button
+says and changes nothing if the student is already in that state. "Check out all" is one database
+call, `check_out_all()`. Scanning a QR code still toggles, through `scan_qr`.
+
+**Why.** Two coordinators working the same class at once is normal. With this, the worst a stale
+list can do is show "Already checked in. Nothing changed."
+
+**Consequences.** Migration `0004_attendance.sql`. `mark_visit` calls `toggle_visit` to do the
+actual change, so the rules for a check-in (student becomes active, follow-up tasks close) stay in
+one function. After each scan the camera pauses until the coordinator taps *Scan the next
+student*, and the same code is ignored for 30 seconds, so a phone held up a moment too long does
+not check its student straight out again. "Check out all" is on *Who is here now* (C6), where the
+coordinator sees exactly whom it affects.

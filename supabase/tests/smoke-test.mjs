@@ -1,6 +1,7 @@
 // Database smoke test: runs every migration and seed.sql on an in-memory Postgres (PGlite),
-// then checks the rules that protect student data: login linking, the profile guard, who may
-// run which function, and row-level security.
+// then checks the rules that protect student data: login linking, the profile guard,
+// registration with consent, attendance marking, who may run which function, and row-level
+// security.
 //
 // Run before pasting a migration into the live Supabase project:
 //   cd supabase/tests && npm install && npm test
@@ -198,6 +199,45 @@ await refuses('student cannot run toggle_visit', () =>
 const [visit] = await asApp('authenticated', coordinator,
   `select toggle_visit($1, 'manual') as result`, [registered.id]);
 check('coordinator can check a student in', visit.result.action === 'in');
+
+// ---------------------------------------------------------------- attendance (0004)
+/** Calls mark_visit as the coordinator; returns the action it reports. */
+async function mark(studentId, action) {
+  const [row] = await asApp('authenticated', coordinator,
+    `select mark_visit($1, $2) as r`, [studentId, action]);
+  return row.r.action;
+}
+check('tapping "in" for a student already in changes nothing', (await mark(registered.id, 'in')) === 'already_in');
+check('tapping "out" checks the student out', (await mark(registered.id, 'out')) === 'out');
+check('tapping "out" again changes nothing', (await mark(registered.id, 'out')) === 'already_out');
+check('tapping "in" checks the student in', (await mark(registered.id, 'in')) === 'in');
+await refuses('mark_visit refuses an action other than in / out', () => mark(registered.id, 'sideways'));
+await refuses('student cannot run mark_visit', () =>
+  asApp('authenticated', arjun, `select mark_visit('${registered.id}', 'in')`));
+await refuses('anon cannot run mark_visit', () =>
+  asApp('anon', null, `select mark_visit('${registered.id}', 'in')`));
+
+const [{ qr_token: qrToken }] = await asOwner(`select qr_token from students where id = '${registered.id}'`);
+const [scanned] = await asApp('authenticated', coordinator, `select scan_qr($1) as r`, [qrToken]);
+check('scanning the QR of a student who is in checks them out', scanned.r.action === 'out');
+const [unknown] = await asApp('authenticated', coordinator,
+  `select scan_qr('00000000-0000-4000-8000-000000000000') as r`);
+check('an unknown QR code is reported as unknown', unknown.r.action === 'unknown');
+
+// Two students in today, and one visit left open from three days ago (nightly job missed).
+await mark(registered.id, 'in');
+await mark(adult.id, 'in');
+await asOwner(`insert into visits (student_id, check_in, method)
+  values ('${child.id}', ((today_ist() - 3) + time '16:00') at time zone 'Asia/Kolkata', 'manual')`);
+await refuses('student cannot run check_out_all', () =>
+  asApp('authenticated', arjun, 'select check_out_all()'));
+await refuses('anon cannot run check_out_all', () => asApp('anon', null, 'select check_out_all()'));
+const [closedAll] = await asApp('authenticated', coordinator, 'select check_out_all() as n');
+const stillOpen = await asOwner('select id from visits where check_out is null');
+check('check_out_all closes every open visit', closedAll.n === 3 && stillOpen.length === 0, `closed ${closedAll.n}`);
+const [stale] = await asOwner(`select (check_out at time zone 'Asia/Kolkata')::time::text as out_at
+  from visits where student_id = '${child.id}' order by check_in desc limit 1`);
+check('... an old open visit ends at that day\'s closing time', stale.out_at === '20:00:00', stale.out_at);
 
 // ---------------------------------------------------------------- row-level security
 const seen = await asApp('authenticated', arjun, 'select full_name from students');

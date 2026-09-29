@@ -28,8 +28,8 @@ Keep the logins for these in one place the team controls, so the system never de
    4. If it fails on `pg_cron`: open **Database → Extensions**, switch on **pg_cron**, and run the
       same query again. A failed run changes nothing, so running it again is safe.
    5. Run every later migration the same way, in number order: `0002_login_linking.sql`, then
-      `0003_register_student.sql`, and so on. **Run 0002 straight after 0001**: without it the
-      first Guru cannot be set (step 7) and internal functions are open.
+      `0003_register_student.sql`, `0004_attendance.sql`, and so on. **Run 0002 straight after
+      0001**: without it the first Guru cannot be set (step 7) and internal functions are open.
 3. **Test project only — add the dummy data:** do the same with [`supabase/seed.sql`](../supabase/seed.sql)
    in a new query. Check under **Table Editor → students**: 15 students, roll numbers
    `MS-2026-0001` to `MS-2026-0015`. Never run the seed on the live project. Its header lists the
@@ -107,6 +107,13 @@ single-page app ([DECISIONS.md #15](DECISIONS.md)), so the host must send every 
   under `/<repo-name>`, also set `experiments.baseUrl` in `app.json`.
 
 Then put the site's address in Supabase as the Site URL (setup step 4). The host is not chosen yet.
+
+**Camera on the web version.** Browsers let a page use the camera only on an `https://` address
+(or `localhost` during development); all the hosts above serve `https`. Browsers without built-in
+QR reading (Safari on iPhone, Firefox) get a QR reader that expo-camera downloads once from the
+public jsDelivr CDN (`fastly.jsdelivr.net`, package `zxing-wasm`). Only the reader program is
+downloaded; camera pictures never leave the phone. If that address is blocked on a network,
+scanning does not work there, but the name search on the same screen still does.
 
 ## App icon and splash screen
 

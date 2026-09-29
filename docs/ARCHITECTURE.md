@@ -71,9 +71,11 @@ app/
     auth/              Who is signed in, their role, and the sign-in / sign-up calls
     data/              Reading and saving records: one file per area (students.ts ...), with the
                        form checks. Screens call these, never the database directly
-    components/        Building blocks shared by screens: text, buttons, fields, choices, page frame
-    i18n/              Interface text in English, Telugu and Hindi (docs/TRANSLATIONS.md)
-    lib/               The Supabase client and on-device storage
+    components/        Building blocks shared by screens: text, buttons, fields, choices, list rows,
+                       the QR scanner, page frame
+    i18n/              Interface text in English, Telugu and Hindi (docs/TRANSLATIONS.md), and
+                       labels.ts, which words levels and lengths of time the same on every screen
+    lib/               The Supabase client, on-device storage and date helpers (India time)
     theme/             Colours, spacing and text sizes, light and dark
 ```
 
@@ -128,12 +130,21 @@ read or write the person is not allowed, whatever the app shows.
 
 ## How attendance flows (Phase 1)
 
-1. The student opens *My QR* on their phone.
-2. The coordinator scans it with their phone (or searches the name and taps).
-3. The app calls `scan_qr` / `toggle_visit`: if the student has no open visit, it checks them in;
-   otherwise it checks them out.
+1. The student opens *My QR* on their phone. The code holds `MS1:` and the student's secret
+   QR token ([DECISIONS.md #17](DECISIONS.md)).
+2. The coordinator opens *Mark attendance* (C5) and scans it with their phone's camera
+   (expo-camera). Without a camera, or on a laptop, they search the name and tap instead.
+3. A scan calls `scan_qr`, which toggles: in if the student has no open visit, otherwise out.
+   A tap calls `mark_visit` with *in* or *out*, and changes nothing if the student already is
+   ([DECISIONS.md #18](DECISIONS.md)).
 4. Any check-in makes the student *Active* again and closes their open follow-up tasks.
-5. At 21:00 IST a daily job closes any visit left open, at the centre's closing time.
+5. *Who is here now* (C6) lists open visits. At closing time the coordinator taps *Check out all*
+   (`check_out_all`).
+6. At 21:00 IST a daily job closes any visit still open, at the centre's closing time.
+
+The camera also works in the web version (on `https` only). Browsers without built-in QR reading,
+such as Safari on iPhone, use a reader that expo-camera downloads from a public CDN; see
+OPERATIONS.md "Publishing the web version".
 
 ## Phases
 

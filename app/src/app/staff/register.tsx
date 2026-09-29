@@ -6,7 +6,6 @@
 // stores the student, guardian and consent together and gives the roll number.
 
 import { router, Stack } from 'expo-router';
-import type { TFunction } from 'i18next';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -35,6 +34,7 @@ import {
   type RegistrationErrors,
   type RegistrationForm,
 } from '@/data/students';
+import { levelName } from '@/i18n/labels';
 
 type Choices = { levels: LevelOption[]; mentors: MentorOption[] };
 
@@ -197,7 +197,10 @@ export default function RegisterStudentScreen() {
           <>
             <ChoiceGroup
               label={t('register.level')}
-              choices={choices.levels.map((level) => ({ value: level.id, label: levelLabel(t, level) }))}
+              choices={choices.levels.map((level) => ({
+                value: level.id,
+                label: levelName(t, level.id, level.name),
+              }))}
               value={form.levelId}
               onChange={field('levelId')}
             />
@@ -279,22 +282,4 @@ export default function RegisterStudentScreen() {
       <Button label={t('register.submit')} onPress={save} loading={busy} disabled={!choices} />
     </Screen>
   );
-}
-
-/**
- * The level's name in the app's language. The three levels (Beginner, Intermediate, Advanced)
- * are created by migration 0001 and do not change, so they are translated by id; a level added
- * later shows its name from the database.
- */
-function levelLabel(t: TFunction, level: LevelOption): string {
-  switch (level.id) {
-    case 1:
-      return t('levels.1');
-    case 2:
-      return t('levels.2');
-    case 3:
-      return t('levels.3');
-    default:
-      return level.name;
-  }
 }

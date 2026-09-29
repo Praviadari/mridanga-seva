@@ -19,7 +19,8 @@ export type RoleHomeProps = {
 
 /**
  * Greets the person, says which role they are signed in with, and offers sign-out. Guru and
- * coordinators also get a button to register a student (C2).
+ * coordinators also get the staff screens built so far: mark attendance (C5), who is here now
+ * (C6) and register a student (C2).
  */
 export function RoleHome({ role }: RoleHomeProps) {
   const { t } = useTranslation();
@@ -34,7 +35,20 @@ export function RoleHome({ role }: RoleHomeProps) {
       <AppText tone="muted">{t('home.role', { role: t(`roles.${role}`) })}</AppText>
       <AppText>{t('home.comingSoon')}</AppText>
       {role !== 'student' ? (
-        <Button label={t('staff.registerStudent')} onPress={() => router.push('/staff/register')} />
+        <>
+          {/* Attendance first: it is what coordinators do most during the class. */}
+          <Button label={t('staff.markAttendance')} onPress={() => router.push('/staff/attendance')} />
+          <Button
+            variant="secondary"
+            label={t('staff.hereNow')}
+            onPress={() => router.push('/staff/here-now')}
+          />
+          <Button
+            variant="secondary"
+            label={t('staff.registerStudent')}
+            onPress={() => router.push('/staff/register')}
+          />
+        </>
       ) : null}
       <Button variant="secondary" label={t('common.signOut')} onPress={() => void signOut()} />
     </Screen>

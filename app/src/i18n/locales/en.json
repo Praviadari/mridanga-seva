@@ -98,7 +98,64 @@
     "goHome": "Go to home"
   },
   "staff": {
-    "registerStudent": "Register a student"
+    "registerStudent": "Register a student",
+    "markAttendance": "Mark attendance",
+    "hereNow": "Who is here now"
+  },
+  "time": {
+    "minutes": "{{minutes}} min",
+    "hoursMinutes": "{{hours}} h {{minutes}} min"
+  },
+  "scanner": {
+    "label": "Camera for scanning a student's QR code",
+    "permissionNeeded": "The app needs the camera to scan QR codes. Nothing is recorded or saved.",
+    "allowCamera": "Allow the camera",
+    "permissionBlocked": "The camera cannot be used: it is switched off for this app, or there is none. Switch it on in the phone's settings, or search the name below.",
+    "noCamera": "The camera could not start. Search the name below instead."
+  },
+  "attendance": {
+    "title": "Mark attendance",
+    "summary": "Here now: {{here}} · Visits today: {{visits}}",
+    "loadFailed": "Could not load today's attendance.",
+    "scanSection": "Scan a QR code",
+    "scanIntro": "Ask the student to open My QR in the app and hold it in front of the camera.",
+    "startScan": "Scan a QR code",
+    "scanNext": "Scan the next student",
+    "stopScan": "Close the camera",
+    "searchSection": "Find by name",
+    "searchLabel": "Name or roll number",
+    "searchHint": "Type at least 2 letters.",
+    "noMatch": "No student found. Check the spelling, or register the student.",
+    "searchFailed": "Could not search. Check your internet connection.",
+    "hereSince": "Here since {{time}}",
+    "checkIn": "Check in",
+    "checkOut": "Check out",
+    "student": "{{name}} · {{rollNo}}",
+    "checkedIn": "Checked in at {{time}}.",
+    "checkedOut": "Checked out at {{time}}. Stayed {{duration}}.",
+    "alreadyIn": "Already checked in. Nothing changed.",
+    "alreadyOut": "Already checked out. Nothing changed.",
+    "unknownTitle": "Code not recognised",
+    "unknownBody": "This is not a student's QR code for this class. Search the name instead.",
+    "errors": {
+      "notAllowed": "Only coordinators and the Guru can mark attendance.",
+      "notFound": "This student is no longer in the records.",
+      "alreadyMarked": "Another phone marked this student at the same moment. Check the list and try again."
+    }
+  },
+  "hereNow": {
+    "title": "Who is here now",
+    "count": "Students here now: {{number}}",
+    "empty": "Nobody is checked in right now.",
+    "since": "Since {{time}} · {{duration}}",
+    "sinceEarlierDay": "Since {{date}} {{time}}: not checked out that day",
+    "refresh": "Refresh",
+    "checkOutAll": "Check out all",
+    "confirmTitle": "Check out everyone here now ({{number}})?",
+    "confirmBody": "Use this when the class closes. Each visit ends now; a visit left open from an earlier day ends at that day's closing time.",
+    "confirmYes": "Yes, check out all",
+    "cancel": "Cancel",
+    "allCheckedOut": "Checked out: {{number}}."
   },
   "levels": {
     "1": "Beginner",

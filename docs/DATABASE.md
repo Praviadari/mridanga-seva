@@ -8,6 +8,7 @@ in number order:
 | `0001_phase1.sql` | All Phase 1 tables, rules, functions, daily jobs and row-level security |
 | `0002_login_linking.sql` | Links logins to students only after email confirmation; lets the dashboard set the first Guru; locks internal functions ([DECISIONS.md #13, #14](DECISIONS.md)) |
 | `0003_register_student.sql` | `register_student` saves a student with the parent's consent in one step; no minor can be kept without consent ([DECISIONS.md #16](DECISIONS.md)) |
+| `0004_attendance.sql` | `mark_visit` for tap-to-mark attendance and `check_out_all` for closing time ([DECISIONS.md #18](DECISIONS.md)) |
 
 Every table and important column also carries a `COMMENT ON` description, so you can read it in
 the Supabase dashboard (Table Editor → table → description).
@@ -91,6 +92,31 @@ Errors from `register_student` are short codes the app turns into messages: `not
 `minor_needs_consent` from the trigger. New functions should follow the same pattern: raise a
 short `snake_case` code, and put the explanation for people reading the dashboard in `detail`.
 
+## Attendance
+
+A visit is one row in `visits`. It is *open* (the student is here now) while `check_out` is
+empty; a unique index allows only one open visit per student. There are three ways to change
+visits from the app, all in database functions so that the rules sit in one place
+([DECISIONS.md #18](DECISIONS.md)):
+
+| Action in the app | Function | What happens |
+|---|---|---|
+| Coordinator scans a student's QR code (C5), door tablet later | `scan_qr` → `toggle_visit` | Toggles: check in if the student is out, check out if in |
+| Coordinator taps *Check in* or *Check out* next to a name (C5, C6) | `mark_visit(student, 'in' / 'out')` | Does what the button says. If the student is already in that state, nothing changes and it returns `already_in` / `already_out` |
+| Coordinator taps *Check out all* (C6) | `check_out_all()` | Closes every open visit: today's end now, a visit left open from an earlier day ends at that day's closing time |
+
+Any check-in makes the student *Active* again and closes their open follow-up tasks (inside
+`toggle_visit`, which `mark_visit` calls). `mark_visit` locks the student's row while it works, so
+two phones marking the same student at once are handled one after the other. At 21:00 IST the
+nightly job `close_open_visits` closes anything still open, at the centre's closing time.
+
+The QR code on a student's phone holds the text `MS1:` followed by their `qr_token` in capitals
+([DECISIONS.md #17](DECISIONS.md)). The app removes the prefix and sends the token to `scan_qr`.
+
+Errors: `toggle_visit` and `scan_qr` (0001) raise `not allowed` and `student not found`, with
+spaces; `mark_visit` and `check_out_all` raise `not_allowed`, `bad_action` and
+`student_not_found`. The app (`app/src/data/attendance.ts`) understands both spellings.
+
 ## Linking a login to a student
 
 A student record can exist without a login (many students never install the app). When a person
@@ -120,6 +146,8 @@ so every function is revoked from them and granted only where needed
 |---|---|---|
 | `toggle_visit(student, method, device)` | Guru, coordinator, kiosk | Check in if no open visit, else check out. A check-in sets status *Active* and closes open follow-up tasks. Returns the student's name, roll number and time |
 | `scan_qr(qr_token, device)` | Guru, coordinator, kiosk | Finds the student by their QR token and calls `toggle_visit`. Returns `unknown` for an unrecognised code |
+| `mark_visit(student, action, device)` | Guru, coordinator | Checks the student in (`action = 'in'`) or out (`'out'`), or returns `already_in` / `already_out` and changes nothing. See "Attendance" |
+| `check_out_all(centre)` | Guru, coordinator | Closes every open visit, at one centre or all (`null`, the default). Returns how many |
 | `log_call(student, outcome, reason, comment, next_date)` | Guru, coordinator | Records a follow-up call and applies its outcome (pause, leave, new call task, retry) |
 | `register_student(...)` | Guru, coordinator | Saves a new student, and for a minor the guardian and consent, in one step. Returns the id, roll number and whether an existing login was linked. See "Registering a student" |
 
@@ -162,7 +190,8 @@ Internal functions (not called by the app, and not allowed to): `refresh_student
 
 `supabase/tests/smoke-test.mjs` runs every migration and `seed.sql` on an in-memory Postgres
 ([PGlite](https://pglite.dev)) on your own computer, then checks the rules that protect student
-data: login linking, the profile guard, who may run each function, and row-level security. It
+data: login linking, the profile guard, registration and consent, attendance marking, who may
+run each function, and row-level security. It
 needs only Node.js, no database server and no Supabase account.
 
 ```bash

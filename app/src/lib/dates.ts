@@ -2,10 +2,37 @@
 // time zone the phone or computer is set to — the same rule the database uses (today_ist()).
 // Dates travel as ISO text 'YYYY-MM-DD', which is what Postgres `date` columns accept.
 
+// IST is UTC + 5 h 30 min all year (India has no daylight saving), so shifting by this much and
+// reading the UTC fields gives the time in India without relying on the phone's time zone data.
+const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+
 /** Today's date in India as 'YYYY-MM-DD'. */
 export function todayInIndia(): string {
-  // IST is UTC + 5 h 30 min all year (India has no daylight saving).
-  return new Date(Date.now() + 5.5 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  return new Date(Date.now() + IST_OFFSET_MS).toISOString().slice(0, 10);
+}
+
+/** The date in India of a moment from the database (an ISO timestamp), as 'YYYY-MM-DD'. */
+export function dateInIndia(timestamp: string): string {
+  return new Date(Date.parse(timestamp) + IST_OFFSET_MS).toISOString().slice(0, 10);
+}
+
+/**
+ * The time of day in India of a moment from the database, as 24-hour 'HH:MM', e.g. '16:05'.
+ * 24-hour time reads the same in English, Telugu and Hindi, with no AM/PM to translate.
+ */
+export function timeInIndia(timestamp: string): string {
+  return new Date(Date.parse(timestamp) + IST_OFFSET_MS).toISOString().slice(11, 16);
+}
+
+/** Midnight at the start of today in India, as an ISO timestamp the database understands. */
+export function startOfTodayInIndia(): string {
+  return `${todayInIndia()}T00:00:00+05:30`;
+}
+
+/** An ISO date 'YYYY-MM-DD' written the Indian way, day-month-year: '2026-09-29' → '29-09-2026'. */
+export function formatDayMonthYear(isoDate: string): string {
+  const [year, month, day] = isoDate.split('-');
+  return `${day}-${month}-${year}`;
 }
 
 /**

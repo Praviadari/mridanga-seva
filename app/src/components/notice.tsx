@@ -9,8 +9,11 @@ import { AppText } from './app-text';
 
 /** Props for Notice. */
 export type NoticeProps = PropsWithChildren<{
-  /** 'error' is red and announced at once by screen readers; 'success' is green. */
-  tone: 'error' | 'success';
+  /**
+   * 'error' is red and announced at once by screen readers; 'success' is green; 'info' is plain,
+   * for news that is neither, e.g. "already checked in, nothing changed".
+   */
+  tone: 'error' | 'success' | 'info';
   /** Optional bold first line, already translated. */
   title?: string;
 }>;
@@ -18,19 +21,17 @@ export type NoticeProps = PropsWithChildren<{
 /** Message box shown above or below a form. The children are the message, already translated. */
 export function Notice({ tone, title, children }: NoticeProps) {
   const { colors } = useTheme();
-  const isError = tone === 'error';
+  const look = {
+    error: { background: colors.dangerSurface, border: colors.danger, titleTone: 'danger' },
+    success: { background: colors.successSurface, border: colors.success, titleTone: 'success' },
+    info: { background: colors.surface, border: colors.border, titleTone: 'default' },
+  } as const;
   return (
     <View
-      role={isError ? 'alert' : 'status'}
-      style={[
-        styles.box,
-        {
-          backgroundColor: isError ? colors.dangerSurface : colors.successSurface,
-          borderColor: isError ? colors.danger : colors.success,
-        },
-      ]}>
+      role={tone === 'error' ? 'alert' : 'status'}
+      style={[styles.box, { backgroundColor: look[tone].background, borderColor: look[tone].border }]}>
       {title ? (
-        <AppText variant="label" tone={isError ? 'danger' : 'success'}>
+        <AppText variant="label" tone={look[tone].titleTone}>
           {title}
         </AppText>
       ) : null}

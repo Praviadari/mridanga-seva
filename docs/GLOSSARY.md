@@ -24,6 +24,9 @@
 | Term | Meaning |
 |---|---|
 | Visit | One check-in (and later check-out) of a student at a centre. Attendance is counted in visits |
+| Open visit | A visit with a check-in but no check-out yet: the student is "here now" |
+| QR token | The secret value in a student's QR code (`students.qr_token`). Not the roll number, so a code cannot be guessed. The code's text is `MS1:` followed by the token (DECISIONS.md #17) |
+| Check out all | The button on *Who is here now* that closes every open visit at closing time |
 | Centre | A place where the class runs. Today only Abids |
 | Roll number | Permanent student ID like `MS-2026-0001`. Never changed, never reused |
 | Level | Beginner, Intermediate or Advanced |

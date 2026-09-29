@@ -8,6 +8,8 @@ import type { ParseKeys } from 'i18next';
 import { ageOn, isMinorOn, parseDayMonthYear, todayInIndia } from '@/lib/dates';
 import { supabase } from '@/lib/supabase';
 
+import { isNetworkError } from './errors';
+
 /** A translation key for a message. */
 type MessageKey = ParseKeys;
 
@@ -179,10 +181,7 @@ function registerErrorKey(message: string, code: string | undefined): MessageKey
       return 'register.errors.minorNeedsConsent';
   }
   if (code === '23514') return 'register.errors.pincodeInvalid'; // the pincode check in the table
-  // supabase-js reports a failed network request with this message.
-  if (message.includes('Failed to fetch') || message.includes('Network request failed')) {
-    return 'common.networkError';
-  }
+  if (isNetworkError(message)) return 'common.networkError';
   return 'common.genericError';
 }
 
