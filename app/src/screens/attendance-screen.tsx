@@ -7,6 +7,7 @@ import {
   FlatList,
   StyleSheet,
   Alert,
+  Share,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useData } from '../context/data-context';
@@ -77,6 +78,29 @@ export const AttendanceScreen: React.FC = () => {
     }
   };
 
+  const handleShareSummary = async () => {
+    const today = new Date().toLocaleDateString(undefined, {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+    const attendees = visits
+      .map(
+        (v, i) =>
+          `${i + 1}. ${v.student_name || 'Student'} (${v.roll_no || 'MS'}) - In: ${new Date(v.check_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}${v.check_out ? ` / Out: ${new Date(v.check_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ' (Present)'}`
+      )
+      .join('\n');
+
+    const message = `🪘 *Mridanga Seva — Daily Attendance Report*\n📍 Centre: Abids Centre\n📅 Date: ${today}\n👥 Total Visits Today: ${visits.length}\n🟢 Currently Present: ${checkedInCount}\n\n*Attendees:*\n${attendees || 'No check-ins yet today.'}\n\n_Generated via Mridanga Seva App_`;
+
+    try {
+      await Share.share({ message });
+    } catch (err: any) {
+      Alert.alert('Share Failed', err.message);
+    }
+  };
+
   return (
     <View style={styles.container}>
       {/* Metric Cards */}
@@ -96,6 +120,10 @@ export const AttendanceScreen: React.FC = () => {
         <TouchableOpacity style={styles.scanBtn} onPress={handleSimulateScan}>
           <Ionicons name="qr-code-outline" size={24} color="#FFFFFF" />
           <Text style={styles.scanBtnText}>QR Scan</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.shareReportBtn} onPress={handleShareSummary}>
+          <Ionicons name="share-social-outline" size={20} color="#FFFFFF" />
+          <Text style={styles.shareReportText}>Report</Text>
         </TouchableOpacity>
       </View>
 
@@ -243,6 +271,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   scanBtnText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  shareReportBtn: {
+    backgroundColor: '#0F766E',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  shareReportText: {
     color: '#FFFFFF',
     fontSize: 11,
     fontWeight: '600',

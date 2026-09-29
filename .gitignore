@@ -21,3 +21,8 @@ supabase/.branches/
 # OS files
 .DS_Store
 Thumbs.db
+
+# IDE and Editor files
+.idea/
+*.iml
+.vscode/

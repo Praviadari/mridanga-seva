@@ -11,6 +11,7 @@ import {
   CallOutcome,
   VisitMethod,
   ToggleVisitResponse,
+  CallLog,
 } from '../types/database';
 import {
   INITIAL_STUDENTS,
@@ -20,6 +21,8 @@ import {
   INITIAL_ANNOUNCEMENTS,
   INITIAL_TASKS,
   INITIAL_VISITS,
+  INITIAL_STUDENT_PROGRESS,
+  INITIAL_CALL_LOGS,
 } from '../data/mock-seed';
 
 interface DataContextType {
@@ -30,6 +33,8 @@ interface DataContextType {
   materials: Material[];
   announcements: Announcement[];
   followUpTasks: FollowUpTask[];
+  studentProgress: Record<string, number[]>;
+  callLogs: CallLog[];
   isLoading: boolean;
   toggleVisit: (studentId: string, method?: VisitMethod) => Promise<ToggleVisitResponse>;
   scanQr: (qrToken: string) => Promise<ToggleVisitResponse>;
@@ -52,6 +57,8 @@ interface DataContextType {
     guardian_relation?: string;
   }) => Promise<{ success: boolean; student?: Student; error?: string }>;
   tickSyllabus: (itemId: number, completed: boolean) => Promise<void>;
+  tickStudentSyllabus: (studentId: string, itemId: number, completed: boolean) => Promise<void>;
+  promoteStudent: (studentId: string, toLevelId: number) => Promise<{ success: boolean; error?: string }>;
   refreshData: () => Promise<void>;
 }
 
@@ -63,12 +70,16 @@ const DataContext = createContext<DataContextType>({
   materials: [],
   announcements: [],
   followUpTasks: [],
+  studentProgress: {},
+  callLogs: [],
   isLoading: false,
   toggleVisit: async () => ({ action: 'unknown' }),
   scanQr: async () => ({ action: 'unknown' }),
   logCall: async () => ({ success: false }),
   registerStudent: async () => ({ success: false }),
   tickSyllabus: async () => {},
+  tickStudentSyllabus: async () => {},
+  promoteStudent: async () => ({ success: false }),
   refreshData: async () => {},
 });
 
@@ -80,6 +91,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [materials, setMaterials] = useState<Material[]>(INITIAL_MATERIALS);
   const [announcements] = useState<Announcement[]>(INITIAL_ANNOUNCEMENTS);
   const [followUpTasks, setFollowUpTasks] = useState<FollowUpTask[]>(INITIAL_TASKS);
+  const [studentProgress, setStudentProgress] = useState<Record<string, number[]>>(INITIAL_STUDENT_PROGRESS);
+  const [callLogs, setCallLogs] = useState<CallLog[]>(INITIAL_CALL_LOGS);
   const [isLoading, setIsLoading] = useState(false);
 
   const refreshData = async () => {
@@ -92,12 +105,14 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         { data: yData },
         { data: mData },
         { data: tData },
+        { data: cData },
       ] = await Promise.all([
         supabase.from('students').select('*').order('joined_on', { ascending: false }),
         supabase.from('visits').select('*').order('check_in', { ascending: false }).limit(50),
         supabase.from('syllabus_items').select('*').order('sort', { ascending: true }),
         supabase.from('materials').select('*').order('created_at', { ascending: false }),
         supabase.from('follow_up_tasks').select('*').is('done_at', null).order('due_on', { ascending: true }),
+        supabase.from('call_logs').select('*').order('called_at', { ascending: false }),
       ]);
 
       if (sData) setStudents(sData as Student[]);
@@ -105,6 +120,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (yData) setSyllabus(yData as SyllabusItem[]);
       if (mData) setMaterials(mData as Material[]);
       if (tData) setFollowUpTasks(tData as FollowUpTask[]);
+      if (cData) setCallLogs(cData as CallLog[]);
     } catch (err) {
       console.warn('Error loading live data from Supabase:', err);
     } finally {
@@ -234,6 +250,19 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     // Demo state update
+    const newLog: CallLog = {
+      id: 'demo-call-' + Date.now(),
+      student_id: studentId,
+      coordinator_id: 'coord-test-1',
+      coordinator_name: 'Govinda Dasa',
+      called_at: new Date().toISOString(),
+      outcome,
+      reason,
+      comment,
+      next_date: nextDate,
+    };
+    setCallLogs((prev) => [newLog, ...prev]);
+
     setStudents((prev) =>
       prev.map((s) => {
         if (s.id === studentId) {
@@ -320,6 +349,38 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
   };
 
+  const tickStudentSyllabus = async (studentId: string, itemId: number, completed: boolean) => {
+    setStudentProgress((prev) => {
+      const currentList = prev[studentId] || [];
+      const updated = completed
+        ? Array.from(new Set([...currentList, itemId]))
+        : currentList.filter((id) => id !== itemId);
+      return { ...prev, [studentId]: updated };
+    });
+  };
+
+  const promoteStudent = async (studentId: string, toLevelId: number): Promise<{ success: boolean; error?: string }> => {
+    if (isSupabaseConfigured) {
+      const { error } = await supabase
+        .from('students')
+        .update({ level_id: toLevelId })
+        .eq('id', studentId);
+      if (error) return { success: false, error: error.message };
+      await refreshData();
+      return { success: true };
+    }
+
+    setStudents((prev) =>
+      prev.map((s) => {
+        if (s.id === studentId) {
+          return { ...s, level_id: toLevelId };
+        }
+        return s;
+      })
+    );
+    return { success: true };
+  };
+
   return (
     <DataContext.Provider
       value={{
@@ -330,12 +391,16 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         materials,
         announcements,
         followUpTasks,
+        studentProgress,
+        callLogs,
         isLoading,
         toggleVisit,
         scanQr,
         logCall,
         registerStudent,
         tickSyllabus,
+        tickStudentSyllabus,
+        promoteStudent,
         refreshData,
       }}
     >

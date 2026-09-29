@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   FlatList,
   StyleSheet,
-  Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useData } from '../context/data-context';
@@ -14,6 +13,7 @@ import { StatusBadge } from '../components/status-badge';
 import { BrandColors } from '../constants/theme';
 import { Student } from '../types/database';
 import { RegisterModal } from './register-modal';
+import { StudentDetailModal } from './student-detail-modal';
 
 export const StudentsScreen: React.FC = () => {
   const { students } = useData();
@@ -182,77 +182,10 @@ export const StudentsScreen: React.FC = () => {
       />
 
       {/* Student Details Modal */}
-      {activeStudent && (
-        <Modal visible={Boolean(activeStudent)} animationType="fade" transparent>
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <View>
-                  <Text style={styles.modalTitle}>{activeStudent.full_name}</Text>
-                  <Text style={styles.modalRollNo}>{activeStudent.roll_no}</Text>
-                </View>
-                <TouchableOpacity onPress={() => setActiveStudent(null)}>
-                  <Ionicons name="close-circle" size={26} color="#64748B" />
-                </TouchableOpacity>
-              </View>
-
-              <View style={styles.detailList}>
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Status:</Text>
-                  <StatusBadge status={activeStudent.status} />
-                </View>
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Level:</Text>
-                  <Text style={styles.detailValue}>
-                    {activeStudent.level_id === 1
-                      ? 'Beginner (Level 1)'
-                      : activeStudent.level_id === 2
-                      ? 'Intermediate (Level 2)'
-                      : 'Advanced (Level 3)'}
-                  </Text>
-                </View>
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Joined On:</Text>
-                  <Text style={styles.detailValue}>{activeStudent.joined_on}</Text>
-                </View>
-                {activeStudent.area && (
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Area / Locality:</Text>
-                    <Text style={styles.detailValue}>
-                      {activeStudent.area} ({activeStudent.pincode || '500001'})
-                    </Text>
-                  </View>
-                )}
-                {activeStudent.phone && (
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Phone:</Text>
-                    <Text style={styles.detailValue}>{activeStudent.phone}</Text>
-                  </View>
-                )}
-                {activeStudent.email && (
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Email:</Text>
-                    <Text style={styles.detailValue}>{activeStudent.email}</Text>
-                  </View>
-                )}
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>QR Pass Token:</Text>
-                  <Text style={[styles.detailValue, { fontSize: 11, color: '#64748B' }]}>
-                    {activeStudent.qr_token.substring(0, 18)}...
-                  </Text>
-                </View>
-              </View>
-
-              <TouchableOpacity
-                style={styles.modalDoneBtn}
-                onPress={() => setActiveStudent(null)}
-              >
-                <Text style={styles.modalDoneText}>Close</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Modal>
-      )}
+      <StudentDetailModal
+        student={activeStudent}
+        onClose={() => setActiveStudent(null)}
+      />
     </View>
   );
 };

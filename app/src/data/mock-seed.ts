@@ -280,3 +280,29 @@ export const INITIAL_VISITS: Visit[] = [
     method: 'qr',
   },
 ];
+
+export const INITIAL_STUDENT_PROGRESS: Record<string, number[]> = {
+  // L3 Arjun Rao has completed all L1 and L2 items
+  's-001': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+  // L2 Meera Iyer has completed all L1 items and first two L2
+  's-002': [1, 2, 3, 4, 5, 6, 7, 8],
+  // L2 Karthik Reddy completed all L1 items
+  's-003': [1, 2, 3, 4, 5, 6],
+  // L1 Beginners completed first 2 or 3 bols
+  's-004': [1, 2],
+  's-005': [1],
+};
+
+export const INITIAL_CALL_LOGS = [
+  {
+    id: 'cl-001',
+    student_id: 's-006',
+    coordinator_id: 'coord-test-1',
+    coordinator_name: 'Govinda Dasa',
+    called_at: '2026-09-20T10:30:00Z',
+    outcome: 'returning' as const,
+    reason: 'Studies/exams',
+    comment: 'Exams finishing this Thursday. Promised to return to Friday evening class.',
+    next_date: '2026-10-02',
+  },
+];
