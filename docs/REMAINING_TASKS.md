@@ -8,7 +8,7 @@ This document provides a complete, transparent breakdown of what has been built 
 
 | Phase | Milestone | Target Date | Current Status |
 |---|---|---|---|
-| **Phase 1 (Core)** | Attendance, Registration, Follow-ups, Syllabus, Android Studio Project | 1 Dec 2026 | **90% Complete** (Core screens, contexts, rules, and native prebuild done; hardware camera scan & live backend setup pending) |
+| **Phase 1 (Core)** | Attendance, Registration, Follow-ups, Syllabus, Android Studio Project | 1 Dec 2026 | **95% Complete** (Live Supabase database, pg_cron, Brevo SMTP provisioned; core screens, contexts, offline seed, rules, and native Android Studio prebuild done. Hardware camera scan & audio metronome samples remaining) |
 | **Phase 2 (Learning & Operations)** | Assessments, Promotion Approvals, Drum Inventory, Events, Seva Fund | 1 Mar 2027 | **Planned / Backlog** |
 | **Phase 3 (Automation)** | Optional Face-Recognition Attendance (Consent-only) | 30 Apr 2027 | **Backlog** |
 
@@ -16,15 +16,16 @@ This document provides a complete, transparent breakdown of what has been built 
 
 ## 2. Phase 1 — Remaining Items for Production Go-Live
 
-Although the Phase 1 app core, business logic, offline seed data, trilingual translations, unit tests, and Android Studio generation are fully functional, the following tasks remain before deployment to real users:
+Although the Phase 1 app core, business logic, offline seed data, trilingual translations, unit tests, and Android Studio generation are fully functional, the following items remain for local app connection and device integration:
 
 ### A. Live Supabase Backend Provisioning
-- [ ] **Run Live Migration:** Apply [`supabase/migrations/0001_phase1.sql`](../supabase/migrations/0001_phase1.sql) to a production Supabase project in the South Asia (Mumbai) region.
-- [ ] **Activate Scheduled Jobs:** Ensure `pg_cron` extension is enabled on the live project for:
+- [x] **Run Live Migration:** Applied [`supabase/migrations/0001_phase1.sql`](../supabase/migrations/0001_phase1.sql) to the production Supabase Mumbai project. *(Completed)*
+- [x] **Activate Scheduled Jobs:** Activated `pg_cron` extension on the live project for: *(Completed)*
   - `mridanga-status-refresh` (06:00 IST) — auto-transitions quiet students to *Irregular* and creates follow-up tasks.
   - `mridanga-close-visits` (21:00 IST) — auto-closes any visits left open at centre closing.
-- [ ] **Configure Brevo SMTP:** Connect Brevo free plan (300 emails/day) in Supabase Auth to replace the default 2 email/hour rate limit.
-- [ ] **Initialize First Guru Account:** Create the initial administrative account and promote it to `guru` in `profiles`.
+- [x] **Configure Brevo SMTP:** Connected Brevo SMTP in Supabase Auth to enable high-volume transaction emails. *(Completed)*
+- [ ] **App Environment Linking:** Paste the project's URL and anon key (`EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_KEY`) into `app/.env` (from Supabase Dashboard → Project Settings → API).
+- [ ] **Initialize First Guru Account:** Sign up in the app, then in the Supabase Table Editor set that user's `role` to `guru` in `profiles`.
 
 ### B. Hardware & Native Device Integrations
 - [ ] **Physical Camera QR Scanner:**
