@@ -1,56 +1,59 @@
-# Welcome to your Expo app 👋
+# Mridanga Seva — Mobile App
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Cross-platform mobile application for mridanga class management, attendance, curriculum tracking, and practice. Built with **Expo (React Native + TypeScript)** and **Supabase (Postgres)**.
 
-## Get started
+## Quick Start
 
-1. Install dependencies
-
+1. **Install dependencies**:
    ```bash
    npm install
    ```
 
-2. Start the app
-
+2. **Configure environment**:
+   Copy `.env.example` to `.env` and enter your Supabase project credentials:
    ```bash
-   npx expo start
+   cp .env.example .env
+   ```
+   *(If credentials are not yet supplied, the app automatically runs in offline demo mode with seed data parity).*
+
+3. **Start the app**:
+   ```bash
+   npm run android    # Run on Android Studio Emulator or connected device
+   npm run ios        # Run on iOS simulator
+   npm run web        # Run in web browser
    ```
 
-In the output, you'll find options to open the app in a
+4. **Run tests & quality checks**:
+   ```bash
+   npm test           # Execute unit tests for business rules & translations
+   npm run lint       # Run Expo ESLint
+   npx tsc --noEmit   # Typecheck TypeScript codebase
+   ```
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+## Roles Supported
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+The app includes an instant role-switcher header allowing testing and switching between:
+- **Coordinator**: Daily class management, tap-to-mark attendance, follow-up calls desk, student registration, syllabus checklist.
+- **Guru**: Administrator access, approval of curriculum materials, class health retention reports.
+- **Student**: Personal digital QR pass, syllabus progress tracker, attendance history.
+- **Door Tablet (`kiosk`)**: Fullscreen entrance check-in tablet with live clock and greeting notifications.
 
-## Get a fresh project
+## Languages
 
-When you're ready, run:
+Trilingual interface supporting:
+- **English (`EN`)**
+- **Telugu (`తెలుగు`)**
+- **Hindi (`हिंदी`)**
 
-```bash
-npm run reset-project
-```
+Language can be switched dynamically with one tap in the header.
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## Features
 
-### Other setup steps
-
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+- **Attendance**: 1-tap check-in/out, live presence counts, QR code scanning.
+- **Students Directory**: Filter by status (*Active*, *New*, *Irregular*, *Inactive*, *Paused*, *Left*) and Level (1, 2, 3).
+- **DPDP Minor Protection**: Verified parental consent tracking for students under 18.
+- **Mentor Follow-Up**: Mandatory call logging workflow for absent students enforcing database triggers.
+- **Curriculum & Bols**: Detailed syllabi for Beginner, Intermediate, and Advanced levels with YouTube lesson links.
+- **Taal Metronome**: Interactive rhythm practice with animated bols (Kaherva, Dadra, Bhajani, Dasapahira).
+- **In-App Groups**: Coordination teams replacing external WhatsApp groups.
+- **Reports & Analytics**: Active retention metrics and status distribution.

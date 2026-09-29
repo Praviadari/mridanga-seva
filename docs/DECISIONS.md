@@ -129,3 +129,24 @@ role by the Guru.
 
 **Why.** Most members speak Telugu or Hindi. Adding languages later to hard-coded text is slow and
 error-prone.
+
+## 13. Offline demo fallback with seed data parity — 29 Sep 2026
+
+**Context.** New volunteers, coordinators or contributors downloading the repository need to run
+and inspect the mobile app immediately in Android Studio without blocking on Supabase project creation.
+
+**Decision.** The app ships with an in-memory seed dataset matching `supabase/seed.sql`. When
+Supabase keys are unset or placeholder, the app operates in offline demo mode with one-tap role switching
+between Coordinator, Guru, Student and Door Tablet.
+
+**Why.** Accelerates local onboarding and UI testing. Once valid keys are placed in `app/.env`, it seamlessly
+talks to live Supabase Postgres with row-level security.
+
+## 14. Integrated rhythmic metronome practice tool — 29 Sep 2026
+
+**Context.** Students need practical tools to practice their hand bols at home with steady tempo (laya).
+
+**Decision.** Include an interactive taal metronome with visual bol pulse animations (Kaherva, Dadra,
+Bhajani, and Prabhupada / Dasapahira taals) with tempo presets (Vilambit, Madhya, Drut).
+
+**Why.** Engages students immediately and helps beginners develop steady meter between classes.

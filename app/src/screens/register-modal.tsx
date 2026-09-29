@@ -12,6 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useData } from '../context/data-context';
 import { BrandColors } from '../constants/theme';
+import { isMinorStudent, isValidPincode } from '../utils/student-rules';
 
 interface RegisterModalProps {
   visible: boolean;
@@ -34,7 +35,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ visible, onClose }
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Check if minor (< 18 years old)
-  const isMinor = Boolean(dob && new Date(dob).getFullYear() > new Date().getFullYear() - 18);
+  const isMinor = isMinorStudent(dob);
 
   const handleSubmit = async () => {
     if (!fullName.trim()) {
@@ -42,7 +43,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ visible, onClose }
       return;
     }
 
-    if (pincode && !/^[0-9]{6}$/.test(pincode)) {
+    if (!isValidPincode(pincode)) {
       Alert.alert('Invalid Pincode', 'Pincode must be exactly 6 digits');
       return;
     }

@@ -1,16 +1,18 @@
 {
   "expo": {
-    "name": "app",
-    "slug": "app",
+    "name": "Mridanga Seva",
+    "slug": "mridanga-seva",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "app",
+    "scheme": "mridanga-seva",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/expo.icon",
+      "bundleIdentifier": "org.mridangaseva.app"
     },
     "android": {
+      "package": "org.mridangaseva.app",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
