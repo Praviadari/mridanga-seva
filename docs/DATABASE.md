@@ -9,6 +9,7 @@ in number order:
 | `0002_login_linking.sql` | Links logins to students only after email confirmation; lets the dashboard set the first Guru; locks internal functions ([DECISIONS.md #13, #14](DECISIONS.md)) |
 | `0003_register_student.sql` | `register_student` saves a student with the parent's consent in one step; no minor can be kept without consent ([DECISIONS.md #16](DECISIONS.md)) |
 | `0004_attendance.sql` | `mark_visit` for tap-to-mark attendance and `check_out_all` for closing time ([DECISIONS.md #18](DECISIONS.md)) |
+| `0005_students_follow_up.sql` | View `student_overview` (last visit, days since); reasons for a call become codes; `log_call` checks its inputs and answers with error codes ([DECISIONS.md #19, #20](DECISIONS.md)) |
 
 Every table and important column also carries a `COMMENT ON` description, so you can read it in
 the Supabase dashboard (Table Editor → table → description).
@@ -117,6 +118,50 @@ Errors: `toggle_visit` and `scan_qr` (0001) raise `not allowed` and `student not
 spaces; `mark_visit` and `check_out_all` raise `not_allowed`, `bad_action` and
 `student_not_found`. The app (`app/src/data/attendance.ts`) understands both spellings.
 
+## Student overview
+
+`student_overview` is a view: one row per student with the list columns of `students` (roll
+number, name, level, status, pause date, mentor, joined) plus:
+
+| Column | Meaning |
+|---|---|
+| `last_visit_at` | Check-in time of the latest visit; empty if the student has never come |
+| `days_since_visit` | Whole days (India time) since that visit, or since joining when there is none, the same count the daily job uses for Irregular and Inactive |
+| `here_now` | True while the student has an open visit |
+
+The student list (C7), the profile (C8) and the follow-up queue (C10) read it. It exists because
+Supabase does not let the app ask for `max(check_in)` directly (aggregate functions are off by
+default in its API), and fetching every visit to the phone would grow without end.
+
+It is created `with (security_invoker = true)`: it reads `students` and `visits` as the person
+asking, so their row-level security applies — staff see every student, a student sees only their
+own row, and a signed-out visitor sees nothing. Without that option a view runs as its owner and
+would show every student to anyone signed in ([DECISIONS.md #20](DECISIONS.md)). Only `select` is
+granted, to signed-in people.
+
+## Follow-up calls
+
+A coordinator records a call with `log_call(student, outcome, reason, comment, next_date)`
+(screen C11). It always saves a `call_logs` row, closes the student's open follow-up tasks, and
+then acts on the outcome:
+
+| Outcome | Reason | `next_date` | What happens |
+|---|---|---|---|
+| `returning` (coming back) | required | required: the day they said they would come | A new `call` task for the day after that date. Their next visit closes it |
+| `paused` (taking a break) | required | required: pause-until date | Status *Paused* until that date; the daily job brings them back into follow-up after it |
+| `not_reachable` | none | not used | A `retry` task in `retry_days`; after `max_retries` failed tries in a row it is `escalated` to the Guru |
+| `discontinued` (stopped coming) | required | not used | Status *Left*. Roll number and history are kept; a visit makes them Active again |
+
+Reasons are codes from `settings.call_reasons`: `studies`, `work_timing`, `moved`, `health`,
+`family`, `lost_interest`, `joined_elsewhere`, `travel`, `other`. The app shows them translated
+(`callReasons.<code>`); a code the Guru adds later without a translation is shown as written
+([DECISIONS.md #19](DECISIONS.md)). `log_call` refuses a reason that is not in the list.
+
+Errors from `log_call` (short codes the app turns into messages): `not_allowed`,
+`student_not_found`, `outcome_required`, `comment_required`, `reason_required`, `reason_unknown`,
+`next_date_required`, `next_date_past` (the date is before today). A `next_date` given with an
+outcome that does not use one is dropped, so reports never show a stray date.
+
 ## Linking a login to a student
 
 A student record can exist without a login (many students never install the app). When a person
@@ -148,7 +193,7 @@ so every function is revoked from them and granted only where needed
 | `scan_qr(qr_token, device)` | Guru, coordinator, kiosk | Finds the student by their QR token and calls `toggle_visit`. Returns `unknown` for an unrecognised code |
 | `mark_visit(student, action, device)` | Guru, coordinator | Checks the student in (`action = 'in'`) or out (`'out'`), or returns `already_in` / `already_out` and changes nothing. See "Attendance" |
 | `check_out_all(centre)` | Guru, coordinator | Closes every open visit, at one centre or all (`null`, the default). Returns how many |
-| `log_call(student, outcome, reason, comment, next_date)` | Guru, coordinator | Records a follow-up call and applies its outcome (pause, leave, new call task, retry) |
+| `log_call(student, outcome, reason, comment, next_date)` | Guru, coordinator | Records a follow-up call and applies its outcome (pause, leave, new call task, retry). See "Follow-up calls" |
 | `register_student(...)` | Guru, coordinator | Saves a new student, and for a minor the guardian and consent, in one step. Returns the id, roll number and whether an existing login was linked. See "Registering a student" |
 
 Internal functions (not called by the app, and not allowed to): `refresh_student_statuses`,
@@ -190,8 +235,8 @@ Internal functions (not called by the app, and not allowed to): `refresh_student
 
 `supabase/tests/smoke-test.mjs` runs every migration and `seed.sql` on an in-memory Postgres
 ([PGlite](https://pglite.dev)) on your own computer, then checks the rules that protect student
-data: login linking, the profile guard, registration and consent, attendance marking, who may
-run each function, and row-level security. It
+data: login linking, the profile guard, registration and consent, attendance marking, the
+student overview, follow-up calls, who may run each function, and row-level security. It
 needs only Node.js, no database server and no Supabase account.
 
 ```bash

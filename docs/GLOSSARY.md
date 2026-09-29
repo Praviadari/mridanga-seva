@@ -39,7 +39,11 @@
 | Irregular | No visit for 14 days (setting). A follow-up call is due |
 | Inactive | No visit for 30 days (setting). Overdue follow-ups are shown to the Guru |
 | Call log | Record of a follow-up call: outcome, reason, comment, next date |
-| Follow-up task | A reminder for a coordinator to call a student |
+| Follow-up task | A reminder for a coordinator to call a student: `call` (first call) or `retry` (after "not reachable") |
+| Follow-up queue | Screen C10: everyone who needs a call, grouped as *needs the Guru*, *call due*, *call later* and *no call planned* |
+| Escalated | A follow-up task handed to the Guru: several calls with no answer, or no call before the student became Inactive |
+| Days since last visit | Whole days (India time) since the student's last check-in, or since joining if they never came. The student list filters by it |
+| Call reason code | A short code for why a student stopped coming (`studies`, `health` ...), kept in `settings.call_reasons` and translated by the app (DECISIONS.md #19) |
 | Group | A set of people who receive the same announcements; replaces a WhatsApp group |
 | Kiosk | The door tablet account (Phase 2), allowed only to check students in and out |
 | Pending | A new login that has no role yet |

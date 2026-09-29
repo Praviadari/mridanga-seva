@@ -28,7 +28,7 @@ Keep the logins for these in one place the team controls, so the system never de
    4. If it fails on `pg_cron`: open **Database → Extensions**, switch on **pg_cron**, and run the
       same query again. A failed run changes nothing, so running it again is safe.
    5. Run every later migration the same way, in number order: `0002_login_linking.sql`, then
-      `0003_register_student.sql`, `0004_attendance.sql`, and so on. **Run 0002 straight after
+      `0003_register_student.sql`, `0004_attendance.sql`, `0005_students_follow_up.sql`, and so on. **Run 0002 straight after
       0001**: without it the first Guru cannot be set (step 7) and internal functions are open.
 3. **Test project only — add the dummy data:** do the same with [`supabase/seed.sql`](../supabase/seed.sql)
    in a new query. Check under **Table Editor → students**: 15 students, roll numbers

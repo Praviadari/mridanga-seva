@@ -100,7 +100,9 @@
   "staff": {
     "registerStudent": "Register a student",
     "markAttendance": "Mark attendance",
-    "hereNow": "Who is here now"
+    "hereNow": "Who is here now",
+    "students": "Students",
+    "followUp": "Follow-up calls"
   },
   "time": {
     "minutes": "{{minutes}} min",
@@ -220,6 +222,172 @@
       "minorNeedsConsent": "A student under 18 needs the parent's details, the ID check and the signed consent form.",
       "notAllowed": "Only coordinators and the Guru can register students.",
       "fixFields": "Please correct the fields marked in red."
+    }
+  },
+  "statuses": {
+    "new": "New",
+    "active": "Active",
+    "irregular": "Irregular",
+    "inactive": "Inactive",
+    "paused": "Paused",
+    "left": "Left"
+  },
+  "callOutcomes": {
+    "returning": "Coming back",
+    "paused": "Taking a break",
+    "not_reachable": "Not reachable",
+    "discontinued": "Stopped coming"
+  },
+  "callReasons": {
+    "studies": "Studies / exams",
+    "work_timing": "Work or timing clash",
+    "moved": "Moved / too far",
+    "health": "Health",
+    "family": "Family",
+    "lost_interest": "Lost interest",
+    "joined_elsewhere": "Joined another class",
+    "travel": "Travel",
+    "other": "Other (say in the comment)"
+  },
+  "consentScopes": {
+    "data": "Consent for the student's details",
+    "photo": "Photo consent",
+    "face": "Face consent"
+  },
+  "consentMethods": {
+    "written": "signed paper form",
+    "email_code": "confirmed by email code"
+  },
+  "students": {
+    "title": "Students",
+    "loadFailed": "Could not load the student list.",
+    "searchLabel": "Search",
+    "searchHint": "Name or roll number",
+    "showFilters": "Filters",
+    "showFiltersCount": "Filters ({{number}} set)",
+    "hideFilters": "Hide filters",
+    "clearFilters": "Clear filters",
+    "count": "Showing {{shown}} of {{total}}",
+    "empty": "No student matches. Change the search or the filters.",
+    "hereNow": "Here now",
+    "lastVisitToday": "Last visit today",
+    "lastVisitYesterday": "Last visit yesterday",
+    "lastVisit": "Last visit {{date}} · {{days}} days ago",
+    "neverVisited": "No visit yet · joined {{date}}",
+    "mentor": "Mentor: {{name}}",
+    "noMentor": "No mentor yet",
+    "filters": {
+      "title": "Filters",
+      "all": "All",
+      "level": "Level",
+      "status": "Status",
+      "mentor": "Mentor",
+      "mine": "My students",
+      "noMentor": "No mentor",
+      "absent": "Not seen for",
+      "anyTime": "Any time",
+      "days": "{{days}}+ days"
+    }
+  },
+  "profile": {
+    "title": "Student profile",
+    "loadFailed": "Could not load this student.",
+    "notFound": "This student is not in the records.",
+    "unknownPerson": "unknown",
+    "pausedUntil": "Paused until {{date}}",
+    "logCall": "Log a call",
+    "detailsSection": "Details",
+    "joined": "Joined",
+    "notGiven": "Not given",
+    "appLogin": "App login",
+    "yes": "Yes",
+    "no": "No",
+    "guardianStaffOnly": "Only coordinators and the Guru can see this.",
+    "consentMissing": "No current consent from the parent is on record. Please tell the Guru.",
+    "consentLine": "{{scope}} · {{method}} · {{date}}",
+    "idSeen": "ID seen: {{idType}}",
+    "consentWithdrawn": "withdrawn {{date}}",
+    "followUpSection": "Follow-up calls",
+    "noCalls": "No calls logged yet.",
+    "callExpected": "expected {{date}}",
+    "callUntil": "until {{date}}",
+    "calledBy": "Logged by {{name}}",
+    "visitsSection": "Visits",
+    "visitCounts": "Last 30 days: {{recent}} · All: {{total}}",
+    "noVisits": "No visits yet.",
+    "stillHere": "still here",
+    "syllabusSection": "Syllabus: {{level}}",
+    "syllabusDone": "{{done}} of {{total}} done",
+    "noSyllabus": "The syllabus for this level has not been added yet.",
+    "levelSection": "Level history",
+    "noLevelChanges": "No level changes yet.",
+    "levelChange": "{{from}} → {{to}}",
+    "approvedBy": "approved by {{name}}"
+  },
+  "followUp": {
+    "title": "Follow-up calls",
+    "intro": "Students who have stopped coming. Tap a name to phone them and record the call.",
+    "loadFailed": "Could not load the follow-up list.",
+    "scope": "Show",
+    "everyone": "Everyone",
+    "empty": "Nobody needs a call right now.",
+    "groups": {
+      "escalated": "Needs the Guru ({{number}})",
+      "due": "Call due ({{number}})",
+      "later": "Call later ({{number}})",
+      "noTask": "No call planned ({{number}})"
+    },
+    "escalatedHelp": "Several calls with no answer, or no call made before the student became Inactive.",
+    "due": "Call due {{date}}",
+    "attempt": "try {{number}}",
+    "escalated": "passed to the Guru",
+    "assignee": "for {{name}}",
+    "noTask": "No call task yet"
+  },
+  "callLog": {
+    "title": "Log a call",
+    "loadFailed": "Could not load this student.",
+    "student": "student",
+    "parent": "Parent",
+    "dial": "Call {{who}}: {{phone}}",
+    "noPhone": "No phone number on the record.",
+    "lastCalls": "Earlier calls",
+    "formSection": "What happened on the call?",
+    "outcome": "Outcome",
+    "outcomeHelp": {
+      "returning": "They will come again. If they have not come by the day after the date, a new call is due.",
+      "paused": "They are taking a break until the date (exams, travel, health). No reminders till then.",
+      "not_reachable": "Nobody answered. A new try is due in a few days; after several tries the Guru is told.",
+      "discontinued": "They have stopped coming. Their status becomes Left. They keep their roll number, and their next visit makes them Active again."
+    },
+    "reason": "Reason",
+    "returningOn": "Expected on",
+    "pausedUntil": "Paused until",
+    "dateHint": "Day-month-year, e.g. 15-10-2026",
+    "comment": "What was said",
+    "commentHint": "Required. A short note for whoever calls next.",
+    "save": "Save call",
+    "confirmLeftTitle": "Mark {{name}} as Left?",
+    "confirmLeftBody": "They leave the follow-up list. Their record, roll number and history are kept.",
+    "confirmLeftYes": "Yes, save and mark as Left",
+    "savedTitle": "Call saved",
+    "saved": {
+      "returning": "{{name}} is expected on {{date}}. If they do not come, a new call is due the day after.",
+      "paused": "{{name}} is paused until {{date}}.",
+      "not_reachable": "Saved as not reachable. A new try is on the follow-up list.",
+      "discontinued": "{{name}} is now marked as Left."
+    },
+    "back": "Back",
+    "openProfile": "Open the student's profile",
+    "errors": {
+      "choose": "Choose one.",
+      "dateRequired": "Enter the date.",
+      "dateInvalid": "Enter the date as day-month-year, e.g. 15-10-2026.",
+      "datePast": "The date cannot be before today.",
+      "commentRequired": "Write what was said on the call.",
+      "reasonUnknown": "This reason is no longer in the list. Choose another.",
+      "notAllowed": "Only coordinators and the Guru can log calls.",
+      "notFound": "This student is not in the records."
     }
   }
 }

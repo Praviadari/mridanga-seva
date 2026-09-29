@@ -118,6 +118,9 @@ read or write the person is not allowed, whatever the app shows.
 
 - **Row-level security (RLS) is on for every table.** The database itself decides which rows a
   person may read or change; the app cannot get around it. See [DATABASE.md](DATABASE.md#who-can-see-what).
+- **Views read as the person asking.** The one view so far, `student_overview`, is created
+  `with (security_invoker = true)`, so the row-level security of the tables under it still
+  applies ([DECISIONS.md #20](DECISIONS.md)).
 - **The app holds only the public (anon / publishable) key.** It is safe to ship because RLS protects
   the data. The `service_role` key bypasses RLS and must never be in the app or the repository.
 - **The app refuses to start with the `service_role` key** in `app/.env` and shows a warning
@@ -145,6 +148,21 @@ read or write the person is not allowed, whatever the app shows.
 The camera also works in the web version (on `https` only). Browsers without built-in QR reading,
 such as Safari on iPhone, use a reader that expo-camera downloads from a public CDN; see
 OPERATIONS.md "Publishing the web version".
+
+## How follow-up flows (Phase 1)
+
+1. Each morning a daily job moves a student with no visit for 14 days to *Irregular* and gives
+   their mentor a *call* task, due in 3 days (the day limits are in `settings`).
+2. The coordinator opens *Follow-up calls* (C10). Students are grouped: *needs the Guru*
+   (escalated), *call due*, *call later*, and Irregular or Inactive students with *no call planned*.
+3. Tapping a student opens the call screen (C11), with buttons that open the phone's dialler for
+   the student or, for a minor, the parent. After the call the coordinator records the outcome, a
+   reason from the list, a comment and, for *coming back* or *taking a break*, the date.
+4. `log_call` saves it and applies the outcome: *taking a break* sets *Paused* until the date;
+   *stopped coming* sets *Left* (the screen asks once more); *coming back* sets a new call for the
+   day after the date; *not reachable* sets a retry, handed to the Guru after several tries.
+   This is the only way to reach Paused or Left ([DECISIONS.md #4](DECISIONS.md)).
+5. The next visit makes the student *Active* again and closes their open tasks.
 
 ## Phases
 

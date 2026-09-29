@@ -19,8 +19,15 @@ themselves ([DECISIONS.md #12](DECISIONS.md)).
   Telugu or Hindi is missing a key that English has. So a missing translation is caught before
   release, not seen by a student.
 - Some values are stored in the database as a code and translated only on screen: levels by
-  number (`levels.1` = Beginner), relations (`relations.mother`) and ID types (`idTypes.aadhaar`).
-  The codes are listed in [DATABASE.md](DATABASE.md#registering-a-student); never translate a code itself.
+  number (`levels.1` = Beginner), relations (`relations.mother`), ID types (`idTypes.aadhaar`),
+  student statuses (`statuses.irregular`), call outcomes (`callOutcomes.paused`) and reasons for a
+  call (`callReasons.studies`). The codes are listed in [DATABASE.md](DATABASE.md#registering-a-student)
+  and [DATABASE.md](DATABASE.md#follow-up-calls); never translate a code itself.
+- Reasons for a call are a list the Guru can extend (`settings.call_reasons`). A reason added
+  there without a translation in these files is shown as the Guru typed it, in every language,
+  until a translator adds `callReasons.<code>` ([DECISIONS.md #19](DECISIONS.md)).
+- The helpers in `app/src/i18n/labels.ts` (`levelName`, `statusName`, `callReasonName`,
+  `lastVisitText` ...) turn codes into words, so every screen words them the same way.
 - Language names in the language picker are always written in their own script (English,
   తెలుగు, हिन्दी), so people can find their language whatever the app shows now.
 

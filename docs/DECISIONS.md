@@ -239,3 +239,45 @@ one function. After each scan the camera pauses until the coordinator taps *Scan
 student*, and the same code is ignored for 30 seconds, so a phone held up a moment too long does
 not check its student straight out again. "Check out all" is on *Who is here now* (C6), where the
 coordinator sees exactly whom it affects.
+
+## 19. Reasons for a call are codes the app translates — 30 Sep 2026
+
+**Context.** When a coordinator logs a follow-up call, they pick why the student stopped coming
+from a list in `settings.call_reasons`. The first migration stored that list as English
+sentences ("Studies/exams"), so a Telugu or Hindi screen could only show English, and reports
+would count "Health" and a translated word for health as two reasons.
+
+**Decision.** The list holds short codes (`studies`, `work_timing`, `moved`, `health`, `family`,
+`lost_interest`, `joined_elsewhere`, `travel`, `other`). The app translates each code
+(`callReasons.<code>` in the translation files). `log_call` refuses a reason that is not in the
+list. A code the Guru adds to the list later, before anyone has translated it, is shown exactly
+as the Guru typed it.
+
+**Why.** Codes keep reports and the "discontinue reasons" chart (G8) clean, whatever language
+each coordinator uses. Showing an untranslated code as typed means the Guru can add a reason
+without waiting for a new app version.
+
+**Consequences.** Migration `0005_students_follow_up.sql` rewrites the list and any reasons
+already logged. A new reason should get a translation in `en.json`, `te.json` and `hi.json`, and
+a `KNOWN_CALL_REASONS` entry in `app/src/data/follow-up.ts`. The settings screen (G10) should
+offer codes, not free sentences.
+
+## 20. Views read the tables as the person asking — 30 Sep 2026
+
+**Context.** The student list and the follow-up queue need each student's last visit and the
+days since. Supabase's API does not allow `max()` in app queries by default, so the database
+works it out in a view, `student_overview`. A Postgres view normally runs with its owner's
+rights, which skips row-level security: every signed-in person, students included, would see
+every student.
+
+**Decision.** Every view is created `with (security_invoker = true)`, so it reads its tables with
+the rights of the person asking and their row-level security applies. Views are granted
+`select` only, to `authenticated` only.
+
+**Why.** Access rules stay in one place, the tables' policies (#5). A view can never become a
+side door around them.
+
+**Consequences.** Needs Postgres 15 or later (Supabase has it). The database smoke test checks
+that a student sees only their own row in `student_overview` and that a signed-out visitor sees
+none. A future view that must show more than the tables allow (for example a report) needs its
+own decision entry and a security-definer function instead.

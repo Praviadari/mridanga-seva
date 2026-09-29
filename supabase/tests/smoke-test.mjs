@@ -239,6 +239,113 @@ const [stale] = await asOwner(`select (check_out at time zone 'Asia/Kolkata')::t
   from visits where student_id = '${child.id}' order by check_in desc limit 1`);
 check('... an old open visit ends at that day\'s closing time', stale.out_at === '20:00:00', stale.out_at);
 
+// ---------------------------------------------------------------- student overview (0005)
+const [{ n: studentCount }] = await asOwner('select count(*)::int as n from students');
+const overviewForStaff = await asApp('authenticated', coordinator, 'select id from student_overview');
+check('coordinator sees every student in student_overview', overviewForStaff.length === studentCount,
+  `${overviewForStaff.length} of ${studentCount}`);
+const overviewForStudent = await asApp('authenticated', arjun, 'select full_name from student_overview');
+check('student sees only their own row in student_overview',
+  overviewForStudent.length === 1 && overviewForStudent[0].full_name === 'Arjun Rao');
+await refuses('anon cannot read student_overview', () => asApp('anon', null, 'select id from student_overview'));
+await refuses('student_overview cannot be written to', () =>
+  asApp('authenticated', guru, `update student_overview set full_name = 'X'`));
+
+/** The student_overview row of a seeded student, read as the coordinator. */
+async function overviewOf(fullName) {
+  const [row] = await asApp('authenticated', coordinator,
+    'select id, days_since_visit, last_visit_at, here_now from student_overview where full_name = $1', [fullName]);
+  return row;
+}
+const divya = await overviewOf('Divya Menon'); // irregular: last visits 20 and 24 days ago (seed)
+check('days_since_visit counts from the last visit', divya.days_since_visit === 20, String(divya.days_since_visit));
+const vikram = await overviewOf('Vikram Joshi'); // new, never visited, joined 2026-09-22
+const [{ d: sinceJoining }] = await asOwner(`select today_ist() - date '2026-09-22' as d`);
+check('... or from joining when there is no visit', vikram.last_visit_at === null && vikram.days_since_visit === sinceJoining,
+  String(vikram.days_since_visit));
+await mark(adult.id, 'in');
+check('here_now is true while checked in', (await overviewOf('Adult Learner')).here_now === true);
+await mark(adult.id, 'out');
+check('... and false after checking out', (await overviewOf('Adult Learner')).here_now === false);
+
+// ---------------------------------------------------------------- follow-up calls (0005 log_call)
+/** Passes when `fn` is refused with exactly this error code (the first line of the message). */
+async function refusesWith(name, code, fn) {
+  try {
+    await fn();
+    check(name, false, 'was allowed');
+  } catch (error) {
+    check(name, error.message === code, error.message);
+  }
+}
+/** Calls log_call as `userId` with named arguments, as the app does; returns the call log id. */
+async function logCall(userId, fields) {
+  const names = Object.keys(fields);
+  const sql = `select log_call(${names.map((n, i) => `${n} => $${i + 1}`).join(', ')}) as id`;
+  const [row] = await asApp('authenticated', userId, sql, Object.values(fields));
+  return row.id;
+}
+const statusOf = async (id) =>
+  (await asOwner(`select status, paused_until::text from students where id = '${id}'`))[0];
+const inAMonth = (await asOwner(`select (today_ist() + 30)::text as d`))[0].d;
+const yesterday = (await asOwner(`select (today_ist() - 1)::text as d`))[0].d;
+
+const reasons = (await asOwner(`select value from settings where key = 'call_reasons'`))[0].value;
+check('call reasons are stored as codes', reasons.includes('studies') && !reasons.includes('Studies/exams'),
+  reasons.join(','));
+
+await refusesWith('log_call needs a comment', 'comment_required', () =>
+  logCall(coordinator, { p_student: divya.id, p_outcome: 'paused', p_reason: 'studies', p_comment: '  ', p_next_date: inAMonth }));
+await refusesWith('log_call needs a reason', 'reason_required', () =>
+  logCall(coordinator, { p_student: divya.id, p_outcome: 'paused', p_reason: null, p_comment: 'Exams', p_next_date: inAMonth }));
+await refusesWith('log_call refuses a reason not in the settings list', 'reason_unknown', () =>
+  logCall(coordinator, { p_student: divya.id, p_outcome: 'paused', p_reason: 'Studies/exams', p_comment: 'Exams', p_next_date: inAMonth }));
+await refusesWith('a pause needs its end date', 'next_date_required', () =>
+  logCall(coordinator, { p_student: divya.id, p_outcome: 'paused', p_reason: 'studies', p_comment: 'Exams', p_next_date: null }));
+await refusesWith('a pause cannot end in the past', 'next_date_past', () =>
+  logCall(coordinator, { p_student: divya.id, p_outcome: 'paused', p_reason: 'studies', p_comment: 'Exams', p_next_date: yesterday }));
+await refusesWith('log_call refuses an unknown student', 'student_not_found', () =>
+  logCall(coordinator, { p_student: '00000000-0000-4000-8000-000000000000', p_outcome: 'not_reachable', p_reason: null, p_comment: 'No answer' }));
+await refusesWith('a student cannot log a call', 'not_allowed', () =>
+  logCall(arjun, { p_student: divya.id, p_outcome: 'not_reachable', p_reason: null, p_comment: 'No answer' }));
+await refuses('anon cannot run log_call', () =>
+  asApp('anon', null, `select log_call('${divya.id}', 'not_reachable', null, 'No answer')`));
+await refuses('a call log cannot be written directly, only through log_call', () =>
+  asApp('authenticated', coordinator, `insert into call_logs (student_id, outcome, comment) values ('${divya.id}', 'not_reachable', 'x')`));
+await refuses('status paused cannot be set by a plain edit', () =>
+  asApp('authenticated', coordinator, `update students set status = 'paused' where id = '${divya.id}'`));
+
+await logCall(coordinator, { p_student: divya.id, p_outcome: 'paused', p_reason: 'studies', p_comment: 'Exams till next month', p_next_date: inAMonth });
+const paused = await statusOf(divya.id);
+check('a "paused" call pauses the student until the date', paused.status === 'paused' && paused.paused_until === inAMonth,
+  `${paused.status} ${paused.paused_until}`);
+const openTasks = await asOwner(`select id from follow_up_tasks where student_id = '${divya.id}' and done_at is null`);
+check('... and closes their open follow-up task', openTasks.length === 0);
+
+const harish = await overviewOf('Harish Kumar'); // inactive (seed)
+await logCall(coordinator, { p_student: harish.id, p_outcome: 'discontinued', p_reason: 'moved', p_comment: 'Moved to Pune' });
+check('a "discontinued" call marks the student as left', (await statusOf(harish.id)).status === 'left');
+
+const suresh = await overviewOf('Suresh Naidu'); // irregular (seed)
+for (let i = 0; i < 3; i++) {
+  await logCall(coordinator, { p_student: suresh.id, p_outcome: 'not_reachable', p_reason: null, p_comment: `No answer ${i + 1}` });
+}
+const [retry] = await asOwner(`select attempt, escalated from follow_up_tasks
+  where student_id = '${suresh.id}' and done_at is null`);
+check('the third failed try escalates the retry task to the Guru', retry?.escalated === true && retry.attempt === 4,
+  JSON.stringify(retry));
+await logCall(coordinator, { p_student: suresh.id, p_outcome: 'returning', p_reason: 'work_timing', p_comment: 'Will come on Sunday', p_next_date: inAMonth });
+const [again] = await asOwner(`select kind, due_on::text, escalated from follow_up_tasks
+  where student_id = '${suresh.id}' and done_at is null`);
+const [{ d: dayAfter }] = await asOwner(`select (date '${inAMonth}' + 1)::text as d`);
+check('a "returning" call sets a new call for the day after the date', again?.kind === 'call' && again.due_on === dayAfter
+  && again.escalated === false, JSON.stringify(again));
+const [{ n: callCount }] = await asApp('authenticated', coordinator,
+  `select count(*)::int as n from call_logs where student_id = '${suresh.id}'`);
+check('coordinator reads the call-log timeline', callCount === 4, String(callCount));
+check('student cannot read call logs',
+  (await asApp('authenticated', arjun, 'select id from call_logs')).length === 0);
+
 // ---------------------------------------------------------------- row-level security
 const seen = await asApp('authenticated', arjun, 'select full_name from students');
 check('student sees only their own student record', seen.length === 1 && seen[0].full_name === 'Arjun Rao');
