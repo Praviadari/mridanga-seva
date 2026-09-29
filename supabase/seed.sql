@@ -1,5 +1,5 @@
 -- Mridanga Seva — dummy data for a TEST project. Never run this on the live project.
--- Run after migrations/0001_phase1.sql, in the Supabase SQL editor.
+-- Run after all files in migrations/, in the Supabase SQL editor.
 --
 -- What it creates: a placeholder syllabus for the three levels, 15 fictional students (some under 18,
 -- with guardians and written consent), a few weeks of visits so that every status appears, a follow-up
@@ -10,6 +10,11 @@
 --   2. in Table Editor -> profiles, set their role to 'guru' / 'coordinator';
 --   3. run the "assign mentors" block at the bottom.
 -- All names are fictional and all emails use example.com, a domain reserved for examples.
+
+-- Everything runs in one transaction (begin ... commit): students under 18 must have a parent's
+-- consent by the end of the transaction (0003, check_minor_consent), and their consents are added
+-- a few statements later.
+begin;
 
 -- Statuses (including paused and left) are set on INSERT. The guard trigger that limits paused/left
 -- to log_call runs only on UPDATE (docs/DECISIONS.md #4), so the seed needs no special flag.
@@ -53,11 +58,11 @@ insert into students (full_name, dob, email, area, pincode, level_id, status, jo
 
 -- ---------------------------------------------------------------- guardians + written consent for minors
 insert into guardians (student_id, full_name, email, relation)
-select id, 'Parent of ' || full_name, null, 'Parent'
+select id, 'Parent of ' || full_name, null, 'mother'
 from students where is_minor(students);
 
 insert into consents (student_id, guardian_id, scope, method, id_type_checked)
-select g.student_id, g.id, 'data', 'written', 'Aadhaar sighted'
+select g.student_id, g.id, 'data', 'written', 'aadhaar'
 from guardians g;
 
 -- ---------------------------------------------------------------- visits
@@ -101,6 +106,8 @@ insert into materials (title, kind, body, level_id, approved_by) values
 
 insert into announcements (title, body, audience) values
   ('Welcome to Mridanga Seva', 'This is a test announcement from the dummy data.', 'all');
+
+commit;
 
 -- ---------------------------------------------------------------- assign mentors (run after step 2)
 -- Spreads students across the coordinators who have signed up. Run this block on its own later.

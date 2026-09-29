@@ -6,7 +6,9 @@ maintainer can understand it without asking anyone.
 | Document | Read it when you want to know |
 |---|---|
 | [ARCHITECTURE.md](ARCHITECTURE.md) | How the pieces fit together: app, database, roles, security |
-| [DATABASE.md](DATABASE.md) | What each table holds, the student status rules, the database functions and scheduled jobs |
+| [DATABASE.md](DATABASE.md) | What each table holds, the student status rules, the database functions and scheduled jobs, how to test a migration |
+| [SCREENS.md](SCREENS.md) | Which screens exist, which are still to build, and in what order |
+| [TRANSLATIONS.md](TRANSLATIONS.md) | How the English, Telugu and Hindi text works, and how to add or translate it |
 | [DECISIONS.md](DECISIONS.md) | Why things are the way they are — every important decision, with its reason |
 | [GLOSSARY.md](GLOSSARY.md) | What a word means: mridanga terms (bol, taal, dayan) and app terms (visit, mentor, irregular) |
 | [OPERATIONS.md](OPERATIONS.md) | How to set up, run, back up and hand over the live system |

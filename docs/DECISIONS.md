@@ -129,3 +129,71 @@ role by the Guru.
 
 **Why.** Most members speak Telugu or Hindi. Adding languages later to hard-coded text is slow and
 error-prone.
+
+## 13. A login is linked to a student only after its email is confirmed — 28 Sep 2026
+
+**Context.** Students sign up themselves. When the email of a new login matches a student record,
+the login becomes that student's (DECISIONS #11). The first version linked at the moment of
+sign-up, before the email was confirmed, so anyone who knew a student's email could claim that
+record. It also never linked a person who signed up before a coordinator had typed their email on
+the record.
+
+**Decision.** Link only when the login's email is confirmed, and also when a coordinator adds the
+email to a record whose owner has already signed up and confirmed. Only logins that are still
+`pending` are linked, so a coordinator never becomes a student this way.
+
+**Why.** Confirming the email proves the person owns it. Many students are minors.
+
+**Consequences.** Migration `0002_login_linking.sql`. **"Confirm email" must be on** in Supabase
+before real student records exist: while it is off, Supabase treats every email as confirmed.
+
+## 14. Every database function says who may run it — 28 Sep 2026
+
+**Context.** On Supabase, the roles the app connects as (`anon` before login, `authenticated`
+after) may run any new function in the public schema, not only functions granted to `public`. The
+first migration revoked only from `public`, so anyone with the app's public key could run the
+nightly job that checks everyone out.
+
+**Decision.** Each function is revoked from `public`, `anon` and `authenticated`, then granted
+only to the role that needs it. Internal functions (daily jobs, linking helpers) are granted to no
+app role; they run from triggers or pg_cron as the owner.
+
+**Consequences.** Every new function in a migration needs its own `revoke` / `grant` lines. The
+database smoke test (`supabase/tests/`) checks this. The profile guard also now applies only to
+app users, so the first Guru can be set in the Supabase dashboard (OPERATIONS.md).
+
+## 15. The web version is a single-page app — 28 Sep 2026
+
+**Context.** Expo can export the web version as one page (`single`) or as a pre-rendered page per
+screen (`static`). Pre-rendering runs each screen at build time without a browser, where the saved
+login is not available.
+
+**Decision.** `web.output` is `single` in `app/app.json`.
+
+**Why.** Everything is behind a login, so pre-rendered pages would only ever show the splash, and
+search engines have nothing to index. One page avoids a class of build-time errors.
+
+**Consequences.** The web host must send every address to `index.html` (a "rewrite" or "SPA
+fallback" setting; see OPERATIONS.md). For now a link to a particular screen opens the person's
+home screen instead, because screens stay closed until the login has been checked.
+
+## 16. A minor is registered together with the parent's consent, or not at all — 28 Sep 2026
+
+**Context.** DECISIONS #8 says a minor's details are kept only after a parent has consented. If
+the student were saved first and the consent added on a later screen, a dropped connection or a
+coordinator called away would leave a child's record without consent.
+
+**Decision.** Registration (screens C2 and C3) is one form and one database call,
+`register_student`, which saves the student, the parent and the written consent together. The
+date of birth is required, because it decides whether consent is needed. In addition, a check that
+runs when each database transaction ends refuses any student under 18 without a current consent,
+however the row was written.
+
+**Why.** All-or-nothing saving makes the rule impossible to break by accident, from the app, the
+dashboard or a future import.
+
+**Consequences.** Migration `0003_register_student.sql`. `seed.sql` runs inside one transaction.
+A future Excel import (G3) must bring the parent and consent for every minor in the same step.
+Phase 1 consent is a paper form the parent fills in and signs; the coordinator ticks that it was
+received and records only which ID they looked at. A student photo needs its own consent
+(`scope = 'photo'`); taking photos is not built yet.

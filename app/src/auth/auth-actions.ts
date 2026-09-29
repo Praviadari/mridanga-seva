@@ -1,0 +1,127 @@
+// Sign-in, sign-up, sign-out and password-reset calls, used by the login screens (A1).
+// Each returns the translation key of a message to show, so screens never show raw server
+// errors (which are English-only and sometimes technical).
+//
+// Emails for sign-up and password reset go through Supabase Auth and Brevo SMTP
+// (docs/OPERATIONS.md). Links in those emails open the web version of the app.
+
+import {
+  isAuthApiError,
+  isAuthRetryableFetchError,
+  isAuthWeakPasswordError,
+} from '@supabase/supabase-js';
+import type { ParseKeys } from 'i18next';
+import { Platform } from 'react-native';
+
+import { supabase } from '@/lib/supabase';
+
+/** A translation key, for example 'authErrors.invalidCredentials'. */
+export type MessageKey = ParseKeys;
+
+/** Result of an auth call: nothing on success, or the message to show. */
+export type AuthResult = { errorKey?: MessageKey };
+
+/** Shortest password the app accepts. Set the same in Supabase: Auth → Providers → Email. */
+export const MIN_PASSWORD_LENGTH = 8;
+
+/**
+ * Where links in sign-up and reset emails should send the person. On the web it is this same
+ * site, so testing on http://localhost:8081 works. Phones have no web address; Supabase then
+ * uses the "Site URL" set in its dashboard, which should be the web version's address.
+ * Each address must be listed in Supabase: Auth → URL Configuration → Redirect URLs.
+ */
+function emailLinkTarget(): string | undefined {
+  return Platform.OS === 'web' && typeof window !== 'undefined' ? window.location.origin : undefined;
+}
+
+/** Turns any error from Supabase Auth into a message the person can act on. */
+export function authErrorKey(error: unknown): MessageKey {
+  if (isAuthRetryableFetchError(error)) return 'common.networkError';
+  if (isAuthWeakPasswordError(error)) return 'authErrors.weakPassword';
+  if (isAuthApiError(error)) {
+    switch (error.code) {
+      case 'invalid_credentials':
+        return 'authErrors.invalidCredentials';
+      case 'email_not_confirmed':
+        return 'authErrors.emailNotConfirmed';
+      case 'user_already_exists':
+      case 'email_exists':
+        return 'authErrors.userExists';
+      case 'weak_password':
+        return 'authErrors.weakPassword';
+      case 'same_password':
+        return 'authErrors.samePassword';
+      case 'email_address_invalid':
+        return 'validation.emailInvalid';
+      case 'over_email_send_rate_limit':
+      case 'over_request_rate_limit':
+        return 'authErrors.rateLimited';
+    }
+  }
+  // A plain network failure (no internet) reaches here as a TypeError from fetch.
+  if (error instanceof TypeError) return 'common.networkError';
+  return 'common.genericError';
+}
+
+/** Loose check that catches typing mistakes; the server does the real check. */
+export function isValidEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+}
+
+/**
+ * Signs in with email and password. On success the auth provider notices the new session and
+ * the app moves to the person's screens by itself.
+ */
+export async function signIn(email: string, password: string): Promise<AuthResult> {
+  const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+  return error ? { errorKey: authErrorKey(error) } : {};
+}
+
+/**
+ * Creates a login. The database gives it the role `pending`, or `student` when the email
+ * matches a student record (docs/DATABASE.md "Linking a login to a student").
+ * @returns needsConfirmation true when Supabase sent a confirmation email and the person must
+ *          open it before signing in; false when they are signed in straight away.
+ */
+export async function signUp(
+  fullName: string,
+  email: string,
+  password: string,
+): Promise<AuthResult & { needsConfirmation?: boolean }> {
+  const { data, error } = await supabase.auth.signUp({
+    email: email.trim(),
+    password,
+    options: {
+      // Read by the database function handle_new_user to fill profiles.full_name.
+      data: { full_name: fullName.trim() },
+      emailRedirectTo: emailLinkTarget(),
+    },
+  });
+  if (error) return { errorKey: authErrorKey(error) };
+  return { needsConfirmation: !data.session };
+}
+
+/**
+ * Emails a link to set a new password. Always reports success when the request went through,
+ * even for an unknown email, so the form cannot be used to find out who has an account.
+ */
+export async function sendPasswordReset(email: string): Promise<AuthResult> {
+  const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+    redirectTo: emailLinkTarget(),
+  });
+  return error ? { errorKey: authErrorKey(error) } : {};
+}
+
+/** Saves a new password for the signed-in person (used after opening a reset link). */
+export async function setNewPassword(password: string): Promise<AuthResult> {
+  const { error } = await supabase.auth.updateUser({ password });
+  return error ? { errorKey: authErrorKey(error) } : {};
+}
+
+/**
+ * Signs out on this device only. Supabase's default ('global') would also sign the person out
+ * of every other phone and browser they use.
+ */
+export async function signOut(): Promise<void> {
+  await supabase.auth.signOut({ scope: 'local' });
+}

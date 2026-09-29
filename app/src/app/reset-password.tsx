@@ -1,0 +1,84 @@
+// A1 Set a new password. Opens only after the person follows a reset link from their email
+// (web version; the auth provider sets area 'recovery'). Saving the password ends recovery and
+// the app moves on to the person's screens.
+
+import { useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import type { TextInput } from 'react-native';
+
+import { MIN_PASSWORD_LENGTH, setNewPassword, signOut, type MessageKey } from '@/auth/auth-actions';
+import { AppText } from '@/components/app-text';
+import { Button } from '@/components/button';
+import { Notice } from '@/components/notice';
+import { Screen } from '@/components/screen';
+import { TextField } from '@/components/text-field';
+
+/** New-password form. "Cancel" signs out, because the reset link has already signed them in. */
+export default function ResetPasswordScreen() {
+  const { t } = useTranslation();
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<{ password?: MessageKey; confirm?: MessageKey }>(
+    {},
+  );
+  const [formError, setFormError] = useState<MessageKey | null>(null);
+  const [busy, setBusy] = useState(false);
+  const confirmRef = useRef<TextInput>(null);
+
+  async function submit() {
+    const errors = {
+      password:
+        password.length < MIN_PASSWORD_LENGTH ? ('validation.passwordTooShort' as const) : undefined,
+      confirm:
+        password.length >= MIN_PASSWORD_LENGTH && confirm !== password
+          ? ('validation.passwordsDontMatch' as const)
+          : undefined,
+    };
+    setFieldErrors(errors);
+    setFormError(null);
+    if (errors.password || errors.confirm) return;
+
+    setBusy(true);
+    const { errorKey } = await setNewPassword(password);
+    setBusy(false);
+    if (errorKey) setFormError(errorKey);
+  }
+
+  return (
+    <Screen centred>
+      <AppText variant="title">{t('resetPassword.title')}</AppText>
+      {formError ? <Notice tone="error">{t(formError)}</Notice> : null}
+
+      <TextField
+        label={t('resetPassword.newPassword')}
+        hint={t('signUp.passwordHint')}
+        value={password}
+        onChangeText={setPassword}
+        error={fieldErrors.password && t(fieldErrors.password)}
+        secret
+        autoCapitalize="none"
+        autoComplete="new-password"
+        textContentType="newPassword"
+        returnKeyType="next"
+        onSubmitEditing={() => confirmRef.current?.focus()}
+        submitBehavior="submit"
+      />
+      <TextField
+        ref={confirmRef}
+        label={t('signUp.confirmPassword')}
+        value={confirm}
+        onChangeText={setConfirm}
+        error={fieldErrors.confirm && t(fieldErrors.confirm)}
+        secret
+        autoCapitalize="none"
+        autoComplete="new-password"
+        textContentType="newPassword"
+        returnKeyType="go"
+        onSubmitEditing={submit}
+      />
+
+      <Button label={t('resetPassword.submit')} onPress={submit} loading={busy} />
+      <Button variant="link" label={t('resetPassword.cancel')} onPress={() => void signOut()} />
+    </Screen>
+  );
+}

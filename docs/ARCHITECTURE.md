@@ -53,8 +53,64 @@ flowchart LR
 | `pending` | Anyone who signed up but has no role yet | Nothing until the Guru gives a role |
 
 A new login starts as `pending`. If its email matches a registered student, it is linked to that
-student and becomes `student` automatically. Only the Guru can make someone a coordinator.
-See [DECISIONS.md #11](DECISIONS.md).
+student and becomes `student` automatically, once the email is confirmed. Only the Guru can make
+someone a coordinator. See [DECISIONS.md #11 and #13](DECISIONS.md) and
+[DATABASE.md](DATABASE.md#linking-a-login-to-a-student).
+
+## The app's code
+
+```
+app/
+  app.json             App name, icons, splash screen, web settings
+  .env                 Supabase URL and public key (not in git; copy .env.example)
+  scripts/             Helper scripts, e.g. the placeholder icon generator
+  src/
+    app/               Screens. Every file is a screen (Expo Router); _layout.tsx files arrange them
+      guru/  coordinator/  student/    Each role's own screens (home, and later role-only ones)
+      staff/           Coordinator screens the Guru uses too: register, attendance, follow-up ...
+    auth/              Who is signed in, their role, and the sign-in / sign-up calls
+    data/              Reading and saving records: one file per area (students.ts ...), with the
+                       form checks. Screens call these, never the database directly
+    components/        Building blocks shared by screens: text, buttons, fields, choices, page frame
+    i18n/              Interface text in English, Telugu and Hindi (docs/TRANSLATIONS.md)
+    lib/               The Supabase client and on-device storage
+    theme/             Colours, spacing and text sizes, light and dark
+```
+
+Screens use only `components/` and `theme/` for their look, and `t('...')` for every word, so a
+change of colour or wording is made in one place.
+
+## Logging in
+
+1. **Create an account** (sign-up screen): name, email, password. The database creates a
+   `profiles` row with role `pending`.
+2. **Confirm the email:** Supabase sends a link (through Brevo). The link opens the web version.
+   On confirmation the database links the login to the student record with the same email, if
+   there is one, and the role becomes `student`.
+3. **Sign in** with email and password. The login is kept on the device (in `localStorage`,
+   which expo-sqlite provides on phones), so people stay signed in.
+4. **Forgot password:** the app emails a link; it opens the web version on a *Set a new password*
+   screen. Links are *implicit-flow* links, so one asked for on a phone also works in a laptop browser.
+
+Links in emails go to the address set as **Site URL** in Supabase, or to the web address the
+request came from (see OPERATIONS.md).
+
+## Navigation by role
+
+The app is split into **areas**: `signedOut` (sign-in screens), `recovery` (set a new password),
+`pending` (waiting for a role), `guru`, `coordinator` and `student`, plus `loading` while the
+saved login and the profile are being fetched.
+
+- `src/auth/auth-provider.tsx` works out the area from the login and the `profiles` row.
+- `src/app/_layout.tsx` opens only that area's screens (Expo Router's `Stack.Protected`).
+  A screen of another area cannot be opened, even by typing its address on the web.
+- The `staff/` folder is open to both `guru` and `coordinator`, because the Guru sees every
+  coordinator screen. Put a new screen there unless only one role may use it.
+- `src/app/index.tsx` shows the splash while loading, then sends the person to their area's
+  first screen.
+
+Hiding screens makes the app clear to use; it is **not** the security. The database refuses any
+read or write the person is not allowed, whatever the app shows.
 
 ## Security model
 
@@ -62,8 +118,11 @@ See [DECISIONS.md #11](DECISIONS.md).
   person may read or change; the app cannot get around it. See [DATABASE.md](DATABASE.md#who-can-see-what).
 - **The app holds only the public (anon / publishable) key.** It is safe to ship because RLS protects
   the data. The `service_role` key bypasses RLS and must never be in the app or the repository.
+- **The app refuses to start with the `service_role` key** in `app/.env` and shows a warning
+  instead (`src/lib/supabase.ts`), because everything in `EXPO_PUBLIC_*` ends up in the public web version.
 - **Actions that change several things at once run as database functions** (`toggle_visit`,
   `scan_qr`, `log_call`), so they either fully happen or not at all, and they check the caller's role.
+  Each function is granted only to the roles that need it ([DECISIONS.md #14](DECISIONS.md)).
 - **Personal data is kept to a minimum.** Only the area and pincode, not the full address. Only the
   *type* of ID a coordinator checked for consent, never the ID number. See [DECISIONS.md #8](DECISIONS.md).
 

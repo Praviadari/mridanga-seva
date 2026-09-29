@@ -18,6 +18,8 @@ reports are all welcome.
    npx expo lint
    npx tsc --noEmit
    ```
+   If you changed anything in `supabase/`, also run the database smoke test in `supabase/tests/`
+   (`npm install`, then `npm test`; see [docs/DATABASE.md](docs/DATABASE.md#testing-a-migration-before-it-goes-live)).
 5. Add Expo packages with `npx expo install <package>`, not `npm install`, so versions match the SDK.
 
 ## Rules for this project
@@ -29,7 +31,7 @@ reports are all welcome.
   `0003_...sql`). Never edit a migration that has already been applied. Every new table needs
   row-level security policies.
 - **No hard-coded interface text.** Put every string in the translation files so it can be shown in
-  English, Telugu and Hindi.
+  English, Telugu and Hindi ([docs/TRANSLATIONS.md](docs/TRANSLATIONS.md)). Translators are very welcome.
 - **Respect content rights.** Do not add copyrighted scripture translations, purports, books or
   videos to the repository. Link to YouTube videos through the YouTube player; do not download them.
 

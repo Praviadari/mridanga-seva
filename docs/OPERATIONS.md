@@ -27,7 +27,9 @@ Keep the logins for these in one place the team controls, so the system never de
    3. You should see *Success. No rows returned.*
    4. If it fails on `pg_cron`: open **Database → Extensions**, switch on **pg_cron**, and run the
       same query again. A failed run changes nothing, so running it again is safe.
-   5. Later migrations (`0002_...`, `0003_...`) are run the same way, in number order.
+   5. Run every later migration the same way, in number order: `0002_login_linking.sql`, then
+      `0003_register_student.sql`, and so on. **Run 0002 straight after 0001**: without it the
+      first Guru cannot be set (step 7) and internal functions are open.
 3. **Test project only — add the dummy data:** do the same with [`supabase/seed.sql`](../supabase/seed.sql)
    in a new query. Check under **Table Editor → students**: 15 students, roll numbers
    `MS-2026-0001` to `MS-2026-0015`. Never run the seed on the live project. Its header lists the
@@ -45,16 +47,73 @@ Keep the logins for these in one place the team controls, so the system never de
    ```
    The project ref is the part before `.supabase.co` in the project URL. `supabase init` creates
    `supabase/config.toml`; commit it.
-4. **Auth settings:** under **Authentication → Sign In / Providers → Email**, keep Email enabled.
-   While testing without step 5, turn **Confirm email** off (the built-in email sends only 2 emails
-   an hour); turn it back on before real users join. Set the site URL to where the web version runs.
+4. **Auth settings:**
+   - **Authentication → Sign In / Providers → Email:** keep Email enabled. Set the minimum
+     password length to **8** (the app asks for 8 too).
+   - **Confirm email:** while testing with dummy data and without step 5, you may turn it off (the
+     built-in email sends only 2 emails an hour). **Turn it on before any real student record
+     exists**: while it is off, anyone can sign up with a student's email and be linked to that
+     student's record ([DECISIONS.md #13](DECISIONS.md)).
+   - **Authentication → URL Configuration:** set **Site URL** to the web version's address (see
+     "Publishing the web version"). Under **Redirect URLs** add that address and, for development,
+     `http://localhost:8081`. Links in sign-up and password-reset emails open these addresses.
 5. **Email (SMTP):** in Brevo, verify the sender email and create an SMTP key. In Supabase, go to
    Authentication → SMTP settings and enter Brevo's host `smtp-relay.brevo.com`, port 587, login and key.
    Without this, Supabase sends only 2 emails an hour.
 6. **App settings:** copy `app/.env.example` to `app/.env` and fill in the project URL and the
-   anon / publishable key (**Project Settings → API Keys**). Never use the `service_role` key in the app.
-7. **First Guru account:** sign up in the app, then in the Supabase Table Editor set that row's
-   `role` in `profiles` to `guru`. After that, the Guru gives roles from the app.
+   anon / publishable key (**Project Settings → API Keys**). Never use the `service_role` or
+   `sb_secret_...` key in the app: the app refuses to start with it. Then run the app:
+   ```bash
+   cd app
+   npm install
+   npx expo start
+   ```
+   Press `w` for the web version in a browser, or scan the QR code with Expo Go on an Android
+   phone. If the app shows *App not set up*, the URL or key in `app/.env` is missing; restart
+   `npx expo start` after changing it.
+7. **First Guru account:** sign up in the app and confirm the email. Then in the Supabase
+   **Table Editor → profiles**, find the row with that email and set `role` to `guru`. After that,
+   the Guru gives roles from the app.
+
+## Paper consent forms
+
+For a student under 18, the parent fills in and signs a paper consent form at the desk, and the
+coordinator ticks in the app that it was received ([DECISIONS.md #16](DECISIONS.md)). The app
+stores only that it was given, when, by whom it was checked, and which type of ID was seen.
+
+Suggested practice, until the team agrees its own (with the temple's legal adviser):
+
+- Keep the signed forms together, in a closed file at the centre that only coordinators use.
+- A parent may withdraw consent at any time. Until a screen for this exists, the Guru fills in
+  `consents.revoked_at` in the dashboard and removes the student's details as agreed with the parent.
+- The wording of the form itself is still to be agreed.
+
+## Publishing the web version
+
+iPhone users use the web version and can add it to their home screen. Build it on any computer:
+
+```bash
+cd app
+npx expo export --platform web
+```
+
+This writes the site to `app/dist/`. Upload that folder to a free static host. The web version is a
+single-page app ([DECISIONS.md #15](DECISIONS.md)), so the host must send every address to
+`index.html`:
+
+- **Netlify:** a file `app/public/_redirects` containing `/* /index.html 200`.
+- **Cloudflare Pages:** does this by itself when the site has no `404.html`.
+- **GitHub Pages:** copy `dist/index.html` to `dist/404.html` before uploading; if the site lives
+  under `/<repo-name>`, also set `experiments.baseUrl` in `app.json`.
+
+Then put the site's address in Supabase as the Site URL (setup step 4). The host is not chosen yet.
+
+## App icon and splash screen
+
+`app/assets/images/` holds placeholder artwork (a white khol on saffron), drawn by
+`node app/scripts/make-placeholder-icons.mjs`. When the team has a logo, replace the PNG files
+with images of the same sizes and keep the saffron colour in `app.json` and
+`app/src/theme/colors.ts` in step with it.
 
 ## Weekly backup
 

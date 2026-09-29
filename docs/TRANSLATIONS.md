@@ -1,0 +1,55 @@
+# Translations
+
+Every word the app shows is in three files, one per language. Screens never contain the words
+themselves ([DECISIONS.md #12](DECISIONS.md)).
+
+| Language | File | State |
+|---|---|---|
+| English | [`app/src/i18n/locales/en.json`](../app/src/i18n/locales/en.json) | Source: every key is defined here first |
+| Telugu | [`app/src/i18n/locales/te.json`](../app/src/i18n/locales/te.json) | Draft, **needs review by a Telugu speaker** |
+| Hindi | [`app/src/i18n/locales/hi.json`](../app/src/i18n/locales/hi.json) | Draft, **needs review by a Hindi speaker** |
+
+## How it works
+
+- The files are grouped by screen or topic: `signIn.title`, `pending.body`, `common.email`.
+- A screen shows text with `t('signIn.title')` (from `useTranslation()` in react-i18next).
+- `{{name}}` in a text is filled in by the app, e.g. `"Hare Krishna, {{name}}"`. Keep the
+  `{{...}}` part exactly as it is when translating; move it wherever the sentence needs it.
+- TypeScript checks the files: `npx tsc --noEmit` fails if a key is misspelt in a screen, or if
+  Telugu or Hindi is missing a key that English has. So a missing translation is caught before
+  release, not seen by a student.
+- Some values are stored in the database as a code and translated only on screen: levels by
+  number (`levels.1` = Beginner), relations (`relations.mother`) and ID types (`idTypes.aadhaar`).
+  The codes are listed in [DATABASE.md](DATABASE.md#registering-a-student); never translate a code itself.
+- Language names in the language picker are always written in their own script (English,
+  తెలుగు, हिन्दी), so people can find their language whatever the app shows now.
+
+## Which language the app shows
+
+1. The language the person picked on this device (the picker on the sign-in screens, later the
+   profile screen). The choice is also saved to their profile.
+2. Otherwise the language saved on their profile (after they sign in on a new phone).
+3. Otherwise the phone's or browser's language, if it is Telugu or Hindi.
+4. Otherwise English.
+
+The code is in `app/src/i18n/index.ts` and `syncLanguageWithProfile` in
+`app/src/auth/auth-provider.tsx`.
+
+## Adding or changing text
+
+1. Add the key and the English text to `en.json`.
+2. Add the same key to `te.json` and `hi.json`. If you cannot translate it, copy the English text
+   and say so in the pull request, so a translator can pick it up.
+3. Use it in the screen with `t('group.key')`.
+4. Run `npx tsc --noEmit` in `app/`.
+
+## Style for translators
+
+- Plain, everyday words; short sentences. Many users are young students or their parents.
+- Keep the devotional register the class uses: "Hare Krishna" as the greeting, "గురువుగారు" /
+  "गुरुजी" in sentences about the Guru.
+- Mridanga words (bol, taal, dayan, baya) stay as they are; see [GLOSSARY.md](GLOSSARY.md).
+- Technical words people already know in English are fine in the local script: ఈమెయిల్ / ईमेल,
+  పాస్‌వర్డ్ / पासवर्ड.
+- Telugu and Devanagari letters are taller than Latin ones. The app's line heights allow for this;
+  if a translated label looks cut off, report it with a screenshot.

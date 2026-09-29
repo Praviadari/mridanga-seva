@@ -29,6 +29,9 @@
 | Level | Beginner, Intermediate or Advanced |
 | Syllabus item | One thing a student learns within a level; ticked by a coordinator when shown in class |
 | Mentor | The coordinator responsible for following up with a student |
+| Minor | A student under 18. Needs a parent's written consent before their details are kept |
+| Guardian | The parent or other adult who gives consent for a minor |
+| Consent | A parent's agreement, recorded per purpose: `data` (keep details), `photo`, `face` (Phase 3) |
 | Status | Where a student stands: New, Active, Irregular, Inactive, Paused, Left (see DATABASE.md) |
 | Irregular | No visit for 14 days (setting). A follow-up call is due |
 | Inactive | No visit for 30 days (setting). Overdue follow-ups are shown to the Guru |
@@ -37,4 +40,6 @@
 | Group | A set of people who receive the same announcements; replaces a WhatsApp group |
 | Kiosk | The door tablet account (Phase 2), allowed only to check students in and out |
 | Pending | A new login that has no role yet |
+| Area | In the app's code: the part of the app a person may use now (signed out, pending, guru, coordinator, student). See ARCHITECTURE.md "Navigation by role" |
+| Linking | Joining a login to the student record with the same email, once the email is confirmed (see DATABASE.md) |
 | RLS | Row-level security: database rules that decide which rows each person may read or change |

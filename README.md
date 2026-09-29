@@ -57,6 +57,8 @@ Mridanga Seva puts class records, learning material and communication in one pla
 ```
 app/                   Expo app (screens live in app/src/app/)
 supabase/migrations/   Database schema, row-level security, functions and scheduled jobs
+supabase/seed.sql      Dummy data for a test project
+supabase/tests/        Database smoke test that runs on your own computer
 docs/                  How it works and why — start with docs/README.md
 ```
 
@@ -73,9 +75,10 @@ docs/                  How it works and why — start with docs/README.md
 ## Getting started
 
 1. Install [Node.js](https://nodejs.org) (LTS).
-2. Create a free Supabase project and run `supabase/migrations/0001_phase1.sql` in its SQL editor.
+2. Create a free Supabase project and run the files in `supabase/migrations/` in its SQL editor,
+   in number order (step by step: [docs/OPERATIONS.md](docs/OPERATIONS.md#setting-up-a-new-environment)).
 3. Copy `app/.env.example` to `app/.env` and fill in your project URL and **anon / publishable** key.
-4. Start the app:
+4. Start the app, then press `w` to open the web version:
    ```bash
    cd app
    npm install

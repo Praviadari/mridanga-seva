@@ -1,0 +1,168 @@
+{
+  "app": {
+    "name": "Mridanga Seva",
+    "tagline": "Class records, lessons and attendance in one place"
+  },
+  "common": {
+    "email": "Email",
+    "password": "Password",
+    "signOut": "Sign out",
+    "tryAgain": "Try again",
+    "loading": "Loading…",
+    "language": "Language",
+    "genericError": "Something went wrong. Please try again.",
+    "networkError": "Cannot reach the server. Check your internet connection."
+  },
+  "password": {
+    "show": "Show",
+    "hide": "Hide",
+    "showLabel": "Show password",
+    "hideLabel": "Hide password"
+  },
+  "signIn": {
+    "title": "Sign in",
+    "subtitle": "Use the email and password you signed up with.",
+    "submit": "Sign in",
+    "forgotPassword": "Forgot password?",
+    "noAccount": "New here?",
+    "createAccount": "Create an account"
+  },
+  "signUp": {
+    "title": "Create an account",
+    "subtitle": "Students: use the email you gave the coordinator, so your record is linked.",
+    "fullName": "Full name",
+    "confirmPassword": "Type the password again",
+    "passwordHint": "At least 8 characters.",
+    "submit": "Create account",
+    "haveAccount": "Already have an account? Sign in",
+    "checkEmailTitle": "Check your email",
+    "checkEmail": "We sent a link to {{email}}. Open it to confirm your account, then sign in."
+  },
+  "forgotPassword": {
+    "title": "Reset your password",
+    "subtitle": "Enter your email. We will send you a link to set a new password.",
+    "submit": "Send link",
+    "sent": "If an account exists for {{email}}, a link is on its way. It can take a few minutes.",
+    "backToSignIn": "Back to sign in"
+  },
+  "resetPassword": {
+    "title": "Set a new password",
+    "newPassword": "New password",
+    "submit": "Save password",
+    "cancel": "Cancel"
+  },
+  "validation": {
+    "emailInvalid": "Enter a valid email address.",
+    "passwordRequired": "Enter your password.",
+    "passwordTooShort": "Use at least 8 characters.",
+    "passwordsDontMatch": "The two passwords are not the same.",
+    "nameRequired": "Enter your name."
+  },
+  "authErrors": {
+    "invalidCredentials": "Email or password is wrong.",
+    "emailNotConfirmed": "Please confirm your email first. Open the link we sent you.",
+    "userExists": "An account with this email already exists. Sign in instead.",
+    "weakPassword": "This password is too easy to guess. Choose a stronger one.",
+    "rateLimited": "Too many tries. Please wait a few minutes and try again.",
+    "samePassword": "The new password must be different from the old one."
+  },
+  "pending": {
+    "title": "Waiting for access",
+    "body": "Your account is ready. The Guru will give you access soon.",
+    "studentHint": "Are you a student? Ask a coordinator to put this email on your student record, then tap Check again.",
+    "kiosk": "The door tablet screens come in a later version.",
+    "inactiveTitle": "Account switched off",
+    "inactiveBody": "This account is not active. Please speak to the Guru or a coordinator.",
+    "loadFailedTitle": "Could not load your account",
+    "checkAgain": "Check again",
+    "signedInAs": "Signed in as {{email}}"
+  },
+  "roles": {
+    "guru": "Guru",
+    "coordinator": "Coordinator",
+    "student": "Student"
+  },
+  "home": {
+    "greeting": "Hare Krishna, {{name}}",
+    "greetingNoName": "Hare Krishna",
+    "role": "Signed in as {{role}}",
+    "comingSoon": "Your screens are being built. They will appear here."
+  },
+  "setup": {
+    "title": "App not set up",
+    "missing": "The server address or key is missing. Copy app/.env.example to app/.env, fill in both values, then restart.",
+    "secretKey": "This is the secret (service_role) key. Never put it in the app. Use the publishable (anon) key instead."
+  },
+  "notFound": {
+    "title": "This page does not exist.",
+    "goHome": "Go to home"
+  },
+  "staff": {
+    "registerStudent": "Register a student"
+  },
+  "levels": {
+    "1": "Beginner",
+    "2": "Intermediate",
+    "3": "Advanced"
+  },
+  "relations": {
+    "mother": "Mother",
+    "father": "Father",
+    "guardian": "Other guardian"
+  },
+  "idTypes": {
+    "aadhaar": "Aadhaar",
+    "pan": "PAN card",
+    "driving_licence": "Driving licence",
+    "passport": "Passport",
+    "voter_id": "Voter ID",
+    "other": "Other"
+  },
+  "register": {
+    "title": "Register a student",
+    "intro": "Takes about two minutes. Only the name and date of birth are required.",
+    "studentSection": "Student",
+    "fullName": "Full name",
+    "dob": "Date of birth",
+    "dobHint": "Day-month-year, e.g. 15-06-2012",
+    "age": "Age {{age}}",
+    "ageMinor": "Age {{age}} — under 18, a parent's consent is needed",
+    "phone": "Phone",
+    "email": "Email",
+    "emailHint": "The student's own email, if they will use the app. Their login is connected to this record.",
+    "area": "Area",
+    "areaHint": "Only the area, e.g. Koti. Not the full address.",
+    "pincode": "Pincode",
+    "level": "Level",
+    "mentor": "Mentor coordinator",
+    "noMentor": "Not yet",
+    "guardianSection": "Parent or guardian",
+    "guardianIntro": "Needed because the student is under 18.",
+    "guardianName": "Parent's full name",
+    "guardianPhone": "Parent's phone",
+    "guardianEmail": "Parent's email",
+    "relation": "Relation to the student",
+    "idChecked": "Which ID did you see?",
+    "idCheckedHint": "Look at the parent's ID to confirm who they are. Do not write down the number.",
+    "photoConsent": "The parent agrees to a photo of the student on the class record.",
+    "writtenConsent": "The parent has filled in and signed the paper consent form, and I have kept it with the class records.",
+    "submit": "Save student",
+    "doneTitle": "Student registered",
+    "doneBody": "{{name}} is registered. Roll number: {{rollNo}}",
+    "linked": "Their app login is now connected to this record.",
+    "another": "Register another student",
+    "done": "Done",
+    "loadFailed": "Could not load levels and coordinators.",
+    "errors": {
+      "nameRequired": "Enter the full name.",
+      "dobInvalid": "Enter the date of birth as day-month-year, e.g. 15-06-2012.",
+      "phoneInvalid": "Enter a 10-digit phone number.",
+      "pincodeInvalid": "A pincode has 6 digits.",
+      "choose": "Choose one.",
+      "consentNeeded": "The signed consent form is needed before a student under 18 can be registered.",
+      "minorNeedsConsent": "A student under 18 needs the parent's details, the ID check and the signed consent form.",
+      "notAllowed": "Only coordinators and the Guru can register students.",
+      "fixFields": "Please correct the fields marked in red."
+    }
+  }
+}

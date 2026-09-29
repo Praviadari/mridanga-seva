@@ -1,0 +1,65 @@
+# Screens
+
+The Phase 1 screens and how far each one is. Screen numbers (A1, C2, G4 ...) come from the
+screen list the team approved; code comments use them. Phase 2 and 3 screens are added here when
+their building starts.
+
+Status: **Built** works end to end · **Placeholder** a simple stand-in exists · blank = not started.
+
+## Common (everyone)
+
+| # | Screen | Status | Code |
+|---|---|---|---|
+| A1 | Login: sign in, create an account, forgot and reset password | Built | `app/src/app/sign-in.tsx`, `sign-up.tsx`, `forgot-password.tsx`, `reset-password.tsx` |
+| — | Waiting for access (signed in, no role yet) | Built | `app/src/app/pending.tsx` |
+| A2 | Notifications inbox | | |
+| A3 | Profile and app language | | |
+
+## Student
+
+| # | Screen | Status | Code |
+|---|---|---|---|
+| S1 | Home: announcements, visits this week, My QR | Placeholder | `app/src/app/student/index.tsx` |
+| S3 | My QR card | | |
+| S4 | Learn: my level's syllabus and lessons | | |
+| S9 | Attendance history | | |
+| S10 | Announcements | | |
+
+## Coordinator
+
+| # | Screen | Status | Code |
+|---|---|---|---|
+| C1 | Dashboard: here now, today's visits, follow-ups due, new joiners | Placeholder | `app/src/app/coordinator/index.tsx` |
+| C2 | Register a student (photo comes later) | Built | `app/src/app/staff/register.tsx`, `app/src/data/students.ts` |
+| C3 | Guardian consent (under 18): part of the C2 form, shown when the date of birth is under 18 | Built | same as C2 |
+| C5 | Mark attendance: scan QR or tap a name | | |
+| C6 | Who is here now | | |
+| C7 | Student list with filters | | |
+| C8 | Student profile | | |
+| C9 | Syllabus tick-off | | |
+| C10 | Follow-up queue | | |
+| C11 | Call log | | |
+| C15 | Post an announcement | | |
+| C21 | My reports | | |
+
+## Guru
+
+| # | Screen | Status | Code |
+|---|---|---|---|
+| G1 | Dashboard | Placeholder | `app/src/app/guru/index.tsx` |
+| G2 | Coordinators: add, deactivate, reassign mentees | | |
+| G3 | Students: whole database, Excel import | | |
+| G4 | Levels and syllabus editor | | |
+| G5 | Materials library | | |
+| G8 | Reports (basic) | | |
+| G9 | Centres and geofence | | |
+| G10 | Settings | | |
+| G11 | Audit log | | |
+
+Coordinator screens that the Guru also uses live in `app/src/app/staff/`
+(see ARCHITECTURE.md "Navigation by role").
+
+## Build order
+
+~~A1~~ → ~~C2, C3~~ → C5, C6 → C7, C8 → C10, C11 → C9 → G4, G5 → C15, S10 → S1, S3, S4, S9 →
+G1, C1, C21, G8 → G2, G3 → G9, G10, G11.
