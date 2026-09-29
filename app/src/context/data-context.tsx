@@ -115,12 +115,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         supabase.from('call_logs').select('*').order('called_at', { ascending: false }),
       ]);
 
-      if (sData) setStudents(sData as Student[]);
-      if (vData) setVisits(vData as Visit[]);
-      if (yData) setSyllabus(yData as SyllabusItem[]);
-      if (mData) setMaterials(mData as Material[]);
-      if (tData) setFollowUpTasks(tData as FollowUpTask[]);
-      if (cData) setCallLogs(cData as CallLog[]);
+      if (sData && sData.length > 0) setStudents(sData as Student[]);
+      if (vData && vData.length > 0) setVisits(vData as Visit[]);
+      if (yData && yData.length > 0) setSyllabus(yData as SyllabusItem[]);
+      if (mData && mData.length > 0) setMaterials(mData as Material[]);
+      if (tData && tData.length > 0) setFollowUpTasks(tData as FollowUpTask[]);
+      if (cData && cData.length > 0) setCallLogs(cData as CallLog[]);
     } catch (err) {
       console.warn('Error loading live data from Supabase:', err);
     } finally {

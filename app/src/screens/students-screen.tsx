@@ -35,11 +35,17 @@ export const StudentsScreen: React.FC = () => {
   ];
 
   const filteredStudents = students.filter((s) => {
+    const name = s.full_name || '';
+    const roll = s.roll_no || '';
+    const area = s.area || '';
+    const phone = s.phone || '';
+    const q = search.toLowerCase();
+
     const matchesSearch =
-      s.full_name.toLowerCase().includes(search.toLowerCase()) ||
-      s.roll_no.toLowerCase().includes(search.toLowerCase()) ||
-      (s.area && s.area.toLowerCase().includes(search.toLowerCase())) ||
-      (s.phone && s.phone.includes(search));
+      name.toLowerCase().includes(q) ||
+      roll.toLowerCase().includes(q) ||
+      area.toLowerCase().includes(q) ||
+      phone.includes(q);
 
     if (!matchesSearch) return false;
     if (selectedStatus !== 'all' && s.status !== selectedStatus) return false;

@@ -24,13 +24,18 @@ export const AttendanceScreen: React.FC = () => {
   const checkedInCount = students.filter((s) => s.is_checked_in).length;
 
   const filteredStudents = students.filter((s) => {
+    const name = s.full_name || '';
+    const roll = s.roll_no || '';
+    const area = s.area || '';
+    const q = search.toLowerCase();
+
     const matchesSearch =
-      s.full_name.toLowerCase().includes(search.toLowerCase()) ||
-      s.roll_no.toLowerCase().includes(search.toLowerCase()) ||
-      (s.area && s.area.toLowerCase().includes(search.toLowerCase()));
+      name.toLowerCase().includes(q) ||
+      roll.toLowerCase().includes(q) ||
+      area.toLowerCase().includes(q);
 
     if (!matchesSearch) return false;
-    if (filter === 'checked_in') return s.is_checked_in;
+    if (filter === 'checked_in') return Boolean(s.is_checked_in);
     if (filter === 'not_in') return !s.is_checked_in;
     return true;
   });

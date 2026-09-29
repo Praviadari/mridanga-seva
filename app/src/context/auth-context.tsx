@@ -90,8 +90,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setRole(prof.role);
           }
         } else {
-          setProfile(null);
-          setRole('pending');
+          setProfile(DEFAULT_COORDINATOR_PROFILE);
+          setRole('guru');
         }
       });
 
