@@ -10,6 +10,7 @@ in number order:
 | `0003_register_student.sql` | `register_student` saves a student with the parent's consent in one step; no minor can be kept without consent ([DECISIONS.md #16](DECISIONS.md)) |
 | `0004_attendance.sql` | `mark_visit` for tap-to-mark attendance and `check_out_all` for closing time ([DECISIONS.md #18](DECISIONS.md)) |
 | `0005_students_follow_up.sql` | View `student_overview` (last visit, days since); reasons for a call become codes; `log_call` checks its inputs and answers with error codes ([DECISIONS.md #19, #20](DECISIONS.md)) |
+| `0006_syllabus_progress.sql` | A syllabus tick records who really ticked it and cannot be dated in the future; every tick and untick is kept in `audit_log` ([DECISIONS.md #22](DECISIONS.md)) |
 
 Every table and important column also carries a `COMMENT ON` description, so you can read it in
 the Supabase dashboard (Table Editor → table → description).
@@ -30,7 +31,7 @@ consent), sample visits, groups and an announcement. Never run it on the live pr
 | Follow-up | `call_logs`, `follow_up_tasks`, `status_history` | Every call and every status change is kept |
 | Learning | `levels`, `syllabus_items`, `student_progress`, `level_history`, `materials` | Three levels; each has an ordered syllabus |
 | Communication | `announcements`, `announcement_reads`, `groups`, `group_members` | Groups replace the WhatsApp groups |
-| Audit | `audit_log` | Who changed a student, profile, call log or level, and when |
+| Audit | `audit_log` | Who changed a student, profile, call log, level or syllabus tick, and when |
 
 ## Student status
 
@@ -162,6 +163,30 @@ Errors from `log_call` (short codes the app turns into messages): `not_allowed`,
 `next_date_required`, `next_date_past` (the date is before today). A `next_date` given with an
 outcome that does not use one is dropped, so reports never show a stray date.
 
+## Syllabus progress
+
+Each level has an ordered list of `syllabus_items` (the Guru writes it, G4). When a student shows
+an item in class, a coordinator ticks it for them on screen C9: one row in `student_progress`
+(student, item, `done_on`, `ticked_by`, optional `remark`). Any coordinator or the Guru may tick
+for any student; students can read their own ticks and change nothing.
+
+The app writes the table directly: insert to tick, update to change the remark, delete to untick.
+The trigger `student_progress_guard` ([DECISIONS.md #22](DECISIONS.md)) makes these rules hold
+however the row is written:
+
+| Rule | Error code |
+|---|---|
+| `ticked_by` is the signed-in person, whatever the app sent (the dashboard and `seed.sql`, with no login, keep what they give) | — |
+| `done_on` is today by default and never after today (India time) | `done_on_future` |
+| After the tick only `remark` may change; student, item, date and `ticked_by` are fixed | `progress_frozen` |
+| The remark is trimmed; empty becomes none; at most 500 characters | `remark_too_long` |
+
+Every insert, update and delete is copied to `audit_log` by `audit_student_progress`, with
+`row_id` = `<student id>/<item id>`, because the table has no `id` column of its own. So an untick
+still shows who had ticked the item, when, and who removed it.
+
+Items of an earlier level can still be ticked after a promotion; the screen shows every level.
+
 ## Linking a login to a student
 
 A student record can exist without a login (many students never install the app). When a person
@@ -198,7 +223,8 @@ so every function is revoked from them and granted only where needed
 
 Internal functions (not called by the app, and not allowed to): `refresh_student_statuses`,
 `close_open_visits`, `handle_new_user`, `handle_user_confirmed`, `link_login_to_student`,
-`link_student_email`, `assign_roll_no`, `check_minor_consent`, the guard and audit triggers, and the helpers `my_role`,
+`link_student_email`, `assign_roll_no`, `check_minor_consent`, the guard and audit triggers
+(including `guard_student_progress` and `audit_student_progress`), and the helpers `my_role`,
 `is_guru`, `is_staff`, `setting_int`, `today_ist`.
 
 ## Scheduled jobs (pg_cron, times in UTC)
@@ -236,7 +262,7 @@ Internal functions (not called by the app, and not allowed to): `refresh_student
 `supabase/tests/smoke-test.mjs` runs every migration and `seed.sql` on an in-memory Postgres
 ([PGlite](https://pglite.dev)) on your own computer, then checks the rules that protect student
 data: login linking, the profile guard, registration and consent, attendance marking, the
-student overview, follow-up calls, who may run each function, and row-level security. It
+student overview, follow-up calls, syllabus ticks, who may run each function, and row-level security. It
 needs only Node.js, no database server and no Supabase account.
 
 ```bash

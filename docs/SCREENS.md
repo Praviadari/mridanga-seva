@@ -35,8 +35,8 @@ Status: **Built** works end to end · **Placeholder** a simple stand-in exists �
 | C5 | Mark attendance: scan a QR code or search a name and tap | Built | `app/src/app/staff/attendance.tsx`, `app/src/data/attendance.ts` |
 | C6 | Who is here now, with "Check out all" for closing time | Built | `app/src/app/staff/here-now.tsx` |
 | C7 | Student list: search by name or roll number; filter by level, status, mentor, days since last visit | Built | `app/src/app/staff/students/index.tsx`, `app/src/data/student-overview.ts` |
-| C8 | Student profile: details, parent and consent (minors, staff only), follow-up calls, visits, syllabus progress (read-only until C9), level history; log a call, check in or out | Built | `app/src/app/staff/students/[id].tsx`, `app/src/data/student-profile.ts` |
-| C9 | Syllabus tick-off | | |
+| C8 | Student profile: details, parent and consent (minors, staff only), follow-up calls, visits, syllabus progress (read-only; a button opens C9), level history; log a call, check in or out | Built | `app/src/app/staff/students/[id].tsx`, `app/src/data/student-profile.ts` |
+| C9 | Syllabus tick-off: every level's items in order; one tap ticks (dated today, your name), untick asks first, optional remark; opened from C8 | Built | `app/src/app/staff/syllabus/[id].tsx`, `app/src/data/syllabus.ts`, `app/src/components/syllabus-item-card.tsx` |
 | C10 | Follow-up queue: needs the Guru, call due, call later, no call planned; everyone or my students | Built | `app/src/app/staff/follow-up.tsx`, `app/src/data/follow-up.ts` |
 | C11 | Call log: phone the student or parent, then outcome, reason, comment (required), date; "Stopped coming" asks once more | Built | `app/src/app/staff/call/[id].tsx`, `app/src/data/follow-up.ts` |
 | C15 | Post an announcement | | |
@@ -61,5 +61,5 @@ Coordinator screens that the Guru also uses live in `app/src/app/staff/`
 
 ## Build order
 
-~~A1~~ → ~~C2, C3~~ → ~~C5, C6~~ → ~~C7, C8~~ → ~~C10, C11~~ → C9 → G4, G5 → C15, S10 → S1, ~~S3~~, S4, S9 →
+~~A1~~ → ~~C2, C3~~ → ~~C5, C6~~ → ~~C7, C8~~ → ~~C10, C11~~ → ~~C9~~ → G4, G5 → C15, S10 → S1, ~~S3~~, S4, S9 →
 G1, C1, C21, G8 → G2, G3 → G9, G10, G11.

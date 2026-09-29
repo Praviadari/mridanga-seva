@@ -308,3 +308,29 @@ session, which is kept on the phone already.
 shown from the saved copy stops working if its `qr_token` is changed on the server; the card
 updates the next time the phone is online. There is no screen yet to issue a new `qr_token` for a
 student whose code was shared.
+
+## 22. A syllabus tick records who ticked it, and an untick leaves a trace — 29 Sep 2026
+
+**Context.** Coordinators tick a syllabus item for a student when the student shows it in class
+(screen C9). Any coordinator on duty may tick, not only the mentor. In Phase 2 these ticks decide
+when a student can be put forward for the next level. The table `student_progress` let the app
+write any name in "ticked by" and any date, and an untick simply deleted the row, so nobody could
+see later that an item had been ticked, by whom or when.
+
+**Decision.** A trigger sets "ticked by" to the signed-in person, whatever the app sends, and
+refuses a date after today. After that, only the remark can change; to correct a tick, untick and
+tick again. Every tick, remark change and untick is copied to `audit_log`. The screen dates a
+tick today and asks once more before unticking. Ticking stays open to every coordinator and the
+Guru.
+
+**Why.** The record of who confirmed a student's progress must be true, because promotion will
+rest on it. Keeping the rule in the database (#5) means an old app version or a modified client
+cannot break it. Asking before an untick, and the audit copy, protect against a slip of the finger
+during a busy class.
+
+**Consequences.** Migration `0006_syllabus_progress.sql`. The app writes `student_progress`
+directly (insert, update of the remark, delete) instead of through a function, because each change
+is one row. If two coordinators tick the same item at once, the first tick is kept and the second
+phone says so. A future import of past progress (for example from today's Excel sheet) may carry
+earlier dates, but keeps the original "ticked by" names only when it runs in the Supabase
+dashboard, where no login is attached; from the app every tick is in the importer's name.

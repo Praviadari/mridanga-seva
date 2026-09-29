@@ -334,7 +334,34 @@
     "levelSection": "Level history",
     "noLevelChanges": "No level changes yet.",
     "levelChange": "{{from}} → {{to}}",
-    "approvedBy": "approved by {{name}}"
+    "approvedBy": "approved by {{name}}",
+    "tickSyllabus": "Tick syllabus items"
+  },
+  "syllabus": {
+    "title": "Syllabus tick-off",
+    "loadFailed": "Could not load the syllabus.",
+    "studentLevel": "Level now: {{level}}",
+    "intro": "Tap the box when the student shows the item in class. Today's date and your name are saved with the tick.",
+    "level": "Level",
+    "currentLevel": "{{level}} (now)",
+    "tickedOn": "Ticked {{date}} by {{name}}",
+    "addRemark": "Add a remark",
+    "editRemark": "Change the remark",
+    "remark": "Remark",
+    "remarkHint": "Optional, e.g. \"needs a steadier tempo\". Up to {{max}} characters.",
+    "saveRemark": "Save remark",
+    "remarkSaved": "Remark saved.",
+    "cancel": "Cancel",
+    "untickTitle": "Untick \"{{item}}\"?",
+    "untickBody": "Use this only if it was ticked by mistake. The date and remark go from the list; the class records keep a copy.",
+    "untickYes": "Yes, untick",
+    "alreadyTicked": "Someone else ticked this a moment ago. Their tick is kept.",
+    "alreadyUnticked": "This was already unticked. Nothing changed.",
+    "errors": {
+      "remarkTooLong": "The remark is too long. Keep it under 500 characters.",
+      "notAllowed": "Only coordinators and the Guru can tick syllabus items.",
+      "gone": "This item or tick is no longer there. The list has been loaded again."
+    }
   },
   "followUp": {
     "title": "Follow-up calls",

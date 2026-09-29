@@ -3,7 +3,7 @@
 // level and level history. From here the coordinator can log a call (C11) or check the student
 // in or out. Staff only: this screen shows the parent's details and call notes, which students
 // never see (docs/DATABASE.md "Who can see what"). Data: src/data/student-profile.ts.
-// Ticking syllabus items comes with C9; here progress is read-only.
+// Progress is read-only here; its button opens C9 Syllabus tick-off (staff/syllabus/[id]).
 
 import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
@@ -243,6 +243,11 @@ export default function StudentProfileScreen() {
             {item.remark ? ` · ${item.remark}` : ''}
           </AppText>
         ))}
+        <Button
+          variant="secondary"
+          label={t('profile.tickSyllabus')}
+          onPress={() => router.push({ pathname: '/staff/syllabus/[id]', params: { id: student.id } })}
+        />
       </Section>
 
       <Section title={t('profile.levelSection')}>

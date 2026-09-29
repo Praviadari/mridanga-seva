@@ -1,7 +1,7 @@
 // Database smoke test: runs every migration and seed.sql on an in-memory Postgres (PGlite),
 // then checks the rules that protect student data: login linking, the profile guard,
-// registration with consent, attendance marking, who may run which function, and row-level
-// security.
+// registration with consent, attendance marking, follow-up calls, syllabus ticks, who may run
+// which function, and row-level security.
 //
 // Run before pasting a migration into the live Supabase project:
 //   cd supabase/tests && npm install && npm test
@@ -346,8 +346,59 @@ check('coordinator reads the call-log timeline', callCount === 4, String(callCou
 check('student cannot read call logs',
   (await asApp('authenticated', arjun, 'select id from call_logs')).length === 0);
 
+// ---------------------------------------------------------------- syllabus tick-off (0006)
+// `registered` (Late Joiner, Beginner) has the login `late`; arjun is a different student.
+const [item1, item2] = await asOwner(`select id from syllabus_items where level_id = 1 order by sort limit 2`);
+const progressOf = async (itemId) => (await asOwner(`select done_on::text, ticked_by, remark from student_progress
+  where student_id = '${registered.id}' and item_id = ${itemId}`))[0];
+const auditOf = async (itemId) => (await asOwner(`select action from audit_log
+  where table_name = 'student_progress' and row_id = '${registered.id}/${itemId}' order by id`)).map((r) => r.action);
+
+await asApp('authenticated', coordinator,
+  `insert into student_progress (student_id, item_id, ticked_by, remark) values ($1, $2, $3, '  Steady tempo  ')`,
+  [registered.id, item1.id, guru]);
+const tick = await progressOf(item1.id);
+check('a tick records the coordinator who made it, not the one the app sent', tick?.ticked_by === coordinator,
+  tick?.ticked_by);
+check('... dated today, with the remark trimmed', tick?.done_on === (await asOwner(`select today_ist()::text as d`))[0].d
+  && tick.remark === 'Steady tempo', JSON.stringify(tick));
+await refusesWith('a tick cannot be dated in the future', 'done_on_future', () =>
+  asApp('authenticated', coordinator, `insert into student_progress (student_id, item_id, done_on)
+    values ($1, $2, today_ist() + 1)`, [registered.id, item2.id]));
+await refusesWith('a remark is at most 500 characters', 'remark_too_long', () =>
+  asApp('authenticated', coordinator, `update student_progress set remark = repeat('a', 501)
+    where student_id = $1 and item_id = $2`, [registered.id, item1.id]));
+await asApp('authenticated', coordinator, `update student_progress set remark = '   '
+  where student_id = $1 and item_id = $2`, [registered.id, item1.id]);
+check('an empty remark is saved as none', (await progressOf(item1.id)).remark === null);
+await refusesWith('the date of a tick cannot be changed', 'progress_frozen', () =>
+  asApp('authenticated', coordinator, `update student_progress set done_on = today_ist() - 3
+    where student_id = $1 and item_id = $2`, [registered.id, item1.id]));
+await refusesWith('who ticked cannot be changed', 'progress_frozen', () =>
+  asApp('authenticated', guru, `update student_progress set ticked_by = $3
+    where student_id = $1 and item_id = $2`, [registered.id, item1.id, guru]));
+await refuses('a student cannot tick their own syllabus', () =>
+  asApp('authenticated', late, `insert into student_progress (student_id, item_id) values ($1, $2)`,
+    [registered.id, item2.id]));
+check('a student reads their own ticks',
+  (await asApp('authenticated', late, 'select item_id from student_progress')).length === 1);
+check('... and nobody else\'s', (await asApp('authenticated', arjun,
+  `select item_id from student_progress where student_id = '${registered.id}'`)).length === 0);
+const unticked = await asApp('authenticated', late,
+  `delete from student_progress where student_id = $1 returning item_id`, [registered.id]);
+check('a student cannot untick', unticked.length === 0 && (await progressOf(item1.id)) !== undefined);
+await asApp('authenticated', coordinator, `delete from student_progress where student_id = $1 and item_id = $2`,
+  [registered.id, item1.id]);
+const trail = await auditOf(item1.id);
+check('tick, remark change and untick are kept in the audit log',
+  trail.join(',') === 'INSERT,UPDATE,DELETE', trail.join(','));
+const [{ ok: guardCallable }] = await asOwner(`select has_function_privilege('authenticated',
+  'guard_student_progress()', 'execute') or has_function_privilege('authenticated',
+  'audit_student_progress()', 'execute') as ok`);
+check('app roles cannot run the syllabus trigger functions', guardCallable === false);
+
 // ---------------------------------------------------------------- row-level security
-const seen = await asApp('authenticated', arjun, 'select full_name from students');
+const seen =await asApp('authenticated', arjun, 'select full_name from students');
 check('student sees only their own student record', seen.length === 1 && seen[0].full_name === 'Arjun Rao');
 check('student sees only their own profile',
   (await asApp('authenticated', arjun, 'select id from profiles')).length === 1);
