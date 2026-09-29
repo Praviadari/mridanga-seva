@@ -10,6 +10,7 @@ maintainer can understand it without asking anyone.
 | [DECISIONS.md](DECISIONS.md) | Why things are the way they are — every important decision, with its reason |
 | [GLOSSARY.md](GLOSSARY.md) | What a word means: mridanga terms (bol, taal, dayan) and app terms (visit, mentor, irregular) |
 | [OPERATIONS.md](OPERATIONS.md) | How to set up, run, back up and hand over the live system |
+| [REMAINING_TASKS.md](REMAINING_TASKS.md) | What has been completed, what is left for Phase 1 production, and the full future backlog |
 
 ## Rules for keeping these documents useful
 
