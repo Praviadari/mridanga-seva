@@ -9,7 +9,8 @@ will rely on it.
 |---|---|---|---|
 | Supabase | Database, login, storage, daily jobs | Free | Team email account |
 | Brevo | Sending sign-up and password-reset emails | Free (300 emails a day) | Team email account |
-| Expo | Building the Android app | Free | Team email account |
+| Expo | Building the Android app (EAS Build) | Free (15 Android builds a month) | Team email account |
+| Cloudflare | Hosting the web version (Cloudflare Pages) | Free | Team email account |
 | GitHub | Source code | Free, public repository | Maintainer |
 | YouTube | Lesson videos | Free | Team or channel owner |
 
@@ -72,15 +73,19 @@ Keep the logins for these in one place the team controls, so the system never de
      built-in email sends only 2 emails an hour). **Turn it on before any real student record
      exists**: while it is off, anyone can sign up with a student's email and be linked to that
      student's record ([DECISIONS.md #13](DECISIONS.md)).
-   - **Authentication → URL Configuration:** set **Site URL** to the web version's address (see
-     "Publishing the web version"). Under **Redirect URLs** add that address and, for development,
-     `http://localhost:8081`. Links in sign-up and password-reset emails open these addresses.
+   - **Authentication → URL Configuration:** set **Site URL** to the address of the web version
+     that talks to this project: `https://mridanga-seva.pages.dev` for the live project,
+     `https://mridanga-seva-test.pages.dev` for the test one (see "Publishing the web version"). Under
+     **Redirect URLs** add that address and, for development, `http://localhost:8081`. Links in
+     sign-up and password-reset emails open these addresses; the Android app uses the Site URL.
 5. **Email (SMTP):** in Brevo, verify the sender email and create an SMTP key. In Supabase, go to
    Authentication → SMTP settings and enter Brevo's host `smtp-relay.brevo.com`, port 587, login and key.
    Without this, Supabase sends only 2 emails an hour.
 6. **App settings:** copy `app/.env.example` to `app/.env` and fill in the project URL and the
    anon / publishable key (**Project Settings → API Keys**). Never use the `service_role` or
-   `sb_secret_...` key in the app: the app refuses to start with it. Then run the app:
+   `sb_secret_...` key in the app: the app refuses to start with it. Put the test project's two
+   values in `app/.env.test` the same way; the test web site and test APK are built from it
+   ("Publishing the web version", "Building the Android app"). Then run the app:
    ```bash
    cd app
    npm install
@@ -108,23 +113,55 @@ Suggested practice, until the team agrees its own (with the temple's legal advis
 
 ## Publishing the web version
 
-iPhone users use the web version and can add it to their home screen. Build it on any computer:
+iPhone users use the web version and can add it to their home screen. It is hosted on
+**Cloudflare Pages** ([DECISIONS.md #23](DECISIONS.md)), as two sites that look the same:
+
+| Site | Talks to | Settings file | Used by |
+|---|---|---|---|
+| `mridanga-seva-test` | the test Supabase project (dummy data) | `app/.env.test` | demos, testers, volunteers |
+| `mridanga-seva` | the live Supabase project | `app/.env` | the class, from the pilot on |
+
+Both files hold the two lines of `app/.env.example`, filled in with that project's URL and
+publishable key. Build on any computer that has the file:
 
 ```bash
 cd app
-npx expo export --platform web
+npm run export:web -- --env .env.test
 ```
 
-This writes the site to `app/dist/`. Upload that folder to a free static host. The web version is a
-single-page app ([DECISIONS.md #15](DECISIONS.md)), so the host must send every address to
-`index.html`:
+That builds the test site; `npm run export:web` alone builds the live site. The first line it
+prints names the Supabase project it built for: check it before uploading. The site is written
+to `app/dist/`. Always use this command, not a bare `npx expo export`, because
+`scripts/export-web.mjs`
 
-- **Netlify:** a file `app/public/_redirects` containing `/* /index.html 200`.
-- **Cloudflare Pages:** does this by itself when the site has no `404.html`.
-- **GitHub Pages:** copy `dist/index.html` to `dist/404.html` before uploading; if the site lives
-  under `/<repo-name>`, also set `experiments.baseUrl` in `app.json`.
+- hands the chosen file's settings to Expo and clears Metro's cache (an old cache once produced
+  a site that said *App not set up*);
+- moves the images Expo puts under `assets/node_modules` (such as the back arrow) to
+  `assets/vendor` — Cloudflare Pages never uploads a folder named `node_modules`, so those images
+  would be missing;
+- stops if the export holds the Supabase secret key, or does not hold exactly the URL and key of
+  the chosen file, so a test site can never talk to the live project.
 
-Then put the site's address in Supabase as the Site URL (setup step 4). The host is not chosen yet.
+**First upload** (once per site, logged in to the team's Cloudflare account; the dashboard's
+wording may differ a little):
+
+1. **Workers & Pages → Create → Pages → Upload assets** (direct upload, no Git connection).
+2. Project name `mridanga-seva-test` (or `mridanga-seva` for the live site). The address is then
+   `https://<name>.pages.dev` (Cloudflare adds a few letters if the name is taken; use the
+   address it shows).
+3. Drag the `app/dist` folder in and click **Deploy site**.
+4. In **the Supabase project that site talks to**, set that address as the **Site URL** and add
+   it to **Redirect URLs** (setup step 4).
+
+**Each new release:** build for the site, open its project in Cloudflare, choose **Create
+deployment**, and drag in `app/dist`. From a terminal instead:
+`npx wrangler pages deploy dist --project-name <name>` (it opens the browser to log in).
+
+The web version is a single-page app ([DECISIONS.md #15](DECISIONS.md)), so the host must send
+every address to `index.html`. Cloudflare Pages does this by itself as long as the site has no
+`404.html`; the script warns if one appears. On other hosts (not used now): Netlify needs a file
+`app/public/_redirects` containing `/* /index.html 200`; GitHub Pages needs `dist/index.html`
+copied to `dist/404.html`.
 
 **Camera on the web version.** Browsers let a page use the camera only on an `https://` address
 (or `localhost` during development); all the hosts above serve `https`. Browsers without built-in
@@ -133,10 +170,78 @@ public jsDelivr CDN (`fastly.jsdelivr.net`, package `zxing-wasm`). Only the read
 downloaded; camera pictures never leave the phone. If that address is blocked on a network,
 scanning does not work there, but the name search on the same screen still does.
 
+### Adding it to an iPhone home screen
+
+In **Safari**, open the site, tap **Share → Add to Home Screen → Add**. It then opens full screen
+with the app icon, like an installed app. The icon and name come from `app/public/index.html` and
+`app/public/manifest.json`.
+
+Tell users two things:
+
+- The home-screen app keeps its own login, apart from Safari: sign in once inside it.
+- Links in emails (confirm the email, reset the password) open in Safari, not in the home-screen
+  app. Confirm or set the new password there, then go back to the home-screen app and sign in.
+
+## Building the Android app
+
+The Android app is an APK that people install from a link; it is not on the Play Store yet
+([DECISIONS.md #24](DECISIONS.md)). It is built in the cloud by **EAS Build** on the team's free
+Expo account, so no Android Studio is needed. The package name `org.mridangaseva.app` is in
+`app/app.json`. **Never change it**: phones would treat it as a different app. `app/eas.json` has
+two build profiles, both an APK for sharing by link with the version code raised by EAS on every
+build:
+
+| Profile | Talks to | Used by |
+|---|---|---|
+| `preview` | the test Supabase project (settings from `app/.env.test`) | demos, testers, volunteers |
+| `production` | the live Supabase project (settings from `app/.env`) | the class, from the pilot on |
+
+Both have the same package name, so a phone holds one or the other: installing one replaces the
+other, and the person signs in again.
+
+**Once, on a new computer or account** (from `app/`; each command opens a login or asks questions):
+
+```bash
+npx eas-cli@latest login
+npx eas-cli@latest init
+npx eas-cli@latest env:push --environment preview --path .env.test
+npx eas-cli@latest env:push --environment production --path .env
+```
+
+- `init` links the app to a project on the Expo account and writes its `projectId` into
+  `app.json`. Commit that change; the id is not a secret.
+- `env:push` copies each project's Supabase URL and publishable key to EAS. The build servers
+  never see `app/.env` or `app/.env.test` (they are not in git), so without this step the APK
+  would say *App not set up*. If it asks for a visibility, choose plain text: these values are
+  inside every copy of the app anyway.
+
+**Each build** (`preview` for the test project, `production` for the live one):
+
+```bash
+npx eas-cli@latest build -p android --profile preview
+```
+
+- The **first** build asks to generate an Android keystore: answer yes. Expo keeps it. Every
+  later APK must be signed with the same keystore, or phones refuse the update. Download a backup
+  once (`npx eas-cli@latest credentials -p android`) and keep it with the team's passwords —
+  never in this repository or a chat.
+- Free builds wait in a low-priority queue, sometimes for a while, and may run for at most
+  45 minutes. The free plan allows 15 Android builds a month, so build for a release, not for every change.
+- When it finishes, the build's page on expo.dev has an **Install** link and a QR code. Share that link.
+
+**Installing on a phone:** open the link on the phone, download the APK, allow the browser to
+**install unknown apps** when Android asks, and install. Android may warn that the app is from an
+unknown developer; choose to install anyway. A newer APK installs over the old one and keeps
+the login.
+
+Every change to the app needs a new APK until over-the-air updates (EAS Update) are set up — a
+later decision.
+
 ## App icon and splash screen
 
-`app/assets/images/` holds placeholder artwork (a white khol on saffron), drawn by
-`node app/scripts/make-placeholder-icons.mjs`. When the team has a logo, replace the PNG files
+`app/assets/images/` and the web version's home-screen icons in `app/public/` hold placeholder
+artwork (a white khol on saffron), drawn by `node scripts/make-placeholder-icons.mjs` (run from
+`app/`). When the team has a logo, replace the PNG files
 with images of the same sizes and keep the saffron colour in `app.json` and
 `app/src/theme/colors.ts` in step with it.
 

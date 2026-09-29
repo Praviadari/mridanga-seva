@@ -334,3 +334,46 @@ is one row. If two coordinators tick the same item at once, the first tick is ke
 phone says so. A future import of past progress (for example from today's Excel sheet) may carry
 earlier dates, but keeps the original "ticked by" names only when it runs in the Supabase
 dashboard, where no login is attached; from the app every tick is in the importer's name.
+
+## 23. The web version is hosted on Cloudflare Pages — 29 Sep 2026
+
+**Context.** Most members use iPhones, and Phase 1 has no App Store listing (#6), so they use the
+web version. It needs a free host that sends every address to `index.html` (#15).
+
+**Decision.** Host it on Cloudflare Pages (free plan) under the team's account, uploaded by hand
+from `app/dist` (direct upload, no Git connection yet). There are two sites:
+`mridanga-seva-test` talks to the test Supabase project (demos, testers, volunteers) and
+`mridanga-seva` to the live one.
+
+**Why.** Free without a card; it sends unknown addresses to `index.html` by itself; the free plan
+does not meter bandwidth for a static site. Netlify's free plan now counts deploys and bandwidth
+against a monthly credit; GitHub Pages would put the site under a personal account's name and
+needs a copied `404.html`.
+
+**Consequences.** Build with `npm run export:web` (add `-- --env .env.test` for the test site),
+never a bare `expo export`: Cloudflare Pages never uploads a folder named `node_modules`, where
+Expo puts some images, so `app/scripts/export-web.mjs` moves them; it also checks that the site
+holds the chosen project's settings and no secret key. A person uploads each release
+(OPERATIONS.md); automatic deploys from GitHub can be added later. Each site's address is the
+Site URL of the Supabase project it talks to.
+
+## 24. The Android app is an APK built by EAS Build — 29 Sep 2026
+
+**Context.** Phase 1 costs nothing (#6), so there is no Play Store listing yet: Android users
+install the app from a link. The maintainer's computer has no Android build tools.
+
+**Decision.** Build an APK in the cloud with EAS Build on the team's free Expo account
+(`app/eas.json`: internal distribution, version code kept and raised by EAS). Profile `preview`
+talks to the test Supabase project, profile `production` to the live one. The Android package
+name is `org.mridangaseva.app`, chosen by the team.
+
+**Why.** No Android Studio needed; the free plan's 15 Android builds a month are plenty for
+releases; the build page gives an install link and QR code to share.
+
+**Consequences.** The package name is permanent: a Play Store listing must use the same name, and
+a new name would be a different app that people must install again. The signing keystore is kept
+by Expo, with one backup outside the repository; losing it means nobody can update the installed
+app. The Supabase URL and key reach the build as EAS environment variables (`preview` and
+`production`), because `app/.env` and `app/.env.test` are not uploaded. Both profiles share the
+package name, so a phone has the test app or the live app, not both. Every app change needs a
+new APK until over-the-air updates (EAS Update) are chosen.

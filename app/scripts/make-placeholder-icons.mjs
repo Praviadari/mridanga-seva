@@ -1,7 +1,8 @@
-// Draws the placeholder app icon, Android adaptive icon layers, splash image and favicon:
-// a plain mridanga (khol) outline in white on saffron. Run from app/ with
+// Draws the placeholder app icon, Android adaptive icon layers, splash image, favicon and the
+// web version's home-screen icons: a plain mridanga (khol) outline in white on saffron. Run
+// from app/ with
 //   node scripts/make-placeholder-icons.mjs
-// It overwrites the PNGs in assets/images/. Replace them with real artwork once the team
+// It overwrites the PNGs in assets/images/ and public/. Replace them with real artwork once the team
 // chooses a logo (docs/OPERATIONS.md "App icon and splash screen").
 //
 // Uses only Node's built-in zlib to write PNG files, so it needs no extra packages.
@@ -130,4 +131,10 @@ writeFileSync(dir + 'splash-icon.png', render(512, 0.95, null, WHITE));
 writeFileSync(dir + 'android-icon-foreground.png', render(512, 0.52, null, WHITE));
 writeFileSync(dir + 'android-icon-background.png', solid(512, SAFFRON));
 writeFileSync(dir + 'android-icon-monochrome.png', render(432, 0.52, null, WHITE));
-console.log('Placeholder icons written to ' + dir);
+// Web version: icons for "Add to Home Screen" (public/index.html, public/manifest.json).
+// Expo copies public/ into the web export as it is. iPhones round the corners themselves.
+const web = 'public/';
+writeFileSync(web + 'apple-touch-icon.png', render(180, 0.7, SAFFRON, WHITE));
+writeFileSync(web + 'icon-192.png', render(192, 0.7, SAFFRON, WHITE));
+writeFileSync(web + 'icon-512.png', render(512, 0.7, SAFFRON, WHITE));
+console.log('Placeholder icons written to ' + dir + ' and ' + web);

@@ -8,6 +8,7 @@
     "scheme": "mridangaseva",
     "userInterfaceStyle": "automatic",
     "android": {
+      "package": "org.mridangaseva.app",
       "adaptiveIcon": {
         "backgroundColor": "#B45309",
         "foregroundImage": "./assets/images/android-icon-foreground.png",

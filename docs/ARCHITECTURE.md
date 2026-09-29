@@ -41,6 +41,8 @@ flowchart LR
 | Daily jobs | Move quiet students to *Irregular*, create follow-up calls, close check-ins left open | `pg_cron`, defined in the migration |
 | Email | Sends sign-up confirmation and password-reset emails | Brevo free plan, plugged into Supabase as SMTP |
 | Videos | Lesson videos stay on YouTube; the app only stores links | YouTube |
+| Web hosting | Serves the web version that iPhone users add to their home screen | Cloudflare Pages, uploaded from `app/dist` (OPERATIONS.md) |
+| Android builds | Builds the APK that Android users install from a link | EAS Build, `app/eas.json` (OPERATIONS.md) |
 
 ## Roles
 
