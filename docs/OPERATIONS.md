@@ -23,8 +23,12 @@ Keep the logins for these in one place the team controls, so the system never de
 2. **Create the tables** — step by step:
    1. On GitHub, open [`supabase/migrations/0001_phase1.sql`](../supabase/migrations/0001_phase1.sql)
       and click **Copy raw file** (the copy icon at the top right of the file).
-   2. In Supabase, open **SQL Editor → New query**, paste, and click **Run**.
-   3. You should see *Success. No rows returned.*
+   2. In Supabase, open **SQL Editor → New query**, paste, and click **Run**. **Before pressing
+      Run, check which project is open**: its name is at the top of the dashboard, and its
+      reference is in the address bar. The live and test projects look the same.
+   3. You should see *Success. No rows returned.* For `0001` only, the editor instead shows a small
+      table with one column, `schedule`, holding the number 2 (the second daily job it created);
+      that also means it worked.
    4. If it fails on `pg_cron`: open **Database → Extensions**, switch on **pg_cron**, and run the
       same query again. A failed run changes nothing, so running it again is safe.
    5. Run every later migration the same way, in number order: `0002_login_linking.sql`, then
@@ -34,6 +38,20 @@ Keep the logins for these in one place the team controls, so the system never de
    in a new query. Check under **Table Editor → students**: 15 students, roll numbers
    `MS-2026-0001` to `MS-2026-0015`. Never run the seed on the live project. Its header lists the
    steps it cannot do (creating staff logins, assigning mentors).
+
+   **If the seed was run on the live project by mistake** (it happened once, on 29 Sep 2026), and
+   the live project has no real students yet, remove it in the live project's SQL editor. This
+   deletes every student and their records, so never run it once real students exist:
+   ```sql
+   begin;
+   delete from students;        -- also their parents, consents, visits, calls, follow-ups, progress
+   delete from roll_counters;   -- the first real student gets MS-<year>-0001 again
+   delete from announcements;   -- before groups: announcements point to groups
+   delete from materials;       -- before syllabus_items: materials point to syllabus items
+   delete from groups;
+   delete from syllabus_items;
+   commit;
+   ```
 
    **If the SQL editor only shows a spinning circle,** the network is blocking the editor's files
    (common on office networks). Try Ctrl + F5, another browser, a private window, or another
