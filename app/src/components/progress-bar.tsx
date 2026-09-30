@@ -16,13 +16,18 @@ export type ProgressBarProps = {
   label: string;
   /** The count in words, already translated, e.g. "3 of 6 done". Shown under the bar. */
   valueText: string;
+  /**
+   * Turn green when full. Default true. False for a share of a whole, such as the students of
+   * one level on the Guru dashboard (G1), where a full bar is not an achievement.
+   */
+  showComplete?: boolean;
 };
 
-/** Horizontal progress bar in the brand colour; green once everything is done. */
-export function ProgressBar({ done, total, label, valueText }: ProgressBarProps) {
+/** Horizontal progress bar in the brand colour; green once everything is done (see `showComplete`). */
+export function ProgressBar({ done, total, label, valueText, showComplete = true }: ProgressBarProps) {
   const { colors } = useTheme();
   const share = total > 0 ? Math.min(1, done / total) : 0;
-  const complete = total > 0 && done >= total;
+  const complete = showComplete && total > 0 && done >= total;
   return (
     <View
       role="progressbar"

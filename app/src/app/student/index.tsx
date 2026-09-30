@@ -1,8 +1,142 @@
-// Student home. Placeholder until S1 Student home is built (docs/SCREENS.md).
+// S1 Student home: a greeting, a large button to My QR (S3), this week's visits and the last
+// visit, the student's level with their syllabus progress, and the latest announcements with the
+// ones not opened yet marked "New" (S10). Read-only.
+// Numbers: student_home() through src/data/home.ts; announcements: src/data/announcements.ts.
+// It loads again each time it comes back into view, so "New" goes once an announcement is opened.
 
-import { RoleHome } from '@/components/role-home';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+
+import { signOut } from '@/auth/auth-actions';
+import { useAuth } from '@/auth/auth-provider';
+import { AnnouncementCard } from '@/components/announcement-card';
+import { AppText } from '@/components/app-text';
+import { Button } from '@/components/button';
+import { Notice } from '@/components/notice';
+import { ProgressBar } from '@/components/progress-bar';
+import { Screen } from '@/components/screen';
+import { Section } from '@/components/section';
+import { StatGrid, StatTile } from '@/components/stat-tile';
+import { fetchMyAnnouncements, type MyAnnouncementList } from '@/data/announcements';
+import { fetchStudentHome, type StudentHome } from '@/data/home';
+import { audienceName, lastVisitText, levelName } from '@/i18n/labels';
+import { formatDateTimeInIndia } from '@/lib/dates';
+
+/** How many announcements the home shows; the rest are one tap away on S10. */
+const LATEST_COUNT = 3;
 
 /** Student home screen. */
-export default function StudentHome() {
-  return <RoleHome role="student" />;
+export default function StudentHomeScreen() {
+  const { t } = useTranslation();
+  const { profile } = useAuth();
+  const myId = profile?.id ?? '';
+  const name = profile?.full_name.trim();
+  // undefined = loading, null = could not load.
+  const [home, setHome] = useState<StudentHome | 'not_found' | null | undefined>(undefined);
+  const [news, setNews] = useState<MyAnnouncementList | null | undefined>(undefined);
+
+  const load = useCallback(async () => {
+    const [loadedHome, loadedNews] = await Promise.all([fetchStudentHome(), fetchMyAnnouncements(myId)]);
+    setHome(loadedHome);
+    setNews(loadedNews);
+  }, [myId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void load();
+    }, [load]),
+  );
+
+  const unread = news ? news.announcements.filter((a) => !a.readByMe).length : 0;
+
+  return (
+    <Screen>
+      <AppText variant="title">{name ? t('home.greeting', { name }) : t('home.greetingNoName')}</AppText>
+
+      {/* First and always there, even when nothing else loads: My QR keeps a copy on the phone
+          and works without internet (docs/DECISIONS.md #21), which is when it is needed most. */}
+      <Button size="large" label={t('myQr.open')} onPress={() => router.push('/student/my-qr')} />
+
+      {home === undefined ? <AppText tone="muted">{t('common.loading')}</AppText> : null}
+      {home === null || news === null ? (
+        <>
+          <Notice tone="error" title={t('home.loadFailed')}>
+            {t('common.networkError')}
+          </Notice>
+          <Button variant="secondary" label={t('common.tryAgain')} onPress={() => void load()} />
+        </>
+      ) : null}
+      {home === 'not_found' ? (
+        <Notice tone="info" title={t('myQr.noRecordTitle')}>
+          {t('myQr.noRecordBody')}
+        </Notice>
+      ) : null}
+
+      {home && home !== 'not_found' ? (
+        <>
+          <Section title={t('home.student.thisWeek')}>
+            <StatGrid>
+              <StatTile value={String(home.visitsThisWeek)} label={t('home.student.visitsThisWeek')} />
+              <StatTile
+                // Never came: no number of days to show; the line below says "No visit yet".
+                value={home.lastVisitAt ? String(home.daysSinceVisit) : '—'}
+                label={t('home.student.daysSinceVisit')}
+              />
+            </StatGrid>
+            <AppText tone="muted">{lastVisitText(t, home)}</AppText>
+          </Section>
+
+          <Section title={t('home.student.myLevel', { level: levelName(t, home.levelId) })}>
+            {home.syllabusTotal > 0 ? (
+              <ProgressBar
+                done={home.syllabusDone}
+                total={home.syllabusTotal}
+                label={t('syllabus.progressLabel', { level: levelName(t, home.levelId) })}
+                valueText={t('profile.syllabusDone', { done: home.syllabusDone, total: home.syllabusTotal })}
+              />
+            ) : (
+              <AppText tone="muted">{t('profile.noSyllabus')}</AppText>
+            )}
+          </Section>
+        </>
+      ) : null}
+
+      {news ? (
+        <Section
+          title={t('announcements.title')}
+          description={unread > 0 ? t('home.student.unread', { count: unread }) : undefined}>
+          {news.announcements.length === 0 ? (
+            <AppText tone="muted">{t('announcements.emptyStudent')}</AppText>
+          ) : null}
+          {/* Same order as S10: pinned first, then newest. */}
+          {news.announcements.slice(0, LATEST_COUNT).map((a) => (
+            <AnnouncementCard
+              key={a.id}
+              title={a.title}
+              body={a.body}
+              pinned={a.pinned}
+              unread={!a.readByMe}
+              details={[
+                `${formatDateTimeInIndia(a.publishAt)} · ${audienceName(t, a, {
+                  groupName: a.audienceGroup !== null ? news.groupNames.get(a.audienceGroup) : null,
+                })}`,
+                ...(a.createdBy && news.staffNames.has(a.createdBy)
+                  ? [t('announcements.postedBy', { name: news.staffNames.get(a.createdBy) })]
+                  : []),
+              ]}
+              onPress={() => router.push({ pathname: '/student/announcements/[id]', params: { id: String(a.id) } })}
+            />
+          ))}
+          <Button
+            variant="secondary"
+            label={t('home.student.allAnnouncements')}
+            onPress={() => router.push('/student/announcements')}
+          />
+        </Section>
+      ) : null}
+
+      <Button variant="link" label={t('common.signOut')} onPress={() => void signOut()} />
+    </Screen>
+  );
 }

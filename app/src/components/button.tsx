@@ -13,6 +13,11 @@ export type ButtonProps = {
   onPress: () => void;
   /** 'primary' = main action (one per screen), 'secondary' = outlined, 'link' = text only. */
   variant?: 'primary' | 'secondary' | 'link';
+  /**
+   * 'large' is taller with bigger text, for the one thing a screen is mostly for, e.g. My QR on
+   * the student home, which a student opens while standing at the door. Default 'normal'.
+   */
+  size?: 'normal' | 'large';
   /** Shows a spinner and ignores presses, e.g. while waiting for the server. */
   loading?: boolean;
   disabled?: boolean;
@@ -23,7 +28,7 @@ export type ButtonProps = {
  * While `loading` it shows a spinner instead of the label and ignores presses, so a slow
  * network cannot cause a double submit.
  */
-export function Button({ label, onPress, variant = 'primary', loading, disabled }: ButtonProps) {
+export function Button({ label, onPress, variant = 'primary', size = 'normal', loading, disabled }: ButtonProps) {
   const { colors } = useTheme();
   const inactive = disabled || loading;
   const textColour = variant === 'primary' ? colors.onPrimary : colors.primary;
@@ -42,12 +47,15 @@ export function Button({ label, onPress, variant = 'primary', loading, disabled 
         variant === 'primary' && { backgroundColor: colors.primary },
         variant === 'secondary' && { borderColor: colors.primary, borderWidth: 1.5 },
         variant === 'link' && styles.link,
+        size === 'large' && styles.large,
         (pressed || disabled) && styles.dimmed,
       ]}>
       {loading ? (
         <ActivityIndicator color={textColour} />
       ) : (
-        <AppText style={[typography.label, { color: textColour }]}>{label}</AppText>
+        <AppText style={[size === 'large' ? typography.subtitle : typography.label, { color: textColour }]}>
+          {label}
+        </AppText>
       )}
     </Pressable>
   );
@@ -64,6 +72,9 @@ const styles = StyleSheet.create({
   link: {
     paddingHorizontal: spacing.sm,
     alignSelf: 'center',
+  },
+  large: {
+    minHeight: 72,
   },
   dimmed: {
     opacity: 0.6,

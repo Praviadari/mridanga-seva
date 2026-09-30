@@ -13,6 +13,7 @@ in number order:
 | `0006_syllabus_progress.sql` | A syllabus tick records who really ticked it and cannot be dated in the future; every tick and untick is kept in `audit_log` ([DECISIONS.md #22](DECISIONS.md)) |
 | `0007_announcements.sql` | Announcements: checks on every announcement, only students and staff can read them, the author or the Guru can delete, read receipts written only by the reader, and views for "seen by N of M" ([DECISIONS.md #25](DECISIONS.md)) |
 | `0008_announcement_follow_ups.sql` | Students see who posted an announcement (`staff_names`); editing marks a published announcement "Edited"; checks on groups, which only staff and members can see; private replies to announcements ([DECISIONS.md #26–#29](DECISIONS.md)) |
+| `0009_home_screens.sql` | The numbers on the three home screens: `student_home`, `coordinator_dashboard` and `guru_dashboard`, and one meaning of "this week" (`week_start_ist`) ([DECISIONS.md #31](DECISIONS.md)) |
 
 Every table and important column also carries a `COMMENT ON` description, so you can read it in
 the Supabase dashboard (Table Editor → table → description).
@@ -288,6 +289,29 @@ deleted: it is no longer offered when posting, old announcements keep it, and it
 see them. The app offers no delete; the database refuses to delete a group an announcement was
 sent to. The view `group_summary` (security invoker) gives each group with its number of members.
 
+## Home screens
+
+Each home screen gets all its numbers from one function (0009,
+[DECISIONS.md #31](DECISIONS.md)), which returns one JSON object. The functions only read. They
+are **security invoker**: they count with the rights of the person asking, so row-level security
+still applies, as for the views. The app reads them in `app/src/data/home.ts`.
+
+| Function | Screen | Who | Gives |
+|---|---|---|---|
+| `student_home()` | S1 student home | Anyone signed in; a login without a student record gets `null` | Own name, roll number, level, status, joined; `last_visit_at`, `days_since_visit`, `here_now` (as in `student_overview`); `visits_this_week`; `syllabus_done` and `syllabus_total` for the current level |
+| `coordinator_dashboard()` | C1 coordinator dashboard | Coordinators and the Guru; others get `not_allowed` | `here_now` (open visits, as C6), `visits_today` (check-ins since midnight, as C5), `my_calls_due`, `new_joiner_weeks`, `new_joiner_count`, `new_joiners` (newest 50: id, name, roll number, level, joined, visits) |
+| `guru_dashboard()` | G1 Guru dashboard | The Guru; others get `not_allowed` | `week_start`, `came_this_week` (students, each once), `in_class`, `new_joiner_weeks`, `new_joiners`, `by_level` (every level, students in class), `by_status` (every status, all students), `follow_ups` (per person the task is assigned to: `overdue`, `escalated`) |
+
+Words these functions use, the same on every screen:
+
+| Word | Meaning |
+|---|---|
+| This week | Monday to today, India time: `week_start_ist()` |
+| New joiner | `joined_on` within the last `settings.new_joiner_weeks` weeks (4), and not *Left* |
+| In class | Status is not *Left* |
+| Calls due for my students (C1) | Students with an open follow-up task due today or earlier, or escalated, that is assigned to me or whose mentor I am: the *needs the Guru* and *call due* groups of C10 for "My students" |
+| Overdue (G1) | Students with an open task past its due date, not escalated. Escalated ones are counted separately. Grouped by the task's assignee (the mentor when the task was made); no assignee = the student had no mentor |
+
 ## Linking a login to a student
 
 A student record can exist without a login (many students never install the app). When a person
@@ -322,6 +346,10 @@ so every function is revoked from them and granted only where needed
 | `log_call(student, outcome, reason, comment, next_date)` | Guru, coordinator | Records a follow-up call and applies its outcome (pause, leave, new call task, retry). See "Follow-up calls" |
 | `register_student(...)` | Guru, coordinator | Saves a new student, and for a minor the guardian and consent, in one step. Returns the id, roll number and whether an existing login was linked. See "Registering a student" |
 | `staff_names()` | Guru, coordinator, student (others get nothing) | Id and name of every Guru and coordinator, active or not, for "posted by". Security definer. See "Announcements" |
+| `student_home()` | Anyone signed in (a student gets their own numbers) | The student home's numbers. See "Home screens" |
+| `coordinator_dashboard()` | Guru, coordinator | The coordinator dashboard's numbers. See "Home screens" |
+| `guru_dashboard()` | Guru | The Guru dashboard's numbers. See "Home screens" |
+| `week_start_ist()` | Anyone signed in | Monday of this week in India; used by the functions above |
 
 Internal functions (not called by the app, and not allowed to): `refresh_student_statuses`,
 `close_open_visits`, `handle_new_user`, `handle_user_confirmed`, `link_login_to_student`,
@@ -370,8 +398,8 @@ Internal functions (not called by the app, and not allowed to): `refresh_student
 ([PGlite](https://pglite.dev)) on your own computer, then checks the rules that protect student
 data: login linking, the profile guard, registration and consent, attendance marking, the
 student overview, follow-up calls, syllabus ticks, announcements with their read receipts,
-edits, staff names and private replies, groups, who may run each function, and row-level
-security. It
+edits, staff names and private replies, groups, the home-screen numbers, who may run each
+function, and row-level security. It
 needs only Node.js, no database server and no Supabase account.
 
 ```bash

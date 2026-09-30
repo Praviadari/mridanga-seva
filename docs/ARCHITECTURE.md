@@ -75,7 +75,8 @@ app/
                        form checks. Screens call these, never the database directly
     components/        Building blocks shared by screens: text, buttons, fields, choices, list rows,
                        the QR scanner, the syllabus item card, the announcement card and form,
-                       the reply box and reply card, a progress bar, page frame
+                       the reply box and reply card, a progress bar, the number tiles of the
+                       home screens, the staff-screen buttons (C1, G1), page frame
     i18n/              Interface text in English, Telugu and Hindi (docs/TRANSLATIONS.md), and
                        labels.ts, which words levels and lengths of time the same on every screen
     lib/               The Supabase client, on-device storage and date helpers (India time)
@@ -111,6 +112,10 @@ saved login and the profile are being fetched.
   A screen of another area cannot be opened, even by typing its address on the web.
 - The `staff/` folder is open to both `guru` and `coordinator`, because the Guru sees every
   coordinator screen. Put a new screen there unless only one role may use it.
+- Each role's first screen is its home: the student home (S1, `student/index.tsx`), the
+  coordinator dashboard (C1, `coordinator/index.tsx`) or the Guru dashboard (G1,
+  `guru/index.tsx`). C1 and G1 open the staff screens through the same buttons
+  (`components/staff-shortcuts.tsx`); S1 opens My QR and the announcements.
 - `src/app/index.tsx` shows the splash while loading, then sends the person to their area's
   first screen, or to the screen a link asked for when it belongs to their area
   (`src/auth/requested-path.ts`, [DECISIONS.md #30](DECISIONS.md)). A web address or shared link
@@ -128,6 +133,8 @@ read or write the person is not allowed, whatever the app shows.
   `with (security_invoker = true)`, so the row-level security of the tables under it still
   applies ([DECISIONS.md #20](DECISIONS.md)). The one exception that shows more than the tables
   allow is the function `staff_names()`: staff names only, for "posted by" ([DECISIONS.md #26](DECISIONS.md)).
+  The functions that count the home screens' numbers (`student_home`, `coordinator_dashboard`,
+  `guru_dashboard`) are security invoker for the same reason ([DECISIONS.md #31](DECISIONS.md)).
 - **The app holds only the public (anon / publishable) key.** It is safe to ship because RLS protects
   the data. The `service_role` key bypasses RLS and must never be in the app or the repository.
 - **The app refuses to start with the `service_role` key** in `app/.env` and shows a warning

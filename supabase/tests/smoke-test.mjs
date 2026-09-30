@@ -1,8 +1,8 @@
 // Database smoke test: runs every migration and seed.sql on an in-memory Postgres (PGlite),
 // then checks the rules that protect student data: login linking, the profile guard,
 // registration with consent, attendance marking, follow-up calls, syllabus ticks, announcements
-// with their read receipts, edits and private replies, groups, who may run which function, and
-// row-level security.
+// with their read receipts, edits and private replies, groups, the home-screen numbers, who may
+// run which function, and row-level security.
 //
 // Run before pasting a migration into the live Supabase project:
 //   cd supabase/tests && npm install && npm test
@@ -650,6 +650,115 @@ check('replies go with their announcement',
 const [{ ok: followUpGuardsCallable }] = await asOwner(`select has_function_privilege('authenticated', 'guard_group()', 'execute')
   or has_function_privilege('authenticated', 'guard_announcement_reply()', 'execute') as ok`);
 check('app roles cannot run the group and reply trigger functions', followUpGuardsCallable === false);
+
+// ---------------------------------------------------------------- home screens (0009)
+const [{ monday, isodow, back }] = await asOwner(`select week_start_ist()::text as monday,
+  extract(isodow from week_start_ist())::int as isodow, today_ist() - week_start_ist() as back`);
+check('"this week" starts on a Monday, at most 6 days ago', isodow === 1 && back >= 0 && back <= 6, monday);
+
+/** Runs one home-screen function as `userId`; returns its JSON result. */
+async function homeOf(fn, userId) {
+  const [row] = await asApp('authenticated', userId, `select ${fn}() as h`);
+  return row.h;
+}
+
+// S1 student home
+const [{ id: arjunId }] = await asOwner(`select id from students where profile_id = '${arjun}'`);
+const weekVisitsOf = async (studentId) => (await asOwner(`select count(*)::int as n from visits
+  where student_id = '${studentId}' and (check_in at time zone 'Asia/Kolkata')::date >= week_start_ist()`))[0].n;
+const arjunBefore = await homeOf('student_home', arjun);
+check('student_home gives the student their own name and level', arjunBefore?.full_name === 'Arjun Rao' && arjunBefore.level_id === 3,
+  JSON.stringify(arjunBefore));
+check('... visits this week counted from Monday', arjunBefore.visits_this_week === (await weekVisitsOf(arjunId)),
+  String(arjunBefore.visits_this_week));
+await mark(arjunId, 'in');
+const arjunHere = await homeOf('student_home', arjun);
+check('... a check-in now adds one visit this week and shows here now',
+  arjunHere.visits_this_week === arjunBefore.visits_this_week + 1 && arjunHere.here_now === true && arjunHere.days_since_visit === 0);
+await mark(arjunId, 'out');
+const [arjunLevel] = await asOwner(`select
+  (select count(*)::int from syllabus_items where level_id = 3) as total,
+  (select count(*)::int from student_progress p join syllabus_items i on i.id = p.item_id
+    where p.student_id = '${arjunId}' and i.level_id = 3) as done`);
+check('... syllabus progress counts the current level only',
+  arjunHere.syllabus_total === arjunLevel.total && arjunHere.syllabus_done === arjunLevel.done,
+  `${arjunHere.syllabus_done} of ${arjunHere.syllabus_total}`);
+check('student_home is empty for a login without a student record',
+  (await homeOf('student_home', coordinator)) === null && (await homeOf('student_home', pendingLogin)) === null);
+await refuses('anon cannot run student_home', () => asApp('anon', null, 'select student_home()'));
+
+// C1 coordinator dashboard
+await refusesWith('a student cannot open the coordinator dashboard', 'not_allowed', () => homeOf('coordinator_dashboard', arjun));
+await refusesWith('a pending login cannot open it', 'not_allowed', () => homeOf('coordinator_dashboard', pendingLogin));
+await refuses('anon cannot run coordinator_dashboard', () => asApp('anon', null, 'select coordinator_dashboard()'));
+await mark(adult.id, 'in');
+const [counts] = await asOwner(`select
+  (select count(*)::int from visits where check_out is null) as here,
+  (select count(*)::int from visits where (check_in at time zone 'Asia/Kolkata')::date = today_ist()) as today,
+  (select count(*)::int from students where joined_on > today_ist() - 28 and status <> 'left') as joiners`);
+const c1 = await homeOf('coordinator_dashboard', coordinator);
+check('coordinator dashboard counts who is here now, as C6 does', c1.here_now === counts.here && c1.here_now >= 1, String(c1.here_now));
+check('... and today\'s visits, as C5 does', c1.visits_today === counts.today, `${c1.visits_today} vs ${counts.today}`);
+check('... and new joiners of the last 4 weeks (settings.new_joiner_weeks)',
+  c1.new_joiner_weeks === 4 && c1.new_joiner_count === counts.joiners && c1.new_joiners.length === Math.min(counts.joiners, 50),
+  `${c1.new_joiner_count} vs ${counts.joiners}`);
+check('... a student registered today is listed as a new joiner, with their visits',
+  c1.new_joiners.some((j) => j.full_name === 'Adult Learner' && j.visits >= 1 && /^MS-/.test(j.roll_no)));
+await mark(adult.id, 'out');
+// Calls due: a task for me due today counts; one due later, or for another coordinator, does not.
+const [{ id: gayatriId }] = await asOwner(`select id from students where full_name = 'Gayatri Devi'`);
+const [{ id: karthikId }] = await asOwner(`select id from students where full_name = 'Karthik Reddy'`);
+const due2Before = (await homeOf('coordinator_dashboard', coordinator2)).my_calls_due;
+await asOwner(`insert into follow_up_tasks (student_id, assignee_id, kind, due_on) values
+  ('${gayatriId}', '${coordinator}', 'call', today_ist()),
+  ('${karthikId}', '${coordinator}', 'call', today_ist() + 5)`);
+const c1After = await homeOf('coordinator_dashboard', coordinator);
+check('... a call task of mine due today adds one to my calls due, a later one does not',
+  c1After.my_calls_due === c1.my_calls_due + 1, `${c1.my_calls_due} -> ${c1After.my_calls_due}`);
+check('... another coordinator\'s calls due do not change',
+  (await homeOf('coordinator_dashboard', coordinator2)).my_calls_due === due2Before);
+check('the Guru can open the coordinator dashboard too', typeof (await homeOf('coordinator_dashboard', guru)).here_now === 'number');
+
+// G1 Guru dashboard
+await refusesWith('a coordinator cannot open the Guru dashboard', 'not_allowed', () => homeOf('guru_dashboard', coordinator));
+await refusesWith('a student cannot open the Guru dashboard', 'not_allowed', () => homeOf('guru_dashboard', arjun));
+await refuses('anon cannot run guru_dashboard', () => asApp('anon', null, 'select guru_dashboard()'));
+const [{ id: bhaskarId }] = await asOwner(`select id from students where full_name = 'Bhaskar Murthy'`);
+await asOwner(`insert into follow_up_tasks (student_id, assignee_id, kind, due_on, escalated) values
+  ('${karthikId}', '${coordinator2}', 'call', today_ist() - 2, false),
+  ('${bhaskarId}', '${coordinator2}', 'retry', today_ist() - 1, true)`);
+const g1 = await homeOf('guru_dashboard', guru);
+const [whole] = await asOwner(`select
+  (select count(*)::int from students) as everyone,
+  (select count(*)::int from students where status <> 'left') as in_class,
+  (select count(distinct student_id)::int from visits
+    where (check_in at time zone 'Asia/Kolkata')::date >= week_start_ist()) as came`);
+check('Guru dashboard counts students who came this week, each once', g1.came_this_week === whole.came && g1.week_start === monday,
+  `${g1.came_this_week} vs ${whole.came}`);
+check('... students in class (not Left) and new joiners', g1.in_class === whole.in_class && g1.new_joiners === counts.joiners);
+const sum = (rows) => rows.reduce((total, row) => total + row.students, 0);
+check('... students per level: all three levels, adding up to the class',
+  g1.by_level.map((l) => l.level_id).join() === '1,2,3' && sum(g1.by_level) === whole.in_class, JSON.stringify(g1.by_level));
+check('... students per status: every status in order, adding up to everyone',
+  g1.by_status.map((s) => s.status).join() === 'new,active,irregular,inactive,paused,left' && sum(g1.by_status) === whole.everyone,
+  JSON.stringify(g1.by_status));
+const [{ n: escalatedOpen }] = await asOwner(`select count(distinct (assignee_id, student_id))::int as n
+  from follow_up_tasks where done_at is null and escalated`);
+const [{ n: coordinatorOverdue }] = await asOwner(`select count(distinct student_id)::int as n from follow_up_tasks
+  where done_at is null and not escalated and due_on < today_ist() and assignee_id = '${coordinator}'`);
+const overdueOf = (id) => g1.follow_ups.find((f) => f.assignee_id === id)?.overdue ?? 0;
+check('... overdue follow-ups per coordinator: a task past its date counts, one due today or later does not',
+  overdueOf(coordinator2) === 1 && overdueOf(coordinator) === coordinatorOverdue, JSON.stringify(g1.follow_ups));
+check('... escalated ones (handed to the Guru) are counted separately',
+  g1.follow_ups.find((f) => f.assignee_id === coordinator2)?.escalated === 1 &&
+    g1.follow_ups.reduce((total, f) => total + f.escalated, 0) === escalatedOpen, String(escalatedOpen));
+const [{ definers, anonRuns }] = await asOwner(`select
+  count(*) filter (where prosecdef)::int as definers,
+  (has_function_privilege('anon', 'student_home()', 'execute') or has_function_privilege('anon', 'coordinator_dashboard()', 'execute')
+    or has_function_privilege('anon', 'guru_dashboard()', 'execute') or has_function_privilege('anon', 'week_start_ist()', 'execute')) as "anonRuns"
+  from pg_proc where proname in ('student_home', 'coordinator_dashboard', 'guru_dashboard', 'week_start_ist')`);
+check('the home-screen functions read as the person asking (security invoker) and anon cannot run them',
+  definers === 0 && anonRuns === false);
 
 // ---------------------------------------------------------------- row-level security
 const seen =await asApp('authenticated', arjun, 'select full_name from students');

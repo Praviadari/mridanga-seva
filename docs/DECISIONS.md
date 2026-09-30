@@ -516,3 +516,45 @@ another area is still refused (#15, `Stack.Protected`).
 `src/app/student/_layout.tsx`. Push notifications can use `rememberRequestedPath()` for the
 announcement a tap should open. A staff screen opened from a link has no screen under it, so its
 header shows no Back arrow; the browser's Back still works.
+
+## 31. Each home screen gets its numbers from one database function — 30 Sep 2026
+
+**Context.** The three home screens (S1 student, C1 coordinator, G1 Guru) show counts: visits
+this week, who is here now, calls due, new joiners, students per level and status, overdue
+follow-ups per coordinator. Counting in the app would mean downloading every student, visit and
+task to the phone on every opening, and Supabase's API does not allow `count()` and `max()` in
+app queries by default. "This week", "new joiner" and "overdue" also need one meaning, so that
+every screen and every phone shows the same number.
+
+**Decision.**
+- One function per home screen: `student_home()`, `coordinator_dashboard()` and
+  `guru_dashboard()`. Each returns every number its screen shows as one JSON object, and only reads.
+- They are **security invoker**, like the views (#20): they count with the rights of the person
+  asking, so row-level security still decides what is counted. `coordinator_dashboard` answers
+  staff only and `guru_dashboard` the Guru only (`not_allowed` for anyone else); `student_home`
+  gives a student only their own numbers, and nothing to a login without a student record.
+- **This week** is Monday to today, India time (`week_start_ist()`), for every screen.
+- **New joiner**: joined in the last `settings.new_joiner_weeks` weeks (4) and not *Left*.
+  **In class**: not *Left*. Students per level count only those in class; students per status
+  count everyone.
+- **Calls due for my students** (C1) follows the follow-up queue (C10): a task due today or
+  earlier, or escalated, that is assigned to me or for a student I mentor. **Overdue** (G1) is an
+  open task past its due date and not escalated; escalated ones are counted separately. Both count
+  students, not tasks, and G1 groups them by the person the task is assigned to.
+- **Here now** and **visits today** are counted exactly as on C6 and C5.
+
+**Why.** One request per home keeps the first screen fast on a weak phone signal, and the phone
+never holds the whole class's visits. Counting in the database with the asker's rights keeps the
+access rules in the tables' policies (#5, #20) and gives every phone the same number. A week
+from Monday (the international standard week) is the everyday meaning of "this week", and it
+starts again each Monday, which suits a student's "visits this week"; the screens say "from
+Monday" so nobody reads it as the last seven days.
+
+**Consequences.** Migration `0009_home_screens.sql`; app `src/data/home.ts`. A new number on a
+home screen goes into its function, in a new migration. A change to "this week" is one function,
+`week_start_ist`. The smoke test checks each number against a direct count, the role checks, and
+that none of the functions is security definer. The home screens reload when they come back into
+view, so they follow what was just done; they do not update live while open. The temporary
+`components/role-home.tsx` is gone: the staff buttons are `components/staff-shortcuts.tsx`, on
+both C1 and G1. Items the approved screen list also names for C1 and G1 (reviews pending, visit
+trend, practice hours, level-up queue) come with their Phase 2 features.

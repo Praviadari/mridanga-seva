@@ -87,7 +87,42 @@
     "greeting": "Hare Krishna, {{name}}",
     "greetingNoName": "Hare Krishna",
     "role": "Signed in as {{role}}",
-    "comingSoon": "Your screens are being built. They will appear here."
+    "loadFailed": "Could not load the numbers for this page.",
+    "student": {
+      "thisWeek": "This week",
+      "visitsThisWeek": "Visits this week (from Monday)",
+      "daysSinceVisit": "Days since your last visit",
+      "myLevel": "My level: {{level}}",
+      "unread": "New for you: {{count}}",
+      "allAnnouncements": "All announcements"
+    },
+    "staff": {
+      "shortcuts": "Screens",
+      "hereNow": "Here now",
+      "visitsToday": "Visits today",
+      "myCallsDue": "Calls due for my students",
+      "newJoiners": "New joiners (last {{weeks}} weeks)",
+      "newJoinersTitle": "New joiners: first {{weeks}} weeks",
+      "newJoinersHint": "Newest first. Tap a name to open the profile. Someone with no visits yet may need a call.",
+      "newJoinersEmpty": "Nobody new joined in the last {{weeks}} weeks.",
+      "joinedVisits": "Joined {{date}} · visits: {{count}}"
+    },
+    "guru": {
+      "cameThisWeek": "Students who came this week",
+      "inClass": "Students in class (not left)",
+      "followUpsToCheck": "Follow-ups overdue or with you",
+      "weekFrom": "\"This week\" runs from Monday {{date}}.",
+      "byLevel": "Students per level",
+      "byLevelHint": "Students in class, not counting those who left.",
+      "byStatus": "Students per status",
+      "byStatusHint": "Every student, including those who left.",
+      "share": "{{name}}: {{count}} of {{total}}",
+      "followUps": "Follow-ups per coordinator",
+      "followUpsHint": "Calls past their date, and students handed to you. Tap to open the follow-up calls.",
+      "followUpsEmpty": "No follow-up call is overdue.",
+      "followUpLine": "Overdue: {{overdue}} · With the Guru: {{escalated}}",
+      "noName": "(no name)"
+    }
   },
   "setup": {
     "title": "App not set up",

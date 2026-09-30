@@ -56,6 +56,11 @@
 | Reply | A private answer to an announcement, read only by its writer, the announcement's author and the Guru (`announcement_replies`, DECISIONS.md #29) |
 | Member | A person in a group: a student who uses the app, a coordinator or the Guru (`group_members`) |
 | Switched off (group) | A group no longer offered when posting; old announcements keep it. Groups are switched off, never deleted (DECISIONS.md #28) |
+| Home screen | The first screen after signing in: S1 for a student, the dashboard C1 for a coordinator, G1 for the Guru. Its numbers come from one database function each (DECISIONS.md #31) |
+| This week | On the home screens: Monday to today, India time (`week_start_ist()`, DECISIONS.md #31) |
+| New joiner | A student who joined in the last 4 weeks (`settings.new_joiner_weeks`) and has not left |
+| In class | Every student who has not left; the Guru dashboard counts levels among them |
+| Overdue follow-up | An open follow-up task whose due date has passed and that is not yet escalated; shown per coordinator on the Guru dashboard |
 | Requested screen | The screen a link asked for when the app was opened; shown once the login has been checked (DECISIONS.md #30) |
 | Kiosk | The door tablet account (Phase 2), allowed only to check students in and out |
 | Pending | A new login that has no role yet |
