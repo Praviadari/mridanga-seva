@@ -258,12 +258,12 @@ copies it anywhere.
 2. In the project: **Add app → Android**. Package name `org.mridangaseva.app` (exactly this,
    [DECISIONS.md #24](DECISIONS.md)); nickname and SHA-1 can stay empty. **Register app**, then
    **Download google-services.json**. Skip the remaining SDK steps: Expo does them.
-3. Put the file at `app/google-services.json` and add `"googleServicesFile": "./google-services.json"`
-   inside `"android"` in `app/app.json`. EAS Build uploads only what git does not ignore, so the
-   file must be part of the project it builds. Expo's documentation says this file holds only
-   public identifiers and may be committed (it ends up inside every APK anyway); the other way
-   is an EAS file variable with a small `app.config.ts`. **Not decided yet: ask the maintainer
-   before committing it.**
+3. The file is **committed** at `app/google-services.json`, and `app/app.json` points to it
+   (`"googleServicesFile"` under `"android"`), [DECISIONS.md #34](DECISIONS.md). Download it again
+   only for a new Firebase project: ⚙ **Project settings → General → Your apps →
+   google-services.json**, replace the file and commit it. Before committing, open it: it must
+   name `org.mridangaseva.app` and must **not** contain `"private_key"` (that would be the secret
+   key of step 4).
 4. **Project settings → Service accounts → Generate new private key → Generate key.** A JSON
    file downloads. This one is secret: store it in the password manager.
 

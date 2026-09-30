@@ -637,3 +637,23 @@ the announcement's own words, not translated. Nothing is sent for replies yet, a
 receipts are read: a token is dropped only when Expo answers that the app is gone. Setting
 `notified_at` is not copied to the audit log. iPhone web push needs a service worker and VAPID
 keys, and the iPhone app added to the home screen (iOS 16.4 or later): a later decision.
+
+## 34. google-services.json is in the repository — 30 Sep 2026
+
+**Context.** The Android app needs Firebase's `google-services.json` in the build for push
+notifications (#33). EAS Build uploads only what git does not ignore. The repository is public.
+
+**Decision.** Praveen chose (30 Sep 2026) to commit `app/google-services.json`, and `app.json`
+points to it. The Firebase service-account key stays out: it is uploaded to EAS only, and file
+names such as `*-firebase-adminsdk-*.json` are ignored by git.
+
+**Why.** Expo's documentation says the file holds only public identifiers (project id, app id,
+an Android API key) and may be committed; the same values are inside every APK anyone can
+download. Committing it means any maintainer can build the app without a hidden extra step. The
+alternative, an EAS file variable read by an `app.config.ts`, would add a file and a step for
+no real protection.
+
+**Consequences.** Anyone can read the project's Firebase identifiers on GitHub; they allow no
+sending of notifications (that needs the service-account key). The API key can be restricted
+later in Google Cloud (Credentials → the Android key → Android apps only). A new Firebase project
+means replacing the file and committing it again (OPERATIONS.md "Push notifications", step 3).

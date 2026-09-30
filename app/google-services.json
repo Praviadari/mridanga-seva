@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "805380801184",
+    "project_id": "mridanga-seva",
+    "storage_bucket": "mridanga-seva.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:805380801184:android:806678819d85f215e33fc5",
+        "android_client_info": {
+          "package_name": "org.mridangaseva.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA_fnrZQXwewP-weieyvapkwMeNsYSWrxU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
