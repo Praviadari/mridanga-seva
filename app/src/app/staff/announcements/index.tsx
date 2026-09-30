@@ -87,6 +87,7 @@ export default function StaffAnnouncementsScreen() {
                 authorName ? ` · ${t('announcements.postedBy', { name: authorName })}` : ''
               }`,
               ...(a.editedAt ? [t('announcements.edited', { date: formatDateTimeInIndia(a.editedAt) })] : []),
+              ...(a.attachments.length > 0 ? [t('announcements.files.count', { number: a.attachments.length })] : []),
               ...(seen
                 ? [
                     [

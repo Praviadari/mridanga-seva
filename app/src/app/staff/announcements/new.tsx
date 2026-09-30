@@ -1,9 +1,9 @@
-// C15 New announcement, for coordinators and the Guru: title, message, who it is for (all
-// students, one level, my mentees, staff only, a group), pin to the top, and publish now or at a
-// later date and time (India time). Posting opens the announcement (./[id].tsx), where "seen by"
-// fills up as people open it. Images and files come later.
+// C15 New announcement, for coordinators and the Guru: title, message, up to 3 photos or PDFs, who
+// it is for (all students, one level, my mentees, staff only, a group), pin to the top, and
+// publish now or at a later date and time (India time). Posting uploads the files, saves the
+// announcement and opens it (./[id].tsx), where "seen by" fills up as people open it.
 // The fields are shared with the edit screen (src/components/announcement-form.tsx).
-// Data: src/data/announcements.ts; the database checks everything again (migrations 0007, 0008).
+// Data: src/data/announcements.ts; the database checks everything again (migrations 0007, 0008, 0010).
 
 import { router, Stack, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
@@ -15,6 +15,7 @@ import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
+import { isPicked } from '@/data/announcement-files';
 import {
   AUDIENCES,
   checkAnnouncementForm,
@@ -84,7 +85,7 @@ export default function NewAnnouncementScreen() {
     setErrors(found);
     if (Object.keys(found).length > 0) return;
     setSaving(true);
-    const result = await postAnnouncement(form);
+    const result = await postAnnouncement(form, myId);
     setSaving(false);
     if (result.errorKey || result.id === undefined) {
       setServerError(t(result.errorKey ?? 'common.genericError'));
@@ -107,6 +108,7 @@ export default function NewAnnouncementScreen() {
         onOpenGroups={() => router.push('/staff/groups')}
       />
       {serverError ? <Notice tone="error">{serverError}</Notice> : null}
+      {saving && form.files.some(isPicked) ? <AppText tone="muted">{t('announcements.files.uploading')}</AppText> : null}
       <Button
         label={form.when === 'later' ? t('announcements.compose.submitLater') : t('announcements.compose.submit')}
         loading={saving}

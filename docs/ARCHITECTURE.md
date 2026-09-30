@@ -13,18 +13,25 @@ flowchart LR
   subgraph Supabase
     AU[Auth<br/>email + password]
     DB[(Postgres<br/>tables, rules, functions)]
-    ST[Storage<br/>photos, files]
-    CR[pg_cron<br/>daily jobs]
+    ST[Storage<br/>photos, PDFs]
+    CR[pg_cron<br/>scheduled jobs]
+    EF[Edge Function<br/>notify-announcements]
   end
   YT[YouTube<br/>lesson videos]
   BR[Brevo<br/>login emails]
+  EX[Expo push service<br/>+ Firebase]
   A --> AU
   W --> AU
   AU --> DB
   A --> DB
   W --> DB
   A --> ST
+  W --> ST
   CR --> DB
+  CR -- pg_net --> EF
+  EF --> DB
+  EF --> EX
+  EX -. notification .-> A
   AU --> BR
   A -. plays .-> YT
   W -. plays .-> YT
@@ -37,8 +44,9 @@ flowchart LR
 | App | Screens for Guru, Coordinator and Student. Built with Expo (React Native + TypeScript); one code base gives Android, iOS and web | `app/` — screens in `app/src/app/` |
 | Auth | Sign-up and login with email + password | Supabase Auth |
 | Database | All records, and the rules about them (who may see what, how a student's status changes) | `supabase/migrations/` |
-| Storage | Student photos (only with consent) and uploaded files | Supabase Storage |
-| Daily jobs | Move quiet students to *Irregular*, create follow-up calls, close check-ins left open | `pg_cron`, defined in the migration |
+| Storage | Photos and PDFs on announcements, in the private bucket `announcement-files`; later student photos (only with consent) | Supabase Storage, rules in `supabase/migrations/0010_announcement_files.sql` |
+| Scheduled jobs | Move quiet students to *Irregular*, create follow-up calls, close check-ins left open (daily); send push notifications for new announcements (every minute) | `pg_cron`, defined in the migrations |
+| Push notifications | Tell Android phones about a new announcement | Edge Function `supabase/functions/notify-announcements/` → Expo's push service → Firebase Cloud Messaging (OPERATIONS.md "Push notifications") |
 | Email | Sends sign-up confirmation and password-reset emails | Brevo free plan, plugged into Supabase as SMTP |
 | Videos | Lesson videos stay on YouTube; the app only stores links | YouTube |
 | Web hosting | Serves the web version that iPhone users add to their home screen | Cloudflare Pages, uploaded from `app/dist` (OPERATIONS.md) |
@@ -75,12 +83,19 @@ app/
                        form checks. Screens call these, never the database directly
     components/        Building blocks shared by screens: text, buttons, fields, choices, list rows,
                        the QR scanner, the syllabus item card, the announcement card and form,
-                       the reply box and reply card, a progress bar, the number tiles of the
-                       home screens, the staff-screen buttons (C1, G1), page frame
+                       the file picker and file list of an announcement, the reply box and reply
+                       card, a progress bar, the number tiles of the home screens, the
+                       staff-screen buttons (C1, G1), page frame
     i18n/              Interface text in English, Telugu and Hindi (docs/TRANSLATIONS.md), and
-                       labels.ts, which words levels and lengths of time the same on every screen
-    lib/               The Supabase client, on-device storage and date helpers (India time)
+                       labels.ts, which words levels, file sizes and lengths of time the same on
+                       every screen
+    lib/               The Supabase client, on-device storage, date helpers (India time) and push
+                       notifications (push.ts on Android; push.web.ts does nothing)
     theme/             Colours, spacing and text sizes, light and dark
+supabase/
+  migrations/          The database, in number order (docs/DATABASE.md)
+  functions/           Edge Functions: notify-announcements sends the push notifications
+  tests/               The database smoke test and the push message test
 ```
 
 Screens use only `components/` and `theme/` for their look, and `t('...')` for every word, so a
@@ -135,8 +150,13 @@ read or write the person is not allowed, whatever the app shows.
   allow is the function `staff_names()`: staff names only, for "posted by" ([DECISIONS.md #26](DECISIONS.md)).
   The functions that count the home screens' numbers (`student_home`, `coordinator_dashboard`,
   `guru_dashboard`) are security invoker for the same reason ([DECISIONS.md #31](DECISIONS.md)).
+- **Files follow the same rules.** Storage has row-level security too: a photo or PDF on an
+  announcement opens only for people who may read that announcement, and the app shows it
+  through a signed link that works for an hour ([DECISIONS.md #32](DECISIONS.md)).
 - **The app holds only the public (anon / publishable) key.** It is safe to ship because RLS protects
   the data. The `service_role` key bypasses RLS and must never be in the app or the repository.
+  Only the Edge Function `notify-announcements` uses it, inside Supabase, which provides the key
+  to it by itself; the Firebase service-account key lives only in EAS ([DECISIONS.md #33](DECISIONS.md)).
 - **The app refuses to start with the `service_role` key** in `app/.env` and shows a warning
   instead (`src/lib/supabase.ts`), because everything in `EXPO_PUBLIC_*` ends up in the public web version.
 - **Actions that change several things at once run as database functions** (`toggle_visit`,
@@ -182,19 +202,24 @@ OPERATIONS.md "Publishing the web version".
 ## How announcements flow (Phase 1)
 
 1. A coordinator or the Guru opens *Announcements* (C15) and taps *New announcement*: title,
-   message, who it is for (all students, one level, my mentees, staff only, or a group), pin or
-   not, and publish now or at a later date and time.
-2. The app saves it straight into `announcements`; a database trigger checks it and records the
-   author. A later publish time keeps it from students until then; staff see it at once.
-3. A student opens *Announcements* (S10). Row-level security gives them only the published ones
-   addressed to them. Opening one saves a read receipt.
-4. Back on C15, each announcement shows "seen by N of M", worked out by the database views
+   message, up to 3 photos or PDFs, who it is for (all students, one level, my mentees, staff
+   only, or a group), pin or not, and publish now or at a later date and time.
+2. On *Post*, the app makes photos smaller, uploads the files to Storage and saves the
+   announcement straight into `announcements` with the list of files; database triggers check
+   it and record the author. A later publish time keeps it from students until then; staff see
+   it at once ([DECISIONS.md #32](DECISIONS.md)).
+3. Within a minute of its publish time, the Edge Function sends a push notification to the
+   Android phones of the people it is addressed to; a tap opens it ([DECISIONS.md #33](DECISIONS.md)).
+4. A student opens *Announcements* (S10). Row-level security gives them only the published ones
+   addressed to them, and signed links to their files. Opening one saves a read receipt.
+5. Back on C15, each announcement shows "seen by N of M", worked out by the database views
    `announcement_seen` and `announcement_audience`, with the names of those who have not seen it
    and how many students it is meant for have no app login ([DECISIONS.md #25](DECISIONS.md)).
-5. The author or the Guru can edit, pin, unpin or delete it; the audit log keeps a copy. An
+6. The author or the Guru can edit, pin, unpin or delete it; the audit log keeps a copy. An
    edit keeps the read receipts; once published, the announcement shows "Edited" with the time
-   ([DECISIONS.md #27](DECISIONS.md)).
-6. Under an announcement a student (or a coordinator reading someone else's) can reply to the
+   ([DECISIONS.md #27](DECISIONS.md)). Files taken off, or on a deleted announcement, are removed
+   from Storage by the app.
+7. Under an announcement a student (or a coordinator reading someone else's) can reply to the
    author. Replies are private: only the writer, the author and the Guru read them
    ([DECISIONS.md #29](DECISIONS.md)). The author sees "Replies: N" on the list and the replies
    with names on the announcement, and answers in person or by phone.
@@ -203,7 +228,9 @@ Groups for the audience "A group" are made on the groups screen (`staff/groups/`
 purpose, and members chosen from students with the app and staff. A group is switched off,
 never deleted ([DECISIONS.md #28](DECISIONS.md)).
 
-There are no push notifications yet: people see new announcements when they open the app.
+Push notifications reach only the Android app built by EAS, once push is set up (OPERATIONS.md
+"Push notifications"). The web version (iPhones) has none yet: people there see new
+announcements when they open the app.
 
 ## Phases
 

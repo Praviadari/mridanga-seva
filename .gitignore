@@ -5,6 +5,10 @@ NOTES*.md
 .env
 .env.*
 !.env.example
+# Firebase service-account keys (push notifications) are secret; they go to EAS only
+# (docs/OPERATIONS.md "Push notifications"). google-services.json is NOT one of these.
+*-firebase-adminsdk-*.json
+*service-account*.json
 
 # Dependencies and build output
 node_modules/

@@ -1,5 +1,6 @@
-// C15 One announcement, for coordinators and the Guru: the whole message, who it is for, when
-// students see it, "Edited" when it was changed after publishing, and "seen by N of M" with the
+// C15 One announcement, for coordinators and the Guru: the whole message with its photos and
+// PDFs, who it is for, when students see it, "Edited" when it was changed after publishing, and
+// "seen by N of M" with the
 // names of those who have not opened it yet (and on request those who have). The author and the
 // Guru can edit it (./edit/[id].tsx), pin or unpin it and delete it; delete asks once more on the
 // screen, because a pop-up does not work in the web version. The author and the Guru read the
@@ -13,6 +14,7 @@ import { useTranslation } from 'react-i18next';
 
 import { useAuth } from '@/auth/auth-provider';
 import { AppText } from '@/components/app-text';
+import { AttachmentList } from '@/components/attachment-list';
 import { Button } from '@/components/button';
 import { ListRow } from '@/components/list-row';
 import { Notice } from '@/components/notice';
@@ -166,7 +168,7 @@ export default function StaffAnnouncementScreen() {
   async function remove() {
     setBusy(true);
     setActionError(null);
-    const outcome = await deleteAnnouncement(a.id);
+    const outcome = await deleteAnnouncement(a);
     setBusy(false);
     setConfirmingDelete(false);
     if (outcome.errorKey) setActionError(t(outcome.errorKey));
@@ -189,6 +191,7 @@ export default function StaffAnnouncementScreen() {
       ) : null}
       <AppText variant="subtitle">{a.title}</AppText>
       <AppText selectable>{a.body}</AppText>
+      <AttachmentList attachments={a.attachments} />
       <AppText tone="muted">
         {audienceName(t, a, { groupName, authorName, byMe })}
       </AppText>

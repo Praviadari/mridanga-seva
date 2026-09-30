@@ -551,7 +551,7 @@
       "unpin": "Unpin",
       "delete": "Delete announcement",
       "deleteTitle": "Delete \"{{title}}\"?",
-      "deleteBody": "It disappears for everyone, with the list of who has seen it. The class records keep a copy.",
+      "deleteBody": "It disappears for everyone, with its photos and PDFs and the list of who has seen it. The class records keep a copy of the text.",
       "deleteYes": "Yes, delete",
       "cancel": "Cancel",
       "deleted": "Announcement deleted.",
@@ -600,6 +600,37 @@
       "replyRequired": "Write your reply.",
       "replyTooLong": "The reply is too long. Keep it to 1000 characters.",
       "replyGone": "This announcement is no longer there, or no longer for you."
+    },
+    "files": {
+      "sectionTitle": "Photos and PDFs",
+      "limits": "Up to {{max}} files. Photos are made smaller before they are sent. A PDF can be up to 5 MB.",
+      "consentHint": "Only add a photo that shows a student if their parent has given photo consent. Many students are under 18, and the law (DPDP) requires a parent's consent.",
+      "addPhotos": "Add photos",
+      "addPdf": "Add a PDF",
+      "remove": "Remove",
+      "full": "{{max}} files added, the most an announcement can have.",
+      "pickedLine": "{{size}} · sent when you save",
+      "photoBadge": "Photo",
+      "pdfBadge": "PDF",
+      "sizeKb": "{{size}} KB",
+      "sizeMb": "{{size}} MB",
+      "uploading": "Sending the files… this can take a moment on a slow connection.",
+      "tooMany": "An announcement can have at most 3 files. Remove one first.",
+      "tooBig": "This file is bigger than 5 MB. Choose a smaller one.",
+      "notPdf": "Only PDF files can be added here. For photos, use \"Add photos\".",
+      "someLeftOut": "Only the first ones were added: an announcement can have at most 3 files.",
+      "pickFailed": "The file could not be opened. Try again, or choose another one.",
+      "noPhotoAccess": "The app may not open your photos. Allow it in the phone's settings.",
+      "wrongType": "This kind of file cannot be added. Use a photo (JPEG, PNG, WebP) or a PDF.",
+      "uploadFailed": "The files could not be sent. Nothing was saved. Try again.",
+      "saveFailed": "A file could not be saved with the announcement. Nothing was saved. Try again.",
+      "removeFailed": "The files could not be removed, so nothing was deleted. Check your internet connection and try again.",
+      "title": "Files ({{number}})",
+      "count": "Files: {{number}}",
+      "openPhoto": "Open photo {{name}}",
+      "open": "Open",
+      "pdfLine": "PDF · {{size}}",
+      "notAvailable": "Could not load this file."
     }
   },
   "groups": {
@@ -646,5 +677,9 @@
       "notAllowed": "Only coordinators and the Guru can change groups.",
       "cannotChange": "Not changed: the group is no longer there."
     }
+  },
+  "push": {
+    "channelName": "Announcements",
+    "channelDescription": "New announcements from the class"
   }
 }

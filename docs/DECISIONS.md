@@ -558,3 +558,82 @@ view, so they follow what was just done; they do not update live while open. The
 `components/role-home.tsx` is gone: the staff buttons are `components/staff-shortcuts.tsx`, on
 both C1 and G1. Items the approved screen list also names for C1 and G1 (reviews pending, visit
 trend, practice hours, level-up queue) come with their Phase 2 features.
+
+## 32. Photos and PDFs on announcements live in a private bucket — 30 Sep 2026
+
+**Context.** On WhatsApp the class shares posters, route maps and timetables as photos and PDFs.
+Announcements had an `attachments` column since 0001 but nothing used it. Many students are
+minors, so a photo of a student is personal data under the DPDP Act, and the free Supabase plan
+holds only 1 GB of files in all.
+
+**Decision.** Praveen chose (30 Sep 2026): photos and PDFs, at most 3 per announcement, PDFs up
+to 5 MB, photos made smaller on the phone, and only people who can read the announcement can open
+its files.
+- The files are in the Storage bucket `announcement-files`: private, at most 5 MB a file, only
+  JPEG, PNG, WebP and PDF. Each file sits in a folder named after the uploader's login.
+- The app makes a photo at most 1600 pixels on its longest side and saves it as a JPEG (quality
+  0.7) before upload, which also leaves out the hidden camera details such as the place.
+- A file is uploaded only when the announcement is saved, then listed in `attachments`
+  (`path`, `name`, `kind`, `size`). A trigger checks the list: at most 3, well-formed, and an app
+  user may add only files from their own folder that are really in Storage.
+- Storage's row-level security lets a person open a file only when an announcement they may read
+  lists it (the announcements rule of #25 decides), and staff their own uploads. The app shows
+  files through signed links that work for an hour.
+- Only the uploader, the Guru, or the author of the announcement that lists a file can delete it.
+  Deleting an announcement removes its files first; removing a file while editing removes it
+  from Storage once the change is saved. A file change on a published announcement counts as an
+  edit (#27).
+- The compose screen reminds that a photo showing a student needs the parent's photo consent.
+
+**Why.** A public bucket would put every file one guessed link away from anyone; tying the file
+rule to the announcement rule means a file can never be seen by more people than its
+announcement. Uploading at save time leaves nothing behind when a form is abandoned. Smaller
+photos load fast on phone data and make the 1 GB last: at about 300 KB a photo, that is over
+3,000 photos. Checking the folder stops a coordinator from attaching a file from someone else's
+announcement to reach a wider audience.
+
+**Consequences.** Migration `0010_announcement_files.sql`; `app/src/data/announcement-files.ts`,
+`components/attachment-picker.tsx`, `components/attachment-list.tsx`. Deleting a row in SQL
+does not delete the file in Storage, so files are removed through the Storage API; a file whose
+removal failed (no internet) stays unused until it is cleaned up (OPERATIONS.md "Files no
+announcement uses"). The consent reminder is only a reminder: the app cannot tell who is in a
+photo. The existing photo consent reads "a photo of the student on the class record"; whether it
+also covers photos in announcements is for the team and its legal adviser to settle. Files are
+not in the audit log.
+
+## 33. Push notifications on Android go through Expo, sent by an Edge Function — 30 Sep 2026
+
+**Context.** Announcements replace WhatsApp, where a message makes the phone ring. Without push,
+people see a new announcement only when they open the app. Praveen chose (30 Sep 2026): Android
+now, through the APK (#24); iPhone web push after the Sunday demo.
+
+**Decision.**
+- The Android app asks for permission after sign-in and saves its Expo push token
+  (`push_tokens`, through `register_push_token`). A token belongs to the login last signed in on
+  that phone; signing out deletes it.
+- `announcements.notified_at` marks an announcement as notified. A pg_cron job runs every minute;
+  when a published announcement is still waiting, it calls the Edge Function
+  `notify-announcements` through pg_net, with a shared secret kept in the Vault.
+- The Edge Function claims the waiting announcements (`claim_due_push`), which returns the
+  phones of the people each one is addressed to (the same people as "seen by", #25), and sends
+  one notification per phone through Expo's push service, which passes it to Google's Firebase
+  Cloud Messaging. The notification shows the announcement's title and the start of its text;
+  a tap opens the announcement. Scheduled announcements are sent at their time the same way.
+- An announcement published more than a day before it could be sent is marked but not sent, so
+  switching push on never sends old news. An edit is not sent again.
+- Until push is set up (pg_net, the deployed function, the Vault secrets, the Firebase key, a new
+  APK), everything above does nothing and the app works as before.
+
+**Why.** Expo's push service is free and one API for Android now and iPhones later; the app
+already builds with EAS. Sending from an Edge Function keeps the service-role key inside Supabase;
+it never reaches the app or the repository. Checking every minute from the database covers
+posts made now and scheduled ones with one mechanism, and the claim step cannot send twice.
+
+**Consequences.** Migration `0011_push_notifications.sql`, `supabase/functions/notify-announcements/`,
+`app/src/lib/push.ts` (and `push.web.ts`, which does nothing). The Android app needs a Firebase
+project on the team email, its `google-services.json` in the build and the FCM key in EAS
+(OPERATIONS.md "Push notifications"); push does not work in Expo Go. The notification text is
+the announcement's own words, not translated. Nothing is sent for replies yet, and no delivery
+receipts are read: a token is dropped only when Expo answers that the app is gone. Setting
+`notified_at` is not copied to the audit log. iPhone web push needs a service worker and VAPID
+keys, and the iPhone app added to the home screen (iOS 16.4 or later): a later decision.

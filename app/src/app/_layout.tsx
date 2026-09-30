@@ -1,5 +1,6 @@
 // Root of the app: loads translations, keeps the splash screen up while the login is checked,
-// and shows only the screens the signed-in person's role may use.
+// shows only the screens the signed-in person's role may use, and sets up push notifications
+// on the Android app (src/lib/push.ts).
 //
 // How role-based navigation works (docs/ARCHITECTURE.md "Navigation by role"):
 // useAuth().area names the part of the app the person may use. Each <Stack.Protected> below
@@ -18,6 +19,7 @@ import { useEffect } from 'react';
 
 import { AuthProvider, useAuth } from '@/auth/auth-provider';
 import { SetupNeeded } from '@/components/setup-needed';
+import { registerForPush, usePushTaps } from '@/lib/push';
 import { supabaseConfigProblem } from '@/lib/supabase';
 import { useTheme } from '@/theme/use-theme';
 
@@ -53,6 +55,7 @@ function RootNavigator() {
   return (
     <>
       <HideSplash when={area !== 'loading'} />
+      <PushSetup />
       <Stack
         screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}>
         {/* Always open: shows the splash while loading, then forwards to the area's first screen. */}
@@ -91,6 +94,21 @@ function RootNavigator() {
       </Stack>
     </>
   );
+}
+
+/**
+ * Push notifications on the Android app (src/lib/push.ts): once a student, coordinator or the
+ * Guru is signed in, asks for permission and saves the phone's token; opens the announcement when
+ * a notification is tapped. Does nothing on the web or while push is not set up. Renders nothing.
+ */
+function PushSetup() {
+  const { area, profile } = useAuth();
+  const profileId = profile?.id;
+  usePushTaps(area);
+  useEffect(() => {
+    if (profileId && (area === 'guru' || area === 'coordinator' || area === 'student')) void registerForPush();
+  }, [area, profileId]);
+  return null;
 }
 
 /** Hides the native splash screen once `when` becomes true. Renders nothing. */

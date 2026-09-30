@@ -1,6 +1,6 @@
 // Announcements: posting, editing, pinning and deleting (screen C15, coordinators and the Guru),
-// reading them (S10, students), "seen by N of M" with the list of who has not seen one yet, and
-// private replies.
+// reading them (S10, students), "seen by N of M" with the list of who has not seen one yet,
+// private replies, and the photos and PDFs on them.
 //
 // The app writes the announcements table directly: insert = post, update = edit, pin or unpin,
 // delete. Opening an announcement inserts one announcement_reads row (the read receipt); a reply
@@ -8,7 +8,9 @@
 // check every announcement and reply, and the views announcement_seen / announcement_audience
 // count and list who it is addressed to (supabase/migrations/0007_announcements.sql and
 // 0008_announcement_follow_ups.sql, docs/DECISIONS.md #25-#29). The app never counts read
-// receipts itself, so every phone shows the same number.
+// receipts itself, so every phone shows the same number. Files are uploaded to Storage just
+// before the announcement is saved, and removed from Storage when they are taken off it
+// (./announcement-files.ts, migration 0010, docs/DECISIONS.md #32).
 
 import type { ParseKeys } from 'i18next';
 
@@ -22,6 +24,16 @@ import {
 } from '@/lib/dates';
 import { supabase } from '@/lib/supabase';
 
+import {
+  formFilesOf,
+  isPicked,
+  MAX_FILES,
+  parseAttachments,
+  removeFiles,
+  uploadFiles,
+  type Attachment,
+  type FormFile,
+} from './announcement-files';
 import { isNetworkError } from './errors';
 
 /** A translation key for a message. */
@@ -64,6 +76,8 @@ export type Announcement = {
    * null when never edited. Set by the database; pinning does not count (docs/DECISIONS.md #27).
    */
   editedAt: string | null;
+  /** Photos and PDFs, at most 3, in the order the author added them. */
+  attachments: Attachment[];
   /** True when the signed-in person has opened it before. */
   readByMe: boolean;
 };
@@ -91,10 +105,11 @@ type AnnouncementRow = {
   publish_at: string;
   created_by: string | null;
   edited_at: string | null;
+  attachments: unknown;
 };
 
 const ANNOUNCEMENT_COLUMNS =
-  'id, title, body, audience, audience_level, audience_group, pinned, publish_at, created_by, edited_at';
+  'id, title, body, audience, audience_level, audience_group, pinned, publish_at, created_by, edited_at, attachments';
 
 /** Turns an announcements row into the app's shape. */
 function toAnnouncement(row: AnnouncementRow, readIds: ReadonlySet<number>): Announcement {
@@ -109,6 +124,7 @@ function toAnnouncement(row: AnnouncementRow, readIds: ReadonlySet<number>): Ann
     publishAt: row.publish_at,
     createdBy: row.created_by,
     editedAt: row.edited_at,
+    attachments: parseAttachments(row.attachments),
     readByMe: readIds.has(row.id),
   };
 }
@@ -283,11 +299,17 @@ export async function setPinned(id: number, pinned: boolean): Promise<ChangeOutc
 }
 
 /**
- * Deletes an announcement for everyone, with its read receipts and replies. Only the author or the
- * Guru may; the audit log keeps a copy.
+ * Deletes an announcement for everyone, with its read receipts, replies and files. Only the author
+ * or the Guru may; the audit log keeps a copy of the announcement (not of its files).
  */
-export async function deleteAnnouncement(id: number): Promise<ChangeOutcome> {
-  const { data, error } = await supabase.from('announcements').delete().eq('id', id).select('id');
+export async function deleteAnnouncement(announcement: Announcement): Promise<ChangeOutcome> {
+  // Files first, while the announcement still lists them: Storage lets the author remove a file
+  // the Guru added only while it is on their announcement (migration 0010). Deleting the row
+  // does not remove the files by itself.
+  if (!(await removeFiles(announcement.attachments.map((a) => a.path)))) {
+    return { errorKey: 'announcements.files.removeFailed' };
+  }
+  const { data, error } = await supabase.from('announcements').delete().eq('id', announcement.id).select('id');
   if (error) return { errorKey: announcementErrorKey(error.message, error.code) };
   return data.length === 0 ? { errorKey: 'announcements.errors.cannotChange' } : {};
 }
@@ -310,9 +332,11 @@ export type AnnouncementForm = {
   date: string;
   /** As typed, 24-hour India time, e.g. '18:30'. */
   time: string;
+  /** Photos and PDFs: saved ones and ones picked on this device, uploaded when saving. */
+  files: FormFile[];
 };
 
-/** An empty compose form: for all students, published at once. */
+/** An empty compose form: for all students, published at once, no files. */
 export const EMPTY_ANNOUNCEMENT_FORM: AnnouncementForm = {
   title: '',
   body: '',
@@ -323,6 +347,7 @@ export const EMPTY_ANNOUNCEMENT_FORM: AnnouncementForm = {
   when: 'now',
   date: '',
   time: '',
+  files: [],
 };
 
 /**
@@ -341,6 +366,7 @@ export function formFromAnnouncement(announcement: Announcement): AnnouncementFo
     when: scheduled ? 'later' : 'now',
     date: scheduled ? formatDayMonthYear(dateInIndia(announcement.publishAt)) : '',
     time: scheduled ? timeInIndia(announcement.publishAt) : '',
+    files: formFilesOf(announcement.attachments),
   };
 }
 
@@ -363,6 +389,7 @@ export function checkAnnouncementForm(form: AnnouncementForm, now: number, check
   if (!form.audience) errors.audience = 'announcements.errors.choose';
   if (form.audience === 'level' && form.levelId === null) errors.levelId = 'announcements.errors.choose';
   if (form.audience === 'group' && form.groupId === null) errors.groupId = 'announcements.errors.choose';
+  if (form.files.length > MAX_FILES) errors.files = 'announcements.files.tooMany';
   if (checkWhen && form.when === 'later') {
     const date = parseDayMonthYear(form.date);
     const time = parseTimeOfDay(form.time);
@@ -396,50 +423,97 @@ function contentOf(form: AnnouncementForm & { audience: Audience }) {
 }
 
 /**
- * Posts an announcement. The database records the signed-in person as author and, without a
- * publish time, publishes it at once. Returns the new id. Call only after checkAnnouncementForm
- * found no problems.
+ * Uploads the form's newly picked files into `myId`'s folder and returns the whole file list in
+ * the form's order, saved files as they were. `uploaded` are the paths of the new uploads, to
+ * remove again if saving the announcement then fails.
  */
-export async function postAnnouncement(form: AnnouncementForm): Promise<{ id?: number; errorKey?: MessageKey }> {
+async function attachmentsOf(
+  form: AnnouncementForm,
+  myId: string,
+): Promise<{ attachments?: Attachment[]; uploaded: string[]; errorKey?: MessageKey }> {
+  const picked = form.files.filter(isPicked);
+  const result = await uploadFiles(myId, picked);
+  if (!result.attachments) return { uploaded: [], errorKey: result.errorKey ?? 'common.genericError' };
+  const byKey = new Map(picked.map((file, i) => [file.key, result.attachments?.[i]]));
+  const attachments = form.files.flatMap((file): Attachment[] => {
+    if (!isPicked(file)) return [{ path: file.path, name: file.name, kind: file.kind, size: file.size }];
+    const uploaded = byKey.get(file.key);
+    return uploaded ? [uploaded] : [];
+  });
+  return { attachments, uploaded: result.attachments.map((a) => a.path) };
+}
+
+/**
+ * Posts an announcement: uploads the picked files into the author's folder (`myId` = the
+ * signed-in person's profile id), then saves the announcement with them. The database records
+ * the signed-in person as author and, without a publish time, publishes it at once. Returns the
+ * new id. If saving fails, the files just uploaded are removed again. Call only after
+ * checkAnnouncementForm found no problems.
+ */
+export async function postAnnouncement(
+  form: AnnouncementForm,
+  myId: string,
+): Promise<{ id?: number; errorKey?: MessageKey }> {
   const { audience } = form;
   if (!audience) return { errorKey: 'announcements.errors.choose' };
+  const files = await attachmentsOf(form, myId);
+  if (!files.attachments) return { errorKey: files.errorKey };
   const publishAt = publishAtOf(form);
   const { data, error } = await supabase
     .from('announcements')
     .insert({
       ...contentOf({ ...form, audience }),
+      attachments: files.attachments,
       // Left out for "now", so the database's own clock sets it, not the phone's.
       ...(publishAt ? { publish_at: publishAt } : {}),
     })
     .select('id')
     .single();
-  if (error) return { errorKey: announcementErrorKey(error.message, error.code) };
+  if (error) {
+    await removeFiles(files.uploaded);
+    return { errorKey: announcementErrorKey(error.message, error.code) };
+  }
   return { id: (data as { id: number }).id };
 }
 
 /**
- * Saves changes to an announcement. Only the author or the Guru may (row-level security). The
- * read receipts stay; when it was already published the database marks it edited
- * (docs/DECISIONS.md #27). `original` is the announcement as loaded: its publish time is sent
- * only while it is still scheduled, because a published one keeps its time. Call only after
- * checkAnnouncementForm found no problems.
+ * Saves changes to an announcement. Only the author or the Guru may (row-level security). New
+ * files are uploaded into `myId`'s folder first; files taken off are removed from Storage once
+ * the change is saved. The read receipts stay; when it was already published the database marks
+ * it edited, also for a file added or removed (docs/DECISIONS.md #27, #32). `original` is the
+ * announcement as loaded: its publish time is sent only while it is still scheduled, because a
+ * published one keeps its time. Call only after checkAnnouncementForm found no problems.
  */
-export async function updateAnnouncement(original: Announcement, form: AnnouncementForm): Promise<ChangeOutcome> {
+export async function updateAnnouncement(
+  original: Announcement,
+  form: AnnouncementForm,
+  myId: string,
+): Promise<ChangeOutcome> {
   const { audience } = form;
   if (!audience) return { errorKey: 'announcements.errors.choose' };
+  const files = await attachmentsOf(form, myId);
+  if (!files.attachments) return { errorKey: files.errorKey };
   // Checked again now: the scheduled time may have passed while the form was open.
   const timeCanChange = isScheduled(original);
   const { data, error } = await supabase
     .from('announcements')
     .update({
       ...contentOf({ ...form, audience }),
+      attachments: files.attachments,
       // null = "now": the database publishes it at its own time.
       ...(timeCanChange ? { publish_at: publishAtOf(form) } : {}),
     })
     .eq('id', original.id)
     .select('id');
-  if (error) return { errorKey: announcementErrorKey(error.message, error.code) };
-  return data.length === 0 ? { errorKey: 'announcements.errors.cannotChange' } : {};
+  if (error || data.length === 0) {
+    await removeFiles(files.uploaded);
+    return { errorKey: error ? announcementErrorKey(error.message, error.code) : 'announcements.errors.cannotChange' };
+  }
+  // Only now, so readers never meet a file that is listed but gone. If this fails (no internet),
+  // the file stays in Storage unused; docs/OPERATIONS.md "Files no announcement uses".
+  const kept = new Set(files.attachments.map((a) => a.path));
+  await removeFiles(original.attachments.filter((a) => !kept.has(a.path)).map((a) => a.path));
+  return {};
 }
 
 /** What the compose screen offers besides levels: the groups, and whether I mentor anyone. */
@@ -605,7 +679,7 @@ export async function deleteReply(replyId: number): Promise<ChangeOutcome> {
 
 // ---------------------------------------------------------------- errors
 
-/** Turns a database error from the calls above into a translation key. Codes: migrations 0007, 0008. */
+/** Turns a database error from the calls above into a translation key. Codes: migrations 0007, 0008, 0010. */
 function announcementErrorKey(message: string, code: string | undefined): MessageKey {
   switch (message) {
     case 'title_required':
@@ -625,6 +699,13 @@ function announcementErrorKey(message: string, code: string | undefined): Messag
       return 'announcements.errors.replyRequired';
     case 'reply_too_long':
       return 'announcements.errors.replyTooLong';
+    case 'too_many_attachments':
+      return 'announcements.files.tooMany';
+    case 'attachments_invalid':
+    case 'attachment_not_yours':
+    case 'attachment_missing':
+      // The app never sends these; a file that vanished between upload and save is the likely case.
+      return 'announcements.files.saveFailed';
   }
   // 42501 = refused by row-level security: the person is not a coordinator or the Guru.
   if (code === '42501') return 'announcements.errors.notAllowed';

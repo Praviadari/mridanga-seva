@@ -1,7 +1,7 @@
 // The fields of an announcement, shared by the compose screen (C15 new) and the edit screen
-// (C15 edit): title, message, who it is for (with the level or group), when students see it, and
-// pin to the top. The screen keeps the form values and the submit button; this only draws the
-// fields and reports changes. Data and checks: src/data/announcements.ts.
+// (C15 edit): title, message, photos and PDFs, who it is for (with the level or group), when
+// students see it, and pin to the top. The screen keeps the form values and the submit button;
+// this only draws the fields and reports changes. Data and checks: src/data/announcements.ts.
 
 import { useTranslation } from 'react-i18next';
 
@@ -15,6 +15,7 @@ import {
 import { levelName } from '@/i18n/labels';
 
 import { AppText } from './app-text';
+import { AttachmentPicker } from './attachment-picker';
 import { Button } from './button';
 import { Checkbox } from './checkbox';
 import { ChoiceGroup } from './choice-group';
@@ -78,6 +79,12 @@ export function AnnouncementFields({
         multiline
         numberOfLines={6}
         style={{ minHeight: 140, textAlignVertical: 'top' }}
+      />
+
+      <AttachmentPicker
+        files={form.files}
+        onChange={(files) => onChange({ files })}
+        error={errors.files ? t(errors.files) : undefined}
       />
 
       <Section title={t('announcements.compose.audience')}>

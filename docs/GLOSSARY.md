@@ -62,6 +62,10 @@
 | In class | Every student who has not left; the Guru dashboard counts levels among them |
 | Overdue follow-up | An open follow-up task whose due date has passed and that is not yet escalated; shown per coordinator on the Guru dashboard |
 | Requested screen | The screen a link asked for when the app was opened; shown once the login has been checked (DECISIONS.md #30) |
+| File (on an announcement) | A photo or PDF attached to an announcement, at most 3; kept in the private Storage bucket `announcement-files` and listed in `announcements.attachments` (DECISIONS.md #32) |
+| Signed link | A link to a private file that works for one hour; the app asks Storage for one each time a file is shown, and only for people who may read the announcement |
+| Push notification | A message the phone shows even when the app is closed; sent for a newly published announcement to the Android app (DECISIONS.md #33) |
+| Push token | The address Expo gives a phone for push notifications (`ExponentPushToken[...]`), saved in `push_tokens` for the login signed in on that phone |
 | Kiosk | The door tablet account (Phase 2), allowed only to check students in and out |
 | Pending | A new login that has no role yet |
 | Area | In the app's code: the part of the app a person may use now (signed out, pending, guru, coordinator, student). See ARCHITECTURE.md "Navigation by role" |

@@ -1,7 +1,7 @@
 // Remembers which screen a person asked for when the app was opened with a link: a web address
-// typed, bookmarked or shared (for example /student/announcements/12), an Android link, and later
-// a tap on a push notification. src/app/index.tsx sends them there once their login has been
-// checked, instead of to their area's home screen.
+// typed, bookmarked or shared (for example /student/announcements/12), an Android link, or a tap
+// on a push notification (src/lib/push.ts). src/app/index.tsx sends them there once their login
+// has been checked, instead of to their area's home screen.
 //
 // Why it is needed: while the login is being checked the area is 'loading' and every area's
 // screens are closed (src/app/_layout.tsx, Stack.Protected), so Expo Router sends the link to the
@@ -54,8 +54,11 @@ export function rememberRequestedPath(path: string): void {
   requested = pathOnly(path);
 }
 
-/** True when a screen at `path` belongs to `area`, so the person may open it. */
-function belongsTo(path: string, area: Area): boolean {
+/**
+ * True when a screen at `path` belongs to `area`, so the person may open it. Also used for a tap
+ * on a push notification while the app is open (src/lib/push.ts).
+ */
+export function belongsTo(path: string, area: Area): boolean {
   switch (area) {
     case 'student':
       return path === '/student' || path.startsWith('/student/');

@@ -14,6 +14,8 @@ in number order:
 | `0007_announcements.sql` | Announcements: checks on every announcement, only students and staff can read them, the author or the Guru can delete, read receipts written only by the reader, and views for "seen by N of M" ([DECISIONS.md #25](DECISIONS.md)) |
 | `0008_announcement_follow_ups.sql` | Students see who posted an announcement (`staff_names`); editing marks a published announcement "Edited"; checks on groups, which only staff and members can see; private replies to announcements ([DECISIONS.md #26–#29](DECISIONS.md)) |
 | `0009_home_screens.sql` | The numbers on the three home screens: `student_home`, `coordinator_dashboard` and `guru_dashboard`, and one meaning of "this week" (`week_start_ist`) ([DECISIONS.md #31](DECISIONS.md)) |
+| `0010_announcement_files.sql` | Photos and PDFs on announcements: the private Storage bucket `announcement-files`, checks on `attachments`, and who may upload, open and delete a file ([DECISIONS.md #32](DECISIONS.md)) |
+| `0011_push_notifications.sql` | Push notifications: `announcements.notified_at`, `push_tokens`, `register_push_token`, and the every-minute job that calls the Edge Function `notify-announcements` ([DECISIONS.md #33](DECISIONS.md)) |
 
 Every table and important column also carries a `COMMENT ON` description, so you can read it in
 the Supabase dashboard (Table Editor → table → description).
@@ -33,7 +35,7 @@ consent), sample visits, groups and an announcement. Never run it on the live pr
 | Attendance | `visits` | One row per check-in; `check_out` empty while the student is still there |
 | Follow-up | `call_logs`, `follow_up_tasks`, `status_history` | Every call and every status change is kept |
 | Learning | `levels`, `syllabus_items`, `student_progress`, `level_history`, `materials` | Three levels; each has an ordered syllabus |
-| Communication | `announcements`, `announcement_reads`, `announcement_replies`, `groups`, `group_members` | Groups replace the WhatsApp groups. Views `announcement_audience` and `announcement_seen` give "seen by", `announcement_reply_list` the replies with names, `group_summary` the member counts |
+| Communication | `announcements`, `announcement_reads`, `announcement_replies`, `groups`, `group_members`, `push_tokens` | Groups replace the WhatsApp groups. Views `announcement_audience` and `announcement_seen` give "seen by", `announcement_reply_list` the replies with names, `group_summary` the member counts. Photos and PDFs are files in the Storage bucket `announcement-files`, listed in `announcements.attachments` |
 | Audit | `audit_log` | Who changed a student, profile, call log, level, syllabus tick or announcement, or deleted a reply, and when |
 
 ## Student status
@@ -222,7 +224,8 @@ The trigger `announcements_guard` makes these rules hold however the row is writ
 | No publish time means now | — |
 | The author (`created_by`) is the signed-in person, whatever the app sent, and never changes; the dashboard and `seed.sql` keep what they give | `announcement_frozen` |
 | Once published, the publish time cannot be changed from the app; a scheduled one moved to a time already past is published now, not backdated (0008) | `already_published` |
-| `edited_at` is set to now when the title, message, audience, level or group of an already published announcement changes; the app cannot set it. Editing a scheduled one, and pinning, do not count (0008) | — |
+| `edited_at` is set to now when the title, message, audience, level, group or files of an already published announcement change; the app cannot set it. Editing a scheduled one, and pinning, do not count (0008, files from 0010) | — |
+| `notified_at` (when the push notification went out) is set only by the Edge Function; the app can neither set nor change it (0011) | — |
 
 Only the author, while still a coordinator or the Guru, or the Guru can edit, pin, unpin or
 delete an announcement; row-level security turns anyone else's attempt into "nothing changed".
@@ -249,7 +252,58 @@ change or remove it. Receipts disappear only with their announcement.
 
 The staff screen reads the counts and the not-seen list from these views, so the number is the
 same on every phone and the phone never downloads everyone's receipts. A student reading the
-views sees only their own row. Attachments (`attachments`) are not used yet.
+views sees only their own row.
+
+**Photos and PDFs** (0010, [DECISIONS.md #32](DECISIONS.md)). The files are in the private Storage
+bucket `announcement-files` (at most 5 MB a file; JPEG, PNG, WebP and PDF only; Storage refuses
+anything else). A file's path is `<uploader's login id>/<random id>.<jpg|png|webp|pdf>`.
+`announcements.attachments` lists an announcement's files in order, each as
+`{"path", "name", "kind", "size"}` (`kind` is `image` or `pdf`, `size` in bytes). The app uploads
+the files when the announcement is saved, then saves the announcement with the list.
+
+The trigger `announcements_attachments_guard` checks the list however it is written:
+
+| Rule | Error code |
+|---|---|
+| A list of at most 3 files | `too_many_attachments` |
+| Each entry has a proper path, a name of 1 to 120 characters (trimmed), `kind` matching the path's ending, a size up to 5 MB, and no file twice; other keys are dropped | `attachments_invalid` |
+| A file an app user adds must be in their own folder… | `attachment_not_yours` |
+| …and really in Storage; its size is then taken from Storage, not from the app | `attachment_missing` |
+| Files already on the announcement stay as they are (the Guru can edit a coordinator's announcement without owning its files) | — |
+
+Storage keeps one row per file in `storage.objects`; its row-level security decides:
+
+| Action | Allowed for | Rule function |
+|---|---|---|
+| Open, or make a signed link | Anyone who may read an announcement that lists the file (the `audience` rule above); staff for files in their own folder; the Guru | `announcement_file_readable` |
+| Upload | Coordinators and the Guru, only into their own folder, only a proper file name | `announcement_file_uploadable` |
+| Delete | Coordinators and the Guru: their own uploads, any file for the Guru, and files on their own announcements | `announcement_file_deletable` |
+| Replace or move | Nobody (no update policy) | — |
+
+**Deleting a row in SQL does not delete the file** in Storage; it only orphans it. So the app
+removes files through the Storage API: when an announcement is deleted it removes the files
+first (while the announcement still lists them), and when an edit takes a file off it removes
+the file once the change is saved. A file whose removal failed stays unused; OPERATIONS.md
+"Files no announcement uses" shows how to find and remove such files.
+
+**Push notifications** (0011, [DECISIONS.md #33](DECISIONS.md)). A phone that may receive
+notifications has a row in `push_tokens` (its Expo push token, the login, `android` or `ios`).
+The Android app saves it after sign-in with `register_push_token` and deletes it at sign-out; a
+person sees and deletes only their own. A token belongs to the login last signed in on that
+phone, and a person has at most 5 phones.
+
+Every minute the job `mridanga-push` runs `send_due_push()`. When an announcement is published
+and `notified_at` is still empty, it calls the Edge Function `notify-announcements`
+(`supabase/functions/`) through pg_net, with the secret `mridanga_push_secret` from the Vault
+in a header. The Edge Function, with the service role, calls `claim_due_push()`: it sets
+`notified_at` on every waiting announcement and returns one row per phone to notify (the people
+in `announcement_audience`, never the author). An announcement published more than a day before
+is marked but not sent. The function sends the notifications through Expo's push service,
+deletes tokens Expo no longer knows, and, if not one request reached Expo, calls
+`release_push_claim()` so the next minute tries again. Until push is set up (pg_net, the Vault
+secrets, the deployed function), `send_due_push()` returns `not_set_up` and nothing happens.
+Setting `notified_at` is not copied to the audit log. Scheduled announcements are sent at their
+publish time; an edit is not sent again.
 
 **Private replies** (0008, [DECISIONS.md #29](DECISIONS.md)). Under an announcement a person can
 send one or more replies to its author: one `announcement_replies` row each. The app may send
@@ -350,11 +404,19 @@ so every function is revoked from them and granted only where needed
 | `coordinator_dashboard()` | Guru, coordinator | The coordinator dashboard's numbers. See "Home screens" |
 | `guru_dashboard()` | Guru | The Guru dashboard's numbers. See "Home screens" |
 | `week_start_ist()` | Anyone signed in | Monday of this week in India; used by the functions above |
+| `register_push_token(token, platform)` | Guru, coordinator, student | Saves this phone's Expo push token for the signed-in person, taking it over from another login on the same phone; at most 5 phones each. Security definer. Errors `not_allowed`, `bad_token`, `bad_platform`. See "Announcements" → "Push notifications" |
+| `claim_due_push()`, `release_push_claim(ids)` | Only the Edge Function (service role) | Mark waiting announcements notified and return the phones to notify; put them back when nothing could be sent |
+
+The Storage rules `announcement_file_readable`, `announcement_file_uploadable`,
+`announcement_file_deletable` and `announcement_file_path_ok` are run by row-level security as
+the person asking, so signed-in people may execute them; each answers only yes or no about that
+person's own access.
 
 Internal functions (not called by the app, and not allowed to): `refresh_student_statuses`,
-`close_open_visits`, `handle_new_user`, `handle_user_confirmed`, `link_login_to_student`,
-`link_student_email`, `assign_roll_no`, `check_minor_consent`, the guard and audit triggers
-(including `guard_student_progress`, `audit_student_progress`, `guard_announcement`,
+`close_open_visits`, `send_due_push`, `handle_new_user`, `handle_user_confirmed`,
+`link_login_to_student`, `link_student_email`, `assign_roll_no`, `check_minor_consent`, the guard
+and audit triggers (including `guard_student_progress`, `audit_student_progress`,
+`guard_announcement`, `guard_announcement_attachments`, `guard_announcement_notified`,
 `guard_group` and `guard_announcement_reply`), and the helpers `my_role`, `is_guru`, `is_staff`,
 `setting_int`, `today_ist`.
 
@@ -364,6 +426,7 @@ Internal functions (not called by the app, and not allowed to): `refresh_student
 |---|---|---|
 | `mridanga-status-refresh` | 00:30 UTC = 06:00 IST | `refresh_student_statuses()` — ends expired pauses, moves quiet students on, creates call tasks, flags overdue ones |
 | `mridanga-close-visits` | 15:30 UTC = 21:00 IST | `close_open_visits()` — closes visits left open, at the centre's closing time |
+| `mridanga-push` | Every minute | `send_due_push()` — calls the Edge Function `notify-announcements` when a published announcement waits for its push notification; does nothing while push is not set up (0011) |
 
 ## Who can see what
 
@@ -377,6 +440,8 @@ Internal functions (not called by the app, and not allowed to): `refresh_student
 | Announcements | Published ones addressed to them | All, can post; edit, pin or delete own | All, can post; edit, pin or delete any |
 | Read receipts | Own; can add | All (for "seen by"); add own | All; add own |
 | Replies to announcements | Own; can add | Own, and all replies to their own announcements; can add | All; can add; can delete |
+| Photos and PDFs on announcements (Storage) | Those on announcements they can read | All on announcements, and own uploads; upload; delete own uploads and files on own announcements | All; upload; delete any |
+| Push tokens | Own; delete own | Own; delete own | Own; delete own |
 | Groups | Name of the groups they are in | All; create, rename, switch off, add or remove members | Same as coordinator |
 | Staff names (`staff_names`) | Guru and coordinators' names only | Same | Same |
 | Settings, levels, syllabus, centres | Read | Read | Read / write |
@@ -398,9 +463,11 @@ Internal functions (not called by the app, and not allowed to): `refresh_student
 ([PGlite](https://pglite.dev)) on your own computer, then checks the rules that protect student
 data: login linking, the profile guard, registration and consent, attendance marking, the
 student overview, follow-up calls, syllabus ticks, announcements with their read receipts,
-edits, staff names and private replies, groups, the home-screen numbers, who may run each
-function, and row-level security. It
-needs only Node.js, no database server and no Supabase account.
+edits, staff names and private replies, groups, the home-screen numbers, photos and PDFs (who
+may upload, open and delete a file), push tokens and the push queue, who may run each function,
+and row-level security. It needs only Node.js, no database server and no Supabase account.
+`npm test` also runs `push-messages.test.mjs`, which checks how the Edge Function words and
+batches the notifications (Node 23.6 or later reads its TypeScript directly).
 
 ```bash
 cd supabase/tests
@@ -408,5 +475,6 @@ npm install
 npm test
 ```
 
-It imitates Supabase's `auth` schema and roles, which is close but not exact. After it passes, still
-run a new migration on a test project before the live one.
+It imitates Supabase's `auth` schema, roles, `storage.objects` and the service role, which is
+close but not exact: the bucket's size and type limits, pg_net and the Vault are not imitated.
+After it passes, still run a new migration on a test project before the live one.

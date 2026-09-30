@@ -7,9 +7,10 @@ will rely on it.
 
 | Service | Used for | Plan | Owner |
 |---|---|---|---|
-| Supabase | Database, login, storage, daily jobs | Free | Team email account |
+| Supabase | Database, login, storage (photos and PDFs), scheduled jobs, the Edge Function that sends push notifications | Free (1 GB of files, 500,000 Edge Function calls a month) | Team email account |
 | Brevo | Sending sign-up and password-reset emails | Free (300 emails a day) | Team email account |
-| Expo | Building the Android app (EAS Build) | Free (15 Android builds a month) | Team email account |
+| Expo | Building the Android app (EAS Build); its push service passes notifications on | Free (15 Android builds a month) | Team email account |
+| Firebase (Google) | Delivers push notifications to Android phones (Cloud Messaging) | Free | Team email account |
 | Cloudflare | Hosting the web version (Cloudflare Pages) | Free | Team email account |
 | GitHub | Source code | Free, public repository | Maintainer |
 | YouTube | Lesson videos | Free | Team or channel owner |
@@ -237,6 +238,122 @@ the login.
 Every change to the app needs a new APK until over-the-air updates (EAS Update) are set up — a
 later decision.
 
+## Push notifications
+
+When an announcement is published, the Android app shows a notification on the phones of the
+people it is addressed to; a tap opens it ([DECISIONS.md #33](DECISIONS.md)). It goes: database
+job (every minute) → Edge Function `notify-announcements` → Expo's push service → Firebase Cloud
+Messaging → the phone. Until every step below is done, nothing is sent and the app works as
+before. The web version (iPhones) gets no notifications yet. Push does not work in Expo Go.
+
+Two keys are secret and **never go into this repository, the app or a chat**: the Firebase
+service-account key (step 4) and the push secret (step 8). Keep both in the team's password
+manager. The Edge Function gets the Supabase service-role key from Supabase by itself; nobody
+copies it anywhere.
+
+**Once, in Firebase** (logged in with the team email):
+
+1. Open <https://console.firebase.google.com> → **Create a project**, name `mridanga-seva`.
+   Google Analytics is not needed.
+2. In the project: **Add app → Android**. Package name `org.mridangaseva.app` (exactly this,
+   [DECISIONS.md #24](DECISIONS.md)); nickname and SHA-1 can stay empty. **Register app**, then
+   **Download google-services.json**. Skip the remaining SDK steps: Expo does them.
+3. Put the file at `app/google-services.json` and add `"googleServicesFile": "./google-services.json"`
+   inside `"android"` in `app/app.json`. EAS Build uploads only what git does not ignore, so the
+   file must be part of the project it builds. Expo's documentation says this file holds only
+   public identifiers and may be committed (it ends up inside every APK anyway); the other way
+   is an EAS file variable with a small `app.config.ts`. **Not decided yet: ask the maintainer
+   before committing it.**
+4. **Project settings → Service accounts → Generate new private key → Generate key.** A JSON
+   file downloads. This one is secret: store it in the password manager.
+
+**Once, in Expo** (after `eas init`, see "Building the Android app"; from `app/`):
+
+5. Upload the service-account key:
+   ```bash
+   npx eas-cli@latest credentials -p android
+   ```
+   Choose a build profile (either; the key belongs to the package name) → **Google Service
+   Account** → **Manage your Google Service Account Key for Push Notifications (FCM V1)** →
+   **Set up a Google Service Account Key for Push Notifications (FCM V1)** → **Upload a new
+   service account key** → pick the JSON from step 4. Then delete the downloaded copy from the
+   computer.
+
+**In each Supabase project** (test first, then live):
+
+6. Run `0010_announcement_files.sql` and `0011_push_notifications.sql` in the SQL editor, in
+   order, like the other migrations.
+7. **Database → Extensions**: switch on **pg_net**.
+8. Make the push secret: in the SQL editor run `select encode(gen_random_bytes(32), 'hex');` and
+   copy the long text it shows. Use a different one for the test and the live project.
+9. Save the project address and the push secret in the Vault (SQL editor; put in your own values,
+   the project ref is the part before `.supabase.co`):
+   ```sql
+   select vault.create_secret('https://<project-ref>.supabase.co', 'mridanga_project_url');
+   select vault.create_secret('<the push secret>', 'mridanga_push_secret');
+   ```
+10. Deploy the Edge Function and give it the same push secret, from a terminal in the
+    repository folder (the first command opens the browser to log in):
+    ```bash
+    npx supabase login
+    npx supabase secrets set PUSH_SECRET=<the push secret> --project-ref <project-ref>
+    npx supabase functions deploy notify-announcements --project-ref <project-ref> --no-verify-jwt --use-api
+    ```
+    `--no-verify-jwt` because the database job calls it without a login; the function checks
+    the push secret instead. `--use-api` builds it on Supabase's side, so Docker is not needed.
+    If the CLI asks for `supabase/config.toml`, run `npx supabase init` once and commit that file.
+    Only if the Expo account has "enhanced push security" switched on, also run
+    `npx supabase secrets set EXPO_ACCESS_TOKEN=<token from expo.dev → Access tokens> --project-ref <project-ref>`.
+
+**Then a new APK**, built after steps 3 and 5 (see "Building the Android app"):
+
+11. `npx eas-cli@latest build -p android --profile preview` (test project) or `--profile
+    production` (live). Install it over the old one, sign in, and allow notifications when
+    Android asks.
+
+**Check that it works** (test project):
+
+12. On a phone with the new APK, sign in as a student and allow notifications. On another device,
+    post an announcement "Now" to all students. Within about a minute the phone shows it; a tap
+    opens it.
+13. If nothing arrives, look in the SQL editor:
+    ```sql
+    select send_due_push();   -- 'not_set_up' = step 7, 9 or 10 is missing
+    select id, status_code, content from net._http_response order by id desc limit 5;
+    select title, publish_at, notified_at from announcements order by id desc limit 5;
+    select platform, updated_at from push_tokens order by updated_at desc limit 5;
+    ```
+    `status_code` 401 = the push secret in the Vault and in `supabase secrets` differ; 404 = the
+    function is not deployed. No row in `push_tokens` = the phone has no token: Expo Go, no
+    permission, or steps 3 and 5 were missing when the APK was built. The function's own log is
+    under **Edge Functions → notify-announcements → Logs** (for example `InvalidCredentials` =
+    the key of step 5 is missing or wrong).
+
+**Switching it off:** `select cron.unschedule('mridanga-push');` in the SQL editor stops it. To
+switch on again, `select cron.schedule('mridanga-push', '* * * * *', 'select send_due_push()');`:
+announcements published meanwhile are then sent if they are less than a day old, the older ones
+never.
+
+## Files no announcement uses
+
+Photos and PDFs are removed from Storage by the app when an announcement or one of its files is
+deleted ([DECISIONS.md #32](DECISIONS.md)). If that failed (no internet at that moment), the file
+stays in the bucket, unused. Once in a while, list such files in the SQL editor:
+
+```sql
+select o.name, o.created_at, (o.metadata ->> 'size')::bigint as bytes
+  from storage.objects o
+ where o.bucket_id = 'announcement-files'
+   and o.created_at < now() - interval '1 day'
+   and not exists (select 1 from announcements a
+                    where a.attachments @> jsonb_build_array(jsonb_build_object('path', o.name)));
+```
+
+Delete them in **Storage → announcement-files** (open the folder, tick the files, **Delete**).
+**Never** `delete from storage.objects` in SQL: that forgets the file but leaves it taking space.
+How much of the free 1 GB is used: **Project Settings → Usage**, or
+`select sum((metadata ->> 'size')::bigint) / 1048576 as mb from storage.objects;`.
+
 ## App icon and splash screen
 
 `app/assets/images/` and the web version's home-screen icons in `app/public/` hold placeholder
@@ -254,6 +371,9 @@ week, export the data yourself:
   Project Settings → Database.
 - Store the file somewhere private. It contains personal data of students, including minors — never
   put it in the repository or a shared chat.
+- The dump holds the database only, not the photos and PDFs in Storage. They are usually copies
+  of posters and timetables their authors keep; if a copy is needed, download them from
+  **Storage → announcement-files**.
 
 ## Keeping the free project awake
 
@@ -265,6 +385,12 @@ long holidays, open the app once a week, or restore the project from the dashboa
 1. Supabase → Project Settings → API: rotate the leaked key.
 2. If it was the `service_role` key, treat all data as exposed: check `audit_log`, and tell the Guru.
 3. Remove the key from the repository history and update `app/.env`.
+4. The **Firebase service-account key**: in Firebase, Project settings → Service accounts →
+   **Manage service account permissions** (Google Cloud) → the service account → Keys → delete
+   the leaked key; generate a new one and upload it again ("Push notifications", steps 4-5).
+5. The **push secret**: make a new one (step 8) and put it in both places:
+   `select vault.update_secret((select id from vault.secrets where name = 'mridanga_push_secret'), '<new secret>');`
+   and `npx supabase secrets set PUSH_SECRET=<new secret> --project-ref <project-ref>`.
 
 ## Handing over
 

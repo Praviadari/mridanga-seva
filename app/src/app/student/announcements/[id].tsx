@@ -1,5 +1,6 @@
-// S10 One announcement, for its reader: the whole message, when it was published, who posted it
-// and who it is for, and "Edited" when it was changed after publishing. Opening it saves the read
+// S10 One announcement, for its reader: the whole message with its photos and PDFs (opened
+// through links that work for an hour, docs/DECISIONS.md #32), when it was published, who posted
+// it and who it is for, and "Edited" when it was changed after publishing. Opening it saves the read
 // receipt, so the coordinator's "seen by" count goes up (docs/DECISIONS.md #25). Under it the
 // student can reply privately to the author: only the author and the Guru read replies, never
 // other students (docs/DECISIONS.md #29). The student's own earlier replies are listed.
@@ -10,6 +11,7 @@ import { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { AppText } from '@/components/app-text';
+import { AttachmentList } from '@/components/attachment-list';
 import { Button } from '@/components/button';
 import { Notice } from '@/components/notice';
 import { ReplyBox } from '@/components/reply-box';
@@ -90,6 +92,7 @@ export default function MyAnnouncementScreen() {
       ) : null}
       <AppText variant="subtitle">{a.title}</AppText>
       <AppText selectable>{a.body}</AppText>
+      <AttachmentList attachments={a.attachments} />
       <AppText tone="muted">
         {[
           formatDateTimeInIndia(a.publishAt),

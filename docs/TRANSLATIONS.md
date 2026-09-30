@@ -25,10 +25,13 @@ themselves ([DECISIONS.md #12](DECISIONS.md)).
   `announcements.compose.audienceChoices.level` ...). The codes are listed in
   [DATABASE.md](DATABASE.md#registering-a-student), [DATABASE.md](DATABASE.md#follow-up-calls)
   and [DATABASE.md](DATABASE.md#announcements); never translate a code itself.
-- The title and message of an announcement, replies, and group names and purposes are shown
-  exactly as people typed them, in whatever language they wrote; the app does not translate them.
-  The words around them are in `announcements.*` (including `announcements.edit.*` and
-  `announcements.replies.*`) and `groups.*`.
+- The title and message of an announcement, replies, file names, and group names and purposes
+  are shown exactly as people typed them, in whatever language they wrote; the app does not
+  translate them. The words around them are in `announcements.*` (including
+  `announcements.edit.*`, `announcements.replies.*` and `announcements.files.*`) and `groups.*`.
+- A push notification shows the announcement's own title and text, so it is never translated.
+  Only the name of the Android notification channel, which people see in the phone's settings,
+  is in `push.*`; it is set in the language the app shows when the person signs in.
 - Reasons for a call are a list the Guru can extend (`settings.call_reasons`). A reason added
   there without a translation in these files is shown as the Guru typed it, in every language,
   until a translator adds `callReasons.<code>` ([DECISIONS.md #19](DECISIONS.md)).

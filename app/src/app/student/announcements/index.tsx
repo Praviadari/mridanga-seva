@@ -73,6 +73,7 @@ export default function MyAnnouncementsScreen() {
               ? [t('announcements.postedBy', { name: loaded.staffNames.get(a.createdBy) })]
               : []),
             ...(a.editedAt ? [t('announcements.edited', { date: formatDateTimeInIndia(a.editedAt) })] : []),
+            ...(a.attachments.length > 0 ? [t('announcements.files.count', { number: a.attachments.length })] : []),
           ]}
           onPress={() => router.push({ pathname: '/student/announcements/[id]', params: { id: String(a.id) } })}
         />

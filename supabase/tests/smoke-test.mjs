@@ -42,6 +42,30 @@ const supabaseImitation = `
   create schema cron;
   create function cron.schedule(name text, schedule text, command text) returns bigint
     language sql as $$ select 1::bigint $$;
+  -- The Edge Functions' role: it bypasses row-level security, like Supabase's service_role.
+  create role service_role nologin bypassrls;
+  grant usage on schema public, auth to service_role;
+  alter default privileges in schema public grant all on tables to service_role;
+  alter default privileges in schema public grant all on sequences to service_role;
+  alter default privileges in schema public grant execute on functions to service_role;
+  -- Supabase Storage keeps one row per file in storage.objects, with row-level security on; the
+  -- Storage API writes it as the signed-in person. Size and type limits of a bucket are checked
+  -- by the Storage API, not the database, so they cannot be tested here.
+  create schema storage;
+  grant usage on schema storage to anon, authenticated, service_role;
+  create table storage.buckets (
+    id text primary key, name text not null, public boolean default false,
+    file_size_limit bigint, allowed_mime_types text[]);
+  create table storage.objects (
+    id uuid primary key default gen_random_uuid(),
+    bucket_id text references storage.buckets (id),
+    name text not null,
+    owner uuid,
+    metadata jsonb,
+    created_at timestamptz default now(),
+    unique (bucket_id, name));
+  alter table storage.objects enable row level security;
+  grant all on storage.buckets, storage.objects to anon, authenticated, service_role;
 `;
 
 // Print a failing SQL statement briefly instead of the database client's full error dump.
@@ -98,11 +122,31 @@ const linkOf = async (email) =>
 // ---------------------------------------------------------------- set up
 await db.exec(supabaseImitation);
 const migrations = readdirSync(new URL('migrations/', supabaseDir)).filter((f) => f.endsWith('.sql')).sort();
+// Announcements that exist before the push migration runs: it must stamp the published one as
+// notified (so it is never pushed as old news) and leave the scheduled one to be pushed later.
+let beforePush = null;
 for (const file of migrations) {
   let sql = readFileSync(new URL(`migrations/${file}`, supabaseDir), 'utf8');
   sql = sql.replace('create extension if not exists pg_cron;', ''); // imitated above
+  if (file.includes('push_notifications')) {
+    const [published] = await asOwner(`insert into announcements (title, body, audience) values ('Old news', 'x', 'all') returning id`);
+    const [later] = await asOwner(`insert into announcements (title, body, audience, publish_at)
+      values ('Still to come', 'x', 'all', now() + interval '1 day') returning id`);
+    beforePush = { published: published.id, later: later.id };
+  }
   await db.exec(sql);
   console.log(`ran   migrations/${file}`);
+}
+if (beforePush) {
+  const stamps = await asOwner(`select id, notified_at from announcements where id in (${beforePush.published}, ${beforePush.later})`);
+  const stamp = (id) => stamps.find((r) => r.id === id)?.notified_at ?? null;
+  const [{ n: auditRows }] = await asOwner(`select count(*)::int as n from audit_log where table_name = 'announcements'`);
+  check('the push migration marks announcements already published as notified', stamp(beforePush.published) !== null);
+  check('... leaves a scheduled one waiting for its notification', stamp(beforePush.later) === null);
+  check('... and writes nothing to the audit log', auditRows === 0, String(auditRows));
+  // Removed again so the checks below see only their own announcements.
+  await asOwner(`delete from announcements where id in (${beforePush.published}, ${beforePush.later})`);
+  await asOwner(`delete from audit_log where table_name = 'announcements'`);
 }
 await db.exec(readFileSync(new URL('seed.sql', supabaseDir), 'utf8'));
 console.log('ran   seed.sql\n');
@@ -759,6 +803,172 @@ const [{ definers, anonRuns }] = await asOwner(`select
   from pg_proc where proname in ('student_home', 'coordinator_dashboard', 'guru_dashboard', 'week_start_ist')`);
 check('the home-screen functions read as the person asking (security invoker) and anon cannot run them',
   definers === 0 && anonRuns === false);
+
+// ---------------------------------------------------------------- photos and PDFs (0010)
+const [bucket] = await asOwner(`select public, file_size_limit, allowed_mime_types from storage.buckets where id = 'announcement-files'`);
+check('the announcement-files bucket is private, 5 MB, photos and PDFs only', bucket?.public === false
+  && Number(bucket.file_size_limit) === 5242880 && bucket.allowed_mime_types.join(',') === 'image/jpeg,image/png,image/webp,application/pdf',
+  JSON.stringify(bucket));
+
+const newId = async () => (await asOwner('select gen_random_uuid() as id'))[0].id;
+/** A file path in `userId`'s folder, as the app makes it. */
+const filePath = async (userId, ext = 'jpg') => `${userId}/${await newId()}.${ext}`;
+/** Uploads a file as `userId` the way the Storage API does (one storage.objects row). */
+const upload = async (userId, path, size = 1234) => asApp('authenticated', userId,
+  `insert into storage.objects (bucket_id, name, owner, metadata) values ('announcement-files', $1, auth.uid(), $2)`,
+  [path, JSON.stringify({ size, mimetype: path.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg' })]);
+/** Whether `userId` (or anon when null) can see a file, i.e. make a signed link to it. */
+const canOpen = async (userId, path) => (await asApp(userId ? 'authenticated' : 'anon', userId,
+  `select 1 from storage.objects where bucket_id = 'announcement-files' and name = $1`, [path])).length === 1;
+/** Deletes a file as `userId` the way the Storage API does; true when it went. */
+const removeFile = async (userId, path) => (await asApp('authenticated', userId,
+  `delete from storage.objects where bucket_id = 'announcement-files' and name = $1 returning name`, [path])).length === 1;
+const entry = (path, name = 'Route map.jpg', kind = 'image', size = 1) => ({ path, name, kind, size });
+/** Posts an announcement with files as `userId`; returns id and the saved list. */
+const postWithFiles = async (userId, attachments, extra = {}) => (await asApp('authenticated', userId,
+  `insert into announcements (title, body, audience, audience_level, publish_at, attachments)
+   values ('With files', 'See the map.', $1, $2, coalesce($3::timestamptz, now()), $4) returning id, attachments`,
+  [extra.audience ?? 'all', extra.level ?? null, extra.publishAt ?? null, JSON.stringify(attachments)]))[0];
+
+const photo = await filePath(coordinator);
+await upload(coordinator, photo, 204800);
+check('a coordinator uploads a photo into their own folder', await canOpen(coordinator, photo));
+await refuses('... but not into someone else\'s folder', async () => upload(coordinator, await filePath(guru)));
+await refuses('a student cannot upload a file', async () => upload(arjun, await filePath(arjun)));
+await refuses('a file needs a proper name (random id and ending)', () => upload(coordinator, `${coordinator}/photo.exe`));
+check('another coordinator cannot open a file not yet posted', !(await canOpen(coordinator2, photo)));
+check('... nor a student', !(await canOpen(arjun, photo)));
+
+const withPhoto = await postWithFiles(coordinator, [{ ...entry(photo, '  Route map.jpg '), extra: 'dropped' }]);
+const [saved] = withPhoto.attachments;
+check('an announcement is saved with its photo, name trimmed, extra keys dropped',
+  withPhoto.attachments.length === 1 && saved.name === 'Route map.jpg' && Object.keys(saved).sort().join(',') === 'kind,name,path,size',
+  JSON.stringify(withPhoto.attachments));
+check('... and the size taken from Storage, not from the app', saved.size === 204800, String(saved.size));
+check('a student it is addressed to can open the photo', await canOpen(arjun, photo));
+check('another coordinator can open it now', await canOpen(coordinator2, photo));
+check('a pending login cannot open it', !(await canOpen(pendingLogin, photo)));
+check('anyone without a login cannot open it', !(await canOpen(null, photo)));
+
+const guruFile = await filePath(guru, 'pdf');
+await upload(guru, guruFile);
+await refusesWith('a coordinator cannot attach someone else\'s upload', 'attachment_not_yours', () =>
+  postWithFiles(coordinator, [entry(guruFile, 'Guru.pdf', 'pdf')]));
+await refusesWith('a file that is not in Storage cannot be attached', 'attachment_missing', async () =>
+  postWithFiles(coordinator, [entry(await filePath(coordinator))]));
+const four = await Promise.all([1, 2, 3, 4].map(() => filePath(coordinator)));
+for (const p of four) await upload(coordinator, p);
+await refusesWith('at most 3 files per announcement', 'too_many_attachments', () =>
+  postWithFiles(coordinator, four.map((p) => entry(p))));
+await refusesWith('the kind must match the file (a .jpg is not a pdf)', 'attachments_invalid', () =>
+  postWithFiles(coordinator, [entry(four[0], 'X', 'pdf')]));
+await refusesWith('a file needs a name', 'attachments_invalid', () => postWithFiles(coordinator, [entry(four[0], '  ')]));
+await refusesWith('the same file cannot be listed twice', 'attachments_invalid', () =>
+  postWithFiles(coordinator, [entry(four[0]), entry(four[0])]));
+
+const level1File = await filePath(coordinator, 'pdf');
+await upload(coordinator, level1File);
+await postWithFiles(coordinator, [entry(level1File, 'Beginners.pdf', 'pdf')], { audience: 'level', level: 1 });
+check('a student at another level cannot open that announcement\'s file', !(await canOpen(arjun, level1File)));
+const laterFile = await filePath(coordinator);
+await upload(coordinator, laterFile);
+await postWithFiles(coordinator, [entry(laterFile)], { publishAt: new Date(Date.now() + 86400000).toISOString() });
+check('a file on a scheduled announcement stays closed to students until then', !(await canOpen(arjun, laterFile)));
+
+// Editing the list
+const added = await filePath(coordinator, 'pdf');
+await upload(coordinator, added);
+const [afterAdd] = await asApp('authenticated', coordinator,
+  `update announcements set attachments = attachments || $2::jsonb where id = $1 returning edited_at, jsonb_array_length(attachments) as n`,
+  [withPhoto.id, JSON.stringify([entry(added, 'Timetable.pdf', 'pdf')])]);
+check('adding a file to a published announcement marks it edited', afterAdd?.edited_at != null && afterAdd.n === 2, JSON.stringify(afterAdd));
+const guruExtra = await filePath(guru);
+await upload(guru, guruExtra);
+const [byGuruEdit] = await asApp('authenticated', guru,
+  `update announcements set attachments = attachments || $2::jsonb where id = $1 returning jsonb_array_length(attachments) as n`,
+  [withPhoto.id, JSON.stringify([entry(guruExtra, 'Guru photo.jpg')])]);
+check('the Guru can add their own file to a coordinator\'s announcement, keeping the others', byGuruEdit?.n === 3);
+
+// Deleting files
+check('another coordinator cannot delete the author\'s file', !(await removeFile(coordinator2, photo)));
+check('a student cannot delete a file', !(await removeFile(arjun, photo)));
+check('the author can delete a file the Guru added to their announcement', await removeFile(coordinator, guruExtra));
+check('the uploader can delete their own file', await removeFile(coordinator, four[3]));
+check('the Guru can delete any file', await removeFile(guru, four[2]));
+const [{ ok: attachmentGuardCallable }] = await asOwner(`select has_function_privilege('authenticated',
+  'guard_announcement_attachments()', 'execute') as ok`);
+check('app roles cannot run the attachments trigger function', attachmentGuardCallable === false);
+
+// ---------------------------------------------------------------- push notifications (0011)
+// Everything posted above is due; drain it first so the checks below see only their own.
+/** Runs claim_due_push as the Edge Function does (service role, no login). */
+const claim = async () => asApp('service_role', null, 'select * from claim_due_push()');
+await claim();
+const token = (n) => `ExponentPushToken[test${n}AbCdEfGhIjKl]`;
+const registerToken = (userId, tok, platform = 'android') =>
+  asApp('authenticated', userId, 'select register_push_token($1, $2)', [tok, platform]);
+await registerToken(arjun, token(1));
+await registerToken(meera, token(2));
+await registerToken(coordinator2, token(3));
+await registerToken(coordinator, token(4));
+check('a student saves their phone\'s push token',
+  (await asOwner(`select profile_id from push_tokens where token = '${token(1)}'`))[0]?.profile_id === arjun);
+await refusesWith('a token that is not an Expo push token is refused', 'bad_token', () => registerToken(arjun, 'hello'));
+await refusesWith('an unknown platform is refused', 'bad_platform', () => registerToken(arjun, token(9), 'windows'));
+await refusesWith('a pending login cannot save a token', 'not_allowed', () => registerToken(pendingLogin, token(9)));
+await refuses('anon cannot save a token', () => asApp('anon', null, 'select register_push_token($1, $2)', [token(9), 'android']));
+check('a person sees only their own tokens', (await asApp('authenticated', arjun, 'select token from push_tokens'))
+  .every((r) => r.token === token(1)));
+await refuses('a token cannot be written straight into the table', () =>
+  asApp('authenticated', arjun, 'insert into push_tokens (token, profile_id, platform) values ($1, $2, $3)', [token(9), arjun, 'android']));
+await registerToken(late, token(5));
+await registerToken(meera, token(5));
+check('signing in with another login on the same phone moves the token',
+  (await asOwner(`select profile_id from push_tokens where token = '${token(5)}'`))[0]?.profile_id === meera);
+check('the token cannot be deleted by someone else', (await asApp('authenticated', late,
+  'delete from push_tokens where token = $1 returning token', [token(5)])).length === 0);
+check('its owner deletes it at sign-out', (await asApp('authenticated', meera,
+  'delete from push_tokens where token = $1 returning token', [token(5)])).length === 1);
+for (const n of [10, 11, 12, 13, 14, 15]) await registerToken(late, token(n));
+const lateTokens = (await asOwner(`select token from push_tokens where profile_id = '${late}' order by updated_at`)).map((r) => r.token);
+check('at most 5 phones per person, the oldest dropped', lateTokens.length === 5 && !lateTokens.includes(token(10)), lateTokens.join(' '));
+
+const [{ id: pushed }] = await asApp('authenticated', coordinator,
+  `insert into announcements (title, body, audience, audience_level, notified_at) values ('Push me', $1, 'level', 3, now()) returning id`,
+  ['p'.repeat(300)]);
+check('an app user cannot mark a new announcement as notified',
+  (await asOwner(`select notified_at from announcements where id = ${pushed}`))[0].notified_at === null);
+await refuses('an app user cannot run claim_due_push', () => asApp('authenticated', coordinator, 'select * from claim_due_push()'));
+check('send_due_push does nothing while push is not set up (no pg_net here)',
+  (await asOwner('select send_due_push() as r'))[0].r === 'not_set_up');
+const claimed = await claim();
+check('claim_due_push returns the phones of the people it is addressed to (level 3: Arjun)',
+  claimed.length === 1 && claimed[0].token === token(1) && claimed[0].role === 'student' && claimed[0].announcement_id === pushed,
+  JSON.stringify(claimed.map((r) => [r.announcement_id, r.token, r.role])));
+check('... with the start of the text only', claimed[0]?.body.length === 180);
+check('... and marks it notified, so a second run sends nothing', (await claim()).length === 0);
+check('... and nothing due now', (await asOwner('select send_due_push() as r'))[0].r === 'nothing_due');
+const [{ n: pushAudit }] = await asOwner(`select count(*)::int as n from audit_log where table_name = 'announcements' and row_id = '${pushed}'`);
+check('marking it notified is not written to the audit log', pushAudit === 0, String(pushAudit));
+await asApp('authenticated', coordinator, 'update announcements set notified_at = null where id = $1', [pushed]);
+check('an app user cannot clear notified_at to send it again',
+  (await asOwner(`select notified_at from announcements where id = ${pushed}`))[0].notified_at !== null);
+await asApp('service_role', null, `select release_push_claim(array[${pushed}]::bigint[])`);
+check('release_push_claim puts it back in the queue', (await claim()).length === 1);
+
+await asApp('authenticated', coordinator, `insert into announcements (title, body, audience) values ('Staff only', 'Meeting.', 'staff')`);
+const staffClaim = await claim();
+check('a staff announcement goes to the other staff, never to the author or students',
+  staffClaim.map((r) => r.token).join(',') === token(3) && staffClaim[0].role === 'coordinator',
+  JSON.stringify(staffClaim.map((r) => [r.announcement_id, r.token])));
+await asOwner(`insert into announcements (title, body, audience, publish_at, created_by)
+  values ('Yesterday', 'x', 'all', now() - interval '2 days', '${coordinator}')`);
+check('an announcement published more than a day ago is marked but not sent', (await claim()).length === 0
+  && (await asOwner(`select notified_at from announcements where title = 'Yesterday'`))[0].notified_at !== null);
+const [{ ok: pushFnsCallable }] = await asOwner(`select has_function_privilege('authenticated', 'send_due_push()', 'execute')
+  or has_function_privilege('authenticated', 'release_push_claim(bigint[])', 'execute')
+  or has_function_privilege('authenticated', 'guard_announcement_notified()', 'execute') as ok`);
+check('app roles cannot run the push job functions', pushFnsCallable === false);
 
 // ---------------------------------------------------------------- row-level security
 const seen =await asApp('authenticated', arjun, 'select full_name from students');

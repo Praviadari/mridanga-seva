@@ -57,8 +57,9 @@ Mridanga Seva puts class records, learning material and communication in one pla
 ```
 app/                   Expo app (screens live in app/src/app/)
 supabase/migrations/   Database schema, row-level security, functions and scheduled jobs
+supabase/functions/    Edge Functions (notify-announcements sends the push notifications)
 supabase/seed.sql      Dummy data for a test project
-supabase/tests/        Database smoke test that runs on your own computer
+supabase/tests/        Database smoke test and push message test that run on your own computer
 docs/                  How it works and why — start with docs/README.md
 ```
 

@@ -1,6 +1,6 @@
 // Small helpers that turn values stored as numbers or codes into words in the app's language:
 // a level's name, a status, a call outcome or reason, when a student last came, who an
-// announcement is for, a length of time.
+// announcement is for, a file's size, a length of time.
 // Used by several screens, so the wording is the same everywhere.
 
 import type { TFunction } from 'i18next';
@@ -89,6 +89,13 @@ export function audienceName(
     case 'group':
       return t('announcements.audience.group', { name: names.groupName ?? '' });
   }
+}
+
+/** A file's size given in bytes, e.g. 348160 → "340 KB", 1572864 → "1.5 MB". */
+export function fileSizeText(t: TFunction, bytes: number): string {
+  const kb = bytes / 1024;
+  if (kb < 1024) return t('announcements.files.sizeKb', { size: Math.max(1, Math.round(kb)) });
+  return t('announcements.files.sizeMb', { size: (kb / 1024).toFixed(1) });
 }
 
 /** A length of time given in whole minutes, e.g. 105 → "1 h 45 min", 40 → "40 min". */

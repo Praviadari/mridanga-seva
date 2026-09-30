@@ -1,8 +1,9 @@
-// C15 Edit an announcement, for its author and the Guru: the same fields as posting, filled in.
-// "When should students see it?" is offered only while it is still scheduled: once published, its
-// time stays. Read receipts are kept, and a published announcement shows "Edited" with the time
-// (docs/DECISIONS.md #27). Opened from the announcement (../[id].tsx); saving goes back there.
-// Data: src/data/announcements.ts; the database checks everything again (migration 0008).
+// C15 Edit an announcement, for its author and the Guru: the same fields as posting, filled in,
+// photos and PDFs included (add or remove). "When should students see it?" is offered only while
+// it is still scheduled: once published, its time stays. Read receipts are kept, and a published
+// announcement shows "Edited" with the time (docs/DECISIONS.md #27, #32). Opened from the
+// announcement (../[id].tsx); saving goes back there.
+// Data: src/data/announcements.ts; the database checks everything again (migrations 0008, 0010).
 
 import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
@@ -14,6 +15,7 @@ import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
+import { isPicked } from '@/data/announcement-files';
 import {
   AUDIENCES,
   checkAnnouncementForm,
@@ -140,7 +142,7 @@ export default function EditAnnouncementScreen() {
     setErrors(found);
     if (Object.keys(found).length > 0) return;
     setSaving(true);
-    const outcome = await updateAnnouncement(original, form);
+    const outcome = await updateAnnouncement(original, form, myId);
     setSaving(false);
     if (outcome.errorKey) {
       setServerError(t(outcome.errorKey));
@@ -165,6 +167,7 @@ export default function EditAnnouncementScreen() {
         showWhen={scheduled}
       />
       {serverError ? <Notice tone="error">{serverError}</Notice> : null}
+      {saving && form.files.some(isPicked) ? <AppText tone="muted">{t('announcements.files.uploading')}</AppText> : null}
       <Button label={t('announcements.edit.save')} loading={saving} onPress={() => void save()} />
       <Button variant="link" label={t('announcements.edit.cancel')} onPress={backToAnnouncement} />
     </Screen>

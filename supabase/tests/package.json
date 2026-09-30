@@ -4,7 +4,8 @@
   "description": "Runs the migrations and seed on an in-memory Postgres and checks the access rules. See docs/DATABASE.md.",
   "type": "module",
   "scripts": {
-    "test": "node smoke-test.mjs"
+    "test": "node smoke-test.mjs && node push-messages.test.mjs",
+    "test:push": "node push-messages.test.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.8"
