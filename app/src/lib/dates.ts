@@ -51,6 +51,31 @@ export function parseDayMonthYear(text: string): string | null {
   return date.toISOString().slice(0, 10);
 }
 
+/**
+ * Reads a time of day typed as 24-hour hours and minutes: 18:30, 9:05 or 18.30.
+ * Returns 'HH:MM', or null if it is not a real time.
+ */
+export function parseTimeOfDay(text: string): string | null {
+  const match = /^(\d{1,2})[:.](\d{2})$/.exec(text.trim());
+  if (!match) return null;
+  const [hours, minutes] = [Number(match[1]), Number(match[2])];
+  if (hours > 23 || minutes > 59) return null;
+  return `${String(hours).padStart(2, '0')}:${match[2]}`;
+}
+
+/**
+ * A day and a time of day in India as one ISO timestamp the database understands:
+ * ('2026-10-04', '18:30') → '2026-10-04T18:30:00+05:30'.
+ */
+export function momentInIndia(isoDate: string, timeOfDay: string): string {
+  return `${isoDate}T${timeOfDay}:00+05:30`;
+}
+
+/** A moment from the database as day-month-year and 24-hour time in India: '30-09-2026 16:05'. */
+export function formatDateTimeInIndia(timestamp: string): string {
+  return `${formatDayMonthYear(dateInIndia(timestamp))} ${timeInIndia(timestamp)}`;
+}
+
 /** Full years between an ISO birth date and an ISO day (both 'YYYY-MM-DD'). */
 export function ageOn(birthDate: string, day: string): number {
   const [by, bm, bd] = birthDate.split('-').map(Number);

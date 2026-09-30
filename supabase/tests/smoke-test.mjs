@@ -1,7 +1,7 @@
 // Database smoke test: runs every migration and seed.sql on an in-memory Postgres (PGlite),
 // then checks the rules that protect student data: login linking, the profile guard,
-// registration with consent, attendance marking, follow-up calls, syllabus ticks, who may run
-// which function, and row-level security.
+// registration with consent, attendance marking, follow-up calls, syllabus ticks, announcements
+// and their read receipts, who may run which function, and row-level security.
 //
 // Run before pasting a migration into the live Supabase project:
 //   cd supabase/tests && npm install && npm test
@@ -396,6 +396,131 @@ const [{ ok: guardCallable }] = await asOwner(`select has_function_privilege('au
   'guard_student_progress()', 'execute') or has_function_privilege('authenticated',
   'audit_student_progress()', 'execute') as ok`);
 check('app roles cannot run the syllabus trigger functions', guardCallable === false);
+
+// ---------------------------------------------------------------- announcements (0007)
+// Logins so far: arjun (Arjun Rao, level 3), meera (Meera Iyer, level 2), late (Late Joiner,
+// level 1) and New Face (level 1) are students. Meera becomes the coordinator's mentee, Late
+// Joiner joins a group, and a second coordinator and a still-pending login are added.
+const coordinator2 = await signUp('coordinator2@example.com', true);
+await asApp('authenticated', guru, `update profiles set role = 'coordinator' where id = '${coordinator2}'`);
+const pendingLogin = await signUp('just.signed.up@example.com', true);
+await asOwner(`update students set mentor_id = '${coordinator}' where profile_id = '${meera}'`);
+const [{ id: harinamGroup }] = await asOwner(`select id from groups where name = 'Sunday Harinam'`);
+await asOwner(`insert into group_members (group_id, profile_id) values (${harinamGroup}, '${late}')`);
+
+/** Posts an announcement as `userId`; returns the saved row. */
+async function post(userId, fields) {
+  const names = Object.keys(fields);
+  const [row] = await asApp('authenticated', userId,
+    `insert into announcements (${names.join(', ')}) values (${names.map((_, i) => `$${i + 1}`).join(', ')})
+     returning id, title, audience_level, audience_group, created_by`, Object.values(fields));
+  return row;
+}
+const toAll = await post(coordinator, { title: '  Kirtan on Sunday  ', body: 'Meet at 16:00.\n', audience: 'all', created_by: guru });
+check('an announcement records its real author, not the one the app sent', toAll.created_by === coordinator, toAll.created_by);
+check('... with the title trimmed', toAll.title === 'Kirtan on Sunday', toAll.title);
+await refusesWith('audience "level" needs a level', 'level_required', () =>
+  post(coordinator, { title: 'T', body: 'B', audience: 'level' }));
+await refusesWith('audience "group" needs a group', 'group_required', () =>
+  post(coordinator, { title: 'T', body: 'B', audience: 'group' }));
+await refusesWith('an announcement needs a title', 'title_required', () =>
+  post(coordinator, { title: ' \n ', body: 'B', audience: 'all' }));
+await refusesWith('the text is at most 4000 characters', 'body_too_long', () =>
+  post(coordinator, { title: 'T', body: 'a'.repeat(4001), audience: 'all' }));
+await refuses('a student cannot post an announcement', () =>
+  post(arjun, { title: 'T', body: 'B', audience: 'all' }));
+const toStaff = await post(coordinator, { title: 'Staff meeting', body: 'After class.', audience: 'staff', audience_level: 2 });
+check('a level given with another audience is dropped', toStaff.audience_level === null);
+const toLevel3 = await post(coordinator, { title: 'Advanced practice', body: 'Tihais.', audience: 'level', audience_level: 3 });
+const toLevel1 = await post(coordinator, { title: 'Beginners', body: 'Bring your khol.', audience: 'level', audience_level: 1 });
+const toMentees = await post(coordinator, { title: 'My mentees', body: 'Call me.', audience: 'mentees' });
+const toGroup = await post(coordinator2, { title: 'Harinam team', body: 'Sunday 17:00.', audience: 'group', audience_group: harinamGroup });
+const [scheduled] = await asApp('authenticated', coordinator,
+  `insert into announcements (title, body, audience, publish_at) values ('Later', 'Tomorrow.', 'all', now() + interval '1 day')
+   returning id`);
+
+/** Titles of the announcements `userId` can see, sorted. */
+const visibleTo = async (userId) =>
+  (await asApp('authenticated', userId, 'select title from announcements order by title')).map((r) => r.title).join(', ');
+check('a level-3 student sees "all" and level 3 only', (await visibleTo(arjun)) ===
+  'Advanced practice, Kirtan on Sunday, Welcome to Mridanga Seva', await visibleTo(arjun));
+check('a mentee sees their mentor\'s "my mentees" announcement', (await visibleTo(meera)) ===
+  'Kirtan on Sunday, My mentees, Welcome to Mridanga Seva', await visibleTo(meera));
+check('a group member sees the group\'s announcement', (await visibleTo(late)) ===
+  'Beginners, Harinam team, Kirtan on Sunday, Welcome to Mridanga Seva', await visibleTo(late));
+check('a pending login sees no announcements', (await visibleTo(pendingLogin)) === '');
+check('staff see every announcement, scheduled ones too',
+  (await asApp('authenticated', coordinator2, 'select id from announcements')).length === 8);
+
+// Read receipts
+await asApp('authenticated', arjun, 'insert into announcement_reads (announcement_id) values ($1)', [toAll.id]);
+const [receipt] = await asOwner(`select profile_id, read_at from announcement_reads where announcement_id = ${toAll.id}`);
+check('opening an announcement saves a read receipt for the reader', receipt?.profile_id === arjun && receipt.read_at !== null);
+await refuses('a second receipt for the same announcement is refused (the app ignores it)', () =>
+  asApp('authenticated', arjun, 'insert into announcement_reads (announcement_id) values ($1)', [toAll.id]));
+await refuses('a receipt for an announcement not addressed to the student is refused', () =>
+  asApp('authenticated', arjun, 'insert into announcement_reads (announcement_id) values ($1)', [toLevel1.id]));
+await refuses('a receipt for a scheduled announcement is refused', () =>
+  asApp('authenticated', arjun, 'insert into announcement_reads (announcement_id) values ($1)', [scheduled.id]));
+await refuses('a receipt cannot be written in someone else\'s name', () =>
+  asApp('authenticated', arjun, 'insert into announcement_reads (announcement_id, profile_id) values ($1, $2)',
+    [toAll.id, meera]));
+await refuses('a receipt cannot be removed from the app', () =>
+  asApp('authenticated', arjun, 'delete from announcement_reads where announcement_id = $1', [toAll.id]));
+
+// Seen by N of M
+/** The announcement_seen row of one announcement, read as `userId`. */
+const seenOf = async (userId, id) =>
+  (await asApp('authenticated', userId, 'select addressed, seen, no_login from announcement_seen where announcement_id = $1', [id]))[0];
+const [{ n: studentLogins }] = await asOwner(`select count(*)::int as n from profiles where role = 'student' and active`);
+const [{ n: noLogin }] = await asOwner(`select count(*)::int as n from students where profile_id is null and status <> 'left'`);
+const allSeen = await seenOf(coordinator, toAll.id);
+check('"seen by" for "all" counts every student login, and who opened it',
+  allSeen.addressed === studentLogins && allSeen.seen === 1 && allSeen.no_login === noLogin, JSON.stringify(allSeen));
+await asApp('authenticated', arjun, 'insert into announcement_reads (announcement_id) values ($1)', [toLevel3.id]);
+const levelSeen = await seenOf(coordinator, toLevel3.id);
+check('... for a level, only that level\'s logins', levelSeen.addressed === 1 && levelSeen.seen === 1, JSON.stringify(levelSeen));
+const staffSeen = await seenOf(coordinator, toStaff.id);
+check('... for staff, the Guru and coordinators except the author', staffSeen.addressed === 2 && staffSeen.no_login === 0,
+  JSON.stringify(staffSeen));
+check('... for a group, its members', (await seenOf(coordinator, toGroup.id)).addressed === 1);
+const notSeen = (await asApp('authenticated', coordinator,
+  'select full_name from announcement_audience where announcement_id = $1 and read_at is null order by full_name', [toAll.id]))
+  .map((r) => r.full_name);
+check('the not-seen list names who has not opened it', notSeen.includes('Meera Iyer') && !notSeen.includes('Arjun Rao'),
+  notSeen.join(', '));
+check('a student sees only their own row in announcement_audience',
+  (await asApp('authenticated', arjun, 'select profile_id from announcement_audience'))
+    .every((r) => r.profile_id === arjun));
+await refuses('anon cannot read announcement_seen', () => asApp('anon', null, 'select * from announcement_seen'));
+
+// Editing and deleting
+const unpinnedByOther = await asApp('authenticated', coordinator2,
+  'update announcements set pinned = true where id = $1 returning id', [toAll.id]);
+check('a coordinator cannot pin another coordinator\'s announcement', unpinnedByOther.length === 0);
+const pinned = await asApp('authenticated', coordinator,
+  'update announcements set pinned = true where id = $1 returning pinned', [toAll.id]);
+check('the author can pin it', pinned[0]?.pinned === true);
+await refusesWith('the author of an announcement cannot be changed', 'announcement_frozen', () =>
+  asApp('authenticated', guru, 'update announcements set created_by = $2 where id = $1', [toAll.id, guru]));
+const deletedByOther = await asApp('authenticated', coordinator2,
+  'delete from announcements where id = $1 returning id', [toAll.id]);
+check('a coordinator cannot delete another coordinator\'s announcement', deletedByOther.length === 0);
+check('a student cannot delete an announcement', (await asApp('authenticated', arjun,
+  'delete from announcements where id = $1 returning id', [toAll.id])).length === 0);
+const deletedByAuthor = await asApp('authenticated', coordinator,
+  'delete from announcements where id = $1 returning id', [toAll.id]);
+const receiptsLeft = await asOwner(`select 1 from announcement_reads where announcement_id = ${toAll.id}`);
+check('the author can delete it, and its read receipts go with it', deletedByAuthor.length === 1 && receiptsLeft.length === 0);
+const deletedByGuru = await asApp('authenticated', guru, 'delete from announcements where id = $1 returning id', [toGroup.id]);
+check('the Guru can delete anyone\'s announcement', deletedByGuru.length === 1);
+const announcementTrail = await asOwner(`select action from audit_log where table_name = 'announcements'
+  and row_id = '${toAll.id}' order by id`);
+check('pinning and deleting are kept in the audit log',
+  announcementTrail.map((r) => r.action).join(',') === 'UPDATE,DELETE', announcementTrail.map((r) => r.action).join(','));
+const [{ ok: announcementGuardCallable }] = await asOwner(`select has_function_privilege('authenticated',
+  'guard_announcement()', 'execute') as ok`);
+check('app roles cannot run the announcement trigger function', announcementGuardCallable === false);
 
 // ---------------------------------------------------------------- row-level security
 const seen =await asApp('authenticated', arjun, 'select full_name from students');

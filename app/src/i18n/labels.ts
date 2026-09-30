@@ -1,9 +1,11 @@
 // Small helpers that turn values stored as numbers or codes into words in the app's language:
-// a level's name, a status, a call outcome or reason, when a student last came, a length of time.
+// a level's name, a status, a call outcome or reason, when a student last came, who an
+// announcement is for, a length of time.
 // Used by several screens, so the wording is the same everywhere.
 
 import type { TFunction } from 'i18next';
 
+import type { Announcement } from '@/data/announcements';
 import { isKnownCallReason, type CallOutcome } from '@/data/follow-up';
 import type { StudentStatus, StudentSummary } from '@/data/student-overview';
 import { dateInIndia, formatDayMonthYear } from '@/lib/dates';
@@ -60,6 +62,33 @@ export function lastVisitText(
     date: formatDayMonthYear(dateInIndia(student.lastVisitAt)),
     days: student.daysSinceVisit,
   });
+}
+
+/**
+ * Who an announcement is for, in the app's language: "All students", "Beginner level",
+ * "My mentees" / "Mentees of Radha" / "Your mentor's students", "Staff only", "Group: Sunday
+ * Harinam". `groupName` is the name of its group; `authorName` and `byMe` word a mentees audience
+ * for staff (a student reading it gets "Your mentor's students").
+ */
+export function audienceName(
+  t: TFunction,
+  announcement: Pick<Announcement, 'audience' | 'audienceLevel'>,
+  names: { groupName?: string | null; authorName?: string | null; byMe?: boolean } = {},
+): string {
+  switch (announcement.audience) {
+    case 'all':
+      return t('announcements.audience.all');
+    case 'level':
+      return t('announcements.audience.level', { level: levelName(t, announcement.audienceLevel ?? 0) });
+    case 'mentees':
+      if (names.byMe) return t('announcements.audience.myMentees');
+      if (names.authorName) return t('announcements.audience.menteesOf', { name: names.authorName });
+      return t('announcements.audience.mentees');
+    case 'staff':
+      return t('announcements.audience.staff');
+    case 'group':
+      return t('announcements.audience.group', { name: names.groupName ?? '' });
+  }
 }
 
 /** A length of time given in whole minutes, e.g. 105 → "1 h 45 min", 40 → "40 min". */

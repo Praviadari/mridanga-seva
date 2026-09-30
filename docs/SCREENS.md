@@ -23,7 +23,7 @@ Status: **Built** works end to end · **Placeholder** a simple stand-in exists �
 | S3 | My QR card: the code the coordinator scans at the door; works without internet | Built | `app/src/app/student/my-qr.tsx`, `app/src/components/qr-code.tsx`, `app/src/data/my-student.ts` |
 | S4 | Learn: my level's syllabus and lessons | | |
 | S9 | Attendance history | | |
-| S10 | Announcements | | |
+| S10 | Announcements: the ones addressed to me, pinned first, "New" until opened; opening one tells the coordinator it was seen (replies come later) | Built | `app/src/app/student/announcements/index.tsx`, `[id].tsx`, `app/src/data/announcements.ts`, `app/src/components/announcement-card.tsx` |
 
 ## Coordinator
 
@@ -39,7 +39,7 @@ Status: **Built** works end to end · **Placeholder** a simple stand-in exists �
 | C9 | Syllabus tick-off: every level's items in order with a progress bar; one tap ticks (dated today, your name), or "Tick with a remark" in one step; untick asks first; says when the student's level is complete (moving up stays the Guru's decision); opened from C8 | Built | `app/src/app/staff/syllabus/[id].tsx`, `app/src/data/syllabus.ts`, `app/src/components/syllabus-item-card.tsx`, `app/src/components/progress-bar.tsx` |
 | C10 | Follow-up queue: needs the Guru, call due, call later, no call planned; everyone or my students | Built | `app/src/app/staff/follow-up.tsx`, `app/src/data/follow-up.ts` |
 | C11 | Call log: phone the student or parent, then outcome, reason, comment (required), date; "Stopped coming" asks once more | Built | `app/src/app/staff/call/[id].tsx`, `app/src/data/follow-up.ts` |
-| C15 | Post an announcement | | |
+| C15 | Announcements: list with "seen by N of M"; post (title, message, audience all / level / my mentees / staff / group, pin, now or a later time); one announcement with the not-seen list, pin or unpin, delete (author or Guru, asks first). Images and files come later | Built | `app/src/app/staff/announcements/index.tsx`, `new.tsx`, `[id].tsx`, `app/src/data/announcements.ts` |
 | C21 | My reports | | |
 
 ## Guru
@@ -61,5 +61,5 @@ Coordinator screens that the Guru also uses live in `app/src/app/staff/`
 
 ## Build order
 
-~~A1~~ → ~~C2, C3~~ → ~~C5, C6~~ → ~~C7, C8~~ → ~~C10, C11~~ → ~~C9~~ → G4, G5 → C15, S10 → S1, ~~S3~~, S4, S9 →
+~~A1~~ → ~~C2, C3~~ → ~~C5, C6~~ → ~~C7, C8~~ → ~~C10, C11~~ → ~~C9~~ → G4, G5 → ~~C15, S10~~ → S1, ~~S3~~, S4, S9 →
 G1, C1, C21, G8 → G2, G3 → G9, G10, G11.

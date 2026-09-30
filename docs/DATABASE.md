@@ -11,6 +11,7 @@ in number order:
 | `0004_attendance.sql` | `mark_visit` for tap-to-mark attendance and `check_out_all` for closing time ([DECISIONS.md #18](DECISIONS.md)) |
 | `0005_students_follow_up.sql` | View `student_overview` (last visit, days since); reasons for a call become codes; `log_call` checks its inputs and answers with error codes ([DECISIONS.md #19, #20](DECISIONS.md)) |
 | `0006_syllabus_progress.sql` | A syllabus tick records who really ticked it and cannot be dated in the future; every tick and untick is kept in `audit_log` ([DECISIONS.md #22](DECISIONS.md)) |
+| `0007_announcements.sql` | Announcements: checks on every announcement, only students and staff can read them, the author or the Guru can delete, read receipts written only by the reader, and views for "seen by N of M" ([DECISIONS.md #25](DECISIONS.md)) |
 
 Every table and important column also carries a `COMMENT ON` description, so you can read it in
 the Supabase dashboard (Table Editor → table → description).
@@ -30,8 +31,8 @@ consent), sample visits, groups and an announcement. Never run it on the live pr
 | Attendance | `visits` | One row per check-in; `check_out` empty while the student is still there |
 | Follow-up | `call_logs`, `follow_up_tasks`, `status_history` | Every call and every status change is kept |
 | Learning | `levels`, `syllabus_items`, `student_progress`, `level_history`, `materials` | Three levels; each has an ordered syllabus |
-| Communication | `announcements`, `announcement_reads`, `groups`, `group_members` | Groups replace the WhatsApp groups |
-| Audit | `audit_log` | Who changed a student, profile, call log, level or syllabus tick, and when |
+| Communication | `announcements`, `announcement_reads`, `groups`, `group_members` | Groups replace the WhatsApp groups. Views `announcement_audience` and `announcement_seen` give "seen by" |
+| Audit | `audit_log` | Who changed a student, profile, call log, level, syllabus tick or announcement, and when |
 
 ## Student status
 
@@ -187,6 +188,57 @@ still shows who had ticked the item, when, and who removed it.
 
 Items of an earlier level can still be ticked after a promotion; the screen shows every level.
 
+## Announcements
+
+A coordinator or the Guru posts an announcement on screen C15: a title, the message, who it is
+for, whether it is pinned, and optionally a later publish time. Students read theirs on S10. The
+app writes the `announcements` table directly: insert to post, update to pin or unpin, delete.
+
+Who it is for (`audience`):
+
+| Audience | Goes to | Needs |
+|---|---|---|
+| `all` | Every student with the app | — |
+| `level` | Students whose record is at that level | `audience_level` |
+| `mentees` | Students whose mentor is the author | — |
+| `staff` | The Guru and the coordinators only | — |
+| `group` | The members of that group | `audience_group` |
+
+Coordinators and the Guru see every announcement, whatever its audience, including scheduled
+ones. A student sees an announcement only once `publish_at` has passed, and only if it is
+addressed to them. A login that is still `pending`, or the door tablet, sees none
+([DECISIONS.md #25](DECISIONS.md)).
+
+The trigger `announcements_guard` makes these rules hold however the row is written:
+
+| Rule | Error code |
+|---|---|
+| Title and message are trimmed; neither may be empty | `title_required`, `body_required` |
+| Title at most 120 characters, message at most 4000 | `title_too_long`, `body_too_long` |
+| `level` needs a level and `group` a group; for other audiences both are cleared | `level_required`, `group_required` |
+| No publish time means now | — |
+| The author (`created_by`) is the signed-in person, whatever the app sent, and never changes; the dashboard and `seed.sql` keep what they give | `announcement_frozen` |
+
+Only the author, while still a coordinator or the Guru, or the Guru can pin, unpin or delete an
+announcement; row-level security turns anyone else's attempt into "nothing changed". Every
+edit and delete is copied to `audit_log`.
+
+**Read receipts.** When a person opens an announcement, the app adds one `announcement_reads`
+row. The app may send only `announcement_id`: the database fills in who (the login) and when
+(now). A person can add a receipt only for an announcement they can see, only once, and cannot
+change or remove it. Receipts disappear only with their announcement.
+
+**Seen by N of M.** Two views, both `with (security_invoker = true)` like `student_overview`:
+
+| View | One row per | Columns |
+|---|---|---|
+| `announcement_audience` | announcement and person it is addressed to who can open it in the app (active login; students for `all`, `level`, `mentees`; staff for `staff`; members for `group`; never the author) | `full_name` (from the student record for students), `roll_no`, `role`, `read_at` (empty = not seen yet) |
+| `announcement_seen` | announcement | `addressed` (M), `seen` (N), `no_login`: students it is meant for who have no app login and are not *Left*, to be told in class |
+
+The staff screen reads the counts and the not-seen list from these views, so the number is the
+same on every phone and the phone never downloads everyone's receipts. A student reading the
+views sees only their own row. Attachments (`attachments`) are not used yet.
+
 ## Linking a login to a student
 
 A student record can exist without a login (many students never install the app). When a person
@@ -224,7 +276,7 @@ so every function is revoked from them and granted only where needed
 Internal functions (not called by the app, and not allowed to): `refresh_student_statuses`,
 `close_open_visits`, `handle_new_user`, `handle_user_confirmed`, `link_login_to_student`,
 `link_student_email`, `assign_roll_no`, `check_minor_consent`, the guard and audit triggers
-(including `guard_student_progress` and `audit_student_progress`), and the helpers `my_role`,
+(including `guard_student_progress`, `audit_student_progress` and `guard_announcement`), and the helpers `my_role`,
 `is_guru`, `is_staff`, `setting_int`, `today_ist`.
 
 ## Scheduled jobs (pg_cron, times in UTC)
@@ -243,7 +295,8 @@ Internal functions (not called by the app, and not allowed to): `refresh_student
 | Guardians, consents | — | Read / write | Read / write |
 | Call logs, follow-up tasks, status history | — | Read / write | Read / write |
 | Materials | Approved ones up to own level | All, can suggest | All, approves |
-| Announcements | Those addressed to them | All, can post | All, can post |
+| Announcements | Published ones addressed to them | All, can post; pin or delete own | All, can post; pin or delete any |
+| Read receipts | Own; can add | All (for "seen by"); add own | All; add own |
 | Settings, levels, syllabus, centres | Read | Read | Read / write |
 | Audit log | — | — | Read |
 
@@ -262,7 +315,8 @@ Internal functions (not called by the app, and not allowed to): `refresh_student
 `supabase/tests/smoke-test.mjs` runs every migration and `seed.sql` on an in-memory Postgres
 ([PGlite](https://pglite.dev)) on your own computer, then checks the rules that protect student
 data: login linking, the profile guard, registration and consent, attendance marking, the
-student overview, follow-up calls, syllabus ticks, who may run each function, and row-level security. It
+student overview, follow-up calls, syllabus ticks, announcements and their read receipts, who may
+run each function, and row-level security. It
 needs only Node.js, no database server and no Supabase account.
 
 ```bash

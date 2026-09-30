@@ -20,14 +20,18 @@ themselves ([DECISIONS.md #12](DECISIONS.md)).
   release, not seen by a student.
 - Some values are stored in the database as a code and translated only on screen: levels by
   number (`levels.1` = Beginner), relations (`relations.mother`), ID types (`idTypes.aadhaar`),
-  student statuses (`statuses.irregular`), call outcomes (`callOutcomes.paused`) and reasons for a
-  call (`callReasons.studies`). The codes are listed in [DATABASE.md](DATABASE.md#registering-a-student)
-  and [DATABASE.md](DATABASE.md#follow-up-calls); never translate a code itself.
+  student statuses (`statuses.irregular`), call outcomes (`callOutcomes.paused`), reasons for a
+  call (`callReasons.studies`) and who an announcement is for (`announcements.audience.all`,
+  `announcements.compose.audienceChoices.level` ...). The codes are listed in
+  [DATABASE.md](DATABASE.md#registering-a-student), [DATABASE.md](DATABASE.md#follow-up-calls)
+  and [DATABASE.md](DATABASE.md#announcements); never translate a code itself.
+- The title and message of an announcement are shown exactly as the coordinator typed them, in
+  whatever language they wrote; the app does not translate them.
 - Reasons for a call are a list the Guru can extend (`settings.call_reasons`). A reason added
   there without a translation in these files is shown as the Guru typed it, in every language,
   until a translator adds `callReasons.<code>` ([DECISIONS.md #19](DECISIONS.md)).
 - The helpers in `app/src/i18n/labels.ts` (`levelName`, `statusName`, `callReasonName`,
-  `lastVisitText` ...) turn codes into words, so every screen words them the same way.
+  `lastVisitText`, `audienceName` ...) turn codes into words, so every screen words them the same way.
 - Language names in the language picker are always written in their own script (English,
   తెలుగు, हिन्दी), so people can find their language whatever the app shows now.
 

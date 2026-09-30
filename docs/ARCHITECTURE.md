@@ -74,7 +74,8 @@ app/
     data/              Reading and saving records: one file per area (students.ts ...), with the
                        form checks. Screens call these, never the database directly
     components/        Building blocks shared by screens: text, buttons, fields, choices, list rows,
-                       the QR scanner, the syllabus item card, a progress bar, page frame
+                       the QR scanner, the syllabus item card, the announcement card, a
+                       progress bar, page frame
     i18n/              Interface text in English, Telugu and Hindi (docs/TRANSLATIONS.md), and
                        labels.ts, which words levels and lengths of time the same on every screen
     lib/               The Supabase client, on-device storage and date helpers (India time)
@@ -120,9 +121,9 @@ read or write the person is not allowed, whatever the app shows.
 
 - **Row-level security (RLS) is on for every table.** The database itself decides which rows a
   person may read or change; the app cannot get around it. See [DATABASE.md](DATABASE.md#who-can-see-what).
-- **Views read as the person asking.** The one view so far, `student_overview`, is created
-  `with (security_invoker = true)`, so the row-level security of the tables under it still
-  applies ([DECISIONS.md #20](DECISIONS.md)).
+- **Views read as the person asking.** Every view (`student_overview`, `announcement_audience`,
+  `announcement_seen`) is created `with (security_invoker = true)`, so the row-level security of
+  the tables under it still applies ([DECISIONS.md #20](DECISIONS.md)).
 - **The app holds only the public (anon / publishable) key.** It is safe to ship because RLS protects
   the data. The `service_role` key bypasses RLS and must never be in the app or the repository.
 - **The app refuses to start with the `service_role` key** in `app/.env` and shows a warning
@@ -166,6 +167,22 @@ OPERATIONS.md "Publishing the web version".
    day after the date; *not reachable* sets a retry, handed to the Guru after several tries.
    This is the only way to reach Paused or Left ([DECISIONS.md #4](DECISIONS.md)).
 5. The next visit makes the student *Active* again and closes their open tasks.
+
+## How announcements flow (Phase 1)
+
+1. A coordinator or the Guru opens *Announcements* (C15) and taps *New announcement*: title,
+   message, who it is for (all students, one level, my mentees, staff only, or a group), pin or
+   not, and publish now or at a later date and time.
+2. The app saves it straight into `announcements`; a database trigger checks it and records the
+   author. A later publish time keeps it from students until then; staff see it at once.
+3. A student opens *Announcements* (S10). Row-level security gives them only the published ones
+   addressed to them. Opening one saves a read receipt.
+4. Back on C15, each announcement shows "seen by N of M", worked out by the database views
+   `announcement_seen` and `announcement_audience`, with the names of those who have not seen it
+   and how many students it is meant for have no app login ([DECISIONS.md #25](DECISIONS.md)).
+5. The author or the Guru can pin, unpin or delete it; the audit log keeps a copy.
+
+There are no push notifications yet: people see new announcements when they open the app.
 
 ## Phases
 

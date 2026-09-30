@@ -377,3 +377,38 @@ app. The Supabase URL and key reach the build as EAS environment variables (`pre
 `production`), because `app/.env` and `app/.env.test` are not uploaded. Both profiles share the
 package name, so a phone has the test app or the live app, not both. Every app change needs a
 new APK until over-the-air updates (EAS Update) are chosen.
+
+## 25. "Seen by N of M" counts only people who can open the announcement — 30 Sep 2026
+
+**Context.** Announcements replace the class WhatsApp groups, where the coordinators like seeing
+who has read a message. The first migration had the tables but several gaps: an announcement to
+*all* could be read by any login, including someone who had just signed up and was still
+*pending*; a level or group announcement could be saved without its level or group; nobody could
+delete an announcement from the app; any person could write a read receipt with any time; and
+"seen by" was left for the app to count.
+
+**Decision.**
+- *All* means all students. A person who is not staff must be a student to see any announcement,
+  and then only published ones addressed to them. Staff see every announcement.
+- M counts the people the announcement is addressed to **who can open it in the app**: active
+  logins that the read rule lets in, never the author. Students with no app login are counted
+  separately ("without the app: 3") so the coordinator can tell them in class. N counts those of
+  M who have opened it.
+- Both numbers, and the list of who has not seen it, come from two database views that read as
+  the person asking (#20), not from counting in the app.
+- A read receipt is written only by the reader, only for an announcement they can see, holds only
+  the database's own time, and cannot be changed or removed.
+- Only the author, while still staff, or the Guru can pin, unpin or delete. Edits and deletes are
+  copied to the audit log. A trigger checks title, text, audience target and author (#5).
+
+**Why.** A count that includes people who cannot receive the message never reaches M and makes a
+good announcement look ignored; mixing in students without the app hides who must be told in
+person. Counting in the database keeps the number the same on every phone and keeps other
+people's receipts off students' phones. Receipts that only the reader can write, once, make "seen"
+mean seen. A newcomer's login should learn nothing about the class before the Guru lets them in.
+
+**Consequences.** Migration `0007_announcements.sql`. The two views must follow the read rule of
+`announcements`: a change to who may read an announcement must change `announcement_audience` in
+the same migration, or the counts go wrong. A student who is *Left* but still has a login stays in
+M, because they can still read. Replies, images and files (C15, S10) and push notifications come
+later; groups are still made in the Supabase dashboard until a groups screen exists.

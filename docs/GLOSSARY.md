@@ -46,6 +46,12 @@
 | Days since last visit | Whole days (India time) since the student's last check-in, or since joining if they never came. The student list filters by it |
 | Call reason code | A short code for why a student stopped coming (`studies`, `health` ...), kept in `settings.call_reasons` and translated by the app (DECISIONS.md #19) |
 | Group | A set of people who receive the same announcements; replaces a WhatsApp group |
+| Announcement | A message from a coordinator or the Guru to an audience: all students, one level, the author's mentees, staff only, or a group (screens C15, S10) |
+| Audience | Who an announcement is for (`announcements.audience`). Coordinators and the Guru see every announcement whatever its audience |
+| Pinned | An announcement kept at the top of every list until it is unpinned |
+| Scheduled | An announcement whose publish time is still to come: staff see it, students only from that time |
+| Read receipt | The note the app saves when a person first opens an announcement (`announcement_reads`) |
+| Seen by N of M | On an announcement: M = the people it is addressed to who can open it in the app, N = how many have opened it (DECISIONS.md #25) |
 | Kiosk | The door tablet account (Phase 2), allowed only to check students in and out |
 | Pending | A new login that has no role yet |
 | Area | In the app's code: the part of the app a person may use now (signed out, pending, guru, coordinator, student). See ARCHITECTURE.md "Navigation by role" |
