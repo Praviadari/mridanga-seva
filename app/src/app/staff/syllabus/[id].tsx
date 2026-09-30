@@ -1,6 +1,8 @@
 // C9 Syllabus tick-off, for coordinators and the Guru: one student's syllabus, level by level in
-// teaching order. Tap the box when the student shows the item in class; the database dates it
-// today and records who ticked it. A remark is optional and can be added or changed later.
+// teaching order, with a progress bar. Tap the box when the student shows the item in class; the
+// database dates it today and records who ticked it. A remark is optional: it can go with the
+// tick ("Tick with a remark") or be added or changed later. When every item of the student's
+// level is ticked the screen says so; moving up a level stays the Guru's decision.
 // Unticking asks once more on the screen (a pop-up does not work in the web version); the audit
 // log keeps the old tick (docs/DECISIONS.md #22). Opened from the student profile (C8).
 // Data: src/data/syllabus.ts.
@@ -13,6 +15,7 @@ import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { ChoiceGroup } from '@/components/choice-group';
 import { Notice } from '@/components/notice';
+import { ProgressBar } from '@/components/progress-bar';
 import { Screen } from '@/components/screen';
 import { SyllabusItemCard } from '@/components/syllabus-item-card';
 import { TextField } from '@/components/text-field';
@@ -105,8 +108,10 @@ export default function SyllabusTickOffScreen() {
     if (outcome.errorKey) setMessage({ itemId, tone: 'error', key: outcome.errorKey });
     else if (outcome.notice) setMessage({ itemId, tone: 'info', key: outcome.notice });
     else if (successKey) setMessage({ itemId, tone: 'success', key: successKey });
-    // Keep the remark box open after a failed save, so the typed text is not lost.
-    if (!outcome.errorKey) setOpen(null);
+    // Keep the remark box open after a failed save, so the typed text is not lost. Also when a
+    // "tick with a remark" found the item ticked by someone else first: their tick stays, and the
+    // box (now offering "Save remark") still holds this coordinator's text.
+    if (!outcome.errorKey && outcome.notice !== 'syllabus.alreadyTicked') setOpen(null);
     await load();
     setBusyItem(null);
   }
@@ -155,10 +160,19 @@ export default function SyllabusTickOffScreen() {
         />
       ) : null}
 
-      <AppText variant="label">
-        {`${levelName(t, shownLevel)}: ${t('profile.syllabusDone', { done: doneCount, total: items.length })}`}
-      </AppText>
-      {items.length === 0 ? <AppText tone="muted">{t('profile.noSyllabus')}</AppText> : null}
+      {items.length > 0 ? (
+        <ProgressBar
+          done={doneCount}
+          total={items.length}
+          label={t('syllabus.progressLabel', { level: levelName(t, shownLevel) })}
+          valueText={`${levelName(t, shownLevel)}: ${t('profile.syllabusDone', { done: doneCount, total: items.length })}`}
+        />
+      ) : (
+        <AppText tone="muted">{t('profile.noSyllabus')}</AppText>
+      )}
+      {items.length > 0 && doneCount === items.length && shownLevel === student.levelId ? (
+        <Notice tone="success">{t('syllabus.allDone', { level: levelName(t, shownLevel) })}</Notice>
+      ) : null}
 
       {items.map((item) => {
         const isOpen = open?.itemId === item.id ? open.mode : null;
@@ -175,7 +189,7 @@ export default function SyllabusTickOffScreen() {
                 ? t('syllabus.tickedOn', { date: formatDayMonthYear(item.doneOn), name: tickedBy(item) })
                 : undefined
             }
-            remark={item.remark}
+            remark={item.remark ? t('syllabus.remarkLine', { remark: item.remark }) : null}
             busy={busyItem === item.id}
             onToggle={() => onToggle(item)}>
             {cardMessage ? <Notice tone={cardMessage.tone}>{t(cardMessage.key)}</Notice> : null}
@@ -207,21 +221,30 @@ export default function SyllabusTickOffScreen() {
                   numberOfLines={3}
                   style={{ minHeight: 72, textAlignVertical: 'top' }}
                 />
+                {/* A ticked item gets its remark replaced; an unticked one is ticked with it. */}
                 <Button
-                  label={t('syllabus.saveRemark')}
+                  label={item.doneOn ? t('syllabus.saveRemark') : t('syllabus.tickWithRemark')}
                   loading={busyItem === item.id}
                   onPress={() =>
-                    void change(item.id, () => saveRemark(student.id, item.id, remarkText), 'syllabus.remarkSaved')
+                    void (item.doneOn
+                      ? change(item.id, () => saveRemark(student.id, item.id, remarkText), 'syllabus.remarkSaved')
+                      : change(item.id, () => tickItem(student.id, item.id, remarkText)))
                   }
                 />
                 <Button variant="link" label={t('syllabus.cancel')} onPress={() => setOpen(null)} />
               </>
             ) : null}
 
-            {item.doneOn && isOpen === null ? (
+            {isOpen === null ? (
               <Button
                 variant="link"
-                label={item.remark ? t('syllabus.editRemark') : t('syllabus.addRemark')}
+                label={
+                  !item.doneOn
+                    ? t('syllabus.tickWithRemarkOpen')
+                    : item.remark
+                      ? t('syllabus.editRemark')
+                      : t('syllabus.addRemark')
+                }
                 onPress={() => openRemark(item)}
               />
             ) : null}

@@ -74,7 +74,7 @@ app/
     data/              Reading and saving records: one file per area (students.ts ...), with the
                        form checks. Screens call these, never the database directly
     components/        Building blocks shared by screens: text, buttons, fields, choices, list rows,
-                       the QR scanner, the syllabus item card, page frame
+                       the QR scanner, the syllabus item card, a progress bar, page frame
     i18n/              Interface text in English, Telugu and Hindi (docs/TRANSLATIONS.md), and
                        labels.ts, which words levels and lengths of time the same on every screen
     lib/               The Supabase client, on-device storage and date helpers (India time)

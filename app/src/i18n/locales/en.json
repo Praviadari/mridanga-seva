@@ -361,7 +361,12 @@
       "remarkTooLong": "The remark is too long. Keep it under 500 characters.",
       "notAllowed": "Only coordinators and the Guru can tick syllabus items.",
       "gone": "This item or tick is no longer there. The list has been loaded again."
-    }
+    },
+    "progressLabel": "Syllabus progress, {{level}}",
+    "allDone": "Every item of {{level}} is ticked. Moving up a level is the Guru's decision.",
+    "remarkLine": "Remark: {{remark}}",
+    "tickWithRemarkOpen": "Tick with a remark",
+    "tickWithRemark": "Tick and save the remark"
   },
   "followUp": {
     "title": "Follow-up calls",

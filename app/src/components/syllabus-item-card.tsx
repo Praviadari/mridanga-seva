@@ -20,7 +20,7 @@ export type SyllabusItemCardProps = PropsWithChildren<{
   done: boolean;
   /** Line under the title when ticked, already translated, e.g. "Ticked 29-09-2026 by Radha". */
   doneLine?: string;
-  /** The coordinator's remark on the tick, if any. */
+  /** The remark line on the tick, if any, already translated, e.g. "Remark: needs a steadier tempo". */
   remark?: string | null;
   /** Called when the tick box is tapped, ticked or not. The screen decides what happens. */
   onToggle: () => void;
