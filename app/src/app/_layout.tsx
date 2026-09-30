@@ -9,6 +9,7 @@
 // for a clear interface, not for security.
 
 import '@/i18n'; // sets up translations before any screen renders
+import '@/auth/requested-path'; // notes the address the app was opened with, before any redirect
 
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';

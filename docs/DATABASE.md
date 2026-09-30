@@ -12,6 +12,7 @@ in number order:
 | `0005_students_follow_up.sql` | View `student_overview` (last visit, days since); reasons for a call become codes; `log_call` checks its inputs and answers with error codes ([DECISIONS.md #19, #20](DECISIONS.md)) |
 | `0006_syllabus_progress.sql` | A syllabus tick records who really ticked it and cannot be dated in the future; every tick and untick is kept in `audit_log` ([DECISIONS.md #22](DECISIONS.md)) |
 | `0007_announcements.sql` | Announcements: checks on every announcement, only students and staff can read them, the author or the Guru can delete, read receipts written only by the reader, and views for "seen by N of M" ([DECISIONS.md #25](DECISIONS.md)) |
+| `0008_announcement_follow_ups.sql` | Students see who posted an announcement (`staff_names`); editing marks a published announcement "Edited"; checks on groups, which only staff and members can see; private replies to announcements ([DECISIONS.md #26–#29](DECISIONS.md)) |
 
 Every table and important column also carries a `COMMENT ON` description, so you can read it in
 the Supabase dashboard (Table Editor → table → description).
@@ -31,8 +32,8 @@ consent), sample visits, groups and an announcement. Never run it on the live pr
 | Attendance | `visits` | One row per check-in; `check_out` empty while the student is still there |
 | Follow-up | `call_logs`, `follow_up_tasks`, `status_history` | Every call and every status change is kept |
 | Learning | `levels`, `syllabus_items`, `student_progress`, `level_history`, `materials` | Three levels; each has an ordered syllabus |
-| Communication | `announcements`, `announcement_reads`, `groups`, `group_members` | Groups replace the WhatsApp groups. Views `announcement_audience` and `announcement_seen` give "seen by" |
-| Audit | `audit_log` | Who changed a student, profile, call log, level, syllabus tick or announcement, and when |
+| Communication | `announcements`, `announcement_reads`, `announcement_replies`, `groups`, `group_members` | Groups replace the WhatsApp groups. Views `announcement_audience` and `announcement_seen` give "seen by", `announcement_reply_list` the replies with names, `group_summary` the member counts |
+| Audit | `audit_log` | Who changed a student, profile, call log, level, syllabus tick or announcement, or deleted a reply, and when |
 
 ## Student status
 
@@ -192,7 +193,8 @@ Items of an earlier level can still be ticked after a promotion; the screen show
 
 A coordinator or the Guru posts an announcement on screen C15: a title, the message, who it is
 for, whether it is pinned, and optionally a later publish time. Students read theirs on S10. The
-app writes the `announcements` table directly: insert to post, update to pin or unpin, delete.
+app writes the `announcements` table directly: insert to post, update to edit, pin or unpin,
+delete.
 
 Who it is for (`audience`):
 
@@ -218,10 +220,19 @@ The trigger `announcements_guard` makes these rules hold however the row is writ
 | `level` needs a level and `group` a group; for other audiences both are cleared | `level_required`, `group_required` |
 | No publish time means now | — |
 | The author (`created_by`) is the signed-in person, whatever the app sent, and never changes; the dashboard and `seed.sql` keep what they give | `announcement_frozen` |
+| Once published, the publish time cannot be changed from the app; a scheduled one moved to a time already past is published now, not backdated (0008) | `already_published` |
+| `edited_at` is set to now when the title, message, audience, level or group of an already published announcement changes; the app cannot set it. Editing a scheduled one, and pinning, do not count (0008) | — |
 
-Only the author, while still a coordinator or the Guru, or the Guru can pin, unpin or delete an
-announcement; row-level security turns anyone else's attempt into "nothing changed". Every
-edit and delete is copied to `audit_log`.
+Only the author, while still a coordinator or the Guru, or the Guru can edit, pin, unpin or
+delete an announcement; row-level security turns anyone else's attempt into "nothing changed".
+Every edit and delete is copied to `audit_log`. An edit keeps the read receipts: a person who
+read the first version is still counted as having seen it, and sees "Edited" with the time
+([DECISIONS.md #27](DECISIONS.md)).
+
+**Who posted it.** Students may read only their own `profiles` row, so the app gets the author's
+name from `staff_names()`: the id and name of every Guru and coordinator, active or not, and
+nothing else. It answers students and staff; a `pending` login or the door tablet gets nothing
+([DECISIONS.md #26](DECISIONS.md)).
 
 **Read receipts.** When a person opens an announcement, the app adds one `announcement_reads`
 row. The app may send only `announcement_id`: the database fills in who (the login) and when
@@ -233,11 +244,49 @@ change or remove it. Receipts disappear only with their announcement.
 | View | One row per | Columns |
 |---|---|---|
 | `announcement_audience` | announcement and person it is addressed to who can open it in the app (active login; students for `all`, `level`, `mentees`; staff for `staff`; members for `group`; never the author) | `full_name` (from the student record for students), `roll_no`, `role`, `read_at` (empty = not seen yet) |
-| `announcement_seen` | announcement | `addressed` (M), `seen` (N), `no_login`: students it is meant for who have no app login and are not *Left*, to be told in class |
+| `announcement_seen` | announcement | `addressed` (M), `seen` (N), `no_login`: students it is meant for who have no app login and are not *Left*, to be told in class; `replies`: how many replies the person asking may read (0008) |
 
 The staff screen reads the counts and the not-seen list from these views, so the number is the
 same on every phone and the phone never downloads everyone's receipts. A student reading the
 views sees only their own row. Attachments (`attachments`) are not used yet.
+
+**Private replies** (0008, [DECISIONS.md #29](DECISIONS.md)). Under an announcement a person can
+send one or more replies to its author: one `announcement_replies` row each. The app may send
+only `announcement_id` and `body`; the database fills in who (`profile_id`) and when
+(`created_at`).
+
+| Rule | Error code |
+|---|---|
+| The reply is trimmed; it may not be empty and is at most 1000 characters | `reply_required`, `reply_too_long` |
+| Only for an announcement the writer can see (a `pending` login, or a student it is not addressed to, cannot reply) | row-level security (42501) |
+| Read only by the writer, the author of the announcement while still staff, and the Guru. Students never see each other's replies | — |
+| Nobody can change a reply; only the Guru can delete one (moderation), and the audit log keeps a copy. Replies go with their announcement | — |
+
+The view `announcement_reply_list` (security invoker) gives the replies with the writer's name
+(from the student record for students) and roll number. Replies are one-way for Phase 1: the
+author answers in person or by phone.
+
+## Groups
+
+A group is a set of people who get the announcements sent to it (audience `group`); groups
+replace the class WhatsApp groups. Coordinators and the Guru manage them on the groups screen:
+`groups` (name, purpose, active) and `group_members` (group, profile). Members are logins:
+students who use the app, coordinators and the Guru. The app writes both tables directly.
+
+The trigger `groups_guard` (0008, [DECISIONS.md #28](DECISIONS.md)):
+
+| Rule | Error code |
+|---|---|
+| Name trimmed, required, at most 60 characters | `group_name_required`, `group_name_too_long` |
+| Purpose trimmed, empty becomes none, at most 200 characters | `group_purpose_too_long` |
+| Names are unique whatever the capitals (index `groups_name_lower_key`) | 23505 |
+| `created_by` is the signed-in person and never changes | — |
+
+Only staff and the group's own members can see a group; a student needs the name of their own
+groups for "Group: Sunday Harinam". A group is **switched off** (`active = false`) instead of
+deleted: it is no longer offered when posting, old announcements keep it, and its members still
+see them. The app offers no delete; the database refuses to delete a group an announcement was
+sent to. The view `group_summary` (security invoker) gives each group with its number of members.
 
 ## Linking a login to a student
 
@@ -272,12 +321,14 @@ so every function is revoked from them and granted only where needed
 | `check_out_all(centre)` | Guru, coordinator | Closes every open visit, at one centre or all (`null`, the default). Returns how many |
 | `log_call(student, outcome, reason, comment, next_date)` | Guru, coordinator | Records a follow-up call and applies its outcome (pause, leave, new call task, retry). See "Follow-up calls" |
 | `register_student(...)` | Guru, coordinator | Saves a new student, and for a minor the guardian and consent, in one step. Returns the id, roll number and whether an existing login was linked. See "Registering a student" |
+| `staff_names()` | Guru, coordinator, student (others get nothing) | Id and name of every Guru and coordinator, active or not, for "posted by". Security definer. See "Announcements" |
 
 Internal functions (not called by the app, and not allowed to): `refresh_student_statuses`,
 `close_open_visits`, `handle_new_user`, `handle_user_confirmed`, `link_login_to_student`,
 `link_student_email`, `assign_roll_no`, `check_minor_consent`, the guard and audit triggers
-(including `guard_student_progress`, `audit_student_progress` and `guard_announcement`), and the helpers `my_role`,
-`is_guru`, `is_staff`, `setting_int`, `today_ist`.
+(including `guard_student_progress`, `audit_student_progress`, `guard_announcement`,
+`guard_group` and `guard_announcement_reply`), and the helpers `my_role`, `is_guru`, `is_staff`,
+`setting_int`, `today_ist`.
 
 ## Scheduled jobs (pg_cron, times in UTC)
 
@@ -295,8 +346,11 @@ Internal functions (not called by the app, and not allowed to): `refresh_student
 | Guardians, consents | — | Read / write | Read / write |
 | Call logs, follow-up tasks, status history | — | Read / write | Read / write |
 | Materials | Approved ones up to own level | All, can suggest | All, approves |
-| Announcements | Published ones addressed to them | All, can post; pin or delete own | All, can post; pin or delete any |
+| Announcements | Published ones addressed to them | All, can post; edit, pin or delete own | All, can post; edit, pin or delete any |
 | Read receipts | Own; can add | All (for "seen by"); add own | All; add own |
+| Replies to announcements | Own; can add | Own, and all replies to their own announcements; can add | All; can add; can delete |
+| Groups | Name of the groups they are in | All; create, rename, switch off, add or remove members | Same as coordinator |
+| Staff names (`staff_names`) | Guru and coordinators' names only | Same | Same |
 | Settings, levels, syllabus, centres | Read | Read | Read / write |
 | Audit log | — | — | Read |
 
@@ -315,8 +369,9 @@ Internal functions (not called by the app, and not allowed to): `refresh_student
 `supabase/tests/smoke-test.mjs` runs every migration and `seed.sql` on an in-memory Postgres
 ([PGlite](https://pglite.dev)) on your own computer, then checks the rules that protect student
 data: login linking, the profile guard, registration and consent, attendance marking, the
-student overview, follow-up calls, syllabus ticks, announcements and their read receipts, who may
-run each function, and row-level security. It
+student overview, follow-up calls, syllabus ticks, announcements with their read receipts,
+edits, staff names and private replies, groups, who may run each function, and row-level
+security. It
 needs only Node.js, no database server and no Supabase account.
 
 ```bash

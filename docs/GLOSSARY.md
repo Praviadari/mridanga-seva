@@ -52,6 +52,11 @@
 | Scheduled | An announcement whose publish time is still to come: staff see it, students only from that time |
 | Read receipt | The note the app saves when a person first opens an announcement (`announcement_reads`) |
 | Seen by N of M | On an announcement: M = the people it is addressed to who can open it in the app, N = how many have opened it (DECISIONS.md #25) |
+| Edited | Shown on an announcement whose title, message or audience was changed after it was published, with the time (`announcements.edited_at`, DECISIONS.md #27) |
+| Reply | A private answer to an announcement, read only by its writer, the announcement's author and the Guru (`announcement_replies`, DECISIONS.md #29) |
+| Member | A person in a group: a student who uses the app, a coordinator or the Guru (`group_members`) |
+| Switched off (group) | A group no longer offered when posting; old announcements keep it. Groups are switched off, never deleted (DECISIONS.md #28) |
+| Requested screen | The screen a link asked for when the app was opened; shown once the login has been checked (DECISIONS.md #30) |
 | Kiosk | The door tablet account (Phase 2), allowed only to check students in and out |
 | Pending | A new login that has no role yet |
 | Area | In the app's code: the part of the app a person may use now (signed out, pending, guru, coordinator, student). See ARCHITECTURE.md "Navigation by role" |

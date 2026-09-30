@@ -83,6 +83,7 @@
     "student": "Student"
   },
   "home": {
+    "title": "Home",
     "greeting": "Hare Krishna, {{name}}",
     "greetingNoName": "Hare Krishna",
     "role": "Signed in as {{role}}",
@@ -446,6 +447,8 @@
     "scheduledFor": "Scheduled for {{date}}",
     "seenCount": "Seen by {{seen}} of {{addressed}}",
     "noLoginCount": "Without the app: {{number}}",
+    "edited": "Edited {{date}}",
+    "replyCount": "Replies: {{number}}",
     "audience": {
       "all": "All students",
       "level": "{{level}} level",
@@ -487,6 +490,8 @@
       "time": "Time",
       "timeHint": "24-hour, India time, e.g. 18:30",
       "laterHelp": "Students see it from then. Coordinators and the Guru see it at once.",
+      "noGroups": "There are no groups yet, so \"A group\" is not offered. Make one first.",
+      "openGroups": "Open Groups",
       "submit": "Post announcement",
       "submitLater": "Schedule announcement"
     },
@@ -506,6 +511,7 @@
       "hideSeen": "Hide who has seen it",
       "seenAt": "Seen {{date}}",
       "everyoneSeen": "Everyone has seen it.",
+      "edit": "Edit announcement",
       "pin": "Pin to the top",
       "unpin": "Unpin",
       "delete": "Delete announcement",
@@ -515,6 +521,31 @@
       "cancel": "Cancel",
       "deleted": "Announcement deleted.",
       "back": "Back to announcements"
+    },
+    "edit": {
+      "title": "Edit announcement",
+      "publishedNote": "It stays read for those who have seen it, and shows \"Edited\" with the time. The time it was published cannot change.",
+      "scheduledNote": "Not published yet: you can still change when students see it.",
+      "save": "Save changes",
+      "cancel": "Cancel",
+      "back": "Back to the announcement"
+    },
+    "replies": {
+      "title": "Replies ({{number}})",
+      "privateNote": "Replies are private: only the author and the Guru see them. Answer in person or by phone.",
+      "none": "No replies yet.",
+      "reply": "Reply",
+      "replyTo": "Reply to {{name}}",
+      "whoReads": "Only {{name}} and the Guru see your reply.",
+      "whoReadsNoName": "Only the author and the Guru see your reply.",
+      "yourReply": "Your reply",
+      "hint": "Up to {{max}} characters.",
+      "send": "Send reply",
+      "sent": "Sent.",
+      "mine": "Your replies ({{number}})",
+      "sentAt": "Sent {{date}}",
+      "delete": "Delete reply",
+      "deleteYes": "Yes, delete this reply"
     },
     "errors": {
       "titleRequired": "Enter a title.",
@@ -529,7 +560,56 @@
       "timePast": "This time has already passed. Choose a later time, or publish now.",
       "notAllowed": "Only coordinators and the Guru can post announcements.",
       "cannotChange": "Not changed: only the author or the Guru can change it, or it was deleted.",
-      "groupGone": "This group no longer exists. Choose another."
+      "groupGone": "This group no longer exists. Choose another.",
+      "alreadyPublished": "It was published meanwhile, so its time can no longer change. Nothing was saved. Try again.",
+      "replyRequired": "Write your reply.",
+      "replyTooLong": "The reply is too long. Keep it to 1000 characters.",
+      "replyGone": "This announcement is no longer there, or no longer for you."
+    }
+  },
+  "groups": {
+    "title": "Groups",
+    "intro": "An announcement sent to \"A group\" goes to its members. Members are students who use the app, coordinators and the Guru.",
+    "loadFailed": "Could not load the groups.",
+    "empty": "No groups yet.",
+    "memberCount": "Members: {{number}}",
+    "switchedOff": "Switched off",
+    "newTitle": "New group",
+    "name": "Name",
+    "nameHint": "e.g. \"Sunday Harinam\". Up to {{max}} characters.",
+    "purpose": "What is it for? (optional)",
+    "purposeHint": "Up to {{max}} characters.",
+    "create": "Create group",
+    "created": "Group created. Now add its members.",
+    "detailTitle": "Group",
+    "notFound": "This group is no longer there.",
+    "back": "Back to groups",
+    "detailsSection": "Name and purpose",
+    "save": "Save name and purpose",
+    "saved": "Saved.",
+    "activeTitle": "In use",
+    "activeHelp": "Offered when posting an announcement to \"A group\".",
+    "offHelp": "Not offered when posting. Old announcements keep this group, and its members still see them.",
+    "switchOff": "Switch off",
+    "switchOn": "Switch on again",
+    "membersTitle": "Members ({{number}})",
+    "noMembers": "No members yet. Add people below.",
+    "remove": "Remove",
+    "addTitle": "Add people",
+    "addHelp": "Search for students who use the app, coordinators and the Guru. Students without the app cannot be added.",
+    "search": "Name or roll number",
+    "noMatch": "Nobody found who is not in the group already.",
+    "add": "Add",
+    "moreResults": "{{number}} more. Type more of the name to narrow it down.",
+    "otherRole": "No access yet",
+    "accountOff": "Account switched off",
+    "errors": {
+      "nameRequired": "Enter a name.",
+      "nameTooLong": "The name is too long. Keep it to 60 characters.",
+      "purposeTooLong": "This is too long. Keep it to 200 characters.",
+      "nameTaken": "Another group already has this name.",
+      "notAllowed": "Only coordinators and the Guru can change groups.",
+      "cannotChange": "Not changed: the group is no longer there."
     }
   }
 }

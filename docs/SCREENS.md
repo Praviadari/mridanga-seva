@@ -23,7 +23,7 @@ Status: **Built** works end to end Â· **Placeholder** a simple stand-in exists Â
 | S3 | My QR card: the code the coordinator scans at the door; works without internet | Built | `app/src/app/student/my-qr.tsx`, `app/src/components/qr-code.tsx`, `app/src/data/my-student.ts` |
 | S4 | Learn: my level's syllabus and lessons | | |
 | S9 | Attendance history | | |
-| S10 | Announcements: the ones addressed to me, pinned first, "New" until opened; opening one tells the coordinator it was seen (replies come later) | Built | `app/src/app/student/announcements/index.tsx`, `[id].tsx`, `app/src/data/announcements.ts`, `app/src/components/announcement-card.tsx` |
+| S10 | Announcements: the ones addressed to me, pinned first, "New" until opened, who posted it, "Edited" when changed; opening one tells the coordinator it was seen; a private reply to the author, with my earlier replies | Built | `app/src/app/student/announcements/index.tsx`, `[id].tsx`, `app/src/data/announcements.ts`, `app/src/components/announcement-card.tsx`, `reply-box.tsx`, `reply-card.tsx` |
 
 ## Coordinator
 
@@ -39,7 +39,8 @@ Status: **Built** works end to end Â· **Placeholder** a simple stand-in exists Â
 | C9 | Syllabus tick-off: every level's items in order with a progress bar; one tap ticks (dated today, your name), or "Tick with a remark" in one step; untick asks first; says when the student's level is complete (moving up stays the Guru's decision); opened from C8 | Built | `app/src/app/staff/syllabus/[id].tsx`, `app/src/data/syllabus.ts`, `app/src/components/syllabus-item-card.tsx`, `app/src/components/progress-bar.tsx` |
 | C10 | Follow-up queue: needs the Guru, call due, call later, no call planned; everyone or my students | Built | `app/src/app/staff/follow-up.tsx`, `app/src/data/follow-up.ts` |
 | C11 | Call log: phone the student or parent, then outcome, reason, comment (required), date; "Stopped coming" asks once more | Built | `app/src/app/staff/call/[id].tsx`, `app/src/data/follow-up.ts` |
-| C15 | Announcements: list with "seen by N of M"; post (title, message, audience all / level / my mentees / staff / group, pin, now or a later time); one announcement with the not-seen list, pin or unpin, delete (author or Guru, asks first). Images and files come later | Built | `app/src/app/staff/announcements/index.tsx`, `new.tsx`, `[id].tsx`, `app/src/data/announcements.ts` |
+| C15 | Announcements: list with "seen by N of M" and the number of replies; post (title, message, audience all / level / my mentees / staff / group, pin, now or a later time); one announcement with the not-seen list, the private replies (author and Guru; the Guru can delete one), edit ("Edited" once published; the time only while scheduled), pin or unpin, delete (author or Guru, asks first). Images and files come later | Built | `app/src/app/staff/announcements/index.tsx`, `new.tsx`, `[id].tsx`, `edit/[id].tsx`, `app/src/data/announcements.ts`, `app/src/components/announcement-form.tsx` |
+| â€” | Groups: list with member counts; make a group; one group: rename, purpose, switch off or on, members, add students with the app and staff (number to be given by the team) | Built | `app/src/app/staff/groups/index.tsx`, `[id].tsx`, `app/src/data/groups.ts` |
 | C21 | My reports | | |
 
 ## Guru

@@ -1,5 +1,6 @@
 // C15 Announcements, for coordinators and the Guru: every announcement, pinned ones first, then
-// newest first, with who it is for, who posted it, when students see it and "seen by N of M".
+// newest first, with who it is for, who posted it, when students see it, whether it was edited,
+// "seen by N of M" and, for the author and the Guru, how many private replies it has.
 // "New announcement" opens the compose screen (./new.tsx); tapping one opens it (./[id].tsx) with
 // the list of who has not seen it yet. Staff see every announcement, scheduled ones too.
 // Data: src/data/announcements.ts.
@@ -85,11 +86,15 @@ export default function StaffAnnouncementsScreen() {
               `${isScheduled(a) ? t('announcements.scheduledFor', { date: when }) : when}${
                 authorName ? ` · ${t('announcements.postedBy', { name: authorName })}` : ''
               }`,
+              ...(a.editedAt ? [t('announcements.edited', { date: formatDateTimeInIndia(a.editedAt) })] : []),
               ...(seen
                 ? [
-                    `${t('announcements.seenCount', { seen: seen.seen, addressed: seen.addressed })}${
-                      seen.noLogin > 0 ? ` · ${t('announcements.noLoginCount', { number: seen.noLogin })}` : ''
-                    }`,
+                    [
+                      t('announcements.seenCount', { seen: seen.seen, addressed: seen.addressed }),
+                      ...(seen.noLogin > 0 ? [t('announcements.noLoginCount', { number: seen.noLogin })] : []),
+                      // Only the author and the Guru get a count of everyone's replies (0008).
+                      ...(seen.replies > 0 ? [t('announcements.replyCount', { number: seen.replies })] : []),
+                    ].join(' · '),
                   ]
                 : []),
             ]}

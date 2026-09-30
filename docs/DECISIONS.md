@@ -175,7 +175,8 @@ search engines have nothing to index. One page avoids a class of build-time erro
 
 **Consequences.** The web host must send every address to `index.html` (a "rewrite" or "SPA
 fallback" setting; see OPERATIONS.md). For now a link to a particular screen opens the person's
-home screen instead, because screens stay closed until the login has been checked.
+home screen instead, because screens stay closed until the login has been checked. *(That last
+point no longer holds: see #30.)*
 
 ## 16. A minor is registered together with the parent's consent, or not at all — 28 Sep 2026
 
@@ -412,3 +413,106 @@ mean seen. A newcomer's login should learn nothing about the class before the Gu
 the same migration, or the counts go wrong. A student who is *Left* but still has a login stays in
 M, because they can still read. Replies, images and files (C15, S10) and push notifications come
 later; groups are still made in the Supabase dashboard until a groups screen exists.
+
+## 26. Students see staff names through one narrow function — 30 Sep 2026
+
+**Context.** A student reading an announcement should see who posted it. Row-level security on
+`profiles` lets a student read only their own row, which is right: profiles hold emails and
+phone numbers. #20 says that anything showing more than the tables allow needs its own decision
+and a security-definer function.
+
+**Decision.** The function `staff_names()` runs with its owner's rights and returns only the id
+and name of each Guru and coordinator, active or not (old announcements keep their author). It
+answers only students and staff; a `pending` login or the door tablet gets nothing. Staff
+screens use it too, for "posted by".
+
+**Why.** The names of the Guru and coordinators are no secret to their students; their email,
+phone and role stay behind row-level security. One small function is easier to check than a
+view or a copied name column.
+
+**Consequences.** Migration `0008_announcement_follow_ups.sql`. The smoke test checks that the
+function returns only these two columns and nothing to a pending login. Do not add columns to it
+without a new decision.
+
+## 27. An edited announcement keeps its receipts and says "Edited" — 30 Sep 2026
+
+**Context.** Coordinators make mistakes in an announcement (a wrong time, a missing word). Until
+now the only way out was to delete it and post it again, which loses who had seen it.
+
+**Decision.** The author (while staff) and the Guru can edit the title, message and audience.
+Read receipts are kept. When an announcement that was already published is changed, the database
+sets `edited_at` and the app shows "Edited" with the time; editing a scheduled one, which nobody
+has seen, does not count, and neither does pinning. Once published, an announcement keeps its
+publish time; a scheduled one can still be moved, and a time already past means "now".
+
+**Why.** Praveen chose to keep "seen" (30 Sep 2026): the count stays meaningful, and "Edited"
+tells readers to look again. A published announcement cannot go back to being scheduled, because
+students may have read it. Setting `edited_at` in the database keeps the mark honest.
+
+**Consequences.** Migration `0008`, trigger `announcements_guard`. The edit screen
+(`staff/announcements/edit/[id].tsx`) shares its fields with the compose screen
+(`components/announcement-form.tsx`) and shows "When should students see it?" only while the
+announcement is scheduled. A student who read the first version is not told again until push
+notifications exist; the audit log keeps every earlier version.
+
+## 28. Groups are managed in the app and seen only by staff and members — 30 Sep 2026
+
+**Context.** Groups were made in the Supabase dashboard. 0001 let every login, even a `pending`
+one, list all groups, and names like "Sunday Harinam" could be doubled with other capitals.
+
+**Decision.** A groups screen for coordinators and the Guru: make a group, rename it, change its
+purpose, switch it off or on, add and remove members. Members are logins: students who use the
+app, coordinators and the Guru. A trigger checks the name (required, at most 60 characters,
+unique whatever the capitals) and the purpose (at most 200). Only staff and a group's own members
+can see a group. Groups are switched off, not deleted.
+
+**Why.** Coordinators run the groups, not the maintainer. A newcomer learns nothing about the
+class before the Guru lets them in (#25). Deleting a group would break the announcements sent to
+it (the database refuses), so switching off is the only safe way to retire one.
+
+**Consequences.** Migration `0008`, view `group_summary` for member counts. The screen has no
+number in the approved screen list yet (docs/SCREENS.md, "—"); the team should give it one.
+Students without the app cannot be members; they are told in class, as for other announcements.
+
+## 29. Replies to an announcement are private — 30 Sep 2026
+
+**Context.** On WhatsApp, a reply goes to the whole group. Many students are minors, and a
+coordinator often needs a quiet answer ("I cannot come on Sunday").
+
+**Decision.** A person can reply to an announcement they can see. Only the writer, the author
+of the announcement (while still staff) and the Guru can read a reply; students never see each
+other's replies. Nobody can edit a reply; only the Guru can delete one, and the audit log keeps
+it. Phase 1 is one-way: the author answers in person or by phone. The database fills in who
+wrote the reply and when; the app sends only the announcement and the text.
+
+**Why.** Praveen chose private replies (30 Sep 2026). Keeping them between the student and the
+teacher protects minors and avoids a noisy group chat. A reply that cannot be changed later is a
+fair record for both sides.
+
+**Consequences.** Migration `0008`: table `announcement_replies`, view `announcement_reply_list`,
+and a `replies` count on `announcement_seen` (counted with the reader's rights, so a coordinator
+sees the number of replies to their own announcements). A two-way thread, and telling the author
+about a new reply, come later (with push notifications).
+
+## 30. A link to a screen survives the login check — 30 Sep 2026
+
+**Context.** #15 left a gap: opening an address such as `/student/announcements/12` in a new tab
+always landed on the home screen. While the login is being checked, every area's screens are
+closed, so Expo Router sends the link to the start page and the address is lost. Shared links and
+taps on push notifications need the screen itself.
+
+**Decision.** When the app starts, `src/auth/requested-path.ts` notes the path it was opened
+with (the web address, or the link that opened the Android app). Once the person's area is
+known, the start page sends them there instead of home, if the screen belongs to their area. Only
+the path is kept, never the part after `?` or `#`, which can hold sign-in tokens. The path is
+forgotten as soon as the person is signed in, used or not; while they are signed out it is kept,
+so a link opened before signing in still works after it. The student home screen is put
+underneath, so Back leads home.
+
+**Why.** It needs no change to the login flow or to how screens are protected. A screen of
+another area is still refused (#15, `Stack.Protected`).
+
+**Consequences.** `src/app/index.tsx`, `src/auth/requested-path.ts`, `unstable_settings.anchor` in
+`src/app/student/_layout.tsx`. Push notifications can use `rememberRequestedPath()` for the
+announcement a tap should open. A staff screen opened from a link has no screen under it, so its
+header shows no Back arrow; the browser's Back still works.

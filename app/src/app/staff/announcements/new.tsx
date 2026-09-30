@@ -2,34 +2,29 @@
 // students, one level, my mentees, staff only, a group), pin to the top, and publish now or at a
 // later date and time (India time). Posting opens the announcement (./[id].tsx), where "seen by"
 // fills up as people open it. Images and files come later.
-// Data: src/data/announcements.ts; the database checks everything again (migration 0007).
+// The fields are shared with the edit screen (src/components/announcement-form.tsx).
+// Data: src/data/announcements.ts; the database checks everything again (migrations 0007, 0008).
 
 import { router, Stack, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useAuth } from '@/auth/auth-provider';
+import { AnnouncementFields } from '@/components/announcement-form';
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
-import { Checkbox } from '@/components/checkbox';
-import { ChoiceGroup } from '@/components/choice-group';
 import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
-import { Section } from '@/components/section';
-import { TextField } from '@/components/text-field';
 import {
   AUDIENCES,
-  BODY_MAX_LENGTH,
   checkAnnouncementForm,
   EMPTY_ANNOUNCEMENT_FORM,
   fetchComposeOptions,
   postAnnouncement,
-  TITLE_MAX_LENGTH,
   type AnnouncementForm,
   type AnnouncementFormErrors,
   type ComposeOptions,
 } from '@/data/announcements';
-import { levelName } from '@/i18n/labels';
 
 /** The compose form and the Post button. */
 export default function NewAnnouncementScreen() {
@@ -47,6 +42,7 @@ export default function NewAnnouncementScreen() {
     setOptions(await fetchComposeOptions(myId));
   }, [myId]);
 
+  // Reloads on coming back, e.g. after making the first group from the hint below.
   useFocusEffect(
     useCallback(() => {
       void load();
@@ -101,95 +97,15 @@ export default function NewAnnouncementScreen() {
   return (
     <Screen underHeader>
       {header}
-      <TextField
-        label={t('announcements.compose.titleLabel')}
-        hint={t('announcements.compose.titleHint', { max: TITLE_MAX_LENGTH })}
-        value={form.title}
-        onChangeText={(title) => update({ title })}
-        error={errors.title ? t(errors.title) : undefined}
-        maxLength={TITLE_MAX_LENGTH}
+      <AnnouncementFields
+        form={form}
+        errors={errors}
+        onChange={update}
+        audiences={audiences}
+        groups={options.groups}
+        showWhen
+        onOpenGroups={() => router.push('/staff/groups')}
       />
-      <TextField
-        label={t('announcements.compose.body')}
-        hint={t('announcements.compose.bodyHint', { max: BODY_MAX_LENGTH })}
-        value={form.body}
-        onChangeText={(body) => update({ body })}
-        error={errors.body ? t(errors.body) : undefined}
-        maxLength={BODY_MAX_LENGTH}
-        multiline
-        numberOfLines={6}
-        style={{ minHeight: 140, textAlignVertical: 'top' }}
-      />
-
-      <Section title={t('announcements.compose.audience')}>
-        <ChoiceGroup
-          choices={audiences.map((audience) => ({
-            value: audience,
-            label: t(`announcements.compose.audienceChoices.${audience}`),
-          }))}
-          value={form.audience}
-          onChange={(audience) => update({ audience })}
-          error={errors.audience ? t(errors.audience) : undefined}
-        />
-        {form.audience ? (
-          <AppText tone="muted">{t(`announcements.compose.audienceHelp.${form.audience}`)}</AppText>
-        ) : null}
-        {form.audience === 'level' ? (
-          <ChoiceGroup
-            label={t('announcements.compose.level')}
-            choices={[1, 2, 3].map((id) => ({ value: id, label: levelName(t, id) }))}
-            value={form.levelId}
-            onChange={(levelId) => update({ levelId })}
-            error={errors.levelId ? t(errors.levelId) : undefined}
-          />
-        ) : null}
-        {form.audience === 'group' ? (
-          <ChoiceGroup
-            label={t('announcements.compose.group')}
-            choices={options.groups.map((g) => ({ value: g.id, label: g.name }))}
-            value={form.groupId}
-            onChange={(groupId) => update({ groupId })}
-            error={errors.groupId ? t(errors.groupId) : undefined}
-          />
-        ) : null}
-      </Section>
-
-      <Section title={t('announcements.compose.when')}>
-        <ChoiceGroup
-          choices={[
-            { value: 'now', label: t('announcements.compose.now') },
-            { value: 'later', label: t('announcements.compose.later') },
-          ]}
-          value={form.when}
-          onChange={(when) => update({ when })}
-        />
-        {form.when === 'later' ? (
-          <>
-            <AppText tone="muted">{t('announcements.compose.laterHelp')}</AppText>
-            <TextField
-              label={t('announcements.compose.date')}
-              hint={t('announcements.compose.dateHint')}
-              value={form.date}
-              onChangeText={(date) => update({ date })}
-              error={errors.date ? t(errors.date) : undefined}
-              keyboardType="numbers-and-punctuation"
-              maxLength={10}
-            />
-            <TextField
-              label={t('announcements.compose.time')}
-              hint={t('announcements.compose.timeHint')}
-              value={form.time}
-              onChangeText={(time) => update({ time })}
-              error={errors.time ? t(errors.time) : undefined}
-              keyboardType="numbers-and-punctuation"
-              maxLength={5}
-            />
-          </>
-        ) : null}
-      </Section>
-
-      <Checkbox label={t('announcements.compose.pin')} checked={form.pinned} onChange={(pinned) => update({ pinned })} />
-
       {serverError ? <Notice tone="error">{serverError}</Notice> : null}
       <Button
         label={form.when === 'later' ? t('announcements.compose.submitLater') : t('announcements.compose.submit')}

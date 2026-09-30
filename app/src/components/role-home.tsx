@@ -20,8 +20,8 @@ export type RoleHomeProps = {
 /**
  * Greets the person, says which role they are signed in with, and offers sign-out. Guru and
  * coordinators also get the staff screens built so far: mark attendance (C5), who is here now
- * (C6), the student list (C7), the follow-up queue (C10), announcements (C15) and register a
- * student (C2). Students get My QR (S3) and their announcements (S10).
+ * (C6), the student list (C7), the follow-up queue (C10), announcements (C15), groups and
+ * register a student (C2). Students get My QR (S3) and their announcements (S10).
  */
 export function RoleHome({ role }: RoleHomeProps) {
   const { t } = useTranslation();
@@ -59,6 +59,7 @@ export function RoleHome({ role }: RoleHomeProps) {
             label={t('announcements.title')}
             onPress={() => router.push('/staff/announcements')}
           />
+          <Button variant="secondary" label={t('groups.title')} onPress={() => router.push('/staff/groups')} />
           <Button
             variant="secondary"
             label={t('staff.registerStudent')}

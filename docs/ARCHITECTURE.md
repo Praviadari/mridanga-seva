@@ -74,8 +74,8 @@ app/
     data/              Reading and saving records: one file per area (students.ts ...), with the
                        form checks. Screens call these, never the database directly
     components/        Building blocks shared by screens: text, buttons, fields, choices, list rows,
-                       the QR scanner, the syllabus item card, the announcement card, a
-                       progress bar, page frame
+                       the QR scanner, the syllabus item card, the announcement card and form,
+                       the reply box and reply card, a progress bar, page frame
     i18n/              Interface text in English, Telugu and Hindi (docs/TRANSLATIONS.md), and
                        labels.ts, which words levels and lengths of time the same on every screen
     lib/               The Supabase client, on-device storage and date helpers (India time)
@@ -112,7 +112,9 @@ saved login and the profile are being fetched.
 - The `staff/` folder is open to both `guru` and `coordinator`, because the Guru sees every
   coordinator screen. Put a new screen there unless only one role may use it.
 - `src/app/index.tsx` shows the splash while loading, then sends the person to their area's
-  first screen.
+  first screen, or to the screen a link asked for when it belongs to their area
+  (`src/auth/requested-path.ts`, [DECISIONS.md #30](DECISIONS.md)). A web address or shared link
+  to, say, one announcement therefore still opens that announcement after the login check.
 
 Hiding screens makes the app clear to use; it is **not** the security. The database refuses any
 read or write the person is not allowed, whatever the app shows.
@@ -122,8 +124,10 @@ read or write the person is not allowed, whatever the app shows.
 - **Row-level security (RLS) is on for every table.** The database itself decides which rows a
   person may read or change; the app cannot get around it. See [DATABASE.md](DATABASE.md#who-can-see-what).
 - **Views read as the person asking.** Every view (`student_overview`, `announcement_audience`,
-  `announcement_seen`) is created `with (security_invoker = true)`, so the row-level security of
-  the tables under it still applies ([DECISIONS.md #20](DECISIONS.md)).
+  `announcement_seen`, `announcement_reply_list`, `group_summary`) is created
+  `with (security_invoker = true)`, so the row-level security of the tables under it still
+  applies ([DECISIONS.md #20](DECISIONS.md)). The one exception that shows more than the tables
+  allow is the function `staff_names()`: staff names only, for "posted by" ([DECISIONS.md #26](DECISIONS.md)).
 - **The app holds only the public (anon / publishable) key.** It is safe to ship because RLS protects
   the data. The `service_role` key bypasses RLS and must never be in the app or the repository.
 - **The app refuses to start with the `service_role` key** in `app/.env` and shows a warning
@@ -180,7 +184,17 @@ OPERATIONS.md "Publishing the web version".
 4. Back on C15, each announcement shows "seen by N of M", worked out by the database views
    `announcement_seen` and `announcement_audience`, with the names of those who have not seen it
    and how many students it is meant for have no app login ([DECISIONS.md #25](DECISIONS.md)).
-5. The author or the Guru can pin, unpin or delete it; the audit log keeps a copy.
+5. The author or the Guru can edit, pin, unpin or delete it; the audit log keeps a copy. An
+   edit keeps the read receipts; once published, the announcement shows "Edited" with the time
+   ([DECISIONS.md #27](DECISIONS.md)).
+6. Under an announcement a student (or a coordinator reading someone else's) can reply to the
+   author. Replies are private: only the writer, the author and the Guru read them
+   ([DECISIONS.md #29](DECISIONS.md)). The author sees "Replies: N" on the list and the replies
+   with names on the announcement, and answers in person or by phone.
+
+Groups for the audience "A group" are made on the groups screen (`staff/groups/`): a name, a
+purpose, and members chosen from students with the app and staff. A group is switched off,
+never deleted ([DECISIONS.md #28](DECISIONS.md)).
 
 There are no push notifications yet: people see new announcements when they open the app.
 

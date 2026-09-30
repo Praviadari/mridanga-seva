@@ -1,7 +1,8 @@
 // S10 Announcements, for students: the announcements addressed to them, pinned ones first, then
-// newest first; "New" marks those not opened yet. Tapping one opens it (./[id].tsx), which tells
-// the coordinator it was seen. Scheduled announcements appear only from their time; the database
-// decides which ones a student sees (docs/DECISIONS.md #25). Data: src/data/announcements.ts.
+// newest first, with who posted each one; "New" marks those not opened yet and "Edited" those
+// changed after publishing. Tapping one opens it (./[id].tsx), which tells the coordinator it was
+// seen. Scheduled announcements appear only from their time; the database decides which ones a
+// student sees (docs/DECISIONS.md #25). Data: src/data/announcements.ts.
 
 import { router, Stack, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
@@ -68,6 +69,10 @@ export default function MyAnnouncementsScreen() {
             `${formatDateTimeInIndia(a.publishAt)} · ${audienceName(t, a, {
               groupName: a.audienceGroup !== null ? loaded.groupNames.get(a.audienceGroup) : null,
             })}`,
+            ...(a.createdBy && loaded.staffNames.has(a.createdBy)
+              ? [t('announcements.postedBy', { name: loaded.staffNames.get(a.createdBy) })]
+              : []),
+            ...(a.editedAt ? [t('announcements.edited', { date: formatDateTimeInIndia(a.editedAt) })] : []),
           ]}
           onPress={() => router.push({ pathname: '/student/announcements/[id]', params: { id: String(a.id) } })}
         />

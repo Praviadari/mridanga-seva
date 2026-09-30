@@ -1,6 +1,8 @@
-// S10 One announcement, for its reader: the whole message, when it was published and who it is
-// for. Opening it saves the read receipt, so the coordinator's "seen by" count goes up
-// (docs/DECISIONS.md #25). Replying to the coordinator comes later.
+// S10 One announcement, for its reader: the whole message, when it was published, who posted it
+// and who it is for, and "Edited" when it was changed after publishing. Opening it saves the read
+// receipt, so the coordinator's "seen by" count goes up (docs/DECISIONS.md #25). Under it the
+// student can reply privately to the author: only the author and the Guru read replies, never
+// other students (docs/DECISIONS.md #29). The student's own earlier replies are listed.
 // Data: src/data/announcements.ts.
 
 import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
@@ -10,21 +12,20 @@ import { useTranslation } from 'react-i18next';
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { Notice } from '@/components/notice';
+import { ReplyBox } from '@/components/reply-box';
+import { ReplyCard } from '@/components/reply-card';
 import { Screen } from '@/components/screen';
-import { fetchAnnouncement, markRead, type Announcement } from '@/data/announcements';
+import { fetchAnnouncement, markRead, sendReply, type MyAnnouncement } from '@/data/announcements';
 import { audienceName } from '@/i18n/labels';
 import { formatDateTimeInIndia } from '@/lib/dates';
 
-/** What the screen loaded: the announcement, and its group's name for a group audience. */
-type Loaded = { announcement: Announcement; groupName: string | null };
-
-/** The announcement's title, message and details. */
+/** The announcement's title, message, details and the reply box. */
 export default function MyAnnouncementScreen() {
   const { t } = useTranslation();
   const { id: idParam } = useLocalSearchParams<{ id: string }>();
   const id = Number(idParam);
   // undefined = loading, null = could not load, 'not_found' = not there or not addressed to me.
-  const [loaded, setLoaded] = useState<Loaded | 'not_found' | null | undefined>(undefined);
+  const [loaded, setLoaded] = useState<MyAnnouncement | 'not_found' | null | undefined>(undefined);
   // True once the read receipt went out, so coming back to the screen does not send it again.
   const receiptSent = useRef(false);
 
@@ -71,7 +72,14 @@ export default function MyAnnouncementScreen() {
     );
   }
 
-  const { announcement: a, groupName } = loaded;
+  const { announcement: a, groupName, authorName, myReplies } = loaded;
+
+  async function reply(body: string) {
+    const outcome = await sendReply(a.id, body);
+    if (!outcome.errorKey) await load();
+    return outcome.errorKey;
+  }
+
   return (
     <Screen underHeader>
       {header}
@@ -83,8 +91,37 @@ export default function MyAnnouncementScreen() {
       <AppText variant="subtitle">{a.title}</AppText>
       <AppText selectable>{a.body}</AppText>
       <AppText tone="muted">
-        {`${formatDateTimeInIndia(a.publishAt)} · ${audienceName(t, a, { groupName })}`}
+        {[
+          formatDateTimeInIndia(a.publishAt),
+          ...(authorName ? [t('announcements.postedBy', { name: authorName })] : []),
+          audienceName(t, a, { groupName }),
+        ].join(' · ')}
       </AppText>
+      {a.editedAt ? (
+        <AppText tone="muted">{t('announcements.edited', { date: formatDateTimeInIndia(a.editedAt) })}</AppText>
+      ) : null}
+
+      <ReplyBox
+        title={authorName ? t('announcements.replies.replyTo', { name: authorName }) : t('announcements.replies.reply')}
+        note={
+          authorName
+            ? t('announcements.replies.whoReads', { name: authorName })
+            : t('announcements.replies.whoReadsNoName')
+        }
+        onSend={reply}
+      />
+      {myReplies.length > 0 ? (
+        <>
+          <AppText variant="label">{t('announcements.replies.mine', { number: myReplies.length })}</AppText>
+          {myReplies.map((r) => (
+            <ReplyCard
+              key={r.id}
+              body={r.body}
+              when={t('announcements.replies.sentAt', { date: formatDateTimeInIndia(r.createdAt) })}
+            />
+          ))}
+        </>
+      ) : null}
     </Screen>
   );
 }

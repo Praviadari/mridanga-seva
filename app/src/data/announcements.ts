@@ -1,20 +1,28 @@
-// Announcements: posting, pinning and deleting (screen C15, coordinators and the Guru), reading
-// them (S10, students), and "seen by N of M" with the list of who has not seen one yet.
+// Announcements: posting, editing, pinning and deleting (screen C15, coordinators and the Guru),
+// reading them (S10, students), "seen by N of M" with the list of who has not seen one yet, and
+// private replies.
 //
-// The app writes the announcements table directly: insert = post, update = pin or unpin,
-// delete. Opening an announcement inserts one announcement_reads row (the read receipt).
-// Row-level security decides who sees what, a database trigger checks every announcement, and
-// the views announcement_seen / announcement_audience count and list who it is addressed to
-// (supabase/migrations/0007_announcements.sql, docs/DECISIONS.md #25). The app never counts
-// read receipts itself, so every phone shows the same number.
+// The app writes the announcements table directly: insert = post, update = edit, pin or unpin,
+// delete. Opening an announcement inserts one announcement_reads row (the read receipt); a reply
+// is one announcement_replies row. Row-level security decides who sees what, database triggers
+// check every announcement and reply, and the views announcement_seen / announcement_audience
+// count and list who it is addressed to (supabase/migrations/0007_announcements.sql and
+// 0008_announcement_follow_ups.sql, docs/DECISIONS.md #25-#29). The app never counts read
+// receipts itself, so every phone shows the same number.
 
 import type { ParseKeys } from 'i18next';
 
-import { momentInIndia, parseDayMonthYear, parseTimeOfDay } from '@/lib/dates';
+import {
+  dateInIndia,
+  formatDayMonthYear,
+  momentInIndia,
+  parseDayMonthYear,
+  parseTimeOfDay,
+  timeInIndia,
+} from '@/lib/dates';
 import { supabase } from '@/lib/supabase';
 
 import { isNetworkError } from './errors';
-import { fetchStaff } from './student-overview';
 
 /** A translation key for a message. */
 type MessageKey = ParseKeys;
@@ -23,6 +31,8 @@ type MessageKey = ParseKeys;
 export const TITLE_MAX_LENGTH = 120;
 /** Longest message text the database accepts, in characters (same limit as the trigger in 0007). */
 export const BODY_MAX_LENGTH = 4000;
+/** Longest reply the database accepts, in characters (same limit as the trigger in 0008). */
+export const REPLY_MAX_LENGTH = 1000;
 /** How many announcements a list loads, newest first; older ones are rarely needed. */
 const LIST_LIMIT = 100;
 
@@ -49,6 +59,11 @@ export type Announcement = {
   publishAt: string;
   /** Profile id of the author. */
   createdBy: string | null;
+  /**
+   * ISO timestamp of the last change to the title, text or audience after it was published, or
+   * null when never edited. Set by the database; pinning does not count (docs/DECISIONS.md #27).
+   */
+  editedAt: string | null;
   /** True when the signed-in person has opened it before. */
   readByMe: boolean;
 };
@@ -61,6 +76,8 @@ export type SeenCount = {
   seen: number;
   /** Students it is meant for who have no app login (not counting those who left). */
   noLogin: number;
+  /** Replies the signed-in person may read: all of them for the author and the Guru. */
+  replies: number;
 };
 
 type AnnouncementRow = {
@@ -73,9 +90,11 @@ type AnnouncementRow = {
   pinned: boolean;
   publish_at: string;
   created_by: string | null;
+  edited_at: string | null;
 };
 
-const ANNOUNCEMENT_COLUMNS = 'id, title, body, audience, audience_level, audience_group, pinned, publish_at, created_by';
+const ANNOUNCEMENT_COLUMNS =
+  'id, title, body, audience, audience_level, audience_group, pinned, publish_at, created_by, edited_at';
 
 /** Turns an announcements row into the app's shape. */
 function toAnnouncement(row: AnnouncementRow, readIds: ReadonlySet<number>): Announcement {
@@ -89,6 +108,7 @@ function toAnnouncement(row: AnnouncementRow, readIds: ReadonlySet<number>): Ann
     pinned: row.pinned,
     publishAt: row.publish_at,
     createdBy: row.created_by,
+    editedAt: row.edited_at,
     readByMe: readIds.has(row.id),
   };
 }
@@ -119,11 +139,25 @@ async function fetchVisibleAnnouncements(myId: string): Promise<Announcement[] |
   return (announcements.data as AnnouncementRow[]).map((row) => toAnnouncement(row, readIds));
 }
 
-/** Loads the names of all groups, active or not, by id; used to word a group audience. */
+/**
+ * Loads the names of the groups the signed-in person may see, active or not, by id; used to word
+ * a group audience. Staff see every group, a student only the groups they are in (0008).
+ */
 async function fetchGroupNames(): Promise<Map<number, string> | null> {
   const { data, error } = await supabase.from('groups').select('id, name');
   if (error) return null;
   return new Map((data as { id: number; name: string }[]).map((g) => [g.id, g.name]));
+}
+
+/**
+ * Loads the names of the Guru and every coordinator (active or not) by profile id, for "posted
+ * by". Uses the database function staff_names(), because a student may not read other people's
+ * profiles; it gives names only (docs/DECISIONS.md #26). Returns null when it could not be loaded.
+ */
+async function fetchStaffNames(): Promise<Map<string, string> | null> {
+  const { data, error } = await supabase.rpc('staff_names');
+  if (error) return null;
+  return new Map((data as { id: string; full_name: string }[]).map((s) => [s.id, s.full_name]));
 }
 
 /** Loads the seen counts of the given announcements. */
@@ -131,13 +165,15 @@ async function fetchSeenCounts(ids: number[]): Promise<Map<number, SeenCount> | 
   if (ids.length === 0) return new Map();
   const { data, error } = await supabase
     .from('announcement_seen')
-    .select('announcement_id, addressed, seen, no_login')
+    .select('announcement_id, addressed, seen, no_login, replies')
     .in('announcement_id', ids);
   if (error) return null;
   return new Map(
-    (data as { announcement_id: number; addressed: number; seen: number; no_login: number }[]).map((row) => [
+    (
+      data as { announcement_id: number; addressed: number; seen: number; no_login: number; replies: number }[]
+    ).map((row) => [
       row.announcement_id,
-      { addressed: row.addressed, seen: row.seen, noLogin: row.no_login },
+      { addressed: row.addressed, seen: row.seen, noLogin: row.no_login, replies: row.replies },
     ]),
   );
 }
@@ -158,18 +194,18 @@ export type StaffAnnouncementList = {
  * word them. `myId` is the signed-in person's profile id. Returns null when it could not be loaded.
  */
 export async function fetchStaffAnnouncements(myId: string): Promise<StaffAnnouncementList | null> {
-  const [announcements, groupNames, staff] = await Promise.all([
+  const [announcements, groupNames, staffNames] = await Promise.all([
     fetchVisibleAnnouncements(myId),
     fetchGroupNames(),
-    fetchStaff(),
+    fetchStaffNames(),
   ]);
-  if (!announcements || !groupNames || !staff) return null;
+  if (!announcements || !groupNames || !staffNames) return null;
   const seen = await fetchSeenCounts(announcements.map((a) => a.id));
   if (!seen) return null;
   return {
     announcements: announcements.map((a) => ({ ...a, seenCount: seen.get(a.id) ?? null })),
     groupNames,
-    staffNames: new Map(staff.map((s) => [s.id, s.fullName])),
+    staffNames,
   };
 }
 
@@ -191,17 +227,23 @@ export type StaffAnnouncementDetail = {
   audience: AudienceMember[];
   groupName: string | null;
   authorName: string | null;
+  /**
+   * The replies the signed-in person may read, oldest first: every reply for the author and the
+   * Guru, only their own for anyone else.
+   */
+  replies: Reply[];
 };
 
 /**
- * Loads one announcement for the staff detail screen, with its seen count and everyone it is
- * addressed to. Returns 'not_found' when it is not there (deleted), null when it could not be loaded.
+ * Loads one announcement for the staff detail screen, with its seen count, everyone it is
+ * addressed to and its replies. Returns 'not_found' when it is not there (deleted), null when it
+ * could not be loaded.
  */
 export async function fetchStaffAnnouncement(
   id: number,
   myId: string,
 ): Promise<StaffAnnouncementDetail | 'not_found' | null> {
-  const [row, read, seen, audience, groupNames, staff] = await Promise.all([
+  const [row, read, seen, audience, groupNames, staffNames, replies] = await Promise.all([
     supabase.from('announcements').select(ANNOUNCEMENT_COLUMNS).eq('id', id).maybeSingle(),
     supabase.from('announcement_reads').select('announcement_id').eq('announcement_id', id).eq('profile_id', myId),
     fetchSeenCounts([id]),
@@ -211,19 +253,21 @@ export async function fetchStaffAnnouncement(
       .eq('announcement_id', id)
       .order('full_name'),
     fetchGroupNames(),
-    fetchStaff(),
+    fetchStaffNames(),
+    fetchReplies(id),
   ]);
-  if (row.error || read.error || !seen || audience.error || !groupNames || !staff) return null;
+  if (row.error || read.error || !seen || audience.error || !groupNames || !staffNames || !replies) return null;
   if (!row.data) return 'not_found';
   const announcement = toAnnouncement(row.data as AnnouncementRow, new Set(read.data.length > 0 ? [id] : []));
   return {
     announcement,
-    seenCount: seen.get(id) ?? { addressed: 0, seen: 0, noLogin: 0 },
+    seenCount: seen.get(id) ?? { addressed: 0, seen: 0, noLogin: 0, replies: 0 },
     audience: (
       audience.data as { profile_id: string; full_name: string; roll_no: string | null; read_at: string | null }[]
     ).map((m) => ({ profileId: m.profile_id, fullName: m.full_name, rollNo: m.roll_no, readAt: m.read_at })),
     groupName: announcement.audienceGroup !== null ? (groupNames.get(announcement.audienceGroup) ?? null) : null,
-    authorName: staff.find((s) => s.id === announcement.createdBy)?.fullName ?? null,
+    authorName: announcement.createdBy ? (staffNames.get(announcement.createdBy) ?? null) : null,
+    replies,
   };
 }
 
@@ -239,8 +283,8 @@ export async function setPinned(id: number, pinned: boolean): Promise<ChangeOutc
 }
 
 /**
- * Deletes an announcement for everyone, with its read receipts. Only the author or the Guru may;
- * the audit log keeps a copy.
+ * Deletes an announcement for everyone, with its read receipts and replies. Only the author or the
+ * Guru may; the audit log keeps a copy.
  */
 export async function deleteAnnouncement(id: number): Promise<ChangeOutcome> {
   const { data, error } = await supabase.from('announcements').delete().eq('id', id).select('id');
@@ -248,9 +292,9 @@ export async function deleteAnnouncement(id: number): Promise<ChangeOutcome> {
   return data.length === 0 ? { errorKey: 'announcements.errors.cannotChange' } : {};
 }
 
-// ---------------------------------------------------------------- posting (C15)
+// ---------------------------------------------------------------- posting and editing (C15)
 
-/** Everything typed or chosen on the compose screen. */
+/** Everything typed or chosen on the compose and edit screens. */
 export type AnnouncementForm = {
   title: string;
   body: string;
@@ -281,14 +325,34 @@ export const EMPTY_ANNOUNCEMENT_FORM: AnnouncementForm = {
   time: '',
 };
 
+/**
+ * The edit form filled in from a saved announcement. A scheduled one keeps its date and time
+ * (India time) under "Later"; for a published one the time cannot change, so "when" is unused.
+ */
+export function formFromAnnouncement(announcement: Announcement): AnnouncementForm {
+  const scheduled = isScheduled(announcement);
+  return {
+    title: announcement.title,
+    body: announcement.body,
+    audience: announcement.audience,
+    levelId: announcement.audienceLevel,
+    groupId: announcement.audienceGroup,
+    pinned: announcement.pinned,
+    when: scheduled ? 'later' : 'now',
+    date: scheduled ? formatDayMonthYear(dateInIndia(announcement.publishAt)) : '',
+    time: scheduled ? timeInIndia(announcement.publishAt) : '',
+  };
+}
+
 /** A problem with one field of the compose form, as the key of the message to show under it. */
 export type AnnouncementFormErrors = Partial<Record<keyof AnnouncementForm, MessageKey>>;
 
 /**
- * Checks the compose form before it is sent; every problem is reported at once. `now` is the
- * current time in milliseconds. The database checks title, text and audience again (0007).
+ * Checks the compose or edit form before it is sent; every problem is reported at once. `now` is
+ * the current time in milliseconds. `checkWhen` is false when editing a published announcement,
+ * whose time cannot change. The database checks title, text and audience again (0007, 0008).
  */
-export function checkAnnouncementForm(form: AnnouncementForm, now: number): AnnouncementFormErrors {
+export function checkAnnouncementForm(form: AnnouncementForm, now: number, checkWhen = true): AnnouncementFormErrors {
   const errors: AnnouncementFormErrors = {};
   const title = form.title.trim();
   const body = form.body.trim();
@@ -299,7 +363,7 @@ export function checkAnnouncementForm(form: AnnouncementForm, now: number): Anno
   if (!form.audience) errors.audience = 'announcements.errors.choose';
   if (form.audience === 'level' && form.levelId === null) errors.levelId = 'announcements.errors.choose';
   if (form.audience === 'group' && form.groupId === null) errors.groupId = 'announcements.errors.choose';
-  if (form.when === 'later') {
+  if (checkWhen && form.when === 'later') {
     const date = parseDayMonthYear(form.date);
     const time = parseTimeOfDay(form.time);
     if (!form.date.trim()) errors.date = 'announcements.errors.dateRequired';
@@ -319,23 +383,31 @@ function publishAtOf(form: AnnouncementForm): string | null {
   return date && time ? momentInIndia(date, time) : null;
 }
 
+/** The columns the form writes, apart from the publish time. */
+function contentOf(form: AnnouncementForm & { audience: Audience }) {
+  return {
+    title: form.title.trim(),
+    body: form.body.trim(),
+    audience: form.audience,
+    audience_level: form.audience === 'level' ? form.levelId : null,
+    audience_group: form.audience === 'group' ? form.groupId : null,
+    pinned: form.pinned,
+  };
+}
+
 /**
  * Posts an announcement. The database records the signed-in person as author and, without a
  * publish time, publishes it at once. Returns the new id. Call only after checkAnnouncementForm
  * found no problems.
  */
 export async function postAnnouncement(form: AnnouncementForm): Promise<{ id?: number; errorKey?: MessageKey }> {
-  if (!form.audience) return { errorKey: 'announcements.errors.choose' };
+  const { audience } = form;
+  if (!audience) return { errorKey: 'announcements.errors.choose' };
   const publishAt = publishAtOf(form);
   const { data, error } = await supabase
     .from('announcements')
     .insert({
-      title: form.title.trim(),
-      body: form.body.trim(),
-      audience: form.audience,
-      audience_level: form.audience === 'level' ? form.levelId : null,
-      audience_group: form.audience === 'group' ? form.groupId : null,
-      pinned: form.pinned,
+      ...contentOf({ ...form, audience }),
       // Left out for "now", so the database's own clock sets it, not the phone's.
       ...(publishAt ? { publish_at: publishAt } : {}),
     })
@@ -343,6 +415,31 @@ export async function postAnnouncement(form: AnnouncementForm): Promise<{ id?: n
     .single();
   if (error) return { errorKey: announcementErrorKey(error.message, error.code) };
   return { id: (data as { id: number }).id };
+}
+
+/**
+ * Saves changes to an announcement. Only the author or the Guru may (row-level security). The
+ * read receipts stay; when it was already published the database marks it edited
+ * (docs/DECISIONS.md #27). `original` is the announcement as loaded: its publish time is sent
+ * only while it is still scheduled, because a published one keeps its time. Call only after
+ * checkAnnouncementForm found no problems.
+ */
+export async function updateAnnouncement(original: Announcement, form: AnnouncementForm): Promise<ChangeOutcome> {
+  const { audience } = form;
+  if (!audience) return { errorKey: 'announcements.errors.choose' };
+  // Checked again now: the scheduled time may have passed while the form was open.
+  const timeCanChange = isScheduled(original);
+  const { data, error } = await supabase
+    .from('announcements')
+    .update({
+      ...contentOf({ ...form, audience }),
+      // null = "now": the database publishes it at its own time.
+      ...(timeCanChange ? { publish_at: publishAtOf(form) } : {}),
+    })
+    .eq('id', original.id)
+    .select('id');
+  if (error) return { errorKey: announcementErrorKey(error.message, error.code) };
+  return data.length === 0 ? { errorKey: 'announcements.errors.cannotChange' } : {};
 }
 
 /** What the compose screen offers besides levels: the groups, and whether I mentor anyone. */
@@ -366,8 +463,14 @@ export async function fetchComposeOptions(myId: string): Promise<ComposeOptions 
 
 // ---------------------------------------------------------------- students (S10)
 
-/** The student list of announcements, with group names for group audiences. */
-export type MyAnnouncementList = { announcements: Announcement[]; groupNames: Map<number, string> };
+/** The student list of announcements, with the names needed to word them. */
+export type MyAnnouncementList = {
+  announcements: Announcement[];
+  /** Names of the groups the student is in, by id. */
+  groupNames: Map<number, string>;
+  /** Guru and coordinator names by profile id, for "posted by". */
+  staffNames: Map<string, string>;
+};
 
 /**
  * Loads the announcements addressed to the signed-in student, pinned first, then newest first,
@@ -375,28 +478,46 @@ export type MyAnnouncementList = { announcements: Announcement[]; groupNames: Ma
  * security). Returns null when they could not be loaded.
  */
 export async function fetchMyAnnouncements(myId: string): Promise<MyAnnouncementList | null> {
-  const [announcements, groupNames] = await Promise.all([fetchVisibleAnnouncements(myId), fetchGroupNames()]);
-  if (!announcements || !groupNames) return null;
-  return { announcements, groupNames };
+  const [announcements, groupNames, staffNames] = await Promise.all([
+    fetchVisibleAnnouncements(myId),
+    fetchGroupNames(),
+    fetchStaffNames(),
+  ]);
+  if (!announcements || !groupNames || !staffNames) return null;
+  return { announcements, groupNames, staffNames };
 }
 
+/** One announcement as its reader sees it (S10). */
+export type MyAnnouncement = {
+  announcement: Announcement;
+  groupName: string | null;
+  /** Name of the coordinator or Guru who posted it, or null when not known. */
+  authorName: string | null;
+  /** The reader's own replies to it, oldest first. Nobody else's are ever loaded. */
+  myReplies: Reply[];
+};
+
 /**
- * Loads one announcement for its reader, with its group name. Returns 'not_found' when it is not
- * there or not addressed to them, null when it could not be loaded.
+ * Loads one announcement for its reader, with its group name, its author's name and the reader's
+ * own replies. Returns 'not_found' when it is not there or not addressed to them, null when it
+ * could not be loaded.
  */
-export async function fetchAnnouncement(
-  id: number,
-): Promise<{ announcement: Announcement; groupName: string | null } | 'not_found' | null> {
-  const [row, groupNames] = await Promise.all([
+export async function fetchAnnouncement(id: number): Promise<MyAnnouncement | 'not_found' | null> {
+  const [row, groupNames, staffNames, replies] = await Promise.all([
     supabase.from('announcements').select(ANNOUNCEMENT_COLUMNS).eq('id', id).maybeSingle(),
     fetchGroupNames(),
+    fetchStaffNames(),
+    // Row-level security gives a student only their own replies.
+    fetchReplies(id),
   ]);
-  if (row.error || !groupNames) return null;
+  if (row.error || !groupNames || !staffNames || !replies) return null;
   if (!row.data) return 'not_found';
   const announcement = toAnnouncement(row.data as AnnouncementRow, new Set());
   return {
     announcement,
     groupName: announcement.audienceGroup !== null ? (groupNames.get(announcement.audienceGroup) ?? null) : null,
+    authorName: announcement.createdBy ? (staffNames.get(announcement.createdBy) ?? null) : null,
+    myReplies: replies,
   };
 }
 
@@ -412,9 +533,79 @@ export async function markRead(id: number): Promise<boolean> {
   return !error || error.code === '23505';
 }
 
+// ---------------------------------------------------------------- private replies (S10, C15)
+
+/**
+ * One reply to an announcement. Only its writer, the announcement's author and the Guru can read
+ * it; students never see each other's replies (docs/DECISIONS.md #29).
+ */
+export type Reply = {
+  id: number;
+  /** Profile id of the writer. */
+  profileId: string;
+  /** Name on the student record for students, the login's name for staff. */
+  fullName: string;
+  /** Roll number when the writer is a student, else null. */
+  rollNo: string | null;
+  body: string;
+  /** ISO timestamp it was sent. */
+  createdAt: string;
+};
+
+/**
+ * Loads the replies to one announcement that the signed-in person may read, oldest first.
+ * Returns null when they could not be loaded.
+ */
+async function fetchReplies(announcementId: number): Promise<Reply[] | null> {
+  const { data, error } = await supabase
+    .from('announcement_reply_list')
+    .select('id, profile_id, full_name, roll_no, body, created_at')
+    .eq('announcement_id', announcementId)
+    .order('created_at');
+  if (error) return null;
+  return (
+    data as { id: number; profile_id: string; full_name: string; roll_no: string | null; body: string; created_at: string }[]
+  ).map((r) => ({
+    id: r.id,
+    profileId: r.profile_id,
+    fullName: r.full_name,
+    rollNo: r.roll_no,
+    body: r.body,
+    createdAt: r.created_at,
+  }));
+}
+
+/** Checks a reply before it is sent. Returns the message key of the problem, or undefined. */
+export function checkReply(body: string): MessageKey | undefined {
+  const text = body.trim();
+  if (!text) return 'announcements.errors.replyRequired';
+  if (text.length > REPLY_MAX_LENGTH) return 'announcements.errors.replyTooLong';
+  return undefined;
+}
+
+/**
+ * Sends a private reply to an announcement the signed-in person can see. The database records
+ * who wrote it and when. Call only after checkReply found no problem.
+ */
+export async function sendReply(announcementId: number, body: string): Promise<ChangeOutcome> {
+  const { error } = await supabase.from('announcement_replies').insert({ announcement_id: announcementId, body: body.trim() });
+  if (!error) return {};
+  // 42501 = row-level security: the announcement is no longer addressed to this person;
+  // 23503 = it was deleted meanwhile.
+  if (error.code === '42501' || error.code === '23503') return { errorKey: 'announcements.errors.replyGone' };
+  return { errorKey: announcementErrorKey(error.message, error.code) };
+}
+
+/** Deletes a reply (moderation). Only the Guru may; the audit log keeps a copy. */
+export async function deleteReply(replyId: number): Promise<ChangeOutcome> {
+  const { data, error } = await supabase.from('announcement_replies').delete().eq('id', replyId).select('id');
+  if (error) return { errorKey: announcementErrorKey(error.message, error.code) };
+  return data.length === 0 ? { errorKey: 'announcements.errors.cannotChange' } : {};
+}
+
 // ---------------------------------------------------------------- errors
 
-/** Turns a database error from the calls above into a translation key. Codes: migration 0007. */
+/** Turns a database error from the calls above into a translation key. Codes: migrations 0007, 0008. */
 function announcementErrorKey(message: string, code: string | undefined): MessageKey {
   switch (message) {
     case 'title_required':
@@ -428,6 +619,12 @@ function announcementErrorKey(message: string, code: string | undefined): Messag
     case 'level_required':
     case 'group_required':
       return 'announcements.errors.choose';
+    case 'already_published':
+      return 'announcements.errors.alreadyPublished';
+    case 'reply_required':
+      return 'announcements.errors.replyRequired';
+    case 'reply_too_long':
+      return 'announcements.errors.replyTooLong';
   }
   // 42501 = refused by row-level security: the person is not a coordinator or the Guru.
   if (code === '42501') return 'announcements.errors.notAllowed';

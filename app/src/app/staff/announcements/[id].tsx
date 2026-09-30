@@ -1,9 +1,11 @@
 // C15 One announcement, for coordinators and the Guru: the whole message, who it is for, when
-// students see it, and "seen by N of M" with the names of those who have not opened it yet (and
-// on request those who have). The author and the Guru can pin or unpin it and delete it; delete
-// asks once more on the screen, because a pop-up does not work in the web version. Opening it
-// counts as reading it. Opened from the list (./index.tsx) and after posting (./new.tsx).
-// Data: src/data/announcements.ts; the counts come from the database (docs/DECISIONS.md #25).
+// students see it, "Edited" when it was changed after publishing, and "seen by N of M" with the
+// names of those who have not opened it yet (and on request those who have). The author and the
+// Guru can edit it (./edit/[id].tsx), pin or unpin it and delete it; delete asks once more on the
+// screen, because a pop-up does not work in the web version. The author and the Guru read the
+// private replies; the Guru can delete one (moderation). Anyone else can reply to the author.
+// Opening it counts as reading it. Opened from the list (./index.tsx) and after posting (./new.tsx).
+// Data: src/data/announcements.ts; the counts come from the database (docs/DECISIONS.md #25, #29).
 
 import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
@@ -15,14 +17,19 @@ import { Button } from '@/components/button';
 import { ListRow } from '@/components/list-row';
 import { Notice } from '@/components/notice';
 import { ProgressBar } from '@/components/progress-bar';
+import { ReplyBox } from '@/components/reply-box';
+import { ReplyCard } from '@/components/reply-card';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import {
   deleteAnnouncement,
+  deleteReply,
   fetchStaffAnnouncement,
   isScheduled,
   markRead,
+  sendReply,
   setPinned,
+  type Reply,
   type StaffAnnouncementDetail,
 } from '@/data/announcements';
 import { audienceName } from '@/i18n/labels';
@@ -42,6 +49,9 @@ export default function StaffAnnouncementScreen() {
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [deleted, setDeleted] = useState(false);
+  // The reply the Guru asked to delete, waiting for "Yes, delete".
+  const [confirmingReply, setConfirmingReply] = useState<number | null>(null);
+  const [replyError, setReplyError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     let result = await fetchStaffAnnouncement(id, myId);
@@ -96,15 +106,53 @@ export default function StaffAnnouncementScreen() {
     );
   }
 
-  const { announcement: a, seenCount, audience, groupName, authorName } = loaded;
+  const { announcement: a, seenCount, audience, groupName, authorName, replies } = loaded;
   const byMe = a.createdBy === myId;
+  const isGuru = profile?.role === 'guru';
   // The database decides in the end (row-level security); this only hides buttons that would fail.
-  const canChange = byMe || profile?.role === 'guru';
+  const canChange = byMe || isGuru;
   const scheduled = isScheduled(a);
   const when = formatDateTimeInIndia(a.publishAt);
   const notSeen = audience.filter((m) => !m.readAt);
   const seen = audience.filter((m) => m.readAt);
   const personLine = (m: (typeof audience)[number]) => (m.rollNo ? [m.rollNo] : []);
+  const writerOf = (r: Reply) => (r.rollNo ? `${r.fullName} · ${r.rollNo}` : r.fullName);
+
+  async function reply(body: string) {
+    const outcome = await sendReply(a.id, body);
+    if (!outcome.errorKey) await load();
+    return outcome.errorKey;
+  }
+
+  async function removeReply(replyId: number) {
+    setBusy(true);
+    setReplyError(null);
+    const outcome = await deleteReply(replyId);
+    setConfirmingReply(null);
+    if (outcome.errorKey) setReplyError(t(outcome.errorKey));
+    await load();
+    setBusy(false);
+  }
+
+  /** The Guru's Delete under a reply, or "Yes, delete" and Cancel while asking. */
+  const replyActions = (r: Reply) => {
+    if (!isGuru) return [];
+    if (confirmingReply !== r.id) {
+      return [
+        {
+          label: t('announcements.replies.delete'),
+          onPress: () => {
+            setReplyError(null);
+            setConfirmingReply(r.id);
+          },
+        },
+      ];
+    }
+    return [
+      { label: t('announcements.replies.deleteYes'), loading: busy, onPress: () => void removeReply(r.id) },
+      { label: t('announcements.detail.cancel'), onPress: () => setConfirmingReply(null) },
+    ];
+  };
 
   async function togglePin() {
     setBusy(true);
@@ -149,6 +197,9 @@ export default function StaffAnnouncementScreen() {
           authorName ? ` · ${t('announcements.postedBy', { name: authorName })}` : ''
         }`}
       </AppText>
+      {a.editedAt ? (
+        <AppText tone="muted">{t('announcements.edited', { date: formatDateTimeInIndia(a.editedAt) })}</AppText>
+      ) : null}
 
       <Section title={t('announcements.detail.seenSection')}>
         {scheduled ? <AppText tone="muted">{t('announcements.detail.scheduledNote')}</AppText> : null}
@@ -203,9 +254,60 @@ export default function StaffAnnouncementScreen() {
         ) : null}
       </Section>
 
+      {/* The author and the Guru read every reply; anyone else only their own, under the box. */}
+      {canChange ? (
+        <Section
+          title={t('announcements.replies.title', { number: replies.length })}
+          description={t('announcements.replies.privateNote')}>
+          {replies.length === 0 ? <AppText tone="muted">{t('announcements.replies.none')}</AppText> : null}
+          {replies.map((r) => (
+            <ReplyCard
+              key={r.id}
+              writer={writerOf(r)}
+              body={r.body}
+              when={formatDateTimeInIndia(r.createdAt)}
+              actions={replyActions(r)}
+            />
+          ))}
+          {replyError ? <Notice tone="error">{replyError}</Notice> : null}
+        </Section>
+      ) : null}
+      {!byMe ? (
+        <ReplyBox
+          title={
+            authorName ? t('announcements.replies.replyTo', { name: authorName }) : t('announcements.replies.reply')
+          }
+          note={
+            authorName
+              ? t('announcements.replies.whoReads', { name: authorName })
+              : t('announcements.replies.whoReadsNoName')
+          }
+          onSend={reply}
+        />
+      ) : null}
+      {!canChange && replies.length > 0 ? (
+        <>
+          <AppText variant="label">{t('announcements.replies.mine', { number: replies.length })}</AppText>
+          {replies.map((r) => (
+            <ReplyCard
+              key={r.id}
+              body={r.body}
+              when={t('announcements.replies.sentAt', { date: formatDateTimeInIndia(r.createdAt) })}
+            />
+          ))}
+        </>
+      ) : null}
+
       {actionError ? <Notice tone="error">{actionError}</Notice> : null}
       {canChange && !confirmingDelete ? (
         <>
+          <Button
+            variant="secondary"
+            label={t('announcements.detail.edit')}
+            onPress={() =>
+              router.push({ pathname: '/staff/announcements/edit/[id]', params: { id: String(a.id) } })
+            }
+          />
           <Button
             variant="secondary"
             label={a.pinned ? t('announcements.detail.unpin') : t('announcements.detail.pin')}
