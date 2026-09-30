@@ -17,6 +17,13 @@ will rely on it.
 
 Keep the logins for these in one place the team controls, so the system never depends on one person.
 
+**For now (from 30 Sep 2026) Cloudflare, Expo and Firebase are on the maintainer's personal
+account**, because the team email does not exist yet. When it does, add it to each with full
+rights (Cloudflare: a Super Administrator member of the account; Expo: an Owner of the
+organisation that owns the app; Firebase: an Owner in **Project settings → Users and
+permissions**), check that it can sign in, then remove the personal account. The sites, the app's
+project id and its signing keystore stay the same, so nothing needs rebuilding.
+
 ## Setting up a new environment
 
 1. **Create a Supabase project** (free plan) inside the "Mridanga Seva" organisation. Region: South
