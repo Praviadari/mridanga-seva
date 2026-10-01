@@ -697,6 +697,8 @@
     "readyTitle": "A new version is ready",
     "readyBody": "Restart the app to use it. It takes a few seconds.",
     "restart": "Restart now",
+    "restartFailedTitle": "The app could not restart by itself",
+    "restartFailedBody": "Close the app fully (swipe it away) and open it again: the new version starts then. If you report this, send the line below too.",
     "versionInstalled": "Version {{version}} · as installed, {{date}}",
     "versionUpdate": "Version {{version}} · update of {{date}} ({{id}})"
   }

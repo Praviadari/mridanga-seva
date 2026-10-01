@@ -10,7 +10,7 @@ export function useUpdateChecks(): void {}
 
 /** Never ready on the web. */
 export function useAppUpdate(): AppUpdate {
-  return { ready: false, restart: () => {} };
+  return { ready: false, restart: async () => 'no updates on the web' };
 }
 
 /** Nothing to show on the web. */

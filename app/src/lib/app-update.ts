@@ -50,20 +50,65 @@ export function useUpdateChecks(): void {
   }, []);
 }
 
+/** How long Restart waits for the app to reload before it says it could not: 10 seconds. */
+const RESTART_WAIT_MS = 10 * 1000;
+
 /** What a home screen needs to offer a downloaded update. */
 export type AppUpdate = {
   /** True when a newer version is downloaded and restart() would start it. */
   ready: boolean;
-  /** Restarts the app into the downloaded version. Any unsaved input on the screen is lost. */
-  restart: () => void;
+  /**
+   * Restarts the app into the downloaded version; any unsaved input on the screen is lost. When
+   * the restart works, this JavaScript stops running and the promise never settles. Otherwise it
+   * resolves with a short technical reason (not translated) for a tester to report.
+   */
+  restart: () => Promise<string>;
 };
+
+/** A promise that rejects with "no answer after 10 s" after RESTART_WAIT_MS. */
+function noAnswer(): Promise<never> {
+  return new Promise((_, reject) => setTimeout(() => reject(new Error('no answer after 10 s')), RESTART_WAIT_MS));
+}
+
+/**
+ * The error's code and message, plus the last error expo-updates logged on the phone in the last
+ * minute, which usually names the real cause. At most 300 characters.
+ */
+async function describeFailure(error: unknown): Promise<string> {
+  const { code, message } = (error ?? {}) as { code?: string; message?: string };
+  let reason = [code, message].filter(Boolean).join(': ') || String(error);
+  try {
+    const entries = await Updates.readLogEntriesAsync(60 * 1000);
+    const lastError = entries.filter((e) => e.level === 'error' || e.level === 'fatal').at(-1);
+    if (lastError) reason += ` | log ${lastError.code}: ${lastError.message}`;
+  } catch {
+    // No log to add.
+  }
+  return reason.slice(0, 300);
+}
+
+/**
+ * Asks expo-updates to reload into the downloaded update. Seen 01-10-2026 on the first test: the
+ * tap did nothing and the error was lost, so every way it can fail now returns a reason: an
+ * error, no answer, or an answer without the reload that should follow it.
+ */
+async function restartIntoUpdate(): Promise<string> {
+  try {
+    await Promise.race([Updates.reloadAsync(), noAnswer()]);
+    // reloadAsync resolves just before the reload starts; still being here later means it did not.
+    await new Promise((resolve) => setTimeout(resolve, RESTART_WAIT_MS));
+    return 'reloadAsync resolved but the app did not reload';
+  } catch (error) {
+    return describeFailure(error);
+  }
+}
 
 /** Whether a downloaded update is waiting, and how to start it. */
 export function useAppUpdate(): AppUpdate {
   const { isUpdatePending } = Updates.useUpdates();
   return {
     ready: canUpdate && isUpdatePending,
-    restart: () => void Updates.reloadAsync().catch(() => {}),
+    restart: restartIntoUpdate,
   };
 }
 

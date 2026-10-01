@@ -1,6 +1,7 @@
 // "A new version is ready" with a Restart button, and the small version line, for the three home
 // screens (S1, C1, G1). Android app only: on the web both render nothing (src/lib/app-update.web.ts).
 
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet } from 'react-native';
 
@@ -10,17 +11,48 @@ import { AppText } from './app-text';
 import { Button } from './button';
 import { Notice } from './notice';
 
-/** Shows a notice and a Restart button once a newer version is downloaded; otherwise nothing. */
+/**
+ * Shows a notice and a Restart button once a newer version is downloaded; otherwise nothing. If
+ * the app cannot restart itself, it says to close and reopen the app, and shows the technical
+ * reason (src/lib/app-update.ts) so a tester can send it.
+ */
 export function UpdateNotice() {
   const { t } = useTranslation();
   const update = useAppUpdate();
+  const [restarting, setRestarting] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
   if (!update.ready) return null;
+
+  async function restart() {
+    setFailure(null);
+    setRestarting(true);
+    // Settles only when the restart did not happen.
+    setFailure(await update.restart());
+    setRestarting(false);
+  }
+
   return (
     <>
       <Notice tone="success" title={t('appUpdate.readyTitle')}>
         {t('appUpdate.readyBody')}
       </Notice>
-      <Button variant="secondary" label={t('appUpdate.restart')} onPress={update.restart} />
+      <Button
+        variant="secondary"
+        label={t('appUpdate.restart')}
+        loading={restarting}
+        onPress={() => void restart()}
+      />
+      {failure ? (
+        <>
+          <Notice tone="error" title={t('appUpdate.restartFailedTitle')}>
+            {t('appUpdate.restartFailedBody')}
+          </Notice>
+          {/* Technical detail for the maintainer, so not translated. */}
+          <AppText variant="small" tone="muted" selectable>
+            {failure}
+          </AppText>
+        </>
+      ) : null}
     </>
   );
 }
