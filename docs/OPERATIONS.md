@@ -317,7 +317,8 @@ That is for the test app (testers, volunteers). For the live app used by the cla
 change has been checked on preview, use `npm run update:production -- --message "..."`; it asks
 you to type `yes`. The script (`app/scripts/publish-update.mjs`):
 
-1. stops if no finished APK on that channel has the app's current fingerprint;
+1. stops if the network cannot upload to EAS (an office network that inspects secure
+   connections), or if no finished APK on that channel has the app's current fingerprint;
 2. takes the Supabase URL and key from the EAS environment of the same name — never from
    `app/.env` or `app/.env.test` — and checks the URL is that channel's project (`preview` = test
    `fhuqyk…`, `production` = live `qeozvv…`);

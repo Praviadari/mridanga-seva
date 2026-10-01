@@ -7,7 +7,7 @@
 // An update bundle carries EXPO_PUBLIC_SUPABASE_URL and _KEY inside it, like an APK does. A
 // preview update made with the live settings would send testers into the class's real data, and
 // a production update made with the test settings would cut the class off from it. So the bundle
-// never reads app/.env or app/.env.test:
+// never reads app/.env or app/.env.test. First it checks the network can upload to EAS (see below).
 // 0. Computes the app's fingerprint (its runtime version) and looks for a finished APK on this
 //    channel with the same one. None means the change touched something native: phones would
 //    never get this update, and a new APK is needed instead (OPERATIONS.md lists what counts).
@@ -33,6 +33,7 @@ import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { extname, join } from 'node:path';
 import { createInterface } from 'node:readline/promises';
+import { connect } from 'node:tls';
 
 import { holdsSecretKey, listFiles, SETTING_NAMES, supabaseSettingsFrom } from './bundle-checks.mjs';
 
@@ -103,6 +104,27 @@ if (!/^[^"%$`\\\r\n]{1,200}$/.test(message)) {
 const project = PROJECTS[channel];
 const otherProject = Object.values(PROJECTS).find((ref) => ref !== project);
 const require = createRequire(import.meta.url);
+
+// ---------------------------------------------------------------- network
+// EAS keeps uploads on Google's storage. A network that inspects secure connections (the office
+// FortiGate, 1 Oct 2026) breaks the upload halfway with "unable to verify the first certificate",
+// after a minute of bundling. Ask once, with checks on, before doing anything else. Not with
+// --check-only, which uploads nothing and so works on any network.
+const checkOnly = args.includes('--check-only');
+const storageReachable = checkOnly || await new Promise((resolve) => {
+  const socket = connect({ host: 'storage.googleapis.com', port: 443, servername: 'storage.googleapis.com' }, () => {
+    socket.end();
+    resolve(true);
+  });
+  socket.setTimeout(15000, () => socket.destroy(new Error('timeout')));
+  socket.on('error', () => resolve(false));
+});
+if (!storageReachable) {
+  fail(
+    'cannot reach storage.googleapis.com with a trusted certificate. This network probably inspects secure ' +
+      'connections (the office network does). Use another one, such as a phone hotspot, and try again.',
+  );
+}
 
 // ---------------------------------------------------------------- 0. an APK that can take it
 const resolved = spawnSync(
@@ -182,7 +204,7 @@ for (const name of SETTING_NAMES) {
   if (!found.has(name)) fail(`${name} of the "${channel}" environment is not in the bundle. Nothing was published.`);
 }
 console.log(`publish-update: bundle checked: ${project} only, no secret key.`);
-if (args.includes('--check-only')) {
+if (checkOnly) {
   console.log('publish-update: --check-only, so nothing was published.');
   process.exit(0);
 }
