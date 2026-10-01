@@ -22,6 +22,7 @@
     "expo-sqlite": "~57.0.3",
     "expo-status-bar": "~57.0.1",
     "expo-system-ui": "~57.0.4",
+    "expo-updates": "~57.0.24",
     "expo-web-browser": "~57.0.3",
     "i18next": "^26.4.2",
     "qrcode-generator": "^2.0.4",
@@ -50,6 +51,8 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "export:web": "node ./scripts/export-web.mjs",
+    "update:preview": "node ./scripts/publish-update.mjs preview",
+    "update:production": "node ./scripts/publish-update.mjs production",
     "lint": "expo lint"
   },
   "private": true

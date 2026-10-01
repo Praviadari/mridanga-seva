@@ -1,8 +1,10 @@
 // G1 Guru dashboard, the Guru's home: the whole class at a glance. Students who came this week,
 // students in class, new joiners, follow-ups needing attention (opens C10); students per level and
 // per status; overdue and escalated follow-ups per coordinator; then the buttons to every staff
-// screen, the language switch and Sign out. Read-only. Numbers: guru_dashboard() through src/data/home.ts. It loads again each
-// time it comes back into view.
+// screen, the language switch, Sign out and the app version. On the Android app, "A new version is
+// ready" shows under the greeting once an update is downloaded (components/update-notice.tsx).
+// Read-only. Numbers: guru_dashboard() through src/data/home.ts. It loads again each time it comes
+// back into view.
 
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
@@ -20,6 +22,7 @@ import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { StaffShortcuts } from '@/components/staff-shortcuts';
 import { StatGrid, StatTile } from '@/components/stat-tile';
+import { UpdateNotice, VersionLine } from '@/components/update-notice';
 import { fetchGuruDashboard, type GuruDashboard } from '@/data/home';
 import { levelName, statusName } from '@/i18n/labels';
 import { formatDayMonthYear } from '@/lib/dates';
@@ -49,6 +52,7 @@ export default function GuruHome() {
     <Screen>
       <AppText variant="title">{name ? t('home.greeting', { name }) : t('home.greetingNoName')}</AppText>
       <AppText tone="muted">{t('home.role', { role: t('roles.guru') })}</AppText>
+      <UpdateNotice />
 
       {board === undefined ? <AppText tone="muted">{t('common.loading')}</AppText> : null}
       {board === null ? (
@@ -131,6 +135,7 @@ export default function GuruHome() {
       <StaffShortcuts />
       <LanguagePicker />
       <Button variant="link" label={t('common.signOut')} onPress={() => void signOut()} />
+      <VersionLine />
     </Screen>
   );
 }

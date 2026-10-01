@@ -51,6 +51,7 @@ flowchart LR
 | Videos | Lesson videos stay on YouTube; the app only stores links | YouTube |
 | Web hosting | Serves the web version that iPhone users add to their home screen | Cloudflare Pages, uploaded from `app/dist` (OPERATIONS.md) |
 | Android builds | Builds the APK that Android users install from a link | EAS Build, `app/eas.json` (OPERATIONS.md) |
+| Android updates | Sends new screens and text to installed APKs without a reinstall; the home screens offer Restart once one is downloaded | EAS Update, channels `preview` and `production`, published with `npm run update:preview` / `update:production` (`app/scripts/publish-update.mjs`, OPERATIONS.md "Updating the Android app") |
 
 ## Roles
 
@@ -73,7 +74,8 @@ someone a coordinator. See [DECISIONS.md #11 and #13](DECISIONS.md) and
 app/
   app.json             App name, icons, splash screen, web settings
   .env                 Supabase URL and public key (not in git; copy .env.example)
-  scripts/             Helper scripts, e.g. the placeholder icon generator
+  scripts/             Helper scripts: the web export, publishing an Android update (both check
+                       the bundle holds the right Supabase project), the placeholder icon generator
   src/
     app/               Screens. Every file is a screen (Expo Router); _layout.tsx files arrange them
       guru/  coordinator/  student/    Each role's own screens (home, and later role-only ones)
@@ -85,12 +87,13 @@ app/
                        the QR scanner, the syllabus item card, the announcement card and form,
                        the file picker and file list of an announcement, the reply box and reply
                        card, a progress bar, the number tiles of the home screens, the
-                       staff-screen buttons (C1, G1), page frame
+                       staff-screen buttons (C1, G1), the "new version is ready" notice, page frame
     i18n/              Interface text in English, Telugu and Hindi (docs/TRANSLATIONS.md), and
                        labels.ts, which words levels, file sizes and lengths of time the same on
                        every screen
-    lib/               The Supabase client, on-device storage, date helpers (India time) and push
-                       notifications (push.ts on Android; push.web.ts does nothing)
+    lib/               The Supabase client, on-device storage, date helpers (India time), push
+                       notifications and app updates (push.ts and app-update.ts on Android; the
+                       .web.ts copies do nothing)
     theme/             Colours, spacing and text sizes, light and dark
 supabase/
   migrations/          The database, in number order (docs/DATABASE.md)

@@ -380,7 +380,7 @@ by Expo, with one backup outside the repository; losing it means nobody can upda
 app. The Supabase URL and key reach the build as EAS environment variables (`preview` and
 `production`), because `app/.env` and `app/.env.test` are not uploaded. Both profiles share the
 package name, so a phone has the test app or the live app, not both. Every app change needs a
-new APK until over-the-air updates (EAS Update) are chosen.
+new APK until over-the-air updates (EAS Update) are chosen. *(Last point no longer holds: see #35.)*
 
 ## 25. "Seen by N of M" counts only people who can open the announcement — 30 Sep 2026
 
@@ -660,3 +660,49 @@ no real protection.
 sending of notifications (that needs the service-account key). The API key can be restricted
 later in Google Cloud (Credentials → the Android key → Android apps only). A new Firebase project
 means replacing the file and committing it again (OPERATIONS.md "Push notifications", step 3).
+
+## 35. The Android app updates itself with EAS Update — 1 Oct 2026
+
+**Context.** Until now every change, even one word, meant a new APK (#24) that each tester or
+student had to download and install again. The interface is about to change often (look-and-feel
+rounds from the volunteers' remarks), and the free plan allows 15 builds a month. Praveen asked
+(1 Oct 2026) for updates inside the app, "as formal apps do".
+
+**Decision.**
+- The app has `expo-updates`. Each APK listens on the channel of its build profile: `preview`
+  (test project) or `production` (live project), set in `app/eas.json`.
+- A change to screens, text, translations or images is published as an update with
+  `npm run update:preview` or `npm run update:production` (`app/scripts/publish-update.mjs`).
+  The script takes the Supabase URL and key from the EAS environment of the same name, never
+  from `app/.env` or `app/.env.test`, and checks the bundle holds only that channel's project
+  before it publishes. Production asks once more.
+- The phone checks for an update when the app starts (and downloads it in the background) and
+  when it comes back to the front, at most every 30 minutes. Once one is downloaded, the home
+  screens (S1, C1, G1) say "A new version is ready" with a Restart button (Praveen chose this
+  over the silent default, 1 Oct 2026). Without a restart it starts the next time the app is
+  opened from scratch. The home screens also show which version the phone runs.
+- `runtimeVersion` uses the **fingerprint** policy: Expo computes a hash of everything native
+  (packages with native code, `app.json`, plugins, icons, `eas.json`, `google-services.json`).
+  An update reaches only the APKs with the same hash. `app/fingerprint.config.js` leaves out the
+  npm scripts and `.gitignore`, which cannot change this app's native side (it keeps no
+  `android/` folder in git). The publish script stops when no finished APK on the channel has
+  the current hash, which means a new APK is needed instead.
+
+**Why.** EAS Update is free up to 1,000 monthly active users and 100 GiB of downloads, enough for
+a class of about 200; it needs no store and no reinstall, and is part of the Expo tools already in
+use. Taking the settings from EAS rather than local files keeps an update on the same project as
+the APKs it reaches: a preview update made with the live settings would send testers into real
+data. The fingerprint policy was chosen over `appVersion` because it cannot forget: with
+`appVersion` someone must remember to raise the version for every native change, or an update
+reaches an APK that lacks the native code and the app crashes; with the fingerprint such an
+update simply reaches no APK, and a new APK is needed anyway. The cost is that more changes count
+as native, so an APK is needed a little more often.
+
+**Consequences.** Native changes still need a new APK, and phones on an older APK stop getting
+updates until they install it (OPERATIONS.md "Updating the Android app" lists what counts).
+Updates are not signed with our own key: EAS Update code signing needs a paid plan, so the
+phones trust Expo's server over HTTPS, as they already trust it for builds. The web version is
+not affected: it changes when a new export is uploaded (#23). The APK built before this decision
+(30 Sep 2026) has no `expo-updates`, so it must be replaced once. On a network that inspects
+secure connections to Google's storage (the office FortiGate, seen 1 Oct 2026), uploading an
+update or a build fails; publish from another network rather than switching checks off.

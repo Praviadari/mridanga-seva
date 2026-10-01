@@ -9,7 +9,7 @@ will rely on it.
 |---|---|---|---|
 | Supabase | Database, login, storage (photos and PDFs), scheduled jobs, the Edge Function that sends push notifications | Free (1 GB of files, 500,000 Edge Function calls a month) | Team email account |
 | Brevo | Sending sign-up and password-reset emails | Free (300 emails a day) | Team email account |
-| Expo | Building the Android app (EAS Build); its push service passes notifications on | Free (15 Android builds a month) | Team email account |
+| Expo | Building the Android app (EAS Build) and updating it on the phones (EAS Update); its push service passes notifications on | Free (15 Android builds a month; updates for 1,000 people a month, 100 GiB of downloads) | Team email account |
 | Firebase (Google) | Delivers push notifications to Android phones (Cloud Messaging) | Free | Team email account |
 | Cloudflare | Hosting the web version (Cloudflare Pages) | Free | Team email account |
 | GitHub | Source code | Free, public repository | Maintainer |
@@ -216,7 +216,9 @@ build:
 | `production` | the live Supabase project (settings from `app/.env`) | the class, from the pilot on |
 
 Both have the same package name, so a phone holds one or the other: installing one replaces the
-other, and the person signs in again.
+other, and the person signs in again. Each profile is also the **update channel** of the same
+name (`"channel"` in `eas.json`): a preview APK takes only preview updates, a production APK only
+production ones (see "Updating the Android app" below).
 
 The app belongs to the Expo project `@mridanga-seva/mridanga-seva`, in the Expo organisation
 `mridanga-seva` (set up 30 Sep 2026). `app.json` names it: `"owner"` and `extra.eas.projectId`.
@@ -250,12 +252,18 @@ plugins into it (an `android.permissions` list, an empty `extra.router`): remove
 npx eas-cli@latest build -p android --profile preview
 ```
 
+- Build from a clean, committed `main`: the APK's fingerprint (see "Updating the Android app")
+  is computed from what is uploaded, and later updates must match it.
 - EAS needs `git` in the terminal. If it says *git command not found*, Git is installed but not
   on the terminal's path; add it for that window, for example
   `$env:Path = "$env:LOCALAPPDATA\Programs\Git\cmd;$env:Path"` in PowerShell. Do not use the
   `EAS_NO_VCS=1` it suggests: git decides which files are uploaded, and it leaves out `.env`.
 - If a command fails with *unable to verify the first certificate* (a network that inspects
   secure connections), run `$env:NODE_OPTIONS='--use-system-ca'` in that window and try again.
+  If it still fails while *uploading*, the network rewrites the connection to Google's storage,
+  where EAS keeps uploads (seen 1 Oct 2026 on the office network: the certificate of
+  `storage.googleapis.com` was issued by a Fortinet firewall). Use another network, such as a
+  phone hotspot. Never switch certificate checks off (`NODE_TLS_REJECT_UNAUTHORIZED`).
 - The **first** build asks to generate an Android keystore: answer yes. Expo keeps it. Every
   later APK must be signed with the same keystore, or phones refuse the update. Download a backup
   once (`npx eas-cli@latest credentials -p android`) and keep it with the team's passwords —
@@ -269,8 +277,68 @@ npx eas-cli@latest build -p android --profile preview
 unknown developer; choose to install anyway. A newer APK installs over the old one and keeps
 the login.
 
-Every change to the app needs a new APK until over-the-air updates (EAS Update) are set up — a
-later decision.
+## Updating the Android app
+
+Since 1 Oct 2026 the APK updates itself ([DECISIONS.md #35](DECISIONS.md)): a change to the
+screens reaches the phones without a new install. The first APK built on 30 Sep 2026 (build
+`eba8be2e`) cannot do this; every phone must install a newer APK once.
+
+**How a phone gets an update.** When the app starts, it asks Expo for a newer update on its
+channel and downloads it in the background; it does the same when it comes back to the front
+(at most every 30 minutes). Once one is downloaded, the home screen shows **A new version is
+ready** with **Restart now**. Without a restart, the new version starts the next time the app
+is opened from scratch. The line under Sign out shows what the phone runs: *Version 1.0.0 · as
+installed, …* or *Version 1.0.0 · update of 01-10-2026 15:30 (a1b2c3d4)*; ask testers to quote
+it in bug reports.
+
+**An update is enough** for changes in `app/src/` (screens, text, translations, colours), images
+the screens use, and JavaScript-only packages.
+
+**A new APK is needed** when anything native changes, because the update would reach no phone:
+
+- adding, removing or upgrading a package with native code (most `expo-*` packages, for example
+  `expo-camera`), or an Expo SDK upgrade;
+- `app/app.json` (name, version, icon, splash, permissions, plugins, anything in it), the icon and
+  splash images, `app/google-services.json`;
+- `app/eas.json`.
+
+Expo works this out itself: it computes a **fingerprint** (a hash) of all of these, and an update
+reaches only the APKs with the same fingerprint. `app/fingerprint.config.js` leaves out the npm
+scripts and `.gitignore`, which cannot change this app's native side. When unsure, just run the
+publish command: it stops with *no finished … APK has fingerprint …* when a new APK is needed.
+
+**Publishing an update** (from `app/`, logged in to Expo, with the change committed to `main`):
+
+```bash
+npm run update:preview -- --message "Clearer follow-up card"
+```
+
+That is for the test app (testers, volunteers). For the live app used by the class, after the
+change has been checked on preview, use `npm run update:production -- --message "..."`; it asks
+you to type `yes`. The script (`app/scripts/publish-update.mjs`):
+
+1. stops if no finished APK on that channel has the app's current fingerprint;
+2. takes the Supabase URL and key from the EAS environment of the same name — never from
+   `app/.env` or `app/.env.test` — and checks the URL is that channel's project (`preview` = test
+   `fhuqyk…`, `production` = live `qeozvv…`);
+3. builds the Android bundle into `app/dist-update/` and checks it holds that project's URL and
+   key, not the other project's address, and no secret key;
+4. publishes it with `eas update`.
+
+Add `--check-only` to run steps 1-3 without publishing. Never run `eas update` by hand: it
+would bundle whatever settings it finds, and an update made with the live settings would send
+testers into the class's real data. The message may not contain `"`, `%`, `$`, backticks or
+backslashes. Uploading needs a network that does not inspect secure connections (see "Each
+build" above).
+
+**Rolling back** a bad update (from `app/`): `npx eas-cli@latest update:rollback` and follow the
+questions: choose the channel's branch (`preview` or `production`), then either an earlier
+update or *the embedded update* (what came inside the APK). Phones get the rollback the same
+way they get an update. A fix published later replaces it.
+
+**What exists on EAS:** `npx eas-cli@latest update:list --all` (updates), `channel:list`
+(channels and the branch each one serves). The free plan covers 1,000 people a month who
+download updates; the class is about 200.
 
 ## Push notifications
 

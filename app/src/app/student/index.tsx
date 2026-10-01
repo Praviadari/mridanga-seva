@@ -1,6 +1,8 @@
 // S1 Student home: a greeting, a large button to My QR (S3), this week's visits and the last
 // visit, the student's level with their syllabus progress, and the latest announcements with the
-// ones not opened yet marked "New" (S10), then the language switch and Sign out. Read-only.
+// ones not opened yet marked "New" (S10), then the language switch, Sign out and the app version.
+// On the Android app, "A new version is ready" shows under the greeting once an update is
+// downloaded (components/update-notice.tsx). Read-only.
 // Numbers: student_home() through src/data/home.ts; announcements: src/data/announcements.ts.
 // It loads again each time it comes back into view, so "New" goes once an announcement is opened.
 
@@ -19,6 +21,7 @@ import { ProgressBar } from '@/components/progress-bar';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { StatGrid, StatTile } from '@/components/stat-tile';
+import { UpdateNotice, VersionLine } from '@/components/update-notice';
 import { fetchMyAnnouncements, type MyAnnouncementList } from '@/data/announcements';
 import { fetchStudentHome, type StudentHome } from '@/data/home';
 import { audienceName, authorLine, lastVisitText, levelName } from '@/i18n/labels';
@@ -54,6 +57,7 @@ export default function StudentHomeScreen() {
   return (
     <Screen>
       <AppText variant="title">{name ? t('home.greeting', { name }) : t('home.greetingNoName')}</AppText>
+      <UpdateNotice />
 
       {/* First and always there, even when nothing else loads: My QR keeps a copy on the phone
           and works without internet (docs/DECISIONS.md #21), which is when it is needed most. */}
@@ -137,6 +141,7 @@ export default function StudentHomeScreen() {
 
       <LanguagePicker />
       <Button variant="link" label={t('common.signOut')} onPress={() => void signOut()} />
+      <VersionLine />
     </Screen>
   );
 }

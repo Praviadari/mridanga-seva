@@ -1,6 +1,7 @@
 // Root of the app: loads translations, keeps the splash screen up while the login is checked,
-// shows only the screens the signed-in person's role may use, and sets up push notifications
-// on the Android app (src/lib/push.ts).
+// shows only the screens the signed-in person's role may use, sets up push notifications on the
+// Android app (src/lib/push.ts) and looks for app updates when it comes back to the front
+// (src/lib/app-update.ts).
 //
 // How role-based navigation works (docs/ARCHITECTURE.md "Navigation by role"):
 // useAuth().area names the part of the app the person may use. Each <Stack.Protected> below
@@ -19,6 +20,7 @@ import { useEffect } from 'react';
 
 import { AuthProvider, useAuth } from '@/auth/auth-provider';
 import { SetupNeeded } from '@/components/setup-needed';
+import { useUpdateChecks } from '@/lib/app-update';
 import { registerForPush, usePushTaps } from '@/lib/push';
 import { supabaseConfigProblem } from '@/lib/supabase';
 import { useTheme } from '@/theme/use-theme';
@@ -30,6 +32,7 @@ SplashScreen.preventAutoHideAsync();
 /** App root. Expo Router renders it around every screen. */
 export default function RootLayout() {
   const { isDark } = useTheme();
+  useUpdateChecks();
   return (
     <ThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
       <StatusBar style="auto" />

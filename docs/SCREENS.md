@@ -19,7 +19,7 @@ Status: **Built** works end to end Â· **Placeholder** a simple stand-in exists Â
 
 | # | Screen | Status | Code |
 |---|---|---|---|
-| S1 | Home: greeting, a large My QR button (works without internet), visits this week (from Monday) and days since the last visit, my level with syllabus progress, the latest 3 announcements with "New" on unopened ones and the number of new ones, link to all announcements, language switch | Built | `app/src/app/student/index.tsx`, `app/src/data/home.ts`, `app/src/components/stat-tile.tsx` |
+| S1 | Home: greeting, a large My QR button (works without internet), visits this week (from Monday) and days since the last visit, my level with syllabus progress, the latest 3 announcements with "New" on unopened ones and the number of new ones, link to all announcements, language switch; on the Android app "A new version is ready" with Restart, and the version line | Built | `app/src/app/student/index.tsx`, `app/src/data/home.ts`, `app/src/components/stat-tile.tsx`, `app/src/components/update-notice.tsx` |
 | S3 | My QR card: the code the coordinator scans at the door; works without internet (the copy saved on the phone shows at once, before the server answers) | Built | `app/src/app/student/my-qr.tsx`, `app/src/components/qr-code.tsx`, `app/src/data/my-student.ts` |
 | S4 | Learn: my level's syllabus and lessons | | |
 | S9 | Attendance history | | |
@@ -29,7 +29,7 @@ Status: **Built** works end to end Â· **Placeholder** a simple stand-in exists Â
 
 | # | Screen | Status | Code |
 |---|---|---|---|
-| C1 | Dashboard: here now (opens C6), today's visits (opens C5), calls due for my students (opens C10), new joiners of the last 4 weeks with their visits (each opens C8), buttons to every staff screen, language switch. Reviews pending come with assessments (Phase 2) | Built | `app/src/app/coordinator/index.tsx`, `app/src/data/home.ts`, `app/src/components/staff-shortcuts.tsx` |
+| C1 | Dashboard: here now (opens C6), today's visits (opens C5), calls due for my students (opens C10), new joiners of the last 4 weeks with their visits (each opens C8), buttons to every staff screen, language switch; on the Android app "A new version is ready" with Restart, and the version line. Reviews pending come with assessments (Phase 2) | Built | `app/src/app/coordinator/index.tsx`, `app/src/data/home.ts`, `app/src/components/staff-shortcuts.tsx`, `app/src/components/update-notice.tsx` |
 | C2 | Register a student (photo comes later) | Built | `app/src/app/staff/register.tsx`, `app/src/data/students.ts` |
 | C3 | Guardian consent (under 18): part of the C2 form, shown when the date of birth is under 18 | Built | same as C2 |
 | C5 | Mark attendance: scan a QR code or search a name and tap | Built | `app/src/app/staff/attendance.tsx`, `app/src/data/attendance.ts` |
@@ -47,7 +47,7 @@ Status: **Built** works end to end Â· **Placeholder** a simple stand-in exists Â
 
 | # | Screen | Status | Code |
 |---|---|---|---|
-| G1 | Dashboard: students who came this week, students in class, new joiners, follow-ups overdue or escalated (opens C10); students per level and per status; overdue and escalated follow-ups per coordinator; buttons to every staff screen; language switch. Visit trend, practice hours and the level-up queue come later | Built | `app/src/app/guru/index.tsx`, `app/src/data/home.ts`, `app/src/components/staff-shortcuts.tsx` |
+| G1 | Dashboard: students who came this week, students in class, new joiners, follow-ups overdue or escalated (opens C10); students per level and per status; overdue and escalated follow-ups per coordinator; buttons to every staff screen; language switch; on the Android app "A new version is ready" with Restart, and the version line. Visit trend, practice hours and the level-up queue come later | Built | `app/src/app/guru/index.tsx`, `app/src/data/home.ts`, `app/src/components/staff-shortcuts.tsx`, `app/src/components/update-notice.tsx` |
 | G2 | Coordinators: add, deactivate, reassign mentees | | |
 | G3 | Students: whole database, Excel import | | |
 | G4 | Levels and syllabus editor | | |

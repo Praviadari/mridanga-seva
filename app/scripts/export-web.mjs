@@ -22,16 +22,17 @@
 // Uses only Node's built-in modules. Exits with code 1 if dist/ must not be uploaded.
 
 import { spawnSync } from 'node:child_process';
-import { existsSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { extname, join } from 'node:path';
+
+import { holdsSecretKey, listFiles, SETTING_NAMES, supabaseSettingsFrom } from './bundle-checks.mjs';
 
 const DIST = 'dist';
 const FROM = '/assets/node_modules/';
 const TO = '/assets/vendor/';
 /** Files that can hold paths to assets. Images are left alone. */
 const TEXT_FILES = new Set(['.js', '.html', '.css', '.json', '.map']);
-const SETTING_NAMES = ['EXPO_PUBLIC_SUPABASE_URL', 'EXPO_PUBLIC_SUPABASE_KEY'];
 
 /** Stops the script with a message and exit code 1. */
 function fail(message) {
@@ -50,40 +51,11 @@ function envFileFromArgs(args) {
 /** EXPO_PUBLIC_SUPABASE_URL and _KEY from a .env-style file, as { name: value }. */
 function readSettings(file) {
   if (!existsSync(file)) fail(`${file} not found in app/. Copy .env.example and fill it in.`);
-  const settings = {};
-  for (const line of readFileSync(file, 'utf8').split(/\r?\n/)) {
-    const match = line.match(/^\s*(EXPO_PUBLIC_SUPABASE_(?:URL|KEY))\s*=\s*(.*?)\s*$/);
-    if (match) settings[match[1]] = match[2].replace(/^(['"])(.*)\1$/, '$2');
-  }
+  const settings = supabaseSettingsFrom(readFileSync(file, 'utf8'));
   for (const name of SETTING_NAMES) {
     if (!settings[name]) fail(`${name} is missing or empty in ${file}.`);
   }
   return settings;
-}
-
-/** Every file below `dir`, as paths that include `dir`. */
-function listFiles(dir) {
-  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
-    const path = join(dir, entry.name);
-    return entry.isDirectory() ? listFiles(path) : [path];
-  });
-}
-
-/**
- * True if `text` holds a secret key: the new sb_secret_ form or an old service_role JWT.
- * A bare 'sb_secret_' is not enough: the app's own check for the key contains those words.
- */
-function holdsSecretKey(text) {
-  if (/sb_secret_[\w-]{16,}/.test(text)) return true;
-  for (const [token] of text.matchAll(/eyJ[\w-]+\.(eyJ[\w-]+)\.[\w-]+/g)) {
-    try {
-      const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString('utf8'));
-      if (payload.role === 'service_role') return true;
-    } catch {
-      // Not a JWT after all; ignore it.
-    }
-  }
-  return false;
 }
 
 // ---------------------------------------------------------------- 1. export
