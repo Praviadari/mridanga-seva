@@ -142,11 +142,19 @@ function syncLanguageWithProfile(profile: Profile): void {
     applyProfileLanguage(profile.language);
     return;
   }
-  const language = currentLanguage();
-  if (profile.language !== language) {
-    profile.language = language;
-    // Not awaited and errors ignored: the screen language is already right; the profile
-    // catches up the next time this runs.
-    void supabase.from('profiles').update({ language }).eq('id', profile.id).then(() => undefined);
-  }
+  saveProfileLanguage(profile, currentLanguage());
+}
+
+/**
+ * Saves `language` as the signed-in person's language on their profile, when it differs. Used
+ * when the profile loads and when the person switches language on a home screen.
+ * Not awaited and errors ignored: the screen language is already right; the profile catches up
+ * the next time the profile loads.
+ * @param profile the signed-in person's profile; its `language` is updated in place.
+ * @param language the language the app now shows.
+ */
+export function saveProfileLanguage(profile: Profile, language: string): void {
+  if (profile.language === language) return;
+  profile.language = language;
+  void supabase.from('profiles').update({ language }).eq('id', profile.id).then(() => undefined);
 }

@@ -422,6 +422,7 @@
     "attempt": "try {{number}}",
     "escalated": "passed to the Guru",
     "assignee": "for {{name}}",
+    "unassigned": "not given to anyone yet",
     "noTask": "No call task yet"
   },
   "callLog": {

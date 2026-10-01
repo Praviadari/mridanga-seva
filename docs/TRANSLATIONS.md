@@ -42,14 +42,16 @@ themselves ([DECISIONS.md #12](DECISIONS.md)).
 
 ## Which language the app shows
 
-1. The language the person picked on this device (the picker on the sign-in screens, later the
-   profile screen). The choice is also saved to their profile.
+1. The language the person picked on this device: the picker on the sign-in screens and, once
+   signed in, at the bottom of the home screen (S1, C1, G1; later also the profile screen). The
+   choice is also saved to their profile — at once when they are signed in, otherwise when they
+   sign in.
 2. Otherwise the language saved on their profile (after they sign in on a new phone).
 3. Otherwise the phone's or browser's language, if it is Telugu or Hindi.
 4. Otherwise English.
 
-The code is in `app/src/i18n/index.ts` and `syncLanguageWithProfile` in
-`app/src/auth/auth-provider.tsx`.
+The code is in `app/src/i18n/index.ts`, `app/src/components/language-picker.tsx`, and
+`syncLanguageWithProfile` / `saveProfileLanguage` in `app/src/auth/auth-provider.tsx`.
 
 ## Adding or changing text
 

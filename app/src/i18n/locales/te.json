@@ -422,6 +422,7 @@
     "attempt": "{{number}}వ ప్రయత్నం",
     "escalated": "గురువుగారికి పంపారు",
     "assignee": "{{name}} కోసం",
+    "unassigned": "ఇంకా ఎవరికీ ఇవ్వలేదు",
     "noTask": "ఇంకా కాల్ పని లేదు"
   },
   "callLog": {

@@ -1,7 +1,8 @@
 // C1 Coordinator dashboard, the coordinator's home: who is here now (opens C6), today's visits
 // (opens C5), follow-up calls due for my students (opens C10), and the new joiners of the last
 // few weeks (settings.new_joiner_weeks; each opens their profile, C8), then the buttons to every
-// staff screen. Read-only. Numbers: coordinator_dashboard() through src/data/home.ts. It loads
+// staff screen, the language switch and Sign out. Read-only. Numbers: coordinator_dashboard()
+// through src/data/home.ts. It loads
 // again each time it comes back into view, so the numbers follow what was just done.
 
 import { router, useFocusEffect } from 'expo-router';
@@ -12,6 +13,7 @@ import { signOut } from '@/auth/auth-actions';
 import { useAuth } from '@/auth/auth-provider';
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
+import { LanguagePicker } from '@/components/language-picker';
 import { ListRow } from '@/components/list-row';
 import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
@@ -101,6 +103,7 @@ export default function CoordinatorHome() {
       ) : null}
 
       <StaffShortcuts />
+      <LanguagePicker />
       <Button variant="link" label={t('common.signOut')} onPress={() => void signOut()} />
     </Screen>
   );

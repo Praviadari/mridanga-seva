@@ -49,15 +49,16 @@ export default function FollowUpScreen() {
   const haveMine = !!queue?.entries.some((entry) => isMine(entry, myId));
   const entries = (queue?.entries ?? []).filter((entry) => scope === 'everyone' || isMine(entry, myId));
 
-  /** The task line: "Call due 01-10-2026 · try 2 · for Radha". */
+  /** The task line: "Call due 01-10-2026 · try 2 · for Radha", or "… · not given to anyone yet". */
   function taskText(entry: QueueEntry): string {
     const { task } = entry;
     if (!task) return t('followUp.noTask');
-    const assignee = task.assigneeId ? staffNames.get(task.assigneeId) : undefined;
     return [
       t('followUp.due', { date: formatDayMonthYear(task.dueOn) }),
       task.attempt > 1 ? t('followUp.attempt', { number: task.attempt }) : null,
-      t('followUp.assignee', { name: assignee ?? t('register.noMentor') }),
+      task.assigneeId
+        ? t('followUp.assignee', { name: staffNames.get(task.assigneeId) || t('profile.unknownPerson') })
+        : t('followUp.unassigned'),
     ]
       .filter(Boolean)
       .join(' · ');

@@ -153,11 +153,22 @@ to `app/dist/`. Always use this command, not a bare `npx expo export`, because
 **First upload** (once per site, logged in to the team's Cloudflare account; the dashboard's
 wording may differ a little):
 
-1. **Workers & Pages → Create → Pages → Upload assets** (direct upload, no Git connection).
+1. **Workers & Pages → Create application**, then the link at the bottom of that screen,
+   **"Looking to deploy Pages? Get started" → Drag and drop your files** (direct upload, no Git
+   connection). Two wrong turns, both seen on 30 Sep 2026:
+   - **Not a Worker** (the options at the top of the Create screen): it gets a `*.workers.dev`
+     address with the account's name in it and answers 404 for every address except `/`, so
+     reloading a screen or opening a link breaks. The address must end in `.pages.dev`.
+   - **Not "Connect to Git"**: that publishes the repository's source files instead of the
+     built site, every address answers 404, and such a project cannot be switched to uploads
+     later — it has to be deleted (**Settings → Delete project**) and made again.
 2. Project name `mridanga-seva-test` (or `mridanga-seva` for the live site). The address is then
    `https://<name>.pages.dev` (Cloudflare adds a few letters if the name is taken; use the
    address it shows).
-3. Drag the `app/dist` folder in and click **Deploy site**.
+3. Drag the `app/dist` folder in and click **Deploy site**. The upload should list about 30
+   files; well over 100 means the wrong folder. If the file chooser cannot reach `app/dist`
+   (for example inside a hidden `.claude` folder), copy the folder somewhere visible first, such
+   as the Desktop.
 4. In **the Supabase project that site talks to**, set that address as the **Site URL** and add
    it to **Redirect URLs** (setup step 4).
 

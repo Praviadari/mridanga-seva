@@ -15,7 +15,7 @@ import { Button } from '@/components/button';
 import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
 import { fetchMyAnnouncements, type MyAnnouncementList } from '@/data/announcements';
-import { audienceName } from '@/i18n/labels';
+import { audienceName, authorLine } from '@/i18n/labels';
 import { formatDateTimeInIndia } from '@/lib/dates';
 
 /** One card per announcement addressed to the student. */
@@ -69,9 +69,7 @@ export default function MyAnnouncementsScreen() {
             `${formatDateTimeInIndia(a.publishAt)} · ${audienceName(t, a, {
               groupName: a.audienceGroup !== null ? loaded.groupNames.get(a.audienceGroup) : null,
             })}`,
-            ...(a.createdBy && loaded.staffNames.has(a.createdBy)
-              ? [t('announcements.postedBy', { name: loaded.staffNames.get(a.createdBy) })]
-              : []),
+            ...authorLine(t, a.createdBy ? loaded.staffNames.get(a.createdBy) : undefined),
             ...(a.editedAt ? [t('announcements.edited', { date: formatDateTimeInIndia(a.editedAt) })] : []),
             ...(a.attachments.length > 0 ? [t('announcements.files.count', { number: a.attachments.length })] : []),
           ]}

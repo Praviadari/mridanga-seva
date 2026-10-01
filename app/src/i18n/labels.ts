@@ -91,6 +91,17 @@ export function audienceName(
   }
 }
 
+/**
+ * The "Posted by Radha" line of an announcement card, as a list to spread into the card's
+ * details: empty when the author's name is unknown or blank (a login made in the Supabase
+ * dashboard has no name), so the card never reads "Posted by " with nothing after it.
+ * @param authorName the author's name from staff_names, or undefined when not known.
+ */
+export function authorLine(t: TFunction, authorName: string | undefined): string[] {
+  const name = authorName?.trim();
+  return name ? [t('announcements.postedBy', { name })] : [];
+}
+
 /** A file's size given in bytes, e.g. 348160 → "340 KB", 1572864 → "1.5 MB". */
 export function fileSizeText(t: TFunction, bytes: number): string {
   const kb = bytes / 1024;

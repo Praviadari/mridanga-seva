@@ -296,9 +296,12 @@ the door with a spinner holds up the queue.
   Android, iOS and web). No online QR image service is used.
 - It is always black on white with the standard four-square white border, in dark mode too, and
   uses error-correction level Q.
-- The last card loaded (name, roll number, `qr_token`) is kept on the phone and shown, with a
-  note, when the server cannot be reached. It is shown only to the login it belongs to, deleted at
-  sign-out, and deleted when the server says the login has no student record.
+- The last card loaded (name, roll number, `qr_token`) is kept on the phone. My QR shows it at
+  once while it asks the server, and keeps it with a note when the server cannot be reached.
+  (Showing it only after the server failed made a student wait about 6 seconds without signal,
+  because the database client retries a failed request 3 times first; changed 1 Oct 2026.) It is
+  shown only to the login it belongs to, deleted at sign-out, and deleted when the server says the
+  login has no student record.
 
 **Why.** An online QR image service would receive every student's secret. Many scanners cannot
 read light-on-dark codes. Level Q survives glare and cracked screens, and for this short text it

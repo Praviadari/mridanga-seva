@@ -3,7 +3,8 @@
 // (policy own_or_staff in supabase/migrations/0001_phase1.sql), so the app never sees anyone else's.
 //
 // My QR has to work at the door even when the phone has no signal, so the last card loaded is
-// kept on this device and shown when the server cannot be reached (docs/DECISIONS.md #21).
+// kept on this device, shown at once while the server is asked, and kept on screen with a note
+// when the server cannot be reached (docs/DECISIONS.md #21).
 
 import type { ParseKeys } from 'i18next';
 
@@ -52,7 +53,7 @@ export async function fetchMyCard(profileId: string): Promise<MyCardResult> {
     .maybeSingle<{ full_name: string; roll_no: string | null; qr_token: string }>();
 
   if (error) {
-    const saved = readSavedCard(profileId);
+    const saved = savedCardFor(profileId);
     if (saved) return { state: 'ok', card: saved, saved: true };
     return { state: 'failed', errorKey: isNetworkError(error.message) ? 'common.networkError' : 'common.genericError' };
   }
@@ -75,8 +76,13 @@ export function clearSavedCard(): void {
   removeLocal(SAVED_CARD_KEY);
 }
 
-/** The saved card if there is one for this login, else null (also when it cannot be read). */
-function readSavedCard(profileId: string): MyCard | null {
+/**
+ * The card saved on this device for this login, else null (also when it cannot be read). My QR
+ * shows it at once while fetchMyCard asks the server, because without signal the database client
+ * retries a failed request for several seconds before it gives up.
+ * @param profileId the signed-in login's id; a card saved for another login is never returned.
+ */
+export function savedCardFor(profileId: string): MyCard | null {
   const text = readLocal(SAVED_CARD_KEY);
   if (!text) return null;
   try {

@@ -1,6 +1,6 @@
 // S1 Student home: a greeting, a large button to My QR (S3), this week's visits and the last
 // visit, the student's level with their syllabus progress, and the latest announcements with the
-// ones not opened yet marked "New" (S10). Read-only.
+// ones not opened yet marked "New" (S10), then the language switch and Sign out. Read-only.
 // Numbers: student_home() through src/data/home.ts; announcements: src/data/announcements.ts.
 // It loads again each time it comes back into view, so "New" goes once an announcement is opened.
 
@@ -13,6 +13,7 @@ import { useAuth } from '@/auth/auth-provider';
 import { AnnouncementCard } from '@/components/announcement-card';
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
+import { LanguagePicker } from '@/components/language-picker';
 import { Notice } from '@/components/notice';
 import { ProgressBar } from '@/components/progress-bar';
 import { Screen } from '@/components/screen';
@@ -20,7 +21,7 @@ import { Section } from '@/components/section';
 import { StatGrid, StatTile } from '@/components/stat-tile';
 import { fetchMyAnnouncements, type MyAnnouncementList } from '@/data/announcements';
 import { fetchStudentHome, type StudentHome } from '@/data/home';
-import { audienceName, lastVisitText, levelName } from '@/i18n/labels';
+import { audienceName, authorLine, lastVisitText, levelName } from '@/i18n/labels';
 import { formatDateTimeInIndia } from '@/lib/dates';
 
 /** How many announcements the home shows; the rest are one tap away on S10. */
@@ -121,9 +122,7 @@ export default function StudentHomeScreen() {
                 `${formatDateTimeInIndia(a.publishAt)} · ${audienceName(t, a, {
                   groupName: a.audienceGroup !== null ? news.groupNames.get(a.audienceGroup) : null,
                 })}`,
-                ...(a.createdBy && news.staffNames.has(a.createdBy)
-                  ? [t('announcements.postedBy', { name: news.staffNames.get(a.createdBy) })]
-                  : []),
+                ...authorLine(t, a.createdBy ? news.staffNames.get(a.createdBy) : undefined),
               ]}
               onPress={() => router.push({ pathname: '/student/announcements/[id]', params: { id: String(a.id) } })}
             />
@@ -136,6 +135,7 @@ export default function StudentHomeScreen() {
         </Section>
       ) : null}
 
+      <LanguagePicker />
       <Button variant="link" label={t('common.signOut')} onPress={() => void signOut()} />
     </Screen>
   );

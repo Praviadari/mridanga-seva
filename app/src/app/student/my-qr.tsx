@@ -2,10 +2,11 @@
 // phone on Mark attendance (C5) to check the student in or out (docs/ARCHITECTURE.md "How
 // attendance flows"). The code holds the student's secret qr_token, never the roll number, so no
 // one can make a working code for another student from a class list. The name and roll number
-// are printed under it so the coordinator can see it is the right person.
+// are printed under it so the coordinator can see it is the right person. The card saved on the
+// phone is shown at once, before the server answers, so nobody waits at the door without signal.
 
 import { Stack } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 
@@ -16,7 +17,7 @@ import { Notice } from '@/components/notice';
 import { QrCode } from '@/components/qr-code';
 import { Screen } from '@/components/screen';
 import { studentQrText } from '@/data/attendance';
-import { fetchMyCard, type MyCardResult } from '@/data/my-student';
+import { fetchMyCard, savedCardFor, type MyCardResult } from '@/data/my-student';
 import { maxContentWidth, radius, spacing, useTheme } from '@/theme/use-theme';
 
 /**
@@ -48,13 +49,20 @@ export default function MyQrScreen() {
     };
   }, [profileId, loadAttempt]);
 
+  // Until the server answers, show the card saved on this phone (without the "no internet" note:
+  // that is not known yet). Without signal the answer takes several seconds, because the database
+  // client retries a failed request; the student must not stand at the door looking at "Loading".
+  const savedNow = useMemo(() => (profileId ? savedCardFor(profileId) : null), [profileId]);
+  const shown: MyCardResult | undefined =
+    result ?? (savedNow ? { state: 'ok', card: savedNow, saved: false } : undefined);
+
   // The page's side padding and the card's own padding come off the screen width.
   const column = Math.min(width, maxContentWidth) - 2 * spacing.lg - 2 * spacing.md;
   const qrSize = Math.min(column, MAX_QR_SIZE);
 
   const header = <Stack.Screen options={{ title: t('myQr.title') }} />;
 
-  if (result === undefined) {
+  if (shown === undefined) {
     return (
       <Screen underHeader centred>
         {header}
@@ -65,19 +73,19 @@ export default function MyQrScreen() {
     );
   }
 
-  if (result.state === 'failed') {
+  if (shown.state === 'failed') {
     return (
       <Screen underHeader centred>
         {header}
         <Notice tone="error" title={t('myQr.loadFailed')}>
-          {t(result.errorKey)}
+          {t(shown.errorKey)}
         </Notice>
         <Button label={t('common.tryAgain')} onPress={() => setLoadAttempt(loadAttempt + 1)} />
       </Screen>
     );
   }
 
-  if (result.state === 'noRecord') {
+  if (shown.state === 'noRecord') {
     return (
       <Screen underHeader centred>
         {header}
@@ -88,7 +96,7 @@ export default function MyQrScreen() {
     );
   }
 
-  const { card, saved } = result;
+  const { card, saved } = shown;
   return (
     <Screen underHeader>
       {header}

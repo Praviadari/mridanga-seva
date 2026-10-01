@@ -1,7 +1,7 @@
 // G1 Guru dashboard, the Guru's home: the whole class at a glance. Students who came this week,
 // students in class, new joiners, follow-ups needing attention (opens C10); students per level and
 // per status; overdue and escalated follow-ups per coordinator; then the buttons to every staff
-// screen. Read-only. Numbers: guru_dashboard() through src/data/home.ts. It loads again each
+// screen, the language switch and Sign out. Read-only. Numbers: guru_dashboard() through src/data/home.ts. It loads again each
 // time it comes back into view.
 
 import { router, useFocusEffect } from 'expo-router';
@@ -12,6 +12,7 @@ import { signOut } from '@/auth/auth-actions';
 import { useAuth } from '@/auth/auth-provider';
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
+import { LanguagePicker } from '@/components/language-picker';
 import { ListRow } from '@/components/list-row';
 import { Notice } from '@/components/notice';
 import { ProgressBar } from '@/components/progress-bar';
@@ -128,6 +129,7 @@ export default function GuruHome() {
       ) : null}
 
       <StaffShortcuts />
+      <LanguagePicker />
       <Button variant="link" label={t('common.signOut')} onPress={() => void signOut()} />
     </Screen>
   );

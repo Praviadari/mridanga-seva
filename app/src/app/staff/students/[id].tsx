@@ -192,7 +192,9 @@ export default function StudentProfileScreen() {
               t('followUp.due', { date: formatDayMonthYear(task.dueOn) }),
               task.attempt > 1 ? t('followUp.attempt', { number: task.attempt }) : null,
               task.escalated ? t('followUp.escalated') : null,
-              t('followUp.assignee', { name: task.assigneeId ? nameOf(task.assigneeId) : t('register.noMentor') }),
+              task.assigneeId
+                ? t('followUp.assignee', { name: nameOf(task.assigneeId) })
+                : t('followUp.unassigned'),
             ]
               .filter(Boolean)
               .join(' · ')}
