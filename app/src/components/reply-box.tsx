@@ -52,7 +52,7 @@ export function ReplyBox({ title, note, onSend }: ReplyBoxProps) {
   }
 
   return (
-    <Section title={title} description={note}>
+    <Section icon="reply" title={title} description={note}>
       <TextField
         label={t('announcements.replies.yourReply')}
         hint={t('announcements.replies.hint', { max: REPLY_MAX_LENGTH })}
@@ -69,7 +69,7 @@ export function ReplyBox({ title, note, onSend }: ReplyBoxProps) {
         style={{ minHeight: 80, textAlignVertical: 'top' }}
       />
       {sent ? <Notice tone="success">{t('announcements.replies.sent')}</Notice> : null}
-      <Button label={t('announcements.replies.send')} loading={sending} onPress={() => void send()} />
+      <Button icon="send" label={t('announcements.replies.send')} loading={sending} onPress={() => void send()} />
     </Section>
   );
 }

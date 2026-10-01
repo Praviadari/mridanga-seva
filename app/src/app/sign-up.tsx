@@ -13,12 +13,12 @@ import {
   signUp,
   type MessageKey,
 } from '@/auth/auth-actions';
-import { AppText } from '@/components/app-text';
 import { BrandHeader } from '@/components/brand';
 import { Button } from '@/components/button';
 import { LanguagePicker } from '@/components/language-picker';
 import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
+import { Section } from '@/components/section';
 import { TextField } from '@/components/text-field';
 
 type Field = 'name' | 'email' | 'password' | 'confirm';
@@ -58,8 +58,7 @@ export default function SignUpScreen() {
 
   if (sentTo) {
     return (
-      <Screen centred>
-        <BrandHeader />
+      <Screen header={<BrandHeader compact />}>
         <Notice tone="success" title={t('signUp.checkEmailTitle')}>
           {t('signUp.checkEmail', { email: sentTo })}
         </Notice>
@@ -69,70 +68,68 @@ export default function SignUpScreen() {
   }
 
   return (
-    <Screen centred>
-      <BrandHeader />
+    <Screen header={<BrandHeader compact />}>
       <LanguagePicker />
 
-      <AppText variant="subtitle">{t('signUp.title')}</AppText>
-      <AppText tone="muted">{t('signUp.subtitle')}</AppText>
+      <Section title={t('signUp.title')} description={t('signUp.subtitle')}>
+        {formError ? <Notice tone="error">{t(formError)}</Notice> : null}
 
-      {formError ? <Notice tone="error">{t(formError)}</Notice> : null}
+        <TextField
+          label={t('signUp.fullName')}
+          value={name}
+          onChangeText={setName}
+          error={fieldErrors.name && t(fieldErrors.name)}
+          autoComplete="name"
+          textContentType="name"
+          returnKeyType="next"
+          onSubmitEditing={() => emailRef.current?.focus()}
+          submitBehavior="submit"
+        />
+        <TextField
+          ref={emailRef}
+          label={t('common.email')}
+          value={email}
+          onChangeText={setEmail}
+          error={fieldErrors.email && t(fieldErrors.email)}
+          autoCapitalize="none"
+          autoComplete="email"
+          keyboardType="email-address"
+          textContentType="username"
+          returnKeyType="next"
+          onSubmitEditing={() => passwordRef.current?.focus()}
+          submitBehavior="submit"
+        />
+        <TextField
+          ref={passwordRef}
+          label={t('common.password')}
+          hint={t('signUp.passwordHint')}
+          value={password}
+          onChangeText={setPassword}
+          error={fieldErrors.password && t(fieldErrors.password)}
+          secret
+          autoCapitalize="none"
+          autoComplete="new-password"
+          textContentType="newPassword"
+          returnKeyType="next"
+          onSubmitEditing={() => confirmRef.current?.focus()}
+          submitBehavior="submit"
+        />
+        <TextField
+          ref={confirmRef}
+          label={t('signUp.confirmPassword')}
+          value={confirm}
+          onChangeText={setConfirm}
+          error={fieldErrors.confirm && t(fieldErrors.confirm)}
+          secret
+          autoCapitalize="none"
+          autoComplete="new-password"
+          textContentType="newPassword"
+          returnKeyType="go"
+          onSubmitEditing={submit}
+        />
 
-      <TextField
-        label={t('signUp.fullName')}
-        value={name}
-        onChangeText={setName}
-        error={fieldErrors.name && t(fieldErrors.name)}
-        autoComplete="name"
-        textContentType="name"
-        returnKeyType="next"
-        onSubmitEditing={() => emailRef.current?.focus()}
-        submitBehavior="submit"
-      />
-      <TextField
-        ref={emailRef}
-        label={t('common.email')}
-        value={email}
-        onChangeText={setEmail}
-        error={fieldErrors.email && t(fieldErrors.email)}
-        autoCapitalize="none"
-        autoComplete="email"
-        keyboardType="email-address"
-        textContentType="username"
-        returnKeyType="next"
-        onSubmitEditing={() => passwordRef.current?.focus()}
-        submitBehavior="submit"
-      />
-      <TextField
-        ref={passwordRef}
-        label={t('common.password')}
-        hint={t('signUp.passwordHint')}
-        value={password}
-        onChangeText={setPassword}
-        error={fieldErrors.password && t(fieldErrors.password)}
-        secret
-        autoCapitalize="none"
-        autoComplete="new-password"
-        textContentType="newPassword"
-        returnKeyType="next"
-        onSubmitEditing={() => confirmRef.current?.focus()}
-        submitBehavior="submit"
-      />
-      <TextField
-        ref={confirmRef}
-        label={t('signUp.confirmPassword')}
-        value={confirm}
-        onChangeText={setConfirm}
-        error={fieldErrors.confirm && t(fieldErrors.confirm)}
-        secret
-        autoCapitalize="none"
-        autoComplete="new-password"
-        textContentType="newPassword"
-        returnKeyType="go"
-        onSubmitEditing={submit}
-      />
-
-      <Button label={t('signUp.submit')} onPress={submit} loading={busy} />
+        <Button label={t('signUp.submit')} onPress={submit} loading={busy} />
+      </Section>
       <Button
         variant="link"
         label={t('signUp.haveAccount')}

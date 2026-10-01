@@ -4,7 +4,7 @@
 
 import { StyleSheet, View } from 'react-native';
 
-import { radius, spacing, useTheme } from '@/theme/use-theme';
+import { cardLook, spacing, useTheme } from '@/theme/use-theme';
 
 import { AppText } from './app-text';
 import { Button, type ButtonProps } from './button';
@@ -25,7 +25,7 @@ export type ReplyCardProps = {
 export function ReplyCard({ writer, body, when, actions = [] }: ReplyCardProps) {
   const { colors } = useTheme();
   return (
-    <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+    <View style={[styles.card, cardLook(colors)]}>
       {writer ? <AppText variant="label">{writer}</AppText> : null}
       <AppText selectable>{body}</AppText>
       <AppText variant="small" tone="muted">
@@ -40,8 +40,6 @@ export function ReplyCard({ writer, body, when, actions = [] }: ReplyCardProps) 
 
 const styles = StyleSheet.create({
   card: {
-    borderWidth: 1,
-    borderRadius: radius,
     padding: spacing.md,
     gap: spacing.xs,
   },

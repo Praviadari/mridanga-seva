@@ -39,6 +39,12 @@ const SHAPES = {
   chevron: 'chevron-forward',
   add: 'add',
   update: 'cloud-download-outline',
+  person: 'person-outline',
+  guardian: 'shield-checkmark-outline',
+  edit: 'create-outline',
+  delete: 'trash-outline',
+  send: 'send-outline',
+  tick: 'checkmark',
 } as const;
 
 /** The icons the app may use. */

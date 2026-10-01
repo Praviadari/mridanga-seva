@@ -1,14 +1,17 @@
-// The app's name and drum mark: a full-screen splash for loading, and a small header for the
-// sign-in screens. The drum image is a placeholder until the team picks a logo
-// (app/scripts/make-placeholder-icons.mjs).
+// The app's name and drum mark: a full-screen splash for loading, and the saffron header of the
+// sign-in screens. The splash keeps the drum image of the phone's own splash screen (a new one
+// needs a new APK); the header draws the app's own mark (components/mridanga-mark.tsx). Both
+// stand in for a logo until the team has one (docs/DECISIONS.md #36).
 
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Image, StyleSheet, View } from 'react-native';
 
 import { brand } from '@/theme/colors';
-import { spacing, useTheme } from '@/theme/use-theme';
+import { maxContentWidth, spacing, useTheme } from '@/theme/use-theme';
 
 import { AppText } from './app-text';
+import { MridangaMark } from './mridanga-mark';
+import { SaffronBand } from './saffron-band';
 
 const drum = require('@/assets/images/splash-icon.png');
 
@@ -30,22 +33,36 @@ export function BrandSplash() {
   );
 }
 
-/** Drum mark, app name and one-line description, for the top of the sign-in screens. */
-export function BrandHeader() {
+/** Props for BrandHeader. */
+export type BrandHeaderProps = {
+  /** Smaller and without the one-line description: for the screens after sign-in itself. */
+  compact?: boolean;
+};
+
+/**
+ * Saffron band with the drum mark, the app name and its one-line description, for the top of the
+ * sign-in screens. The same band as the home screens' header (components/saffron-band.tsx).
+ */
+export function BrandHeader({ compact }: BrandHeaderProps) {
   const { t } = useTranslation();
   const { colors } = useTheme();
+  const circle = compact ? 56 : 80;
   return (
-    <View style={styles.header}>
-      <View style={[styles.badge, { backgroundColor: brand }]}>
-        <Image source={drum} style={styles.badgeImage} resizeMode="contain" />
+    <SaffronBand centred maxWidth={maxContentWidth}>
+      <View
+        style={[
+          styles.badge,
+          { width: circle, height: circle, borderRadius: circle / 2, backgroundColor: colors.onHeader },
+        ]}>
+        <MridangaMark size={Math.round(circle * 0.72)} color={colors.headerTop} accent={colors.onHeader} />
       </View>
-      <AppText variant="title" style={{ color: colors.text }}>
+      <AppText variant={compact ? 'subtitle' : 'title'} style={{ color: colors.onHeader }}>
         {t('app.name')}
       </AppText>
-      <AppText tone="muted" style={styles.centreText}>
-        {t('app.tagline')}
-      </AppText>
-    </View>
+      {compact ? null : (
+        <AppText style={[styles.centreText, { color: colors.onHeaderMuted }]}>{t('app.tagline')}</AppText>
+      )}
+    </SaffronBand>
   );
 }
 
@@ -64,20 +81,9 @@ const styles = StyleSheet.create({
   splashText: {
     color: '#FFFFFF',
   },
-  header: {
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
   badge: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  badgeImage: {
-    width: 60,
-    height: 60,
   },
   centreText: {
     textAlign: 'center',

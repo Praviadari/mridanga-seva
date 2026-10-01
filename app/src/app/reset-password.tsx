@@ -7,10 +7,11 @@ import { useTranslation } from 'react-i18next';
 import type { TextInput } from 'react-native';
 
 import { MIN_PASSWORD_LENGTH, setNewPassword, signOut, type MessageKey } from '@/auth/auth-actions';
-import { AppText } from '@/components/app-text';
+import { BrandHeader } from '@/components/brand';
 import { Button } from '@/components/button';
 import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
+import { Section } from '@/components/section';
 import { TextField } from '@/components/text-field';
 
 /** New-password form. "Cancel" signs out, because the reset link has already signed them in. */
@@ -45,39 +46,40 @@ export default function ResetPasswordScreen() {
   }
 
   return (
-    <Screen centred>
-      <AppText variant="title">{t('resetPassword.title')}</AppText>
-      {formError ? <Notice tone="error">{t(formError)}</Notice> : null}
+    <Screen centred header={<BrandHeader compact />}>
+      <Section title={t('resetPassword.title')}>
+        {formError ? <Notice tone="error">{t(formError)}</Notice> : null}
 
-      <TextField
-        label={t('resetPassword.newPassword')}
-        hint={t('signUp.passwordHint')}
-        value={password}
-        onChangeText={setPassword}
-        error={fieldErrors.password && t(fieldErrors.password)}
-        secret
-        autoCapitalize="none"
-        autoComplete="new-password"
-        textContentType="newPassword"
-        returnKeyType="next"
-        onSubmitEditing={() => confirmRef.current?.focus()}
-        submitBehavior="submit"
-      />
-      <TextField
-        ref={confirmRef}
-        label={t('signUp.confirmPassword')}
-        value={confirm}
-        onChangeText={setConfirm}
-        error={fieldErrors.confirm && t(fieldErrors.confirm)}
-        secret
-        autoCapitalize="none"
-        autoComplete="new-password"
-        textContentType="newPassword"
-        returnKeyType="go"
-        onSubmitEditing={submit}
-      />
+        <TextField
+          label={t('resetPassword.newPassword')}
+          hint={t('signUp.passwordHint')}
+          value={password}
+          onChangeText={setPassword}
+          error={fieldErrors.password && t(fieldErrors.password)}
+          secret
+          autoCapitalize="none"
+          autoComplete="new-password"
+          textContentType="newPassword"
+          returnKeyType="next"
+          onSubmitEditing={() => confirmRef.current?.focus()}
+          submitBehavior="submit"
+        />
+        <TextField
+          ref={confirmRef}
+          label={t('signUp.confirmPassword')}
+          value={confirm}
+          onChangeText={setConfirm}
+          error={fieldErrors.confirm && t(fieldErrors.confirm)}
+          secret
+          autoCapitalize="none"
+          autoComplete="new-password"
+          textContentType="newPassword"
+          returnKeyType="go"
+          onSubmitEditing={submit}
+        />
 
-      <Button label={t('resetPassword.submit')} onPress={submit} loading={busy} />
+        <Button label={t('resetPassword.submit')} onPress={submit} loading={busy} />
+      </Section>
       <Button variant="link" label={t('resetPassword.cancel')} onPress={() => void signOut()} />
     </Screen>
   );

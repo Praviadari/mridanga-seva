@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 
 import { AppText } from '@/components/app-text';
+import { BrandHeader } from '@/components/brand';
 import { Button } from '@/components/button';
 import { Screen } from '@/components/screen';
 
@@ -11,7 +12,7 @@ import { Screen } from '@/components/screen';
 export default function NotFoundScreen() {
   const { t } = useTranslation();
   return (
-    <Screen centred>
+    <Screen centred header={<BrandHeader compact />}>
       <AppText variant="subtitle">{t('notFound.title')}</AppText>
       <Button label={t('notFound.goHome')} onPress={() => router.replace('/')} />
     </Screen>

@@ -75,7 +75,7 @@ export default function FollowUpScreen() {
         <Notice tone="error" title={t('followUp.loadFailed')}>
           {t('common.networkError')}
         </Notice>
-        <Button label={t('common.tryAgain')} onPress={() => void load()} />
+        <Button icon="refresh" label={t('common.tryAgain')} onPress={() => void load()} />
       </Screen>
     );
   }

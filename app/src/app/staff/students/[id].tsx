@@ -13,6 +13,7 @@ import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
+import { PersonHeader } from '@/components/person-header';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { VisitResultNotice } from '@/components/visit-result-notice';
@@ -79,7 +80,7 @@ export default function StudentProfileScreen() {
             <Notice tone="error" title={t('profile.loadFailed')}>
               {t('common.networkError')}
             </Notice>
-            <Button label={t('common.tryAgain')} onPress={() => void load()} />
+            <Button icon="refresh" label={t('common.tryAgain')} onPress={() => void load()} />
           </>
         ) : null}
       </Screen>
@@ -114,21 +115,23 @@ export default function StudentProfileScreen() {
   return (
     <Screen underHeader>
       {header}
-      <AppText variant="title">{student.fullName}</AppText>
-      <AppText tone="muted">
-        {`${student.rollNo} · ${levelName(t, student.levelId)} · ${statusName(t, student.status)}`}
-      </AppText>
+      <PersonHeader
+        name={student.fullName}
+        details={[`${student.rollNo} · ${levelName(t, student.levelId)} · ${statusName(t, student.status)}`]}
+      />
       {student.status === 'paused' && student.pausedUntil ? (
         <AppText>{t('profile.pausedUntil', { date: formatDayMonthYear(student.pausedUntil) })}</AppText>
       ) : null}
       <AppText tone={student.hereNow ? 'success' : 'default'}>{lastVisitText(t, student)}</AppText>
 
       <Button
+        icon="calls"
         label={t('profile.logCall')}
         onPress={() => router.push({ pathname: '/staff/call/[id]', params: { id: student.id } })}
       />
       <Button
         variant="secondary"
+        icon="attendance"
         label={student.hereNow ? t('attendance.checkOut') : t('attendance.checkIn')}
         loading={marking}
         onPress={() => void toggleAttendance()}
@@ -136,7 +139,7 @@ export default function StudentProfileScreen() {
       {markOutcome?.result ? <VisitResultNotice result={markOutcome.result} /> : null}
       {markOutcome?.errorKey ? <Notice tone="error">{t(markOutcome.errorKey)}</Notice> : null}
 
-      <Section title={t('profile.detailsSection')}>
+      <Section icon="person" title={t('profile.detailsSection')}>
         <Line label={t('profile.joined')} value={formatDayMonthYear(student.joinedOn)} />
         <Line
           label={t('register.dob')}
@@ -160,7 +163,7 @@ export default function StudentProfileScreen() {
       </Section>
 
       {showGuardians ? (
-        <Section title={t('register.guardianSection')} description={t('profile.guardianStaffOnly')}>
+        <Section icon="guardian" title={t('register.guardianSection')} description={t('profile.guardianStaffOnly')}>
           {profile.minor && !hasDataConsent(profile.consents) ? (
             <Notice tone="error">{t('profile.consentMissing')}</Notice>
           ) : null}
@@ -186,7 +189,7 @@ export default function StudentProfileScreen() {
         </Section>
       ) : null}
 
-      <Section title={t('profile.followUpSection')}>
+      <Section icon="calls" title={t('profile.followUpSection')}>
         {profile.openTasks.map((task) => (
           <Notice key={task.id} tone={task.escalated ? 'error' : 'info'}>
             {[
@@ -222,6 +225,7 @@ export default function StudentProfileScreen() {
       </Section>
 
       <Section
+        icon="visits"
         title={t('profile.visitsSection')}
         description={t('profile.visitCounts', { recent: profile.visitsLast30Days, total: profile.totalVisits })}>
         {profile.recentVisits.length === 0 ? <AppText tone="muted">{t('profile.noVisits')}</AppText> : null}
@@ -236,6 +240,7 @@ export default function StudentProfileScreen() {
       </Section>
 
       <Section
+        icon="syllabus"
         title={t('profile.syllabusSection', { level: levelName(t, student.levelId) })}
         description={t('profile.syllabusDone', { done: doneCount, total: profile.progress.length })}>
         {profile.progress.length === 0 ? <AppText tone="muted">{t('profile.noSyllabus')}</AppText> : null}
@@ -248,12 +253,13 @@ export default function StudentProfileScreen() {
         ))}
         <Button
           variant="secondary"
+          icon="check"
           label={t('profile.tickSyllabus')}
           onPress={() => router.push({ pathname: '/staff/syllabus/[id]', params: { id: student.id } })}
         />
       </Section>
 
-      <Section title={t('profile.levelSection')}>
+      <Section icon="level" title={t('profile.levelSection')}>
         {profile.levelHistory.length === 0 ? <AppText tone="muted">{t('profile.noLevelChanges')}</AppText> : null}
         {profile.levelHistory.map((change) => (
           <AppText key={change.id}>

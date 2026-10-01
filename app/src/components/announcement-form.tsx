@@ -87,7 +87,7 @@ export function AnnouncementFields({
         error={errors.files ? t(errors.files) : undefined}
       />
 
-      <Section title={t('announcements.compose.audience')}>
+      <Section icon="groups" title={t('announcements.compose.audience')}>
         <ChoiceGroup
           choices={audiences.map((audience) => ({ value: audience, label: audienceLabel(audience) }))}
           value={form.audience}
@@ -124,7 +124,7 @@ export function AnnouncementFields({
       </Section>
 
       {showWhen ? (
-        <Section title={t('announcements.compose.when')}>
+        <Section icon="time" title={t('announcements.compose.when')}>
           <ChoiceGroup
             choices={[
               { value: 'now', label: t('announcements.compose.now') },

@@ -68,7 +68,7 @@ export default function MyAnnouncementScreen() {
             <Notice tone="error" title={t('announcements.loadFailed')}>
               {t('common.networkError')}
             </Notice>
-            <Button label={t('common.tryAgain')} onPress={() => void load()} />
+            <Button icon="refresh" label={t('common.tryAgain')} onPress={() => void load()} />
           </>
         ) : null}
       </Screen>

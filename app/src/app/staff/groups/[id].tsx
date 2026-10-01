@@ -87,7 +87,7 @@ export default function GroupScreen() {
             <Notice tone="error" title={t('groups.loadFailed')}>
               {t('common.networkError')}
             </Notice>
-            <Button label={t('common.tryAgain')} onPress={() => void load()} />
+            <Button icon="refresh" label={t('common.tryAgain')} onPress={() => void load()} />
           </>
         ) : null}
       </Screen>
@@ -136,7 +136,7 @@ export default function GroupScreen() {
       {header}
       {created === '1' ? <Notice tone="success">{t('groups.created')}</Notice> : null}
 
-      <Section title={t('groups.detailsSection')}>
+      <Section icon="groups" title={t('groups.detailsSection')}>
         <TextField
           label={t('groups.name')}
           hint={t('groups.nameHint', { max: GROUP_NAME_MAX_LENGTH })}
@@ -170,7 +170,7 @@ export default function GroupScreen() {
         />
       </Section>
 
-      <Section title={group.active ? t('groups.activeTitle') : t('groups.switchedOff')}>
+      <Section icon="status" title={group.active ? t('groups.activeTitle') : t('groups.switchedOff')}>
         <AppText tone="muted">{group.active ? t('groups.activeHelp') : t('groups.offHelp')}</AppText>
         <Button
           variant="secondary"
@@ -182,7 +182,7 @@ export default function GroupScreen() {
 
       {actionError ? <Notice tone="error">{actionError}</Notice> : null}
 
-      <Section title={t('groups.membersTitle', { number: members.length })}>
+      <Section icon="students" title={t('groups.membersTitle', { number: members.length })}>
         {members.length === 0 ? <AppText tone="muted">{t('groups.noMembers')}</AppText> : null}
         {members.map((p) => (
           <ListRow
@@ -199,7 +199,7 @@ export default function GroupScreen() {
         ))}
       </Section>
 
-      <Section title={t('groups.addTitle')} description={t('groups.addHelp')}>
+      <Section icon="add" title={t('groups.addTitle')} description={t('groups.addHelp')}>
         <TextField
           label={t('groups.search')}
           value={search}

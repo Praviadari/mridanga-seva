@@ -15,7 +15,7 @@ screens open on top of the tabs with a back button.
 
 | # | Screen | Status | Code |
 |---|---|---|---|
-| A1 | Login: sign in, create an account, forgot and reset password | Built | `app/src/app/sign-in.tsx`, `sign-up.tsx`, `forgot-password.tsx`, `reset-password.tsx` |
+| A1 | Login: sign in, create an account, forgot and reset password; under the saffron band with the drum mark | Built | `app/src/app/sign-in.tsx`, `sign-up.tsx`, `forgot-password.tsx`, `reset-password.tsx` |
 | — | Waiting for access (signed in, no role yet) | Built | `app/src/app/pending.tsx` |
 | A2 | Notifications inbox (push notifications themselves work on Android: see C15, S10) | | |
 | A3 | Profile and app language | | |

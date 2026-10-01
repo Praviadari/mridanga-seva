@@ -51,7 +51,8 @@ export function Screen({ centred, underHeader, header, wide, children }: ScreenP
         <ScrollView
           // Lets a tap on a button work at the first try while the keyboard is open.
           keyboardShouldPersistTaps="handled"
-          contentContainerStyle={[styles.scroll, centred && styles.centred]}>
+          // With a header band the band stays at the top; only the content below it is centred.
+          contentContainerStyle={[styles.scroll, centred && !header && styles.centred]}>
           {header}
           <View style={[styles.content, centred && styles.centred]}>
             <View style={[styles.column, { maxWidth: wide ? maxDashboardWidth : maxContentWidth }]}>

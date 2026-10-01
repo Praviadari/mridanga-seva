@@ -14,6 +14,7 @@ import { Button } from '@/components/button';
 import { LanguagePicker } from '@/components/language-picker';
 import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
+import { Section } from '@/components/section';
 import { TextField } from '@/components/text-field';
 
 /** Sign-in form. On success the app moves to the person's screens by itself (_layout.tsx). */
@@ -42,48 +43,46 @@ export default function SignInScreen() {
   }
 
   return (
-    <Screen centred>
-      <BrandHeader />
+    <Screen header={<BrandHeader />}>
       <LanguagePicker />
 
-      <AppText variant="subtitle">{t('signIn.title')}</AppText>
-      <AppText tone="muted">{t('signIn.subtitle')}</AppText>
+      <Section title={t('signIn.title')} description={t('signIn.subtitle')}>
+        {formError ? <Notice tone="error">{t(formError)}</Notice> : null}
 
-      {formError ? <Notice tone="error">{t(formError)}</Notice> : null}
+        <TextField
+          label={t('common.email')}
+          value={email}
+          onChangeText={setEmail}
+          error={fieldErrors.email && t(fieldErrors.email)}
+          autoCapitalize="none"
+          autoComplete="email"
+          keyboardType="email-address"
+          textContentType="username"
+          returnKeyType="next"
+          onSubmitEditing={() => passwordRef.current?.focus()}
+          submitBehavior="submit"
+        />
+        <TextField
+          ref={passwordRef}
+          label={t('common.password')}
+          value={password}
+          onChangeText={setPassword}
+          error={fieldErrors.password && t(fieldErrors.password)}
+          secret
+          autoCapitalize="none"
+          autoComplete="current-password"
+          textContentType="password"
+          returnKeyType="go"
+          onSubmitEditing={submit}
+        />
 
-      <TextField
-        label={t('common.email')}
-        value={email}
-        onChangeText={setEmail}
-        error={fieldErrors.email && t(fieldErrors.email)}
-        autoCapitalize="none"
-        autoComplete="email"
-        keyboardType="email-address"
-        textContentType="username"
-        returnKeyType="next"
-        onSubmitEditing={() => passwordRef.current?.focus()}
-        submitBehavior="submit"
-      />
-      <TextField
-        ref={passwordRef}
-        label={t('common.password')}
-        value={password}
-        onChangeText={setPassword}
-        error={fieldErrors.password && t(fieldErrors.password)}
-        secret
-        autoCapitalize="none"
-        autoComplete="current-password"
-        textContentType="password"
-        returnKeyType="go"
-        onSubmitEditing={submit}
-      />
-
-      <Button label={t('signIn.submit')} onPress={submit} loading={busy} />
-      <Button
-        variant="link"
-        label={t('signIn.forgotPassword')}
-        onPress={() => router.push('/forgot-password')}
-      />
+        <Button label={t('signIn.submit')} onPress={submit} loading={busy} />
+        <Button
+          variant="link"
+          label={t('signIn.forgotPassword')}
+          onPress={() => router.push('/forgot-password')}
+        />
+      </Section>
 
       <AppText tone="muted" style={{ textAlign: 'center' }}>
         {t('signIn.noAccount')}

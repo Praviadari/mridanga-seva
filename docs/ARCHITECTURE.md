@@ -90,9 +90,11 @@ app/
                        the file picker and file list of an announcement, the reply box and reply
                        card, a progress bar, the number tiles of the home screens, the
                        staff-screen tiles (C1, G1), the "new version is ready" notice, page frame;
-                       the look of round 1 (DECISIONS.md #36): icon.tsx (the icon set), home-
-                       header.tsx (saffron band with the greeting), mridanga-mark.tsx (the drum
-                       mark), loading-cards.tsx (grey shapes while loading), empty-state.tsx,
+                       the look of rounds 1 and 2 (DECISIONS.md #36): icon.tsx (the icon set),
+                       saffron-band.tsx (the gradient band), home-header.tsx (the band with the
+                       greeting), brand.tsx (the band on the sign-in screens), mridanga-mark.tsx
+                       (the drum mark), person-header.tsx (initials and name on C8, C11),
+                       loading-cards.tsx (grey shapes while loading), empty-state.tsx,
                        account-footer.tsx (language, Sign out, version)
     i18n/              Interface text in English, Telugu and Hindi (docs/TRANSLATIONS.md), and
                        labels.ts, which words levels, file sizes and lengths of time the same on

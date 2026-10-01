@@ -108,7 +108,7 @@ export default function RegisterStudentScreen() {
           {t('register.doneBody', { name: saved.name, rollNo: saved.registered.rollNo })}
         </Notice>
         {saved.registered.linked ? <AppText>{t('register.linked')}</AppText> : null}
-        <Button label={t('register.another')} onPress={registerAnother} />
+        <Button icon="add" label={t('register.another')} onPress={registerAnother} />
         <Button
           variant="secondary"
           label={t('register.done')}
@@ -125,7 +125,7 @@ export default function RegisterStudentScreen() {
         <Notice tone="error" title={t('register.loadFailed')}>
           {t('common.networkError')}
         </Notice>
-        <Button label={t('common.tryAgain')} onPress={() => setLoadAttempt(loadAttempt + 1)} />
+        <Button icon="refresh" label={t('common.tryAgain')} onPress={() => setLoadAttempt(loadAttempt + 1)} />
       </Screen>
     );
   }
@@ -135,7 +135,7 @@ export default function RegisterStudentScreen() {
       {header}
       <AppText tone="muted">{t('register.intro')}</AppText>
 
-      <Section title={t('register.studentSection')}>
+      <Section icon="person" title={t('register.studentSection')}>
         <TextField
           label={t('register.fullName')}
           value={form.fullName}
@@ -221,7 +221,7 @@ export default function RegisterStudentScreen() {
       </Section>
 
       {minor ? (
-        <Section title={t('register.guardianSection')} description={t('register.guardianIntro')}>
+        <Section icon="guardian" title={t('register.guardianSection')} description={t('register.guardianIntro')}>
           <TextField
             label={t('register.guardianName')}
             value={form.guardianName}
@@ -279,7 +279,7 @@ export default function RegisterStudentScreen() {
       ) : null}
 
       {formError ? <Notice tone="error">{t(formError)}</Notice> : null}
-      <Button label={t('register.submit')} onPress={save} loading={busy} disabled={!choices} />
+      <Button icon="register" label={t('register.submit')} onPress={save} loading={busy} disabled={!choices} />
     </Screen>
   );
 }

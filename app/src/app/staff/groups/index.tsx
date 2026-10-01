@@ -85,7 +85,7 @@ export default function GroupsScreen() {
         <Notice tone="error" title={t('groups.loadFailed')}>
           {t('common.networkError')}
         </Notice>
-        <Button label={t('common.tryAgain')} onPress={() => void load()} />
+        <Button icon="refresh" label={t('common.tryAgain')} onPress={() => void load()} />
       </Screen>
     );
   }
@@ -110,7 +110,7 @@ export default function GroupsScreen() {
         />
       ))}
 
-      <Section title={t('groups.newTitle')}>
+      <Section icon="add" title={t('groups.newTitle')}>
         <TextField
           label={t('groups.name')}
           hint={t('groups.nameHint', { max: GROUP_NAME_MAX_LENGTH })}
@@ -128,7 +128,7 @@ export default function GroupsScreen() {
           maxLength={GROUP_PURPOSE_MAX_LENGTH}
         />
         {serverError ? <Notice tone="error">{serverError}</Notice> : null}
-        <Button label={t('groups.create')} loading={saving} onPress={() => void create()} />
+        <Button icon="add" label={t('groups.create')} loading={saving} onPress={() => void create()} />
       </Section>
     </Screen>
   );

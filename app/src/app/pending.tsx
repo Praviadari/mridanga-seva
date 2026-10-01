@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next';
 import { signOut } from '@/auth/auth-actions';
 import { useAuth } from '@/auth/auth-provider';
 import { AppText } from '@/components/app-text';
+import { BrandHeader } from '@/components/brand';
 import { Button } from '@/components/button';
 import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
@@ -41,7 +42,7 @@ export default function PendingScreen() {
   }
 
   return (
-    <Screen centred>
+    <Screen centred header={<BrandHeader compact />}>
       <AppText variant="title">{t('pending.title')}</AppText>
       {message}
       {session?.user.email ? (

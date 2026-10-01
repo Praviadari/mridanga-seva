@@ -14,6 +14,7 @@ import { Button } from '@/components/button';
 import { ChoiceGroup } from '@/components/choice-group';
 import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
+import { PersonHeader } from '@/components/person-header';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { TextField } from '@/components/text-field';
@@ -80,7 +81,7 @@ export default function CallLogScreen() {
             <Notice tone="error" title={t('callLog.loadFailed')}>
               {t('common.networkError')}
             </Notice>
-            <Button label={t('common.tryAgain')} onPress={() => void load()} />
+            <Button icon="refresh" label={t('common.tryAgain')} onPress={() => void load()} />
           </>
         ) : null}
       </Screen>
@@ -140,29 +141,32 @@ export default function CallLogScreen() {
   return (
     <Screen underHeader>
       {header}
-      <AppText variant="subtitle">{context.fullName}</AppText>
-      <AppText tone="muted">{`${context.rollNo} · ${statusName(t, context.status)}`}</AppText>
-      <AppText>
-        {lastVisitText(t, {
-          lastVisitAt: context.lastVisitAt,
-          daysSinceVisit: context.daysSinceVisit,
-          joinedOn: context.joinedOn,
-          hereNow: false,
-        })}
-      </AppText>
+      <PersonHeader
+        name={context.fullName}
+        details={[
+          `${context.rollNo} · ${statusName(t, context.status)}`,
+          lastVisitText(t, {
+            lastVisitAt: context.lastVisitAt,
+            daysSinceVisit: context.daysSinceVisit,
+            joinedOn: context.joinedOn,
+            hereNow: false,
+          }),
+        ]}
+      />
 
       {dials.length === 0 ? <AppText tone="muted">{t('callLog.noPhone')}</AppText> : null}
       {dials.map((d) => (
         <Button
           key={`${d.who}-${d.phone}`}
           variant="secondary"
+          icon="calls"
           label={t('callLog.dial', { who: d.who, phone: d.phone })}
           onPress={() => dial(d.phone)}
         />
       ))}
 
       {context.lastCalls.length > 0 ? (
-        <Section title={t('callLog.lastCalls')}>
+        <Section icon="calls" title={t('callLog.lastCalls')}>
           {context.lastCalls.map((call) => (
             <AppText key={call.calledAt} tone="muted">
               {`${formatDayMonthYear(dateInIndia(call.calledAt))} · ${outcomeName(t, call.outcome)} · ${call.comment}`}
@@ -171,7 +175,7 @@ export default function CallLogScreen() {
         </Section>
       ) : null}
 
-      <Section title={t('callLog.formSection')}>
+      <Section icon="edit" title={t('callLog.formSection')}>
         <ChoiceGroup
           label={t('callLog.outcome')}
           choices={CALL_OUTCOMES.map((outcome) => ({ value: outcome, label: outcomeName(t, outcome) }))}

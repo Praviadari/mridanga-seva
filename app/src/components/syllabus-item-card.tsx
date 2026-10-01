@@ -5,9 +5,10 @@
 import type { PropsWithChildren } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
-import { radius, spacing, useTheme } from '@/theme/use-theme';
+import { cardLook, spacing, useTheme } from '@/theme/use-theme';
 
 import { AppText } from './app-text';
+import { Icon } from './icon';
 
 /** Props for SyllabusItemCard. */
 export type SyllabusItemCardProps = PropsWithChildren<{
@@ -49,10 +50,8 @@ export function SyllabusItemCard({
     <View
       style={[
         styles.card,
-        {
-          backgroundColor: done ? colors.successSurface : colors.surface,
-          borderColor: done ? colors.success : colors.border,
-        },
+        cardLook(colors),
+        done ? { backgroundColor: colors.successSurface, borderColor: colors.success } : null,
       ]}>
       <View style={styles.row}>
         <Pressable
@@ -74,9 +73,7 @@ export function SyllabusItemCard({
           {busy ? (
             <ActivityIndicator color={done ? colors.onPrimary : colors.primary} />
           ) : done ? (
-            <AppText variant="subtitle" style={{ color: colors.onPrimary }}>
-              ✓
-            </AppText>
+            <Icon name="tick" size={28} color={colors.onPrimary} />
           ) : null}
         </Pressable>
         <View style={styles.text}>
@@ -101,8 +98,6 @@ export function SyllabusItemCard({
 
 const styles = StyleSheet.create({
   card: {
-    borderWidth: 1,
-    borderRadius: radius,
     padding: spacing.md,
     gap: spacing.sm,
   },

@@ -80,7 +80,7 @@ export default function MyQrScreen() {
         <Notice tone="error" title={t('myQr.loadFailed')}>
           {t(shown.errorKey)}
         </Notice>
-        <Button label={t('common.tryAgain')} onPress={() => setLoadAttempt(loadAttempt + 1)} />
+        <Button icon="refresh" label={t('common.tryAgain')} onPress={() => setLoadAttempt(loadAttempt + 1)} />
       </Screen>
     );
   }

@@ -85,8 +85,12 @@ function RowContent({
   );
 }
 
-/** First letters of the first two words of a name, in a saffron circle, e.g. "AR" for Arjun Rao. */
-function Initials({ name }: { name: string }) {
+/**
+ * First letters of the first two words of a name, in a saffron circle, e.g. "AR" for Arjun Rao.
+ * `size` is the circle's diameter in pixels (default 40). Hidden from screen readers: the name is
+ * always written next to it.
+ */
+export function Initials({ name, size = 40 }: { name: string; size?: number }) {
   const { colors } = useTheme();
   const letters = name
     .trim()
@@ -98,8 +102,11 @@ function Initials({ name }: { name: string }) {
   return (
     <View
       aria-hidden
-      style={[styles.initials, { backgroundColor: colors.primarySoft }]}>
-      <AppText variant="label" style={{ color: colors.onPrimarySoft }}>
+      style={[
+        styles.initials,
+        { width: size, height: size, borderRadius: size / 2, backgroundColor: colors.primarySoft },
+      ]}>
+      <AppText variant={size >= 56 ? 'subtitle' : 'label'} style={{ color: colors.onPrimarySoft }}>
         {letters}
       </AppText>
     </View>
@@ -118,9 +125,6 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   initials: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },

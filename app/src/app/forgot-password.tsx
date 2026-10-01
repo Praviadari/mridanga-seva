@@ -6,10 +6,11 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { isValidEmail, sendPasswordReset, type MessageKey } from '@/auth/auth-actions';
-import { AppText } from '@/components/app-text';
+import { BrandHeader } from '@/components/brand';
 import { Button } from '@/components/button';
 import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
+import { Section } from '@/components/section';
 import { TextField } from '@/components/text-field';
 
 /** Asks for the email and sends the reset link. */
@@ -34,30 +35,29 @@ export default function ForgotPasswordScreen() {
   }
 
   return (
-    <Screen centred>
-      <AppText variant="title">{t('forgotPassword.title')}</AppText>
-
-      {sentTo ? (
-        <Notice tone="success">{t('forgotPassword.sent', { email: sentTo })}</Notice>
-      ) : (
-        <>
-          <AppText tone="muted">{t('forgotPassword.subtitle')}</AppText>
-          {formError ? <Notice tone="error">{t(formError)}</Notice> : null}
-          <TextField
-            label={t('common.email')}
-            value={email}
-            onChangeText={setEmail}
-            error={fieldError ? t(fieldError) : undefined}
-            autoCapitalize="none"
-            autoComplete="email"
-            keyboardType="email-address"
-            textContentType="username"
-            returnKeyType="send"
-            onSubmitEditing={submit}
-          />
-          <Button label={t('forgotPassword.submit')} onPress={submit} loading={busy} />
-        </>
-      )}
+    <Screen centred header={<BrandHeader compact />}>
+      <Section title={t('forgotPassword.title')} description={sentTo ? undefined : t('forgotPassword.subtitle')}>
+        {sentTo ? (
+          <Notice tone="success">{t('forgotPassword.sent', { email: sentTo })}</Notice>
+        ) : (
+          <>
+            {formError ? <Notice tone="error">{t(formError)}</Notice> : null}
+            <TextField
+              label={t('common.email')}
+              value={email}
+              onChangeText={setEmail}
+              error={fieldError ? t(fieldError) : undefined}
+              autoCapitalize="none"
+              autoComplete="email"
+              keyboardType="email-address"
+              textContentType="username"
+              returnKeyType="send"
+              onSubmitEditing={submit}
+            />
+            <Button label={t('forgotPassword.submit')} onPress={submit} loading={busy} />
+          </>
+        )}
+      </Section>
 
       <Button
         variant="link"

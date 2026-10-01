@@ -95,7 +95,7 @@ export default function HereNowScreen() {
         <Notice tone="error" title={t('attendance.loadFailed')}>
           {t('common.networkError')}
         </Notice>
-        <Button label={t('common.tryAgain')} onPress={() => void load()} />
+        <Button icon="refresh" label={t('common.tryAgain')} onPress={() => void load()} />
       </Screen>
     );
   }

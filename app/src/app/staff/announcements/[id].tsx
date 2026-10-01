@@ -102,7 +102,7 @@ export default function StaffAnnouncementScreen() {
             <Notice tone="error" title={t('announcements.loadFailed')}>
               {t('common.networkError')}
             </Notice>
-            <Button label={t('common.tryAgain')} onPress={() => void load()} />
+            <Button icon="refresh" label={t('common.tryAgain')} onPress={() => void load()} />
           </>
         ) : null}
       </Screen>
@@ -205,7 +205,7 @@ export default function StaffAnnouncementScreen() {
         <AppText tone="muted">{t('announcements.edited', { date: formatDateTimeInIndia(a.editedAt) })}</AppText>
       ) : null}
 
-      <Section title={t('announcements.detail.seenSection')}>
+      <Section icon="check" title={t('announcements.detail.seenSection')}>
         {scheduled ? <AppText tone="muted">{t('announcements.detail.scheduledNote')}</AppText> : null}
         {seenCount.addressed > 0 ? (
           <ProgressBar
@@ -261,6 +261,7 @@ export default function StaffAnnouncementScreen() {
       {/* The author and the Guru read every reply; anyone else only their own, under the box. */}
       {canChange ? (
         <Section
+          icon="reply"
           title={t('announcements.replies.title', { number: replies.length })}
           description={t('announcements.replies.privateNote')}>
           {replies.length === 0 ? <AppText tone="muted">{t('announcements.replies.none')}</AppText> : null}
@@ -307,6 +308,7 @@ export default function StaffAnnouncementScreen() {
         <>
           <Button
             variant="secondary"
+            icon="edit"
             label={t('announcements.detail.edit')}
             onPress={() =>
               router.push({ pathname: '/staff/announcements/edit/[id]', params: { id: String(a.id) } })
@@ -320,6 +322,7 @@ export default function StaffAnnouncementScreen() {
           />
           <Button
             variant="link"
+            icon="delete"
             label={t('announcements.detail.delete')}
             onPress={() => {
               setActionError(null);

@@ -16,6 +16,7 @@ import { Button } from '@/components/button';
 import { ChoiceGroup } from '@/components/choice-group';
 import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
+import { PersonHeader } from '@/components/person-header';
 import { ProgressBar } from '@/components/progress-bar';
 import { Screen } from '@/components/screen';
 import { SyllabusItemCard } from '@/components/syllabus-item-card';
@@ -86,7 +87,7 @@ export default function SyllabusTickOffScreen() {
             <Notice tone="error" title={t('syllabus.loadFailed')}>
               {t('common.networkError')}
             </Notice>
-            <Button label={t('common.tryAgain')} onPress={() => void load()} />
+            <Button icon="refresh" label={t('common.tryAgain')} onPress={() => void load()} />
           </>
         ) : null}
       </Screen>
@@ -136,10 +137,10 @@ export default function SyllabusTickOffScreen() {
   return (
     <Screen underHeader>
       {header}
-      <AppText variant="subtitle">{student.fullName}</AppText>
-      <AppText tone="muted">
-        {`${student.rollNo} · ${t('syllabus.studentLevel', { level: levelName(t, student.levelId) })}`}
-      </AppText>
+      <PersonHeader
+        name={student.fullName}
+        details={[`${student.rollNo} · ${t('syllabus.studentLevel', { level: levelName(t, student.levelId) })}`]}
+      />
       <AppText>{t('syllabus.intro')}</AppText>
 
       {levelIds.length > 1 ? (
