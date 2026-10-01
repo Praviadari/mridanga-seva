@@ -2,6 +2,7 @@
   "expo": {
     "name": "Mridanga Seva",
     "slug": "mridanga-seva",
+    "owner": "mridanga-seva",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -65,6 +66,11 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "24fef1a4-4c05-46e9-9c32-3975fba80ff0"
+      }
     }
   }
 }

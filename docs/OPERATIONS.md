@@ -207,21 +207,31 @@ build:
 Both have the same package name, so a phone holds one or the other: installing one replaces the
 other, and the person signs in again.
 
-**Once, on a new computer or account** (from `app/`; each command opens a login or asks questions):
+The app belongs to the Expo project `@mridanga-seva/mridanga-seva`, in the Expo organisation
+`mridanga-seva` (set up 30 Sep 2026). `app.json` names it: `"owner"` and `extra.eas.projectId`.
+The id is not a secret.
+
+**Once, on a new computer** (from `app/`): `npx eas-cli@latest login`. It opens the browser to
+sign in to Expo.
+
+**Once, and again whenever a project's Supabase URL or key changes** (from `app/`):
 
 ```bash
-npx eas-cli@latest login
-npx eas-cli@latest init
 npx eas-cli@latest env:push --environment preview --path .env.test
 npx eas-cli@latest env:push --environment production --path .env
 ```
 
-- `init` links the app to a project on the Expo account and writes its `projectId` into
-  `app.json`. Commit that change; the id is not a secret.
-- `env:push` copies each project's Supabase URL and publishable key to EAS. The build servers
-  never see `app/.env` or `app/.env.test` (they are not in git), so without this step the APK
-  would say *App not set up*. If it asks for a visibility, choose plain text: these values are
-  inside every copy of the app anyway.
+`env:push` copies each project's Supabase URL and publishable key to EAS. The build servers
+never see `app/.env` or `app/.env.test` (they are not in git), so without this step the APK would
+say *App not set up*. If it asks for a visibility, choose plain text: these values are inside
+every copy of the app anyway. `npx eas-cli@latest env:list --environment preview` shows what EAS
+has.
+
+**Only for a new Expo project** (a new organisation, for example): put `"owner":
+"<organisation>"` in `app.json`, run `npx eas-cli@latest init --account <organisation>` and commit
+the change. `init` writes the project id into `app.json`, but also copies settings from the
+plugins into it (an `android.permissions` list, an empty `extra.router`): remove those two, keep
+`extra.eas.projectId`.
 
 **Each build** (`preview` for the test project, `production` for the live one):
 
@@ -229,6 +239,12 @@ npx eas-cli@latest env:push --environment production --path .env
 npx eas-cli@latest build -p android --profile preview
 ```
 
+- EAS needs `git` in the terminal. If it says *git command not found*, Git is installed but not
+  on the terminal's path; add it for that window, for example
+  `$env:Path = "$env:LOCALAPPDATA\Programs\Git\cmd;$env:Path"` in PowerShell. Do not use the
+  `EAS_NO_VCS=1` it suggests: git decides which files are uploaded, and it leaves out `.env`.
+- If a command fails with *unable to verify the first certificate* (a network that inspects
+  secure connections), run `$env:NODE_OPTIONS='--use-system-ca'` in that window and try again.
 - The **first** build asks to generate an Android keystore: answer yes. Expo keeps it. Every
   later APK must be signed with the same keystore, or phones refuse the update. Download a backup
   once (`npx eas-cli@latest credentials -p android`) and keep it with the team's passwords —
@@ -254,9 +270,9 @@ Messaging → the phone. Until every step below is done, nothing is sent and the
 before. The web version (iPhones) gets no notifications yet. Push does not work in Expo Go.
 
 Two keys are secret and **never go into this repository, the app or a chat**: the Firebase
-service-account key (step 4) and the push secret (step 8). Keep both in the team's password
-manager. The Edge Function gets the Supabase service-role key from Supabase by itself; nobody
-copies it anywhere.
+service-account key (step 4) and the push secret (step 8). Nobody needs to keep a copy: the
+key can be generated again, and the push secret stays readable in each project's Vault. The Edge
+Function gets the Supabase service-role key from Supabase by itself; nobody copies it anywhere.
 
 **Once, in Firebase** (logged in with the team email):
 
@@ -272,9 +288,11 @@ copies it anywhere.
    name `org.mridangaseva.app` and must **not** contain `"private_key"` (that would be the secret
    key of step 4).
 4. **Project settings → Service accounts → Generate new private key → Generate key.** A JSON
-   file downloads. This one is secret: store it in the password manager.
+   file downloads (`mridanga-seva-firebase-adminsdk-….json`). This one is secret. It is needed
+   only for step 5; delete it afterwards, from the Recycle Bin too. If it is needed again, generate
+   a new one here.
 
-**Once, in Expo** (after `eas init`, see "Building the Android app"; from `app/`):
+**Once, in Expo** (signed in with `eas login`, see "Building the Android app"; from `app/`):
 
 5. Upload the service-account key:
    ```bash
@@ -283,34 +301,48 @@ copies it anywhere.
    Choose a build profile (either; the key belongs to the package name) → **Google Service
    Account** → **Manage your Google Service Account Key for Push Notifications (FCM V1)** →
    **Set up a Google Service Account Key for Push Notifications (FCM V1)** → **Upload a new
-   service account key** → pick the JSON from step 4. Then delete the downloaded copy from the
-   computer.
+   service account key** → give the full path of the JSON from step 4. Then delete the
+   downloaded copy from the computer.
 
 **In each Supabase project** (test first, then live):
 
 6. Run `0010_announcement_files.sql` and `0011_push_notifications.sql` in the SQL editor, in
    order, like the other migrations.
 7. **Database → Extensions**: switch on **pg_net**.
-8. Make the push secret: in the SQL editor run `select encode(gen_random_bytes(32), 'hex');` and
-   copy the long text it shows. Use a different one for the test and the live project.
-9. Save the project address and the push secret in the Vault (SQL editor; put in your own values,
-   the project ref is the part before `.supabase.co`):
+8. Make the push secret and save it, with the project address, in the Vault. The database makes
+   the secret itself, so it is never typed into a query (the SQL editor keeps its queries). In
+   the SQL editor, with your project ref (the part before `.supabase.co`) in the first line:
    ```sql
    select vault.create_secret('https://<project-ref>.supabase.co', 'mridanga_project_url');
-   select vault.create_secret('<the push secret>', 'mridanga_push_secret');
+   select vault.create_secret(encode(gen_random_bytes(32), 'hex'), 'mridanga_push_secret');
+   select name, length(decrypted_secret) as characters from vault.decrypted_secrets where name like 'mridanga_%';
    ```
-10. Deploy the Edge Function and give it the same push secret, from a terminal in the
-    repository folder (the first command opens the browser to log in):
+   The last line should show `mridanga_project_url` (40 characters) and `mridanga_push_secret`
+   (64). Each project gets its own secret.
+9. Give the Edge Function the same secret. In the dashboard open **Integrations → Vault →
+   Secrets**, reveal `mridanga_push_secret` and use its **copy** button (copying from the SQL
+   editor's results grid once picked up the wrong text). Then **Edge Functions → Secrets → Add
+   new secret**: name `PUSH_SECRET`, paste the value, **Save**. (Not with `supabase secrets set`
+   in a terminal: the terminal keeps the value in its history file.) After the login of step 10,
+   check that the two are the same without showing either:
+   `npx supabase@latest secrets list --project-ref <project-ref>`
+   prints a fingerprint (SHA-256) of each secret, and in the SQL editor
+   `select encode(extensions.digest(decrypted_secret, 'sha256'), 'hex') from vault.decrypted_secrets where name = 'mridanga_push_secret';`
+   must print the same text as the one for `PUSH_SECRET`.
+10. Deploy the Edge Function from a terminal in the repository folder. `login` opens the browser;
+    paste the verification code it shows into the terminal.
     ```bash
-    npx supabase login
-    npx supabase secrets set PUSH_SECRET=<the push secret> --project-ref <project-ref>
-    npx supabase functions deploy notify-announcements --project-ref <project-ref> --no-verify-jwt --use-api
+    npx supabase@latest login
+    npx supabase@latest functions deploy notify-announcements --project-ref <project-ref> --no-verify-jwt --use-api
+    npx supabase@latest functions list --project-ref <project-ref>
     ```
     `--no-verify-jwt` because the database job calls it without a login; the function checks
-    the push secret instead. `--use-api` builds it on Supabase's side, so Docker is not needed.
-    If the CLI asks for `supabase/config.toml`, run `npx supabase init` once and commit that file.
-    Only if the Expo account has "enhanced push security" switched on, also run
-    `npx supabase secrets set EXPO_ACCESS_TOKEN=<token from expo.dev → Access tokens> --project-ref <project-ref>`.
+    the push secret instead. `--use-api` builds it on Supabase's side, so Docker is not needed,
+    and no `supabase/config.toml` either (CLI 2.118). The list must show `notify-announcements`,
+    status `ACTIVE`; an empty list means nothing was deployed. Called without the secret, the
+    function answers `401 {"error":"not_allowed"}`; `404` means it is not deployed.
+    Only if the Expo account has "enhanced push security" switched on, also add the secret
+    `EXPO_ACCESS_TOKEN` (a token from expo.dev → Access tokens) the same way as in step 9.
 
 **Then a new APK**, built after steps 3 and 5 (see "Building the Android app"):
 
@@ -325,13 +357,13 @@ copies it anywhere.
     opens it.
 13. If nothing arrives, look in the SQL editor:
     ```sql
-    select send_due_push();   -- 'not_set_up' = step 7, 9 or 10 is missing
+    select send_due_push();   -- 'not_set_up' = step 7 or 8 is missing ('nothing_due' = nothing waiting)
     select id, status_code, content from net._http_response order by id desc limit 5;
     select title, publish_at, notified_at from announcements order by id desc limit 5;
     select platform, updated_at from push_tokens order by updated_at desc limit 5;
     ```
-    `status_code` 401 = the push secret in the Vault and in `supabase secrets` differ; 404 = the
-    function is not deployed. No row in `push_tokens` = the phone has no token: Expo Go, no
+    `status_code` 401 = the push secret in the Vault and the function's `PUSH_SECRET` differ
+    (compare their fingerprints, step 9); 404 = the function is not deployed. No row in `push_tokens` = the phone has no token: Expo Go, no
     permission, or steps 3 and 5 were missing when the APK was built. The function's own log is
     under **Edge Functions → notify-announcements → Logs** (for example `InvalidCredentials` =
     the key of step 5 is missing or wrong).
@@ -395,9 +427,9 @@ long holidays, open the app once a week, or restore the project from the dashboa
 4. The **Firebase service-account key**: in Firebase, Project settings → Service accounts →
    **Manage service account permissions** (Google Cloud) → the service account → Keys → delete
    the leaked key; generate a new one and upload it again ("Push notifications", steps 4-5).
-5. The **push secret**: make a new one (step 8) and put it in both places:
-   `select vault.update_secret((select id from vault.secrets where name = 'mridanga_push_secret'), '<new secret>');`
-   and `npx supabase secrets set PUSH_SECRET=<new secret> --project-ref <project-ref>`.
+5. The **push secret**: make a new one in the Vault, in that project's SQL editor:
+   `select vault.update_secret((select id from vault.secrets where name = 'mridanga_push_secret'), encode(gen_random_bytes(32), 'hex'));`
+   then give the new value to the function ("Push notifications", step 9: replace `PUSH_SECRET`).
 
 ## Handing over
 
