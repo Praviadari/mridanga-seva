@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next';
 import { AppText } from '@/components/app-text';
 import { AttachmentList } from '@/components/attachment-list';
 import { Button } from '@/components/button';
+import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
 import { ReplyBox } from '@/components/reply-box';
 import { ReplyCard } from '@/components/reply-card';
@@ -52,7 +53,7 @@ export default function MyAnnouncementScreen() {
     return (
       <Screen underHeader centred>
         {header}
-        {loaded === undefined ? <AppText tone="muted">{t('common.loading')}</AppText> : null}
+        {loaded === undefined ? <LoadingCards /> : null}
         {loaded === 'not_found' ? (
           <>
             <Notice tone="error">{t('announcements.detail.notFound')}</Notice>

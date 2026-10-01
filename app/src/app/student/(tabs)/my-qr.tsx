@@ -13,12 +13,14 @@ import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useAuth } from '@/auth/auth-provider';
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
+import { LoadingCards } from '@/components/loading-cards';
+import { MridangaMark } from '@/components/mridanga-mark';
 import { Notice } from '@/components/notice';
 import { QrCode } from '@/components/qr-code';
 import { Screen } from '@/components/screen';
 import { studentQrText } from '@/data/attendance';
 import { fetchMyCard, savedCardFor, type MyCardResult } from '@/data/my-student';
-import { maxContentWidth, radius, spacing, useTheme } from '@/theme/use-theme';
+import { cardLook, maxContentWidth, spacing, useTheme } from '@/theme/use-theme';
 
 /**
  * Largest QR code drawn, in pixels. Big enough to scan from arm's length; bigger only makes the
@@ -57,18 +59,16 @@ export default function MyQrScreen() {
     result ?? (savedNow ? { state: 'ok', card: savedNow, saved: false } : undefined);
 
   // The page's side padding and the card's own padding come off the screen width.
-  const column = Math.min(width, maxContentWidth) - 2 * spacing.lg - 2 * spacing.md;
+  const column = Math.min(width, maxContentWidth) - 2 * spacing.md - 2 * spacing.md;
   const qrSize = Math.min(column, MAX_QR_SIZE);
 
   const header = <Stack.Screen options={{ title: t('myQr.title') }} />;
 
   if (shown === undefined) {
     return (
-      <Screen underHeader centred>
+      <Screen underHeader>
         {header}
-        <AppText tone="muted" style={styles.centreText}>
-          {t('common.loading')}
-        </AppText>
+        <LoadingCards rows={1} />
       </Screen>
     );
   }
@@ -100,10 +100,13 @@ export default function MyQrScreen() {
   return (
     <Screen underHeader>
       {header}
-      <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-        <AppText variant="label" tone="primary">
-          {t('app.name')}
-        </AppText>
+      <View style={[styles.card, cardLook(colors)]}>
+        <View style={styles.brandRow}>
+          <MridangaMark size={28} color={colors.primary} accent={colors.surface} />
+          <AppText variant="label" tone="primary">
+            {t('app.name')}
+          </AppText>
+        </View>
         <QrCode value={studentQrText(card.qrToken)} size={qrSize} label={t('myQr.qrLabel')} />
         <AppText variant="subtitle" style={styles.centreText}>
           {card.fullName}
@@ -123,9 +126,12 @@ export default function MyQrScreen() {
 const styles = StyleSheet.create({
   card: {
     alignItems: 'center',
-    borderWidth: 1,
-    borderRadius: radius,
     padding: spacing.md,
+    gap: spacing.sm,
+  },
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: spacing.sm,
   },
   centreText: {

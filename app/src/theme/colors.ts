@@ -32,10 +32,28 @@ export type Palette = {
   success: string;
   /** Light background behind a confirmation message. */
   successSurface: string;
+  /** Pale saffron behind an icon or a badge; an icon on it uses `primary`. */
+  primarySoft: string;
+  /** Text on `primarySoft`, e.g. a person's initials: darker than `primary` for contrast. */
+  onPrimarySoft: string;
+  /** Edge of a card. Faint in light mode, where the shadow does the work; clearer in dark mode. */
+  cardBorder: string;
+  /** Shadow under cards, as a CSS colour. Dark mode uses none: shadows do not show on dark. */
+  shadow: string;
+  /** The grey shapes shown while a screen loads. */
+  skeleton: string;
+  /** Top and bottom colours of the saffron band at the top of the home screens and header bars. */
+  headerTop: string;
+  headerBottom: string;
+  /** Text and icons on the saffron band. */
+  onHeader: string;
+  /** Less important text on the saffron band. */
+  onHeaderMuted: string;
 };
 
 // Contrast was checked against WCAG AA (4.5:1 for normal text) for text on background and
-// surface, and for onPrimary on primary, in both schemes.
+// surface, onPrimary on primary, onPrimarySoft on primarySoft (icons on it need 3:1), and
+// onHeader / onHeaderMuted on both header colours, in both schemes (1 Oct 2026, DECISIONS #36).
 export const lightPalette: Palette = {
   background: '#FFF8F1',
   surface: '#FFFFFF',
@@ -48,6 +66,16 @@ export const lightPalette: Palette = {
   dangerSurface: '#FEF3F2',
   success: '#067647',
   successSurface: '#ECFDF3',
+  primarySoft: '#FDEBD3',
+  onPrimarySoft: '#8A3A0E',
+  cardBorder: '#F1E6DA',
+  shadow: 'rgba(120, 64, 20, 0.14)',
+  skeleton: '#F1E6DA',
+  // A deeper saffron than the brand colour, so the paler header text keeps 4.5:1.
+  headerTop: '#9A4307',
+  headerBottom: '#742C0B',
+  onHeader: '#FFFFFF',
+  onHeaderMuted: '#FDE7CF',
 };
 
 /**
@@ -72,4 +100,13 @@ export const darkPalette: Palette = {
   dangerSurface: '#3A1A17',
   success: '#47CD89',
   successSurface: '#10291C',
+  primarySoft: '#3A2817',
+  onPrimarySoft: '#F59E0B',
+  cardBorder: '#3F352E',
+  shadow: 'transparent',
+  skeleton: '#2E2620',
+  headerTop: '#5C2B0C',
+  headerBottom: '#2E1609',
+  onHeader: '#FFF3E6',
+  onHeaderMuted: '#E8CDB3',
 };

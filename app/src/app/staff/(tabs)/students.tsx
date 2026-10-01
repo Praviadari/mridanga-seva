@@ -12,7 +12,9 @@ import { useAuth } from '@/auth/auth-provider';
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { ChoiceGroup, type Choice } from '@/components/choice-group';
+import { EmptyState } from '@/components/empty-state';
 import { ListRow } from '@/components/list-row';
+import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
@@ -100,6 +102,12 @@ export default function StudentListScreen() {
   return (
     <Screen underHeader>
       {header}
+      <Button
+        variant="secondary"
+        icon="register"
+        label={t('staff.registerStudent')}
+        onPress={() => router.push('/staff/register')}
+      />
       <TextField
         label={t('students.searchLabel')}
         hint={t('students.searchHint')}
@@ -111,6 +119,7 @@ export default function StudentListScreen() {
       />
       <Button
         variant="secondary"
+        icon="filter"
         label={
           showFilters
             ? t('students.hideFilters')
@@ -171,13 +180,14 @@ export default function StudentListScreen() {
           {t('students.count', { shown: shown.length, total: loaded.students.length })}
         </AppText>
       ) : (
-        <AppText tone="muted">{t('common.loading')}</AppText>
+        <LoadingCards />
       )}
 
-      {loaded && shown.length === 0 ? <AppText tone="muted">{t('students.empty')}</AppText> : null}
+      {loaded && shown.length === 0 ? <EmptyState icon="search" title={t('students.empty')} /> : null}
       {shown.map((student) => (
         <ListRow
           key={student.id}
+          leading="initials"
           title={student.fullName}
           highlighted={student.hereNow}
           details={[
@@ -190,12 +200,6 @@ export default function StudentListScreen() {
           onPress={() => router.push({ pathname: '/staff/students/[id]', params: { id: student.id } })}
         />
       ))}
-
-      <Button
-        variant="secondary"
-        label={t('staff.registerStudent')}
-        onPress={() => router.push('/staff/register')}
-      />
     </Screen>
   );
 }

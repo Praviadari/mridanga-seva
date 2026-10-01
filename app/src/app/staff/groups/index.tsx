@@ -10,7 +10,9 @@ import { useTranslation } from 'react-i18next';
 
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
+import { EmptyState } from '@/components/empty-state';
 import { ListRow } from '@/components/list-row';
+import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
@@ -92,11 +94,12 @@ export default function GroupsScreen() {
     <Screen underHeader>
       {header}
       <AppText tone="muted">{t('groups.intro')}</AppText>
-      {groups === undefined ? <AppText tone="muted">{t('common.loading')}</AppText> : null}
-      {groups && groups.length === 0 ? <AppText tone="muted">{t('groups.empty')}</AppText> : null}
+      {groups === undefined ? <LoadingCards /> : null}
+      {groups && groups.length === 0 ? <EmptyState icon="groups" title={t('groups.empty')} /> : null}
       {groups?.map((g) => (
         <ListRow
           key={g.id}
+          leading="groups"
           title={g.name}
           details={[
             ...(g.purpose ? [g.purpose] : []),

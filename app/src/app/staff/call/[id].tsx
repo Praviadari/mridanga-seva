@@ -12,6 +12,7 @@ import { Linking } from 'react-native';
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { ChoiceGroup } from '@/components/choice-group';
+import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
@@ -72,7 +73,7 @@ export default function CallLogScreen() {
     return (
       <Screen underHeader centred>
         {header}
-        {context === undefined ? <AppText tone="muted">{t('common.loading')}</AppText> : null}
+        {context === undefined ? <LoadingCards /> : null}
         {context === 'not_found' ? <Notice tone="error">{t('profile.notFound')}</Notice> : null}
         {context === null ? (
           <>

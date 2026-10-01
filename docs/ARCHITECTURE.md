@@ -78,23 +78,30 @@ app/
                        the bundle holds the right Supabase project), the placeholder icon generator
   src/
     app/               Screens. Every file is a screen (Expo Router); _layout.tsx files arrange them
-      guru/  coordinator/  student/    Each role's own screens (home, and later role-only ones)
-      staff/           Coordinator screens the Guru uses too: register, attendance, follow-up ...
+      student/         The student's screens; (tabs)/ holds Home, My QR and Announcements
+      staff/           The Guru's and coordinators' screens: register, attendance, follow-up ...;
+                       (tabs)/ holds Home (G1 or C1 by role) and the four used most
     auth/              Who is signed in, their role, and the sign-in / sign-up calls
+    screens/           The two staff homes, G1 and C1 (shown by staff/(tabs)/index.tsx)
     data/              Reading and saving records: one file per area (students.ts ...), with the
                        form checks. Screens call these, never the database directly
     components/        Building blocks shared by screens: text, buttons, fields, choices, list rows,
                        the QR scanner, the syllabus item card, the announcement card and form,
                        the file picker and file list of an announcement, the reply box and reply
                        card, a progress bar, the number tiles of the home screens, the
-                       staff-screen buttons (C1, G1), the "new version is ready" notice, page frame
+                       staff-screen tiles (C1, G1), the "new version is ready" notice, page frame;
+                       the look of round 1 (DECISIONS.md #36): icon.tsx (the icon set), home-
+                       header.tsx (saffron band with the greeting), mridanga-mark.tsx (the drum
+                       mark), loading-cards.tsx (grey shapes while loading), empty-state.tsx,
+                       account-footer.tsx (language, Sign out, version)
     i18n/              Interface text in English, Telugu and Hindi (docs/TRANSLATIONS.md), and
                        labels.ts, which words levels, file sizes and lengths of time the same on
                        every screen
     lib/               The Supabase client, on-device storage, date helpers (India time), push
                        notifications and app updates (push.ts and app-update.ts on Android; the
                        .web.ts copies do nothing)
-    theme/             Colours, spacing and text sizes, light and dark
+    theme/             Colours, spacing and text sizes, light and dark; the card look, the header
+                       bars and the tab bar (use-theme.ts)
 supabase/
   migrations/          The database, in number order (docs/DATABASE.md)
   functions/           Edge Functions: notify-announcements sends the push notifications
@@ -130,14 +137,22 @@ saved login and the profile are being fetched.
   A screen of another area cannot be opened, even by typing its address on the web.
 - The `staff/` folder is open to both `guru` and `coordinator`, because the Guru sees every
   coordinator screen. Put a new screen there unless only one role may use it.
-- Each role's first screen is its home: the student home (S1, `student/index.tsx`), the
-  coordinator dashboard (C1, `coordinator/index.tsx`) or the Guru dashboard (G1,
-  `guru/index.tsx`). C1 and G1 open the staff screens through the same buttons
-  (`components/staff-shortcuts.tsx`); S1 opens My QR and the announcements.
+- Each role has **tabs** ([DECISIONS.md #36](DECISIONS.md)): the student Home (S1), My QR (S3)
+  and Announcements (S10) in `student/(tabs)/`; staff Home, Attendance (C5), Students (C7),
+  Calls (C10) and Announcements (C15) in `staff/(tabs)/`. The tabs are at the bottom on a phone;
+  for staff they become a sidebar from 900 px wide. A folder in brackets adds nothing to the
+  address, so `/staff/students` and `/student/my-qr` stay as they were.
+- The first screen is the Home tab: `/student` (S1) or `/staff`, which shows the Guru dashboard
+  (G1, `screens/guru-home.tsx`) or the coordinator dashboard (C1,
+  `screens/coordinator-home.tsx`) by role. The old addresses `/guru` and `/coordinator` are gone.
+  Other screens (a profile, a call, Who is here now, groups ...) open on top of the tabs with a
+  back button; C1 and G1 reach the ones without a tab through the same tiles
+  (`components/staff-shortcuts.tsx`).
 - `src/app/index.tsx` shows the splash while loading, then sends the person to their area's
   first screen, or to the screen a link asked for when it belongs to their area
   (`src/auth/requested-path.ts`, [DECISIONS.md #30](DECISIONS.md)). A web address or shared link
-  to, say, one announcement therefore still opens that announcement after the login check.
+  to, say, one announcement therefore still opens that announcement after the login check, with
+  the role's tabs underneath, so Back leads to them.
 
 Hiding screens makes the app clear to use; it is **not** the security. The database refuses any
 read or write the person is not allowed, whatever the app shows.

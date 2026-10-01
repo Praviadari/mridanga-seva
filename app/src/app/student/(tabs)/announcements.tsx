@@ -10,8 +10,9 @@ import { useTranslation } from 'react-i18next';
 
 import { useAuth } from '@/auth/auth-provider';
 import { AnnouncementCard } from '@/components/announcement-card';
-import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
+import { EmptyState } from '@/components/empty-state';
+import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
 import { fetchMyAnnouncements, type MyAnnouncementList } from '@/data/announcements';
@@ -54,9 +55,9 @@ export default function MyAnnouncementsScreen() {
   return (
     <Screen underHeader>
       {header}
-      {loaded === undefined ? <AppText tone="muted">{t('common.loading')}</AppText> : null}
+      {loaded === undefined ? <LoadingCards /> : null}
       {loaded && loaded.announcements.length === 0 ? (
-        <AppText tone="muted">{t('announcements.emptyStudent')}</AppText>
+        <EmptyState icon="news" title={t('announcements.emptyStudent')} />
       ) : null}
       {loaded?.announcements.map((a) => (
         <AnnouncementCard

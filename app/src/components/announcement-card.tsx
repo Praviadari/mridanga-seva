@@ -1,20 +1,21 @@
-// One announcement in a list (C15 for staff, S10 for students): a "Pinned" and a "New" badge,
-// the title, the start of the message, and a few short lines such as who it is for and when.
-// Tapping it opens the whole announcement.
+// One announcement in a list (C15 for staff, S10 for students): an icon (a pin when pinned), the
+// title with a "New" badge, the start of the message, and a few short lines such as who it is for
+// and when. Tapping it opens the whole announcement.
 
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { radius, spacing, useTheme } from '@/theme/use-theme';
+import { cardLook, radius, spacing, useTheme } from '@/theme/use-theme';
 
 import { AppText } from './app-text';
+import { Icon, IconBadge } from './icon';
 
 /** Props for AnnouncementCard. */
 export type AnnouncementCardProps = {
   title: string;
   /** The message; the card shows its first few lines. */
   body: string;
-  /** Pinned announcements get a badge and a coloured border, so they stand out at the top. */
+  /** Pinned announcements get a pin, a "Pinned" badge and a saffron edge, so they stand out at the top. */
   pinned: boolean;
   /** Shows a "New" badge: the person has not opened it yet. */
   unread: boolean;
@@ -39,15 +40,16 @@ export function AnnouncementCard({ title, body, pinned, unread, details, onPress
       onPress={onPress}
       style={({ pressed }) => [
         styles.card,
-        {
-          backgroundColor: colors.surface,
-          borderColor: pinned ? colors.primary : colors.border,
-          borderWidth: pinned ? 2 : 1,
-        },
+        cardLook(colors),
+        pinned && { borderColor: colors.primary, borderWidth: 2 },
         pressed && styles.pressed,
       ]}>
-      {badges.length > 0 ? (
-        <View style={styles.badges}>
+      <IconBadge name={pinned ? 'pin' : 'news'} size={36} />
+      <View style={styles.text}>
+        <View style={styles.titleRow}>
+          <AppText variant="label" style={styles.title}>
+            {title}
+          </AppText>
           {badges.map((badge) => (
             <View key={badge} style={[styles.badge, { backgroundColor: colors.primary }]}>
               <AppText variant="small" style={{ color: colors.onPrimary }}>
@@ -56,27 +58,38 @@ export function AnnouncementCard({ title, body, pinned, unread, details, onPress
             </View>
           ))}
         </View>
-      ) : null}
-      <AppText variant="label">{title}</AppText>
-      <AppText numberOfLines={3}>{body}</AppText>
-      {details.map((line) => (
-        <AppText key={line} variant="small" tone="muted">
-          {line}
-        </AppText>
-      ))}
+        <AppText numberOfLines={3}>{body}</AppText>
+        {details.map((line) => (
+          <AppText key={line} variant="small" tone="muted">
+            {line}
+          </AppText>
+        ))}
+      </View>
+      <Icon name="chevron" size={18} color={colors.textMuted} />
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: radius,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    // Narrow gaps leave the text most of a 375 px phone.
+    gap: spacing.sm,
     padding: spacing.md,
+  },
+  text: {
+    flex: 1,
     gap: spacing.xs,
   },
-  badges: {
+  titleRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
     gap: spacing.sm,
+  },
+  title: {
+    flexShrink: 1,
   },
   badge: {
     borderRadius: radius,

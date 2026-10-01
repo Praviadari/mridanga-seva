@@ -87,6 +87,8 @@
     "greeting": "हरे कृष्ण, {{name}}",
     "greetingNoName": "हरे कृष्ण",
     "role": "{{role}} के रूप में साइन इन",
+    "mantraLine1": "हरे कृष्ण हरे कृष्ण कृष्ण कृष्ण हरे हरे",
+    "mantraLine2": "हरे राम हरे राम राम राम हरे हरे",
     "loadFailed": "इस पेज की संख्याएँ लोड नहीं हो सकीं।",
     "student": {
       "thisWeek": "इस हफ़्ते",
@@ -123,6 +125,14 @@
       "followUpLine": "समय निकल चुका: {{overdue}} · गुरुजी के पास: {{escalated}}",
       "noName": "(नाम नहीं)"
     }
+  },
+  "tabs": {
+    "home": "होम",
+    "attendance": "हाज़िरी",
+    "students": "विद्यार्थी",
+    "calls": "कॉल",
+    "news": "सूचनाएँ",
+    "myQr": "मेरा QR"
   },
   "setup": {
     "title": "ऐप सेट नहीं है",

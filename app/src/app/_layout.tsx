@@ -31,10 +31,24 @@ SplashScreen.preventAutoHideAsync();
 
 /** App root. Expo Router renders it around every screen. */
 export default function RootLayout() {
-  const { isDark } = useTheme();
+  const { colors, isDark } = useTheme();
   useUpdateChecks();
+  // The navigators' own colours (tab bar, sidebar, header) from our palette instead of their
+  // default blue (docs/DECISIONS.md #36).
+  const base = isDark ? DarkTheme : DefaultTheme;
+  const navigationTheme = {
+    ...base,
+    colors: {
+      ...base.colors,
+      primary: colors.primary,
+      background: colors.background,
+      card: colors.surface,
+      text: colors.text,
+      border: colors.cardBorder,
+    },
+  };
   return (
-    <ThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
+    <ThemeProvider value={navigationTheme}>
       <StatusBar style="auto" />
       {supabaseConfigProblem ? (
         <>
@@ -78,15 +92,8 @@ function RootNavigator() {
           <Stack.Screen name="pending" />
         </Stack.Protected>
 
-        <Stack.Protected guard={area === 'guru'}>
-          <Stack.Screen name="guru" />
-        </Stack.Protected>
-
-        <Stack.Protected guard={area === 'coordinator'}>
-          <Stack.Screen name="coordinator" />
-        </Stack.Protected>
-
-        {/* Coordinator screens the Guru uses too (register, attendance, follow-up ...). */}
+        {/* The staff home (G1 for the Guru, C1 for a coordinator) and the coordinator screens the
+            Guru uses too (register, attendance, follow-up ...). */}
         <Stack.Protected guard={area === 'guru' || area === 'coordinator'}>
           <Stack.Screen name="staff" />
         </Stack.Protected>

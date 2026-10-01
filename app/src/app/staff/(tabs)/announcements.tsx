@@ -11,8 +11,9 @@ import { useTranslation } from 'react-i18next';
 
 import { useAuth } from '@/auth/auth-provider';
 import { AnnouncementCard } from '@/components/announcement-card';
-import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
+import { EmptyState } from '@/components/empty-state';
+import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
 import { fetchStaffAnnouncements, isScheduled, type StaffAnnouncementList } from '@/data/announcements';
@@ -41,7 +42,7 @@ export default function StaffAnnouncementsScreen() {
 
   const header = <Stack.Screen options={{ title: t('announcements.title') }} />;
   const newButton = (
-    <Button label={t('announcements.new')} onPress={() => router.push('/staff/announcements/new')} />
+    <Button icon="add" label={t('announcements.new')} onPress={() => router.push('/staff/announcements/new')} />
   );
 
   if (loaded === null) {
@@ -60,9 +61,9 @@ export default function StaffAnnouncementsScreen() {
     <Screen underHeader>
       {header}
       {newButton}
-      {loaded === undefined ? <AppText tone="muted">{t('common.loading')}</AppText> : null}
+      {loaded === undefined ? <LoadingCards /> : null}
       {loaded && loaded.announcements.length === 0 ? (
-        <AppText tone="muted">{t('announcements.empty')}</AppText>
+        <EmptyState icon="news" title={t('announcements.empty')} />
       ) : null}
       {loaded?.announcements.map((a) => {
         const byMe = a.createdBy === myId;

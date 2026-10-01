@@ -1,10 +1,12 @@
-// The app's button: a filled main action, an outlined second action, or a text link.
+// The app's button: a filled main action, an outlined second action, or a text link, with an
+// optional icon before the label.
 
 import { ActivityIndicator, Pressable, StyleSheet } from 'react-native';
 
-import { radius, spacing, typography, useTheme } from '@/theme/use-theme';
+import { cardRadius, radius, spacing, typography, useTheme } from '@/theme/use-theme';
 
 import { AppText } from './app-text';
+import { Icon, type IconName } from './icon';
 
 /** Props for Button. */
 export type ButtonProps = {
@@ -21,6 +23,8 @@ export type ButtonProps = {
   /** Shows a spinner and ignores presses, e.g. while waiting for the server. */
   loading?: boolean;
   disabled?: boolean;
+  /** Icon before the label, e.g. the QR shape on "My QR card". */
+  icon?: IconName;
 };
 
 /**
@@ -28,7 +32,7 @@ export type ButtonProps = {
  * While `loading` it shows a spinner instead of the label and ignores presses, so a slow
  * network cannot cause a double submit.
  */
-export function Button({ label, onPress, variant = 'primary', size = 'normal', loading, disabled }: ButtonProps) {
+export function Button({ label, onPress, variant = 'primary', size = 'normal', loading, disabled, icon }: ButtonProps) {
   const { colors } = useTheme();
   const inactive = disabled || loading;
   const textColour = variant === 'primary' ? colors.onPrimary : colors.primary;
@@ -53,9 +57,13 @@ export function Button({ label, onPress, variant = 'primary', size = 'normal', l
       {loading ? (
         <ActivityIndicator color={textColour} />
       ) : (
-        <AppText style={[size === 'large' ? typography.subtitle : typography.label, { color: textColour }]}>
-          {label}
-        </AppText>
+        <>
+          {icon ? <Icon name={icon} size={size === 'large' ? 28 : 20} color={textColour} /> : null}
+          <AppText
+            style={[styles.label, size === 'large' ? typography.subtitle : typography.label, { color: textColour }]}>
+            {label}
+          </AppText>
+        </>
       )}
     </Pressable>
   );
@@ -66,8 +74,15 @@ const styles = StyleSheet.create({
     minHeight: 48,
     borderRadius: radius,
     paddingHorizontal: spacing.lg,
+    flexDirection: 'row',
+    gap: spacing.sm,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  label: {
+    // A long Telugu label wraps inside the button instead of pushing the icon out.
+    flexShrink: 1,
+    textAlign: 'center',
   },
   link: {
     paddingHorizontal: spacing.sm,
@@ -75,6 +90,7 @@ const styles = StyleSheet.create({
   },
   large: {
     minHeight: 72,
+    borderRadius: cardRadius,
   },
   dimmed: {
     opacity: 0.6,

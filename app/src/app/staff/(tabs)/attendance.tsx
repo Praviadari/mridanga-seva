@@ -143,6 +143,7 @@ export default function MarkAttendanceScreen() {
       )}
       <Button
         variant="secondary"
+        icon="hereNow"
         label={t('staff.hereNow')}
         onPress={() => router.push('/staff/here-now')}
       />
@@ -150,7 +151,7 @@ export default function MarkAttendanceScreen() {
       {outcome?.result ? <VisitResultNotice result={outcome.result} /> : null}
       {outcome?.errorKey ? <Notice tone="error">{t(outcome.errorKey)}</Notice> : null}
 
-      <Section title={t('attendance.scanSection')} description={t('attendance.scanIntro')}>
+      <Section icon="attendance" title={t('attendance.scanSection')} description={t('attendance.scanIntro')}>
         {cameraOpen ? (
           <>
             <QrScanner onScan={(text) => void onScan(text)} paused={scanPaused} />
@@ -173,11 +174,11 @@ export default function MarkAttendanceScreen() {
             />
           </>
         ) : (
-          <Button label={t('attendance.startScan')} onPress={() => setCameraOpen(true)} />
+          <Button icon="qr" label={t('attendance.startScan')} onPress={() => setCameraOpen(true)} />
         )}
       </Section>
 
-      <Section title={t('attendance.searchSection')}>
+      <Section icon="search" title={t('attendance.searchSection')}>
         <TextField
           label={t('attendance.searchLabel')}
           hint={t('attendance.searchHint')}
@@ -194,6 +195,7 @@ export default function MarkAttendanceScreen() {
           return (
             <ListRow
               key={student.id}
+              leading="initials"
               title={student.fullName}
               details={[
                 `${student.rollNo} · ${levelName(t, student.levelId)}`,

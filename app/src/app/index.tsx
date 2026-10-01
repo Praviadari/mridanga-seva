@@ -15,8 +15,9 @@ const HOME: Record<Exclude<Area, 'loading'>, Href> = {
   signedOut: '/sign-in',
   recovery: '/reset-password',
   pending: '/pending',
-  guru: '/guru',
-  coordinator: '/coordinator',
+  // One staff home for both roles: it shows G1 or C1 (app/staff/(tabs)/index.tsx).
+  guru: '/staff',
+  coordinator: '/staff',
   student: '/student',
 };
 
@@ -36,9 +37,10 @@ export default function Index() {
   }, [area, profileFailed]);
 
   if (area === 'loading') return <BrandSplash />;
-  // withAnchor puts the student home screen underneath (the anchor in student/_layout.tsx), so
-  // Back leads there, not out of the app. Other areas have no anchor, and withAnchor would only
-  // add "?initial=false" to the address.
-  if (requested) return <Redirect href={requested as Href} withAnchor={requested.startsWith('/student/')} />;
+  // withAnchor puts the role's tabs underneath (the anchor in student/_layout.tsx and
+  // staff/_layout.tsx), so Back leads there, not out of the app.
+  // Not for the home itself (`/staff`, `/student`): it is the anchor, and the address would only
+  // get "?initial=false".
+  if (requested) return <Redirect href={requested as Href} withAnchor={requested.split('/').length > 2} />;
   return <Redirect href={HOME[area]} />;
 }

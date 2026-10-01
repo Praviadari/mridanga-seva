@@ -6,6 +6,7 @@ import { StyleSheet, View } from 'react-native';
 import { radius, spacing, useTheme } from '@/theme/use-theme';
 
 import { AppText } from './app-text';
+import { Icon } from './icon';
 
 /** Props for Notice. */
 export type NoticeProps = PropsWithChildren<{
@@ -22,29 +23,38 @@ export type NoticeProps = PropsWithChildren<{
 export function Notice({ tone, title, children }: NoticeProps) {
   const { colors } = useTheme();
   const look = {
-    error: { background: colors.dangerSurface, border: colors.danger, titleTone: 'danger' },
-    success: { background: colors.successSurface, border: colors.success, titleTone: 'success' },
-    info: { background: colors.surface, border: colors.border, titleTone: 'default' },
+    error: { background: colors.dangerSurface, border: colors.danger, titleTone: 'danger', icon: 'alert', iconColour: colors.danger },
+    success: { background: colors.successSurface, border: colors.success, titleTone: 'success', icon: 'check', iconColour: colors.success },
+    info: { background: colors.surface, border: colors.border, titleTone: 'default', icon: 'info', iconColour: colors.primary },
   } as const;
   return (
     <View
       role={tone === 'error' ? 'alert' : 'status'}
       style={[styles.box, { backgroundColor: look[tone].background, borderColor: look[tone].border }]}>
-      {title ? (
-        <AppText variant="label" tone={look[tone].titleTone}>
-          {title}
-        </AppText>
-      ) : null}
-      <AppText>{children}</AppText>
+      <Icon name={look[tone].icon} size={22} color={look[tone].iconColour} />
+      <View style={styles.text}>
+        {title ? (
+          <AppText variant="label" tone={look[tone].titleTone}>
+            {title}
+          </AppText>
+        ) : null}
+        <AppText>{children}</AppText>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   box: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
     borderWidth: 1,
     borderRadius: radius,
     padding: spacing.md,
+    gap: spacing.sm,
+  },
+  text: {
+    flex: 1,
     gap: spacing.xs,
   },
 });

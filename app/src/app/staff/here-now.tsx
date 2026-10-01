@@ -10,7 +10,9 @@ import { useTranslation } from 'react-i18next';
 import type { MessageKey } from '@/auth/auth-actions';
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
+import { EmptyState } from '@/components/empty-state';
 import { ListRow } from '@/components/list-row';
+import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
 import { VisitResultNotice } from '@/components/visit-result-notice';
@@ -104,7 +106,7 @@ export default function HereNowScreen() {
       {today ? (
         <AppText variant="label">{t('hereNow.count', { number: today.hereNow.length })}</AppText>
       ) : (
-        <AppText tone="muted">{t('common.loading')}</AppText>
+        <LoadingCards />
       )}
 
       {outcome?.result ? <VisitResultNotice result={outcome.result} /> : null}
@@ -114,10 +116,11 @@ export default function HereNowScreen() {
       ) : null}
       {allError ? <Notice tone="error">{t(allError)}</Notice> : null}
 
-      {today?.hereNow.length === 0 ? <AppText tone="muted">{t('hereNow.empty')}</AppText> : null}
+      {today?.hereNow.length === 0 ? <EmptyState icon="hereNow" title={t('hereNow.empty')} /> : null}
       {today?.hereNow.map((visit) => (
         <ListRow
           key={visit.visitId}
+          leading="initials"
           title={visit.fullName}
           details={[`${visit.rollNo} · ${levelName(t, visit.levelId)}`, sinceText(visit, today.loadedAt)]}
           action={{
@@ -130,7 +133,7 @@ export default function HereNowScreen() {
         />
       ))}
 
-      <Button variant="secondary" label={t('hereNow.refresh')} onPress={() => void load()} />
+      <Button variant="secondary" icon="refresh" label={t('hereNow.refresh')} onPress={() => void load()} />
 
       {today && today.hereNow.length > 0 ? (
         confirming ? (

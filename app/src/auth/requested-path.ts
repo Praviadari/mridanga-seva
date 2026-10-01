@@ -64,8 +64,8 @@ export function belongsTo(path: string, area: Area): boolean {
       return path === '/student' || path.startsWith('/student/');
     case 'guru':
     case 'coordinator':
-      // staff/ is shared by the Guru and coordinators; each also has their own home folder.
-      return path.startsWith('/staff/') || path === `/${area}` || path.startsWith(`/${area}/`);
+      // staff/ is shared by the Guru and coordinators, home included (docs/DECISIONS.md #36).
+      return path === '/staff' || path.startsWith('/staff/');
     default:
       return false;
   }

@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next';
 
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
+import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
@@ -71,7 +72,7 @@ export default function StudentProfileScreen() {
     return (
       <Screen underHeader centred>
         {header}
-        {loaded === undefined ? <AppText tone="muted">{t('common.loading')}</AppText> : null}
+        {loaded === undefined ? <LoadingCards /> : null}
         {loaded === 'not_found' ? <Notice tone="error">{t('profile.notFound')}</Notice> : null}
         {loaded === null ? (
           <>

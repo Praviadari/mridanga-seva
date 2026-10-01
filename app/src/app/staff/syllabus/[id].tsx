@@ -14,6 +14,7 @@ import { useTranslation } from 'react-i18next';
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { ChoiceGroup } from '@/components/choice-group';
+import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
 import { ProgressBar } from '@/components/progress-bar';
 import { Screen } from '@/components/screen';
@@ -78,7 +79,7 @@ export default function SyllabusTickOffScreen() {
     return (
       <Screen underHeader centred>
         {header}
-        {loaded === undefined ? <AppText tone="muted">{t('common.loading')}</AppText> : null}
+        {loaded === undefined ? <LoadingCards /> : null}
         {loaded === 'not_found' ? <Notice tone="error">{t('profile.notFound')}</Notice> : null}
         {loaded === null ? (
           <>

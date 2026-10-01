@@ -17,6 +17,7 @@ import { AppText } from '@/components/app-text';
 import { AttachmentList } from '@/components/attachment-list';
 import { Button } from '@/components/button';
 import { ListRow } from '@/components/list-row';
+import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
 import { ProgressBar } from '@/components/progress-bar';
 import { ReplyBox } from '@/components/reply-box';
@@ -89,7 +90,7 @@ export default function StaffAnnouncementScreen() {
     return (
       <Screen underHeader centred>
         {header}
-        {loaded === undefined ? <AppText tone="muted">{t('common.loading')}</AppText> : null}
+        {loaded === undefined ? <LoadingCards /> : null}
         {loaded === 'not_found' ? (
           <>
             <Notice tone="error">{t('announcements.detail.notFound')}</Notice>

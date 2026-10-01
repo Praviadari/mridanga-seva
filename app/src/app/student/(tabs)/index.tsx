@@ -1,6 +1,7 @@
-// S1 Student home: a greeting, a large button to My QR (S3), this week's visits and the last
-// visit, the student's level with their syllabus progress, and the latest announcements with the
-// ones not opened yet marked "New" (S10), then the language switch, Sign out and the app version.
+// S1 Student home: the saffron header with the greeting (components/home-header.tsx), a large
+// button to My QR (S3), this week's visits and the last visit, the student's level with their
+// syllabus progress, and the latest announcements with the ones not opened yet marked "New"
+// (S10), then the language switch, Sign out and the app version (components/account-footer.tsx).
 // On the Android app, "A new version is ready" shows under the greeting once an update is
 // downloaded (components/update-notice.tsx). Read-only.
 // Numbers: student_home() through src/data/home.ts; announcements: src/data/announcements.ts.
@@ -10,18 +11,20 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { signOut } from '@/auth/auth-actions';
 import { useAuth } from '@/auth/auth-provider';
+import { AccountFooter } from '@/components/account-footer';
 import { AnnouncementCard } from '@/components/announcement-card';
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
-import { LanguagePicker } from '@/components/language-picker';
+import { EmptyState } from '@/components/empty-state';
+import { HomeHeader } from '@/components/home-header';
+import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
 import { ProgressBar } from '@/components/progress-bar';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { StatGrid, StatTile } from '@/components/stat-tile';
-import { UpdateNotice, VersionLine } from '@/components/update-notice';
+import { UpdateNotice } from '@/components/update-notice';
 import { fetchMyAnnouncements, type MyAnnouncementList } from '@/data/announcements';
 import { fetchStudentHome, type StudentHome } from '@/data/home';
 import { audienceName, authorLine, lastVisitText, levelName } from '@/i18n/labels';
@@ -55,21 +58,20 @@ export default function StudentHomeScreen() {
   const unread = news ? news.announcements.filter((a) => !a.readByMe).length : 0;
 
   return (
-    <Screen>
-      <AppText variant="title">{name ? t('home.greeting', { name }) : t('home.greetingNoName')}</AppText>
+    <Screen wide header={<HomeHeader name={name} />}>
       <UpdateNotice />
 
       {/* First and always there, even when nothing else loads: My QR keeps a copy on the phone
           and works without internet (docs/DECISIONS.md #21), which is when it is needed most. */}
-      <Button size="large" label={t('myQr.open')} onPress={() => router.push('/student/my-qr')} />
+      <Button size="large" icon="qr" label={t('myQr.open')} onPress={() => router.push('/student/my-qr')} />
 
-      {home === undefined ? <AppText tone="muted">{t('common.loading')}</AppText> : null}
+      {home === undefined ? <LoadingCards kind="tiles" /> : null}
       {home === null || news === null ? (
         <>
           <Notice tone="error" title={t('home.loadFailed')}>
             {t('common.networkError')}
           </Notice>
-          <Button variant="secondary" label={t('common.tryAgain')} onPress={() => void load()} />
+          <Button variant="secondary" icon="refresh" label={t('common.tryAgain')} onPress={() => void load()} />
         </>
       ) : null}
       {home === 'not_found' ? (
@@ -80,19 +82,20 @@ export default function StudentHomeScreen() {
 
       {home && home !== 'not_found' ? (
         <>
-          <Section title={t('home.student.thisWeek')}>
-            <StatGrid>
-              <StatTile value={String(home.visitsThisWeek)} label={t('home.student.visitsThisWeek')} />
-              <StatTile
-                // Never came: no number of days to show; the line below says "No visit yet".
-                value={home.lastVisitAt ? String(home.daysSinceVisit) : '—'}
-                label={t('home.student.daysSinceVisit')}
-              />
-            </StatGrid>
-            <AppText tone="muted">{lastVisitText(t, home)}</AppText>
-          </Section>
+          <StatGrid>
+            <StatTile icon="visits" value={String(home.visitsThisWeek)} label={t('home.student.visitsThisWeek')} />
+            <StatTile
+              icon="time"
+              // Never came: no number of days to show; the line below says "No visit yet".
+              value={home.lastVisitAt ? String(home.daysSinceVisit) : '—'}
+              label={t('home.student.daysSinceVisit')}
+            />
+          </StatGrid>
+          <AppText variant="small" tone="muted">
+            {lastVisitText(t, home)}
+          </AppText>
 
-          <Section title={t('home.student.myLevel', { level: levelName(t, home.levelId) })}>
+          <Section icon="level" title={t('home.student.myLevel', { level: levelName(t, home.levelId) })}>
             {home.syllabusTotal > 0 ? (
               <ProgressBar
                 done={home.syllabusDone}
@@ -109,10 +112,11 @@ export default function StudentHomeScreen() {
 
       {news ? (
         <Section
+          icon="news"
           title={t('announcements.title')}
           description={unread > 0 ? t('home.student.unread', { count: unread }) : undefined}>
           {news.announcements.length === 0 ? (
-            <AppText tone="muted">{t('announcements.emptyStudent')}</AppText>
+            <EmptyState icon="news" title={t('announcements.emptyStudent')} />
           ) : null}
           {/* Same order as S10: pinned first, then newest. */}
           {news.announcements.slice(0, LATEST_COUNT).map((a) => (
@@ -139,9 +143,7 @@ export default function StudentHomeScreen() {
         </Section>
       ) : null}
 
-      <LanguagePicker />
-      <Button variant="link" label={t('common.signOut')} onPress={() => void signOut()} />
-      <VersionLine />
+      <AccountFooter />
     </Screen>
   );
 }

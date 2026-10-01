@@ -518,7 +518,8 @@ another area is still refused (#15, `Stack.Protected`).
 **Consequences.** `src/app/index.tsx`, `src/auth/requested-path.ts`, `unstable_settings.anchor` in
 `src/app/student/_layout.tsx`. Push notifications can use `rememberRequestedPath()` for the
 announcement a tap should open. A staff screen opened from a link has no screen under it, so its
-header shows no Back arrow; the browser's Back still works.
+header shows no Back arrow; the browser's Back still works. *(Last point no longer holds: since #36
+the staff tabs are underneath too, and the anchor is the role's tabs.)*
 
 ## 31. Each home screen gets its numbers from one database function — 30 Sep 2026
 
@@ -706,3 +707,55 @@ not affected: it changes when a new export is uploaded (#23). The APK built befo
 (30 Sep 2026) has no `expo-updates`, so it must be replaced once. On a network that inspects
 secure connections to Google's storage (the office FortiGate, seen 1 Oct 2026), uploading an
 update or a build fails; publish from another network rather than switching checks off.
+
+## 36. One look for every screen, and tabs per role — 1 Oct 2026
+
+**Context.** The first week built rules and data; the screens were plain on purpose: stack
+screens, no icons, the word "Loading…", and home screens that ended in a list of seven identical
+buttons, so every task meant home → button → back. A volunteer called it "UI/UX is bad" (30 Sep
+2026) and sent a mockup of a desktop admin panel: ISKCON logo header, sidebar, banner, eight module
+tiles, a quote. Most members use iPhones (the web version); the class runs on phones at 375 px.
+
+**Decision.**
+- **Take the mockup's look, not its layout.** Warm saffron colours, a devotional header on the
+  home screens, cards with icons. Phone first; each role keeps its own home (S1, C1, G1);
+  students never see staff or fund screens; nothing from the mockup that was decided against or
+  is for later (batches, WhatsApp groups, inventory, events, fund).
+- **Tabs per role** (Praveen, 1 Oct 2026), from Expo Router's own `Tabs`: students Home · My QR ·
+  Announcements; the Guru and coordinators Home · Attendance · Students · Calls · Announcements.
+  Bottom tabs on a phone; for staff a sidebar on the left from 900 px wide. Other screens open on
+  top of the tabs with a back button. The tab screens sit in `(tabs)` route groups, so the
+  addresses stay (`/staff/students`, `/student/my-qr`, ...). The two staff homes share one
+  address, `/staff`, which shows G1 or C1 by role (`src/screens/`); `/guru` and `/coordinator`
+  are gone. The role's tabs are the anchor of its stack, so a screen opened from a link or a push
+  notification has them underneath and Back leads there.
+- **Header:** a saffron band with our own drum mark (`components/mridanga-mark.tsx`), "Hare
+  Krishna", the name, the role and the Hare Krishna maha-mantra in the app's language and script.
+  Header bars of the other screens are saffron too.
+- **Design system** in `src/theme/` and `src/components/`: new colours `primarySoft`,
+  `onPrimarySoft`, `cardBorder`, `shadow`, `skeleton`, `headerTop/Bottom`, `onHeader(Muted)`;
+  `cardLook()` (16 px corners, a faint edge, a soft shadow in light mode); icons from one list
+  (`components/icon.tsx`, Ionicons outline); grey placeholder cards while a screen loads
+  (`loading-cards.tsx`); an icon, a line and the one action when a list is empty
+  (`empty-state.tsx`); one big main action per home (My QR; Mark attendance); 16 px page sides
+  at 375 px; the language switch, Sign out and version in a quiet card at the end of a home.
+- **JavaScript only**, so it reaches the installed APKs as an update (#35): the tabs come with
+  Expo Router, the icons with `@expo/vector-icons` (no native code, uses expo-font, already in
+  the APK), the mark and the header shading with react-native-svg (already in the APK). The
+  Android fingerprint stayed `e4c4af08…` with the new package.
+
+**Why.** Tabs put the five things staff do most one tap away and make the web version usable
+without the browser's Back button. Keeping the addresses keeps old links, push notifications and
+#30 working. The ISKCON logo needs the temple's written permission, so the app has its own mark
+until there is an approved logo. Book translations and purports are copyrighted (BBT), so the
+header carries only the maha-mantra, which is free to use in every script. Every new text pair
+was checked against WCAG AA (4.5:1) in both themes; this is why the header's top colour is a
+deeper saffron (`#9A4307`) than the brand colour, and why initials use `onPrimarySoft`.
+
+**Consequences.** New screens use `Screen`, `Section`, `cardLook()`, `Icon` and `LoadingCards`
+instead of their own colours, borders or "Loading…" text, and a new icon is added to the list
+in `icon.tsx`. A new staff screen that is used all the time may become a tab (five is the most a
+phone holds); any other one goes in `staff/` beside the tabs. The icon font adds about 380 KB,
+downloaded once. Native look items (a gradient package, haptics, blur, SF Symbols / Material
+Symbols, a new app icon or splash) need a new APK and wait for one. Translations of the tab
+labels and the mantra lines are drafts for the native-speaker review (TRANSLATIONS.md).

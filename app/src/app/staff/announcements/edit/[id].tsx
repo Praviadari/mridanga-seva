@@ -13,6 +13,7 @@ import { useAuth } from '@/auth/auth-provider';
 import { AnnouncementFields } from '@/components/announcement-form';
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
+import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
 import { isPicked } from '@/data/announcement-files';
@@ -88,7 +89,7 @@ export default function EditAnnouncementScreen() {
     return (
       <Screen underHeader centred>
         {header}
-        {loaded === undefined ? <AppText tone="muted">{t('common.loading')}</AppText> : null}
+        {loaded === undefined ? <LoadingCards /> : null}
         {loaded === 'not_found' ? (
           <>
             <Notice tone="error">{t('announcements.detail.notFound')}</Notice>

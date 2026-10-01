@@ -12,7 +12,9 @@ import { useAuth } from '@/auth/auth-provider';
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { ChoiceGroup } from '@/components/choice-group';
+import { EmptyState } from '@/components/empty-state';
 import { ListRow } from '@/components/list-row';
+import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
 import {
@@ -94,8 +96,8 @@ export default function FollowUpScreen() {
         />
       ) : null}
 
-      {queue === undefined ? <AppText tone="muted">{t('common.loading')}</AppText> : null}
-      {queue && entries.length === 0 ? <AppText tone="muted">{t('followUp.empty')}</AppText> : null}
+      {queue === undefined ? <LoadingCards /> : null}
+      {queue && entries.length === 0 ? <EmptyState icon="check" title={t('followUp.empty')} /> : null}
 
       {QUEUE_GROUPS.map((group) => {
         const inGroup = entries.filter((entry) => entry.group === group);
@@ -112,6 +114,7 @@ export default function FollowUpScreen() {
           ...inGroup.map((entry) => (
             <ListRow
               key={entry.student.id}
+              leading="initials"
               title={entry.student.fullName}
               details={[
                 `${entry.student.rollNo} · ${levelName(t, entry.student.levelId)} · ${statusName(t, entry.student.status)}`,
@@ -124,7 +127,7 @@ export default function FollowUpScreen() {
         ];
       })}
 
-      <Button variant="secondary" label={t('hereNow.refresh')} onPress={() => void load()} />
+      <Button variant="secondary" icon="refresh" label={t('hereNow.refresh')} onPress={() => void load()} />
     </Screen>
   );
 }

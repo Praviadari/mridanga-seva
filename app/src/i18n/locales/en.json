@@ -87,6 +87,8 @@
     "greeting": "Hare Krishna, {{name}}",
     "greetingNoName": "Hare Krishna",
     "role": "Signed in as {{role}}",
+    "mantraLine1": "Hare Krishna Hare Krishna Krishna Krishna Hare Hare",
+    "mantraLine2": "Hare Rama Hare Rama Rama Rama Hare Hare",
     "loadFailed": "Could not load the numbers for this page.",
     "student": {
       "thisWeek": "This week",
@@ -123,6 +125,14 @@
       "followUpLine": "Overdue: {{overdue}} · With the Guru: {{escalated}}",
       "noName": "(no name)"
     }
+  },
+  "tabs": {
+    "home": "Home",
+    "attendance": "Attendance",
+    "students": "Students",
+    "calls": "Calls",
+    "news": "News",
+    "myQr": "My QR"
   },
   "setup": {
     "title": "App not set up",
