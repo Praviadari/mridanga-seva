@@ -21,7 +21,7 @@ export type PushMessage = {
   title: string;
   body: string;
   /** Read by the app when the notification is tapped (app/src/lib/push.ts). */
-  data: { url: string; announcementId: number };
+  data: { url: string; announcementId?: number };
   sound: 'default';
   /** The Android notification channel the app creates (app/src/lib/push.ts). */
   channelId: string;
@@ -73,6 +73,40 @@ export function toMessages(rows: ClaimedRow[]): PushMessage[] {
     channelId: CHANNEL_ID,
     priority: 'high',
   }));
+}
+
+/** One row from claim_push_outbox() (migration 0012): one phone to notify about an assessment. */
+export type OutboxRow = {
+  outbox_id: number;
+  title: string;
+  /** Already worded by the database in the person's app language. */
+  body: string;
+  /** The app screen to open, e.g. /student/assessments/12. */
+  url: string;
+  token: string;
+};
+
+/** The only screens an assessment notification may open (the app checks the same, src/lib/push.ts). */
+const OUTBOX_SCREEN = /^\/(student\/assessments|staff\/assessments\/review)\/\d+$/;
+
+/**
+ * One message per queued notification (an assessment released, a reminder, a review, a recording
+ * sent). A row asking for any other screen is dropped.
+ */
+export function toOutboxMessages(rows: OutboxRow[]): PushMessage[] {
+  return rows.flatMap((row): PushMessage[] =>
+    OUTBOX_SCREEN.test(row.url)
+      ? [{
+          to: row.token,
+          title: row.title,
+          body: shortBody(row.body),
+          data: { url: row.url },
+          sound: 'default',
+          channelId: CHANNEL_ID,
+          priority: 'high',
+        }]
+      : [],
+  );
 }
 
 /** Splits `items` into lists of at most `size`. */

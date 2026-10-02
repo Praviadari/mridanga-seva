@@ -970,6 +970,200 @@ const [{ ok: pushFnsCallable }] = await asOwner(`select has_function_privilege('
   or has_function_privilege('authenticated', 'guard_announcement_notified()', 'execute') as ok`);
 check('app roles cannot run the push job functions', pushFnsCallable === false);
 
+// ---------------------------------------------------------------- assessments (0012, Phase 2)
+const [aBucket] = await asOwner(`select public, file_size_limit, allowed_mime_types from storage.buckets where id = 'assessment-files'`);
+check('the assessment-files bucket is private, 50 MB, with audio and video', aBucket?.public === false
+  && Number(aBucket.file_size_limit) === 52428800 && aBucket.allowed_mime_types.includes('audio/mpeg')
+  && aBucket.allowed_mime_types.includes('video/mp4'), JSON.stringify(aBucket));
+
+/** Uploads a file into assessment-files as `userId` (one storage.objects row, as the Storage API). */
+const aUpload = async (userId, path, size = 4096) => asApp('authenticated', userId,
+  `insert into storage.objects (bucket_id, name, owner, metadata) values ('assessment-files', $1, auth.uid(), $2)`,
+  [path, JSON.stringify({ size })]);
+const aCanOpen = async (userId, path) => (await asApp('authenticated', userId,
+  `select 1 from storage.objects where bucket_id = 'assessment-files' and name = $1`, [path])).length === 1;
+const aRemove = async (userId, path) => (await asApp('authenticated', userId,
+  `delete from storage.objects where bucket_id = 'assessment-files' and name = $1 returning name`, [path])).length === 1;
+const rubric = [{ criterion: 'Rhythm (taal)', max: 5 }, { criterion: 'Clarity of bols', max: 5 }];
+/** Creates an assessment as `userId`; returns its row. */
+const createAssessment = async (userId, fields = {}) => (await asApp('authenticated', userId,
+  `insert into assessments (title, instructions, kind, level_id, level_up, rubric, media, media_link, sent_at)
+   values ($1, $2, $3, $4, $5, $6, $7, $8, $9) returning id, title, rubric, media, sent_at`,
+  [fields.title ?? '  Ekatala practice  ', fields.instructions ?? 'Play it four times.', fields.kind ?? 'playing',
+   fields.level ?? 3, fields.levelUp ?? false, JSON.stringify(fields.rubric ?? rubric), JSON.stringify(fields.media ?? []),
+   fields.link ?? null, fields.sent ? new Date().toISOString() : null]))[0];
+const tomorrow = (await asOwner(`select (today_ist() + 1)::text as d`))[0].d;
+const release = (userId, assessment, students, due = tomorrow, notes = 'Practise slowly first.') => asApp('authenticated', userId,
+  'select release_assessment($1, $2::uuid[], $3::date, $4) as r', [assessment, students, due, notes]).then((r) => r[0].r);
+const studentIdOf = async (profileId) => (await asOwner(`select id from students where profile_id = '${profileId}'`))[0].id;
+const arjunStudent = await studentIdOf(arjun);
+const meeraStudent = await studentIdOf(meera);
+const lateStudent = await studentIdOf(late);
+
+await refuses('a coordinator cannot create an assessment', () => createAssessment(coordinator));
+await refusesWith('an assessment needs a title', 'title_required', () => createAssessment(guru, { title: '  ' }));
+await refusesWith('an assessment needs a rubric', 'rubric_required', () => createAssessment(guru, { rubric: [] }));
+await refusesWith('a rubric line has a top score of 1 to 10', 'rubric_invalid', () =>
+  createAssessment(guru, { rubric: [{ criterion: 'Posture', max: 20 }] }));
+await refusesWith('a link must be https', 'link_invalid', () => createAssessment(guru, { link: 'http://youtube.com/x' }));
+
+const guide = await filePath(guru, 'pdf');
+const demo = await filePath(guru, 'mp3');
+await aUpload(guru, guide);
+await aUpload(guru, demo, 900000);
+await refuses('a coordinator cannot upload assessment files', async () => aUpload(coordinator, await filePath(coordinator, 'mp3')));
+await refuses('a file needs a known ending', async () => aUpload(guru, await filePath(guru, 'exe')));
+const draft = await createAssessment(guru, {
+  media: [{ path: guide, name: ' Ekatala.pdf ', kind: 'pdf', size: 1 }, { path: demo, name: 'Demo.mp3', kind: 'audio', size: 1 }],
+  link: 'https://youtu.be/example',
+});
+check('the Guru saves a draft, title trimmed, file sizes from Storage', draft.title === 'Ekatala practice' && draft.sent_at === null
+  && draft.media[1].size === 900000 && draft.media[0].name === 'Ekatala.pdf', JSON.stringify(draft.media));
+await refusesWith('the Guru cannot attach a file that is not in Storage', 'file_missing', async () =>
+  createAssessment(guru, { media: [{ path: await filePath(guru, 'pdf'), name: 'x.pdf', kind: 'pdf', size: 1 }] }));
+await refusesWith('... nor a file from another folder', 'file_not_yours', () =>
+  createAssessment(guru, { media: [{ path: photo, name: 'x.jpg', kind: 'image', size: 1 }] }));
+await refusesWith('... and the kind must match the ending', 'file_invalid', () =>
+  createAssessment(guru, { media: [{ path: demo, name: 'Demo.mp3', kind: 'video', size: 1 }] }));
+check('a coordinator does not see a draft', (await asApp('authenticated', coordinator, 'select id from assessments')).length === 0);
+await refusesWith('a draft cannot be released', 'assessment_not_found', () => release(guru, draft.id, [arjunStudent]));
+await asApp('authenticated', guru, 'update assessments set sent_at = now() where id = $1', [draft.id]);
+check('once sent, coordinators see it', (await asApp('authenticated', coordinator, 'select id from assessments')).length === 1);
+check('a coordinator can open its files', await aCanOpen(coordinator2, demo));
+check('a student it was not given to sees nothing', (await asApp('authenticated', arjun, 'select id from assessments')).length === 0
+  && !(await aCanOpen(arjun, demo)));
+await refusesWith('a sent assessment stays sent', 'already_sent', () =>
+  asApp('authenticated', guru, 'update assessments set sent_at = null where id = $1', [draft.id]));
+
+await refusesWith('a student cannot release an assessment', 'not_allowed', () => release(arjun, draft.id, [arjunStudent]));
+await refusesWith('the due date cannot be past', 'due_past', () => release(coordinator, draft.id, [arjunStudent], yesterday));
+await refusesWith('a release needs students', 'students_required', () => release(coordinator, draft.id, []));
+const released = await release(coordinator, draft.id, [arjunStudent, meeraStudent, arjunStudent]);
+check('a coordinator releases it to two students', released.assigned === 2 && released.already === 0 && released.no_login === 0,
+  JSON.stringify(released));
+await refusesWith('releasing it again to the same students assigns nothing', 'nothing_to_assign', () =>
+  release(coordinator2, draft.id, [arjunStudent]));
+const [{ n: queued }] = await asOwner(`select count(*)::int as n from push_outbox where sent_at is null and url like '/student/assessments/%'`);
+check('... and queues a notification for each', queued === 2, String(queued));
+check('the app cannot read the push queue', (await asApp('authenticated', guru, 'select id from push_outbox').catch(() => [])).length === 0);
+await refusesWith('after a release the rubric stays as it is', 'assessment_released', () =>
+  asApp('authenticated', guru, `update assessments set rubric = '[{"criterion":"New","max":3}]' where id = $1`, [draft.id]));
+await refuses('a released assessment cannot be deleted', () =>
+  asApp('authenticated', guru, 'delete from assessments where id = $1', [draft.id]));
+
+const myAssignment = async (userId) => (await asApp('authenticated', userId, 'select id, status, release_id from assessment_assignments'));
+const [arjunTask] = await myAssignment(arjun);
+check('a student sees their own assignment only', (await myAssignment(arjun)).length === 1 && arjunTask.status === 'assigned');
+check('... the assessment, its release notes and its files', (await asApp('authenticated', arjun, 'select id from assessments')).length === 1
+  && (await asApp('authenticated', arjun, 'select notes from assessment_releases'))[0]?.notes === 'Practise slowly first.'
+  && await aCanOpen(arjun, demo));
+check('a student it was not given to sees no release or assignment', (await myAssignment(late)).length === 0
+  && (await asApp('authenticated', late, 'select id from assessment_releases')).length === 0);
+check('a pending login sees nothing', (await asApp('authenticated', pendingLogin, 'select id from assessments')).length === 0);
+await refusesWith('a student cannot mark someone else\'s as seen', 'not_allowed', () =>
+  asApp('authenticated', meera, 'select mark_assessment_seen($1)', [arjunTask.id]));
+await asApp('authenticated', arjun, 'select mark_assessment_seen($1)', [arjunTask.id]);
+const tracker = async (userId) => asApp('authenticated', userId,
+  'select assignment_id, full_name, status, has_login, submission_id, score from assessment_tracker where assessment_id = $1 order by full_name', [draft.id]);
+const t1 = await tracker(coordinator2);
+check('the tracker shows each student: Arjun seen, Meera not seen', t1.length === 2 && t1[0].status === 'seen'
+  && t1[1].status === 'assigned' && t1[0].has_login, JSON.stringify(t1));
+const [sum1] = await asApp('authenticated', coordinator, 'select * from assessment_summary where assessment_id = $1', [draft.id]);
+check('the summary counts them', sum1.assigned === 2 && sum1.seen === 1 && sum1.not_seen === 1, JSON.stringify(sum1));
+
+// Submitting
+const take1 = await filePath(arjun, 'm4a');
+await aUpload(arjun, take1, 3000000);
+check('a student uploads a recording into their own folder', await aCanOpen(arjun, take1));
+await refuses('... but not a photo', async () => aUpload(arjun, await filePath(arjun, 'jpg')));
+await refuses('a student with nothing to send cannot upload', async () => aUpload(late, await filePath(late, 'mp3')));
+check('another student cannot open it', !(await aCanOpen(meera, take1)));
+const submit = (userId, assignment, file, link = null, note = null) => asApp('authenticated', userId,
+  'select submit_assessment($1, $2::jsonb, $3, $4) as id', [assignment, file ? JSON.stringify(file) : null, link, note])
+  .then((r) => r[0].id);
+await refusesWith('a submission needs a recording or a link', 'recording_required', () => submit(arjun, arjunTask.id, null));
+await refusesWith('a file that is not in Storage cannot be sent', 'file_missing', async () =>
+  submit(arjun, arjunTask.id, { path: await filePath(arjun, 'mp3'), name: 'a.mp3', kind: 'audio', size: 1 }));
+await refusesWith('... nor someone else\'s file', 'file_not_yours', () =>
+  submit(arjun, arjunTask.id, { path: demo, name: 'Demo.mp3', kind: 'audio', size: 1 }));
+await refusesWith('a student cannot submit someone else\'s assessment', 'not_allowed', () =>
+  submit(meera, arjunTask.id, null, 'https://youtu.be/x'));
+const sub1 = await submit(arjun, arjunTask.id, { path: take1, name: 'Take 1.m4a', kind: 'audio', size: 1 }, null, 'First try');
+check('the student sends the recording; the status becomes Submitted', (await myAssignment(arjun))[0].status === 'submitted'
+  && (await asOwner(`select (file ->> 'size')::int as s from assessment_submissions where id = ${sub1}`))[0].s === 3000000);
+await refusesWith('a submitted one cannot be sent again before the review', 'not_open', () =>
+  submit(arjun, arjunTask.id, null, 'https://youtu.be/x'));
+check('a coordinator can play the recording', await aCanOpen(coordinator2, take1));
+check('the student cannot delete a file they sent', !(await aRemove(arjun, take1)));
+check('the coordinator who released it is told', (await asOwner(`select count(*)::int as n from push_outbox
+  where profile_id = '${coordinator}' and url = '/staff/assessments/review/${arjunTask.id}'`))[0].n === 1);
+
+// Reviewing
+const review = (userId, submission, scores, comment, outcome, levelUp = false) => asApp('authenticated', userId,
+  'select review_submission($1, $2::int[], $3, $4, $5)', [submission, scores, comment, outcome, levelUp]);
+await refusesWith('a student cannot review', 'not_allowed', () => review(arjun, sub1, [5, 5], 'Self', 'accepted'));
+await refusesWith('one score per rubric line', 'scores_invalid', () => review(coordinator2, sub1, [5], 'x', 'accepted'));
+await refusesWith('a score cannot be above the line\'s top', 'scores_invalid', () => review(coordinator2, sub1, [6, 1], 'x', 'accepted'));
+await refusesWith('a redo needs a comment', 'comment_required', () => review(coordinator2, sub1, [2, 2], ' ', 'redo'));
+await refusesWith('only a level-up assessment can be sent to the Guru', 'level_up_not_allowed', () =>
+  review(coordinator2, sub1, [4, 4], 'Good', 'accepted', true));
+await review(coordinator2, sub1, [2, 3], 'Keep the tempo steady.', 'redo');
+check('a redo sets the status to Redo and tells the student', (await myAssignment(arjun))[0].status === 'redo'
+  && (await asOwner(`select count(*)::int as n from push_outbox o join students s on s.profile_id = o.profile_id
+       where s.id = '${arjunStudent}' and o.url = '/student/assessments/${arjunTask.id}'`))[0].n === 2);
+const [seenReview] = await asApp('authenticated', arjun, 'select score, score_max, comment, outcome from assessment_submissions');
+check('the student sees the score and the comment', seenReview?.score === 5 && seenReview.score_max === 10
+  && seenReview.comment === 'Keep the tempo steady.', JSON.stringify(seenReview));
+await refusesWith('a reviewed submission cannot be reviewed again', 'already_reviewed', () =>
+  review(coordinator, sub1, [5, 5], 'x', 'accepted'));
+const sub2 = await submit(arjun, arjunTask.id, null, 'https://youtu.be/arjun-take-2');
+await review(coordinator, sub2, [5, 4], 'Much better.', 'accepted');
+const t2 = await tracker(coordinator);
+check('accepted: the tracker shows Reviewed with the latest score', t2[0].status === 'reviewed' && t2[0].score === 9
+  && t2[0].submission_id === sub2, JSON.stringify(t2[0]));
+
+// Reminders
+const meeraTask = t2[1].assignment_id;
+const remind = (userId, ids) => asApp('authenticated', userId, 'select remind_assessment($1::bigint[]) as r', [ids]).then((r) => r[0].r);
+await refusesWith('a student cannot send reminders', 'not_allowed', () => remind(arjun, [meeraTask]));
+const r1 = await remind(coordinator, [meeraTask, arjunTask.id]);
+check('Remind reaches a student who has not sent it, not one who is done', r1.reminded === 1 && r1.skipped === 1, JSON.stringify(r1));
+check('... and not twice within 12 hours', (await remind(coordinator2, [meeraTask])).skipped === 1);
+check('the daily job skips one reminded today', (await asOwner('select assessment_daily() as n'))[0].n === 0);
+await asOwner(`update assessment_assignments set last_reminded_at = now() - interval '13 hours' where id = ${meeraTask}`);
+check('the daily job reminds work due tomorrow', (await asOwner('select assessment_daily() as n'))[0].n === 1);
+
+// Sending the queue (Edge Function)
+const outbox = await asApp('service_role', null, 'select * from claim_push_outbox()');
+check('claim_push_outbox returns the phones to notify, with the screen to open', outbox.length >= 4
+  && outbox.every((r) => r.token && /^\/(student|staff)\/assessments\//.test(r.url)), String(outbox.length));
+check('... and a second run sends nothing', (await asApp('service_role', null, 'select * from claim_push_outbox()')).length === 0);
+check('... nothing due now', (await asOwner('select send_due_push() as r'))[0].r === 'nothing_due');
+await refuses('an app user cannot claim the push queue', () => asApp('authenticated', guru, 'select * from claim_push_outbox()'));
+
+// Level-up and keeping files
+const levelUp = await createAssessment(guru, { title: 'Level-up: Intermediate', level: 2, levelUp: true, sent: true });
+await release(coordinator, levelUp.id, [meeraStudent]);
+const [meeraLevelUp] = (await myAssignment(meera)).filter((a) => a.id !== meeraTask);
+const take2 = await filePath(meera, 'mp4');
+await aUpload(meera, take2, 20000000);
+const sub3 = await submit(meera, meeraLevelUp.id, { path: take2, name: 'Level-up.mp4', kind: 'video', size: 1 });
+await review(coordinator, sub3, [5, 5], 'Ready.', 'accepted', true);
+check('an accepted level-up is sent to the Guru', (await asOwner(`select send_level_up from assessment_submissions where id = ${sub3}`))[0].send_level_up === true);
+await asOwner(`update assessment_submissions set reviewed_at = now() - interval '31 days' where id in (${sub1}, ${sub3})`);
+const expired = await asApp('service_role', null, 'select * from claim_expired_submission_files()');
+check('files 30 days past their review are handed for deleting, not a level-up one', expired.length === 1
+  && expired[0].path === take1, JSON.stringify(expired));
+check('... once', (await asApp('service_role', null, 'select * from claim_expired_submission_files()')).length === 0);
+const [{ ok: assessmentFnsCallable }] = await asOwner(`select has_function_privilege('authenticated', 'assessment_daily()', 'execute')
+  or has_function_privilege('authenticated', 'claim_expired_submission_files()', 'execute')
+  or has_function_privilege('authenticated', 'queue_student_push(uuid, text, text, text, date, text)', 'execute')
+  or has_function_privilege('authenticated', 'call_notify_function(jsonb)', 'execute') as ok`);
+check('app roles cannot run the assessment job functions', assessmentFnsCallable === false);
+await refuses('the app cannot write assignments directly', () => asApp('authenticated', coordinator,
+  'insert into assessment_assignments (release_id, assessment_id, student_id) values ($1, $2, $3)',
+  [released.release_id, draft.id, lateStudent]));
+
 // ---------------------------------------------------------------- row-level security
 const seen =await asApp('authenticated', arjun, 'select full_name from students');
 check('student sees only their own student record', seen.length === 1 && seen[0].full_name === 'Arjun Rao');
