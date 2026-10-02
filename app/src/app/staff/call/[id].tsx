@@ -31,7 +31,7 @@ import {
   type CallFormErrors,
 } from '@/data/follow-up';
 import { RELATIONS } from '@/data/students';
-import { callReasonName, lastVisitText, outcomeName, statusName } from '@/i18n/labels';
+import { callReasonName, lastVisitText, outcomeName } from '@/i18n/labels';
 import { dateInIndia, formatDayMonthYear, parseDayMonthYear, todayInIndia } from '@/lib/dates';
 
 /** A phone number to dial: whose it is (already translated) and the number. */
@@ -143,8 +143,9 @@ export default function CallLogScreen() {
       {header}
       <PersonHeader
         name={context.fullName}
+        chips={{ status: context.status }}
         details={[
-          `${context.rollNo} · ${statusName(t, context.status)}`,
+          context.rollNo,
           lastVisitText(t, {
             lastVisitAt: context.lastVisitAt,
             daysSinceVisit: context.daysSinceVisit,

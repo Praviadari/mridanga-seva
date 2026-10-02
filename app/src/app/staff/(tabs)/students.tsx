@@ -190,8 +190,9 @@ export default function StudentListScreen() {
           leading="initials"
           title={student.fullName}
           highlighted={student.hereNow}
+          chips={{ levelId: student.levelId, status: student.status }}
           details={[
-            `${student.rollNo} · ${levelName(t, student.levelId)} · ${statusName(t, student.status)}`,
+            student.rollNo,
             lastVisitText(t, student),
             student.mentorId
               ? t('students.mentor', { name: staffNames.get(student.mentorId) ?? '' })

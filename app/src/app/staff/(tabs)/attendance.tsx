@@ -29,7 +29,6 @@ import {
   type FoundStudent,
   type MarkOutcome,
 } from '@/data/attendance';
-import { levelName } from '@/i18n/labels';
 import { dateInIndia, formatDayMonthYear, timeInIndia, todayInIndia } from '@/lib/dates';
 
 /**
@@ -197,8 +196,9 @@ export default function MarkAttendanceScreen() {
               key={student.id}
               leading="initials"
               title={student.fullName}
+              chips={{ levelId: student.levelId }}
               details={[
-                `${student.rollNo} · ${levelName(t, student.levelId)}`,
+                student.rollNo,
                 ...(since ? [sinceText(since)] : []),
               ]}
               highlighted={!!since}

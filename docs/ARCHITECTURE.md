@@ -94,6 +94,7 @@ app/
                        saffron-band.tsx (the gradient band), home-header.tsx (the band with the
                        greeting), brand.tsx (the band on the sign-in screens), mridanga-mark.tsx
                        (the drum mark), person-header.tsx (initials and name on C8, C11),
+                       status-chip.tsx (coloured level and status labels on lists and C8),
                        loading-cards.tsx (grey shapes while loading), empty-state.tsx,
                        account-footer.tsx (language, Sign out, version)
     i18n/              Interface text in English, Telugu and Hindi (docs/TRANSLATIONS.md), and
@@ -124,6 +125,11 @@ change of colour or wording is made in one place.
    which expo-sqlite provides on phones), so people stay signed in.
 4. **Forgot password:** the app emails a link; it opens the web version on a *Set a new password*
    screen. Links are *implicit-flow* links, so one asked for on a phone also works in a laptop browser.
+
+5. **Next start:** the app keeps a copy of the person's own profile on the device
+   (`src/auth/saved-profile.ts`) and opens their home from it at once, while the login is
+   restored and the profile fetched behind it; without internet the copy keeps their screens
+   ([DECISIONS.md #37](DECISIONS.md)). Sign-out forgets it.
 
 Links in emails go to the address set as **Site URL** in Supabase, or to the web address the
 request came from (see OPERATIONS.md).

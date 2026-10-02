@@ -27,7 +27,6 @@ import {
   lastVisitText,
   levelName,
   outcomeName,
-  statusName,
 } from '@/i18n/labels';
 import { ageOn, dateInIndia, formatDayMonthYear, timeInIndia, todayInIndia } from '@/lib/dates';
 
@@ -117,7 +116,8 @@ export default function StudentProfileScreen() {
       {header}
       <PersonHeader
         name={student.fullName}
-        details={[`${student.rollNo} · ${levelName(t, student.levelId)} · ${statusName(t, student.status)}`]}
+        chips={{ levelId: student.levelId, status: student.status }}
+        details={[student.rollNo]}
       />
       {student.status === 'paused' && student.pausedUntil ? (
         <AppText>{t('profile.pausedUntil', { date: formatDayMonthYear(student.pausedUntil) })}</AppText>

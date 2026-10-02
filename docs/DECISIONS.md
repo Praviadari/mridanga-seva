@@ -759,3 +759,33 @@ phone holds); any other one goes in `staff/` beside the tabs. The icon font adds
 downloaded once. Native look items (a gradient package, haptics, blur, SF Symbols / Material
 Symbols, a new app icon or splash) need a new APK and wait for one. Translations of the tab
 labels and the mantra lines are drafts for the native-speaker review (TRANSLATIONS.md).
+
+## 37. The app remembers the signed-in person's profile on the device — 2 Oct 2026
+
+**Context.** Every start of the app, and every reload of the web version, showed the saffron
+splash for 2-5 s. Measured on the test site (1 Oct 2026, Guru login, office network): the page
+was ready after 0.7 s, then Supabase refreshed the expired login token (1.1 → 4.6 s) and only
+then was the profile fetched (4.6 → 5.2 s); the area, and so the first screen, waited for both.
+Without internet the profile fetch failed and the person landed on "Could not load your
+account", even a student who only wanted My QR at the door (#21).
+
+**Decision.** After every successful profile fetch the app keeps a copy of the person's own
+`profiles` row (id, role, name, email, language, active) on the device
+(`src/auth/saved-profile.ts`). On the next start that copy decides the area at once, so the
+person's home opens while Supabase restores and refreshes the login behind it; the screens'
+own data arrives when the login is ready (the Supabase client waits for it). The fresh profile
+then replaces the copy. The copy is used only for the same person (same user id), is forgotten on
+sign-out and when the profile no longer exists, and is kept when a fetch fails for lack of
+internet, so the person keeps their screens offline.
+
+**Why.** The wait was the network, not the app, and the role rarely changes. Showing the home
+at once with placeholder cards (#36) feels immediate, and offline it opens My QR, which matters
+most at the door. It is the same kind of data the device already holds (the login itself, the
+saved QR card, #21), and less sensitive than the login token.
+
+**Consequences.** A role or "switched off" change reaches a device on its next successful
+profile fetch, a few seconds after start with internet; until then the old screens show, but
+the database still refuses any data the person may no longer see (#15, row-level security). If
+a saved login turns out to be invalid, the home shows briefly and then the sign-in screen. The
+pending screen ("Could not load your account") now appears only for someone who has never
+loaded their profile on this device.

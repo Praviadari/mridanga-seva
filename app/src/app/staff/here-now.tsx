@@ -24,7 +24,7 @@ import {
   type MarkOutcome,
   type OpenVisit,
 } from '@/data/attendance';
-import { formatDuration, levelName } from '@/i18n/labels';
+import { formatDuration } from '@/i18n/labels';
 import { dateInIndia, formatDayMonthYear, timeInIndia, todayInIndia } from '@/lib/dates';
 
 /** List of open visits, one check-out button each, and "Check out all" with a confirm step. */
@@ -122,7 +122,8 @@ export default function HereNowScreen() {
           key={visit.visitId}
           leading="initials"
           title={visit.fullName}
-          details={[`${visit.rollNo} · ${levelName(t, visit.levelId)}`, sinceText(visit, today.loadedAt)]}
+          chips={{ levelId: visit.levelId }}
+          details={[visit.rollNo, sinceText(visit, today.loadedAt)]}
           action={{
             label: t('attendance.checkOut'),
             variant: 'secondary',

@@ -24,7 +24,7 @@ import {
   type FollowUpQueue,
   type QueueEntry,
 } from '@/data/follow-up';
-import { lastVisitText, levelName, statusName } from '@/i18n/labels';
+import { lastVisitText } from '@/i18n/labels';
 import { formatDayMonthYear } from '@/lib/dates';
 
 /** The queue in groups, with a "mine / everyone" switch and a refresh button. */
@@ -116,8 +116,9 @@ export default function FollowUpScreen() {
               key={entry.student.id}
               leading="initials"
               title={entry.student.fullName}
+              chips={{ levelId: entry.student.levelId, status: entry.student.status }}
               details={[
-                `${entry.student.rollNo} · ${levelName(t, entry.student.levelId)} · ${statusName(t, entry.student.status)}`,
+                entry.student.rollNo,
                 lastVisitText(t, entry.student),
                 taskText(entry),
               ]}

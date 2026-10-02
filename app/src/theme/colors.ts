@@ -49,7 +49,15 @@ export type Palette = {
   onHeader: string;
   /** Less important text on the saffron band. */
   onHeaderMuted: string;
+  /**
+   * Small status labels (components/status-chip.tsx): text and background per kind. `info` new,
+   * `success` active, `warning` irregular, `neutral` inactive, `paused` paused, `danger` left.
+   */
+  chips: Record<ChipTone, { text: string; background: string }>;
 };
+
+/** The kinds of small status label, each with its own colours. */
+export type ChipTone = 'info' | 'success' | 'warning' | 'neutral' | 'paused' | 'danger' | 'level';
 
 // Contrast was checked against WCAG AA (4.5:1 for normal text) for text on background and
 // surface, onPrimary on primary, onPrimarySoft on primarySoft (icons on it need 3:1), and
@@ -76,6 +84,15 @@ export const lightPalette: Palette = {
   headerBottom: '#742C0B',
   onHeader: '#FFFFFF',
   onHeaderMuted: '#FDE7CF',
+  chips: {
+    info: { text: '#075985', background: '#E0F2FE' },
+    success: { text: '#067647', background: '#ECFDF3' },
+    warning: { text: '#92400E', background: '#FEF3C7' },
+    neutral: { text: '#57534E', background: '#F1EBE4' },
+    paused: { text: '#6B21A8', background: '#F3E8FF' },
+    danger: { text: '#B42318', background: '#FEF3F2' },
+    level: { text: '#8A3A0E', background: '#FDEBD3' },
+  },
 };
 
 /**
@@ -109,4 +126,13 @@ export const darkPalette: Palette = {
   headerBottom: '#2E1609',
   onHeader: '#FFF3E6',
   onHeaderMuted: '#E8CDB3',
+  chips: {
+    info: { text: '#7DD3FC', background: '#0C2A3D' },
+    success: { text: '#47CD89', background: '#10291C' },
+    warning: { text: '#FBBF24', background: '#3A2A0A' },
+    neutral: { text: '#C8BFB6', background: '#2E2620' },
+    paused: { text: '#D8B4FE', background: '#2A1A3A' },
+    danger: { text: '#F97066', background: '#3A1A17' },
+    level: { text: '#F59E0B', background: '#3A2817' },
+  },
 };

@@ -3,6 +3,7 @@
 // open something when tapped, e.g. the student's profile from the student list; it then ends in
 // an arrow. A row about a person can start with their initials in a circle.
 
+import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { cardLook, spacing, useTheme } from '@/theme/use-theme';
@@ -10,6 +11,7 @@ import { cardLook, spacing, useTheme } from '@/theme/use-theme';
 import { AppText } from './app-text';
 import { Button, type ButtonProps } from './button';
 import { Icon, IconBadge, type IconName } from './icon';
+import { StudentChips, studentChipsText, type StudentChipsProps } from './status-chip';
 
 /** Props for ListRow. */
 export type ListRowProps = {
@@ -34,11 +36,14 @@ export type ListRowProps = {
    * or an icon in a circle. Default none.
    */
   leading?: 'initials' | IconName;
+  /** A student's level and status as coloured labels under the title. */
+  chips?: StudentChipsProps;
 };
 
 /** A card-like row with a title, details and an optional button; tappable when `onPress` is given. */
-export function ListRow({ title, details = [], highlighted, action, onPress, leading }: ListRowProps) {
+export function ListRow({ title, details = [], highlighted, action, onPress, leading, chips }: ListRowProps) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const look = [
     cardLook(colors),
     highlighted ? { backgroundColor: colors.successSurface, borderColor: colors.success } : null,
@@ -47,17 +52,17 @@ export function ListRow({ title, details = [], highlighted, action, onPress, lea
     return (
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={[title, ...details].join(', ')}
+        accessibilityLabel={[title, ...(chips ? studentChipsText(t, chips) : []), ...details].join(', ')}
         onPress={onPress}
         style={({ pressed }) => [styles.row, look, pressed && styles.pressed]}>
-        <RowContent title={title} details={details} action={action} leading={leading} />
+        <RowContent title={title} details={details} action={action} leading={leading} chips={chips} />
         {action ? null : <Icon name="chevron" size={18} color={colors.textMuted} />}
       </Pressable>
     );
   }
   return (
     <View style={[styles.row, look]}>
-      <RowContent title={title} details={details} action={action} leading={leading} />
+      <RowContent title={title} details={details} action={action} leading={leading} chips={chips} />
     </View>
   );
 }
@@ -68,12 +73,14 @@ function RowContent({
   details = [],
   action,
   leading,
-}: Pick<ListRowProps, 'title' | 'details' | 'action' | 'leading'>) {
+  chips,
+}: Pick<ListRowProps, 'title' | 'details' | 'action' | 'leading' | 'chips'>) {
   return (
     <>
       {leading === 'initials' ? <Initials name={title} /> : leading ? <IconBadge name={leading} size={40} /> : null}
       <View style={styles.text}>
         <AppText variant="label">{title}</AppText>
+        {chips ? <StudentChips {...chips} /> : null}
         {details.map((line) => (
           <AppText key={line} variant="small" tone="muted">
             {line}

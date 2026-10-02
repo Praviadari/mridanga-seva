@@ -3,7 +3,10 @@
 //
 // Flow: Supabase restores the saved login (or not) → if signed in, the person's `profiles` row
 // is fetched → its role decides the Area (src/auth/types.ts) → the root layout shows that
-// area's screens. Until both are known the area is 'loading' and the splash shows.
+// area's screens. Until both are known the area is 'loading' and the splash shows, except when
+// this device remembers the person's profile (src/auth/saved-profile.ts): then their area opens at
+// once from that copy while the login is restored and the profile fetched behind it, and the copy
+// keeps being used when the fetch fails for lack of internet (docs/DECISIONS.md #37).
 // Roles are given by the database, never chosen in the app (docs/ARCHITECTURE.md "Roles").
 
 import type { Session } from '@supabase/supabase-js';
@@ -12,6 +15,7 @@ import { createContext, use, useEffect, useState, type PropsWithChildren } from 
 import { applyProfileLanguage, currentLanguage, hasChosenLanguage } from '@/i18n';
 import { supabase, supabaseConfigProblem } from '@/lib/supabase';
 
+import { forgetSavedProfile, readSavedProfile, saveProfile } from './saved-profile';
 import type { Area, Profile } from './types';
 
 /** What useAuth() gives a screen. */
@@ -40,6 +44,13 @@ export function AuthProvider({ children }: PropsWithChildren) {
   // Set when the person arrives from a password-reset email link (web only).
   const [recovering, setRecovering] = useState(false);
   const [profileResult, setProfileResult] = useState<ProfileResult | null>(null);
+  // The profile remembered from the last start, read once. Its language is applied at once, so
+  // the first screen is already in the person's language.
+  const [saved] = useState<Profile | null>(() => {
+    const copy = supabaseConfigProblem ? null : readSavedProfile();
+    if (copy && !hasChosenLanguage()) applyProfileLanguage(copy.language);
+    return copy;
+  });
 
   useEffect(() => {
     if (supabaseConfigProblem) return;
@@ -49,6 +60,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
     const { data } = supabase.auth.onAuthStateChange((event, newSession) => {
       if (event === 'PASSWORD_RECOVERY') setRecovering(true);
       if (event === 'USER_UPDATED' || event === 'SIGNED_OUT') setRecovering(false);
+      // A remembered profile must never open someone's area after they signed out.
+      if (event === 'SIGNED_OUT') forgetSavedProfile();
       setSession(newSession);
       setSessionLoaded(true);
     });
@@ -61,25 +74,29 @@ export function AuthProvider({ children }: PropsWithChildren) {
     if (!userId) return;
     let cancelled = false;
     fetchProfile(userId).then((result) => {
-      if (!cancelled) setProfileResult(result);
+      if (!cancelled) setProfileResult(withSavedFallback(result));
     });
     return () => {
       cancelled = true;
     };
   }, [userId]);
 
-  // Ignore a profile that belongs to an earlier login.
-  const current = profileResult && profileResult.userId === userId ? profileResult : null;
-  const profile = current?.profile ?? null;
-  const profileFailed = current?.failed ?? false;
+  // Ignore a profile that belongs to an earlier login. While the fetch for this login runs, the
+  // remembered copy stands in for it, but only when it is this same person's.
+  const fetched = profileResult && profileResult.userId === userId ? profileResult : null;
+  const current: ProfileResult | null =
+    fetched ?? (userId && saved?.id === userId ? { userId, profile: saved, failed: false } : null);
+  // Before the saved login is restored there is no session yet: the remembered profile decides.
+  const profile = sessionLoaded ? (current?.profile ?? null) : saved;
+  const profileFailed = sessionLoaded ? (current?.failed ?? false) : false;
 
   const value: AuthState = {
-    area: sessionLoaded ? areaFor(session, recovering, current) : 'loading',
+    area: sessionLoaded ? areaFor(session, recovering, current) : saved ? areaForProfile(saved) : 'loading',
     session,
     profile,
     profileFailed,
     refreshProfile: async () => {
-      if (userId) setProfileResult(await fetchProfile(userId));
+      if (userId) setProfileResult(withSavedFallback(await fetchProfile(userId)));
     },
   };
 
@@ -105,10 +122,15 @@ function areaFor(
   if (!session) return 'signedOut';
   if (recovering) return 'recovery';
   if (!result) return 'loading';
-  const profile = result.profile;
-  // No profile (fetch failed, or not created yet) and switched-off accounts wait on the
-  // pending screen, which explains why and offers to check again.
-  if (!profile || !profile.active) return 'pending';
+  // No profile (fetch failed, or not created yet) waits on the pending screen, which explains
+  // why and offers to check again.
+  if (!result.profile) return 'pending';
+  return areaForProfile(result.profile);
+}
+
+/** The area of a person with this profile: their role's screens, or pending when switched off. */
+function areaForProfile(profile: Profile): Area {
+  if (!profile.active) return 'pending';
   switch (profile.role) {
     case 'guru':
     case 'coordinator':
@@ -127,8 +149,23 @@ async function fetchProfile(userId: string): Promise<ProfileResult> {
     .eq('id', userId)
     .maybeSingle<Profile>();
   if (error) return { userId, profile: null, failed: true };
-  if (data) syncLanguageWithProfile(data);
+  if (data) {
+    syncLanguageWithProfile(data);
+    saveProfile(data);
+  } else {
+    forgetSavedProfile();
+  }
   return { userId, profile: data, failed: false };
+}
+
+/**
+ * A failed fetch (usually no internet) falls back to the profile remembered for the same person,
+ * so they keep their screens; without such a copy it stays a failure (pending screen).
+ */
+function withSavedFallback(result: ProfileResult): ProfileResult {
+  if (!result.failed) return result;
+  const copy = readSavedProfile();
+  return copy && copy.id === result.userId ? { userId: result.userId, profile: copy, failed: false } : result;
 }
 
 /**
