@@ -68,7 +68,7 @@ export default function SignUpScreen() {
   }
 
   return (
-    <Screen header={<BrandHeader compact />}>
+    <Screen centred header={<BrandHeader compact />}>
       <LanguagePicker />
 
       <Section title={t('signUp.title')} description={t('signUp.subtitle')}>

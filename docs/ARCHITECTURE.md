@@ -78,20 +78,23 @@ app/
                        the bundle holds the right Supabase project), the placeholder icon generator
   src/
     app/               Screens. Every file is a screen (Expo Router); _layout.tsx files arrange them
-      student/         The student's screens; (tabs)/ holds Home, My QR and Announcements
+      student/         The student's screens; (tabs)/ holds Home, My QR and Announcements; one
+                       announcement, progress.tsx (S4) and coming-soon.tsx open on top
       staff/           The Guru's and coordinators' screens: register, attendance, follow-up ...,
                        and coming-soon.tsx for the modules not built yet; (tabs)/ holds Home (G1
                        or C1 by role) and the four used most
     auth/              Who is signed in, their role, and the sign-in / sign-up calls
-    screens/           The two staff homes, G1 and C1 (shown by staff/(tabs)/index.tsx)
+    screens/           The two staff homes, G1 and C1 (shown by staff/(tabs)/index.tsx), and the
+                       Coming soon page both areas show
     data/              Reading and saving records: one file per area (students.ts ...), with the
                        form checks. Screens call these, never the database directly
     components/        Building blocks shared by screens: text, buttons, fields, choices, list rows,
-                       the QR scanner, the syllabus item card, the announcement card and form,
+                       the QR scanner, the syllabus item card, the announcement card, form and
+                       detail card (announcement-detail.tsx),
                        the file picker and file list of an announcement, the reply box and reply
                        card, a progress bar, the number tiles of the home screens, the
-                       ring of modules of the staff homes (module-ring.tsx, staff-shortcuts.tsx;
-                       DECISIONS.md #39), the "new version is ready" notice, the page frame (with
+                       ring of modules of the home screens (module-ring.tsx, staff-shortcuts.tsx;
+                       DECISIONS.md #39, #41), the "new version is ready" notice, the page frame (with
                        pull to refresh on phones), columns.tsx (two columns of cards on a laptop),
                        detail-grid.tsx (label-over-value cells on C8);
                        the look of rounds 1 and 2 (DECISIONS.md #36): icon.tsx (the icon set),

@@ -1,6 +1,6 @@
-// One private reply to an announcement: who wrote it, the text, and when. Shown to the author and
-// the Guru on C15 (every reply), and to a student on S10 (only their own). Optionally one small
-// action under it, such as the Guru's "Delete".
+// One private reply to an announcement: who wrote it (with their initials), the text, and when.
+// Shown to the author and the Guru on C15 (every reply), and to a student on S10 (only their own).
+// Optionally one small action under it, such as the Guru's "Delete".
 
 import { StyleSheet, View } from 'react-native';
 
@@ -8,6 +8,7 @@ import { cardLook, spacing, useTheme } from '@/theme/use-theme';
 
 import { AppText } from './app-text';
 import { Button, type ButtonProps } from './button';
+import { Initials } from './list-row';
 
 /** Props for ReplyCard. */
 export type ReplyCardProps = {
@@ -21,19 +22,28 @@ export type ReplyCardProps = {
   actions?: Pick<ButtonProps, 'label' | 'onPress' | 'loading' | 'variant'>[];
 };
 
-/** A bordered card for one reply. */
+/** A card for one reply: initials and name on the first line, then the text, then the time and actions. */
 export function ReplyCard({ writer, body, when, actions = [] }: ReplyCardProps) {
   const { colors } = useTheme();
   return (
     <View style={[styles.card, cardLook(colors)]}>
-      {writer ? <AppText variant="label">{writer}</AppText> : null}
+      {writer ? (
+        <View style={styles.writer}>
+          <Initials name={writer} size={32} />
+          <AppText variant="label" style={styles.writerName}>
+            {writer}
+          </AppText>
+        </View>
+      ) : null}
       <AppText selectable>{body}</AppText>
-      <AppText variant="small" tone="muted">
-        {when}
-      </AppText>
-      {actions.map((action) => (
-        <Button key={action.label} variant="link" {...action} />
-      ))}
+      <View style={styles.footer}>
+        <AppText variant="small" tone="muted" style={styles.when}>
+          {when}
+        </AppText>
+        {actions.map((action) => (
+          <Button key={action.label} variant="link" {...action} />
+        ))}
+      </View>
     </View>
   );
 }
@@ -41,6 +51,24 @@ export function ReplyCard({ writer, body, when, actions = [] }: ReplyCardProps) 
 const styles = StyleSheet.create({
   card: {
     padding: spacing.md,
-    gap: spacing.xs,
+    gap: spacing.sm,
+  },
+  writer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  writerName: {
+    flex: 1,
+  },
+  footer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  when: {
+    flex: 1,
+    minWidth: 120,
   },
 });

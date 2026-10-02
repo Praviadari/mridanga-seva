@@ -19,6 +19,7 @@ import { Button } from '@/components/button';
 import { EmptyState } from '@/components/empty-state';
 import { HomeHeader } from '@/components/home-header';
 import { LoadingCards } from '@/components/loading-cards';
+import { ModuleRing, type Module } from '@/components/module-ring';
 import { Notice } from '@/components/notice';
 import { ProgressBar } from '@/components/progress-bar';
 import { Screen } from '@/components/screen';
@@ -56,6 +57,21 @@ export default function StudentHomeScreen() {
   );
 
   const unread = news ? news.announcements.filter((a) => !a.readByMe).length : 0;
+
+  // The ring of the student's screens (docs/DECISIONS.md #41): the three tabs' subjects plus My
+  // progress (S4), and Events as the one module not built yet.
+  const modules: Module[] = [
+    { key: 'qr', icon: 'qr', tone: 'blue', label: t('tabs.myQr'), onPress: () => router.push('/student/my-qr') },
+    { key: 'news', icon: 'news', tone: 'orange', label: t('announcements.title'), onPress: () => router.push('/student/announcements') },
+    { key: 'progress', icon: 'syllabus', tone: 'purple', label: t('progress.title'), onPress: () => router.push('/student/progress') },
+    {
+      key: 'events',
+      icon: 'events',
+      label: t('modules.events'),
+      soon: true,
+      onPress: () => router.push({ pathname: '/student/coming-soon', params: { module: 'events' } }),
+    },
+  ];
 
   return (
     <Screen wide header={<HomeHeader name={name} />} onRefresh={load}>
@@ -106,9 +122,12 @@ export default function StudentHomeScreen() {
             ) : (
               <AppText tone="muted">{t('profile.noSyllabus')}</AppText>
             )}
+            <Button variant="link" icon="syllabus" label={t('progress.open')} onPress={() => router.push('/student/progress')} />
           </Section>
         </>
       ) : null}
+
+      <ModuleRing title={t('home.staff.shortcuts')} modules={modules} />
 
       {news ? (
         <Section

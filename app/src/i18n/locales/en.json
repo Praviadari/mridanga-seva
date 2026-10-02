@@ -714,5 +714,13 @@
     "instruments": "The temple's mridangas: which ones there are, their condition, who has taken one home and when it comes back.",
     "events": "Festivals, yatras and programmes where the class plays, with the date and who is coming.",
     "back": "Back to home"
+  },
+  "progress": {
+    "title": "My progress",
+    "open": "See every item",
+    "loadFailed": "Could not load your progress.",
+    "intro": "The items you have shown in class are ticked by your coordinator. Moving up a level is the facilitator's decision.",
+    "doneOn": "Shown in class on {{date}}",
+    "notYet": "Not yet"
   }
 }

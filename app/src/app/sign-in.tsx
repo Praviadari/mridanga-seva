@@ -43,7 +43,8 @@ export default function SignInScreen() {
   }
 
   return (
-    <Screen header={<BrandHeader />}>
+    // Centred: on a laptop the card sits in the middle of the page instead of hugging the band.
+    <Screen centred header={<BrandHeader />}>
       <LanguagePicker />
 
       <Section title={t('signIn.title')} description={t('signIn.subtitle')}>

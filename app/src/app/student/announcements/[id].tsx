@@ -10,8 +10,8 @@ import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router
 import { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { AnnouncementDetail } from '@/components/announcement-detail';
 import { AppText } from '@/components/app-text';
-import { AttachmentList } from '@/components/attachment-list';
 import { Button } from '@/components/button';
 import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
@@ -84,26 +84,22 @@ export default function MyAnnouncementScreen() {
   }
 
   return (
-    <Screen underHeader>
+    <Screen underHeader onRefresh={load}>
       {header}
-      {a.pinned ? (
-        <AppText variant="label" tone="primary">
-          {t('announcements.pinned')}
-        </AppText>
-      ) : null}
-      <AppText variant="subtitle">{a.title}</AppText>
-      <AppText selectable>{a.body}</AppText>
-      <AttachmentList attachments={a.attachments} />
-      <AppText tone="muted">
-        {[
-          formatDateTimeInIndia(a.publishAt),
-          ...(authorName ? [t('announcements.postedBy', { name: authorName })] : []),
-          audienceName(t, a, { groupName }),
-        ].join(' · ')}
-      </AppText>
-      {a.editedAt ? (
-        <AppText tone="muted">{t('announcements.edited', { date: formatDateTimeInIndia(a.editedAt) })}</AppText>
-      ) : null}
+      <AnnouncementDetail
+        title={a.title}
+        body={a.body}
+        pinned={a.pinned}
+        attachments={a.attachments}
+        facts={[
+          { icon: 'time', text: formatDateTimeInIndia(a.publishAt) },
+          ...(authorName ? [{ icon: 'person' as const, text: t('announcements.postedBy', { name: authorName }) }] : []),
+          { icon: 'groups', text: audienceName(t, a, { groupName }) },
+          ...(a.editedAt
+            ? [{ icon: 'edit' as const, text: t('announcements.edited', { date: formatDateTimeInIndia(a.editedAt) }) }]
+            : []),
+        ]}
+      />
 
       <ReplyBox
         title={authorName ? t('announcements.replies.replyTo', { name: authorName }) : t('announcements.replies.reply')}

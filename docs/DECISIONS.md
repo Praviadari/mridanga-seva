@@ -878,3 +878,28 @@ reaches the phones as an update (#35).
 **Consequences.** A new English sentence about this person says "the facilitator" (lowercase, as
 "coordinators" is). The Telugu and Hindi words can change the same way after the native-speaker
 review (TRANSLATIONS.md).
+
+## 41. Students get the ring too, and can read their own progress — 2 Oct 2026
+
+**Context.** #39 put the ring of modules on the staff homes. The student home (S1) still ended in
+a list; a student's level showed only as a bar, with no way to see which items were ticked. The
+database already lets a student read their own `student_progress` rows and the syllabus (policy
+`own_or_staff`, 0001).
+
+**Decision** (Praveen, 2 Oct 2026). The student home gets the same ring, smaller, with four
+circles: My QR, Announcements, **My progress** (new screen S4, read-only: the current level's
+syllabus with a tick and the date on the items shown in class, and the progress bar) and
+**Events** as the only coming-soon circle; students never see staff modules. The big My QR button
+stays at the top (#21). The Coming soon page is shared by both areas (`src/screens/coming-soon.tsx`)
+because an area may open only its own routes. The announcement screens (C15 detail, S10 detail)
+show the announcement as one card: a "Pinned" strip, the title, the message, the photos as a strip
+of squares (one photo stays large), PDFs as rows with a file icon, and the facts under it with
+small icons; replies carry the writer's initials. The sign-in and sign-up screens centre their card
+on a laptop.
+
+**Why.** The ring is the home's centre piece for everyone, not only staff, and a student who
+can see which items are ticked knows what to practise. Reading is safe: ticking stays with the
+coordinators and the facilitator (#22), and moving up a level stays the facilitator's decision.
+
+**Consequences.** S4 is half built: the syllabus progress is there, the lessons and materials
+come later. Telugu and Hindi lines of S4 are drafts for the native-speaker review.

@@ -89,6 +89,31 @@ export async function fetchStudentSyllabus(studentId: string): Promise<StudentSy
   };
 }
 
+/** The signed-in student's own progress (screen S4 My progress). */
+export type MyProgress = {
+  levelId: number;
+  /** The items of the student's current level in teaching order, with their ticks. */
+  items: SyllabusEntry[];
+  done: number;
+};
+
+/**
+ * Loads the signed-in student's own level and its syllabus with their ticks, for S4. Row-level
+ * security lets a student read only their own students and student_progress rows (policy
+ * own_or_staff, supabase/migrations/0001_phase1.sql), and everyone reads syllabus_items. Returns
+ * 'not_found' when the login has no student record, null when it could not be loaded.
+ */
+export async function fetchMyProgress(profileId: string): Promise<MyProgress | 'not_found' | null> {
+  const me = await supabase.from('students').select('id').eq('profile_id', profileId).maybeSingle<{ id: string }>();
+  if (me.error) return null;
+  if (!me.data) return 'not_found';
+  const all = await fetchStudentSyllabus(me.data.id);
+  if (all === null) return null;
+  if (all === 'not_found') return 'not_found';
+  const items = all.items.filter((item) => item.levelId === all.student.levelId);
+  return { levelId: all.student.levelId, items, done: items.filter((item) => item.doneOn).length };
+}
+
 /**
  * What happened when a tick was changed. `notice` is a harmless surprise, e.g. another
  * coordinator ticked the same item a moment earlier; `errorKey` means nothing was saved. Either

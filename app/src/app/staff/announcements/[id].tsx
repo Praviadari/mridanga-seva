@@ -13,8 +13,8 @@ import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useAuth } from '@/auth/auth-provider';
+import { AnnouncementDetail } from '@/components/announcement-detail';
 import { AppText } from '@/components/app-text';
-import { AttachmentList } from '@/components/attachment-list';
 import { Button } from '@/components/button';
 import { ListRow } from '@/components/list-row';
 import { LoadingCards } from '@/components/loading-cards';
@@ -177,7 +177,7 @@ export default function StaffAnnouncementScreen() {
   }
 
   return (
-    <Screen underHeader>
+    <Screen underHeader onRefresh={load}>
       {header}
       {posted === '1' ? (
         <Notice tone="success">
@@ -185,25 +185,20 @@ export default function StaffAnnouncementScreen() {
         </Notice>
       ) : null}
 
-      {a.pinned ? (
-        <AppText variant="label" tone="primary">
-          {t('announcements.pinned')}
-        </AppText>
-      ) : null}
-      <AppText variant="subtitle">{a.title}</AppText>
-      <AppText selectable>{a.body}</AppText>
-      <AttachmentList attachments={a.attachments} />
-      <AppText tone="muted">
-        {audienceName(t, a, { groupName, authorName, byMe })}
-      </AppText>
-      <AppText tone="muted">
-        {`${scheduled ? t('announcements.scheduledFor', { date: when }) : when}${
-          authorName ? ` · ${t('announcements.postedBy', { name: authorName })}` : ''
-        }`}
-      </AppText>
-      {a.editedAt ? (
-        <AppText tone="muted">{t('announcements.edited', { date: formatDateTimeInIndia(a.editedAt) })}</AppText>
-      ) : null}
+      <AnnouncementDetail
+        title={a.title}
+        body={a.body}
+        pinned={a.pinned}
+        attachments={a.attachments}
+        facts={[
+          { icon: 'time', text: scheduled ? t('announcements.scheduledFor', { date: when }) : when },
+          ...(authorName ? [{ icon: 'person' as const, text: t('announcements.postedBy', { name: authorName }) }] : []),
+          { icon: 'groups', text: audienceName(t, a, { groupName, authorName, byMe }) },
+          ...(a.editedAt
+            ? [{ icon: 'edit' as const, text: t('announcements.edited', { date: formatDateTimeInIndia(a.editedAt) }) }]
+            : []),
+        ]}
+      />
 
       <Section icon="check" title={t('announcements.detail.seenSection')}>
         {scheduled ? <AppText tone="muted">{t('announcements.detail.scheduledNote')}</AppText> : null}

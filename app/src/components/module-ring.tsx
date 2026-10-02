@@ -1,7 +1,7 @@
-// The ring of modules on the staff home (C1, G1): the drum mark, the app name and its motto in
-// the middle, and one coloured circle per module around it, each a button to that module's
-// screen. Two modules that are not built yet (Instruments, Events) carry a small "under
-// construction" mark and open the Coming soon screen (docs/DECISIONS.md #39). The idea comes
+// The ring of modules on the home screens (C1, G1; S1 since round 5): the drum mark, the app name
+// and its motto in the middle, and one coloured circle per module around it, each a button to that
+// module's screen. Modules that are not built yet (Instruments, Events) carry a small "under
+// construction" mark and open the Coming soon screen (docs/DECISIONS.md #39, #41). The idea comes
 // from the volunteers' mockup of 2 Oct 2026, "version 3": a central menu around the drum.
 //
 // When the phone's text is set large (useLargeText), or the window is very narrow, the ring would
@@ -51,6 +51,8 @@ const CENTRE = 144;
 const LABEL_OVERHANG = 14;
 /** The ring is never drawn wider than this; on a laptop it sits in the middle of the column. */
 const MAX_SIZE = 400;
+/** A ring of four or fewer (the student home) is drawn smaller, so the circles sit close to the drum. */
+const MAX_SIZE_FEW = 320;
 /** Below this window width the labels would overlap, so the grid is used. */
 const MIN_WIDTH = 340;
 
@@ -72,7 +74,7 @@ function Ring({ modules, width }: { modules: readonly Module[]; width: number })
   const { t } = useTranslation();
   const { colors } = useTheme();
   // 16 px page sides; on a phone the ring fills the width, on a laptop it stops at MAX_SIZE.
-  const size = Math.min(width - 2 * spacing.md, MAX_SIZE);
+  const size = Math.min(width - 2 * spacing.md, modules.length <= 4 ? MAX_SIZE_FEW : MAX_SIZE);
   const radius = size / 2 - ITEM_WIDTH / 2;
   const centre = size / 2;
   return (
