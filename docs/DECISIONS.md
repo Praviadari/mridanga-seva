@@ -789,3 +789,30 @@ the database still refuses any data the person may no longer see (#15, row-level
 a saved login turns out to be invalid, the home shows briefly and then the sign-in screen. The
 pending screen ("Could not load your account") now appears only for someone who has never
 loaded their profile on this device.
+
+## 38. The APK is built for phones only, with unused code removed — 2 Oct 2026
+
+**Context.** Praveen asked (1 Oct 2026) for a smaller APK: people download it from a link, often on
+mobile data. By default an Expo APK holds the native code four times, once per processor type,
+two of which (`x86`, `x86_64`) are used only by emulators and some Chromebooks, and it keeps
+Java code and resources that the app never uses.
+
+**Decision.** The `expo-build-properties` plugin in `app/app.json` sets, for Android:
+`buildArchs` `armeabi-v7a` and `arm64-v8a`; `enableMinifyInReleaseBuilds` (R8);
+`enableShrinkResourcesInReleaseBuilds`. Both profiles get the same settings. The first APK with
+them is a `preview` build tested on a phone before any `production` build: build `f9a084aa`
+(2 Oct 2026) is 68 MB instead of 147 MB, and sign-in, QR scanning, a photo and a PDF on an
+announcement, and push notifications all worked on Praveen's phone.
+
+**Why.** Every Android phone the class may use runs one of the two kept processor types.
+`armeabi-v7a` stays for old and low-cost 32-bit phones (Android Go), which `arm64-v8a` alone
+would shut out. R8 and resource shrinking are Android's own tools, supported by Expo. Not chosen:
+`enableBundleCompression` (smaller, but the app starts more slowly), and a Play Store AAB that
+gives each phone only its own part (no Play Store yet, #24).
+
+**Consequences.** The APK does not install on an x86 emulator or an x86 Chromebook. R8 can remove
+code that a library reaches only by name; libraries ship their own keep rules, but a crash or a
+broken feature that appears only in the APK points here, and the fix is a rule in
+`extraProguardRules` (OPERATIONS.md "Keeping the APK small" lists what to test). The plugin
+changes the fingerprint (#35), so the APKs built before it (up to `c43019c2`) stop getting
+updates once this is on `main`: every phone installs the new APK once.

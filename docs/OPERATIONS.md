@@ -272,6 +272,16 @@ npx eas-cli@latest build -p android --profile preview
   45 minutes. The free plan allows 15 Android builds a month, so build for a release, not for every change.
 - When it finishes, the build's page on expo.dev has an **Install** link and a QR code. Share that link.
 
+**Keeping the APK small** ([DECISIONS.md #38](DECISIONS.md)). The `expo-build-properties` plugin
+in `app/app.json` builds the APK for phone processors only (`buildArchs`: `armeabi-v7a`, the old
+32-bit phones, and `arm64-v8a`, all newer ones), not for `x86`/`x86_64` (emulators, some
+Chromebooks). It also switches on R8 (`enableMinifyInReleaseBuilds`), which removes unused Java
+code, and `enableShrinkResourcesInReleaseBuilds`, which removes unused images and layouts. R8 can
+remove code that a library only reaches by name, so after a change to these settings or a new
+package with native code, test the APK on a phone before sharing it: sign in, scan a QR code,
+add a photo and a PDF to an announcement, receive a notification, restart into an update. If
+something breaks only in the APK, add a keep rule with `extraProguardRules` in the same plugin.
+
 **Installing on a phone:** open the link on the phone, download the APK, allow the browser to
 **install unknown apps** when Android asks, and install. Android may warn that the app is from an
 unknown developer; choose to install anyway. A newer APK installs over the old one and keeps
