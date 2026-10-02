@@ -6,6 +6,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { View, type ColorValue, type StyleProp, type ViewStyle } from 'react-native';
 
+import type { ModuleTone } from '@/theme/colors';
 import { useTheme } from '@/theme/use-theme';
 
 /** What each icon stands for in this app, and the Ionicons shape used for it. */
@@ -45,6 +46,9 @@ const SHAPES = {
   delete: 'trash-outline',
   send: 'send-outline',
   tick: 'checkmark',
+  instruments: 'musical-notes-outline',
+  events: 'calendar-number-outline',
+  construction: 'construct-outline',
 } as const;
 
 /** The icons the app may use. */
@@ -84,12 +88,15 @@ export type IconBadgeProps = {
   name: IconName;
   /** Diameter of the circle in pixels. Default 40; the icon is a little over half of it. */
   size?: number;
+  /** A module's colour instead of saffron (the circles of the home screen's module ring). */
+  tone?: ModuleTone;
   style?: StyleProp<ViewStyle>;
 };
 
-/** An icon in a pale saffron circle: the start of a card, a tile or an empty screen. */
-export function IconBadge({ name, size = 40, style }: IconBadgeProps) {
+/** An icon in a pale saffron circle (or a module's colour): the start of a card, a tile or an empty screen. */
+export function IconBadge({ name, size = 40, tone, style }: IconBadgeProps) {
   const { colors } = useTheme();
+  const look = tone ? colors.modules[tone] : { background: colors.primarySoft, icon: colors.primary };
   return (
     <View
       style={[
@@ -97,13 +104,13 @@ export function IconBadge({ name, size = 40, style }: IconBadgeProps) {
           width: size,
           height: size,
           borderRadius: size / 2,
-          backgroundColor: colors.primarySoft,
+          backgroundColor: look.background,
           alignItems: 'center',
           justifyContent: 'center',
         },
         style,
       ]}>
-      <Icon name={name} size={Math.round(size * 0.55)} color={colors.primary} />
+      <Icon name={name} size={Math.round(size * 0.55)} color={look.icon} />
     </View>
   );
 }

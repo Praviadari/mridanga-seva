@@ -12,6 +12,7 @@ import { useAuth } from '@/auth/auth-provider';
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { ChoiceGroup } from '@/components/choice-group';
+import { Columns } from '@/components/columns';
 import { EmptyState } from '@/components/empty-state';
 import { ListRow } from '@/components/list-row';
 import { LoadingCards } from '@/components/loading-cards';
@@ -81,7 +82,7 @@ export default function FollowUpScreen() {
   }
 
   return (
-    <Screen underHeader>
+    <Screen underHeader wide onRefresh={load}>
       {header}
       <AppText tone="muted">{t('followUp.intro')}</AppText>
       {haveMine ? (
@@ -111,20 +112,22 @@ export default function FollowUpScreen() {
               {t('followUp.escalatedHelp')}
             </AppText>
           ) : null,
-          ...inGroup.map((entry) => (
-            <ListRow
-              key={entry.student.id}
-              leading="initials"
-              title={entry.student.fullName}
-              chips={{ levelId: entry.student.levelId, status: entry.student.status }}
-              details={[
-                entry.student.rollNo,
-                lastVisitText(t, entry.student),
-                taskText(entry),
-              ]}
-              onPress={() => router.push({ pathname: '/staff/call/[id]', params: { id: entry.student.id } })}
-            />
-          )),
+          <Columns key={`${group}-rows`}>
+            {inGroup.map((entry) => (
+              <ListRow
+                key={entry.student.id}
+                leading="initials"
+                title={entry.student.fullName}
+                chips={{ levelId: entry.student.levelId, status: entry.student.status }}
+                details={[
+                  entry.student.rollNo,
+                  lastVisitText(t, entry.student),
+                  taskText(entry),
+                ]}
+                onPress={() => router.push({ pathname: '/staff/call/[id]', params: { id: entry.student.id } })}
+              />
+            ))}
+          </Columns>,
         ];
       })}
 

@@ -59,6 +59,10 @@ export function BrandHeader({ compact }: BrandHeaderProps) {
       <AppText variant={compact ? 'subtitle' : 'title'} style={{ color: colors.onHeader }}>
         {t('app.name')}
       </AppText>
+      {/* The motto, "Saṅkalpa · Sādhana · Seva" (Praveen, 2 Oct 2026; DECISIONS.md #39). */}
+      <AppText variant="small" style={[styles.centreText, styles.motto, { color: colors.onHeaderMuted }]}>
+        {t('app.motto')}
+      </AppText>
       {compact ? null : (
         <AppText style={[styles.centreText, { color: colors.onHeaderMuted }]}>{t('app.tagline')}</AppText>
       )}
@@ -87,5 +91,9 @@ const styles = StyleSheet.create({
   },
   centreText: {
     textAlign: 'center',
+  },
+  motto: {
+    letterSpacing: 1,
+    marginTop: -spacing.xs,
   },
 });

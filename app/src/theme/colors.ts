@@ -54,10 +54,19 @@ export type Palette = {
    * `success` active, `warning` irregular, `neutral` inactive, `paused` paused, `danger` left.
    */
   chips: Record<ChipTone, { text: string; background: string }>;
+  /**
+   * A colour per module for the icon circles of the home screen (components/module-ring.tsx,
+   * round 4): a pale tint behind the icon and the icon's own colour on it. The colour only helps
+   * to find a circle again; the word is always under it.
+   */
+  modules: Record<ModuleTone, { background: string; icon: string }>;
 };
 
 /** The kinds of small status label, each with its own colours. */
 export type ChipTone = 'info' | 'success' | 'warning' | 'neutral' | 'paused' | 'danger' | 'level';
+
+/** The module colours: students green, attendance blue, calls purple, news orange, groups pink, here now teal. */
+export type ModuleTone = 'green' | 'blue' | 'purple' | 'orange' | 'pink' | 'teal';
 
 // Contrast was checked against WCAG AA (4.5:1 for normal text) for text on background and
 // surface, onPrimary on primary, onPrimarySoft on primarySoft (icons on it need 3:1), and
@@ -92,6 +101,15 @@ export const lightPalette: Palette = {
     paused: { text: '#6B21A8', background: '#F3E8FF' },
     danger: { text: '#B42318', background: '#FEF3F2' },
     level: { text: '#8A3A0E', background: '#FDEBD3' },
+  },
+  // Icon on tint 4.5-6.0:1 in light mode, 6.2-9.9:1 in dark mode (checked 2 Oct 2026, round 4).
+  modules: {
+    green: { background: '#DCFCE7', icon: '#15803D' },
+    blue: { background: '#DBEAFE', icon: '#1D4ED8' },
+    purple: { background: '#EDE9FE', icon: '#6D28D9' },
+    orange: { background: '#FFEDD5', icon: '#C2410C' },
+    pink: { background: '#FCE7F3', icon: '#BE185D' },
+    teal: { background: '#CCFBF1', icon: '#0F766E' },
   },
 };
 
@@ -134,5 +152,13 @@ export const darkPalette: Palette = {
     paused: { text: '#D8B4FE', background: '#2A1A3A' },
     danger: { text: '#F97066', background: '#3A1A17' },
     level: { text: '#F59E0B', background: '#3A2817' },
+  },
+  modules: {
+    green: { background: '#0F2E1C', icon: '#4ADE80' },
+    blue: { background: '#0F2342', icon: '#60A5FA' },
+    purple: { background: '#2A1B4A', icon: '#C4B5FD' },
+    orange: { background: '#3A1E0A', icon: '#FDBA74' },
+    pink: { background: '#3A1226', icon: '#F9A8D4' },
+    teal: { background: '#0B2E2A', icon: '#5EEAD4' },
   },
 };

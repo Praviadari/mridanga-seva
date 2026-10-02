@@ -101,7 +101,7 @@ export default function HereNowScreen() {
   }
 
   return (
-    <Screen underHeader>
+    <Screen underHeader onRefresh={load}>
       {header}
       {today ? (
         <AppText variant="label">{t('hereNow.count', { number: today.hereNow.length })}</AppText>

@@ -69,5 +69,9 @@ The code is in `app/src/i18n/index.ts`, `app/src/components/language-picker.tsx`
 - Mridanga words (bol, taal, dayan, baya) stay as they are; see [GLOSSARY.md](GLOSSARY.md).
 - Technical words people already know in English are fine in the local script: ఈమెయిల్ / ईमेल,
   పాస్‌వర్డ్ / पासवर्ड.
+- The motto "Saṅkalpa · Sādhana · Seva" (`app.motto`) is the same in all three files, in Latin letters
+  with diacritics ([DECISIONS.md #39](DECISIONS.md)); do not translate it. The tab labels
+  (`tabs.*`), the mantra lines (`home.mantraLine1/2`), the module names (`modules.*`) and the Coming
+  soon lines (`comingSoon.*`) in Telugu and Hindi are drafts that still need the review.
 - Telugu and Devanagari letters are taller than Latin ones. The app's line heights allow for this;
   if a translated label looks cut off, report it with a screenshot.

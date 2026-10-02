@@ -816,3 +816,47 @@ broken feature that appears only in the APK points here, and the fix is a rule i
 `extraProguardRules` (OPERATIONS.md "Keeping the APK small" lists what to test). The plugin
 changes the fingerprint (#35), so the APKs built before it (up to `c43019c2`) stop getting
 updates once this is on `main`: every phone installs the new APK once.
+
+## 39. A ring of modules on the staff home, and the motto — 2 Oct 2026
+
+**Context.** The volunteers reviewed the app after round 3 and sent three mockups made with
+ChatGPT (2 Oct 2026). They liked the third, "Central Menu Style": a ring of coloured module
+circles around the drum, with the app name and "Saṅkalpa · Sādhana · Seva" under it. They asked
+for all the icons, with the unbuilt ones marked "under construction". The mockups also had an
+ISKCON logo, a painted banner of a temple and a drum, a quote, and modules the app does not have
+(Admins, Teachers, Inventory, Events, Reports, Settings, Calendar, WhatsApp groups, e-mail
+templates, backup).
+
+**Decision** (Praveen, 2 Oct 2026).
+- **The ring, on the staff homes, with the tabs staying.** C1 and G1 keep their counts and the
+  Mark attendance button; the ring (`components/module-ring.tsx`) replaces the three shortcut
+  tiles further down. Around the drum mark: Students, Attendance, Who is here now, Follow-up
+  calls, Announcements, Groups, each in its own colour, and two modules that are not built yet,
+  **Instruments** and **Events**, in saffron with a small "under construction" mark. Those two open
+  one **Coming soon** screen (`staff/coming-soon.tsx`) that says in a line what the module will
+  do, with an "Under construction" label and a way back. Nothing else from the mockups' module
+  list: those modules were decided against or are for much later (#36), and an empty screen per
+  module is what makes an app feel like a demo. Register a student stays the first button on the
+  Students tab.
+- **The motto** "Saṅkalpa · Sādhana · Seva" is shown under the app name: in the middle of the ring
+  and on the sign-in header. It is written the same way, in Latin letters with diacritics, in all
+  three languages. This relaxes #36's "only the maha-mantra" by one line; the mantra stays as it was.
+- **Not taken:** the ISKCON logo (needs the temple's written permission, #36), the painted banner
+  (AI-generated pictures of deities and temples are the temple's call, and a picture costs a few
+  hundred KB per update), the quote (#36: book texts are BBT copyright; the motto is not a quote),
+  and the mockup's bottom tabs (Calendar, Notifications, Profile): ours are the five things staff
+  do most.
+- **Large text:** when the phone's text size is about 130 % or more, the ring would not hold its
+  labels, so the same modules are shown as a grid of tiles. The two-column grids of round 4 (the
+  profile's details, the lists on a laptop) fall back to one column the same way.
+
+**Why.** The ring is a devotional home that the volunteers asked for, it is plain JavaScript (an
+update, not an APK), and with only planned modules on it, each saying what it will do, it is
+honest. The tabs stay the anchor because they put the five everyday screens one tap away and
+keep Back working on the web (#36).
+
+**Consequences.** A module that gets built swaps its Coming soon entry for its screen in
+`staff-shortcuts.tsx`; a module that is dropped is removed from the ring. The module colours
+(`colors.modules`) were checked for contrast: icon on tint 4.5:1 or better in both themes. The
+Telugu and Hindi lines of the Coming soon screen and the module names are drafts for the
+native-speaker review (TRANSLATIONS.md).

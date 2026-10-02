@@ -79,8 +79,9 @@ app/
   src/
     app/               Screens. Every file is a screen (Expo Router); _layout.tsx files arrange them
       student/         The student's screens; (tabs)/ holds Home, My QR and Announcements
-      staff/           The Guru's and coordinators' screens: register, attendance, follow-up ...;
-                       (tabs)/ holds Home (G1 or C1 by role) and the four used most
+      staff/           The Guru's and coordinators' screens: register, attendance, follow-up ...,
+                       and coming-soon.tsx for the modules not built yet; (tabs)/ holds Home (G1
+                       or C1 by role) and the four used most
     auth/              Who is signed in, their role, and the sign-in / sign-up calls
     screens/           The two staff homes, G1 and C1 (shown by staff/(tabs)/index.tsx)
     data/              Reading and saving records: one file per area (students.ts ...), with the
@@ -89,7 +90,10 @@ app/
                        the QR scanner, the syllabus item card, the announcement card and form,
                        the file picker and file list of an announcement, the reply box and reply
                        card, a progress bar, the number tiles of the home screens, the
-                       staff-screen tiles (C1, G1), the "new version is ready" notice, page frame;
+                       ring of modules of the staff homes (module-ring.tsx, staff-shortcuts.tsx;
+                       DECISIONS.md #39), the "new version is ready" notice, the page frame (with
+                       pull to refresh on phones), columns.tsx (two columns of cards on a laptop),
+                       detail-grid.tsx (label-over-value cells on C8);
                        the look of rounds 1 and 2 (DECISIONS.md #36): icon.tsx (the icon set),
                        saffron-band.tsx (the gradient band), home-header.tsx (the band with the
                        greeting), brand.tsx (the band on the sign-in screens), mridanga-mark.tsx

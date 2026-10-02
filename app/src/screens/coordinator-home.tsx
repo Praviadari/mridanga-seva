@@ -47,7 +47,7 @@ export function CoordinatorHome() {
   );
 
   return (
-    <Screen wide header={<HomeHeader name={name} role={t('roles.coordinator')} />}>
+    <Screen wide header={<HomeHeader name={name} role={t('roles.coordinator')} />} onRefresh={load}>
       <UpdateNotice />
       <MarkAttendanceButton />
 

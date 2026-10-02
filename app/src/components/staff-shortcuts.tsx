@@ -1,17 +1,16 @@
 // The ways to the staff screens from the coordinator dashboard (C1) and the Guru dashboard (G1):
 // a big "Mark attendance" button (C5) at the top of the page, since coordinators do it most during
-// the class, and icon tiles for the screens that have no tab: who is here now (C6), register a
-// student (C2) and groups. One component, so both homes offer the same screens in the same order.
+// the class, and the ring of modules (components/module-ring.tsx) further down: Students (C7),
+// Attendance (C5), Who is here now (C6), Follow-up calls (C10), Announcements (C15), Groups, and
+// the two modules not built yet, Instruments and Events, which open the Coming soon screen
+// (docs/DECISIONS.md #39). One component, so both homes offer the same screens in the same order.
+// Register a student (C2) is the first button on the Students tab.
 
-import { router, type Href } from 'expo-router';
+import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { Pressable, StyleSheet, View } from 'react-native';
 
-import { cardLook, spacing, useTheme } from '@/theme/use-theme';
-
-import { AppText } from './app-text';
 import { Button } from './button';
-import { IconBadge, type IconName } from './icon';
+import { ModuleRing, type Module } from './module-ring';
 
 /** The main action of a staff home: opens Mark attendance (C5). */
 export function MarkAttendanceButton() {
@@ -21,71 +20,30 @@ export function MarkAttendanceButton() {
   );
 }
 
-/** A titled grid of icon tiles, one per staff screen. */
+/** The ring of modules of a staff home. */
 export function StaffShortcuts() {
   const { t } = useTranslation();
-  const shortcuts: { icon: IconName; label: string; href: Href }[] = [
-    // Attendance, Students, Follow-up calls and Announcements are tabs (app/staff/(tabs)/_layout.tsx).
-    { icon: 'hereNow', label: t('staff.hereNow'), href: '/staff/here-now' },
-    { icon: 'register', label: t('staff.registerStudent'), href: '/staff/register' },
-    { icon: 'groups', label: t('groups.title'), href: '/staff/groups' },
+  const modules: Module[] = [
+    { key: 'students', icon: 'students', tone: 'green', label: t('staff.students'), onPress: () => router.push('/staff/students') },
+    { key: 'attendance', icon: 'attendance', tone: 'blue', label: t('tabs.attendance'), onPress: () => router.push('/staff/attendance') },
+    { key: 'hereNow', icon: 'hereNow', tone: 'teal', label: t('home.staff.hereNow'), onPress: () => router.push('/staff/here-now') },
+    { key: 'calls', icon: 'calls', tone: 'purple', label: t('staff.followUp'), onPress: () => router.push('/staff/follow-up') },
+    { key: 'news', icon: 'news', tone: 'orange', label: t('announcements.title'), onPress: () => router.push('/staff/announcements') },
+    { key: 'groups', icon: 'groups', tone: 'pink', label: t('groups.title'), onPress: () => router.push('/staff/groups') },
+    {
+      key: 'instruments',
+      icon: 'instruments',
+      label: t('modules.instruments'),
+      soon: true,
+      onPress: () => router.push({ pathname: '/staff/coming-soon', params: { module: 'instruments' } }),
+    },
+    {
+      key: 'events',
+      icon: 'events',
+      label: t('modules.events'),
+      soon: true,
+      onPress: () => router.push({ pathname: '/staff/coming-soon', params: { module: 'events' } }),
+    },
   ];
-  return (
-    <View style={styles.block}>
-      <AppText variant="subtitle">{t('home.staff.shortcuts')}</AppText>
-      <View style={styles.grid}>
-        {shortcuts.map((s) => (
-          <ShortcutTile key={s.label} icon={s.icon} label={s.label} onPress={() => router.push(s.href)} />
-        ))}
-      </View>
-    </View>
-  );
+  return <ModuleRing title={t('home.staff.shortcuts')} modules={modules} />;
 }
-
-/** One tile: an icon over the screen's name; the whole tile is the button. */
-function ShortcutTile({ icon, label, onPress }: { icon: IconName; label: string; onPress: () => void }) {
-  const { colors } = useTheme();
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.tile,
-        // Three in a row, also on a 375 px phone (about 108 px each; long labels wrap).
-        { flexBasis: '30%' },
-        cardLook(colors),
-        pressed && styles.pressed,
-      ]}>
-      <IconBadge name={icon} size={44} />
-      <AppText variant="label" style={styles.centre}>
-        {label}
-      </AppText>
-    </Pressable>
-  );
-}
-
-const styles = StyleSheet.create({
-  block: {
-    gap: spacing.sm,
-  },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-  },
-  tile: {
-    flexGrow: 1,
-    minHeight: 104,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    padding: spacing.sm,
-  },
-  centre: {
-    textAlign: 'center',
-  },
-  pressed: {
-    opacity: 0.7,
-  },
-});

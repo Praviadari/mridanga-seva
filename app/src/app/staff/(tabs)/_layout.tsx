@@ -19,10 +19,10 @@ const SIDEBAR_FROM = 900;
 export default function StaffTabsLayout() {
   const { t } = useTranslation();
   const { colors } = useTheme();
-  const { width } = useWindowDimensions();
+  const { width, fontScale } = useWindowDimensions();
 
   return (
-    <Tabs screenOptions={tabsScreenOptions(colors, width >= SIDEBAR_FROM)}>
+    <Tabs screenOptions={tabsScreenOptions(colors, width >= SIDEBAR_FROM, fontScale)}>
       {/* The home has its own saffron header band instead of a header bar. */}
       <Tabs.Screen
         name="index"

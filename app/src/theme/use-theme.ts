@@ -1,7 +1,7 @@
 // Gives a screen the colours, spacing and text sizes for the phone's light or dark setting.
 // Use it in every component instead of raw numbers or colour codes.
 
-import { useColorScheme } from 'react-native';
+import { useColorScheme, useWindowDimensions } from 'react-native';
 
 import { darkPalette, lightPalette, type Palette } from './colors';
 
@@ -47,6 +47,26 @@ export const maxContentWidth = 480;
  */
 export const maxDashboardWidth = 960;
 
+/**
+ * Window width in pixels from which a screen is "wide": home tiles sit four to a row and lists
+ * go two columns (a laptop, a tablet held sideways).
+ */
+export const wideFrom = 720;
+
+/** True on a wide window (see `wideFrom`). Re-renders when the window is resized or turned. */
+export function useWide(): boolean {
+  return useWindowDimensions().width >= wideFrom;
+}
+
+/**
+ * True when the person has made the text larger in their phone's settings (about 130 % or more).
+ * Layouts that put several words side by side (a ring of circles, two columns of details) then
+ * fall back to one column, so nothing is cut off at 200 %.
+ */
+export function useLargeText(): boolean {
+  return useWindowDimensions().fontScale >= 1.3;
+}
+
 /** Everything a component needs to style itself. */
 export type Theme = {
   colors: Palette;
@@ -79,8 +99,11 @@ export function headerBarOptions(colors: Palette) {
  * Tabs of a role (staff/(tabs), student/(tabs)): the same saffron header bar as above, and a tab
  * bar in the surface colour with the open tab in saffron. `sidebar` puts the tabs on the left
  * with the label beside the icon, for wide screens. Tabs are at least 56 px tall (48 px minimum).
+ * `fontScale` is the phone's text size setting (1 = normal): the bottom bar grows with it, so a
+ * label at 200 % is not cut off under the icon.
  */
-export function tabsScreenOptions(colors: Palette, sidebar: boolean) {
+export function tabsScreenOptions(colors: Palette, sidebar: boolean, fontScale = 1) {
+  const extra = Math.round(Math.max(0, fontScale - 1) * 24);
   return {
     headerStyle: { backgroundColor: colors.headerTop },
     headerTintColor: colors.onHeader,
@@ -93,11 +116,11 @@ export function tabsScreenOptions(colors: Palette, sidebar: boolean) {
     tabBarStyle: {
       backgroundColor: colors.surface,
       borderColor: colors.cardBorder,
-      ...(sidebar ? { width: 232, paddingTop: spacing.md } : { minHeight: 60 }),
+      ...(sidebar ? { width: 232, paddingTop: spacing.md } : { minHeight: 60 + extra }),
     },
     tabBarItemStyle: sidebar
       ? ({ minHeight: 52, justifyContent: 'flex-start', paddingHorizontal: spacing.md } as const)
-      : { minHeight: 56 },
+      : { minHeight: 56 + extra },
     // Telugu and Hindi letters need the taller line (see `typography`).
     tabBarLabelStyle: sidebar
       ? ({ fontSize: 15, lineHeight: 22, fontWeight: '600' } as const)

@@ -52,7 +52,7 @@ export function GuruHome() {
   const needAttention = board ? board.followUps.reduce((total, f) => total + f.overdue + f.escalated, 0) : 0;
 
   return (
-    <Screen wide header={<HomeHeader name={name} role={t('roles.guru')} />}>
+    <Screen wide header={<HomeHeader name={name} role={t('roles.guru')} />} onRefresh={load}>
       <UpdateNotice />
       <MarkAttendanceButton />
 

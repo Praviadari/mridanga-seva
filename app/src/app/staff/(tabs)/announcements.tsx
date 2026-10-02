@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/auth/auth-provider';
 import { AnnouncementCard } from '@/components/announcement-card';
 import { Button } from '@/components/button';
+import { Columns } from '@/components/columns';
 import { EmptyState } from '@/components/empty-state';
 import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
@@ -58,13 +59,14 @@ export default function StaffAnnouncementsScreen() {
   }
 
   return (
-    <Screen underHeader>
+    <Screen underHeader wide onRefresh={load}>
       {header}
       {newButton}
       {loaded === undefined ? <LoadingCards /> : null}
       {loaded && loaded.announcements.length === 0 ? (
         <EmptyState icon="news" title={t('announcements.empty')} />
       ) : null}
+      <Columns>
       {loaded?.announcements.map((a) => {
         const byMe = a.createdBy === myId;
         const authorName = a.createdBy ? loaded.staffNames.get(a.createdBy) : undefined;
@@ -104,6 +106,7 @@ export default function StaffAnnouncementsScreen() {
           />
         );
       })}
+      </Columns>
     </Screen>
   );
 }

@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/auth/auth-provider';
 import { AnnouncementCard } from '@/components/announcement-card';
 import { Button } from '@/components/button';
+import { Columns } from '@/components/columns';
 import { EmptyState } from '@/components/empty-state';
 import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
@@ -53,12 +54,13 @@ export default function MyAnnouncementsScreen() {
   }
 
   return (
-    <Screen underHeader>
+    <Screen underHeader wide onRefresh={load}>
       {header}
       {loaded === undefined ? <LoadingCards /> : null}
       {loaded && loaded.announcements.length === 0 ? (
         <EmptyState icon="news" title={t('announcements.emptyStudent')} />
       ) : null}
+      <Columns>
       {loaded?.announcements.map((a) => (
         <AnnouncementCard
           key={a.id}
@@ -77,6 +79,7 @@ export default function MyAnnouncementsScreen() {
           onPress={() => router.push({ pathname: '/student/announcements/[id]', params: { id: String(a.id) } })}
         />
       ))}
+      </Columns>
     </Screen>
   );
 }

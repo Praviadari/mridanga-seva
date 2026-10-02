@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next';
 
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
+import { DetailGrid } from '@/components/detail-grid';
 import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
 import { PersonHeader } from '@/components/person-header';
@@ -32,16 +33,6 @@ import { ageOn, dateInIndia, formatDayMonthYear, timeInIndia, todayInIndia } fro
 
 /** What the screen loaded: the profile and the staff names it mentions. */
 type Loaded = { profile: StudentProfile; staffNames: Map<string, string> };
-
-/** "Label: value" on one line, the label in bold. */
-function Line({ label, value }: { label: string; value: string }) {
-  return (
-    <AppText>
-      <AppText variant="label">{label}: </AppText>
-      {value}
-    </AppText>
-  );
-}
 
 /** The whole profile, one section per topic, with the two actions at the top. */
 export default function StudentProfileScreen() {
@@ -112,7 +103,7 @@ export default function StudentProfileScreen() {
   const showGuardians = profile.minor || profile.guardians.length > 0;
 
   return (
-    <Screen underHeader>
+    <Screen underHeader onRefresh={load}>
       {header}
       <PersonHeader
         name={student.fullName}
@@ -140,26 +131,25 @@ export default function StudentProfileScreen() {
       {markOutcome?.errorKey ? <Notice tone="error">{t(markOutcome.errorKey)}</Notice> : null}
 
       <Section icon="person" title={t('profile.detailsSection')}>
-        <Line label={t('profile.joined')} value={formatDayMonthYear(student.joinedOn)} />
-        <Line
-          label={t('register.dob')}
-          value={
-            student.dob
-              ? `${formatDayMonthYear(student.dob)} · ${t('register.age', { age: ageOn(student.dob, today) })}`
-              : t('profile.notGiven')
-          }
+        <DetailGrid
+          details={[
+            { label: t('profile.joined'), value: formatDayMonthYear(student.joinedOn) },
+            {
+              label: t('register.dob'),
+              value: student.dob
+                ? `${formatDayMonthYear(student.dob)} · ${t('register.age', { age: ageOn(student.dob, today) })}`
+                : t('profile.notGiven'),
+            },
+            { label: t('register.phone'), value: student.phone ?? t('profile.notGiven') },
+            { label: t('register.email'), value: student.email ?? t('profile.notGiven') },
+            {
+              label: t('register.area'),
+              value: [student.area, student.pincode].filter(Boolean).join(' · ') || t('profile.notGiven'),
+            },
+            { label: t('register.mentor'), value: student.mentorId ? nameOf(student.mentorId) : t('register.noMentor') },
+            { label: t('profile.appLogin'), value: student.hasLogin ? t('profile.yes') : t('profile.no') },
+          ]}
         />
-        <Line label={t('register.phone')} value={student.phone ?? t('profile.notGiven')} />
-        <Line label={t('register.email')} value={student.email ?? t('profile.notGiven')} />
-        <Line
-          label={t('register.area')}
-          value={[student.area, student.pincode].filter(Boolean).join(' · ') || t('profile.notGiven')}
-        />
-        <Line
-          label={t('register.mentor')}
-          value={student.mentorId ? nameOf(student.mentorId) : t('register.noMentor')}
-        />
-        <Line label={t('profile.appLogin')} value={student.hasLogin ? t('profile.yes') : t('profile.no')} />
       </Section>
 
       {showGuardians ? (

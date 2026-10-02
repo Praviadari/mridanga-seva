@@ -19,8 +19,18 @@ import { AttachmentPicker } from './attachment-picker';
 import { Button } from './button';
 import { Checkbox } from './checkbox';
 import { ChoiceGroup } from './choice-group';
+import type { IconName } from './icon';
 import { Section } from './section';
 import { TextField } from './text-field';
+
+/** The icon on each audience chip. */
+const AUDIENCE_ICONS: Record<Audience, IconName> = {
+  all: 'students',
+  level: 'level',
+  mentees: 'person',
+  staff: 'guardian',
+  group: 'groups',
+};
 
 /** Props for AnnouncementFields. */
 export type AnnouncementFieldsProps = {
@@ -89,7 +99,12 @@ export function AnnouncementFields({
 
       <Section icon="groups" title={t('announcements.compose.audience')}>
         <ChoiceGroup
-          choices={audiences.map((audience) => ({ value: audience, label: audienceLabel(audience) }))}
+          chips
+          choices={audiences.map((audience) => ({
+            value: audience,
+            label: audienceLabel(audience),
+            icon: AUDIENCE_ICONS[audience],
+          }))}
           value={form.audience}
           onChange={(audience) => onChange({ audience })}
           error={errors.audience ? t(errors.audience) : undefined}
@@ -99,8 +114,9 @@ export function AnnouncementFields({
         ) : null}
         {form.audience === 'level' ? (
           <ChoiceGroup
+            chips
             label={t('announcements.compose.level')}
-            choices={[1, 2, 3].map((id) => ({ value: id, label: levelName(t, id) }))}
+            choices={[1, 2, 3].map((id) => ({ value: id, label: levelName(t, id), icon: 'level' as const }))}
             value={form.levelId}
             onChange={(levelId) => onChange({ levelId })}
             error={errors.levelId ? t(errors.levelId) : undefined}
@@ -108,8 +124,9 @@ export function AnnouncementFields({
         ) : null}
         {form.audience === 'group' ? (
           <ChoiceGroup
+            chips
             label={t('announcements.compose.group')}
-            choices={groups.map((g) => ({ value: g.id, label: g.name }))}
+            choices={groups.map((g) => ({ value: g.id, label: g.name, icon: 'groups' as const }))}
             value={form.groupId}
             onChange={(groupId) => onChange({ groupId })}
             error={errors.groupId ? t(errors.groupId) : undefined}

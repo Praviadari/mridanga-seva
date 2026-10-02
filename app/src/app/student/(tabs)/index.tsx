@@ -58,7 +58,7 @@ export default function StudentHomeScreen() {
   const unread = news ? news.announcements.filter((a) => !a.readByMe).length : 0;
 
   return (
-    <Screen wide header={<HomeHeader name={name} />}>
+    <Screen wide header={<HomeHeader name={name} />} onRefresh={load}>
       <UpdateNotice />
 
       {/* First and always there, even when nothing else loads: My QR keeps a copy on the phone

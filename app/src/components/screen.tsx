@@ -4,8 +4,8 @@
 // (components/home-header.tsx) above the content and use a wider column.
 
 import { BottomTabBarHeightContext } from 'expo-router/tabs';
-import { useContext, type PropsWithChildren, type ReactNode } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { useCallback, useContext, useState, type PropsWithChildren, type ReactNode } from 'react';
+import { KeyboardAvoidingView, Platform, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { maxContentWidth, maxDashboardWidth, spacing, useTheme } from '@/theme/use-theme';
@@ -26,13 +26,28 @@ export type ScreenProps = PropsWithChildren<{
   header?: ReactNode;
   /** Use the wider dashboard column (home screens) instead of the reading width. Default false. */
   wide?: boolean;
+  /**
+   * Loads the page's data again when the person pulls the list down (phones only; a browser has
+   * its own reload). The spinner stays until the returned promise settles.
+   */
+  onRefresh?: () => Promise<unknown> | void;
 }>;
 
 /** Standard scrolling page with the app background colour. */
-export function Screen({ centred, underHeader, header, wide, children }: ScreenProps) {
+export function Screen({ centred, underHeader, header, wide, onRefresh, children }: ScreenProps) {
   const { colors } = useTheme();
   // Inside a tab navigator the tab bar already keeps clear of the phone's bottom edge.
   const inTabs = useContext(BottomTabBarHeightContext) !== undefined;
+  const [refreshing, setRefreshing] = useState(false);
+  const refresh = useCallback(async () => {
+    if (!onRefresh) return;
+    setRefreshing(true);
+    try {
+      await onRefresh();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [onRefresh]);
   // A header bar or band above the page already keeps clear of the notch.
   const edges = [
     ...(underHeader || header ? [] : (['top'] as const)),
@@ -51,6 +66,18 @@ export function Screen({ centred, underHeader, header, wide, children }: ScreenP
         <ScrollView
           // Lets a tap on a button work at the first try while the keyboard is open.
           keyboardShouldPersistTaps="handled"
+          // Pull to refresh on Android and iPhone; on the web the browser reloads.
+          refreshControl={
+            onRefresh && Platform.OS !== 'web' ? (
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={() => void refresh()}
+                tintColor={colors.primary}
+                colors={[colors.primary]}
+                progressBackgroundColor={colors.surface}
+              />
+            ) : undefined
+          }
           // With a header band the band stays at the top; only the content below it is centred.
           contentContainerStyle={[styles.scroll, centred && !header && styles.centred]}>
           {header}

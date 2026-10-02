@@ -5,6 +5,7 @@
 
 import { Tabs } from 'expo-router';
 import { useTranslation } from 'react-i18next';
+import { useWindowDimensions } from 'react-native';
 
 import { tabIcon } from '@/components/icon';
 import { tabsScreenOptions, useTheme } from '@/theme/use-theme';
@@ -13,8 +14,9 @@ import { tabsScreenOptions, useTheme } from '@/theme/use-theme';
 export default function StudentTabsLayout() {
   const { t } = useTranslation();
   const { colors } = useTheme();
+  const { fontScale } = useWindowDimensions();
   return (
-    <Tabs screenOptions={tabsScreenOptions(colors, false)}>
+    <Tabs screenOptions={tabsScreenOptions(colors, false, fontScale)}>
       {/* The home has its own saffron header band instead of a header bar. */}
       <Tabs.Screen name="index" options={{ title: t('tabs.home'), headerShown: false, tabBarIcon: tabIcon('home') }} />
       <Tabs.Screen

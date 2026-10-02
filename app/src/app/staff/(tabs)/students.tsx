@@ -7,11 +7,13 @@
 import { router, Stack, useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { StyleSheet, View } from 'react-native';
 
 import { useAuth } from '@/auth/auth-provider';
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { ChoiceGroup, type Choice } from '@/components/choice-group';
+import { Columns } from '@/components/columns';
 import { EmptyState } from '@/components/empty-state';
 import { ListRow } from '@/components/list-row';
 import { LoadingCards } from '@/components/loading-cards';
@@ -32,6 +34,7 @@ import {
   type StudentSummary,
 } from '@/data/student-overview';
 import { lastVisitText, levelName, statusName } from '@/i18n/labels';
+import { spacing, useWide } from '@/theme/use-theme';
 
 /** What the screen loaded: the students and the staff, for mentor names. */
 type Loaded = { students: StudentSummary[]; staff: StaffMember[] };
@@ -86,6 +89,8 @@ export default function StudentListScreen() {
   const update = (change: Partial<StudentFilters>) => setFilters((current) => ({ ...current, ...change }));
   const activeFilters = countActiveFilters(filters);
   const header = <Stack.Screen options={{ title: t('students.title') }} />;
+  // On a laptop the two buttons sit beside the search box, and the list goes two columns.
+  const wide = useWide();
 
   if (loaded === null) {
     return (
@@ -99,36 +104,58 @@ export default function StudentListScreen() {
     );
   }
 
+  const registerButton = (
+    <Button
+      variant="secondary"
+      icon="register"
+      label={t('staff.registerStudent')}
+      onPress={() => router.push('/staff/register')}
+    />
+  );
+  const searchField = (
+    <TextField
+      label={t('students.searchLabel')}
+      hint={t('students.searchHint')}
+      value={filters.search}
+      onChangeText={(search) => update({ search })}
+      autoCapitalize="none"
+      autoCorrect={false}
+      returnKeyType="search"
+    />
+  );
+  const filterButton = (
+    <Button
+      variant="secondary"
+      icon="filter"
+      label={
+        showFilters
+          ? t('students.hideFilters')
+          : activeFilters > 0
+            ? t('students.showFiltersCount', { number: activeFilters })
+            : t('students.showFilters')
+      }
+      onPress={() => setShowFilters(!showFilters)}
+    />
+  );
+
   return (
-    <Screen underHeader>
+    <Screen underHeader wide onRefresh={load}>
       {header}
-      <Button
-        variant="secondary"
-        icon="register"
-        label={t('staff.registerStudent')}
-        onPress={() => router.push('/staff/register')}
-      />
-      <TextField
-        label={t('students.searchLabel')}
-        hint={t('students.searchHint')}
-        value={filters.search}
-        onChangeText={(search) => update({ search })}
-        autoCapitalize="none"
-        autoCorrect={false}
-        returnKeyType="search"
-      />
-      <Button
-        variant="secondary"
-        icon="filter"
-        label={
-          showFilters
-            ? t('students.hideFilters')
-            : activeFilters > 0
-              ? t('students.showFiltersCount', { number: activeFilters })
-              : t('students.showFilters')
-        }
-        onPress={() => setShowFilters(!showFilters)}
-      />
+      {wide ? (
+        <View style={styles.toolbar}>
+          <View style={styles.search}>{searchField}</View>
+          <View style={styles.toolbarButtons}>
+            {registerButton}
+            {filterButton}
+          </View>
+        </View>
+      ) : (
+        <>
+          {registerButton}
+          {searchField}
+          {filterButton}
+        </>
+      )}
 
       {showFilters ? (
         <Section title={t('students.filters.title')}>
@@ -184,23 +211,42 @@ export default function StudentListScreen() {
       )}
 
       {loaded && shown.length === 0 ? <EmptyState icon="search" title={t('students.empty')} /> : null}
-      {shown.map((student) => (
-        <ListRow
-          key={student.id}
-          leading="initials"
-          title={student.fullName}
-          highlighted={student.hereNow}
-          chips={{ levelId: student.levelId, status: student.status }}
-          details={[
-            student.rollNo,
-            lastVisitText(t, student),
-            student.mentorId
-              ? t('students.mentor', { name: staffNames.get(student.mentorId) ?? '' })
-              : t('students.noMentor'),
-          ]}
-          onPress={() => router.push({ pathname: '/staff/students/[id]', params: { id: student.id } })}
-        />
-      ))}
+      <Columns>
+        {shown.map((student) => (
+          <ListRow
+            key={student.id}
+            leading="initials"
+            title={student.fullName}
+            highlighted={student.hereNow}
+            chips={{ levelId: student.levelId, status: student.status }}
+            details={[
+              student.rollNo,
+              lastVisitText(t, student),
+              student.mentorId
+                ? t('students.mentor', { name: staffNames.get(student.mentorId) ?? '' })
+                : t('students.noMentor'),
+            ]}
+            onPress={() => router.push({ pathname: '/staff/students/[id]', params: { id: student.id } })}
+          />
+        ))}
+      </Columns>
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  toolbar: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: spacing.md,
+  },
+  search: {
+    flex: 1,
+  },
+  toolbarButtons: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    // Level with the search box, whose label sits above it.
+    paddingBottom: 2,
+  },
+});

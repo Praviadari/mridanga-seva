@@ -1,7 +1,8 @@
 {
   "app": {
     "name": "Mridanga Seva",
-    "tagline": "Class records, lessons and attendance in one place"
+    "tagline": "Class records, lessons and attendance in one place",
+    "motto": "Saṅkalpa · Sādhana · Seva"
   },
   "common": {
     "email": "Email",
@@ -701,5 +702,17 @@
     "restartFailedBody": "Close the app fully (swipe it away) and open it again: the new version starts then. If you report this, send the line below too.",
     "versionInstalled": "Version {{version}} · as installed, {{date}}",
     "versionUpdate": "Version {{version}} · update of {{date}} ({{id}})"
+  },
+  "modules": {
+    "instruments": "Instruments",
+    "events": "Events"
+  },
+  "comingSoon": {
+    "title": "Coming soon",
+    "chip": "Under construction",
+    "body": "This part of the app is being built. There is nothing here to tap yet.",
+    "instruments": "The temple's mridangas: which ones there are, their condition, who has taken one home and when it comes back.",
+    "events": "Festivals, yatras and programmes where the class plays, with the date and who is coming.",
+    "back": "Back to home"
   }
 }

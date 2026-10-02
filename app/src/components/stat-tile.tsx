@@ -3,9 +3,9 @@
 // and shows an arrow. StatGrid lays tiles out two to a row on a phone, four on a wide screen.
 
 import type { PropsWithChildren } from 'react';
-import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
-import { cardLook, spacing, useTheme } from '@/theme/use-theme';
+import { cardLook, spacing, useTheme, useWide } from '@/theme/use-theme';
 
 import { AppText } from './app-text';
 import { Icon, IconBadge, type IconName } from './icon';
@@ -25,9 +25,9 @@ export type StatTileProps = {
 /** One number on a home screen; a button when `onPress` is given. */
 export function StatTile({ value, label, icon, onPress }: StatTileProps) {
   const { colors } = useTheme();
-  const { width } = useWindowDimensions();
+  const wide = useWide();
   // Two per row on a phone (a little under half each; the gap fills the rest), four from 720 px.
-  const basis = { flexBasis: width >= WIDE_FROM ? '23%' : '45%' } as const;
+  const basis = { flexBasis: wide ? '23%' : '45%' } as const;
   const content = (
     <>
       <View style={styles.top}>
@@ -59,9 +59,6 @@ export function StatTile({ value, label, icon, onPress }: StatTileProps) {
     </View>
   );
 }
-
-/** Window width in pixels from which tiles sit four to a row. */
-const WIDE_FROM = 720;
 
 /**
  * Lays StatTiles out in rows that wrap: two per row on a phone, four on a wide screen, so the
