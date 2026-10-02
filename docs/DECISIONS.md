@@ -946,3 +946,67 @@ client's refresh retries (up to about 30 s) before it fails; My QR shows its sav
 meanwhile. A device with no remembered profile shows the splash for those 30 s. The iPhone layout
 under the notch and the home bar is verified only in a desktop browser, where the sizes are zero;
 it needs a check on a real iPhone (OPERATIONS.md "Adding it to an iPhone home screen").
+
+## 43. Assessments: the Guru sets them, coordinators run and grade them — 2 Oct 2026
+
+**Status: proposed, on the branch `phase2-assessments` only.** Phase 2 reaches main, and with it
+the volunteers' phones, only when Praveen decides. Items marked *to confirm* are Claude's
+proposals awaiting his word.
+
+**Context.** The team approved the assessment flow in the Screen List doc (G6, C12, C13, C14; S7
+has no pick yet, but the flow needs it): the Guru sets work in any form, coordinators hand it
+out, follow up and grade routine work, the Guru grades level-ups (G7, slice 2). Students today
+send recordings on WhatsApp. The free Supabase plan has 1 GB of Storage for everything.
+
+**Decision.**
+- **One assessment, many students.** The Guru writes `assessments` directly (title,
+  instructions, type, level, level-up flag, a rubric of 1-8 lines with a top score 1-10 each, up
+  to 3 files and a link) and keeps it as a draft until "Send to coordinators". A coordinator
+  releases it (`release_assessment`) with notes and a due date to picked students; each student
+  gets one `assessment_assignments` row, whose status is Not seen / Seen / Submitted / Reviewed /
+  Redo. A student gets an assessment once, whichever coordinator releases it.
+- **Database functions do the changes** that touch several rows or must check who is asking
+  (`mark_assessment_seen`, `submit_assessment`, `review_submission`, `remind_assessment`), as
+  for attendance (#5, #14). Row-level security: the Guru sees everything; coordinators see
+  sent assessments and all students' work on them (any coordinator may follow up or review, as
+  any coordinator may tick the syllabus, #22); a student sees only what was given to them. After
+  the first release the type, level, level-up flag and rubric are fixed, so scores keep their
+  meaning; a released assessment cannot be deleted.
+- **A review** gives a score per rubric line, a comment (required for a redo), and Accept or
+  Redo. A redo opens the assignment again; each recording is its own `assessment_submissions`
+  row, so the history stays. On a level-up assessment an accepted review can be marked "send
+  level-up to the Guru" (`send_level_up`), which slice 2 (G7, C22, C23) will read.
+- **Recordings are files the student picks**, made with the phone's own recorder or camera, or
+  a link (unlisted YouTube, Google Drive). Recording inside the app needs expo-audio, a native
+  package and a new APK: *Praveen's decision*, not taken here. Coordinators' voice notes on a
+  review (C14 in the doc) wait for the same decision. Audio and video play through the browser
+  view the app already has (expo-web-browser), not an in-app player.
+- **Storage cap (to confirm):** a private bucket `assessment-files`, at most **50 MB a file**
+  (the free plan's own per-file limit), only common audio, video, photo and PDF types. A student
+  may upload only while an assessment waits for them, at most **10 files a day**. One recording
+  per submission.
+- **Retention (to confirm):** a submitted file is deleted **30 days after its review**; the score,
+  comment and history stay. A file sent to the Guru for a level-up is kept until slice 2
+  decides. The daily job asks the Edge Function to delete expired files through the Storage API
+  (a SQL delete would leave the file behind, #32).
+- **Notifications** go through a queue, `push_outbox`, worded on the server in the person's app
+  language and sent by the Edge Function `notify-announcements` with the announcements: a new
+  assessment to the student, "sent a recording" to the coordinator who released it, the review
+  to the student, and reminders. **Remind** on the tracker reaches students who have not sent it,
+  at most once in 12 hours each. **Automatic reminders** come from a daily job at 09:00 IST
+  (`assessment_daily`) for work due today or tomorrow: it is a few lines of SQL on the same
+  queue, so it is built (*to confirm* the timing).
+- **Entry points:** an Assessments circle on the staff ring and on the student ring.
+
+**Why.** It follows the approved flow and the Phase 1 patterns (rules in the database, views as
+the person asking, private files behind signed links), so a coordinator's phone and a student's
+phone cannot see or change more than they should. 50 MB is about 25 minutes of phone audio or a
+minute or two of phone video; with 200 students sending one recording a month and files kept 30
+days after review, Storage should stay well under 1 GB, and a link costs nothing.
+
+**Consequences.** Migration `0012_assessments.sql` (TEST project only until Phase 2 goes live).
+The Edge Function must be deployed again for the assessment notifications and the file deletion;
+until then those rows wait and nothing breaks, and the old function ignores them. S7 needs the
+team's pick in the Screen List doc. The Telugu and Hindi texts, in the app and in the
+notification lines in the migration, are drafts for the native-speaker review. Slice 2 is the
+promotion approval (C22, C23, G7).

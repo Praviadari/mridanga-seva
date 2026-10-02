@@ -16,6 +16,7 @@ in number order:
 | `0009_home_screens.sql` | The numbers on the three home screens: `student_home`, `coordinator_dashboard` and `guru_dashboard`, and one meaning of "this week" (`week_start_ist`) ([DECISIONS.md #31](DECISIONS.md)) |
 | `0010_announcement_files.sql` | Photos and PDFs on announcements: the private Storage bucket `announcement-files`, checks on `attachments`, and who may upload, open and delete a file ([DECISIONS.md #32](DECISIONS.md)) |
 | `0011_push_notifications.sql` | Push notifications: `announcements.notified_at`, `push_tokens`, `register_push_token`, and the every-minute job that calls the Edge Function `notify-announcements` ([DECISIONS.md #33](DECISIONS.md)) |
+| `0012_assessments.sql` | **Phase 2, branch `phase2-assessments`, TEST only.** Assessments, releases, assignments and submissions with their rules; the private bucket `assessment-files`; the push queue `push_outbox`; the daily reminder job ([DECISIONS.md #43](DECISIONS.md)). See "Assessments (Phase 2)" |
 
 Every table and important column also carries a `COMMENT ON` description, so you can read it in
 the Supabase dashboard (Table Editor → table → description).
@@ -36,6 +37,7 @@ consent), sample visits, groups and an announcement. Never run it on the live pr
 | Follow-up | `call_logs`, `follow_up_tasks`, `status_history` | Every call and every status change is kept |
 | Learning | `levels`, `syllabus_items`, `student_progress`, `level_history`, `materials` | Three levels; each has an ordered syllabus |
 | Communication | `announcements`, `announcement_reads`, `announcement_replies`, `groups`, `group_members`, `push_tokens` | Groups replace the WhatsApp groups. Views `announcement_audience` and `announcement_seen` give "seen by", `announcement_reply_list` the replies with names, `group_summary` the member counts. Photos and PDFs are files in the Storage bucket `announcement-files`, listed in `announcements.attachments` |
+| Assessments (Phase 2) | `assessments`, `assessment_releases`, `assessment_assignments`, `assessment_submissions`, `push_outbox` | Views `assessment_tracker` (C13) and `assessment_summary` (counts). Files in the Storage bucket `assessment-files` |
 | Audit | `audit_log` | Who changed a student, profile, call log, level, syllabus tick or announcement, or deleted a reply, and when |
 
 ## Student status
@@ -366,6 +368,69 @@ Words these functions use, the same on every screen:
 | Calls due for my students (C1) | Students with an open follow-up task due today or earlier, or escalated, that is assigned to me or whose mentor I am: the *needs the Guru* and *call due* groups of C10 for "My students" |
 | Overdue (G1) | Students with an open task past its due date, not escalated. Escalated ones are counted separately. Grouped by the task's assignee (the mentor when the task was made); no assignee = the student had no mentor |
 
+## Assessments (Phase 2)
+
+Migration 0012, on the branch `phase2-assessments`, run on the TEST project only until Phase 2
+goes live ([DECISIONS.md #43](DECISIONS.md)). Screens G6, C12, C13, C14, S7 (SCREENS.md).
+
+| Table | One row per | Written by |
+|---|---|---|
+| `assessments` | Assessment the Guru set: `title`, `instructions`, `kind` (`playing`, `singing`, `theory`, `other`), `level_id`, `level_up`, `rubric` (list of `{criterion, max}`), `media` (up to 3 files), `media_link`, `sent_at` (empty = draft) | The Guru, directly; trigger `assessments_guard` |
+| `assessment_releases` | A coordinator's handing-out: `notes`, `due_on`, `released_by` | `release_assessment` |
+| `assessment_assignments` | Student and assessment (unique): `status` `assigned` (Not seen), `seen`, `submitted`, `reviewed`, `redo`; `seen_at`, `last_reminded_at`, `reminders` | The functions below |
+| `assessment_submissions` | Recording a student sent: `file` (`{path, name, kind audio\|video, size}`) and/or `link`, `note`; the review: `scores` (one per rubric line), `score`, `score_max`, `comment`, `outcome` (`accepted`, `redo`), `send_level_up`, `reviewed_by`, `reviewed_at`; `file_removed_at` | `submit_assessment`, `review_submission` |
+| `push_outbox` | Notification to one person: `title`, `body` (in their app language), `url` (the screen), `sent_at` | The functions below; sent by the Edge Function. No app access at all |
+
+The trigger `assessments_guard`:
+
+| Rule | Error code |
+|---|---|
+| Title trimmed, 1 to 120 characters; instructions at most 4000 | `title_required`, `title_too_long`, `instructions_too_long` |
+| Rubric of 1 to 8 lines, each a criterion of 1 to 80 characters and a whole top score 1 to 10 | `rubric_required`, `rubric_invalid` |
+| At most 3 files, each a proper path in the uploader's own folder that is in Storage (size taken from Storage), kind matching the ending; the link `https://`, at most 500 characters | `too_many_media`, `file_invalid`, `file_not_yours`, `file_missing`, `link_invalid` |
+| The author is the signed-in person; `sent_at` set once, by the database's clock, never cleared | `assessment_frozen`, `already_sent` |
+| After the first release, type, level, level-up flag and rubric stay | `assessment_released` |
+
+The functions (all security definer, each checks who is asking):
+
+| Function | Who | Does | Errors |
+|---|---|---|---|
+| `release_assessment(assessment, students[], due_on, notes)` | Guru, coordinator | For a sent assessment: one release and one assignment per picked student who does not have it yet; a notification to each with a login. Returns `{release_id, assigned, already, no_login}` | `not_allowed`, `assessment_not_found`, `students_required`, `due_required`, `due_past`, `due_too_far`, `notes_too_long`, `nothing_to_assign` |
+| `mark_assessment_seen(assignment)` | The student it belongs to | `seen_at`, Not seen → Seen | `not_allowed` |
+| `submit_assessment(assignment, file, link, note)` | The student it belongs to, while Not seen, Seen or Redo | Saves the recording (own uploaded audio/video, never sent before, ≤ 50 MB) or link; status Submitted; tells the coordinator who released it | `not_allowed`, `not_open`, `recording_required`, `file_invalid`, `file_not_yours`, `file_missing`, `link_invalid`, `note_too_long` |
+| `review_submission(submission, scores[], comment, outcome, send_level_up)` | Guru, coordinator | Only the latest, unreviewed recording: scores within each line's top, total; comment required for a redo; `send_level_up` only for an accepted level-up assessment; status Reviewed or Redo; tells the student | `not_allowed`, `submission_not_found`, `already_reviewed`, `outcome_required`, `scores_invalid`, `comment_required`, `comment_too_long`, `level_up_not_allowed` |
+| `remind_assessment(assignments[])` | Guru, coordinator | A reminder to each still to send (Not seen, Seen, Redo), at most once in 12 hours each. Returns `{reminded, no_login, skipped}` | `not_allowed` |
+
+Who sees what (row-level security): the Guru every assessment, drafts too; a coordinator the
+sent ones, and every release, assignment and submission (any coordinator may follow up or
+review); a student only the assessments, releases, assignments and submissions that are theirs
+(`my_student_id()`). The views `assessment_tracker` (one row per assignment with the student's
+name, roll number, login yes/no, due date and latest submission) and `assessment_summary`
+(counts per status) are security invoker.
+
+**Files.** The private bucket `assessment-files`: at most 50 MB a file; JPEG, PNG, WebP, PDF,
+MP3, M4A, AAC, WAV, OGG, AMR, MP4, MOV, 3GP, WebM, MKV. A path is
+`<login id>/<random id>.<ending>`; `assessment_file_kind()` reads the kind from the ending.
+
+| Action | Allowed for | Rule function |
+|---|---|---|
+| Open, or make a signed link | The Guru; anyone who may read an assessment or a submission that lists the file; one's own folder | `assessment_file_readable` |
+| Upload | The Guru, any kind, own folder; a student audio or video into their own folder, only while an assessment waits for them, at most 10 files in a day | `assessment_file_uploadable` |
+| Delete | The Guru any; anyone else their own upload while no submission lists it | `assessment_file_deletable` |
+
+**Keeping files.** A recording is deleted 30 days after its review (`file_removed_at` is set; the
+review stays), except one sent to the Guru for a level-up. The daily job `assessment_daily` calls
+the Edge Function with `{"cleanup": true}`, which takes the paths from
+`claim_expired_submission_files()` and deletes them through the Storage API (a batch Storage
+refuses goes back with `release_submission_files`).
+
+**Notifications.** `push_outbox` rows are written by the functions above and the daily job, in
+the person's `profiles.language`, with the screen to open: `/student/assessments/<assignment>`
+or `/staff/assessments/review/<assignment>`. The every-minute job calls the Edge Function while
+a row of the last day waits; `claim_push_outbox()` marks them sent and returns one row per phone;
+rows older than a day are never sent. The Edge Function from the same commit must be deployed;
+the one deployed for 0011 ignores the queue.
+
 ## Linking a login to a student
 
 A student record can exist without a login (many students never install the app). When a person
@@ -406,6 +471,8 @@ so every function is revoked from them and granted only where needed
 | `week_start_ist()` | Anyone signed in | Monday of this week in India; used by the functions above |
 | `register_push_token(token, platform)` | Guru, coordinator, student | Saves this phone's Expo push token for the signed-in person, taking it over from another login on the same phone; at most 5 phones each. Security definer. Errors `not_allowed`, `bad_token`, `bad_platform`. See "Announcements" → "Push notifications" |
 | `claim_due_push()`, `release_push_claim(ids)` | Only the Edge Function (service role) | Mark waiting announcements notified and return the phones to notify; put them back when nothing could be sent |
+| `release_assessment`, `mark_assessment_seen`, `submit_assessment`, `review_submission`, `remind_assessment` | See "Assessments (Phase 2)" | Phase 2 (0012) |
+| `claim_push_outbox()`, `release_push_outbox(ids)`, `claim_expired_submission_files()`, `release_submission_files(ids)` | Only the Edge Function (service role) | Send the queued assessment notifications; delete expired recordings (0012) |
 
 The Storage rules `announcement_file_readable`, `announcement_file_uploadable`,
 `announcement_file_deletable` and `announcement_file_path_ok` are run by row-level security as
@@ -426,7 +493,8 @@ and audit triggers (including `guard_student_progress`, `audit_student_progress`
 |---|---|---|
 | `mridanga-status-refresh` | 00:30 UTC = 06:00 IST | `refresh_student_statuses()` — ends expired pauses, moves quiet students on, creates call tasks, flags overdue ones |
 | `mridanga-close-visits` | 15:30 UTC = 21:00 IST | `close_open_visits()` — closes visits left open, at the centre's closing time |
-| `mridanga-push` | Every minute | `send_due_push()` — calls the Edge Function `notify-announcements` when a published announcement waits for its push notification; does nothing while push is not set up (0011) |
+| `mridanga-push` | Every minute | `send_due_push()` — calls the Edge Function `notify-announcements` when a published announcement waits for its push notification; does nothing while push is not set up (0011); since 0012 also when an assessment notification of the last day waits in `push_outbox` |
+| `mridanga-assessments` | 03:30 UTC = 09:00 IST | `assessment_daily()` — reminders for assessments due today or tomorrow that are not sent yet; asks the Edge Function (`{"cleanup": true}`) to delete recordings 30 days past their review (0012) |
 
 ## Who can see what
 
@@ -446,6 +514,9 @@ and audit triggers (including `guard_student_progress`, `audit_student_progress`
 | Staff names (`staff_names`) | Guru and coordinators' names only | Same | Same |
 | Settings, levels, syllabus, centres | Read | Read | Read / write |
 | Audit log | — | — | Read |
+| Assessments (Phase 2) | Those given to them, with the release notes and files | Sent ones; create none | All, drafts too; create, send, delete unreleased |
+| Assessment assignments, submissions, tracker | Own; submit through `submit_assessment` | All; release, remind, review through the functions | Same as coordinator |
+| Assessment files (Storage) | Files of their assessments and their own recordings; upload audio or video while one is open (10 a day) | All on sent assessments and all recordings | All; upload; delete any |
 
 ## Changing the database
 
@@ -464,7 +535,8 @@ and audit triggers (including `guard_student_progress`, `audit_student_progress`
 data: login linking, the profile guard, registration and consent, attendance marking, the
 student overview, follow-up calls, syllabus ticks, announcements with their read receipts,
 edits, staff names and private replies, groups, the home-screen numbers, photos and PDFs (who
-may upload, open and delete a file), push tokens and the push queue, who may run each function,
+may upload, open and delete a file), push tokens and the push queue, assessments (Phase 2: drafts,
+releases, submitting, reviews, reminders, the push queue, keeping files), who may run each function,
 and row-level security. It needs only Node.js, no database server and no Supabase account.
 `npm test` also runs `push-messages.test.mjs`, which checks how the Edge Function words and
 batches the notifications (Node 23.6 or later reads its TypeScript directly).

@@ -59,11 +59,13 @@ export default function StudentHomeScreen() {
   const unread = news ? news.announcements.filter((a) => !a.readByMe).length : 0;
 
   // The ring of the student's screens (docs/DECISIONS.md #41): the three tabs' subjects plus My
-  // progress (S4), and Events as the one module not built yet.
+  // progress (S4), Assessments (S7, Phase 2), and Events as the one module not built yet.
   const modules: Module[] = [
     { key: 'qr', icon: 'qr', tone: 'blue', label: t('tabs.myQr'), onPress: () => router.push('/student/my-qr') },
     { key: 'news', icon: 'news', tone: 'orange', label: t('announcements.title'), onPress: () => router.push('/student/announcements') },
     { key: 'progress', icon: 'syllabus', tone: 'purple', label: t('progress.title'), onPress: () => router.push('/student/progress') },
+    // Phase 2 (S7, docs/DECISIONS.md #43).
+    { key: 'assessments', icon: 'assessment', tone: 'teal', label: t('assessments.title'), onPress: () => router.push('/student/assessments') },
     {
       key: 'events',
       icon: 'events',

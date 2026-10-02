@@ -73,5 +73,11 @@ The code is in `app/src/i18n/index.ts`, `app/src/components/language-picker.tsx`
   with diacritics ([DECISIONS.md #39](DECISIONS.md)); do not translate it. The tab labels
   (`tabs.*`), the mantra lines (`home.mantraLine1/2`), the module names (`modules.*`) and the Coming
   soon lines (`comingSoon.*`) in Telugu and Hindi are drafts that still need the review.
+- **Phase 2 assessments** (branch `phase2-assessments`, [DECISIONS.md #43](DECISIONS.md)): every
+  Telugu and Hindi line under `assessments.*` is a draft for the native-speaker review, and so are
+  the notification lines in `assessment_push_line()` in `supabase/migrations/0012_assessments.sql`
+  (the server words those in the person's app language). Words to check first: మూల్యాంకనం /
+  मूल्यांकन (assessment), రూబ్రిక్ / रूब्रिक (rubric), స్థాయి పెంపు / स्तर-उन्नति (level-up),
+  కోఆర్డినేటర్ / कोऑर्डिनेटर (coordinator, as elsewhere in the app). Checked for mixed Telugu-Devanagari words on 2 Oct 2026.
 - Telugu and Devanagari letters are taller than Latin ones. The app's line heights allow for this;
   if a translated label looks cut off, report it with a screenshot.

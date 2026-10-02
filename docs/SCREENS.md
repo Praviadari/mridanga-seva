@@ -1,6 +1,6 @@
 # Screens
 
-The Phase 1 screens and how far each one is. Screen numbers (A1, C2, G4 ...) come from the
+The Phase 1 screens and how far each one is (Phase 2 at the end). Screen numbers (A1, C2, G4 ...) come from the
 screen list the team approved; code comments use them. Phase 2 and 3 screens are added here when
 their building starts.
 
@@ -66,6 +66,20 @@ screens open on top of the tabs with a back button.
 
 Coordinator screens that the Guru also uses live in `app/src/app/staff/`
 (see ARCHITECTURE.md "Navigation by role").
+
+## Phase 2 (branch `phase2-assessments`, not on main yet)
+
+Slice 1, the assessment flow ([DECISIONS.md #43](DECISIONS.md)). It reaches main and the
+volunteers' phones only when Praveen decides; Phase 2 goes live 1 Mar 2027. Each home's ring has an
+Assessments circle. Slice 2 is the promotion approval (C22, C23, G7).
+
+| # | Screen | Who | Status | Code |
+|---|---|---|---|---|
+| G6 | Create assessment: title, instructions, type, level, level-up flag, a rubric (1-8 lines, top score 1-10 each), up to 3 files (photo, PDF, audio, video; 50 MB each) and a link; Send to coordinators or Save as draft; send a draft later, delete one never released | Guru | Built (no edit yet) | `app/src/app/staff/assessments/new.tsx`, `[id].tsx`, `app/src/data/assessments.ts`, `app/src/data/assessment-files.ts` |
+| C12 | Assessments from the Guru: the list with level, type, level-up and counts per state; give one to students: notes, a due date (3, 7 or 14 days, or typed), students picked by level and name, "Select all shown" | Coordinator (and Guru) | Built | `app/src/app/staff/assessments/index.tsx`, `release/[id].tsx` |
+| C13 | Assessment tracker: each student Not seen / Seen / Submitted / Reviewed / Redo and Late, filters, no-login note, last reminder; "Remind everyone who has not sent it" (push); automatic reminders at 09:00 IST on the day before and the due day | Coordinator (and Guru) | Built | `app/src/app/staff/assessments/[id].tsx`, `app/src/components/assessment-parts.tsx` |
+| C14 | Review submission: the recording (Play in the browser view) or link and the student's note; a score per rubric line, a comment, Accept or Ask for a redo, "Send level-up to the facilitator" on a level-up assessment; earlier recordings with their reviews; Remind while nothing is sent. No voice note yet (needs expo-audio) | Coordinator (and Guru) | Built | `app/src/app/staff/assessments/review/[id].tsx` |
+| S7 | Assessments: my list (to do first, by due date); one assessment with the instructions, files, the coordinator's note, the rubric; send a recording (an audio or video file, or a link) with a note; the score per line and the comment; send again after a redo. **No team pick in the doc yet** | Student | Built | `app/src/app/student/assessments/index.tsx`, `[id].tsx` |
 
 ## Build order
 

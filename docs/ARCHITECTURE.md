@@ -44,9 +44,9 @@ flowchart LR
 | App | Screens for Guru, Coordinator and Student. Built with Expo (React Native + TypeScript); one code base gives Android, iOS and web | `app/` — screens in `app/src/app/` |
 | Auth | Sign-up and login with email + password | Supabase Auth |
 | Database | All records, and the rules about them (who may see what, how a student's status changes) | `supabase/migrations/` |
-| Storage | Photos and PDFs on announcements, in the private bucket `announcement-files`; later student photos (only with consent) | Supabase Storage, rules in `supabase/migrations/0010_announcement_files.sql` |
+| Storage | Photos and PDFs on announcements, in the private bucket `announcement-files`; later student photos (only with consent). Phase 2: assessment files and students' recordings in `assessment-files` (50 MB a file, deleted 30 days after review) | Supabase Storage, rules in `supabase/migrations/0010_announcement_files.sql` and `0012_assessments.sql` |
 | Scheduled jobs | Move quiet students to *Irregular*, create follow-up calls, close check-ins left open (daily); send push notifications for new announcements (every minute) | `pg_cron`, defined in the migrations |
-| Push notifications | Tell Android phones about a new announcement | Edge Function `supabase/functions/notify-announcements/` → Expo's push service → Firebase Cloud Messaging (OPERATIONS.md "Push notifications") |
+| Push notifications | Tell Android phones about a new announcement; in Phase 2 also about assessments (given, reminded, reviewed, a recording sent), queued in `push_outbox` | Edge Function `supabase/functions/notify-announcements/` → Expo's push service → Firebase Cloud Messaging (OPERATIONS.md "Push notifications") |
 | Email | Sends sign-up confirmation and password-reset emails | Brevo free plan, plugged into Supabase as SMTP |
 | Videos | Lesson videos stay on YouTube; the app only stores links | YouTube |
 | Web hosting | Serves the web version that iPhone users add to their home screen | Cloudflare Pages, uploaded from `app/dist` (OPERATIONS.md) |
@@ -79,10 +79,11 @@ app/
   src/
     app/               Screens. Every file is a screen (Expo Router); _layout.tsx files arrange them
       student/         The student's screens; (tabs)/ holds Home, My QR and Announcements; one
-                       announcement, progress.tsx (S4) and coming-soon.tsx open on top
+                       announcement, progress.tsx (S4), assessments/ (S7, Phase 2) and
+                       coming-soon.tsx open on top
       staff/           The Guru's and coordinators' screens: register, attendance, follow-up ...,
                        and coming-soon.tsx for the modules not built yet; (tabs)/ holds Home (G1
-                       or C1 by role) and the four used most
+                       or C1 by role) and the four used most; assessments/ holds G6, C12-C14 (Phase 2)
     auth/              Who is signed in, their role, and the sign-in / sign-up calls
     screens/           The two staff homes, G1 and C1 (shown by staff/(tabs)/index.tsx), and the
                        Coming soon page both areas show
@@ -267,6 +268,29 @@ never deleted ([DECISIONS.md #28](DECISIONS.md)).
 Push notifications reach only the Android app built by EAS, once push is set up (OPERATIONS.md
 "Push notifications"). The web version (iPhones) has none yet: people there see new
 announcements when they open the app.
+
+## How assessments flow (Phase 2, branch `phase2-assessments`)
+
+Not on main yet; it reaches the phones only when Praveen decides ([DECISIONS.md #43](DECISIONS.md)).
+
+1. The Guru creates an assessment (G6): instructions, type, level, level-up or not, a rubric,
+   files and a link. It stays a draft, seen only by the Guru, until *Send to coordinators*.
+2. A coordinator opens it from *Assessments* on the home's ring (C12), writes notes, sets a due
+   date and picks students. `release_assessment` gives each one an assignment and queues a push
+   notification for those with the app.
+3. The student opens it (S7): the coordinator sees *Seen*. They record with the phone's own
+   recorder or camera and send the file (at most 50 MB) or a link, with a note.
+   `submit_assessment` checks the file is theirs and in Storage, and tells the coordinator.
+4. The tracker (C13) shows each student Not seen / Seen / Submitted / Reviewed / Redo and Late.
+   *Remind* queues a reminder; a daily job at 09:00 IST reminds anyone due today or tomorrow.
+5. A coordinator reviews (C14): plays the recording, scores each rubric line, comments, and
+   accepts or asks for a redo; for a level-up assessment, marks it for the Guru (slice 2: G7,
+   C22, C23). The student sees the score and the comment.
+6. The Edge Function sends the queued notifications with the announcements, and once a day
+   deletes recordings 30 days past their review.
+
+Audio and video open in the phone's browser view (expo-web-browser); the app has no player and
+no in-app recorder, because each would be a native package and a new APK.
 
 ## Phases
 

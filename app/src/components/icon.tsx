@@ -49,6 +49,13 @@ const SHAPES = {
   instruments: 'musical-notes-outline',
   events: 'calendar-number-outline',
   construction: 'construct-outline',
+  // Assessments (Phase 2): the module, playing a recording, audio and video files, a link, a score.
+  assessment: 'clipboard-outline',
+  play: 'play-circle-outline',
+  audio: 'mic-outline',
+  video: 'videocam-outline',
+  link: 'link-outline',
+  score: 'star-outline',
 } as const;
 
 /** The icons the app may use. */
