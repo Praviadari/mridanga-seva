@@ -136,7 +136,10 @@ change of colour or wording is made in one place.
 5. **Next start:** the app keeps a copy of the person's own profile on the device
    (`src/auth/saved-profile.ts`) and opens their home from it at once, while the login is
    restored and the profile fetched behind it; without internet the copy keeps their screens
-   ([DECISIONS.md #37](DECISIONS.md)). Sign-out forgets it.
+   ([DECISIONS.md #37](DECISIONS.md)). Sign-out forgets it. With no internet and an expired
+   token, Supabase reports no session although the login is still saved; the app then keeps the
+   person's screens from that copy until the login is refreshed, and Sign out still works
+   ([DECISIONS.md #42](DECISIONS.md)).
 
 Links in emails go to the address set as **Site URL** in Supabase, or to the web address the
 request came from (see OPERATIONS.md).

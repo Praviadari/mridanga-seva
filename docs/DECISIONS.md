@@ -903,3 +903,46 @@ coordinators and the facilitator (#22), and moving up a level stays the facilita
 
 **Consequences.** S4 is half built: the syllabus progress is there, the lessons and materials
 come later. Telugu and Hindi lines of S4 are drafts for the native-speaker review.
+
+## 42. Without internet a saved login stays signed in, and iPhone page settings — 2 Oct 2026
+
+**Context.** Round 6 tested the paths that had never been tried (NOTES, UI/UX handover). Reading
+the installed Supabase auth client (2.117.2) and trying it in the browser with no internet showed
+two gaps. A login's access token lasts an hour. When the app starts after that with no internet,
+the client cannot refresh the token and reports "no session" after about 30 seconds of retries,
+although the login is still saved and works again once there is a connection. The app then
+showed the sign-in screen: a student at the door with no signal lost My QR, which #21 and #37
+promise works offline. In the same state, Sign out returned an error and kept the login, so the
+person stayed signed in. Separately, the web version had no iPhone page settings beyond the
+home-screen icon.
+
+**Decision.**
+- **A saved login that could not be refreshed for lack of internet keeps the person's area.**
+  The auth provider tells this case from a real sign-out by looking for the saved login on the
+  device (`storedLoginUserId` in `src/lib/supabase.ts`) when "no session" arrives at start. The
+  remembered profile of the same person (#37) then opens their screens; with no remembered
+  profile they see "Could not load your account" with Check again, not sign-in. The next
+  Supabase event settles it: a refreshed token once online, or SIGNED_OUT when the server says
+  the login is no longer valid.
+- **Sign out works without internet.** When Supabase's sign-out fails and the login is still
+  saved, the app deletes the saved login itself and signs out again, which clears the client and
+  forgets the remembered profile and the saved QR card. The phone's push token row then stays on
+  the server until the phone's next sign-in replaces it.
+- **iPhone page settings** in `app/public/index.html`: `viewport-fit=cover`, so Safari reports the
+  notch and home-bar sizes that the app's safe-area code already uses; a translucent status bar
+  for the home-screen app, so the saffron header runs behind it with white icons (every screen
+  starts with a saffron band or header bar); `theme-color` in the header colours, light and
+  dark; `text-size-adjust: 100%`, so turning the phone does not enlarge the text; no grey tap
+  flash. The page's language (`<html lang>`) follows the app's, so VoiceOver reads Telugu and Hindi
+  with the right voice (`src/i18n/index.ts`). Text fields are 16 px, so Safari does not zoom in
+  when one is tapped.
+
+**Why.** The door is where the app matters most, and a weak signal there is normal. A saved
+login is not proof of access: the database still checks every request (#15), and an invalid
+login ends at the next successful contact with the server.
+
+**Consequences.** Offline with an expired token, the first data request on a screen waits for the
+client's refresh retries (up to about 30 s) before it fails; My QR shows its saved card at once
+meanwhile. A device with no remembered profile shows the splash for those 30 s. The iPhone layout
+under the notch and the home bar is verified only in a desktop browser, where the sizes are zero;
+it needs a check on a real iPhone (OPERATIONS.md "Adding it to an iPhone home screen").

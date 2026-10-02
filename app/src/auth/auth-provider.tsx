@@ -6,14 +6,17 @@
 // area's screens. Until both are known the area is 'loading' and the splash shows, except when
 // this device remembers the person's profile (src/auth/saved-profile.ts): then their area opens at
 // once from that copy while the login is restored and the profile fetched behind it, and the copy
-// keeps being used when the fetch fails for lack of internet (docs/DECISIONS.md #37).
+// keeps being used when the fetch fails for lack of internet (docs/DECISIONS.md #37). Without
+// internet and with an expired access token, Supabase reports "no session" although the login is
+// still saved; the person then keeps their area from the remembered profile until the login is
+// refreshed, instead of landing on sign-in (docs/DECISIONS.md #42).
 // Roles are given by the database, never chosen in the app (docs/ARCHITECTURE.md "Roles").
 
 import type { Session } from '@supabase/supabase-js';
 import { createContext, use, useEffect, useState, type PropsWithChildren } from 'react';
 
 import { applyProfileLanguage, currentLanguage, hasChosenLanguage } from '@/i18n';
-import { supabase, supabaseConfigProblem } from '@/lib/supabase';
+import { storedLoginUserId, supabase, supabaseConfigProblem } from '@/lib/supabase';
 
 import { forgetSavedProfile, readSavedProfile, saveProfile } from './saved-profile';
 import type { Area, Profile } from './types';
@@ -44,6 +47,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
   // Set when the person arrives from a password-reset email link (web only).
   const [recovering, setRecovering] = useState(false);
   const [profileResult, setProfileResult] = useState<ProfileResult | null>(null);
+  // The user id of a login that is saved on this device but could not be restored at start,
+  // because its token had expired and there was no internet to refresh it. Null otherwise.
+  const [offlineUserId, setOfflineUserId] = useState<string | null>(null);
   // The profile remembered from the last start, read once. Its language is applied at once, so
   // the first screen is already in the person's language.
   const [saved] = useState<Profile | null>(() => {
@@ -62,6 +68,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
       if (event === 'USER_UPDATED' || event === 'SIGNED_OUT') setRecovering(false);
       // A remembered profile must never open someone's area after they signed out.
       if (event === 'SIGNED_OUT') forgetSavedProfile();
+      // "No session" at start while a login is still saved: the token could not be refreshed for
+      // lack of internet. Any later event (TOKEN_REFRESHED once online, SIGNED_OUT) settles it.
+      setOfflineUserId(event === 'INITIAL_SESSION' && !newSession ? storedLoginUserId() : null);
       setSession(newSession);
       setSessionLoaded(true);
     });
@@ -87,16 +96,28 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const current: ProfileResult | null =
     fetched ?? (userId && saved?.id === userId ? { userId, profile: saved, failed: false } : null);
   // Before the saved login is restored there is no session yet: the remembered profile decides.
-  const profile = sessionLoaded ? (current?.profile ?? null) : saved;
-  const profileFailed = sessionLoaded ? (current?.failed ?? false) : false;
+  // The same while a saved login waits for internet to be refreshed: the remembered profile of
+  // that same person stands in; without one, the pending screen says the account could not load.
+  const waitingOffline = sessionLoaded && !session && offlineUserId !== null;
+  const offlineProfile = waitingOffline && saved?.id === offlineUserId ? saved : null;
+  const profile = !sessionLoaded ? saved : waitingOffline ? offlineProfile : (current?.profile ?? null);
+  const profileFailed = sessionLoaded && (waitingOffline ? !offlineProfile : (current?.failed ?? false));
+
+  let area: Area;
+  if (!sessionLoaded) area = saved ? areaForProfile(saved) : 'loading';
+  else if (waitingOffline) area = offlineProfile ? areaForProfile(offlineProfile) : 'pending';
+  else area = areaFor(session, recovering, current);
 
   const value: AuthState = {
-    area: sessionLoaded ? areaFor(session, recovering, current) : saved ? areaForProfile(saved) : 'loading',
+    area,
     session,
     profile,
     profileFailed,
     refreshProfile: async () => {
       if (userId) setProfileResult(withSavedFallback(await fetchProfile(userId)));
+      // Asking for the session makes Supabase try the refresh again; when it works, its
+      // TOKEN_REFRESHED event brings the session and the profile is fetched as usual.
+      else if (offlineUserId) await supabase.auth.getSession();
     },
   };
 

@@ -6,19 +6,31 @@
   screen as an app (docs/OPERATIONS.md "Publishing the web version"): the manifest, the home
   screen icon and the apple-mobile-web-app tags. The icons are drawn by
   scripts/make-placeholder-icons.mjs.
+
+  iPhone (round 6, docs/DECISIONS.md #42): viewport-fit=cover lets the page reach under the notch
+  and the home bar, and makes Safari report their size (env(safe-area-inset-*)), which the app's
+  safe-area code already uses: the saffron bands and header bars keep their text below the
+  notch, the tab bar sits above the home bar. black-translucent shows the saffron header behind
+  the status bar of the home-screen app, with white clock and battery icons. theme-color tints
+  the browser bars with the header colour. text-size-adjust stops Safari enlarging text when the
+  phone is turned sideways. The app sets <html lang> to its own language (src/i18n/index.ts), so
+  VoiceOver reads Telugu and Hindi with the right voice.
 -->
 <html lang="%LANG_ISO_CODE%">
   <head>
     <meta charset="utf-8" />
     <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no, viewport-fit=cover" />
     <title>%WEB_TITLE%</title>
     <link rel="manifest" href="/manifest.json" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Mridanga Seva" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <!-- The header colours of src/theme/colors.ts (headerTop), light and dark. -->
+    <meta name="theme-color" content="#9A4307" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#5C2B0C" media="(prefers-color-scheme: dark)" />
     <!-- The `react-native-web` recommended style reset: https://necolas.github.io/react-native-web/docs/setup/#root-element -->
     <style id="expo-reset">
       /* These styles make the body full-height */
@@ -26,9 +38,16 @@
       body {
         height: 100%;
       }
+      /* Keep the text size when an iPhone is turned sideways. */
+      html {
+        -webkit-text-size-adjust: 100%;
+        text-size-adjust: 100%;
+      }
       /* These styles disable body scrolling if you are using <ScrollView> */
       body {
         overflow: hidden;
+        /* No grey flash on tap: buttons show their own pressed look. */
+        -webkit-tap-highlight-color: transparent;
       }
       /* These styles make the root element full-height */
       #root {

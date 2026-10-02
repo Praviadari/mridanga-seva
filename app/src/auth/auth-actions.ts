@@ -15,7 +15,7 @@ import { Platform } from 'react-native';
 
 import { clearSavedCard } from '@/data/my-student';
 import { unregisterPush } from '@/lib/push';
-import { supabase } from '@/lib/supabase';
+import { forgetStoredLogin, storedLoginUserId, supabase } from '@/lib/supabase';
 
 /** A translation key, for example 'authErrors.invalidCredentials'. */
 export type MessageKey = ParseKeys;
@@ -125,10 +125,20 @@ export async function setNewPassword(password: string): Promise<AuthResult> {
  * of every other phone and browser they use. Also deletes the student's QR card saved on this
  * device (src/data/my-student.ts) and this phone's push token (src/lib/push.ts), so the next
  * person on a shared phone can neither use the card nor get this person's notifications.
+ *
+ * Without internet and with an expired access token, Supabase's signOut cannot refresh the login
+ * and returns an error while keeping it saved, so the person would stay signed in. Then the
+ * saved login is deleted here and signOut runs again: with nothing saved it only clears the
+ * client and tells the app (SIGNED_OUT), which forgets the saved profile (docs/DECISIONS.md #42).
+ * The push token row stays on the server in that case; the phone's next sign-in replaces it.
  */
 export async function signOut(): Promise<void> {
   clearSavedCard();
   // Before signing out: deleting the token needs the login.
   await unregisterPush();
-  await supabase.auth.signOut({ scope: 'local' });
+  const { error } = await supabase.auth.signOut({ scope: 'local' });
+  if (error && storedLoginUserId()) {
+    forgetStoredLogin();
+    await supabase.auth.signOut({ scope: 'local' });
+  }
 }

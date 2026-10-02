@@ -70,6 +70,17 @@ i18n.use(initReactI18next).init({
   react: { useSuspense: false },
 });
 
+/**
+ * On the web, the page's language follows the app's (<html lang>), so screen readers such as
+ * VoiceOver on an iPhone read Telugu and Hindi with a Telugu or Hindi voice, not an English one.
+ * Phones have no page; there React Native passes the text to the reader as it is.
+ */
+function setPageLanguage(language: string): void {
+  if (typeof document !== 'undefined') document.documentElement.lang = language;
+}
+setPageLanguage(i18n.language);
+i18n.on('languageChanged', setPageLanguage);
+
 /** The language the app is showing now. */
 export function currentLanguage(): Language {
   return isLanguage(i18n.language) ? i18n.language : 'en';

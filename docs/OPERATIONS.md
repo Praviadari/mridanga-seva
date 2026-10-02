@@ -193,7 +193,13 @@ scanning does not work there, but the name search on the same screen still does.
 
 In **Safari**, open the site, tap **Share → Add to Home Screen → Add**. It then opens full screen
 with the app icon, like an installed app. The icon and name come from `app/public/index.html` and
-`app/public/manifest.json`.
+`app/public/manifest.json`. The saffron header runs behind the status bar (white clock and battery)
+and the tabs sit above the home bar ([DECISIONS.md #42](DECISIONS.md)).
+
+To check on a real iPhone after a new web version (a volunteer can do it in two minutes): the
+header text is below the notch; the bottom tabs are above the home bar, not under it; tapping a
+text field does not zoom the page; turning the phone sideways keeps the text size; with VoiceOver
+on and the app in Telugu, a Telugu line is read in a Telugu voice.
 
 Tell users two things:
 

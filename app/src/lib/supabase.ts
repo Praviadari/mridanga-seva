@@ -7,7 +7,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { AppState, Platform } from 'react-native';
 
-import './local-storage'; // provides `localStorage` on Android and iOS for the client below
+import { readLocal, removeLocal } from './local-storage'; // also provides `localStorage` on Android and iOS
 
 // Expo copies EXPO_PUBLIC_* values into the app when it is built, so they are public. That is
 // fine for the URL and the publishable (anon) key, because row-level security guards the data.
@@ -65,6 +65,39 @@ export const supabase = createClient(
     },
   },
 );
+
+/**
+ * Where the client keeps the login on this device: Supabase's default key, made from the first
+ * part of the project's address ("sb-fhuqyk…-auth-token"). Not set explicitly above, because a
+ * different key would sign everybody out.
+ */
+const LOGIN_KEY = supabaseConfigProblem ? null : `sb-${new URL(url).hostname.split('.')[0]}-auth-token`;
+
+/**
+ * The user id of the login saved on this device, or null when there is none. The auth client
+ * reports "no session" at start when the saved login's access token has expired and it cannot
+ * reach the server to refresh it (no internet), although the login is still saved and works
+ * again once there is a connection. The auth provider uses this to tell that case from a real
+ * sign-out (docs/DECISIONS.md #42).
+ */
+export function storedLoginUserId(): string | null {
+  const text = LOGIN_KEY ? readLocal(LOGIN_KEY) : null;
+  if (!text) return null;
+  try {
+    const login = JSON.parse(text) as { refresh_token?: unknown; user?: { id?: unknown } };
+    return typeof login.refresh_token === 'string' && typeof login.user?.id === 'string' ? login.user.id : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Deletes the login saved on this device without asking the server. Only for signing out with
+ * no internet, when the auth client itself keeps the login (src/auth/auth-actions.ts signOut).
+ */
+export function forgetStoredLogin(): void {
+  if (LOGIN_KEY) removeLocal(LOGIN_KEY);
+}
 
 // On phones, refresh the login token only while the app is on screen. The web client already
 // pauses itself when the browser tab is hidden.
