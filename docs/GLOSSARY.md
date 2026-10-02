@@ -15,7 +15,7 @@
 | Kartal | Small hand cymbals that keep time with the mridanga |
 | Kirtan | Congregational singing of the holy names |
 | Seva | Voluntary service. The class and this app are seva |
-| Guru | The senior teacher who leads the class |
+| Guru | The senior teacher who leads the class. The English screens call this role **Facilitator**; Telugu and Hindi keep Guru. In the database and code it stays `guru` (DECISIONS.md #40) |
 | Sloka | A Sanskrit verse from scripture |
 | Ishtagoshti | A gathering of devotees to discuss scripture; in the app, the thematic sloka-study section |
 

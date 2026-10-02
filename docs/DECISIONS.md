@@ -121,7 +121,7 @@ Prabhupada's translations and purports.
 **Decision.** Roles are Guru, Coordinator and Student (plus `kiosk` for the door tablet and
 `pending` for new sign-ups). Coordinators are the teachers. Treasurer is a permission on a
 coordinator, not a separate role. New logins get no access until linked to a student or given a
-role by the Guru.
+role by the Guru. *(The English screens call the Guru "Facilitator" since 2 Oct 2026: see #40.)*
 
 ## 12. Three languages from the start — 28 Sep 2026
 
@@ -860,3 +860,21 @@ keep Back working on the web (#36).
 (`colors.modules`) were checked for contrast: icon on tint 4.5:1 or better in both themes. The
 Telugu and Hindi lines of the Coming soon screen and the module names are drafts for the
 native-speaker review (TRANSLATIONS.md).
+
+## 40. The English screens call the Guru "Facilitator" — 2 Oct 2026
+
+**Context.** After using the test app, the team said (2 Oct 2026, through Praveen) that the role
+should be called Facilitator rather than Guru.
+
+**Decision.** Only the English text changes (`roles.guru` and every sentence that named the
+Guru, in `app/src/i18n/locales/en.json`). Telugu and Hindi keep గురువు and गुरु, as Praveen
+chose. The role's value in the database stays `guru`, and so do the code, the screen numbers
+(G1 "Guru dashboard") and these documents, which mean the same person.
+
+**Why.** Renaming the value would mean a migration on both projects and touching every policy,
+function and check that names it, for nothing anyone can see. Text in the translation files
+reaches the phones as an update (#35).
+
+**Consequences.** A new English sentence about this person says "the facilitator" (lowercase, as
+"coordinators" is). The Telugu and Hindi words can change the same way after the native-speaker
+review (TRANSLATIONS.md).

@@ -69,17 +69,17 @@
   },
   "pending": {
     "title": "Waiting for access",
-    "body": "Your account is ready. The Guru will give you access soon.",
+    "body": "Your account is ready. The facilitator will give you access soon.",
     "studentHint": "Are you a student? Ask a coordinator to put this email on your student record, then tap Check again.",
     "kiosk": "The door tablet screens come in a later version.",
     "inactiveTitle": "Account switched off",
-    "inactiveBody": "This account is not active. Please speak to the Guru or a coordinator.",
+    "inactiveBody": "This account is not active. Please speak to the facilitator or a coordinator.",
     "loadFailedTitle": "Could not load your account",
     "checkAgain": "Check again",
     "signedInAs": "Signed in as {{email}}"
   },
   "roles": {
-    "guru": "Guru",
+    "guru": "Facilitator",
     "coordinator": "Coordinator",
     "student": "Student"
   },
@@ -123,7 +123,7 @@
       "followUps": "Follow-ups per coordinator",
       "followUpsHint": "Calls past their date, and students handed to you. Tap to open the follow-up calls.",
       "followUpsEmpty": "No follow-up call is overdue.",
-      "followUpLine": "Overdue: {{overdue}} · With the Guru: {{escalated}}",
+      "followUpLine": "Overdue: {{overdue}} · With the facilitator: {{escalated}}",
       "noName": "(no name)"
     }
   },
@@ -187,7 +187,7 @@
     "unknownTitle": "Code not recognised",
     "unknownBody": "This is not a student's QR code for this class. Search the name instead.",
     "errors": {
-      "notAllowed": "Only coordinators and the Guru can mark attendance.",
+      "notAllowed": "Only coordinators and the facilitator can mark attendance.",
       "notFound": "This student is no longer in the records.",
       "alreadyMarked": "Another phone marked this student at the same moment. Check the list and try again."
     }
@@ -279,7 +279,7 @@
       "choose": "Choose one.",
       "consentNeeded": "The signed consent form is needed before a student under 18 can be registered.",
       "minorNeedsConsent": "A student under 18 needs the parent's details, the ID check and the signed consent form.",
-      "notAllowed": "Only coordinators and the Guru can register students.",
+      "notAllowed": "Only coordinators and the facilitator can register students.",
       "fixFields": "Please correct the fields marked in red."
     }
   },
@@ -361,8 +361,8 @@
     "appLogin": "App login",
     "yes": "Yes",
     "no": "No",
-    "guardianStaffOnly": "Only coordinators and the Guru can see this.",
-    "consentMissing": "No current consent from the parent is on record. Please tell the Guru.",
+    "guardianStaffOnly": "Only coordinators and the facilitator can see this.",
+    "consentMissing": "No current consent from the parent is on record. Please tell the facilitator.",
     "consentLine": "{{scope}} · {{method}} · {{date}}",
     "idSeen": "ID seen: {{idType}}",
     "consentWithdrawn": "withdrawn {{date}}",
@@ -406,11 +406,11 @@
     "alreadyUnticked": "This was already unticked. Nothing changed.",
     "errors": {
       "remarkTooLong": "The remark is too long. Keep it under 500 characters.",
-      "notAllowed": "Only coordinators and the Guru can tick syllabus items.",
+      "notAllowed": "Only coordinators and the facilitator can tick syllabus items.",
       "gone": "This item or tick is no longer there. The list has been loaded again."
     },
     "progressLabel": "Syllabus progress, {{level}}",
-    "allDone": "Every item of {{level}} is ticked. Moving up a level is the Guru's decision.",
+    "allDone": "Every item of {{level}} is ticked. Moving up a level is the facilitator's decision.",
     "remarkLine": "Remark: {{remark}}",
     "tickWithRemarkOpen": "Tick with a remark",
     "tickWithRemark": "Tick and save the remark"
@@ -423,7 +423,7 @@
     "everyone": "Everyone",
     "empty": "Nobody needs a call right now.",
     "groups": {
-      "escalated": "Needs the Guru ({{number}})",
+      "escalated": "Needs the facilitator ({{number}})",
       "due": "Call due ({{number}})",
       "later": "Call later ({{number}})",
       "noTask": "No call planned ({{number}})"
@@ -431,7 +431,7 @@
     "escalatedHelp": "Several calls with no answer, or no call made before the student became Inactive.",
     "due": "Call due {{date}}",
     "attempt": "try {{number}}",
-    "escalated": "passed to the Guru",
+    "escalated": "passed to the facilitator",
     "assignee": "for {{name}}",
     "unassigned": "not given to anyone yet",
     "noTask": "No call task yet"
@@ -449,7 +449,7 @@
     "outcomeHelp": {
       "returning": "They will come again. If they have not come by the day after the date, a new call is due.",
       "paused": "They are taking a break until the date (exams, travel, health). No reminders till then.",
-      "not_reachable": "Nobody answered. A new try is due in a few days; after several tries the Guru is told.",
+      "not_reachable": "Nobody answered. A new try is due in a few days; after several tries the facilitator is told.",
       "discontinued": "They have stopped coming. Their status becomes Left. They keep their roll number, and their next visit makes them Active again."
     },
     "reason": "Reason",
@@ -478,7 +478,7 @@
       "datePast": "The date cannot be before today.",
       "commentRequired": "Write what was said on the call.",
       "reasonUnknown": "This reason is no longer in the list. Choose another.",
-      "notAllowed": "Only coordinators and the Guru can log calls.",
+      "notAllowed": "Only coordinators and the facilitator can log calls.",
       "notFound": "This student is not in the records."
     }
   },
@@ -520,10 +520,10 @@
         "group": "A group"
       },
       "audienceHelp": {
-        "all": "Every student who uses the app. Coordinators and the Guru see every announcement.",
+        "all": "Every student who uses the app. Coordinators and the facilitator see every announcement.",
         "level": "Students at the level you choose.",
         "mentees": "The students you are mentor for.",
-        "staff": "Only the Guru and coordinators. Students do not see it.",
+        "staff": "Only the facilitator and coordinators. Students do not see it.",
         "group": "The members of the group you choose."
       },
       "level": "Level",
@@ -536,7 +536,7 @@
       "dateHint": "Day-month-year, e.g. 04-10-2026",
       "time": "Time",
       "timeHint": "24-hour, India time, e.g. 18:30",
-      "laterHelp": "Students see it from then. Coordinators and the Guru see it at once.",
+      "laterHelp": "Students see it from then. Coordinators and the facilitator see it at once.",
       "noGroups": "There are no groups yet, so \"A group\" is not offered. Make one first.",
       "openGroups": "Open Groups",
       "submit": "Post announcement",
@@ -579,12 +579,12 @@
     },
     "replies": {
       "title": "Replies ({{number}})",
-      "privateNote": "Replies are private: only the author and the Guru see them. Answer in person or by phone.",
+      "privateNote": "Replies are private: only the author and the facilitator see them. Answer in person or by phone.",
       "none": "No replies yet.",
       "reply": "Reply",
       "replyTo": "Reply to {{name}}",
-      "whoReads": "Only {{name}} and the Guru see your reply.",
-      "whoReadsNoName": "Only the author and the Guru see your reply.",
+      "whoReads": "Only {{name}} and the facilitator see your reply.",
+      "whoReadsNoName": "Only the author and the facilitator see your reply.",
       "yourReply": "Your reply",
       "hint": "Up to {{max}} characters.",
       "send": "Send reply",
@@ -605,8 +605,8 @@
       "timeRequired": "Enter the time.",
       "timeInvalid": "Enter the time as hours:minutes, e.g. 18:30.",
       "timePast": "This time has already passed. Choose a later time, or publish now.",
-      "notAllowed": "Only coordinators and the Guru can post announcements.",
-      "cannotChange": "Not changed: only the author or the Guru can change it, or it was deleted.",
+      "notAllowed": "Only coordinators and the facilitator can post announcements.",
+      "cannotChange": "Not changed: only the author or the facilitator can change it, or it was deleted.",
       "groupGone": "This group no longer exists. Choose another.",
       "alreadyPublished": "It was published meanwhile, so its time can no longer change. Nothing was saved. Try again.",
       "replyRequired": "Write your reply.",
@@ -647,7 +647,7 @@
   },
   "groups": {
     "title": "Groups",
-    "intro": "An announcement sent to \"A group\" goes to its members. Members are students who use the app, coordinators and the Guru.",
+    "intro": "An announcement sent to \"A group\" goes to its members. Members are students who use the app, coordinators and the facilitator.",
     "loadFailed": "Could not load the groups.",
     "empty": "No groups yet.",
     "memberCount": "Members: {{number}}",
@@ -674,7 +674,7 @@
     "noMembers": "No members yet. Add people below.",
     "remove": "Remove",
     "addTitle": "Add people",
-    "addHelp": "Search for students who use the app, coordinators and the Guru. Students without the app cannot be added.",
+    "addHelp": "Search for students who use the app, coordinators and the facilitator. Students without the app cannot be added.",
     "search": "Name or roll number",
     "noMatch": "Nobody found who is not in the group already.",
     "add": "Add",
@@ -686,7 +686,7 @@
       "nameTooLong": "The name is too long. Keep it to 60 characters.",
       "purposeTooLong": "This is too long. Keep it to 200 characters.",
       "nameTaken": "Another group already has this name.",
-      "notAllowed": "Only coordinators and the Guru can change groups.",
+      "notAllowed": "Only coordinators and the facilitator can change groups.",
       "cannotChange": "Not changed: the group is no longer there."
     }
   },
