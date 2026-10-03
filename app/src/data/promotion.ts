@@ -413,14 +413,17 @@ export type NominateOptions = {
   student: { id: string; fullName: string; rollNo: string; levelId: number };
   criteria: Criteria;
   coordinators: Askable[];
+  /** Answers needed before the Guru can promote (setting promotion_min_feedback, default 2). */
+  answersNeeded: number;
 };
 
 /** Loads C22 for one student; 'not_found' when the student is not visible; null offline. */
 export async function fetchNominateOptions(studentId: string, myId: string): Promise<NominateOptions | 'not_found' | null> {
-  const [student, check, staff] = await Promise.all([
+  const [student, check, staff, needed] = await Promise.all([
     supabase.from('students').select('id, full_name, roll_no, level_id').eq('id', studentId).maybeSingle(),
     fetchCriteria(studentId),
     fetchStaff(),
+    supabase.from('settings').select('value').eq('key', 'promotion_min_feedback').maybeSingle(),
   ]);
   if (student.error || !staff) return null;
   if (!student.data) return 'not_found';
@@ -434,6 +437,7 @@ export async function fetchNominateOptions(studentId: string, myId: string): Pro
       .filter((p) => p.role === 'coordinator' && p.active && p.id !== myId)
       .map((p) => ({ id: p.id, fullName: p.fullName, taught: taught.has(p.id) }))
       .sort((a, b) => Number(b.taught) - Number(a.taught) || a.fullName.localeCompare(b.fullName)),
+    answersNeeded: num((needed.data as { value?: unknown } | null)?.value, 2),
   };
 }
 

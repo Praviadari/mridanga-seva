@@ -1187,10 +1187,11 @@
       "reason": "Reason",
       "reasonHint": "What the student plays well now, and anything the facilitator should know.",
       "askTitle": "Ask for feedback",
-      "askHint": "The coordinators picked get a notification. At least 2 coordinators must answer before the facilitator can promote; your nomination counts as one \"Ready\".",
+      "askHint": "The coordinators picked get a notification. At least {{count}} coordinator answer(s) are needed before the facilitator can promote; your nomination counts as one \"Ready\".",
       "noCoordinators": "There are no other coordinators to ask.",
       "taught": "{{name}} (taught this student lately)",
-      "send": "Nominate and ask {{count}} for feedback"
+      "send": "Nominate and ask {{count}} for feedback",
+      "sendAlone": "Nominate"
     },
     "detail": {
       "title": "Promotion",

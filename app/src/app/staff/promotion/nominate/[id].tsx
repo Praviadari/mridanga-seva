@@ -160,7 +160,7 @@ export default function NominateScreen() {
             />
           </Section>
 
-          <Section title={t('promotion.nominate.askTitle')} description={t('promotion.nominate.askHint')}>
+          <Section title={t('promotion.nominate.askTitle')} description={t('promotion.nominate.askHint', { count: options.answersNeeded })}>
             {coordinators.length === 0 ? <AppText tone="muted">{t('promotion.nominate.noCoordinators')}</AppText> : null}
             {coordinators.map((c) => (
               <Checkbox
@@ -175,7 +175,7 @@ export default function NominateScreen() {
           {serverError ? <Notice tone="error">{serverError}</Notice> : null}
           <Button
             icon="send"
-            label={t('promotion.nominate.send', { count: picked.size })}
+            label={picked.size > 0 ? t('promotion.nominate.send', { count: picked.size }) : t('promotion.nominate.sendAlone')}
             loading={saving}
             onPress={() => void send()}
           />
