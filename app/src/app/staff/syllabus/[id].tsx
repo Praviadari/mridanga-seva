@@ -24,6 +24,7 @@ import { TextField } from '@/components/text-field';
 import { fetchStaff } from '@/data/student-overview';
 import {
   fetchStudentSyllabus,
+  progressCount,
   REMARK_MAX_LENGTH,
   saveRemark,
   tickItem,
@@ -98,7 +99,9 @@ export default function SyllabusTickOffScreen() {
   const { student } = syllabus;
   const shownLevel = levelId ?? student.levelId;
   const items = syllabus.items.filter((item) => item.levelId === shownLevel);
-  const doneCount = items.filter((item) => item.doneOn).length;
+  // Retired items show only when ticked, and do not count (docs/DECISIONS.md #44).
+  const inUse = items.filter((item) => !item.retired);
+  const { done: doneCount, total } = progressCount(items);
   // Levels that have items, plus the student's own level even while its syllabus is still empty.
   const levelIds = [...new Set([...syllabus.items.map((item) => item.levelId), student.levelId])].sort((a, b) => a - b);
 
@@ -162,17 +165,17 @@ export default function SyllabusTickOffScreen() {
         />
       ) : null}
 
-      {items.length > 0 ? (
+      {total > 0 ? (
         <ProgressBar
           done={doneCount}
-          total={items.length}
+          total={total}
           label={t('syllabus.progressLabel', { level: levelName(t, shownLevel) })}
-          valueText={`${levelName(t, shownLevel)}: ${t('profile.syllabusDone', { done: doneCount, total: items.length })}`}
+          valueText={`${levelName(t, shownLevel)}: ${t('profile.syllabusDone', { done: doneCount, total })}`}
         />
       ) : (
         <AppText tone="muted">{t('profile.noSyllabus')}</AppText>
       )}
-      {items.length > 0 && doneCount === items.length && shownLevel === student.levelId ? (
+      {total > 0 && doneCount === total && shownLevel === student.levelId ? (
         <Notice tone="success">{t('syllabus.allDone', { level: levelName(t, shownLevel) })}</Notice>
       ) : null}
 
@@ -182,8 +185,8 @@ export default function SyllabusTickOffScreen() {
         return (
           <SyllabusItemCard
             key={item.id}
-            position={item.sort}
-            title={item.title}
+            position={item.retired ? 0 : inUse.indexOf(item) + 1}
+            title={item.retired ? `${item.title} · ${t('progress.retired')}` : item.title}
             description={item.description}
             done={!!item.doneOn}
             doneLine={

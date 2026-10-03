@@ -970,6 +970,133 @@ const [{ ok: pushFnsCallable }] = await asOwner(`select has_function_privilege('
   or has_function_privilege('authenticated', 'guard_announcement_notified()', 'execute') as ok`);
 check('app roles cannot run the push job functions', pushFnsCallable === false);
 
+// ---------------------------------------------------------------- syllabus editor and materials (0013)
+const levelItems = async (level) => asOwner(`select id, sort, title, retired_at from syllabus_items where level_id = ${level} order by sort`);
+const [newItem] = await asApp('authenticated', guru,
+  `insert into syllabus_items (level_id, title, description) values (1, '  Tirakita  ', '   ') returning id, sort, title, description`);
+const beginnerBefore = await levelItems(1);
+check('the Guru adds a syllabus item at the end of its level, trimmed',
+  newItem.sort === beginnerBefore[beginnerBefore.length - 1].sort && newItem.title === 'Tirakita' && newItem.description === null,
+  JSON.stringify(newItem));
+await refuses('a coordinator cannot add a syllabus item', () =>
+  asApp('authenticated', coordinator, `insert into syllabus_items (level_id, title) values (1, 'Mine')`));
+await refuses('an empty title is refused', () =>
+  asApp('authenticated', guru, `update syllabus_items set title = '  ' where id = $1`, [newItem.id]));
+await refuses('a title over 120 characters is refused', () =>
+  asApp('authenticated', guru, `update syllabus_items set title = repeat('a', 121) where id = $1`, [newItem.id]));
+const audited = await asOwner(`select action from audit_log where table_name = 'syllabus_items' and row_id = '${newItem.id}'`);
+check('syllabus item changes go to the audit log', audited.length === 1 && audited[0].action === 'INSERT');
+
+// Reorder: the new last item moves up one place and swaps with its neighbour.
+const [prev] = beginnerBefore.slice(-2);
+const [{ moved }] = await asApp('authenticated', guru, `select move_syllabus_item($1, true) as moved`, [newItem.id]);
+const beginnerAfter = await levelItems(1);
+check('the Guru moves an item up one place', moved === true
+  && beginnerAfter.find((i) => i.id === newItem.id).sort === prev.sort
+  && beginnerAfter.find((i) => i.id === prev.id).sort === newItem.sort);
+const [{ first }] = await asApp('authenticated', guru, `select move_syllabus_item($1, true) as first`, [beginnerAfter[0].id]);
+check('... and the first item cannot move further up', first === false);
+await refuses('a coordinator cannot reorder the syllabus', () =>
+  asApp('authenticated', coordinator, `select move_syllabus_item($1, false)`, [newItem.id]));
+
+// A ticked item survives: its title can change, it cannot be deleted or moved to another level.
+await asApp('authenticated', coordinator, `insert into student_progress (student_id, item_id) values ($1, $2)`, [registered.id, newItem.id]);
+await asApp('authenticated', guru, `update syllabus_items set title = 'Tirakita (fast)' where id = $1`, [newItem.id]);
+check('editing a ticked item keeps the tick', (await asOwner(
+  `select 1 from student_progress where student_id = '${registered.id}' and item_id = ${newItem.id}`)).length === 1);
+const itemCounts = await asApp('authenticated', coordinator, 'select item_id, ticks from syllabus_item_counts() where item_id = $1', [newItem.id]);
+check('the editor counts the ticks of an item', itemCounts.length === 1 && itemCounts[0].ticks === 1, JSON.stringify(itemCounts));
+await refuses('a ticked item cannot be deleted', () =>
+  asApp('authenticated', guru, `delete from syllabus_items where id = $1`, [newItem.id]));
+await refuses('... not even from the dashboard (the ticks would go with it)', () =>
+  asOwner(`delete from syllabus_items where id = ${newItem.id}`));
+await refuses('a ticked item cannot move to another level', () =>
+  asApp('authenticated', guru, `update syllabus_items set level_id = 2 where id = $1`, [newItem.id]));
+await asApp('authenticated', guru, `update syllabus_items set retired_at = now() where id = $1`, [newItem.id]);
+check('the Guru retires a ticked item and the tick stays', (await asOwner(
+  `select 1 from student_progress p join syllabus_items i on i.id = p.item_id
+    where p.student_id = '${registered.id}' and i.id = ${newItem.id} and i.retired_at is not null`)).length === 1);
+await refuses('a retired item cannot be ticked', () =>
+  asApp('authenticated', coordinator, `insert into student_progress (student_id, item_id) values ($1, $2)`, [adult.id, newItem.id]));
+const [{ moveRetired }] = await asApp('authenticated', guru, `select move_syllabus_item($1, true) as "moveRetired"`, [beginnerAfter[beginnerAfter.length - 1].id]);
+check('moving skips retired items', moveRetired === true);
+const [lateHome] = await asApp('authenticated', late, `select student_home() as h`);
+const [lateCount] = await asOwner(`select count(*)::int as n from syllabus_items i join students s on s.level_id = i.level_id
+  where s.id = '${registered.id}' and i.retired_at is null`);
+check('S1 progress counts the items in use only', lateHome.h.syllabus_total === lateCount.n, JSON.stringify(lateHome.h));
+await asApp('authenticated', guru, `update syllabus_items set retired_at = null where id = $1`, [newItem.id]);
+check('... and a retired item can be put back', (await asOwner(`select retired_at from syllabus_items where id = ${newItem.id}`))[0].retired_at === null);
+const [spare] = await asApp('authenticated', guru, `insert into syllabus_items (level_id, title) values (2, 'Typo') returning id`);
+const deleted = await asApp('authenticated', guru, `delete from syllabus_items where id = $1 returning id`, [spare.id]);
+check('an item nobody ticked can be deleted', deleted.length === 1);
+check('app roles cannot run the syllabus editor trigger functions', (await asOwner(`select
+  has_function_privilege('authenticated', 'guard_syllabus_item()', 'execute')
+  or has_function_privilege('authenticated', 'protect_syllabus_item()', 'execute')
+  or has_function_privilege('authenticated', 'guard_material()', 'execute') as ok`))[0].ok === false);
+
+// Materials
+const [mbucket] = await asOwner(`select public, file_size_limit from storage.buckets where id = 'material-files'`);
+check('the material-files bucket is private, 10 MB', mbucket?.public === false && Number(mbucket.file_size_limit) === 10485760);
+const addMaterial = async (userId, fields) => (await asApp('authenticated', userId,
+  `insert into materials (title, kind, url, storage_path, file_name, file_size, level_id, item_id)
+   values ($1, $2, $3, $4, $5, $6, $7, $8) returning *`,
+  [fields.title ?? 'Lesson', fields.kind, fields.url ?? null, fields.path ?? null, fields.name ?? null,
+   fields.size ?? null, fields.level ?? null, fields.item ?? null]))[0];
+const video = await addMaterial(guru, { kind: 'youtube', url: ' https://youtu.be/dQw4w9WgXcQ ', item: item1.id, level: 3 });
+check('the Guru adds a YouTube lesson to an item; approved, level taken from the item',
+  video.approved_by === guru && video.level_id === 1 && video.url === 'https://youtu.be/dQw4w9WgXcQ', JSON.stringify(video));
+await refuses('a link that is not a YouTube video is refused', () =>
+  addMaterial(guru, { kind: 'youtube', url: 'https://example.com/watch?v=dQw4w9WgXcQ', level: 1 }));
+await refuses('audio is not offered yet', () => addMaterial(guru, { kind: 'audio', level: 1 }));
+const uploadMaterial = async (userId, path, size = 4096) => asApp('authenticated', userId,
+  `insert into storage.objects (bucket_id, name, owner, metadata) values ('material-files', $1, auth.uid(), $2)`,
+  [path, JSON.stringify({ size, mimetype: 'application/pdf' })]);
+const canOpenMaterial = async (userId, path) => (await asApp('authenticated', userId,
+  `select 1 from storage.objects where bucket_id = 'material-files' and name = $1`, [path])).length === 1;
+const notation = `${guru}/${await newId()}.pdf`;
+await uploadMaterial(guru, notation, 900000);
+await refuses('a coordinator cannot upload a material file (suggestions are Phase 2)', async () =>
+  uploadMaterial(coordinator, `${coordinator}/${await newId()}.pdf`));
+const pdf = await addMaterial(guru, { kind: 'pdf', path: notation, name: ' Kaherva.pdf ', size: 1, level: 3 });
+check('the Guru adds a PDF; its size comes from Storage', Number(pdf.file_size) === 900000 && pdf.file_name === 'Kaherva.pdf');
+await refuses('a material cannot list a file that is not in Storage', async () =>
+  addMaterial(guru, { kind: 'pdf', path: `${guru}/${await newId()}.pdf`, name: 'x.pdf', size: 1, level: 1 }));
+await refuses('the file of a material cannot be swapped', async () => asApp('authenticated', guru,
+  `update materials set storage_path = $2 where id = $1`, [pdf.id, `${guru}/${await newId()}.pdf`]));
+const [arjunStudent] = await asOwner(`select level_id from students where profile_id = '${arjun}'`);
+const [lateStudent] = await asOwner(`select level_id from students where profile_id = '${late}'`);
+check('a student at or above the level opens the material file', arjunStudent.level_id >= 3 ? await canOpenMaterial(arjun, notation) : true,
+  `arjun level ${arjunStudent.level_id}`);
+check('a student below the level cannot see the material or open its file', lateStudent.level_id < 3
+  ? !(await canOpenMaterial(late, notation)) && (await asApp('authenticated', late, `select id from materials where id = $1`, [pdf.id])).length === 0
+  : true, `late level ${lateStudent.level_id}`);
+check('a student sees the lesson of level 1', (await asApp('authenticated', late, `select id from materials where id = $1`, [video.id])).length === 1);
+await refuses('a student cannot add a material', () => addMaterial(late, { kind: 'youtube', url: 'https://youtu.be/dQw4w9WgXcQ', level: 1 }));
+const [bareItem] = await asApp('authenticated', guru, `insert into syllabus_items (level_id, title) values (2, 'With a video') returning id`);
+const unTickedVideo = await addMaterial(guru, { kind: 'youtube', url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=30s', item: bareItem.id });
+await refuses('an unticked item with materials cannot be deleted', () => asApp('authenticated', guru,
+  `delete from syllabus_items where id = $1`, [bareItem.id]));
+await asApp('authenticated', guru, `delete from materials where id = $1`, [unTickedVideo.id]);
+await asApp('authenticated', guru, `delete from syllabus_items where id = $1`, [bareItem.id]);
+await asApp('authenticated', guru, `delete from materials where id = $1`, [pdf.id]);
+check('the Guru deletes a material and its file', (await asApp('authenticated', guru,
+  `delete from storage.objects where bucket_id = 'material-files' and name = $1 returning name`, [notation])).length === 1);
+check('material changes go to the audit log', (await asOwner(
+  `select count(*)::int as n from audit_log where table_name = 'materials'`))[0].n >= 3);
+
+// Own name and phone (A3)
+await asApp('authenticated', late, `update profiles set full_name = '  Late Joiner  ', phone = ' +91 98765 43210 ' where id = auth.uid()`);
+const [lateProfile] = await asOwner(`select full_name, phone from profiles where id = '${late}'`);
+check('a student changes their own name and phone, trimmed',
+  lateProfile.full_name === 'Late Joiner' && lateProfile.phone === '+91 98765 43210', JSON.stringify(lateProfile));
+await refuses('an empty name is refused', () => asApp('authenticated', late, `update profiles set full_name = ' ' where id = auth.uid()`));
+await refuses('a phone with letters is refused', () => asApp('authenticated', late, `update profiles set phone = 'call me' where id = auth.uid()`));
+check('a student cannot change someone else\'s profile', (await asApp('authenticated', late,
+  `update profiles set full_name = 'X' where id = $1 returning id`, [arjun])).length === 0);
+
+// Attendance history (S9): a student reads only their own visits.
+const lateVisits = await asApp('authenticated', late, `select distinct student_id from visits`);
+check('a student reads only their own visits', lateVisits.every((v) => v.student_id === registered.id), JSON.stringify(lateVisits));
 // ---------------------------------------------------------------- row-level security
 const seen =await asApp('authenticated', arjun, 'select full_name from students');
 check('student sees only their own student record', seen.length === 1 && seen[0].full_name === 'Arjun Rao');

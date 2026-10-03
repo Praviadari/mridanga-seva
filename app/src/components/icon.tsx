@@ -49,6 +49,17 @@ const SHAPES = {
   instruments: 'musical-notes-outline',
   events: 'calendar-number-outline',
   construction: 'construct-outline',
+  // Round 7: syllabus editor, materials, attendance history, profile.
+  library: 'library-outline',
+  video: 'logo-youtube',
+  pdf: 'document-text-outline',
+  photo: 'image-outline',
+  open: 'open-outline',
+  up: 'arrow-up',
+  down: 'arrow-down',
+  retire: 'archive-outline',
+  restore: 'arrow-undo-outline',
+  profile: 'person-circle-outline',
 } as const;
 
 /** The icons the app may use. */

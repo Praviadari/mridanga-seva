@@ -946,3 +946,49 @@ client's refresh retries (up to about 30 s) before it fails; My QR shows its sav
 meanwhile. A device with no remembered profile shows the splash for those 30 s. The iPhone layout
 under the notch and the home bar is verified only in a desktop browser, where the sizes are zero;
 it needs a check on a real iPhone (OPERATIONS.md "Adding it to an iPhone home screen").
+
+## 44. The team edits the syllabus and lessons; ticks are never lost — 3 Oct 2026
+
+(Number #43 is left to the Phase 2 branch phase2-assessments, which may take it.)
+
+**Context.** The syllabus was dummy data from seed.sql, editable only in the dashboard, and
+deleting an item there deleted every tick on it (`student_progress.item_id ... on delete cascade`,
+0001). The pilot (16-29 Nov 2026) needs the real syllabus and the lesson videos, entered by the
+team. The Screen List doc approves G4 Levels and syllabus, G5 Materials library and S4 Learn; S9
+Attendance and A3 Profile have no team pick yet and were built on Praveen's brief for round 7.
+
+**Decision** (Praveen's brief, 2 Oct 2026; details by the round 7 chat).
+- **The levels stay fixed** (Beginner, Intermediate, Advanced, 28-09-2026). The Guru adds, edits,
+  reorders, retires and deletes syllabus items; coordinators see the same pages read-only.
+- **Retire instead of delete.** `syllabus_items.retired_at`: a retired item is no longer taught,
+  cannot be ticked and does not count in progress, but its ticks stay and show (marked "No longer
+  taught") where the student has it ticked. An item with ticks or materials cannot be deleted,
+  not even from the dashboard; a ticked item cannot move to another level. Delete is only for an
+  item nobody ticked. All of it is enforced by triggers (migration 0013) and logged in audit_log.
+- **Reorder** with Up / Down buttons (`move_syllabus_item`, Guru only), not drag and drop: it
+  works the same on phones, the web and with a screen reader.
+- **Materials** are a YouTube link, a PDF or a photo, for one level and optionally one item, with
+  an optional note. Lesson videos are unlisted YouTube videos (Praveen, 28-09-2026); the app opens
+  them in the YouTube app or the browser, with no player inside the app for now (V3 player
+  controls are Phase 2). PDFs and photos reuse the announcement picker and go to a private bucket
+  `material-files` with a **10 MB** cap (double the announcements' 5 MB: scanned notation booklets
+  are larger; the free plan's 1 GB of storage holds about a hundred such files plus the photos).
+  Only the Guru uploads in Phase 1; the Guru's materials are approved at once. Coordinators'
+  suggestions (C18) come in Phase 2. A student opens a file exactly when they may read the
+  material (approved, up to their level).
+- **S4** shows the lessons under each item and the level's own lessons first. **S9** lists a
+  student's visits by month (3 months, then "Show earlier months"), for the student and, from
+  C8, for staff. **A3** lets everyone change their own name and phone (checked by a trigger),
+  switch language and sign out; a student also sees their roll number and the way to My QR. The
+  name on the roll stays the coordinators' record.
+- **Entry points:** a ninth circle "Syllabus and lessons" (indigo) on the staff ring, the ring's
+  limit before it turns into a grid; "Attendance" and "My profile" circles on the student ring
+  (six circles); "My profile" at the foot of every home.
+
+**Why.** Promotion (Phase 2) rests on the ticks, so no edit may erase one. Retiring keeps the
+history honest while the syllabus evolves. YouTube costs nothing and needs no new native package.
+
+**Consequences.** Migration 0013 must run on TEST before the screens work there, and on LIVE before
+the next publish to production. A material's file goes from Storage before its row; a file whose
+material row fails to save is taken out of Storage again. The Telugu and Hindi lines are drafts
+for the native-speaker review (docs/TRANSLATIONS.md).

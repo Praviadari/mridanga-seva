@@ -115,3 +115,25 @@ export function formatDuration(t: TFunction, totalMinutes: number): string {
   if (minutes < 60) return t('time.minutes', { minutes });
   return t('time.hoursMinutes', { hours: Math.floor(minutes / 60), minutes: minutes % 60 });
 }
+
+const MONTH_KEYS = [
+  'months.m1',
+  'months.m2',
+  'months.m3',
+  'months.m4',
+  'months.m5',
+  'months.m6',
+  'months.m7',
+  'months.m8',
+  'months.m9',
+  'months.m10',
+  'months.m11',
+  'months.m12',
+] as const;
+
+/** A month 'YYYY-MM' as its name and year, e.g. 'October 2026' (S9 Attendance history). */
+export function monthName(t: TFunction, month: string): string {
+  const [year, number] = month.split('-');
+  const key = MONTH_KEYS[Number(number) - 1] ?? MONTH_KEYS[0];
+  return t('visitHistory.month', { month: t(key), year });
+}

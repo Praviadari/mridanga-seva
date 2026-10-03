@@ -13,6 +13,7 @@ import { Icon } from './icon';
 /** Props for SyllabusItemCard. */
 export type SyllabusItemCardProps = PropsWithChildren<{
   /** Place in the level's teaching order, 1 first. */
+  /** Place in the teaching order; 0 = no number (a retired item). */
   position: number;
   /** Item title and description, as the Guru wrote them in the syllabus. */
   title: string;
@@ -59,7 +60,7 @@ export function SyllabusItemCard({
           // aria-* (not accessibilityState) so the web version reports them too.
           aria-checked={done}
           aria-busy={!!busy}
-          accessibilityLabel={`${position}. ${title}`}
+          accessibilityLabel={position ? `${position}. ${title}` : title}
           disabled={busy}
           hitSlop={spacing.xs}
           onPress={onToggle}
@@ -77,7 +78,7 @@ export function SyllabusItemCard({
           ) : null}
         </Pressable>
         <View style={styles.text}>
-          <AppText variant="label">{`${position}. ${title}`}</AppText>
+          <AppText variant="label">{position ? `${position}. ${title}` : title}</AppText>
           {description ? (
             <AppText variant="small" tone="muted">
               {description}

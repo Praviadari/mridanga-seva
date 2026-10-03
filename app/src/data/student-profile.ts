@@ -162,11 +162,13 @@ export async function fetchStudentProfile(studentId: string): Promise<StudentPro
     profile_id: string | null;
   };
 
-  // The syllabus is read after the student, because it depends on their level.
+  // The syllabus is read after the student, because it depends on their level. Items the Guru
+  // retired are left out (their ticks stay; C9 still lists the ticked ones).
   const items = await supabase
     .from('syllabus_items')
     .select('id, sort, title')
     .eq('level_id', summary.levelId)
+    .is('retired_at', null)
     .order('sort');
   if (items.error) return null;
   const ticked = new Map(

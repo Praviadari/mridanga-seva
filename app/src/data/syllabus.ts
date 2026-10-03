@@ -11,6 +11,7 @@ import type { ParseKeys } from 'i18next';
 import { supabase } from '@/lib/supabase';
 
 import { isNetworkError } from './errors';
+import { fetchMaterials, type Material } from './materials';
 
 /** A translation key for a message. */
 type MessageKey = ParseKeys;
@@ -31,6 +32,11 @@ export type SyllabusEntry = {
   /** Profile id of the coordinator or Guru who ticked it. */
   tickedBy: string | null;
   remark: string | null;
+  /**
+   * True for an item the Guru retired (G4, docs/DECISIONS.md #44). It is listed only when this
+   * student has it ticked, cannot be ticked again, and does not count in progress.
+   */
+  retired: boolean;
 };
 
 /** The student the tick-off screen is for. */
@@ -48,14 +54,14 @@ export type StudentSyllabus = {
  * when there is no such student (or the person may not see them), and null when it could not be
  * loaded (usually no internet). All levels are read, not only the student's own, so that items
  * of an earlier level that were never ticked can still be caught up. The whole syllabus is a few
- * dozen rows.
+ * dozen rows. Retired items are left out unless the student has them ticked.
  */
 export async function fetchStudentSyllabus(studentId: string): Promise<StudentSyllabus | 'not_found' | null> {
   const [student, items, ticks] = await Promise.all([
     supabase.from('students').select('id, full_name, roll_no, level_id').eq('id', studentId).maybeSingle(),
     supabase
       .from('syllabus_items')
-      .select('id, level_id, sort, title, description')
+      .select('id, level_id, sort, title, description, retired_at')
       .order('level_id')
       .order('sort'),
     supabase.from('student_progress').select('item_id, done_on, ticked_by, remark').eq('student_id', studentId),
@@ -72,21 +78,38 @@ export async function fetchStudentSyllabus(studentId: string): Promise<StudentSy
   return {
     student: { id: s.id, fullName: s.full_name, rollNo: s.roll_no, levelId: s.level_id },
     items: (
-      items.data as { id: number; level_id: number; sort: number; title: string; description: string | null }[]
-    ).map((item) => {
+      items.data as {
+        id: number;
+        level_id: number;
+        sort: number;
+        title: string;
+        description: string | null;
+        retired_at: string | null;
+      }[]
+    ).flatMap((item) => {
       const tick = byItem.get(item.id);
-      return {
-        id: item.id,
-        levelId: item.level_id,
-        sort: item.sort,
-        title: item.title,
-        description: item.description,
-        doneOn: tick?.done_on ?? null,
-        tickedBy: tick?.ticked_by ?? null,
-        remark: tick?.remark ?? null,
-      };
+      if (item.retired_at && !tick) return [];
+      return [
+        {
+          id: item.id,
+          levelId: item.level_id,
+          sort: item.sort,
+          title: item.title,
+          description: item.description,
+          doneOn: tick?.done_on ?? null,
+          tickedBy: tick?.ticked_by ?? null,
+          remark: tick?.remark ?? null,
+          retired: item.retired_at !== null,
+        },
+      ];
     }),
   };
+}
+
+/** How many of `items` are in use and how many of those are ticked; retired items do not count. */
+export function progressCount(items: readonly SyllabusEntry[]): { done: number; total: number } {
+  const inUse = items.filter((item) => !item.retired);
+  return { done: inUse.filter((item) => item.doneOn).length, total: inUse.length };
 }
 
 /** The signed-in student's own progress (screen S4 My progress). */
@@ -95,12 +118,17 @@ export type MyProgress = {
   /** The items of the student's current level in teaching order, with their ticks. */
   items: SyllabusEntry[];
   done: number;
+  /** Items in use (retired ones listed because they are ticked do not count). */
+  total: number;
+  /** The lessons and materials of the level, for one item or for the whole level (S4 since round 7). */
+  materials: Material[];
 };
 
 /**
- * Loads the signed-in student's own level and its syllabus with their ticks, for S4. Row-level
- * security lets a student read only their own students and student_progress rows (policy
- * own_or_staff, supabase/migrations/0001_phase1.sql), and everyone reads syllabus_items. Returns
+ * Loads the signed-in student's own level and its syllabus with their ticks and its materials,
+ * for S4. Row-level security lets a student read only their own students and student_progress
+ * rows (policy own_or_staff, supabase/migrations/0001_phase1.sql), everyone reads
+ * syllabus_items, and a student reads the approved materials up to their own level. Returns
  * 'not_found' when the login has no student record, null when it could not be loaded.
  */
 export async function fetchMyProgress(profileId: string): Promise<MyProgress | 'not_found' | null> {
@@ -110,8 +138,10 @@ export async function fetchMyProgress(profileId: string): Promise<MyProgress | '
   const all = await fetchStudentSyllabus(me.data.id);
   if (all === null) return null;
   if (all === 'not_found') return 'not_found';
+  const materials = await fetchMaterials(all.student.levelId);
+  if (materials === null) return null;
   const items = all.items.filter((item) => item.levelId === all.student.levelId);
-  return { levelId: all.student.levelId, items, done: items.filter((item) => item.doneOn).length };
+  return { levelId: all.student.levelId, items, ...progressCount(items), materials };
 }
 
 /**
@@ -164,6 +194,7 @@ export async function saveRemark(studentId: string, itemId: number, remark: stri
 /** Turns a database error from the calls above into a translation key. */
 function syllabusErrorKey(message: string, code: string | undefined): MessageKey {
   if (message === 'remark_too_long') return 'syllabus.errors.remarkTooLong';
+  if (message === 'item_retired') return 'syllabus.errors.retired';
   if (message === 'done_on_future' || message === 'progress_frozen') return 'common.genericError';
   // 42501 = refused by row-level security: the person is not a coordinator or the Guru.
   if (code === '42501') return 'syllabus.errors.notAllowed';

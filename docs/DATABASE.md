@@ -192,6 +192,54 @@ still shows who had ticked the item, when, and who removed it.
 
 Items of an earlier level can still be ticked after a promotion; the screen shows every level.
 
+## Syllabus editor
+
+Migration 0013 ([DECISIONS.md #44](DECISIONS.md)) lets the Guru keep the syllabus on screen G4
+without ever losing a tick. Levels stay fixed (Beginner, Intermediate, Advanced).
+
+| Rule | Error code |
+|---|---|
+| Title trimmed, 1 to 120 characters; description at most 1000, empty becomes none | `title_required`, `title_too_long`, `description_too_long` |
+| A new item without `sort` goes to the end of its level (after retired ones) | — |
+| `retired_at` set = retired: no longer taught, cannot be ticked, not counted in `student_home()`; the ticks stay | `item_retired` (on a tick) |
+| An item with ticks cannot be deleted (not even from the dashboard, where the cascade would take the ticks) or moved to another level | `item_has_ticks` |
+| An item that materials point to cannot be deleted | `item_has_materials` |
+
+`move_syllabus_item(item, up)` (Guru) swaps an item with the next item in use above or below it;
+false when it is already first or last. `syllabus_item_counts()` gives, per item, the ticks the
+caller may see and the materials, so the editor knows what may be deleted without reading every
+tick (the API returns at most 1000 rows). Every change to `syllabus_items` goes to `audit_log`.
+
+## Materials
+
+`materials` (0001, used since 0013): a YouTube link (`kind` youtube, `url`), a PDF or a photo
+(`kind` pdf / image, `storage_path`, `file_name`, `file_size`), or a note from seed.sql; for a
+level (`level_id`, null = every level) and optionally one syllabus item (`item_id`; the level is
+then taken from the item), with an optional note in `body`. The trigger `materials_guard` checks:
+
+| Rule | Error code |
+|---|---|
+| Title 1 to 120 characters; note at most 1000 | `title_required`, `title_too_long`, `note_too_long` |
+| A YouTube material has one video's link (watch, shorts, live, embed, youtu.be; `youtube_link_ok`) | `youtube_link_invalid` |
+| A PDF or photo has a proper path, a name and a size up to 10 MB; a new one is the signed-in person's own upload and is in Storage (the size is taken from Storage) | `material_file_invalid`, `material_file_not_yours`, `material_file_missing` |
+| Kind, file, uploader and time do not change after saving | `material_frozen` |
+| Audio is not offered yet | `material_kind_not_offered` |
+| The signed-in person is recorded as uploader; the Guru's materials are approved at once | — |
+
+Files are in the private bucket **material-files** (10 MB, JPEG, PNG, WebP, PDF), path
+`<uploader login id>/<random id>.<ext>` as for announcements. Storage rules: open = the file is on
+a material the caller may read, or staff's own upload, or the Guru; upload = the Guru into their
+own folder; delete = the uploader or the Guru. The app deletes the file before the row. Every
+change to `materials` goes to `audit_log`.
+
+## Own name and phone
+
+A person may change their own `profiles.full_name` and `phone` (A3, policy `own_update`). The
+trigger `profiles_details_guard` trims them when an app user changes them: name 1 to 80
+characters (`name_required`, `name_too_long`), phone 7 to 20 digits or spaces with an optional
+leading + (`phone_invalid`). The name on a student's roll (`students.full_name`) stays the
+coordinators' record.
+
 ## Announcements
 
 A coordinator or the Guru posts an announcement on screen C15: a title, the message, who it is
@@ -403,6 +451,8 @@ so every function is revoked from them and granted only where needed
 | `student_home()` | Anyone signed in (a student gets their own numbers) | The student home's numbers. See "Home screens" |
 | `coordinator_dashboard()` | Guru, coordinator | The coordinator dashboard's numbers. See "Home screens" |
 | `guru_dashboard()` | Guru | The Guru dashboard's numbers. See "Home screens" |
+| `move_syllabus_item(item, up)` | Guru | Moves a syllabus item one place up or down among the items in use. See "Syllabus editor" |
+| `syllabus_item_counts()` | Guru, coordinator | Ticks and materials per syllabus item. See "Syllabus editor" |
 | `week_start_ist()` | Anyone signed in | Monday of this week in India; used by the functions above |
 | `register_push_token(token, platform)` | Guru, coordinator, student | Saves this phone's Expo push token for the signed-in person, taking it over from another login on the same phone; at most 5 phones each. Security definer. Errors `not_allowed`, `bad_token`, `bad_platform`. See "Announcements" → "Push notifications" |
 | `claim_due_push()`, `release_push_claim(ids)` | Only the Edge Function (service role) | Mark waiting announcements notified and return the phones to notify; put them back when nothing could be sent |
@@ -410,14 +460,16 @@ so every function is revoked from them and granted only where needed
 The Storage rules `announcement_file_readable`, `announcement_file_uploadable`,
 `announcement_file_deletable` and `announcement_file_path_ok` are run by row-level security as
 the person asking, so signed-in people may execute them; each answers only yes or no about that
-person's own access.
+person's own access. The same holds for `material_file_readable`, `material_file_uploadable`,
+`material_file_deletable` and `youtube_link_ok` (0013).
 
 Internal functions (not called by the app, and not allowed to): `refresh_student_statuses`,
 `close_open_visits`, `send_due_push`, `handle_new_user`, `handle_user_confirmed`,
 `link_login_to_student`, `link_student_email`, `assign_roll_no`, `check_minor_consent`, the guard
 and audit triggers (including `guard_student_progress`, `audit_student_progress`,
 `guard_announcement`, `guard_announcement_attachments`, `guard_announcement_notified`,
-`guard_group` and `guard_announcement_reply`), and the helpers `my_role`, `is_guru`, `is_staff`,
+`guard_group`, `guard_announcement_reply`, `guard_syllabus_item`, `protect_syllabus_item`,
+`guard_progress_item_in_use`, `guard_material` and `guard_profile_details`), and the helpers `my_role`, `is_guru`, `is_staff`,
 `setting_int`, `today_ist`.
 
 ## Scheduled jobs (pg_cron, times in UTC)
@@ -436,7 +488,9 @@ and audit triggers (including `guard_student_progress`, `audit_student_progress`
 | Other students | — | Read / write | Read / write / delete |
 | Guardians, consents | — | Read / write | Read / write |
 | Call logs, follow-up tasks, status history | — | Read / write | Read / write |
-| Materials | Approved ones up to own level | All, can suggest | All, approves |
+| Materials | Approved ones up to own level | All (suggesting = Phase 2) | All; add, edit, delete |
+| Material files (Storage) | Those on materials they can read | All on materials, and own uploads | All; upload; delete any |
+| Own name and phone | Read / write | Read / write | Read / write |
 | Announcements | Published ones addressed to them | All, can post; edit, pin or delete own | All, can post; edit, pin or delete any |
 | Read receipts | Own; can add | All (for "seen by"); add own | All; add own |
 | Replies to announcements | Own; can add | Own, and all replies to their own announcements; can add | All; can add; can delete |

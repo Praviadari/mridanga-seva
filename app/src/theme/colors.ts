@@ -65,8 +65,11 @@ export type Palette = {
 /** The kinds of small status label, each with its own colours. */
 export type ChipTone = 'info' | 'success' | 'warning' | 'neutral' | 'paused' | 'danger' | 'level';
 
-/** The module colours: students green, attendance blue, calls purple, news orange, groups pink, here now teal. */
-export type ModuleTone = 'green' | 'blue' | 'purple' | 'orange' | 'pink' | 'teal';
+/**
+ * The module colours: students green, attendance blue, calls purple, news orange, groups pink, here now teal,
+ * syllabus and lessons indigo (round 7).
+ */
+export type ModuleTone = 'green' | 'blue' | 'purple' | 'orange' | 'pink' | 'teal' | 'indigo';
 
 // Contrast was checked against WCAG AA (4.5:1 for normal text) for text on background and
 // surface, onPrimary on primary, onPrimarySoft on primarySoft (icons on it need 3:1), and
@@ -110,6 +113,7 @@ export const lightPalette: Palette = {
     orange: { background: '#FFEDD5', icon: '#C2410C' },
     pink: { background: '#FCE7F3', icon: '#BE185D' },
     teal: { background: '#CCFBF1', icon: '#0F766E' },
+    indigo: { background: '#E0E7FF', icon: '#4338CA' },
   },
 };
 
@@ -160,5 +164,6 @@ export const darkPalette: Palette = {
     orange: { background: '#3A1E0A', icon: '#FDBA74' },
     pink: { background: '#3A1226', icon: '#F9A8D4' },
     teal: { background: '#0B2E2A', icon: '#5EEAD4' },
+    indigo: { background: '#1E1B4B', icon: '#A5B4FC' },
   },
 };

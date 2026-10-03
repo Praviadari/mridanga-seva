@@ -43,7 +43,7 @@ themselves ([DECISIONS.md #12](DECISIONS.md)).
 ## Which language the app shows
 
 1. The language the person picked on this device: the picker on the sign-in screens and, once
-   signed in, at the bottom of the home screen (S1, C1, G1; later also the profile screen). The
+   signed in, at the bottom of the home screen (S1, C1, G1) and on My profile (A3). The
    choice is also saved to their profile — at once when they are signed in, otherwise when they
    sign in.
 2. Otherwise the language saved on their profile (after they sign in on a new phone).
@@ -73,5 +73,10 @@ The code is in `app/src/i18n/index.ts`, `app/src/components/language-picker.tsx`
   with diacritics ([DECISIONS.md #39](DECISIONS.md)); do not translate it. The tab labels
   (`tabs.*`), the mantra lines (`home.mantraLine1/2`), the module names (`modules.*`) and the Coming
   soon lines (`comingSoon.*`) in Telugu and Hindi are drafts that still need the review.
+- **Round 7 keys for the review (3 Oct 2026):** `syllabusEditor.*` (G4), `materials.*` (G5),
+  `visitHistory.*` (S9), `months.*` (month names), `myProfile.*` (A3),
+  `progress.levelLessons`, `progress.retired` and `syllabus.errors.retired`. Words to check:
+  "retire" (విరమించు / हटाना, against "delete" = తొలగించు / मिटाना), "lesson" (పాఠం / पाठ),
+  "syllabus item" (అంశం / विषय), and "Share", "Copy link" kept in English as YouTube shows them.
 - Telugu and Devanagari letters are taller than Latin ones. The app's line heights allow for this;
   if a translated label looks cut off, report it with a screenshot.
