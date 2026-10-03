@@ -83,7 +83,7 @@ export async function fetchSettings(): Promise<SettingsForm | null> {
     centreName: centre?.name ?? '',
     opensAt: centre ? centre.opens_at.slice(0, 5) : '',
     closesAt: centre ? centre.closes_at.slice(0, 5) : '',
-    savedWindow: centre ? `-` : '',
+    savedWindow: centre ? `${centre.opens_at.slice(0, 5)}-${centre.closes_at.slice(0, 5)}` : '',
   };
 }
 
@@ -127,7 +127,7 @@ export async function saveSettings(form: SettingsForm): Promise<{ errorKey?: Mes
   if (error) return { errorKey: errorKeyOf(error.message) };
   const opensAt = parseTimeOfDay(form.opensAt);
   const closesAt = parseTimeOfDay(form.closesAt);
-  if (form.centreId !== null && `-` !== form.savedWindow) {
+  if (form.centreId !== null && `${opensAt}-${closesAt}` !== form.savedWindow) {
     const { error: centreError } = await supabase
       .from('centres')
       .update({ opens_at: opensAt, closes_at: closesAt })

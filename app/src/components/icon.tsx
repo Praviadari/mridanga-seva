@@ -60,6 +60,12 @@ const SHAPES = {
   retire: 'archive-outline',
   restore: 'arrow-undo-outline',
   profile: 'person-circle-outline',
+  // Round 9: notifications inbox, reports, centres.
+  bell: 'notifications-outline',
+  report: 'bar-chart-outline',
+  location: 'location-outline',
+  download: 'download-outline',
+  share: 'share-outline',
 } as const;
 
 /** The icons the app may use. */

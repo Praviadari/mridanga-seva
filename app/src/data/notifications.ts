@@ -1,0 +1,100 @@
+// A2 Notifications inbox: the notices this person was sent, newest first, with the number still
+// unread for the bell on the home header. The database fills the inbox (table notifications,
+// migration 0015): one row per person per announcement addressed to them, also for people without
+// push (the web version, iPhones), so the inbox and the push always agree. Phase 2's assessment and
+// promotion notices are planned as rows of their own kind (docs/DECISIONS.md #49).
+// Opening an announcement marks its notice read in the database; "Mark all read" marks the notices
+// only, so "seen by" on C15 still counts the people who opened the announcement.
+
+import type { Area } from '@/auth/types';
+import { belongsTo } from '@/auth/requested-path';
+import type { IconName } from '@/components/icon';
+import { supabase } from '@/lib/supabase';
+
+/** What a notice is about. Only announcements exist on main; the others come with Phase 2. */
+export type NoticeKind = 'announcement' | 'assessment' | 'promotion' | 'notice';
+
+/** One notice in the inbox. */
+export type Notice = {
+  id: number;
+  kind: NoticeKind;
+  title: string;
+  /** The start of the text (300 characters at most). */
+  body: string;
+  /** The screen it opens, the same one the push opens, e.g. /student/announcements/12. */
+  url: string;
+  /** When it reached the inbox: the publish time of an announcement. */
+  visibleAt: string;
+  readAt: string | null;
+};
+
+/** Notices loaded at first, and added by "Show older". */
+export const NOTICES_PER_PAGE = 30;
+
+type Row = { id: number; kind: NoticeKind; title: string; body: string; url: string; visible_at: string; read_at: string | null };
+
+/**
+ * Loads the person's notices, newest first, at most `limit` (one more is asked for, to know if
+ * there are older ones). Row-level security returns only their own, and only those already due.
+ * null = could not be loaded (usually no internet).
+ */
+export async function fetchInbox(limit: number): Promise<{ notices: Notice[]; hasOlder: boolean } | null> {
+  const { data, error } = await supabase
+    .from('notifications')
+    .select('id, kind, title, body, url, visible_at, read_at')
+    .order('visible_at', { ascending: false })
+    .order('id', { ascending: false })
+    .limit(limit + 1);
+  if (error) return null;
+  const rows = data as Row[];
+  return {
+    notices: rows.slice(0, limit).map((r) => ({
+      id: r.id,
+      kind: r.kind,
+      title: r.title,
+      body: r.body,
+      url: r.url,
+      visibleAt: r.visible_at,
+      readAt: r.read_at,
+    })),
+    hasOlder: rows.length > limit,
+  };
+}
+
+/** The number of unread notices, for the bell; 0 when it cannot be read (before 0015, offline). */
+export async function fetchUnreadCount(): Promise<number> {
+  const { data, error } = await supabase.rpc('inbox_unread_count');
+  return error || typeof data !== 'number' ? 0 : data;
+}
+
+/** Marks the given notices read, or all of them when `ids` is left out. False = it failed. */
+export async function markNoticesRead(ids?: number[]): Promise<boolean> {
+  const { error } = await supabase.rpc('mark_notifications_read', { p_ids: ids ?? null });
+  return !error;
+}
+
+/**
+ * The screens a notice may open: those a push may open on this version of the app
+ * (src/lib/push.ts), and only in the person's own area. A notice for a screen this version does not
+ * have (a Phase 2 notice on an older app) opens nothing; the inbox says so.
+ */
+const OPENABLE = /^\/(staff|student)\/announcements\/\d+$/;
+
+/** The screen to open for `notice`, or null when this version cannot open it. */
+export function noticeTarget(notice: Notice, area: Area): string | null {
+  return OPENABLE.test(notice.url) && belongsTo(notice.url, area) ? notice.url : null;
+}
+
+/** The icon of a notice's kind. */
+export function noticeIcon(kind: NoticeKind): IconName {
+  switch (kind) {
+    case 'assessment':
+      return 'video';
+    case 'promotion':
+      return 'level';
+    case 'announcement':
+      return 'news';
+    default:
+      return 'bell';
+  }
+}

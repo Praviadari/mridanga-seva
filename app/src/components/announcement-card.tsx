@@ -8,7 +8,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { cardLook, radius, spacing, useTheme } from '@/theme/use-theme';
 
 import { AppText } from './app-text';
-import { Icon, IconBadge } from './icon';
+import { Icon, IconBadge, type IconName } from './icon';
 
 /** Props for AnnouncementCard. */
 export type AnnouncementCardProps = {
@@ -22,10 +22,12 @@ export type AnnouncementCardProps = {
   /** Short lines under the message, already translated, e.g. "All students", "Seen by 3 of 12". */
   details: string[];
   onPress: () => void;
+  /** The icon when not pinned; default the megaphone. The inbox (A2) passes the notice's own. */
+  icon?: IconName;
 };
 
 /** A tappable card for one announcement. */
-export function AnnouncementCard({ title, body, pinned, unread, details, onPress }: AnnouncementCardProps) {
+export function AnnouncementCard({ title, body, pinned, unread, details, onPress, icon = 'news' }: AnnouncementCardProps) {
   const { colors } = useTheme();
   const { t } = useTranslation();
   const badges = [pinned ? t('announcements.pinned') : null, unread ? t('announcements.unread') : null].filter(
@@ -44,7 +46,7 @@ export function AnnouncementCard({ title, body, pinned, unread, details, onPress
         pinned && { borderColor: colors.primary, borderWidth: 2 },
         pressed && styles.pressed,
       ]}>
-      <IconBadge name={pinned ? 'pin' : 'news'} size={36} />
+      <IconBadge name={pinned ? 'pin' : icon} size={36} />
       <View style={styles.text}>
         <View style={styles.titleRow}>
           <AppText variant="label" style={styles.title}>

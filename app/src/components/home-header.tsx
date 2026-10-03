@@ -2,7 +2,8 @@
 // Krishna" and the person's name, their role, and the Hare Krishna maha-mantra as the line of the
 // day. The mantra is the only devotional text the app shows for now: it is free to use in every
 // script, while book translations are not (docs/DECISIONS.md #36). The band itself, with its
-// gradient and the space for the notch, is components/saffron-band.tsx.
+// gradient and the space for the notch, is components/saffron-band.tsx. The bell at the top right opens the
+// notifications inbox (A2, components/inbox-bell.tsx).
 
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
@@ -10,6 +11,7 @@ import { StyleSheet, View } from 'react-native';
 import { spacing, useTheme } from '@/theme/use-theme';
 
 import { AppText } from './app-text';
+import { InboxBell } from './inbox-bell';
 import { MridangaMark } from './mridanga-mark';
 import { SaffronBand } from './saffron-band';
 
@@ -48,6 +50,7 @@ export function HomeHeader({ name, role }: HomeHeaderProps) {
             </AppText>
           )}
         </View>
+        <InboxBell />
       </View>
 
       {role ? (

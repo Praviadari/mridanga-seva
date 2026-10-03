@@ -14,6 +14,7 @@ import { useTranslation } from 'react-i18next';
 
 import { useAuth } from '@/auth/auth-provider';
 import { AccountFooter } from '@/components/account-footer';
+import { MyReportsLink } from '@/components/admin-links';
 import { Button } from '@/components/button';
 import { EmptyState } from '@/components/empty-state';
 import { HomeHeader } from '@/components/home-header';
@@ -117,6 +118,8 @@ export function CoordinatorHome() {
       ) : null}
 
       <StaffShortcuts />
+      {/* Round 9: C21 My reports. */}
+      <MyReportsLink />
       <AccountFooter />
     </Screen>
   );
