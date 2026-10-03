@@ -16,8 +16,14 @@ import { soundSamples } from './practice-sounds';
 
 export type { PlayerPosition, PracticePlayer } from './practice-player';
 
-/** How far ahead sounds are scheduled, seconds (longer while the tab is hidden: timers slow down). */
+/**
+ * How far ahead sounds are scheduled, seconds. At least 0.15 s; when the timer is seen running late
+ * (a hidden or background tab, where browsers fire timers about once a second, sometimes while still
+ * reporting the page visible), it grows to 1.5 × the gap seen, up to 2 s, and shrinks back slowly.
+ * A tempo change still acts at once: the sounds planned after it are taken back.
+ */
 const LOOKAHEAD = 0.15;
+const LOOKAHEAD_MAX = 2;
 const LOOKAHEAD_HIDDEN = 1.5;
 /** How often the scheduler looks, ms. */
 const TICK_MS = 25;
@@ -41,6 +47,8 @@ class WebPracticePlayer implements PracticePlayer {
   private nextCycle = 0;
   private timer: ReturnType<typeof setInterval> | null = null;
   private scheduled: Scheduled[] = [];
+  private lookahead = LOOKAHEAD;
+  private lastTick = 0;
   /** Timing check: the last 4000 scheduled sounds, sounds scheduled late, the smallest lead. */
   readonly log: ScheduleEntry[] = [];
   late = 0;
@@ -79,6 +87,8 @@ class WebPracticePlayer implements PracticePlayer {
     this.log.length = 0;
     this.late = 0;
     this.minLead = Infinity;
+    this.lookahead = LOOKAHEAD;
+    this.lastTick = 0;
     this.tick();
     this.timer = setInterval(() => this.tick(), TICK_MS);
     return true;
@@ -187,7 +197,12 @@ class WebPracticePlayer implements PracticePlayer {
     const pattern = this.pattern;
     if (!ctx || !this.master || !pattern || pattern.events.length === 0) return;
     const hidden = typeof document !== 'undefined' && document.visibilityState === 'hidden';
-    const until = ctx.currentTime + (hidden ? LOOKAHEAD_HIDDEN : LOOKAHEAD);
+    const now = Date.now();
+    const gap = this.lastTick ? (now - this.lastTick) / 1000 : 0;
+    this.lastTick = now;
+    const wanted = Math.min(LOOKAHEAD_MAX, Math.max(hidden ? LOOKAHEAD_HIDDEN : LOOKAHEAD, gap * 1.5));
+    this.lookahead = Math.max(wanted, this.lookahead * 0.98);
+    const until = ctx.currentTime + this.lookahead;
     for (;;) {
       const event = pattern.events[this.nextIndex];
       const beat = this.nextCycle * pattern.beats + event.at;

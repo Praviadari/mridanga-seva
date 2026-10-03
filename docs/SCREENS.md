@@ -93,6 +93,19 @@ circle: the staff ring is already at ten.
 | C23 | Promotion feedback: the nomination with the reason, the criteria at nomination, the level-up recording (Play) and the other answers; rate Ready / Almost / Not yet with a comment, change it while open; "Open the student's profile" | Coordinator | Built | `app/src/app/staff/promotion/[id].tsx` |
 | G7 | Level-up queue: waiting for a decision (enough answers), collecting feedback, ready to nominate, decided lately; on a nomination: Promote (after 2 answers, asks to confirm; level + level history), Not yet (guidance + nominate-again date), More feedback (a note; tells those who have not answered); withdraw | Guru | Built | `app/src/app/staff/promotion/index.tsx`, `[id].tsx` |
 
+Slice 3 (branch `phase2-practice`, from `phase2-promotion`), practice tools and the two-head view
+([DECISIONS.md #49](DECISIONS.md)). V1 is approved in the doc; **S5 and S6 have no team pick yet**
+(built because V1 needs a player). Entry points: a "Practice" circle on the student ring, a Practice
+block on S4 and C8, a "Practice tools" button under the staff ring. Sound on phones needs the next
+APK (expo-audio); the browser works now.
+
+| # | Screen | Who | Status | Code |
+|---|---|---|---|---|
+| S5 | Practice tools: metronome (30-240, −5/−1/+1/+5, tap tempo, 2-8 beats with an accent on 1, beat dots); taal player (taal chips, "Placeholder" note, tempo, slow-down 50/75/100 %, the beat-name grid with X / 2 / 0 vibhag marks, the two-head view); practice timer for students (starts with the sound, logs itself on Stop at 1 minute or more); offline from the taals saved on the phone. No "record myself" yet (slice 4) | Student; staff without the timer | Built | `app/src/screens/practice-tools.tsx` (routes `student/practice.tsx`, `staff/practice.tsx`), `app/src/components/beat-grid.tsx`, `app/src/lib/practice-audio.ts` + `.web.ts`, `practice-pattern.ts`, `practice-sounds.ts`, `practice-timer.ts`, `use-playhead.ts`, `bols.ts` |
+| V1 | Two-head view (in S5): baya left, dayan right as the player sees them; the struck zone (kinar, maidan, syahi edge, syahi, whole head) lit per bol in time with the sound, a ripple for open strokes; zone, fingers and open / damped in words under each head | Student, staff | Built | `app/src/components/two-head-view.tsx`, `app/src/lib/bols.ts` |
+| S6 | Practice log: weekly practice (8 weeks from Monday), entries (timer or typed in), add practice for a day of the last week (1-240 minutes, a note), delete own entries of the last 14 days; weekly hours also on S4 My progress and, for staff, on C8 | Student (C8: staff) | Built | `app/src/app/student/practice-log.tsx`, `app/src/components/practice-parts.tsx`, `app/src/data/practice.ts` |
+| — | Taals: the list and a form (name, bols, vibhags, marks, level, placeholder, switched on, note, order) with a live grid preview; delete asks first. Opened from S5 "Edit taals" | Guru (coordinators read) | Built | `app/src/app/staff/taals/index.tsx`, `[id].tsx` |
+
 ## Build order
 
 ~~A1~~ → ~~C2, C3~~ → ~~C5, C6~~ → ~~C7, C8~~ → ~~C10, C11~~ → ~~C9~~ → ~~G4, G5~~ → ~~C15, S10~~ → ~~S1~~, ~~S3~~, ~~S4, S9~~ →

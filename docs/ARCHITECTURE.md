@@ -314,6 +314,36 @@ Not on main yet ([DECISIONS.md #45](DECISIONS.md)). The app never promotes anyon
 5. Only the Guru can change a student's level at all (a database trigger), and the level-up
    recording is kept until 30 days after the decision.
 
+## Practice tools (Phase 2, branch `phase2-practice`)
+
+Not on main yet ([DECISIONS.md #49](DECISIONS.md)). S5 plays a **pattern** (`lib/practice-pattern.ts`):
+one cycle of sounds, each at a position in beats (a metronome bar, or a taal's bols spread over
+their beats, `lib/bols.ts` saying which head, zone, fingers and sound a bol is). A **player**
+(`lib/practice-player.ts`) loops it at a tempo:
+
+- **Browser** (`lib/practice-audio.web.ts`): Web Audio look-ahead scheduler. A 25 ms timer looks
+  150 ms ahead (more when the timer is seen running late, as in a background tab where browsers fire
+  it about once a second: 1.5 × the gap, up to 2 s) and starts each sound with
+  `AudioBufferSourceNode.start(time)` on the audio clock, time = anchor + beats × 60 / bpm. A tempo
+  change sets a new anchor and takes back what was scheduled after it. The sounds are synthesised
+  once into AudioBuffers (`lib/practice-sounds.ts`).
+- **Phone** (`lib/practice-audio.ts`, expo-audio, next APK): the cycle is mixed into one WAV
+  (22.05 kHz mono, tails wrapped round) in the cache folder and played with `loop` on, so the audio
+  hardware keeps the time; a tempo change writes a new file and seeks to the same beat.
+- **The screen follows the sound**: `lib/use-playhead.ts` reads the player's position every frame
+  (web: audio clock minus `outputLatency`; phone: `player.currentTime`) and re-renders only when the
+  beat or bol changes. The beat dots, the beat grid and V1 (`components/two-head-view.tsx`, SVG)
+  light from it.
+- **Timer and log**: `lib/practice-timer.ts` keeps the start time on the device (survives leaving
+  the screen and reloads); Stop calls `log_practice` (DATABASE.md "Practice tools").
+- **Offline**: taals are saved on the device after each load, with the seeded placeholders built in
+  as a last resort; sounds need no network.
+
+**Drift, measured 3 Oct 2026** (Chrome in the desktop app's browser pane, 80 beats a minute,
+2+ minutes, click onsets detected in the audio output itself by an AudioWorklet on the audio thread, stamped with `currentFrame`):
+no sound missed (183 clicks over 136.5 s), drift at the end −0.16 ms, worst error 0.16 ms (the detector's own resolution, about 7 samples), every interval 749.84-750.16 ms, each click 0.39-0.54 ms after its planned time (a constant: the click's 2 ms fade-in), 0 sounds scheduled late. The tab was in the background during the run, its timer slowed to about 1 a second, and the look-ahead grew to 1.5 s by itself. A plain `setInterval` metronome run beside it was off by up to 16 ms (539 ms in an earlier run while the page's main thread stalled). Tempo change 80 → 85 while playing: the next sounds came at 705.88 ms, none late; slow-down 50 % of 60 = 2000 ms a beat. In development builds the web player is on `globalThis.__practicePlayer` (schedule
+log, `late`, `minLead`) for such checks.
+
 ## Phases
 
 | Phase | Adds | Target |

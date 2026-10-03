@@ -12,6 +12,8 @@
 | Kinar, maidan | The outer ring and the middle field of a head |
 | Bol | A syllable naming one stroke, such as *tā*, *ghe*, *dhin* |
 | Taal (tala) | A rhythm cycle with a fixed number of beats, such as Kaherva (8) or Dasapahira (16) |
+| Vibhag | A section of a taal's cycle. Marked X (sam, the first beat), 2, 3 (tali: an open baya stroke) or 0 (khali), as the kksongs khol course writes them; the taal player (S5) shows them |
+| Mātrā | One beat of a taal ("beat" in the app) |
 | Kartal | Small hand cymbals that keep time with the mridanga |
 | Kirtan | Congregational singing of the holy names |
 | Seva | Voluntary service. The class and this app are seva |

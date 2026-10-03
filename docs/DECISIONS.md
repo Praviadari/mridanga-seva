@@ -1116,3 +1116,66 @@ in charge while still telling coordinators who is ready.
 The Edge Function `notify-announcements` must be deployed again from this branch to send the
 promotion notifications (it now accepts `/staff/promotion/<id>` and `/student/progress`); until
 then they wait in `push_outbox`. The Telugu and Hindi texts are drafts (docs/TRANSLATIONS.md).
+
+## 49. Practice tools: metronome, taal player, two-head view and practice log — 3 Oct 2026
+
+**Status: proposed, on the branch `phase2-practice` only** (from `phase2-promotion`). The number is
+this branch's (main's last is #48; round 9 may take #49 too): renumbered when Phase 2 reaches main,
+like 0016. **S5 Practice tools and S6 Practice log have no team pick in the Screen List doc yet**;
+they were built because the approved V1 two-head view needs a player. Praveen to confirm.
+
+**Context.** The Screen List doc approves V1 (both drum faces drawn, the zone and the hand lit per
+bol in time with the sound, at any tempo, offline) and sequences "practice tools + two-head view"
+after assessments and promotion. S5 (metronome with tap tempo, taal player with a beat-name grid,
+slow-down player, record myself) and S6 (timer from S5 logs itself, manual entries, weekly hours)
+are listed without a pick. The real taals (bols, levels) are a team input.
+
+**Decision.**
+- **S5** has a metronome (30-240 beats a minute, −5/−1/+1/+5, tap tempo from the last 2-5 taps, 2-8
+  beats in a bar with an accent on beat 1, beat dots lit in time) and a taal player (a taal from the
+  table, its own tempo, slow-down 50 / 75 / 100 %, the beat-name grid, the two-head view). Staff
+  open the same screen without the timer; the Guru also finds "Edit taals".
+- **Timing.** In the browser a look-ahead scheduler starts every sound on the Web Audio clock
+  (`AudioContext.currentTime`), 150 ms ahead (up to 2 s when the browser slows the timer), from one anchor: a slow JavaScript timer never shifts a
+  sound and nothing adds up (measured: see ARCHITECTURE "Practice tools"). On phones, where
+  expo-audio cannot start a sound at a future time, the whole cycle is mixed into one WAV at the
+  tempo and looped by the audio hardware (`player.loop`); the screen reads `player.currentTime`.
+  A tempo change re-anchors (web) or mixes a new loop and seeks to the same beat (phone).
+- **Sounds are synthesised** (decaying partials with a pitch bend for the baya, a noise attack), so
+  nothing is downloaded and everything works offline. Recorded strokes can replace them (team input).
+- **V1** draws both faces with react-native-svg as the player sees them (baya left, dayan right) and
+  lights the zone of each stroke (kinar, maidan, the syahi's edge, the syahi, or the whole head for a
+  flat hand) with a ripple when the stroke rings; words under each head name the zone, the fingers and
+  open / damped. The bol-to-stroke table is from NOTES "Bols" (kksongs khol lessons 2-4), the khol's
+  and not the Carnatic mridangam's; a few spellings are mapped by assumption and marked unverified in
+  `lib/bols.ts` (tin, ge/gi, khe, dhi). The screen re-renders only when the bol changes; Reanimated is
+  not needed for it.
+- **Vibhag marks** follow the kksongs khol course: X sam, 2 / 3 tali (a tali is an open baya stroke),
+  0 khali. Bengali kirtan names such as "phāṅk" for khali were not confirmed and are not used.
+- **Taals are data** (`taals`: name, bols one per beat with `-` for a rest and `te.re` for two bols in
+  a beat, divisions, marks, level or all, placeholder, note, order, switched on). **A simple Guru
+  editor is built** (list + form with a live grid preview), because the placeholders must be replaced
+  by the Guru without SQL; coordinators read it. Three **placeholder** taals are seeded and marked so
+  in the app: kksongs lesson 6's 8-beat kirtan rhythm, a 6-beat one with invented bols, and
+  Dasapahira 16 (8+4+4, khali on 9) from kksongs lesson 10 with bols and marks to check.
+- **S6.** The S5 timer starts with the first sound (or by hand), survives leaving the screen, and on
+  Stop logs itself when it ran 1 minute or more (at most 240 minutes an entry; over 6 hours counts as
+  forgotten). Students type in practice for a day of the last week; delete their own entries of the
+  last 14 days. The database (`log_practice`) checks the minutes against the timer's start, at most
+  12 hours and 20 entries a day. Weeks run from Monday (India).
+- **Where it shows.** A "Practice" circle on the student ring (8 circles); a Practice block with 4
+  weeks on S4 My progress (opens S6) and on C8 for staff (the coordinator sees a mentee's hours);
+  a "Practice tools" button under the staff ring (the ring is full at ten).
+- **Promotion criteria are unchanged** (#45). Practice hours could become a setting later
+  (`practice_weeks` already gives the numbers).
+
+**Why.** The approved V1 needs a player, and a drifting metronome teaches the wrong time. The audio
+clock (web) and a hardware-looped buffer (phone) keep time without depending on JavaScript timers.
+Taals as editable data let the Guru put in the real ones without an app update.
+
+**Consequences.** Migration `0016_practice.sql` (TEST only; renumbered at the Phase 2 merge).
+**expo-audio** is added on this branch (#43 chose it for the next planned APK): the Android
+fingerprint changes on this branch, so its JS must never be published to the current APK's channel;
+sound on phones is tested with the next APK. Not in this slice (slice 4, native): V3 player controls
+(mirror, 0.5x / 0.75x, A-B loop: a WebView or expo-video), "record myself", in-app recording for
+assessments. The Telugu and Hindi lines are drafts (TRANSLATIONS.md).

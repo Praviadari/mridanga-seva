@@ -54,10 +54,23 @@ export function usePlayhead(player: PracticePlayer, pattern: Pattern | null, bpm
           setHead({ beat, bolBeat: event.beat, part: event.part, fresh, count });
         }
       }
-      frame = requestAnimationFrame(step);
     };
-    frame = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(frame);
+    // Every screen frame; and a 50 ms timer for when frames are paused or slowed (a page in a hidden
+    // panel, some power-saving modes) while the sound plays on.
+    let lastFrame = 0;
+    const onFrame = () => {
+      lastFrame = Date.now();
+      step();
+      frame = requestAnimationFrame(onFrame);
+    };
+    frame = requestAnimationFrame(onFrame);
+    const fallback = setInterval(() => {
+      if (Date.now() - lastFrame > 100) step();
+    }, 50);
+    return () => {
+      cancelAnimationFrame(frame);
+      clearInterval(fallback);
+    };
   }, [player, pattern, bpm, playing]);
 
   return playing ? head : null;

@@ -13,7 +13,7 @@ import { StyleSheet, View } from 'react-native';
 import Svg, { Circle, G } from 'react-native-svg';
 
 import type { Bol, Head, Stroke, Zone } from '@/lib/bols';
-import { spacing, useTheme } from '@/theme/use-theme';
+import { spacing } from '@/theme/use-theme';
 
 import { AppText } from './app-text';
 
@@ -24,6 +24,8 @@ const DRUM = {
   maidan: '#EADBB8',
   syahi: '#2B2622',
   line: '#A88B5C',
+  /** The struck zone: a deep saffron that stands out on the pale head and the black syahi alike. */
+  lit: '#E8590C',
 };
 
 /** Radii of the zones as a share of the head's radius, from the rim inwards. */
@@ -63,7 +65,7 @@ type FaceProps = {
 /** One head, face on, with its struck zone lit. */
 function Face({ cx, cy, r, stroke, fresh, lit }: FaceProps) {
   const [outer, inner] = stroke ? zoneRadii(stroke.zone) : [0, 0];
-  const opacity = fresh ? 0.85 : 0.4;
+  const opacity = fresh ? 0.95 : 0.65;
   return (
     <G>
       <Circle cx={cx} cy={cy} r={r * RINGS.rim} fill={DRUM.rim} />
@@ -104,7 +106,6 @@ export type TwoHeadViewProps = {
 /** Both faces of the khol with the zone of the current bol lit, and the same in words. */
 export function TwoHeadView({ bol, fresh }: TwoHeadViewProps) {
   const { t } = useTranslation();
-  const { colors } = useTheme();
   const strokeOn = (head: Head) => bol?.strokes.find((s) => s.head === head && !bol.unknown) ?? null;
   const baya = strokeOn('baya');
   const dayan = strokeOn('dayan');
@@ -121,8 +122,8 @@ export function TwoHeadView({ bol, fresh }: TwoHeadViewProps) {
       </AppText>
       <View aria-hidden style={styles.drawing}>
         <Svg width="100%" height="100%" viewBox="0 0 340 190">
-          <Face cx={95} cy={95} r={86} stroke={baya} fresh={fresh} lit={colors.primary} />
-          <Face cx={268} cy={95} r={58} stroke={dayan} fresh={fresh} lit={colors.primary} />
+          <Face cx={95} cy={95} r={86} stroke={baya} fresh={fresh} lit={DRUM.lit} />
+          <Face cx={268} cy={95} r={58} stroke={dayan} fresh={fresh} lit={DRUM.lit} />
         </Svg>
       </View>
       <View style={styles.captions}>
@@ -154,6 +155,9 @@ export function TwoHeadView({ bol, fresh }: TwoHeadViewProps) {
 const styles = StyleSheet.create({
   wrap: {
     gap: spacing.sm,
+    width: '100%',
+    maxWidth: 520,
+    alignSelf: 'center',
   },
   bol: {
     textAlign: 'center',
@@ -161,8 +165,6 @@ const styles = StyleSheet.create({
   drawing: {
     width: '100%',
     aspectRatio: 340 / 190,
-    maxWidth: 520,
-    alignSelf: 'center',
   },
   captions: {
     flexDirection: 'row',

@@ -92,5 +92,14 @@ The code is in `app/src/i18n/index.ts`, `app/src/components/language-picker.tsx`
   तैयार · लगभग · अभी नहीं (the three answers), అభిప్రాయం / राय (feedback), నియమాలు / शर्तें
   (criteria), సూచనలు / मार्गदर्शन (guidance). Coordinator and Guru as in the rest of the app
   (కోఆర్డినేటర్ / कोऑर्डिनेटर, గురువుగారు / गुरुजी). Checked for mixed Telugu-Devanagari words on 3 Oct 2026.
+- **Phase 2 practice tools** (branch `phase2-practice`, [DECISIONS.md #49](DECISIONS.md)): every
+  Telugu and Hindi line under `practice.*`, `practiceLog.*` and `taals.*` (146 keys each) is a draft
+  for the review. Bols are never translated: they come from the taal data, written in the usual
+  romanised form (tā, dhin, te.re). Words to check first: the drum's parts written in the local
+  script, బాయా · దాయాన్ · కినార్ · మైదాన్ · స్యాహీ / बाया · दायाँ · किनार · मैदान · स्याही (Hindi
+  "दायाँ · दायाँ हाथ" reads twice as "right": maybe "दायाँ मुख"); the vibhag marks సమ్ · తాళి · ఖాళీ /
+  सम · ताली · खाली; "beat" as బీట్ / मात्रा; "practice" అభ్యాసం / अभ्यास; "placeholder" తాత్కాలికం /
+  अस्थायी; the strokes' fingers (`practice.touch.*`) and open / damped (మోగుతుంది · మూసిన / गूँजता
+  · बंद). Checked for mixed Telugu-Devanagari words on 3 Oct 2026.
 - Telugu and Devanagari letters are taller than Latin ones. The app's line heights allow for this;
   if a translated label looks cut off, report it with a screenshot.

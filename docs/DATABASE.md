@@ -38,6 +38,7 @@ consent), sample visits, groups and an announcement. Never run it on the live pr
 | Learning | `levels`, `syllabus_items`, `student_progress`, `level_history`, `materials` | Three levels; each has an ordered syllabus |
 | Communication | `announcements`, `announcement_reads`, `announcement_replies`, `groups`, `group_members`, `push_tokens` | Groups replace the WhatsApp groups. Views `announcement_audience` and `announcement_seen` give "seen by", `announcement_reply_list` the replies with names, `group_summary` the member counts. Photos and PDFs are files in the Storage bucket `announcement-files`, listed in `announcements.attachments` |
 | Assessments (Phase 2) | `assessments`, `assessment_releases`, `assessment_assignments`, `assessment_submissions`, `push_outbox` | Views `assessment_tracker` (C13) and `assessment_summary` (counts). Files in the Storage bucket `assessment-files` |
+| Practice (Phase 2) | `taals`, `practice_logs` | Taals the S5 player loops (the Guru edits them); practice minutes from the S5 timer or typed in (S6). See "Practice tools (Phase 2)" |
 | Audit | `audit_log` | Who changed a student, profile, call log, level, syllabus tick or announcement, or deleted a reply, and when |
 
 ## Student status
@@ -526,6 +527,26 @@ never used for a nomination goes 180 days after its review (`submission_file_exp
 person's language, to `/staff/promotion/<nomination>` or `/student/progress`; never to the person
 whose action it is. The Edge Function accepts these two screens since this branch, so it must be
 deployed again from it (the slice-1 redeploy is still pending on TEST).
+
+## Practice tools (Phase 2)
+
+Migration 0016, on the branch `phase2-practice`, TEST project only until Phase 2 goes live
+([DECISIONS.md #49](DECISIONS.md)); renumbered with the other Phase 2 files at the merge. Screens S5,
+V1, S6 and the taal editor (SCREENS.md).
+
+| Table | One row per | Written by |
+|---|---|---|
+| `taals` | Rhythm cycle: `name`, `bols` (one per beat: `-` rest, or 1-4 bols joined with `.`), `beats` (generated = number of bols), `divisions` (beats per vibhag, adding up to `beats`), `marks` (one per vibhag: `X` first, `2`-`9` tali, `0` khali), `level_id` (null = all levels), `placeholder`, `note`, `sort`, `active`, `updated_by` | The Guru (row-level security); checked by the trigger `taals_guard` (`guard_taal`: name 1-60, 2-32 beats, divisions and marks, bol shape, note ≤ 300; bols lower-cased); audited. Three placeholder rows seeded |
+| `practice_logs` | Practice entry: `student_id`, `practised_on` (India), `minutes` 1-240, `source` `timer` (with `started_at`) or `manual`, `taal_id` (set null when the taal is deleted), `note` ≤ 200, `created_by` | Only `log_practice` / `delete_practice` |
+
+| Function | Who | Does | Errors |
+|---|---|---|---|
+| `log_practice(minutes, source, practised_on, started_at, taal, note)` | Student | Timer: started within 6 hours, minutes ≤ time since start + 1, day = today. Manual: a day from 13 days ago to today. At most 12 hours a day and 20 entries in 24 hours | `not_allowed`, `minutes_invalid`, `started_invalid`, `date_invalid`, `source_invalid`, `taal_not_found`, `note_too_long`, `day_full`, `too_many` |
+| `delete_practice(id)` | The student | Deletes an own entry of the last 14 days | `not_allowed`, `too_old` |
+| `practice_weeks(student, weeks)` | Anyone (security invoker) | Minutes and entries per week from Monday (India), newest first, 1-26 weeks, empty weeks as 0; row-level security decides whose minutes count (a student: own; staff: anyone's) | — |
+
+Who sees what: students read the taals switched on; staff read all; only the Guru writes. A student
+reads their own practice; staff read everyone's. Anon reads nothing.
 
 ## Linking a login to a student
 
