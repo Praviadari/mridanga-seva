@@ -16,9 +16,17 @@ in number order:
 | `0009_home_screens.sql` | The numbers on the three home screens: `student_home`, `coordinator_dashboard` and `guru_dashboard`, and one meaning of "this week" (`week_start_ist`) ([DECISIONS.md #31](DECISIONS.md)) |
 | `0010_announcement_files.sql` | Photos and PDFs on announcements: the private Storage bucket `announcement-files`, checks on `attachments`, and who may upload, open and delete a file ([DECISIONS.md #32](DECISIONS.md)) |
 | `0011_push_notifications.sql` | Push notifications: `announcements.notified_at`, `push_tokens`, `register_push_token`, and the every-minute job that calls the Edge Function `notify-announcements` ([DECISIONS.md #33](DECISIONS.md)) |
-| `0013_syllabus_materials.sql` | The syllabus editor and the materials library: retiring items, their order, checks on items and materials, the bucket `material-files`, own name and phone ([DECISIONS.md #44](DECISIONS.md)). Number 0012 belongs to the Phase 2 branch `phase2-assessments` |
+| `0013_syllabus_materials.sql` | The syllabus editor and the materials library: retiring items, their order, checks on items and materials, the bucket `material-files`, own name and phone ([DECISIONS.md #44](DECISIONS.md)). Number 0012 is unused on main (it was the Phase 2 branch's, now 0016) |
 | `0014_guru_admin.sql` | The facilitator's admin screens: roles, duty hours and mentees (G2), the student import (G3), checked settings and "this week" from Monday or the last 7 days (G10), audit log indexes (G11); a call task follows the mentor ([DECISIONS.md #45-#48](DECISIONS.md)) |
 | `0015_inbox_reports_centres.sql` | The notifications inbox filled by the database (A2), the reports function `class_report` (C21, G8), and checks on centres with an address and the attendance area (G9) ([DECISIONS.md #49-#51](DECISIONS.md)) |
+| `0016_assessments.sql` | **Phase 2** (0012 on its branch and on TEST). Assessments, releases, assignments and submissions with their rules; the private bucket `assessment-files`; the push queue `push_outbox`; the daily reminder job ([DECISIONS.md #52](DECISIONS.md)). See "Assessments (Phase 2)" |
+| `0017_promotion.sql` | **Phase 2** (0014_promotion on its branch and on TEST). Nominations, coordinators' feedback, the Guru's decision; only the Guru changes a level ([DECISIONS.md #53](DECISIONS.md)). See "Promotion approval (Phase 2)" |
+| `0018_practice.sql` | **Phase 2** (0016_practice on its branch and on TEST). Taals, the practice log and weekly minutes ([DECISIONS.md #54](DECISIONS.md)). See "Practice tools (Phase 2)" |
+| `0019_phase2_inbox.sql` | Every notice queued in `push_outbox` (assessments, promotion) also goes into the notifications inbox (A2) ([DECISIONS.md #55](DECISIONS.md)). See "Notifications inbox" |
+
+The Phase 2 files were renumbered when Phase 2 merged into main (#55). TEST ran them under their
+old numbers (0012, 0014_promotion, 0016_practice) and needs only 0019; LIVE runs 0013 to 0019 in
+number order (OPERATIONS.md).
 
 Every table and important column also carries a `COMMENT ON` description, so you can read it in
 the Supabase dashboard (Table Editor → table → description).
@@ -39,7 +47,10 @@ consent), sample visits, groups and an announcement. Never run it on the live pr
 | Follow-up | `call_logs`, `follow_up_tasks`, `status_history` | Every call and every status change is kept |
 | Learning | `levels`, `syllabus_items`, `student_progress`, `level_history`, `materials` | Three levels; each has an ordered syllabus |
 | Communication | `announcements`, `announcement_reads`, `announcement_replies`, `groups`, `group_members`, `push_tokens` | Groups replace the WhatsApp groups. Views `announcement_audience` and `announcement_seen` give "seen by", `announcement_reply_list` the replies with names, `group_summary` the member counts. `notifications` is each person's inbox (A2, see "Notifications inbox"). Photos and PDFs are files in the Storage bucket `announcement-files`, listed in `announcements.attachments` |
-| Audit | `audit_log` | Who changed a student, profile, call log, level, syllabus item or tick, material, announcement, setting or centre, or deleted a reply, and when (read on G11) |
+| Assessments (Phase 2) | `assessments`, `assessment_releases`, `assessment_assignments`, `assessment_submissions`, `push_outbox` | Views `assessment_tracker` (C13) and `assessment_summary` (counts). Files in the Storage bucket `assessment-files` |
+| Promotion (Phase 2) | `promotion_nominations`, `promotion_feedback` | View `promotion_queue` (G7). See "Promotion approval (Phase 2)" |
+| Practice (Phase 2) | `taals`, `practice_logs` | Taals the S5 player loops (the Guru edits them); practice minutes from the S5 timer or typed in (S6). See "Practice tools (Phase 2)" |
+| Audit | `audit_log` | Who changed a student, profile, call log, level, syllabus item or tick, material, announcement, setting, centre or taal, or deleted a reply, and when (read on G11) |
 
 ## Student status
 
@@ -487,8 +498,8 @@ The trigger `settings_guard` checks each value however it is written:
 | `new_joiner_weeks` | 1-12 (4) | home screens |
 | `week_starts` | `"monday"` or `"rolling7"` (`"monday"`) | `week_start_ist()` |
 | `call_reasons` | a list of codes | C11, `log_call` (not edited in the app yet) |
-| `promotion_syllabus_percent` 0-100 (100), `promotion_min_visits` 0-100 (8), `promotion_visit_weeks` 1-52 (8), `promotion_min_feedback` 1-10 (2) | whole numbers | nothing on main yet (Phase 2 promotion, same keys as the branch phase2-promotion) |
-| `promotion_needs_level_up` | true / false (true) | nothing on main yet (Phase 2 promotion) |
+| `promotion_syllabus_percent` 0-100 (100), `promotion_min_visits` 0-100 (8), `promotion_visit_weeks` 1-52 (8), `promotion_min_feedback` 1-10 (2) | whole numbers | `promotion_criteria`, `decide_promotion` (Phase 2 promotion, 0017) |
+| `promotion_needs_level_up` | true / false (true) | `promotion_criteria` (Phase 2 promotion, 0017) |
 
 Out-of-range values give `setting_invalid`; the app cannot add (`setting_unknown`) or delete
 (`setting_required`) a setting. Every change goes to `audit_log` with the key as `row_id`
@@ -570,6 +581,136 @@ by `centres_guard` (0014). Only the Guru writes (policy `guru_write`, 0001); eve
 the audit log. **The phones do not check the area yet:** that needs `expo-location`, a native
 package, in the next planned APK. New students still get centre 1 (Abids) as home centre; a
 picker comes when a second centre opens.
+## Assessments (Phase 2)
+
+Migration 0016 (0012 on the branch `phase2-assessments` and on TEST; renumbered at the Phase 2
+merge, [DECISIONS.md #52 and #55](DECISIONS.md)). Screens G6, C12, C13, C14, S7 (SCREENS.md).
+
+| Table | One row per | Written by |
+|---|---|---|
+| `assessments` | Assessment the Guru set: `title`, `instructions`, `kind` (`playing`, `singing`, `theory`, `other`), `level_id`, `level_up`, `rubric` (list of `{criterion, max}`), `media` (up to 3 files), `media_link`, `sent_at` (empty = draft) | The Guru, directly; trigger `assessments_guard` |
+| `assessment_releases` | A coordinator's handing-out: `notes`, `due_on`, `released_by` | `release_assessment` |
+| `assessment_assignments` | Student and assessment (unique): `status` `assigned` (Not seen), `seen`, `submitted`, `reviewed`, `redo`; `seen_at`, `last_reminded_at`, `reminders` | The functions below |
+| `assessment_submissions` | Recording a student sent: `file` (`{path, name, kind audio\|video, size}`) and/or `link`, `note`; the review: `scores` (one per rubric line), `score`, `score_max`, `comment`, `outcome` (`accepted`, `redo`), `send_level_up`, `reviewed_by`, `reviewed_at`; `file_removed_at` | `submit_assessment`, `review_submission` |
+| `push_outbox` | Notification to one person: `title`, `body` (in their app language), `url` (the screen), `sent_at` | The functions below; sent by the Edge Function. No app access at all |
+
+The trigger `assessments_guard`:
+
+| Rule | Error code |
+|---|---|
+| Title trimmed, 1 to 120 characters; instructions at most 4000 | `title_required`, `title_too_long`, `instructions_too_long` |
+| Rubric of 1 to 8 lines, each a criterion of 1 to 80 characters and a whole top score 1 to 10 | `rubric_required`, `rubric_invalid` |
+| At most 3 files, each a proper path in the uploader's own folder that is in Storage (size taken from Storage), kind matching the ending; the link `https://`, at most 500 characters | `too_many_media`, `file_invalid`, `file_not_yours`, `file_missing`, `link_invalid` |
+| The author is the signed-in person; `sent_at` set once, by the database's clock, never cleared | `assessment_frozen`, `already_sent` |
+| After the first release, type, level, level-up flag and rubric stay | `assessment_released` |
+
+The functions (all security definer, each checks who is asking):
+
+| Function | Who | Does | Errors |
+|---|---|---|---|
+| `release_assessment(assessment, students[], due_on, notes)` | Guru, coordinator | For a sent assessment: one release and one assignment per picked student who does not have it yet; a notification to each with a login. Returns `{release_id, assigned, already, no_login}` | `not_allowed`, `assessment_not_found`, `students_required`, `due_required`, `due_past`, `due_too_far`, `notes_too_long`, `nothing_to_assign` |
+| `mark_assessment_seen(assignment)` | The student it belongs to | `seen_at`, Not seen → Seen | `not_allowed` |
+| `submit_assessment(assignment, file, link, note)` | The student it belongs to, while Not seen, Seen or Redo | Saves the recording (own uploaded audio/video, never sent before, ≤ 50 MB) or link; status Submitted; tells the coordinator who released it | `not_allowed`, `not_open`, `recording_required`, `file_invalid`, `file_not_yours`, `file_missing`, `link_invalid`, `note_too_long` |
+| `review_submission(submission, scores[], comment, outcome, send_level_up)` | Guru, coordinator | Only the latest, unreviewed recording: scores within each line's top, total; comment required for a redo; `send_level_up` only for an accepted level-up assessment; status Reviewed or Redo; tells the student | `not_allowed`, `submission_not_found`, `already_reviewed`, `outcome_required`, `scores_invalid`, `comment_required`, `comment_too_long`, `level_up_not_allowed` |
+| `remind_assessment(assignments[])` | Guru, coordinator | A reminder to each still to send (Not seen, Seen, Redo), at most once in 12 hours each. Returns `{reminded, no_login, skipped}` | `not_allowed` |
+
+Who sees what (row-level security): the Guru every assessment, drafts too; a coordinator the
+sent ones, and every release, assignment and submission (any coordinator may follow up or
+review); a student only the assessments, releases, assignments and submissions that are theirs
+(`my_student_id()`). The views `assessment_tracker` (one row per assignment with the student's
+name, roll number, login yes/no, due date and latest submission) and `assessment_summary`
+(counts per status) are security invoker.
+
+**Files.** The private bucket `assessment-files`: at most 50 MB a file; JPEG, PNG, WebP, PDF,
+MP3, M4A, AAC, WAV, OGG, AMR, MP4, MOV, 3GP, WebM, MKV. A path is
+`<login id>/<random id>.<ending>`; `assessment_file_kind()` reads the kind from the ending.
+
+| Action | Allowed for | Rule function |
+|---|---|---|
+| Open, or make a signed link | The Guru; anyone who may read an assessment or a submission that lists the file; one's own folder | `assessment_file_readable` |
+| Upload | The Guru, any kind, own folder; a student audio or video into their own folder, only while an assessment waits for them, at most 10 files in a day | `assessment_file_uploadable` |
+| Delete | The Guru any; anyone else their own upload while no submission lists it | `assessment_file_deletable` |
+
+**Keeping files.** A recording is deleted 30 days after its review (`file_removed_at` is set; the
+review stays), except one sent to the Guru for a level-up. The daily job `assessment_daily` calls
+the Edge Function with `{"cleanup": true}`, which takes the paths from
+`claim_expired_submission_files()` and deletes them through the Storage API (a batch Storage
+refuses goes back with `release_submission_files`).
+
+**Notifications.** `push_outbox` rows are written by the functions above and the daily job, in
+the person's `profiles.language`, with the screen to open: `/student/assessments/<assignment>`
+or `/staff/assessments/review/<assignment>`. The every-minute job calls the Edge Function while
+a row of the last day waits; `claim_push_outbox()` marks them sent and returns one row per phone;
+rows older than a day are never sent. The Edge Function from the same commit must be deployed;
+the one deployed for 0011 ignores the queue.
+
+## Promotion approval (Phase 2)
+
+Migration 0017 (0014_promotion on the branch `phase2-promotion` and on TEST; renumbered at the
+Phase 2 merge, [DECISIONS.md #53](DECISIONS.md)). Screens C22, C23, G7 (SCREENS.md). A student moves up only
+when the Guru approves; the app never promotes by itself.
+
+| Table | One row per | Written by |
+|---|---|---|
+| `promotion_nominations` | Nomination of a student for the next level: `from_level`, `to_level`, `reason`, `criteria` (the check at the time), `submission_id` (the level-up recording), `asked` (coordinators asked), `nominated_by`; `status` `open`, `promoted`, `not_yet`, `withdrawn`; `more_asked_at` + `more_note`; `decided_by`, `decided_at`, `guidance`, `renominate_after`, `level_history_id`. At most one `open` per student | The functions below; audited |
+| `promotion_feedback` | Coordinator's answer on a nomination (unique per coordinator): `rating` `ready`, `almost`, `not_yet`, `comment` | `nominate_for_promotion` (the nominating coordinator's "ready"), `give_promotion_feedback` |
+
+**Criteria** (settings the Guru can change; defaults in brackets): `promotion_syllabus_percent`
+(100: every item in use at the current level ticked), `promotion_min_visits` (8) days in class in
+the last `promotion_visit_weeks` (8) weeks, `promotion_needs_level_up` (true: an accepted
+submission of a level-up assessment of the current level, sent to the Guru with
+`send_level_up`), and `promotion_min_feedback` (2 coordinators' answers before Promote; the
+nominating coordinator's own counts). The criteria tell coordinators who is ready; a coordinator
+may still nominate when one is not met, and the check is kept with the nomination for the Guru.
+
+| Function | Who | Does | Errors |
+|---|---|---|---|
+| `promotion_criteria(student)` | Guru, coordinator | The check: level and next level, syllabus done/total, visits, the level-up recording found, `all_ok`, an open nomination, the "not yet" date still ahead, and `taught_by` (active coordinators who ticked, marked a visit or reviewed in those weeks, and the mentor) | `not_allowed`, `student_not_found` |
+| `nominate_for_promotion(student, reason, ask[])` | Guru, coordinator | A nomination to the next level with the criteria and the level-up recording; the coordinator's own answer "ready"; a notification to each asked active coordinator | `not_allowed`, `student_not_found`, `top_level`, `already_nominated`, `too_soon`, `reason_required`, `reason_too_long` |
+| `give_promotion_feedback(nomination, rating, comment)` | Coordinator | Saves or changes their answer while open; tells the Guru once enough have answered | `not_allowed`, `nomination_not_found`, `nomination_closed`, `rating_invalid`, `comment_required`, `comment_too_long` |
+| `decide_promotion(nomination, decision, note, renominate_after)` | Guru | `promote`: needs enough answers and the student still at `from_level`; sets `students.level_id`, writes `level_history`; tells the student (`/student/progress`) and the nominator. `not_yet`: guidance and a date (tomorrow to a year); tells the nominator and those who answered. `more`: a note; tells active coordinators who have not answered; stays open | `not_allowed`, `nomination_not_found`, `nomination_closed`, `decision_invalid`, `feedback_needed`, `level_changed`, `note_required`, `note_too_long`, `date_required`, `date_past`, `date_too_far` |
+| `withdraw_nomination(nomination)` | The nominator, the Guru | Open → withdrawn | `not_allowed`, `nomination_not_found`, `nomination_closed` |
+| `promotion_ready_students()` | Guru (everyone), coordinator (their mentees) | Students meeting every criterion, not left, below the top level, no open nomination, no "not yet" date ahead | `not_allowed` |
+| `promotion_home()` | Guru, coordinator | `{to_decide, collecting, to_answer, ready}` for G1 and C1 | `not_allowed` |
+
+The view `promotion_queue` (security invoker) gives each nomination with the student's name, roll
+number and current level, the answers (`answers`, `ready`, `almost`, `not_yet`,
+`last_answer_at`) and `answers_needed`. Staff only; students see no nominations or answers.
+
+**Only the Guru changes a level.** The trigger `students_level_guard` (`guard_student_level`)
+refuses a change of `students.level_id` by any signed-in person but the Guru (`level_guru_only`);
+before 0017 a coordinator's phone could change it through the `staff_update` policy. The
+dashboard and the SQL editor are not stopped.
+
+**Keeping level-up recordings.** A recording sent to the Guru stays while a nomination using it is
+open, and is deleted 30 days after that nomination is decided (promoted, not yet or withdrawn); one
+never used for a nomination goes 180 days after its review (`submission_file_expired`, used by
+`claim_expired_submission_files` and `assessment_daily`, both redefined in 0017).
+
+**Notifications** go through `push_outbox` (0016), worded by `promotion_push_line` in the
+person's language, to `/staff/promotion/<nomination>` or `/student/progress`; never to the person
+whose action it is. The Edge Function accepts these two screens since slice 2, so it must be
+deployed again from main (TEST and LIVE, OPERATIONS.md). Each one also lands in the inbox (0019).
+
+## Practice tools (Phase 2)
+
+Migration 0018 (0016_practice on the branch `phase2-practice` and on TEST; renumbered at the
+Phase 2 merge, [DECISIONS.md #54](DECISIONS.md)). Screens S5,
+V1, S6 and the taal editor (SCREENS.md).
+
+| Table | One row per | Written by |
+|---|---|---|
+| `taals` | Rhythm cycle: `name`, `bols` (one per beat: `-` rest, or 1-4 bols joined with `.`), `beats` (generated = number of bols), `divisions` (beats per vibhag, adding up to `beats`), `marks` (one per vibhag: `X` first, `2`-`9` tali, `0` khali), `level_id` (null = all levels), `placeholder`, `note`, `sort`, `active`, `updated_by` | The Guru (row-level security); checked by the trigger `taals_guard` (`guard_taal`: name 1-60, 2-32 beats, divisions and marks, bol shape, note ≤ 300; bols lower-cased); audited. Three placeholder rows seeded |
+| `practice_logs` | Practice entry: `student_id`, `practised_on` (India), `minutes` 1-240, `source` `timer` (with `started_at`) or `manual`, `taal_id` (set null when the taal is deleted), `note` ≤ 200, `created_by` | Only `log_practice` / `delete_practice` |
+
+| Function | Who | Does | Errors |
+|---|---|---|---|
+| `log_practice(minutes, source, practised_on, started_at, taal, note)` | Student | Timer: started within 6 hours, minutes ≤ time since start + 1, day = today. Manual: a day from 13 days ago to today. At most 12 hours a day and 20 entries in 24 hours | `not_allowed`, `minutes_invalid`, `started_invalid`, `date_invalid`, `source_invalid`, `taal_not_found`, `note_too_long`, `day_full`, `too_many` |
+| `delete_practice(id)` | The student | Deletes an own entry of the last 14 days | `not_allowed`, `too_old` |
+| `practice_weeks(student, weeks)` | Anyone (security invoker) | Minutes and entries per week from Monday (India), newest first, 1-26 weeks, empty weeks as 0; row-level security decides whose minutes count (a student: own; staff: anyone's) | — |
+
+Who sees what: students read the taals switched on; staff read all; only the Guru writes. A student
+reads their own practice; staff read everyone's. Anon reads nothing.
 
 ## Linking a login to a student
 
@@ -621,6 +762,9 @@ so every function is revoked from them and granted only where needed
 | `class_report(from, to, mentor)` | Guru, coordinator (own mentees) | The reports C21 and G8 as one JSON object. See "Reports" |
 | `register_push_token(token, platform)` | Guru, coordinator, student | Saves this phone's Expo push token for the signed-in person, taking it over from another login on the same phone; at most 5 phones each. Security definer. Errors `not_allowed`, `bad_token`, `bad_platform`. See "Announcements" → "Push notifications" |
 | `claim_due_push()`, `release_push_claim(ids)` | Only the Edge Function (service role) | Mark waiting announcements notified and return the phones to notify; put them back when nothing could be sent |
+| `release_assessment`, `mark_assessment_seen`, `submit_assessment`, `review_submission`, `remind_assessment` | See "Assessments (Phase 2)" | Phase 2 (0016) |
+| `claim_push_outbox()`, `release_push_outbox(ids)`, `claim_expired_submission_files()`, `release_submission_files(ids)` | Only the Edge Function (service role) | Send the queued assessment and promotion notifications; delete expired recordings (0016) |
+| `next_level`, `promotion_criteria`, `nominate_for_promotion`, `give_promotion_feedback`, `decide_promotion`, `withdraw_nomination`, `promotion_ready_students`, `promotion_home` | See "Promotion approval (Phase 2)" | Phase 2 (0017) |
 
 The Storage rules `announcement_file_readable`, `announcement_file_uploadable`,
 `announcement_file_deletable` and `announcement_file_path_ok` are run by row-level security as
@@ -636,7 +780,10 @@ and audit triggers (including `guard_student_progress`, `audit_student_progress`
 `guard_group`, `guard_announcement_reply`, `guard_syllabus_item`, `protect_syllabus_item`,
 `guard_progress_item_in_use`, `guard_material`, `guard_profile_details`, `guard_profile_admin`, `guard_student_mentor`,
 `follow_mentor_tasks`, `guard_setting`, `audit_setting`, `guard_centre`, `guard_centre_details`,
-`inbox_on_announcement` and `inbox_on_read`), `inbox_sync_announcement`, `inbox_cleanup`, and the helpers `my_role`, `is_guru`, `is_staff`,
+`inbox_on_announcement`, `inbox_on_read`, `guard_student_level`, `guard_taal` and `inbox_on_push_outbox`),
+`inbox_sync_announcement`, `inbox_cleanup`, the promotion helpers `promotion_push_line`,
+`queue_staff_push`, `promotion_tell_guru`, `queue_student_promoted`, `submission_file_expired` (0017),
+and the helpers `my_role`, `is_guru`, `is_staff`,
 `setting_int`, `today_ist`.
 
 ## Scheduled jobs (pg_cron, times in UTC)
@@ -645,8 +792,9 @@ and audit triggers (including `guard_student_progress`, `audit_student_progress`
 |---|---|---|
 | `mridanga-status-refresh` | 00:30 UTC = 06:00 IST | `refresh_student_statuses()` — ends expired pauses, moves quiet students on, creates call tasks, flags overdue ones |
 | `mridanga-close-visits` | 15:30 UTC = 21:00 IST | `close_open_visits()` — closes visits left open, at the centre's closing time |
-| `mridanga-push` | Every minute | `send_due_push()` — calls the Edge Function `notify-announcements` when a published announcement waits for its push notification; does nothing while push is not set up (0011) |
+| `mridanga-push` | Every minute | `send_due_push()` — calls the Edge Function `notify-announcements` when a published announcement waits for its push notification; does nothing while push is not set up (0011); since 0016 also when an assessment or promotion notification of the last day waits in `push_outbox` |
 | `mridanga-inbox-cleanup` | 01:00 UTC = 06:30 IST | `inbox_cleanup()` — deletes inbox notices older than a year (0015) |
+| `mridanga-assessments` | 03:30 UTC = 09:00 IST | `assessment_daily()` — reminders for assessments due today or tomorrow that are not sent yet; asks the Edge Function (`{"cleanup": true}`) to delete recordings 30 days past their review (0016); level-up ones 30 days after the promotion decision (0017) |
 
 ## Who can see what
 
@@ -671,6 +819,11 @@ and audit triggers (including `guard_student_progress`, `audit_student_progress`
 | Settings, levels, syllabus, centres | Read | Read | Read / write (settings through `save_settings`, checked) |
 | Roles, switching a login off, duty hours of others | — | — | Write (not their own role; Guru role only in the dashboard) |
 | Audit log | — | — | Read |
+| Assessments (Phase 2) | Those given to them, with the release notes and files | Sent ones; create none | All, drafts too; create, send, delete unreleased |
+| Assessment assignments, submissions, tracker | Own; submit through `submit_assessment` | All; release, remind, review through the functions | Same as coordinator |
+| Assessment files (Storage) | Files of their assessments and their own recordings; upload audio or video while one is open (10 a day) | All on sent assessments and all recordings | All; upload; delete any |
+| Promotion nominations and answers (Phase 2) | — (a push when promoted) | All; nominate, answer, withdraw own, through the functions | All; nominate, decide, withdraw any |
+| A student's level | Read | Read (changed only by the Guru) | Read / write; Promote |
 
 ## Changing the database
 
@@ -689,7 +842,10 @@ and audit triggers (including `guard_student_progress`, `audit_student_progress`
 data: login linking, the profile guard, registration and consent, attendance marking, the
 student overview, follow-up calls, syllabus ticks, announcements with their read receipts,
 edits, staff names and private replies, groups, the home-screen numbers, photos and PDFs (who
-may upload, open and delete a file), push tokens and the push queue, the inbox, the reports and the centre checks, who may run each function,
+may upload, open and delete a file), push tokens and the push queue, the inbox, the reports and the centre checks,
+assessments (Phase 2: drafts, releases, submitting, reviews, reminders, the push queue, keeping files),
+promotion approval (criteria, nominate, answers, Promote / Not yet / More feedback, only the Guru changes
+a level), practice tools (taals, the practice log), Phase 2 notices in the inbox, who may run each function,
 and row-level security. It needs only Node.js, no database server and no Supabase account.
 `npm test` also runs `push-messages.test.mjs`, which checks how the Edge Function words and
 batches the notifications (Node 23.6 or later reads its TypeScript directly).

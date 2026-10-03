@@ -44,9 +44,9 @@ flowchart LR
 | App | Screens for Guru, Coordinator and Student. Built with Expo (React Native + TypeScript); one code base gives Android, iOS and web | `app/` — screens in `app/src/app/` |
 | Auth | Sign-up and login with email + password | Supabase Auth |
 | Database | All records, and the rules about them (who may see what, how a student's status changes) | `supabase/migrations/` |
-| Storage | Photos and PDFs on announcements, in the private bucket `announcement-files`; later student photos (only with consent) | Supabase Storage, rules in `supabase/migrations/0010_announcement_files.sql` |
+| Storage | Photos and PDFs on announcements, in the private bucket `announcement-files`; later student photos (only with consent). Phase 2: assessment files and students' recordings in `assessment-files` (50 MB a file, deleted 30 days after review) | Supabase Storage, rules in `supabase/migrations/0010_announcement_files.sql` and `0016_assessments.sql` |
 | Scheduled jobs | Move quiet students to *Irregular*, create follow-up calls, close check-ins left open (daily); send push notifications for new announcements (every minute) | `pg_cron`, defined in the migrations |
-| Push notifications | Tell Android phones about a new announcement | Edge Function `supabase/functions/notify-announcements/` → Expo's push service → Firebase Cloud Messaging (OPERATIONS.md "Push notifications") |
+| Push notifications | Tell Android phones about a new announcement; in Phase 2 also about assessments (given, reminded, reviewed, a recording sent), queued in `push_outbox` | Edge Function `supabase/functions/notify-announcements/` → Expo's push service → Firebase Cloud Messaging (OPERATIONS.md "Push notifications") |
 | Email | Sends sign-up confirmation and password-reset emails | Brevo free plan, plugged into Supabase as SMTP |
 | Videos | Lesson videos stay on YouTube; the app only stores links | YouTube |
 | Web hosting | Serves the web version that iPhone users add to their home screen | Cloudflare Pages, uploaded from `app/dist` (OPERATIONS.md) |
@@ -81,14 +81,17 @@ app/
     app/               Screens. Every file is a screen (Expo Router); _layout.tsx files arrange them
       student/         The student's screens; (tabs)/ holds Home, My QR and Announcements; one
                        announcement, progress.tsx (S4), visits.tsx (S9), profile.tsx (A3),
-                       notifications.tsx (A2) and coming-soon.tsx open on top
+                       notifications.tsx (A2), assessments/ (S7), practice.tsx (S5) and
+                       practice-log.tsx (S6) (Phase 2), and coming-soon.tsx open on top
       staff/           The Guru's and coordinators' screens: register, attendance, follow-up ...,
                        levels/ (G4 syllabus editor), materials/ (G5), visits/ (S9 of one student),
                        profile.tsx (A3), the Guru's coordinators/ (G2), database/ (G3 and the
                        import), settings.tsx (G10), audit-log.tsx (G11), notifications.tsx (A2),
                        reports.tsx (C21 and G8) and centres/ (G9), and coming-soon.tsx
                        for the modules not built yet; (tabs)/
-                       holds Home (G1 or C1 by role) and the four used most
+                       holds Home (G1 or C1 by role) and the four used most. Phase 2:
+                       assessments/ holds G6, C12-C14, promotion/ holds C22, C23, G7,
+                       practice.tsx (S5) and taals/ (the Guru's taal editor)
     auth/              Who is signed in, their role, and the sign-in / sign-up calls
     screens/           The two staff homes, G1 and C1 (shown by staff/(tabs)/index.tsx), and the
                        pages both areas show: Coming soon, Attendance history (S9), My profile (A3),
@@ -285,6 +288,80 @@ announcements when they open the app, with the number of unread notices on the b
 header. That inbox (A2) is filled by the database for every addressee, push or not: a trigger on
 `announcements` writes one `notifications` row per person from `announcement_audience`, the same
 people the push goes to, and opening the announcement marks it read ([DECISIONS.md #49](DECISIONS.md)).
+
+## How assessments flow (Phase 2)
+
+On main since the Phase 2 merge; it reaches Android phones with the next APK, which also carries
+expo-audio ([DECISIONS.md #52 and #55](DECISIONS.md)).
+
+1. The Guru creates an assessment (G6): instructions, type, level, level-up or not, a rubric,
+   files and a link. It stays a draft, seen only by the Guru, until *Send to coordinators*.
+2. A coordinator opens it from *Assessments* on the home's ring (C12), writes notes, sets a due
+   date and picks students. `release_assessment` gives each one an assignment and queues a push
+   notification for those with the app.
+3. The student opens it (S7): the coordinator sees *Seen*. They record with the phone's own
+   recorder or camera and send the file (at most 50 MB) or a link, with a note.
+   `submit_assessment` checks the file is theirs and in Storage, and tells the coordinator.
+4. The tracker (C13) shows each student Not seen / Seen / Submitted / Reviewed / Redo and Late.
+   *Remind* queues a reminder; a daily job at 09:00 IST reminds anyone due today or tomorrow.
+5. A coordinator reviews (C14): plays the recording, scores each rubric line, comments, and
+   accepts or asks for a redo; for a level-up assessment, marks it for the Guru (the promotion
+   approval below). The student sees the score and the comment.
+6. The Edge Function sends the queued notifications with the announcements, and once a day
+   deletes recordings 30 days past their review. Every queued notice (push_outbox) also lands
+   in the person's notifications inbox (A2), with or without the app (0019, DATABASE.md).
+
+Audio and video open in the phone's browser view (expo-web-browser); the app has no player and
+no in-app recorder, because each would be a native package and a new APK.
+
+## How promotion flows (Phase 2)
+
+[DECISIONS.md #53](DECISIONS.md). The app never promotes anyone by itself.
+
+1. `promotion_criteria` checks a student against the Guru's settings: the current level's
+   syllabus ticked, 8+ visits in 8 weeks, an accepted level-up recording (step 5 above). The C1
+   card and the Promotions list show a coordinator their own students who meet all of it; C8
+   shows the check for any student.
+2. A coordinator nominates (C22) with a reason and picks coordinators to ask (those who taught
+   the student lately come first). Their own view counts as one "Ready"; the asked ones get a
+   push notification.
+3. Coordinators answer (C23): Ready / Almost / Not yet with a comment. At 2 answers the Guru gets
+   a notification and the nomination moves to "Waiting for your decision" (the G1 card counts it).
+4. The Guru decides (G7), with the criteria, the recording and the answers side by side:
+   *Promote* (`students.level_id` + a `level_history` row; the student is told), *Not yet* with
+   guidance and a date before which the student cannot be nominated again, or *More feedback*.
+5. Only the Guru can change a student's level at all (a database trigger), and the level-up
+   recording is kept until 30 days after the decision.
+
+## Practice tools (Phase 2)
+
+[DECISIONS.md #54](DECISIONS.md). S5 plays a **pattern** (`lib/practice-pattern.ts`):
+one cycle of sounds, each at a position in beats (a metronome bar, or a taal's bols spread over
+their beats, `lib/bols.ts` saying which head, zone, fingers and sound a bol is). A **player**
+(`lib/practice-player.ts`) loops it at a tempo:
+
+- **Browser** (`lib/practice-audio.web.ts`): Web Audio look-ahead scheduler. A 25 ms timer looks
+  150 ms ahead (more when the timer is seen running late, as in a background tab where browsers fire
+  it about once a second: 1.5 × the gap, up to 2 s) and starts each sound with
+  `AudioBufferSourceNode.start(time)` on the audio clock, time = anchor + beats × 60 / bpm. A tempo
+  change sets a new anchor and takes back what was scheduled after it. The sounds are synthesised
+  once into AudioBuffers (`lib/practice-sounds.ts`).
+- **Phone** (`lib/practice-audio.ts`, expo-audio, next APK): the cycle is mixed into one WAV
+  (22.05 kHz mono, tails wrapped round) in the cache folder and played with `loop` on, so the audio
+  hardware keeps the time; a tempo change writes a new file and seeks to the same beat.
+- **The screen follows the sound**: `lib/use-playhead.ts` reads the player's position every frame
+  (web: audio clock minus `outputLatency`; phone: `player.currentTime`) and re-renders only when the
+  beat or bol changes. The beat dots, the beat grid and V1 (`components/two-head-view.tsx`, SVG)
+  light from it.
+- **Timer and log**: `lib/practice-timer.ts` keeps the start time on the device (survives leaving
+  the screen and reloads); Stop calls `log_practice` (DATABASE.md "Practice tools").
+- **Offline**: taals are saved on the device after each load, with the seeded placeholders built in
+  as a last resort; sounds need no network.
+
+**Drift, measured 3 Oct 2026** (Chrome in the desktop app's browser pane, 80 beats a minute,
+2+ minutes, click onsets detected in the audio output itself by an AudioWorklet on the audio thread, stamped with `currentFrame`):
+no sound missed (183 clicks over 136.5 s), drift at the end −0.16 ms, worst error 0.16 ms (the detector's own resolution, about 7 samples), every interval 749.84-750.16 ms, each click 0.39-0.54 ms after its planned time (a constant: the click's 2 ms fade-in), 0 sounds scheduled late. The tab was in the background during the run, its timer slowed to about 1 a second, and the look-ahead grew to 1.5 s by itself. A plain `setInterval` metronome run beside it was off by up to 16 ms (539 ms in an earlier run while the page's main thread stalled). Tempo change 80 → 85 while playing: the next sounds came at 705.88 ms, none late; slow-down 50 % of 60 = 2000 ms a beat. In development builds the web player is on `globalThis.__practicePlayer` (schedule
+log, `late`, `minLead`) for such checks.
 
 ## Phases
 

@@ -970,6 +970,200 @@ const [{ ok: pushFnsCallable }] = await asOwner(`select has_function_privilege('
   or has_function_privilege('authenticated', 'guard_announcement_notified()', 'execute') as ok`);
 check('app roles cannot run the push job functions', pushFnsCallable === false);
 
+// ---------------------------------------------------------------- assessments (0016, Phase 2)
+const [aBucket] = await asOwner(`select public, file_size_limit, allowed_mime_types from storage.buckets where id = 'assessment-files'`);
+check('the assessment-files bucket is private, 50 MB, with audio and video', aBucket?.public === false
+  && Number(aBucket.file_size_limit) === 52428800 && aBucket.allowed_mime_types.includes('audio/mpeg')
+  && aBucket.allowed_mime_types.includes('video/mp4'), JSON.stringify(aBucket));
+
+/** Uploads a file into assessment-files as `userId` (one storage.objects row, as the Storage API). */
+const aUpload = async (userId, path, size = 4096) => asApp('authenticated', userId,
+  `insert into storage.objects (bucket_id, name, owner, metadata) values ('assessment-files', $1, auth.uid(), $2)`,
+  [path, JSON.stringify({ size })]);
+const aCanOpen = async (userId, path) => (await asApp('authenticated', userId,
+  `select 1 from storage.objects where bucket_id = 'assessment-files' and name = $1`, [path])).length === 1;
+const aRemove = async (userId, path) => (await asApp('authenticated', userId,
+  `delete from storage.objects where bucket_id = 'assessment-files' and name = $1 returning name`, [path])).length === 1;
+const rubric = [{ criterion: 'Rhythm (taal)', max: 5 }, { criterion: 'Clarity of bols', max: 5 }];
+/** Creates an assessment as `userId`; returns its row. */
+const createAssessment = async (userId, fields = {}) => (await asApp('authenticated', userId,
+  `insert into assessments (title, instructions, kind, level_id, level_up, rubric, media, media_link, sent_at)
+   values ($1, $2, $3, $4, $5, $6, $7, $8, $9) returning id, title, rubric, media, sent_at`,
+  [fields.title ?? '  Ekatala practice  ', fields.instructions ?? 'Play it four times.', fields.kind ?? 'playing',
+   fields.level ?? 3, fields.levelUp ?? false, JSON.stringify(fields.rubric ?? rubric), JSON.stringify(fields.media ?? []),
+   fields.link ?? null, fields.sent ? new Date().toISOString() : null]))[0];
+const tomorrow = (await asOwner(`select (today_ist() + 1)::text as d`))[0].d;
+const release = (userId, assessment, students, due = tomorrow, notes = 'Practise slowly first.') => asApp('authenticated', userId,
+  'select release_assessment($1, $2::uuid[], $3::date, $4) as r', [assessment, students, due, notes]).then((r) => r[0].r);
+const studentIdOf = async (profileId) => (await asOwner(`select id from students where profile_id = '${profileId}'`))[0].id;
+const arjunStudent = await studentIdOf(arjun);
+const meeraStudent = await studentIdOf(meera);
+const lateStudent = await studentIdOf(late);
+
+await refuses('a coordinator cannot create an assessment', () => createAssessment(coordinator));
+await refusesWith('an assessment needs a title', 'title_required', () => createAssessment(guru, { title: '  ' }));
+await refusesWith('an assessment needs a rubric', 'rubric_required', () => createAssessment(guru, { rubric: [] }));
+await refusesWith('a rubric line has a top score of 1 to 10', 'rubric_invalid', () =>
+  createAssessment(guru, { rubric: [{ criterion: 'Posture', max: 20 }] }));
+await refusesWith('a link must be https', 'link_invalid', () => createAssessment(guru, { link: 'http://youtube.com/x' }));
+
+const guide = await filePath(guru, 'pdf');
+const demo = await filePath(guru, 'mp3');
+await aUpload(guru, guide);
+await aUpload(guru, demo, 900000);
+await refuses('a coordinator cannot upload assessment files', async () => aUpload(coordinator, await filePath(coordinator, 'mp3')));
+await refuses('a file needs a known ending', async () => aUpload(guru, await filePath(guru, 'exe')));
+const draft = await createAssessment(guru, {
+  media: [{ path: guide, name: ' Ekatala.pdf ', kind: 'pdf', size: 1 }, { path: demo, name: 'Demo.mp3', kind: 'audio', size: 1 }],
+  link: 'https://youtu.be/example',
+});
+check('the Guru saves a draft, title trimmed, file sizes from Storage', draft.title === 'Ekatala practice' && draft.sent_at === null
+  && draft.media[1].size === 900000 && draft.media[0].name === 'Ekatala.pdf', JSON.stringify(draft.media));
+await refusesWith('the Guru cannot attach a file that is not in Storage', 'file_missing', async () =>
+  createAssessment(guru, { media: [{ path: await filePath(guru, 'pdf'), name: 'x.pdf', kind: 'pdf', size: 1 }] }));
+await refusesWith('... nor a file from another folder', 'file_not_yours', () =>
+  createAssessment(guru, { media: [{ path: photo, name: 'x.jpg', kind: 'image', size: 1 }] }));
+await refusesWith('... and the kind must match the ending', 'file_invalid', () =>
+  createAssessment(guru, { media: [{ path: demo, name: 'Demo.mp3', kind: 'video', size: 1 }] }));
+check('a coordinator does not see a draft', (await asApp('authenticated', coordinator, 'select id from assessments')).length === 0);
+await refusesWith('a draft cannot be released', 'assessment_not_found', () => release(guru, draft.id, [arjunStudent]));
+await asApp('authenticated', guru, 'update assessments set sent_at = now() where id = $1', [draft.id]);
+check('once sent, coordinators see it', (await asApp('authenticated', coordinator, 'select id from assessments')).length === 1);
+check('a coordinator can open its files', await aCanOpen(coordinator2, demo));
+check('a student it was not given to sees nothing', (await asApp('authenticated', arjun, 'select id from assessments')).length === 0
+  && !(await aCanOpen(arjun, demo)));
+await refusesWith('a sent assessment stays sent', 'already_sent', () =>
+  asApp('authenticated', guru, 'update assessments set sent_at = null where id = $1', [draft.id]));
+
+await refusesWith('a student cannot release an assessment', 'not_allowed', () => release(arjun, draft.id, [arjunStudent]));
+await refusesWith('the due date cannot be past', 'due_past', () => release(coordinator, draft.id, [arjunStudent], yesterday));
+await refusesWith('a release needs students', 'students_required', () => release(coordinator, draft.id, []));
+const released = await release(coordinator, draft.id, [arjunStudent, meeraStudent, arjunStudent]);
+check('a coordinator releases it to two students', released.assigned === 2 && released.already === 0 && released.no_login === 0,
+  JSON.stringify(released));
+await refusesWith('releasing it again to the same students assigns nothing', 'nothing_to_assign', () =>
+  release(coordinator2, draft.id, [arjunStudent]));
+const [{ n: queued }] = await asOwner(`select count(*)::int as n from push_outbox where sent_at is null and url like '/student/assessments/%'`);
+check('... and queues a notification for each', queued === 2, String(queued));
+check('the app cannot read the push queue', (await asApp('authenticated', guru, 'select id from push_outbox').catch(() => [])).length === 0);
+await refusesWith('after a release the rubric stays as it is', 'assessment_released', () =>
+  asApp('authenticated', guru, `update assessments set rubric = '[{"criterion":"New","max":3}]' where id = $1`, [draft.id]));
+await refuses('a released assessment cannot be deleted', () =>
+  asApp('authenticated', guru, 'delete from assessments where id = $1', [draft.id]));
+
+const myAssignment = async (userId) => (await asApp('authenticated', userId, 'select id, status, release_id from assessment_assignments'));
+const [arjunTask] = await myAssignment(arjun);
+check('a student sees their own assignment only', (await myAssignment(arjun)).length === 1 && arjunTask.status === 'assigned');
+check('... the assessment, its release notes and its files', (await asApp('authenticated', arjun, 'select id from assessments')).length === 1
+  && (await asApp('authenticated', arjun, 'select notes from assessment_releases'))[0]?.notes === 'Practise slowly first.'
+  && await aCanOpen(arjun, demo));
+check('a student it was not given to sees no release or assignment', (await myAssignment(late)).length === 0
+  && (await asApp('authenticated', late, 'select id from assessment_releases')).length === 0);
+check('a pending login sees nothing', (await asApp('authenticated', pendingLogin, 'select id from assessments')).length === 0);
+await refusesWith('a student cannot mark someone else\'s as seen', 'not_allowed', () =>
+  asApp('authenticated', meera, 'select mark_assessment_seen($1)', [arjunTask.id]));
+await asApp('authenticated', arjun, 'select mark_assessment_seen($1)', [arjunTask.id]);
+const tracker = async (userId) => asApp('authenticated', userId,
+  'select assignment_id, full_name, status, has_login, submission_id, score from assessment_tracker where assessment_id = $1 order by full_name', [draft.id]);
+const t1 = await tracker(coordinator2);
+check('the tracker shows each student: Arjun seen, Meera not seen', t1.length === 2 && t1[0].status === 'seen'
+  && t1[1].status === 'assigned' && t1[0].has_login, JSON.stringify(t1));
+const [sum1] = await asApp('authenticated', coordinator, 'select * from assessment_summary where assessment_id = $1', [draft.id]);
+check('the summary counts them', sum1.assigned === 2 && sum1.seen === 1 && sum1.not_seen === 1, JSON.stringify(sum1));
+
+// Submitting
+const take1 = await filePath(arjun, 'm4a');
+await aUpload(arjun, take1, 3000000);
+check('a student uploads a recording into their own folder', await aCanOpen(arjun, take1));
+await refuses('... but not a photo', async () => aUpload(arjun, await filePath(arjun, 'jpg')));
+await refuses('a student with nothing to send cannot upload', async () => aUpload(late, await filePath(late, 'mp3')));
+check('another student cannot open it', !(await aCanOpen(meera, take1)));
+const submit = (userId, assignment, file, link = null, note = null) => asApp('authenticated', userId,
+  'select submit_assessment($1, $2::jsonb, $3, $4) as id', [assignment, file ? JSON.stringify(file) : null, link, note])
+  .then((r) => r[0].id);
+await refusesWith('a submission needs a recording or a link', 'recording_required', () => submit(arjun, arjunTask.id, null));
+await refusesWith('a file that is not in Storage cannot be sent', 'file_missing', async () =>
+  submit(arjun, arjunTask.id, { path: await filePath(arjun, 'mp3'), name: 'a.mp3', kind: 'audio', size: 1 }));
+await refusesWith('... nor someone else\'s file', 'file_not_yours', () =>
+  submit(arjun, arjunTask.id, { path: demo, name: 'Demo.mp3', kind: 'audio', size: 1 }));
+await refusesWith('a student cannot submit someone else\'s assessment', 'not_allowed', () =>
+  submit(meera, arjunTask.id, null, 'https://youtu.be/x'));
+const sub1 = await submit(arjun, arjunTask.id, { path: take1, name: 'Take 1.m4a', kind: 'audio', size: 1 }, null, 'First try');
+check('the student sends the recording; the status becomes Submitted', (await myAssignment(arjun))[0].status === 'submitted'
+  && (await asOwner(`select (file ->> 'size')::int as s from assessment_submissions where id = ${sub1}`))[0].s === 3000000);
+await refusesWith('a submitted one cannot be sent again before the review', 'not_open', () =>
+  submit(arjun, arjunTask.id, null, 'https://youtu.be/x'));
+check('a coordinator can play the recording', await aCanOpen(coordinator2, take1));
+check('the student cannot delete a file they sent', !(await aRemove(arjun, take1)));
+check('the coordinator who released it is told', (await asOwner(`select count(*)::int as n from push_outbox
+  where profile_id = '${coordinator}' and url = '/staff/assessments/review/${arjunTask.id}'`))[0].n === 1);
+
+// Reviewing
+const review = (userId, submission, scores, comment, outcome, levelUp = false) => asApp('authenticated', userId,
+  'select review_submission($1, $2::int[], $3, $4, $5)', [submission, scores, comment, outcome, levelUp]);
+await refusesWith('a student cannot review', 'not_allowed', () => review(arjun, sub1, [5, 5], 'Self', 'accepted'));
+await refusesWith('one score per rubric line', 'scores_invalid', () => review(coordinator2, sub1, [5], 'x', 'accepted'));
+await refusesWith('a score cannot be above the line\'s top', 'scores_invalid', () => review(coordinator2, sub1, [6, 1], 'x', 'accepted'));
+await refusesWith('a redo needs a comment', 'comment_required', () => review(coordinator2, sub1, [2, 2], ' ', 'redo'));
+await refusesWith('only a level-up assessment can be sent to the Guru', 'level_up_not_allowed', () =>
+  review(coordinator2, sub1, [4, 4], 'Good', 'accepted', true));
+await review(coordinator2, sub1, [2, 3], 'Keep the tempo steady.', 'redo');
+check('a redo sets the status to Redo and tells the student', (await myAssignment(arjun))[0].status === 'redo'
+  && (await asOwner(`select count(*)::int as n from push_outbox o join students s on s.profile_id = o.profile_id
+       where s.id = '${arjunStudent}' and o.url = '/student/assessments/${arjunTask.id}'`))[0].n === 2);
+const [seenReview] = await asApp('authenticated', arjun, 'select score, score_max, comment, outcome from assessment_submissions');
+check('the student sees the score and the comment', seenReview?.score === 5 && seenReview.score_max === 10
+  && seenReview.comment === 'Keep the tempo steady.', JSON.stringify(seenReview));
+await refusesWith('a reviewed submission cannot be reviewed again', 'already_reviewed', () =>
+  review(coordinator, sub1, [5, 5], 'x', 'accepted'));
+const sub2 = await submit(arjun, arjunTask.id, null, 'https://youtu.be/arjun-take-2');
+await review(coordinator, sub2, [5, 4], 'Much better.', 'accepted');
+const t2 = await tracker(coordinator);
+check('accepted: the tracker shows Reviewed with the latest score', t2[0].status === 'reviewed' && t2[0].score === 9
+  && t2[0].submission_id === sub2, JSON.stringify(t2[0]));
+
+// Reminders
+const meeraTask = t2[1].assignment_id;
+const remind = (userId, ids) => asApp('authenticated', userId, 'select remind_assessment($1::bigint[]) as r', [ids]).then((r) => r[0].r);
+await refusesWith('a student cannot send reminders', 'not_allowed', () => remind(arjun, [meeraTask]));
+const r1 = await remind(coordinator, [meeraTask, arjunTask.id]);
+check('Remind reaches a student who has not sent it, not one who is done', r1.reminded === 1 && r1.skipped === 1, JSON.stringify(r1));
+check('... and not twice within 12 hours', (await remind(coordinator2, [meeraTask])).skipped === 1);
+check('the daily job skips one reminded today', (await asOwner('select assessment_daily() as n'))[0].n === 0);
+await asOwner(`update assessment_assignments set last_reminded_at = now() - interval '13 hours' where id = ${meeraTask}`);
+check('the daily job reminds work due tomorrow', (await asOwner('select assessment_daily() as n'))[0].n === 1);
+
+// Sending the queue (Edge Function)
+const outbox = await asApp('service_role', null, 'select * from claim_push_outbox()');
+check('claim_push_outbox returns the phones to notify, with the screen to open', outbox.length >= 4
+  && outbox.every((r) => r.token && /^\/(student|staff)\/assessments\//.test(r.url)), String(outbox.length));
+check('... and a second run sends nothing', (await asApp('service_role', null, 'select * from claim_push_outbox()')).length === 0);
+check('... nothing due now', (await asOwner('select send_due_push() as r'))[0].r === 'nothing_due');
+await refuses('an app user cannot claim the push queue', () => asApp('authenticated', guru, 'select * from claim_push_outbox()'));
+
+// Level-up and keeping files
+const levelUp = await createAssessment(guru, { title: 'Level-up: Intermediate', level: 2, levelUp: true, sent: true });
+await release(coordinator, levelUp.id, [meeraStudent]);
+const [meeraLevelUp] = (await myAssignment(meera)).filter((a) => a.id !== meeraTask);
+const take2 = await filePath(meera, 'mp4');
+await aUpload(meera, take2, 20000000);
+const sub3 = await submit(meera, meeraLevelUp.id, { path: take2, name: 'Level-up.mp4', kind: 'video', size: 1 });
+await review(coordinator, sub3, [5, 5], 'Ready.', 'accepted', true);
+check('an accepted level-up is sent to the Guru', (await asOwner(`select send_level_up from assessment_submissions where id = ${sub3}`))[0].send_level_up === true);
+await asOwner(`update assessment_submissions set reviewed_at = now() - interval '31 days' where id in (${sub1}, ${sub3})`);
+const expired = await asApp('service_role', null, 'select * from claim_expired_submission_files()');
+check('files 30 days past their review are handed for deleting, not a level-up one', expired.length === 1
+  && expired[0].path === take1, JSON.stringify(expired));
+check('... once', (await asApp('service_role', null, 'select * from claim_expired_submission_files()')).length === 0);
+const [{ ok: assessmentFnsCallable }] = await asOwner(`select has_function_privilege('authenticated', 'assessment_daily()', 'execute')
+  or has_function_privilege('authenticated', 'claim_expired_submission_files()', 'execute')
+  or has_function_privilege('authenticated', 'queue_student_push(uuid, text, text, text, date, text)', 'execute')
+  or has_function_privilege('authenticated', 'call_notify_function(jsonb)', 'execute') as ok`);
+check('app roles cannot run the assessment job functions', assessmentFnsCallable === false);
+await refuses('the app cannot write assignments directly', () => asApp('authenticated', coordinator,
+  'insert into assessment_assignments (release_id, assessment_id, student_id) values ($1, $2, $3)',
+  [released.release_id, draft.id, lateStudent]));
+
 // ---------------------------------------------------------------- syllabus editor and materials (0013)
 const levelItems = async (level) => asOwner(`select id, sort, title, retired_at from syllabus_items where level_id = ${level} order by sort`);
 const [newItem] = await asApp('authenticated', guru,
@@ -1063,13 +1257,13 @@ await refuses('a material cannot list a file that is not in Storage', async () =
   addMaterial(guru, { kind: 'pdf', path: `${guru}/${await newId()}.pdf`, name: 'x.pdf', size: 1, level: 1 }));
 await refuses('the file of a material cannot be swapped', async () => asApp('authenticated', guru,
   `update materials set storage_path = $2 where id = $1`, [pdf.id, `${guru}/${await newId()}.pdf`]));
-const [arjunStudent] = await asOwner(`select level_id from students where profile_id = '${arjun}'`);
-const [lateStudent] = await asOwner(`select level_id from students where profile_id = '${late}'`);
-check('a student at or above the level opens the material file', arjunStudent.level_id >= 3 ? await canOpenMaterial(arjun, notation) : true,
-  `arjun level ${arjunStudent.level_id}`);
-check('a student below the level cannot see the material or open its file', lateStudent.level_id < 3
+const [arjunLevelRow] = await asOwner(`select level_id from students where profile_id = '${arjun}'`);
+const [lateLevelRow] = await asOwner(`select level_id from students where profile_id = '${late}'`);
+check('a student at or above the level opens the material file', arjunLevelRow.level_id >= 3 ? await canOpenMaterial(arjun, notation) : true,
+  `arjun level ${arjunLevelRow.level_id}`);
+check('a student below the level cannot see the material or open its file', lateLevelRow.level_id < 3
   ? !(await canOpenMaterial(late, notation)) && (await asApp('authenticated', late, `select id from materials where id = $1`, [pdf.id])).length === 0
-  : true, `late level ${lateStudent.level_id}`);
+  : true, `late level ${lateLevelRow.level_id}`);
 check('a student sees the lesson of level 1', (await asApp('authenticated', late, `select id from materials where id = $1`, [video.id])).length === 1);
 await refuses('a student cannot add a material', () => addMaterial(late, { kind: 'youtube', url: 'https://youtu.be/dQw4w9WgXcQ', level: 1 }));
 const [bareItem] = await asApp('authenticated', guru, `insert into syllabus_items (level_id, title) values (2, 'With a video') returning id`);
@@ -1338,6 +1532,208 @@ check('app roles cannot run the inbox and centre trigger functions', (await asOw
   or has_function_privilege('anon', 'class_report(date, date, uuid)', 'execute') as ok`))[0].ok === false);
 await asOwner('select inbox_cleanup()');
 
+// ---------------------------------------------------------------- promotion approval (0017, Phase 2)
+// Meera (level 2, the coordinator's mentee) has the accepted level-up recording sub3 from above.
+const criteria = async (userId, studentId) =>
+  (await asApp('authenticated', userId, 'select promotion_criteria($1) as c', [studentId]))[0].c;
+await refusesWith('a student cannot run the criteria check', 'not_allowed', () => criteria(meera, meeraStudent));
+const pc0 = await criteria(coordinator, meeraStudent);
+check('criteria: level 2 → 3, the level-up recording found, 8 visits in 8 weeks needed', pc0.level_id === 2
+  && pc0.next_level_id === 3 && pc0.level_up?.submission_id === sub3 && pc0.level_up_ok === true
+  && pc0.visits_needed === 8 && pc0.visit_weeks === 8 && pc0.syllabus_percent === 100 && pc0.all_ok === false, JSON.stringify(pc0));
+await asOwner(`insert into student_progress (student_id, item_id)
+  select '${meeraStudent}', id from syllabus_items where level_id = 2 and retired_at is null on conflict do nothing`);
+await asOwner(`insert into visits (student_id, check_in, check_out, method)
+  select '${meeraStudent}', now() - make_interval(days => d * 5 + 1), now() - make_interval(days => d * 5 + 1) + interval '1 hour', 'manual'
+    from generate_series(1, 8) d`);
+const pc1 = await criteria(coordinator, meeraStudent);
+check('... with the syllabus ticked and 8 visits every criterion is met', pc1.syllabus_ok && pc1.visits_ok && pc1.all_ok
+  && pc1.syllabus_done === pc1.syllabus_total && pc1.visits >= 8 && pc1.taught_by.includes(coordinator), JSON.stringify(pc1));
+const readyFor = async (userId) => (await asApp('authenticated', userId, 'select student_id from promotion_ready_students()'))
+  .map((r) => r.student_id);
+check('Meera is ready to nominate for her mentor and the Guru, not for another coordinator',
+  (await readyFor(coordinator)).includes(meeraStudent) && (await readyFor(guru)).includes(meeraStudent)
+  && !(await readyFor(coordinator2)).includes(meeraStudent));
+check('Arjun (top level) is never on the ready list', !(await readyFor(guru)).includes(arjunStudent));
+const home = async (userId) => (await asApp('authenticated', userId, 'select promotion_home() as h'))[0].h;
+check('the coordinator\'s home counts one student ready', (await home(coordinator)).ready === 1);
+
+const nominate = (userId, studentId, reason, ask = []) => asApp('authenticated', userId,
+  'select nominate_for_promotion($1, $2, $3::uuid[]) as id', [studentId, reason, ask]).then((r) => r[0].id);
+await refusesWith('a student cannot nominate', 'not_allowed', () => nominate(meera, meeraStudent, 'Me'));
+await refusesWith('the top level cannot be nominated', 'top_level', () => nominate(coordinator, arjunStudent, 'Great'));
+await refusesWith('a nomination needs a reason', 'reason_required', () => nominate(coordinator, meeraStudent, '   '));
+const nom1 = await nominate(coordinator, meeraStudent, '  Steady in all taals.  ', [coordinator2, guru, meera, coordinator]);
+const [n1] = await asOwner(`select * from promotion_nominations where id = ${nom1}`);
+check('the coordinator nominates Meera for level 3 with the level-up recording; only other coordinators are asked',
+  n1.from_level === 2 && n1.to_level === 3 && Number(n1.submission_id) === sub3 && n1.reason === 'Steady in all taals.'
+  && n1.criteria.all_ok === true && n1.asked.length === 1 && n1.asked[0] === coordinator2 && n1.status === 'open',
+  JSON.stringify({ ...n1, criteria: undefined }));
+const answers = async (nom) => asOwner(`select coordinator_id, rating, comment from promotion_feedback where nomination_id = ${nom} order by created_at`);
+const a1 = await answers(nom1);
+check('... and the nominating coordinator\'s own answer is Ready', a1.length === 1 && a1[0].coordinator_id === coordinator
+  && a1[0].rating === 'ready', JSON.stringify(a1));
+const pushesTo = async (userId, url) => (await asOwner(`select count(*)::int as n from push_outbox
+  where profile_id = '${userId}' and url = '${url}'`))[0].n;
+check('the asked coordinator gets a notification', (await pushesTo(coordinator2, `/staff/promotion/${nom1}`)) === 1);
+await refusesWith('one open nomination per student', 'already_nominated', () => nominate(coordinator2, meeraStudent, 'Again'));
+check('a student sees no nominations or answers', (await asApp('authenticated', meera, 'select id from promotion_nominations')).length === 0
+  && (await asApp('authenticated', meera, 'select rating from promotion_feedback')).length === 0);
+check('another coordinator sees the nomination', (await asApp('authenticated', coordinator2, 'select id from promotion_nominations')).length >= 1);
+await refuses('the app cannot write a nomination directly', () => asApp('authenticated', coordinator,
+  `insert into promotion_nominations (student_id, from_level, to_level, reason) values ($1, 2, 3, 'x')`, [meeraStudent]));
+await refuses('... nor an answer', () => asApp('authenticated', coordinator2,
+  `insert into promotion_feedback (nomination_id, coordinator_id, rating, comment) values ($1, auth.uid(), 'ready', 'x')`, [nom1]));
+await refusesWith('a coordinator cannot change a student\'s level', 'level_guru_only', () =>
+  asApp('authenticated', coordinator, 'update students set level_id = 3 where id = $1', [meeraStudent]));
+
+const decide = (userId, nom, decision, note = null, after = null) => asApp('authenticated', userId,
+  'select decide_promotion($1, $2, $3, $4::date)', [nom, decision, note, after]);
+await refusesWith('the Guru cannot promote before 2 coordinators answered', 'feedback_needed', () => decide(guru, nom1, 'promote'));
+const answer = (userId, nom, rating, comment) => asApp('authenticated', userId,
+  'select give_promotion_feedback($1, $2, $3)', [nom, rating, comment]);
+await refusesWith('the Guru does not answer, the Guru decides', 'not_allowed', () => answer(guru, nom1, 'ready', 'Yes'));
+await refusesWith('an answer is ready, almost or not yet', 'rating_invalid', () => answer(coordinator2, nom1, 'maybe', 'Hm'));
+await refusesWith('an answer needs a comment', 'comment_required', () => answer(coordinator2, nom1, 'almost', ' '));
+await answer(coordinator2, nom1, 'almost', 'Tempo drifts in the fast part.');
+check('with 2 answers the Guru is told', (await pushesTo(guru, `/staff/promotion/${nom1}`)) === 1);
+await answer(coordinator2, nom1, 'ready', 'Better this week.');
+const a2 = await answers(nom1);
+check('answering again changes the answer; the Guru is not told twice', a2.length === 2 && a2[1].rating === 'ready'
+  && a2[1].comment === 'Better this week.' && (await pushesTo(guru, `/staff/promotion/${nom1}`)) === 1, JSON.stringify(a2));
+const [q1] = await asApp('authenticated', guru, 'select answers, ready, almost, not_yet, answers_needed, full_name from promotion_queue where id = $1', [nom1]);
+check('the queue shows the answers and how many are needed', q1?.answers === 2 && q1.ready === 2 && q1.almost === 0
+  && q1.answers_needed === 2 && q1.full_name === 'Meera Iyer', JSON.stringify(q1));
+check('the Guru\'s home counts one to decide', (await home(guru)).to_decide === 1);
+await refusesWith('a coordinator cannot decide', 'not_allowed', () => decide(coordinator, nom1, 'promote'));
+await refusesWith('a decision is promote, not yet or more', 'decision_invalid', () => decide(guru, nom1, 'maybe'));
+await refusesWith('More feedback says what about', 'note_required', () => decide(guru, nom1, 'more', ' '));
+await decide(guru, nom1, 'more', 'Listen to her chhanda once more.');
+const [m1] = await asOwner(`select status, more_note, ready_notified_at from promotion_nominations where id = ${nom1}`);
+check('More feedback keeps it open with the Guru\'s note', m1.status === 'open' && m1.more_note === 'Listen to her chhanda once more.'
+  && m1.ready_notified_at === null, JSON.stringify(m1));
+await answer(coordinator2, nom1, 'ready', 'Chhanda is fine.');
+check('... and the next answer tells the Guru again', (await pushesTo(guru, `/staff/promotion/${nom1}`)) === 2);
+await refusesWith('only the nominator or the Guru may withdraw', 'not_allowed', () =>
+  asApp('authenticated', coordinator2, 'select withdraw_nomination($1)', [nom1]));
+
+await decide(guru, nom1, 'promote', 'Well earned.');
+const [meeraNow] = await asOwner(`select level_id from students where id = '${meeraStudent}'`);
+const [hist] = await asOwner(`select from_level, to_level, approved_by from level_history where student_id = '${meeraStudent}' order by id desc limit 1`);
+const [n1After] = await asOwner(`select status, decided_by, level_history_id from promotion_nominations where id = ${nom1}`);
+check('Promote: Meera is at level 3, with a level-history row approved by the Guru', meeraNow.level_id === 3
+  && hist.from_level === 2 && hist.to_level === 3 && hist.approved_by === guru && n1After.status === 'promoted'
+  && n1After.decided_by === guru && n1After.level_history_id !== null, JSON.stringify({ meeraNow, hist, n1After }));
+check('... Meera and the nominator are told', (await pushesTo(meera, '/student/progress')) === 1
+  && (await pushesTo(coordinator, `/staff/promotion/${nom1}`)) === 1);
+await refusesWith('a decided nomination takes no more answers', 'nomination_closed', () => answer(coordinator2, nom1, 'ready', 'x'));
+await refusesWith('... nor a second decision', 'nomination_closed', () => decide(guru, nom1, 'promote'));
+
+// Not yet, and nominating again after the date.
+const nom2 = await nominate(guru, lateStudent, 'Ready early? Please look.');
+check('the Guru may nominate too, without an answer of their own; unmet criteria are kept',
+  (await answers(nom2)).length === 0 && (await asOwner(`select criteria from promotion_nominations where id = ${nom2}`))[0].criteria.all_ok === false);
+await refusesWith('Not yet needs guidance', 'note_required', () => decide(guru, nom2, 'not_yet', ' ', '2099-01-01'));
+await refusesWith('... and a date', 'date_required', () => decide(guru, nom2, 'not_yet', 'Practise the bols.'));
+await refusesWith('... in the future', 'date_past', () => decide(guru, nom2, 'not_yet', 'Practise the bols.', yesterday));
+await refusesWith('... at most a year ahead', 'date_too_far', () => decide(guru, nom2, 'not_yet', 'Practise the bols.', '2099-01-01'));
+await decide(guru, nom2, 'not_yet', 'Practise the bols.', tomorrow);
+const [n2] = await asOwner(`select status, guidance, renominate_after::text as d from promotion_nominations where id = ${nom2}`);
+check('Not yet keeps the guidance and the date', n2.status === 'not_yet' && n2.guidance === 'Practise the bols.' && n2.d === tomorrow,
+  JSON.stringify(n2));
+await refusesWith('before that date the student cannot be nominated again', 'too_soon', () => nominate(coordinator, lateStudent, 'Again'));
+await asOwner(`update promotion_nominations set renominate_after = today_ist() - 1 where id = ${nom2}`);
+const nom3 = await nominate(coordinator, lateStudent, 'Practised the bols.');
+await asApp('authenticated', coordinator, 'select withdraw_nomination($1)', [nom3]);
+check('after the date a new nomination is possible, and the nominator can withdraw it',
+  (await asOwner(`select status from promotion_nominations where id = ${nom3}`))[0].status === 'withdrawn');
+
+// Keeping the level-up recording: until 30 days after the decision.
+check('the level-up recording is kept right after the decision',
+  (await asApp('service_role', null, 'select * from claim_expired_submission_files()')).length === 0);
+await asOwner(`update promotion_nominations set decided_at = now() - interval '31 days' where id = ${nom1}`);
+const expiredLevelUp = await asApp('service_role', null, 'select * from claim_expired_submission_files()');
+check('... and handed for deleting 30 days after it', expiredLevelUp.length === 1 && expiredLevelUp[0].path === take2,
+  JSON.stringify(expiredLevelUp));
+const [{ ok: promotionFnsCallable }] = await asOwner(`select has_function_privilege('authenticated', 'queue_staff_push(uuid[], text, text, text)', 'execute')
+  or has_function_privilege('authenticated', 'promotion_tell_guru(bigint)', 'execute')
+  or has_function_privilege('authenticated', 'queue_student_promoted(uuid)', 'execute')
+  or has_function_privilege('anon', 'promotion_criteria(uuid)', 'execute') as ok`);
+check('app roles cannot run the promotion queue helpers; anon runs nothing', promotionFnsCallable === false);
+
+// ---------------------------------------------------------------- practice tools (0018, Phase 2)
+const taalsSeen = async (userId) => asApp('authenticated', userId, 'select id, name, beats, placeholder from taals order by sort');
+const seededTaals = await taalsSeen(arjun);
+check('three placeholder taals are seeded and a student reads them', seededTaals.length === 3
+  && seededTaals.every((tl) => tl.placeholder) && seededTaals.map((tl) => tl.beats).join() === '8,6,16', JSON.stringify(seededTaals));
+await refuses('anon reads no taals', () => asApp('anon', null, 'select id from taals'));
+const addTaal = (userId, name, bols, divisions, marks) => asApp('authenticated', userId,
+  'insert into taals (name, bols, divisions, marks) values ($1, $2::text[], $3::smallint[], $4::text[]) returning id, beats, bols',
+  [name, bols, divisions, marks]).then((r) => r[0]);
+await refuses('a coordinator cannot add a taal', () => addTaal(coordinator, 'Mine', ['tā', 'ka'], [2], ['X']));
+await refuses('a student cannot change a taal', async () => {
+  const rows = await asApp('authenticated', arjun, `update taals set name = 'Hacked' where id = $1 returning id`, [seededTaals[0].id]);
+  if (rows.length === 0) throw new Error('no row changed (row-level security)');
+});
+await refusesWith('vibhags must add up to the beats', 'taal_divisions_invalid', () =>
+  addTaal(guru, 'Bad', ['tā', 'ka', 'tā'], [2, 2], ['X', '0']));
+await refusesWith('one mark per vibhag, X first', 'taal_marks_invalid', () =>
+  addTaal(guru, 'Bad', ['tā', 'ka', 'tā', 'ka'], [2, 2], ['0', 'X']));
+await refusesWith('a beat is a rest or up to 4 bols joined with a dot', 'taal_bols_invalid', () =>
+  addTaal(guru, 'Bad', ['tā', 'ka tā'], [2], ['X']));
+await refusesWith('a taal has a name', 'taal_name_invalid', () => addTaal(guru, '  ', ['tā', 'ka'], [2], ['X']));
+const newTaal = await addTaal(guru, '  Test four  ', ['Dhā', '-', 'te.re', 'ka'], [2, 2], ['X', '0']);
+check('the Guru adds a taal: beats counted, bols lower-cased', newTaal.beats === 4 && newTaal.bols.join(' ') === 'dhā - te.re ka',
+  JSON.stringify(newTaal));
+await asApp('authenticated', guru, 'update taals set active = false where id = $1', [newTaal.id]);
+check('a switched-off taal is hidden from students, not from staff',
+  !(await taalsSeen(arjun)).some((tl) => tl.id === newTaal.id) && (await taalsSeen(coordinator)).some((tl) => tl.id === newTaal.id));
+check('taal changes are in the audit log',
+  (await asOwner(`select count(*)::int as n from audit_log where table_name = 'taals' and row_id = '${newTaal.id}'`))[0].n === 2);
+
+const logPractice = (userId, minutes, source, day = null, startedAt = null, taal = null, note = null) => asApp('authenticated', userId,
+  'select log_practice($1, $2, $3::date, $4::timestamptz, $5, $6) as id', [minutes, source, day, startedAt, taal, note]).then((r) => r[0].id);
+const minutesAgo = (m) => new Date(Date.now() - m * 60000).toISOString();
+await refusesWith('a coordinator has no practice log', 'not_allowed', () => logPractice(coordinator, 10, 'manual'));
+await refusesWith('practice is 1-240 minutes', 'minutes_invalid', () => logPractice(arjun, 0, 'manual'));
+await refusesWith('the timer cannot claim more than the time since it started', 'started_invalid', () =>
+  logPractice(arjun, 30, 'timer', null, minutesAgo(10)));
+await refusesWith('... nor start more than 6 hours ago', 'started_invalid', () => logPractice(arjun, 30, 'timer', null, minutesAgo(400)));
+await refusesWith('a typed entry is for the last 14 days', 'date_invalid', () => logPractice(arjun, 20, 'manual', '2020-01-01'));
+await refusesWith('... not the future', 'date_invalid', () => logPractice(arjun, 20, 'manual', tomorrow));
+await refusesWith('a switched-off taal cannot be logged', 'taal_not_found', () => logPractice(arjun, 20, 'manual', null, null, newTaal.id));
+const timerLog = await logPractice(arjun, 25, 'timer', '2020-01-01', minutesAgo(25), seededTaals[0].id);
+const [tl1] = await asOwner(`select practised_on::text as d, source, taal_id from practice_logs where id = ${timerLog}`);
+const [{ d: todayIst }] = await asOwner('select today_ist()::text as d');
+check('the timer logs 25 minutes today (its own day, whatever the app sends)', tl1.d === todayIst && tl1.source === 'timer'
+  && Number(tl1.taal_id) === seededTaals[0].id, JSON.stringify(tl1));
+await logPractice(arjun, 40, 'manual', yesterday, null, null, '  Kirtan with my brother ');
+await refusesWith('at most 12 hours on one day', 'day_full', () => logPractice(arjun, 240, 'manual', yesterday)
+  .then(() => logPractice(arjun, 240, 'manual', yesterday)).then(() => logPractice(arjun, 240, 'manual', yesterday)));
+await refuses('the app cannot write practice_logs directly', () => asApp('authenticated', arjun,
+  `insert into practice_logs (student_id, practised_on, minutes, source) values ($1, current_date, 5, 'manual')`, [arjunStudent]));
+check('a student sees only their own practice', (await asApp('authenticated', meera, 'select id from practice_logs')).length === 0
+  && (await asApp('authenticated', arjun, 'select id from practice_logs')).length >= 3);
+const weeksOf = (userId, studentId) => asApp('authenticated', userId, 'select week_start::text as w, minutes, entries from practice_weeks($1, 4)', [studentId]);
+const coordWeeks = await weeksOf(coordinator, arjunStudent);
+const total = coordWeeks.reduce((sum, w) => sum + w.minutes, 0);
+check('the coordinator sees Arjun\'s weekly minutes: 4 weeks, newest first, Mondays', coordWeeks.length === 4
+  && coordWeeks[0].w > coordWeeks[1].w && new Date(`${coordWeeks[0].w}T00:00:00Z`).getUTCDay() === 1 && total === 25 + 40 + 240 + 240,
+  JSON.stringify(coordWeeks));
+check('another student gets zeros for Arjun', (await weeksOf(meera, arjunStudent)).every((w) => w.minutes === 0));
+await refusesWith('a student cannot delete another\'s entry', 'not_allowed', () =>
+  asApp('authenticated', meera, 'select delete_practice($1)', [timerLog]));
+await asOwner(`update practice_logs set practised_on = today_ist() - 20 where id = ${timerLog}`);
+await refusesWith('... nor their own after 14 days', 'too_old', () => asApp('authenticated', arjun, 'select delete_practice($1)', [timerLog]));
+const [{ id: recentLog }] = await asOwner(`select id from practice_logs where student_id = '${arjunStudent}' and practised_on = '${yesterday}' limit 1`);
+await asApp('authenticated', arjun, 'select delete_practice($1)', [recentLog]);
+check('a student deletes their own recent entry', (await asOwner(`select id from practice_logs where id = ${recentLog}`)).length === 0);
+await asApp('authenticated', guru, 'delete from taals where id = $1', [seededTaals[0].id]);
+check('deleting a taal keeps the practice minutes', (await asOwner(`select taal_id from practice_logs where id = ${timerLog}`))[0].taal_id === null);
+const [{ ok: practiceFnsOpen }] = await asOwner(`select has_function_privilege('anon', 'log_practice(int, text, date, timestamptz, bigint, text)', 'execute')
+  or has_function_privilege('anon', 'practice_weeks(uuid, int)', 'execute')
+  or has_function_privilege('authenticated', 'guard_taal()', 'execute') as ok`);
+check('anon runs no practice function; the guard is not callable', practiceFnsOpen === false);
 // ---------------------------------------------------------------- row-level security
 const seen =await asApp('authenticated', arjun, 'select full_name from students');
 check('student sees only their own student record', seen.length === 1 && seen[0].full_name === 'Arjun Rao');

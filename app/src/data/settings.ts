@@ -7,8 +7,8 @@
 //   call_due_days, retry_days,     when a call is due, when to try again, tries before the Guru
 //   max_retries                    is asked (daily job, log_call)
 //   new_joiner_weeks               how long someone counts as a new joiner (home screens)
-//   promotion_*                    promotion criteria (Phase 2, same keys as the branch
-//                                  phase2-promotion); nothing on main reads them yet
+//   promotion_*                    promotion criteria (Phase 2: promotion_criteria and
+//                                  decide_promotion, migration 0017)
 // Saved together by save_settings (migration 0014), which checks every value and keeps Irregular
 // before Inactive; every change goes to the audit log.
 

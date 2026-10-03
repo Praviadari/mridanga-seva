@@ -60,6 +60,13 @@ const MAX_SIZE_FEW = 320;
 const DENSE_FROM = 9;
 const CIRCLE_DENSE = 56;
 const ITEM_WIDTH_DENSE = 80;
+/**
+ * A ring of ten (the staff homes, with Assessments since Phase 2) draws smaller circles in
+ * the same slots, so the side labels stay inside a 375 px screen.
+ */
+const CIRCLE_TEN = 50;
+/** More modules than this are shown as the grid. */
+const MAX_ON_RING = 10;
 /** Below this window width the labels would overlap, so the grid is used. */
 const MIN_WIDTH = 340;
 
@@ -67,7 +74,7 @@ const MIN_WIDTH = 340;
 export function ModuleRing({ title, modules }: ModuleRingProps) {
   const { width } = useWindowDimensions();
   const largeText = useLargeText();
-  const asGrid = largeText || width < MIN_WIDTH || modules.length > 9;
+  const asGrid = largeText || width < MIN_WIDTH || modules.length > MAX_ON_RING;
   return (
     <View style={styles.block}>
       <AppText variant="subtitle">{title}</AppText>
@@ -83,7 +90,8 @@ function Ring({ modules, width }: { modules: readonly Module[]; width: number })
   // 16 px page sides; on a phone the ring fills the width, on a laptop it stops at MAX_SIZE.
   const size = Math.min(width - 2 * spacing.md, modules.length <= 4 ? MAX_SIZE_FEW : MAX_SIZE);
   const dense = modules.length >= DENSE_FROM;
-  const circle = dense ? CIRCLE_DENSE : CIRCLE;
+  const ten = modules.length >= MAX_ON_RING;
+  const circle = ten ? CIRCLE_TEN : dense ? CIRCLE_DENSE : CIRCLE;
   const itemWidth = dense ? ITEM_WIDTH_DENSE : ITEM_WIDTH;
   const radius = size / 2 - itemWidth / 2;
   const centre = size / 2;

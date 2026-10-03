@@ -7,12 +7,23 @@
 // tokens Expo no longer knows are deleted. If no request got through at all (for example Expo's
 // service was down), the announcements are put back so the next run tries again.
 //
+// Since migration 0016 it also sends the queued assessment notifications (claim_push_outbox), and
+// when the daily job asks with {"cleanup": true}, deletes recordings 30 days past their review.
+//
 // Runs with the service role, which bypasses row-level security; that key never leaves Supabase.
 // Deploy and settings: docs/OPERATIONS.md "Push notifications". Why: docs/DECISIONS.md #33.
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
-import { batches, toMessages, unregisteredTokens, type ClaimedRow, type PushTicket } from './messages.ts';
+import {
+  batches,
+  toMessages,
+  toOutboxMessages,
+  unregisteredTokens,
+  type ClaimedRow,
+  type OutboxRow,
+  type PushTicket,
+} from './messages.ts';
 
 const EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send';
 
@@ -48,6 +59,31 @@ function sameText(a: string, b: string): boolean {
   return difference === 0;
 }
 
+/**
+ * Deletes submitted assessment files whose review is more than 30 days old (migration 0016,
+ * docs/DECISIONS.md #52): claim_expired_submission_files() marks them and returns the paths; a
+ * batch Storage refused is put back for the next day. Returns how many were deleted.
+ */
+async function removeExpiredFiles(db: ReturnType<typeof createClient>): Promise<number> {
+  const { data, error } = await db.rpc('claim_expired_submission_files');
+  if (error) {
+    console.error('claim_expired_submission_files failed', error.message);
+    return 0;
+  }
+  const rows = (data ?? []) as { submission_id: number; path: string }[];
+  let removed = 0;
+  for (const batch of batches(rows)) {
+    const result = await db.storage.from('assessment-files').remove(batch.map((row) => row.path));
+    if (result.error) {
+      console.error('removing expired files failed', result.error.message);
+      await db.rpc('release_submission_files', { p_ids: batch.map((row) => row.submission_id) });
+    } else {
+      removed += batch.length;
+    }
+  }
+  return removed;
+}
+
 Deno.serve(async (request) => {
   // Only the database job knows this secret (Vault mridanga_push_secret = function secret PUSH_SECRET).
   const secret = Deno.env.get('PUSH_SECRET');
@@ -59,13 +95,21 @@ Deno.serve(async (request) => {
   if (!url || !key) return reply(500, { error: 'not_configured' });
   const db = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
 
+  // The daily job asks for {"cleanup": true}: delete submitted assessment files past their keep time.
+  const requestBody = (await request.json().catch(() => ({}))) as { cleanup?: boolean };
+  const cleaned = requestBody.cleanup ? await removeExpiredFiles(db) : 0;
+
   const { data, error } = await db.rpc('claim_due_push');
   if (error) {
     console.error('claim_due_push failed', error.message);
     return reply(500, { error: 'claim_failed' });
   }
   const rows = (data ?? []) as ClaimedRow[];
-  const messages = toMessages(rows);
+  // Assessment notifications (migration 0016): already worded per person, with the screen to open.
+  const queued = await db.rpc('claim_push_outbox');
+  if (queued.error) console.error('claim_push_outbox failed', queued.error.message);
+  const outboxRows = (queued.data ?? []) as OutboxRow[];
+  const messages = [...toMessages(rows), ...toOutboxMessages(outboxRows)];
   const groups = batches(messages);
 
   // An access token is needed only if "enhanced push security" is switched on for the Expo account.
@@ -109,6 +153,11 @@ Deno.serve(async (request) => {
     // were delivered; trying again would send those people the same notification twice.)
     const released = await db.rpc('release_push_claim', { p_ids: announcementIds });
     if (released.error) console.error('release_push_claim failed', released.error.message);
+    const outboxIds = [...new Set(outboxRows.map((row) => row.outbox_id))];
+    if (outboxIds.length > 0) {
+      const back = await db.rpc('release_push_outbox', { p_ids: outboxIds });
+      if (back.error) console.error('release_push_outbox failed', back.error.message);
+    }
   }
   if (gone.length > 0) {
     const removed = await db.from('push_tokens').delete().in('token', gone);
@@ -117,6 +166,8 @@ Deno.serve(async (request) => {
 
   return reply(200, {
     announcements: announcementIds.length,
+    assessmentNotes: outboxRows.length,
+    removedFiles: cleaned,
     messages: messages.length,
     sent,
     failedBatches,

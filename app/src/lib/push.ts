@@ -97,10 +97,16 @@ function setUp(module: Notifications): Notifications {
 // finishes, so a tap that opened the app is not missed.
 void notifications();
 
-/** The screen a notification asks to open: only an announcement screen, never anything else. */
+/**
+ * The screen a notification asks to open: an announcement, or (Phase 2, migration 0016) a student's
+ * assessment or a recording to review; never anything else.
+ */
 function screenOf(response: NotificationsModule.NotificationResponse | null): string | null {
   const url = response?.notification.request.content.data?.url;
-  return typeof url === 'string' && /^\/(staff|student)\/announcements\/\d+$/.test(url) ? url : null;
+  return typeof url === 'string'
+    && /^\/(((staff|student)\/announcements|student\/assessments|staff\/assessments\/review|staff\/promotion)\/\d+|student\/progress)$/.test(url)
+    ? url
+    : null;
 }
 
 /**

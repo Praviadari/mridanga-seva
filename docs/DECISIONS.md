@@ -949,7 +949,8 @@ it needs a check on a real iPhone (OPERATIONS.md "Adding it to an iPhone home sc
 
 ## 44. The team edits the syllabus and lessons; ticks are never lost — 3 Oct 2026
 
-(Number #43 is left to the Phase 2 branch phase2-assessments, which may take it.)
+(Number #43 was left to the Phase 2 branch phase2-assessments; its entry is #52 since the Phase 2
+merge (#55), so #43 stays unused.)
 
 **Context.** The syllabus was dummy data from seed.sql, editable only in the dashboard, and
 deleting an item there deleted every tick on it (`student_progress.item_id ... on delete cascade`,
@@ -1083,8 +1084,8 @@ asked "from Monday or the last 7 days" (NOTES_demo). The audit log was written b
   `save_settings` (all or nothing; Irregular must come before Inactive); each value checked by the
   trigger `settings_guard` (whole numbers in a range, known keys only, no delete from the app); each
   change written to the audit log with the key as the row id.
-- **Promotion criteria for Phase 2** (DECISIONS #43 on the branch phase2-assessments): the same keys and
-  defaults as the promotion migration on the branch phase2-promotion, `promotion_syllabus_percent`
+- **Promotion criteria for Phase 2** (#52; #43 on the branch phase2-assessments): the same keys and
+  defaults as the promotion migration (0017_promotion since the Phase 2 merge, #55), `promotion_syllabus_percent`
   (100), `promotion_min_visits` (8), `promotion_visit_weeks` (8), `promotion_needs_level_up` (true) and
   `promotion_min_feedback` (2), so G10 edits what promotion reads. Shown on G10 as "not used yet"
   while Phase 2 is not on main. (A first version of 0014 had two placeholder keys of its own; found
@@ -1220,3 +1221,196 @@ itself waits for the APK that is coming anyway, so no extra install for the volu
 **Consequences.** Visits still carry centre 1 (Abids) and new students get centre 1 as home
 centre; a centre picker comes when a second centre opens. Round 9 also fixed G10, which never
 saved a changed open window (a lost template string made every window look unchanged).
+
+## 52. Assessments: the Guru sets them, coordinators run and grade them — 2 Oct 2026
+
+(Numbered #43 on the Phase 2 branch; renumbered at the merge into main, #55.)
+
+**Status: confirmed by Praveen 3 Oct 2026; on main since the Phase 2 merge (#55), reaching phones
+with the next APK.** Built on the branch `phase2-assessments`. He confirmed the storage cap,
+the retention, the reminder time and keeping S7; in-app recording waits for the next planned APK;
+editing an assessment comes in slice 2; promotion criteria will be settings with defaults (slice 2).
+
+**Context.** The team approved the assessment flow in the Screen List doc (G6, C12, C13, C14; S7
+has no pick yet, but the flow needs it): the Guru sets work in any form, coordinators hand it
+out, follow up and grade routine work, the Guru grades level-ups (G7, slice 2). Students today
+send recordings on WhatsApp. The free Supabase plan has 1 GB of Storage for everything.
+
+**Decision.**
+- **One assessment, many students.** The Guru writes `assessments` directly (title,
+  instructions, type, level, level-up flag, a rubric of 1-8 lines with a top score 1-10 each, up
+  to 3 files and a link) and keeps it as a draft until "Send to coordinators". A coordinator
+  releases it (`release_assessment`) with notes and a due date to picked students; each student
+  gets one `assessment_assignments` row, whose status is Not seen / Seen / Submitted / Reviewed /
+  Redo. A student gets an assessment once, whichever coordinator releases it.
+- **Database functions do the changes** that touch several rows or must check who is asking
+  (`mark_assessment_seen`, `submit_assessment`, `review_submission`, `remind_assessment`), as
+  for attendance (#5, #14). Row-level security: the Guru sees everything; coordinators see
+  sent assessments and all students' work on them (any coordinator may follow up or review, as
+  any coordinator may tick the syllabus, #22); a student sees only what was given to them. After
+  the first release the type, level, level-up flag and rubric are fixed, so scores keep their
+  meaning; a released assessment cannot be deleted.
+- **A review** gives a score per rubric line, a comment (required for a redo), and Accept or
+  Redo. A redo opens the assignment again; each recording is its own `assessment_submissions`
+  row, so the history stays. On a level-up assessment an accepted review can be marked "send
+  level-up to the Guru" (`send_level_up`), which slice 2 (G7, C22, C23) will read.
+- **Recordings are files the student picks**, made with the phone's own recorder or camera, or
+  a link (unlisted YouTube, Google Drive). Recording inside the app needs expo-audio, a native
+  package and a new APK: it goes into the next planned APK, before Phase 2 goes live. Coordinators' voice notes on a
+  review (C14 in the doc) wait for the same decision. Audio and video play through the browser
+  view the app already has (expo-web-browser), not an in-app player.
+- **Storage cap:** a private bucket `assessment-files`, at most **50 MB a file**
+  (the free plan's own per-file limit), only common audio, video, photo and PDF types. A student
+  may upload only while an assessment waits for them, at most **10 files a day**. One recording
+  per submission.
+- **Retention:** a submitted file is deleted **30 days after its review**; the score,
+  comment and history stay. A file sent to the Guru for a level-up is kept until slice 2
+  decides. The daily job asks the Edge Function to delete expired files through the Storage API
+  (a SQL delete would leave the file behind, #32).
+- **Notifications** go through a queue, `push_outbox`, worded on the server in the person's app
+  language and sent by the Edge Function `notify-announcements` with the announcements: a new
+  assessment to the student, "sent a recording" to the coordinator who released it, the review
+  to the student, and reminders. **Remind** on the tracker reaches students who have not sent it,
+  at most once in 12 hours each. **Automatic reminders** come from a daily job at 09:00 IST
+  (`assessment_daily`) for work due today or tomorrow: it is a few lines of SQL on the same
+  queue, so it is built.
+- **Entry points:** an Assessments circle on the staff ring and on the student ring.
+
+**Why.** It follows the approved flow and the Phase 1 patterns (rules in the database, views as
+the person asking, private files behind signed links), so a coordinator's phone and a student's
+phone cannot see or change more than they should. 50 MB is about 25 minutes of phone audio or a
+minute or two of phone video; with 200 students sending one recording a month and files kept 30
+days after review, Storage should stay well under 1 GB, and a link costs nothing.
+
+**Consequences.** Migration `0016_assessments.sql` (run on TEST as 0012; LIVE runs it in main's
+order, OPERATIONS.md).
+The Edge Function must be deployed again for the assessment notifications and the file deletion;
+until then those rows wait and nothing breaks, and the old function ignores them. S7 was kept by
+Praveen although the Screen List doc has no team pick for it yet. The Telugu and Hindi texts, in the app and in the
+notification lines in the migration, are drafts for the native-speaker review. Slice 2 is the
+promotion approval (C22, C23, G7).
+
+## 53. Promotion: coordinators nominate and give feedback, only the Guru promotes — 3 Oct 2026
+
+(Numbered #45 on the Phase 2 branch; renumbered at the merge into main, #55.)
+
+**Status: decided 3 Oct 2026; on main since the Phase 2 merge (#55), reaching phones with the next
+APK.** Built on the branch `phase2-promotion`. Praveen left the open points to the build chat ("take the best viable
+decisions; we will configure later if it does not suit"): criteria advise and do not block, the
+nominating coordinator counts as one of the 2 answers, students see only the promotion push (no
+nomination status until S8 is picked), level-up recordings kept 30 days after the decision (180
+days if never nominated), no ring circle for promotions. The numbers are settings; the rest is a
+small change if the team wants it otherwise.
+
+**Context.** The Screen List doc approves C22 Nominate for promotion, C23 Promotion feedback and
+G7 Level-up queue / Promotion approvals: a student moves up only when the Guru approves, after the
+coordinators who teach the student have given feedback; the app never promotes by itself and
+tells the mentor when a student meets the Guru's criteria. Praveen (3 Oct 2026): the criteria are
+settings with defaults (whole level syllabus ticked, 8+ visits in the last 8 weeks, one accepted
+level-up assessment), and an assessment can be edited (text, files, link any time; rubric, level,
+type only until the first release).
+
+**Decision.**
+- **Criteria as settings** (`promotion_syllabus_percent` 100, `promotion_min_visits` 8 in
+  `promotion_visit_weeks` 8, `promotion_needs_level_up` true, `promotion_min_feedback` 2),
+  checked by `promotion_criteria` on the server. "Visits" counts days in class; the syllabus
+  counts the items in use (retired ones left out, #44); the level-up is an accepted submission of a
+  level-up assessment *of the current level* sent to the Guru (`send_level_up`, #52).
+- **The criteria advise, the Guru decides.** A coordinator may nominate a student who misses a
+  criterion (the reason says why); the check at the time is kept with the nomination and shown to
+  the Guru. Coordinators see their own mentees who meet everything; the Guru sees all.
+- **Who.** Any coordinator (or the Guru) nominates and picks coordinators to ask; those who
+  ticked, marked a visit or reviewed in the last weeks, and the mentor, are suggested. A
+  nominating coordinator's own view counts as one "Ready". Only coordinators answer (Ready /
+  Almost / Not yet + a comment, changeable while open). **Promote needs 2 answers**; Not yet and
+  More feedback can be given at any time. One open nomination per student.
+- **The Guru's three answers.** Promote (confirm step; `students.level_id` and a `level_history`
+  row with the Guru as approver; the student gets a push), Not yet (guidance and a date, tomorrow
+  to a year ahead, before which the student cannot be nominated again), More feedback (a note;
+  coordinators who have not answered get a push). The nominator or the Guru may withdraw.
+- **Only the Guru changes a level**, enforced by a trigger: before this, a coordinator's phone
+  could change `students.level_id` through the general staff update policy.
+- **Students see no nominations or comments** (staff only); a promoted student gets a push that
+  opens My progress. Showing the nomination's state on S8 waits for a team pick of S8.
+- **Keeping the level-up recording:** while its nomination is open, then 30 days after the
+  decision; one never used for a nomination 180 days after its review (0012 left this to slice 2).
+- **Entry points:** cards on G1 (level-up queue: to decide, collecting, ready) and C1 (feedback
+  asked of me, my students ready), a Promotion block on C8. No ring circle; the staff ring already
+  holds ten since the merge with round 7 (circles drawn smaller, same slots).
+- **Editing an assessment (G6):** an Edit button for the Guru; after the first release the type,
+  level, level-up flag and rubric are shown, not editable (the database already refuses them).
+  Files taken off are deleted from Storage after the save.
+
+**Why.** It is the approved flow with the rules in the database, like attendance and assessments:
+a coordinator's phone cannot promote, skip the feedback or see more than staff should. Settings let
+the Guru tune the criteria without an app update. A soft criteria check keeps the Guru's judgement
+in charge while still telling coordinators who is ready.
+
+**Consequences.** Migration `0017_promotion.sql` (run on TEST as 0014_promotion; LIVE runs it in
+main's order, after 0016). The Edge Function `notify-announcements` must be deployed again to send the
+promotion notifications (it now accepts `/staff/promotion/<id>` and `/student/progress`); until
+then they wait in `push_outbox`. The Telugu and Hindi texts are drafts (docs/TRANSLATIONS.md).
+
+## 54. Practice tools: metronome, taal player, two-head view and practice log — 3 Oct 2026
+
+(Numbered #49 on the Phase 2 branch; renumbered at the merge into main, #55.)
+
+**Status: S5, S6 and the Guru taal editor confirmed by Praveen 3 Oct 2026; on main since the Phase 2
+merge (#55), reaching phones with the next APK.** Built on the branch `phase2-practice`. **S5 Practice tools and S6 Practice log have no team pick in the Screen List doc**;
+they were built because the approved V1 two-head view needs a player, and Praveen kept them.
+
+**Context.** The Screen List doc approves V1 (both drum faces drawn, the zone and the hand lit per
+bol in time with the sound, at any tempo, offline) and sequences "practice tools + two-head view"
+after assessments and promotion. S5 (metronome with tap tempo, taal player with a beat-name grid,
+slow-down player, record myself) and S6 (timer from S5 logs itself, manual entries, weekly hours)
+are listed without a pick. The real taals (bols, levels) are a team input.
+
+**Decision.**
+- **S5** has a metronome (30-240 beats a minute, −5/−1/+1/+5, tap tempo from the last 2-5 taps, 2-8
+  beats in a bar with an accent on beat 1, beat dots lit in time) and a taal player (a taal from the
+  table, its own tempo, slow-down 50 / 75 / 100 %, the beat-name grid, the two-head view). Staff
+  open the same screen without the timer; the Guru also finds "Edit taals".
+- **Timing.** In the browser a look-ahead scheduler starts every sound on the Web Audio clock
+  (`AudioContext.currentTime`), 150 ms ahead (up to 2 s when the browser slows the timer), from one anchor: a slow JavaScript timer never shifts a
+  sound and nothing adds up (measured: see ARCHITECTURE "Practice tools"). On phones, where
+  expo-audio cannot start a sound at a future time, the whole cycle is mixed into one WAV at the
+  tempo and looped by the audio hardware (`player.loop`); the screen reads `player.currentTime`.
+  A tempo change re-anchors (web) or mixes a new loop and seeks to the same beat (phone).
+- **Sounds are synthesised** (decaying partials with a pitch bend for the baya, a noise attack), so
+  nothing is downloaded and everything works offline. Recorded strokes can replace them (team input).
+- **V1** draws both faces with react-native-svg as the player sees them (baya left, dayan right) and
+  lights the zone of each stroke (kinar, maidan, the syahi's edge, the syahi, or the whole head for a
+  flat hand) with a ripple when the stroke rings; words under each head name the zone, the fingers and
+  open / damped. The bol-to-stroke table is from NOTES "Bols" (kksongs khol lessons 2-4), the khol's
+  and not the Carnatic mridangam's; a few spellings are mapped by assumption and marked unverified in
+  `lib/bols.ts` (tin, ge/gi, khe, dhi). The screen re-renders only when the bol changes; Reanimated is
+  not needed for it.
+- **Vibhag marks** follow the kksongs khol course: X sam, 2 / 3 tali (a tali is an open baya stroke),
+  0 khali. Bengali kirtan names such as "phāṅk" for khali were not confirmed and are not used.
+- **Taals are data** (`taals`: name, bols one per beat with `-` for a rest and `te.re` for two bols in
+  a beat, divisions, marks, level or all, placeholder, note, order, switched on). **A simple Guru
+  editor is built** (list + form with a live grid preview), because the placeholders must be replaced
+  by the Guru without SQL; coordinators read it. Three **placeholder** taals are seeded and marked so
+  in the app: kksongs lesson 6's 8-beat kirtan rhythm, a 6-beat one with invented bols, and
+  Dasapahira 16 (8+4+4, khali on 9) from kksongs lesson 10 with bols and marks to check.
+- **S6.** The S5 timer starts with the first sound (or by hand), survives leaving the screen, and on
+  Stop logs itself when it ran 1 minute or more (at most 240 minutes an entry; over 6 hours counts as
+  forgotten). Students type in practice for a day of the last week; delete their own entries of the
+  last 14 days. The database (`log_practice`) checks the minutes against the timer's start, at most
+  12 hours and 20 entries a day. Weeks run from Monday (India).
+- **Where it shows.** A "Practice" circle on the student ring (8 circles); a Practice block with 4
+  weeks on S4 My progress (opens S6) and on C8 for staff (the coordinator sees a mentee's hours);
+  a "Practice tools" button under the staff ring (the ring is full at ten).
+- **Promotion criteria are unchanged** (#53). Practice hours could become a setting later
+  (`practice_weeks` already gives the numbers).
+
+**Why.** The approved V1 needs a player, and a drifting metronome teaches the wrong time. The audio
+clock (web) and a hardware-looped buffer (phone) keep time without depending on JavaScript timers.
+Taals as editable data let the Guru put in the real ones without an app update.
+
+**Consequences.** Migration `0018_practice.sql` (run on TEST as 0016_practice).
+**expo-audio** came with this slice (#52 chose it for the next planned APK): the Android
+fingerprint changes, so from the Phase 2 merge on, main's JS reaches only the next APK (#55);
+sound on phones is tested with that APK. Not in this slice (slice 4, native): V3 player controls
+(mirror, 0.5x / 0.75x, A-B loop: a WebView or expo-video), "record myself", in-app recording for
+assessments. The Telugu and Hindi lines are drafts (TRANSLATIONS.md).

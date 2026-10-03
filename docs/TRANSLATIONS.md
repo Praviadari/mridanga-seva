@@ -73,6 +73,12 @@ The code is in `app/src/i18n/index.ts`, `app/src/components/language-picker.tsx`
   with diacritics ([DECISIONS.md #39](DECISIONS.md)); do not translate it. The tab labels
   (`tabs.*`), the mantra lines (`home.mantraLine1/2`), the module names (`modules.*`) and the Coming
   soon lines (`comingSoon.*`) in Telugu and Hindi are drafts that still need the review.
+- **Phase 2 assessments** ([DECISIONS.md #52](DECISIONS.md)): every
+  Telugu and Hindi line under `assessments.*` is a draft for the native-speaker review, and so are
+  the notification lines in `assessment_push_line()` in `supabase/migrations/0016_assessments.sql`
+  (the server words those in the person's app language). Words to check first: మూల్యాంకనం /
+  मूल्यांकन (assessment), రూబ్రిక్ / रूब्रिक (rubric), స్థాయి పెంపు / स्तर-उन्नति (level-up),
+  కోఆర్డినేటర్ / कोऑर्डिनेटर (coordinator, as elsewhere in the app). Checked for mixed Telugu-Devanagari words on 2 Oct 2026.
 - **Round 7 keys for the review (3 Oct 2026):** `syllabusEditor.*` (G4), `materials.*` (G5),
   `visitHistory.*` (S9), `months.*` (month names), `myProfile.*` (A3),
   `progress.levelLessons`, `progress.retired` and `syllabus.errors.retired`. Words to check:
@@ -92,5 +98,23 @@ The code is in `app/src/i18n/index.ts`, `app/src/components/language-picker.tsx`
   attendance (హాజరులు / हाज़िरी), "attendance area" (హాజరు ప్రాంతం / हाज़िरी क्षेत्र), "radius"
   (వ్యాసార్ధం / त्रिज्या: maybe too technical; "దూరం" / "दूरी" may read better), "switch off" a centre,
   and the long lines `reports.levelLine` and `reports.callsLine`. The CSV headings are in the
-  language the person uses when they download it.- Telugu and Devanagari letters are taller than Latin ones. The app's line heights allow for this;
+  language the person uses when they download it.
+- **Phase 2 promotion approval** ([DECISIONS.md #53](DECISIONS.md)):
+  every Telugu and Hindi line under `promotion.*` and `assessments.edit.*` is a draft for the
+  review, and so are the notification lines in `promotion_push_line()` in
+  `supabase/migrations/0017_promotion.sql`. Words to check first: సిఫారసు / नामांकन (nomination),
+  స్థాయి పెంపు / स्तर-उन्नति (promotion, as for level-up), సిద్ధం · దాదాపు · ఇంకా కాదు /
+  तैयार · लगभग · अभी नहीं (the three answers), అభిప్రాయం / राय (feedback), నియమాలు / शर्तें
+  (criteria), సూచనలు / मार्गदर्शन (guidance). Coordinator and Guru as in the rest of the app
+  (కోఆర్డినేటర్ / कोऑर्डिनेटर, గురువుగారు / गुरुजी). Checked for mixed Telugu-Devanagari words on 3 Oct 2026.
+- **Phase 2 practice tools** ([DECISIONS.md #54](DECISIONS.md)): every
+  Telugu and Hindi line under `practice.*`, `practiceLog.*` and `taals.*` (146 keys each) is a draft
+  for the review. Bols are never translated: they come from the taal data, written in the usual
+  romanised form (tā, dhin, te.re). Words to check first: the drum's parts written in the local
+  script, బాయా · దాయాన్ · కినార్ · మైదాన్ · స్యాహీ / बाया · दायाँ · किनार · मैदान · स्याही (Hindi
+  "दायाँ · दायाँ हाथ" reads twice as "right": maybe "दायाँ मुख"); the vibhag marks సమ్ · తాళి · ఖాళీ /
+  सम · ताली · खाली; "beat" as బీట్ / मात्रा; "practice" అభ్యాసం / अभ्यास; "placeholder" తాత్కాలికం /
+  अस्थायी; the strokes' fingers (`practice.touch.*`) and open / damped (మోగుతుంది · మూసిన / गूँजता
+  · बंद). Checked for mixed Telugu-Devanagari words on 3 Oct 2026.
+- Telugu and Devanagari letters are taller than Latin ones. The app's line heights allow for this;
   if a translated label looks cut off, report it with a screenshot.

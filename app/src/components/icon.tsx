@@ -66,6 +66,21 @@ const SHAPES = {
   location: 'location-outline',
   download: 'download-outline',
   share: 'share-outline',
+  // Assessments (Phase 2): the module, playing a recording, audio and video files, a link, a score.
+  assessment: 'clipboard-outline',
+  play: 'play-circle-outline',
+  audio: 'mic-outline',
+  videoFile: 'videocam-outline',
+  link: 'link-outline',
+  score: 'star-outline',
+  // Promotion approval (Phase 2 slice 2): the level-up queue, a coordinator's feedback.
+  promote: 'trending-up-outline',
+  feedback: 'chatbubbles-outline',
+  // Practice tools (Phase 2 slice 3): the module, stop, tap tempo, the taal editor.
+  practice: 'musical-note-outline',
+  pause: 'stop-circle-outline',
+  tap: 'hand-left-outline',
+  taal: 'grid-outline',
 } as const;
 
 /** The icons the app may use. */

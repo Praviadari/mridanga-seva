@@ -1,6 +1,6 @@
 # Screens
 
-The Phase 1 screens and how far each one is. Screen numbers (A1, C2, G4 ...) come from the
+The Phase 1 screens and how far each one is (Phase 2 at the end). Screen numbers (A1, C2, G4 ...) come from the
 screen list the team approved; code comments use them. Phase 2 and 3 screens are added here when
 their building starts.
 
@@ -66,6 +66,45 @@ screens open on top of the tabs with a back button.
 
 Coordinator screens that the Guru also uses live in `app/src/app/staff/`
 (see ARCHITECTURE.md "Navigation by role").
+
+## Phase 2 (branches `phase2-assessments` and `phase2-promotion`, not on main yet)
+
+Slice 1, the assessment flow ([DECISIONS.md #43](DECISIONS.md)). It reaches main and the
+volunteers' phones only when Praveen decides; Phase 2 goes live 1 Mar 2027. Each home's ring has an
+Assessments circle. Slice 2 is the promotion approval (C22, C23, G7).
+
+| # | Screen | Who | Status | Code |
+|---|---|---|---|---|
+| G6 | Create assessment: title, instructions, type, level, level-up flag, a rubric (1-8 lines, top score 1-10 each), up to 3 files (photo, PDF, audio, video; 50 MB each) and a link; Send to coordinators or Save as draft; send a draft later, delete one never released | Guru | Built; edit since slice 2 (title, instructions, files, link any time; type, level, level-up, rubric until the first release) | `app/src/screens/assessment-form.tsx`, `app/src/app/staff/assessments/new.tsx`, `edit/[id].tsx`, `[id].tsx`, `app/src/data/assessments.ts`, `app/src/data/assessment-files.ts` |
+| C12 | Assessments from the Guru: the list with level, type, level-up and counts per state; give one to students: notes, a due date (3, 7 or 14 days, or typed), students picked by level and name, "Select all shown" | Coordinator (and Guru) | Built | `app/src/app/staff/assessments/index.tsx`, `release/[id].tsx` |
+| C13 | Assessment tracker: each student Not seen / Seen / Submitted / Reviewed / Redo and Late, filters, no-login note, last reminder; "Remind everyone who has not sent it" (push); automatic reminders at 09:00 IST on the day before and the due day | Coordinator (and Guru) | Built | `app/src/app/staff/assessments/[id].tsx`, `app/src/components/assessment-parts.tsx` |
+| C14 | Review submission: the recording (Play in the browser view) or link and the student's note; a score per rubric line, a comment, Accept or Ask for a redo, "Send level-up to the facilitator" on a level-up assessment; earlier recordings with their reviews; Remind while nothing is sent. No voice note yet (needs expo-audio) | Coordinator (and Guru) | Built | `app/src/app/staff/assessments/review/[id].tsx` |
+| S7 | Assessments: my list (to do first, by due date); one assessment with the instructions, files, the coordinator's note, the rubric; send a recording (an audio or video file, or a link) with a note; the score per line and the comment; send again after a redo. No team pick in the doc; kept by Praveen 3 Oct 2026 | Student | Built | `app/src/app/student/assessments/index.tsx`, `[id].tsx` |
+
+Slice 2 (branch `phase2-promotion`, from `phase2-assessments` + main 3 Oct 2026), the promotion approval
+([DECISIONS.md #45](DECISIONS.md)). A student moves up only when the Guru approves; the app never
+promotes by itself. Entry points: a "Level-up queue" card on G1, a "Promotions" card on C1 (answers
+asked of me, my students ready), and a "Promotion" block on C8 (criteria check, Nominate). No ring
+circle: the staff ring is already at ten.
+
+| # | Screen | Who | Status | Code |
+|---|---|---|---|---|
+| C22 | Nominate for promotion: the criteria check from settings (whole syllabus of the level ticked, 8+ visits in 8 weeks, an accepted level-up assessment), a reason, the coordinators to ask (those who taught the student lately ticked first); may nominate with a criterion unmet, the Guru sees the check. The coordinators' list shows their own students who meet every criterion | Coordinator (and Guru) | Built | `app/src/app/staff/promotion/nominate/[id].tsx`, `index.tsx`, `app/src/components/promotion-parts.tsx`, `app/src/data/promotion.ts` |
+| C23 | Promotion feedback: the nomination with the reason, the criteria at nomination, the level-up recording (Play) and the other answers; rate Ready / Almost / Not yet with a comment, change it while open; "Open the student's profile" | Coordinator | Built | `app/src/app/staff/promotion/[id].tsx` |
+| G7 | Level-up queue: waiting for a decision (enough answers), collecting feedback, ready to nominate, decided lately; on a nomination: Promote (after 2 answers, asks to confirm; level + level history), Not yet (guidance + nominate-again date), More feedback (a note; tells those who have not answered); withdraw | Guru | Built | `app/src/app/staff/promotion/index.tsx`, `[id].tsx` |
+
+Slice 3 (branch `phase2-practice`, from `phase2-promotion`), practice tools and the two-head view
+([DECISIONS.md #49](DECISIONS.md)). V1 is approved in the doc; S5 and S6 have no team pick there but were kept by Praveen
+(3 Oct 2026), as was the Guru taal editor. Entry points: a "Practice" circle on the student ring, a Practice
+block on S4 and C8, a "Practice tools" button under the staff ring. Sound on phones needs the next
+APK (expo-audio); the browser works now.
+
+| # | Screen | Who | Status | Code |
+|---|---|---|---|---|
+| S5 | Practice tools: metronome (30-240, −5/−1/+1/+5, tap tempo, 2-8 beats with an accent on 1, beat dots); taal player (taal chips, "Placeholder" note, tempo, slow-down 50/75/100 %, the beat-name grid with X / 2 / 0 vibhag marks, the two-head view); practice timer for students (starts with the sound, logs itself on Stop at 1 minute or more); offline from the taals saved on the phone. No "record myself" yet (slice 4) | Student; staff without the timer | Built | `app/src/screens/practice-tools.tsx` (routes `student/practice.tsx`, `staff/practice.tsx`), `app/src/components/beat-grid.tsx`, `app/src/lib/practice-audio.ts` + `.web.ts`, `practice-pattern.ts`, `practice-sounds.ts`, `practice-timer.ts`, `use-playhead.ts`, `bols.ts` |
+| V1 | Two-head view (in S5): baya left, dayan right as the player sees them; the struck zone (kinar, maidan, syahi edge, syahi, whole head) lit per bol in time with the sound, a ripple for open strokes; zone, fingers and open / damped in words under each head | Student, staff | Built | `app/src/components/two-head-view.tsx`, `app/src/lib/bols.ts` |
+| S6 | Practice log: weekly practice (8 weeks from Monday), entries (timer or typed in), add practice for a day of the last week (1-240 minutes, a note), delete own entries of the last 14 days; weekly hours also on S4 My progress and, for staff, on C8 | Student (C8: staff) | Built | `app/src/app/student/practice-log.tsx`, `app/src/components/practice-parts.tsx`, `app/src/data/practice.ts` |
+| — | Taals: the list and a form (name, bols, vibhags, marks, level, placeholder, switched on, note, order) with a live grid preview; delete asks first. Opened from S5 "Edit taals" | Guru (coordinators read) | Built | `app/src/app/staff/taals/index.tsx`, `[id].tsx` |
 
 ## Build order
 
