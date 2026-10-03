@@ -1734,6 +1734,39 @@ const [{ ok: practiceFnsOpen }] = await asOwner(`select has_function_privilege('
   or has_function_privilege('anon', 'practice_weeks(uuid, int)', 'execute')
   or has_function_privilege('authenticated', 'guard_taal()', 'execute') as ok`);
 check('anon runs no practice function; the guard is not callable', practiceFnsOpen === false);
+
+// ---------------------------------------------------------------- Phase 2 notices in the inbox (0019)
+const [{ n: outboxWithoutNotice }] = await asOwner(`select count(*)::int as n from push_outbox o
+  where not exists (select 1 from notifications n where n.profile_id = o.profile_id and n.url = o.url
+    and n.title = o.title and n.body = left(o.body, 300) and n.visible_at = o.created_at and n.announcement_id is null)`);
+const [{ n: outboxRows }] = await asOwner('select count(*)::int as n from push_outbox');
+check('every queued assessment and promotion notice is also in the inbox', outboxRows > 0 && outboxWithoutNotice === 0,
+  `${outboxRows} rows, ${outboxWithoutNotice} missing`);
+const p2Kinds = await asOwner(`select distinct kind, url ~ '^/(student|staff)/assessments/' as a,
+  url ~ '^/staff/promotion/' or url = '/student/progress' as p from notifications where announcement_id is null`);
+check('assessment notices are kind assessment, promotion notices kind promotion',
+  p2Kinds.length >= 2 && p2Kinds.every((r) => (r.kind === 'assessment' && r.a) || (r.kind === 'promotion' && r.p)), JSON.stringify(p2Kinds));
+const kindOf = async (url) => (await asOwner(`select inbox_kind_for_url('${url}') as k`))[0].k;
+check('the kind follows the screen it opens', (await kindOf('/staff/assessments/review/3')) === 'assessment'
+  && (await kindOf('/student/progress')) === 'promotion' && (await kindOf('/staff/promotion/2')) === 'promotion'
+  && (await kindOf('/somewhere/else')) === 'notice');
+const meeraBefore = (await asApp('authenticated', meera, 'select inbox_unread_count() as n'))[0].n;
+await asOwner(`insert into push_outbox (profile_id, title, body, url) values ('${meera}', 'Inbox check', 'A new assessment.', '/student/assessments/1')`);
+const meeraNotices = await asApp('authenticated', meera,
+  `select kind, url, read_at from notifications where title = 'Inbox check'`);
+check('a student sees a new assessment notice in their own inbox, unread',
+  meeraNotices.length === 1 && meeraNotices[0].kind === 'assessment' && meeraNotices[0].read_at === null
+  && (await asApp('authenticated', meera, 'select inbox_unread_count() as n'))[0].n === meeraBefore + 1, JSON.stringify(meeraNotices));
+check('another student does not see it', (await asApp('authenticated', arjun,
+  `select id from notifications where title = 'Inbox check'`)).length === 0);
+await refuses('the app cannot write inbox rows itself', () => asApp('authenticated', meera,
+  `insert into notifications (profile_id, kind, title, url) values (auth.uid(), 'assessment', 'x', '/student/assessments/1')`));
+check('app roles cannot run the outbox trigger function', (await asOwner(`select
+  has_function_privilege('authenticated', 'inbox_on_push_outbox()', 'execute')
+  or has_function_privilege('anon', 'inbox_kind_for_url(text)', 'execute') as ok`))[0].ok === false);
+check('table descriptions carry the Phase 2 numbers used on main', (await asOwner(`select
+  obj_description('assessments'::regclass) like '%#52)%' and obj_description('promotion_nominations'::regclass) like '%#53)%'
+  and obj_description('taals'::regclass) like '%#54)%' as ok`))[0].ok === true);
 // ---------------------------------------------------------------- row-level security
 const seen =await asApp('authenticated', arjun, 'select full_name from students');
 check('student sees only their own student record', seen.length === 1 && seen[0].full_name === 'Arjun Rao');

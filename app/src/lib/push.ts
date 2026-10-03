@@ -21,6 +21,7 @@ import { Platform } from 'react-native';
 
 import { belongsTo, rememberRequestedPath } from '@/auth/requested-path';
 import type { Area } from '@/auth/types';
+import { isNoticeScreen } from '@/data/notifications';
 import i18n from '@/i18n';
 
 import { supabase } from './supabase';
@@ -98,15 +99,13 @@ function setUp(module: Notifications): Notifications {
 void notifications();
 
 /**
- * The screen a notification asks to open: an announcement, or (Phase 2, migration 0016) a student's
- * assessment or a recording to review; never anything else.
+ * The screen a notification asks to open: an announcement, or (Phase 2, migrations 0016, 0017) a
+ * student's assessment, a recording to review, a nomination or My progress; never anything else
+ * (the inbox's list, data/notifications.ts).
  */
 function screenOf(response: NotificationsModule.NotificationResponse | null): string | null {
   const url = response?.notification.request.content.data?.url;
-  return typeof url === 'string'
-    && /^\/(((staff|student)\/announcements|student\/assessments|staff\/assessments\/review|staff\/promotion)\/\d+|student\/progress)$/.test(url)
-    ? url
-    : null;
+  return typeof url === 'string' && isNoticeScreen(url) ? url : null;
 }
 
 /**

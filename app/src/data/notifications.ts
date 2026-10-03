@@ -1,8 +1,8 @@
 // A2 Notifications inbox: the notices this person was sent, newest first, with the number still
 // unread for the bell on the home header. The database fills the inbox (table notifications,
 // migration 0015): one row per person per announcement addressed to them, also for people without
-// push (the web version, iPhones), so the inbox and the push always agree. Phase 2's assessment and
-// promotion notices are planned as rows of their own kind (docs/DECISIONS.md #49).
+// push (the web version, iPhones), so the inbox and the push always agree (docs/DECISIONS.md #49).
+// Phase 2's assessment and promotion notices join it from push_outbox (migration 0019, #55).
 // Opening an announcement marks its notice read in the database; "Mark all read" marks the notices
 // only, so "seen by" on C15 still counts the people who opened the announcement.
 
@@ -11,7 +11,7 @@ import { belongsTo } from '@/auth/requested-path';
 import type { IconName } from '@/components/icon';
 import { supabase } from '@/lib/supabase';
 
-/** What a notice is about. Only announcements exist on main; the others come with Phase 2. */
+/** What a notice is about: an announcement, or a Phase 2 assessment or promotion notice. */
 export type NoticeKind = 'announcement' | 'assessment' | 'promotion' | 'notice';
 
 /** One notice in the inbox. */
@@ -74,24 +74,27 @@ export async function markNoticesRead(ids?: number[]): Promise<boolean> {
 }
 
 /**
- * The screens a notice may open: those a push may open on this version of the app
- * (src/lib/push.ts), and only in the person's own area. A notice for a screen this version does not
- * have (a Phase 2 notice on an older app) opens nothing; the inbox says so.
+ * The screens a push or a notice may open on this version of the app: an announcement, a student's
+ * assessment, a recording to review, a nomination, or My progress (a promotion). src/lib/push.ts
+ * uses the same list. A notice for a screen this version does not have opens nothing; the inbox
+ * says so.
  */
-const OPENABLE = /^\/(staff|student)\/announcements\/\d+$/;
+export function isNoticeScreen(url: string): boolean {
+  return /^\/(((staff|student)\/announcements|student\/assessments|staff\/assessments\/review|staff\/promotion)\/\d+|student\/progress)$/.test(url);
+}
 
-/** The screen to open for `notice`, or null when this version cannot open it. */
+/** The screen to open for `notice`, or null when this version cannot open it (or not in this area). */
 export function noticeTarget(notice: Notice, area: Area): string | null {
-  return OPENABLE.test(notice.url) && belongsTo(notice.url, area) ? notice.url : null;
+  return isNoticeScreen(notice.url) && belongsTo(notice.url, area) ? notice.url : null;
 }
 
 /** The icon of a notice's kind. */
 export function noticeIcon(kind: NoticeKind): IconName {
   switch (kind) {
     case 'assessment':
-      return 'video';
+      return 'assessment';
     case 'promotion':
-      return 'level';
+      return 'promote';
     case 'announcement':
       return 'news';
     default:
