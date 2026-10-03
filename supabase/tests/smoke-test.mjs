@@ -1420,6 +1420,80 @@ const [{ ok: promotionFnsCallable }] = await asOwner(`select has_function_privil
   or has_function_privilege('authenticated', 'queue_student_promoted(uuid)', 'execute')
   or has_function_privilege('anon', 'promotion_criteria(uuid)', 'execute') as ok`);
 check('app roles cannot run the promotion queue helpers; anon runs nothing', promotionFnsCallable === false);
+
+// ---------------------------------------------------------------- practice tools (0016, Phase 2)
+const taalsSeen = async (userId) => asApp('authenticated', userId, 'select id, name, beats, placeholder from taals order by sort');
+const seededTaals = await taalsSeen(arjun);
+check('three placeholder taals are seeded and a student reads them', seededTaals.length === 3
+  && seededTaals.every((tl) => tl.placeholder) && seededTaals.map((tl) => tl.beats).join() === '8,6,16', JSON.stringify(seededTaals));
+await refuses('anon reads no taals', () => asApp('anon', null, 'select id from taals'));
+const addTaal = (userId, name, bols, divisions, marks) => asApp('authenticated', userId,
+  'insert into taals (name, bols, divisions, marks) values ($1, $2::text[], $3::smallint[], $4::text[]) returning id, beats, bols',
+  [name, bols, divisions, marks]).then((r) => r[0]);
+await refuses('a coordinator cannot add a taal', () => addTaal(coordinator, 'Mine', ['tā', 'ka'], [2], ['X']));
+await refuses('a student cannot change a taal', async () => {
+  const rows = await asApp('authenticated', arjun, `update taals set name = 'Hacked' where id = $1 returning id`, [seededTaals[0].id]);
+  if (rows.length === 0) throw new Error('no row changed (row-level security)');
+});
+await refusesWith('vibhags must add up to the beats', 'taal_divisions_invalid', () =>
+  addTaal(guru, 'Bad', ['tā', 'ka', 'tā'], [2, 2], ['X', '0']));
+await refusesWith('one mark per vibhag, X first', 'taal_marks_invalid', () =>
+  addTaal(guru, 'Bad', ['tā', 'ka', 'tā', 'ka'], [2, 2], ['0', 'X']));
+await refusesWith('a beat is a rest or up to 4 bols joined with a dot', 'taal_bols_invalid', () =>
+  addTaal(guru, 'Bad', ['tā', 'ka tā'], [2], ['X']));
+await refusesWith('a taal has a name', 'taal_name_invalid', () => addTaal(guru, '  ', ['tā', 'ka'], [2], ['X']));
+const newTaal = await addTaal(guru, '  Test four  ', ['Dhā', '-', 'te.re', 'ka'], [2, 2], ['X', '0']);
+check('the Guru adds a taal: beats counted, bols lower-cased', newTaal.beats === 4 && newTaal.bols.join(' ') === 'dhā - te.re ka',
+  JSON.stringify(newTaal));
+await asApp('authenticated', guru, 'update taals set active = false where id = $1', [newTaal.id]);
+check('a switched-off taal is hidden from students, not from staff',
+  !(await taalsSeen(arjun)).some((tl) => tl.id === newTaal.id) && (await taalsSeen(coordinator)).some((tl) => tl.id === newTaal.id));
+check('taal changes are in the audit log',
+  (await asOwner(`select count(*)::int as n from audit_log where table_name = 'taals' and row_id = '${newTaal.id}'`))[0].n === 2);
+
+const logPractice = (userId, minutes, source, day = null, startedAt = null, taal = null, note = null) => asApp('authenticated', userId,
+  'select log_practice($1, $2, $3::date, $4::timestamptz, $5, $6) as id', [minutes, source, day, startedAt, taal, note]).then((r) => r[0].id);
+const minutesAgo = (m) => new Date(Date.now() - m * 60000).toISOString();
+await refusesWith('a coordinator has no practice log', 'not_allowed', () => logPractice(coordinator, 10, 'manual'));
+await refusesWith('practice is 1-240 minutes', 'minutes_invalid', () => logPractice(arjun, 0, 'manual'));
+await refusesWith('the timer cannot claim more than the time since it started', 'started_invalid', () =>
+  logPractice(arjun, 30, 'timer', null, minutesAgo(10)));
+await refusesWith('... nor start more than 6 hours ago', 'started_invalid', () => logPractice(arjun, 30, 'timer', null, minutesAgo(400)));
+await refusesWith('a typed entry is for the last 14 days', 'date_invalid', () => logPractice(arjun, 20, 'manual', '2020-01-01'));
+await refusesWith('... not the future', 'date_invalid', () => logPractice(arjun, 20, 'manual', tomorrow));
+await refusesWith('a switched-off taal cannot be logged', 'taal_not_found', () => logPractice(arjun, 20, 'manual', null, null, newTaal.id));
+const timerLog = await logPractice(arjun, 25, 'timer', '2020-01-01', minutesAgo(25), seededTaals[0].id);
+const [tl1] = await asOwner(`select practised_on::text as d, source, taal_id from practice_logs where id = ${timerLog}`);
+const [{ d: todayIst }] = await asOwner('select today_ist()::text as d');
+check('the timer logs 25 minutes today (its own day, whatever the app sends)', tl1.d === todayIst && tl1.source === 'timer'
+  && Number(tl1.taal_id) === seededTaals[0].id, JSON.stringify(tl1));
+await logPractice(arjun, 40, 'manual', yesterday, null, null, '  Kirtan with my brother ');
+await refusesWith('at most 12 hours on one day', 'day_full', () => logPractice(arjun, 240, 'manual', yesterday)
+  .then(() => logPractice(arjun, 240, 'manual', yesterday)).then(() => logPractice(arjun, 240, 'manual', yesterday)));
+await refuses('the app cannot write practice_logs directly', () => asApp('authenticated', arjun,
+  `insert into practice_logs (student_id, practised_on, minutes, source) values ($1, current_date, 5, 'manual')`, [arjunStudent]));
+check('a student sees only their own practice', (await asApp('authenticated', meera, 'select id from practice_logs')).length === 0
+  && (await asApp('authenticated', arjun, 'select id from practice_logs')).length >= 3);
+const weeksOf = (userId, studentId) => asApp('authenticated', userId, 'select week_start::text as w, minutes, entries from practice_weeks($1, 4)', [studentId]);
+const coordWeeks = await weeksOf(coordinator, arjunStudent);
+const total = coordWeeks.reduce((sum, w) => sum + w.minutes, 0);
+check('the coordinator sees Arjun\'s weekly minutes: 4 weeks, newest first, Mondays', coordWeeks.length === 4
+  && coordWeeks[0].w > coordWeeks[1].w && new Date(`${coordWeeks[0].w}T00:00:00Z`).getUTCDay() === 1 && total === 25 + 40 + 240 + 240,
+  JSON.stringify(coordWeeks));
+check('another student gets zeros for Arjun', (await weeksOf(meera, arjunStudent)).every((w) => w.minutes === 0));
+await refusesWith('a student cannot delete another\'s entry', 'not_allowed', () =>
+  asApp('authenticated', meera, 'select delete_practice($1)', [timerLog]));
+await asOwner(`update practice_logs set practised_on = today_ist() - 20 where id = ${timerLog}`);
+await refusesWith('... nor their own after 14 days', 'too_old', () => asApp('authenticated', arjun, 'select delete_practice($1)', [timerLog]));
+const [{ id: recentLog }] = await asOwner(`select id from practice_logs where student_id = '${arjunStudent}' and practised_on = '${yesterday}' limit 1`);
+await asApp('authenticated', arjun, 'select delete_practice($1)', [recentLog]);
+check('a student deletes their own recent entry', (await asOwner(`select id from practice_logs where id = ${recentLog}`)).length === 0);
+await asApp('authenticated', guru, 'delete from taals where id = $1', [seededTaals[0].id]);
+check('deleting a taal keeps the practice minutes', (await asOwner(`select taal_id from practice_logs where id = ${timerLog}`))[0].taal_id === null);
+const [{ ok: practiceFnsOpen }] = await asOwner(`select has_function_privilege('anon', 'log_practice(int, text, date, timestamptz, bigint, text)', 'execute')
+  or has_function_privilege('anon', 'practice_weeks(uuid, int)', 'execute')
+  or has_function_privilege('authenticated', 'guard_taal()', 'execute') as ok`);
+check('anon runs no practice function; the guard is not callable', practiceFnsOpen === false);
 // ---------------------------------------------------------------- row-level security
 const seen =await asApp('authenticated', arjun, 'select full_name from students');
 check('student sees only their own student record', seen.length === 1 && seen[0].full_name === 'Arjun Rao');
