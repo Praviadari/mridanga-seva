@@ -94,8 +94,8 @@ circle: the staff ring is already at ten.
 | G7 | Level-up queue: waiting for a decision (enough answers), collecting feedback, ready to nominate, decided lately; on a nomination: Promote (after 2 answers, asks to confirm; level + level history), Not yet (guidance + nominate-again date), More feedback (a note; tells those who have not answered); withdraw | Guru | Built | `app/src/app/staff/promotion/index.tsx`, `[id].tsx` |
 
 Slice 3 (branch `phase2-practice`, from `phase2-promotion`), practice tools and the two-head view
-([DECISIONS.md #49](DECISIONS.md)). V1 is approved in the doc; **S5 and S6 have no team pick yet**
-(built because V1 needs a player). Entry points: a "Practice" circle on the student ring, a Practice
+([DECISIONS.md #49](DECISIONS.md)). V1 is approved in the doc; S5 and S6 have no team pick there but were kept by Praveen
+(3 Oct 2026), as was the Guru taal editor. Entry points: a "Practice" circle on the student ring, a Practice
 block on S4 and C8, a "Practice tools" button under the staff ring. Sound on phones needs the next
 APK (expo-audio); the browser works now.
 

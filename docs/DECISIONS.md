@@ -1119,10 +1119,10 @@ then they wait in `push_outbox`. The Telugu and Hindi texts are drafts (docs/TRA
 
 ## 49. Practice tools: metronome, taal player, two-head view and practice log — 3 Oct 2026
 
-**Status: proposed, on the branch `phase2-practice` only** (from `phase2-promotion`). The number is
+**Status: S5, S6 and the Guru taal editor confirmed by Praveen 3 Oct 2026; on the branch `phase2-practice` only** (from `phase2-promotion`). The number is
 this branch's (main's last is #48; round 9 may take #49 too): renumbered when Phase 2 reaches main,
-like 0016. **S5 Practice tools and S6 Practice log have no team pick in the Screen List doc yet**;
-they were built because the approved V1 two-head view needs a player. Praveen to confirm.
+like 0016. **S5 Practice tools and S6 Practice log have no team pick in the Screen List doc**;
+they were built because the approved V1 two-head view needs a player, and Praveen kept them.
 
 **Context.** The Screen List doc approves V1 (both drum faces drawn, the zone and the hand lit per
 bol in time with the sound, at any tempo, offline) and sequences "practice tools + two-head view"
