@@ -1222,6 +1222,122 @@ check('app roles cannot run the admin trigger functions', (await asOwner(`select
   or has_function_privilege('authenticated', 'follow_mentor_tasks()', 'execute')
   or has_function_privilege('authenticated', 'guard_setting()', 'execute')
   or has_function_privilege('anon', 'import_students(jsonb)', 'execute') as ok`))[0].ok === false);
+
+// ---------------------------------------------------------------- notifications inbox (0015, A2)
+/** The notices `userId` can read, newest first. */
+const noticesOf = async (userId) => asApp('authenticated', userId,
+  'select id, kind, title, url, announcement_id, read_at from notifications order by visible_at desc, id desc');
+const unreadOf = async (userId) => (await asApp('authenticated', userId, 'select inbox_unread_count() as n'))[0].n;
+const inboxNews = await post(coordinator, { title: 'Inbox news', body: 'Class closes early on Friday.', audience: 'all' });
+const arjunNotice = (await noticesOf(arjun)).find((n) => n.announcement_id === inboxNews.id);
+check('an announcement to all puts a notice in a student\'s inbox', arjunNotice?.kind === 'announcement'
+  && arjunNotice.title === 'Inbox news' && arjunNotice.url === `/student/announcements/${inboxNews.id}` && arjunNotice.read_at === null,
+  JSON.stringify(arjunNotice));
+check('... not in the author\'s inbox, nor in staff inboxes when it is for students',
+  !(await noticesOf(coordinator)).some((n) => n.announcement_id === inboxNews.id)
+  && !(await noticesOf(guru)).some((n) => n.announcement_id === inboxNews.id));
+const inboxStaff = await post(coordinator, { title: 'Inbox staff', body: 'Meeting.', audience: 'staff' });
+check('a staff announcement opens the staff screen from the Guru\'s inbox',
+  (await noticesOf(guru)).find((n) => n.announcement_id === inboxStaff.id)?.url === `/staff/announcements/${inboxStaff.id}`);
+const [inboxLater] = await asApp('authenticated', coordinator,
+  `insert into announcements (title, body, audience, publish_at) values ('Inbox later', 'Soon.', 'all', now() + interval '1 day') returning id`);
+const arjunUnreadBefore = await unreadOf(arjun);
+check('a scheduled announcement\'s notice stays hidden until its time',
+  !(await noticesOf(arjun)).some((n) => n.announcement_id === inboxLater.id)
+  && (await asOwner(`select count(*)::int as n from notifications where announcement_id = ${inboxLater.id} and profile_id = '${arjun}'`))[0].n === 1);
+await asApp('authenticated', arjun, 'insert into announcement_reads (announcement_id) values ($1)', [inboxNews.id]);
+check('opening the announcement marks its notice read',
+  (await noticesOf(arjun)).find((n) => n.announcement_id === inboxNews.id)?.read_at !== null
+  && (await unreadOf(arjun)) === arjunUnreadBefore - 1, `${arjunUnreadBefore} -> ${await unreadOf(arjun)}`);
+await asApp('authenticated', coordinator, `update announcements set title = 'Inbox news, edited' where id = $1`, [inboxNews.id]);
+check('an edited title shows in the inbox', (await noticesOf(arjun)).find((n) => n.announcement_id === inboxNews.id)?.title === 'Inbox news, edited');
+await asApp('authenticated', coordinator, `update announcements set audience = 'level', audience_level = 1 where id = $1`, [inboxLater.id]);
+check('a changed audience moves the notices (level 3 student out, level 1 student in)',
+  (await asOwner(`select count(*)::int as n from notifications where announcement_id = ${inboxLater.id} and profile_id = '${arjun}'`))[0].n === 0
+  && (await asOwner(`select count(*)::int as n from notifications where announcement_id = ${inboxLater.id} and profile_id = '${late}'`))[0].n === 1);
+const seenBeforeMarkAll = (await seenOf(coordinator, inboxStaff.id)).seen;
+const [{ n: markedAll }] = await asApp('authenticated', guru, 'select mark_notifications_read(null) as n');
+check('"Mark all read" empties the unread count', markedAll >= 1 && (await unreadOf(guru)) === 0, String(markedAll));
+check('... without marking the announcements as seen', (await seenOf(coordinator, inboxStaff.id)).seen === seenBeforeMarkAll);
+const meeraNotice = (await asOwner(`select id from notifications where profile_id = '${meera}' and read_at is null limit 1`))[0];
+check('marking someone else\'s notice changes nothing', meeraNotice !== undefined
+  && (await asApp('authenticated', arjun, 'select mark_notifications_read($1) as n', [[meeraNotice.id]]))[0].n === 0);
+check('a person reads only their own notices', (await noticesOf(arjun)).length > 0
+  && (await asApp('authenticated', arjun, `select count(*)::int as n from notifications where profile_id <> auth.uid()`))[0].n === 0);
+await refuses('the app cannot write a notice', () => asApp('authenticated', guru,
+  `insert into notifications (profile_id, kind, title, url) values ($1, 'notice', 'Fake', '/student')`, [arjun]));
+await refuses('... nor change one directly', () => asApp('authenticated', arjun, 'update notifications set read_at = now()'));
+await refuses('a login without a role cannot mark notices', () => asApp('authenticated', pendingLogin, 'select mark_notifications_read(null)'));
+await refuses('anon cannot count notices', () => asApp('anon', null, 'select inbox_unread_count()'));
+await asApp('authenticated', coordinator, 'delete from announcements where id = $1', [inboxNews.id]);
+check('deleting an announcement takes its notices away',
+  (await asOwner(`select count(*)::int as n from notifications where announcement_id = ${inboxNews.id}`))[0].n === 0);
+
+// ---------------------------------------------------------------- reports (0015, C21 / G8)
+const [reportLearner] = await asOwner(`insert into students (full_name, dob, level_id, mentor_id)
+  values ('Report Learner', '1990-05-05', 1, '${coordinator2}') returning id`);
+await asOwner(`insert into visits (student_id, method, check_in, check_out)
+  values ('${reportLearner.id}', 'manual', now() - interval '3 hours', now() - interval '90 minutes')`);
+await asOwner(`insert into follow_up_tasks (student_id, assignee_id, kind, due_on) values ('${reportLearner.id}', '${coordinator2}', 'call', today_ist())`);
+const [firstBeginnerItem] = await asOwner('select id from syllabus_items where level_id = 1 and retired_at is null order by sort limit 1');
+await asOwner(`insert into student_progress (student_id, item_id) values ('${reportLearner.id}', ${firstBeginnerItem.id})`);
+const report = async (userId, from, to, mentor = null) =>
+  (await asApp('authenticated', userId, 'select class_report($1::date, $2::date, $3::uuid) as r', [from, to, mentor]))[0].r;
+const [{ today: todayText, monthAgo }] = await asOwner(`select today_ist()::text as today, (today_ist() - 30)::text as "monthAgo"`);
+const myReport = await report(coordinator2, monthAgo, todayText);
+check('a coordinator\'s report holds only their mentees', myReport.rows.length > 0 && myReport.rows.every((r) => r.mentor_id === coordinator2),
+  String(myReport.rows.length));
+const learnerRow = myReport.rows.find((r) => r.id === reportLearner.id);
+check('... with each student\'s visits, hours, calls and progress',
+  learnerRow?.visits === 1 && Number(learnerRow.hours) === 1.5 && learnerRow.syllabus_done === 1 && learnerRow.syllabus_total > 0,
+  JSON.stringify(learnerRow));
+check('... weeks and months add up to the visits of the range',
+  myReport.by_week.reduce((t, w) => t + w.visits, 0) === myReport.visits && myReport.by_month.reduce((t, m) => t + m.visits, 0) === myReport.visits
+  && myReport.visits >= 1, `${myReport.visits}`);
+check('... the call due and the new joiner are counted', myReport.calls_due >= 1 && myReport.new_joiners >= 1, `${myReport.calls_due} ${myReport.new_joiners}`);
+check('... and the tick of the range shows under the level',
+  myReport.by_level.find((l) => l.level_id === 1)?.ticks_in_range >= 1, JSON.stringify(myReport.by_level));
+const everyone = await report(guru, monthAgo, todayText);
+const guruBoard = (await asApp('authenticated', guru, 'select guru_dashboard() as d'))[0].d;
+check('the Guru\'s report counts the class as the Guru home does',
+  everyone.in_class === guruBoard.in_class
+  && JSON.stringify(everyone.by_status) === JSON.stringify(guruBoard.by_status), `${everyone.in_class} vs ${guruBoard.in_class}`);
+check('the Guru can narrow the report to one coordinator\'s mentees',
+  (await report(guru, monthAgo, todayText, coordinator2)).rows.length === myReport.rows.length);
+await refuses('a coordinator cannot read another coordinator\'s report', () => report(coordinator2, monthAgo, todayText, coordinator));
+await refuses('a student has no reports', () => report(arjun, monthAgo, todayText));
+await refusesWith('a range that ends before it starts is refused', 'range_invalid', () => report(guru, todayText, monthAgo));
+await refusesWith('a range longer than a year is refused', 'range_too_long', () => report(guru, '2024-01-01', todayText));
+
+// ---------------------------------------------------------------- centres (0015, G9)
+const [koti] = await asApp('authenticated', guru, `insert into centres (name, address, lat, lng, radius_m)
+  values ('  Koti   Centre ', ' Near the bus stand ', 17.385044123, 78.486671987, 200) returning id, name, address, lat, lng`);
+check('the Guru adds a centre with its point, cleaned up', koti.name === 'Koti Centre' && koti.address === 'Near the bus stand'
+  && koti.lat === 17.385044 && koti.lng === 78.486672, JSON.stringify(koti));
+await refuses('a coordinator cannot add a centre', () =>
+  asApp('authenticated', coordinator, `insert into centres (name) values ('Secunderabad')`));
+await refusesWith('a second centre with the same name is refused', 'centre_name_taken', () =>
+  asApp('authenticated', guru, `insert into centres (name) values ('ABIDS')`));
+await refusesWith('latitude without longitude is refused', 'location_incomplete', () =>
+  asApp('authenticated', guru, `update centres set lat = 17.4, lng = null where id = $1`, [koti.id]));
+await refusesWith('a point outside the globe is refused', 'location_invalid', () =>
+  asApp('authenticated', guru, `update centres set lat = 117.4, lng = 78.4 where id = $1`, [koti.id]));
+await refusesWith('a radius below 25 m is refused', 'radius_invalid', () =>
+  asApp('authenticated', guru, `update centres set radius_m = 10 where id = $1`, [koti.id]));
+await asApp('authenticated', guru, `update centres set active = false where id = $1`, [koti.id]);
+await refusesWith('the last centre in use cannot be switched off', 'last_centre', () =>
+  asApp('authenticated', guru, `update centres set active = false where id = 1`));
+await refusesWith('the app never deletes a centre', 'centre_delete_not_allowed', () =>
+  asApp('authenticated', guru, `delete from centres where id = $1`, [koti.id]));
+check('centre changes are in the audit log', (await asOwner(
+  `select count(*)::int as n from audit_log where table_name = 'centres' and row_id = '${koti.id}'`))[0].n === 2);
+check('app roles cannot run the inbox and centre trigger functions', (await asOwner(`select
+  has_function_privilege('authenticated', 'inbox_sync_announcement(bigint)', 'execute')
+  or has_function_privilege('authenticated', 'inbox_cleanup()', 'execute')
+  or has_function_privilege('authenticated', 'guard_centre_details()', 'execute')
+  or has_function_privilege('anon', 'class_report(date, date, uuid)', 'execute') as ok`))[0].ok === false);
+await asOwner('select inbox_cleanup()');
+
 // ---------------------------------------------------------------- row-level security
 const seen =await asApp('authenticated', arjun, 'select full_name from students');
 check('student sees only their own student record', seen.length === 1 && seen[0].full_name === 'Arjun Rao');
