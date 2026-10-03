@@ -949,9 +949,10 @@ it needs a check on a real iPhone (OPERATIONS.md "Adding it to an iPhone home sc
 
 ## 43. Assessments: the Guru sets them, coordinators run and grade them — 2 Oct 2026
 
-**Status: proposed, on the branch `phase2-assessments` only.** Phase 2 reaches main, and with it
-the volunteers' phones, only when Praveen decides. Items marked *to confirm* are Claude's
-proposals awaiting his word.
+**Status: confirmed by Praveen 3 Oct 2026, on the branch `phase2-assessments` only.** Phase 2 reaches
+main, and with it the volunteers' phones, only when Praveen decides. He confirmed the storage cap,
+the retention, the reminder time and keeping S7; in-app recording waits for the next planned APK;
+editing an assessment comes in slice 2; promotion criteria will be settings with defaults (slice 2).
 
 **Context.** The team approved the assessment flow in the Screen List doc (G6, C12, C13, C14; S7
 has no pick yet, but the flow needs it): the Guru sets work in any form, coordinators hand it
@@ -978,14 +979,14 @@ send recordings on WhatsApp. The free Supabase plan has 1 GB of Storage for ever
   level-up to the Guru" (`send_level_up`), which slice 2 (G7, C22, C23) will read.
 - **Recordings are files the student picks**, made with the phone's own recorder or camera, or
   a link (unlisted YouTube, Google Drive). Recording inside the app needs expo-audio, a native
-  package and a new APK: *Praveen's decision*, not taken here. Coordinators' voice notes on a
+  package and a new APK: it goes into the next planned APK, before Phase 2 goes live. Coordinators' voice notes on a
   review (C14 in the doc) wait for the same decision. Audio and video play through the browser
   view the app already has (expo-web-browser), not an in-app player.
-- **Storage cap (to confirm):** a private bucket `assessment-files`, at most **50 MB a file**
+- **Storage cap:** a private bucket `assessment-files`, at most **50 MB a file**
   (the free plan's own per-file limit), only common audio, video, photo and PDF types. A student
   may upload only while an assessment waits for them, at most **10 files a day**. One recording
   per submission.
-- **Retention (to confirm):** a submitted file is deleted **30 days after its review**; the score,
+- **Retention:** a submitted file is deleted **30 days after its review**; the score,
   comment and history stay. A file sent to the Guru for a level-up is kept until slice 2
   decides. The daily job asks the Edge Function to delete expired files through the Storage API
   (a SQL delete would leave the file behind, #32).
@@ -995,7 +996,7 @@ send recordings on WhatsApp. The free Supabase plan has 1 GB of Storage for ever
   to the student, and reminders. **Remind** on the tracker reaches students who have not sent it,
   at most once in 12 hours each. **Automatic reminders** come from a daily job at 09:00 IST
   (`assessment_daily`) for work due today or tomorrow: it is a few lines of SQL on the same
-  queue, so it is built (*to confirm* the timing).
+  queue, so it is built.
 - **Entry points:** an Assessments circle on the staff ring and on the student ring.
 
 **Why.** It follows the approved flow and the Phase 1 patterns (rules in the database, views as
@@ -1006,7 +1007,7 @@ days after review, Storage should stay well under 1 GB, and a link costs nothing
 
 **Consequences.** Migration `0012_assessments.sql` (TEST project only until Phase 2 goes live).
 The Edge Function must be deployed again for the assessment notifications and the file deletion;
-until then those rows wait and nothing breaks, and the old function ignores them. S7 needs the
-team's pick in the Screen List doc. The Telugu and Hindi texts, in the app and in the
+until then those rows wait and nothing breaks, and the old function ignores them. S7 was kept by
+Praveen although the Screen List doc has no team pick for it yet. The Telugu and Hindi texts, in the app and in the
 notification lines in the migration, are drafts for the native-speaker review. Slice 2 is the
 promotion approval (C22, C23, G7).
