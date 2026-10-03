@@ -14,6 +14,7 @@ import type { ParseKeys } from 'i18next';
 import * as WebBrowser from 'expo-web-browser';
 import { Linking } from 'react-native';
 
+import type { LessonSource } from '@/lib/lesson-player-html';
 import { supabase } from '@/lib/supabase';
 
 import {
@@ -43,14 +44,14 @@ export const MATERIAL_NOTE_MAX = 1000;
 const LIMIT: PickLimit = { maxBytes: MAX_MATERIAL_BYTES, tooBigKey: 'materials.errors.tooBig' };
 
 /** What a material is. The form offers youtube, pdf and image. */
-export type MaterialKind = 'youtube' | 'pdf' | 'image' | 'note';
+export type MaterialKind = 'youtube' | 'video' | 'pdf' | 'image' | 'note';
 
 /** One material. */
 export type Material = {
   id: number;
   title: string;
   kind: MaterialKind;
-  /** The YouTube link (kind youtube). */
+  /** The YouTube link (kind youtube) or the link to the team's own video file (kind video). */
   url: string | null;
   /** Where the PDF or photo is in the bucket. */
   storagePath: string | null;
@@ -64,6 +65,8 @@ export type Material = {
   itemId: number | null;
   /** false = a coordinator's suggestion waiting for the Guru (Phase 2). */
   approved: boolean;
+  /** A video file: camera angles side by side (1-4, V2); 1 for every other kind (migration 0017). */
+  panes: number;
 };
 
 type MaterialRow = {
@@ -78,9 +81,10 @@ type MaterialRow = {
   level_id: number | null;
   item_id: number | null;
   approved_by: string | null;
+  panes: number | null;
 };
 
-const COLUMNS = 'id, title, kind, url, storage_path, file_name, file_size, body, level_id, item_id, approved_by';
+const COLUMNS = 'id, title, kind, url, storage_path, file_name, file_size, body, level_id, item_id, approved_by, panes';
 
 function toMaterial(row: MaterialRow): Material | null {
   // Audio is not offered yet; a row added in the dashboard is skipped rather than shown broken.
@@ -97,6 +101,7 @@ function toMaterial(row: MaterialRow): Material | null {
     levelId: row.level_id,
     itemId: row.item_id,
     approved: row.approved_by !== null,
+    panes: row.panes ?? 1,
   };
 }
 
@@ -142,14 +147,38 @@ export function youtubeVideoId(link: string): string | null {
   return match ? match[1] : null;
 }
 
+/** Most camera angles side by side in one lesson video (V2), as in the database. */
+export const MAX_PANES = 4;
+
+/**
+ * True for a link to a video file the team keeps (https, .mp4 / .webm / .m4v / .mov, at most 500
+ * characters), as video_link_ok in migration 0017. Mirror and zoom work only on such files.
+ */
+export function videoLinkOk(link: string): boolean {
+  const value = link.trim();
+  return value.length <= 500 && /^https:\/\/[^\s/?#]+\/[^\s?#]*\.(mp4|webm|m4v|mov)([?#]\S*)?$/i.test(value);
+}
+
+/** What the V3 player plays for a material; null when it is not a lesson video. */
+export function lessonSourceOf(material: Material): LessonSource | null {
+  if (material.kind === 'youtube' && material.url) {
+    const videoId = youtubeVideoId(material.url);
+    return videoId ? { kind: 'youtube', videoId } : null;
+  }
+  if (material.kind === 'video' && material.url) return { kind: 'file', url: material.url, panes: material.panes };
+  return null;
+}
+
 // ---------------------------------------------------------------- the form
 
 /** What the material form holds. */
 export type MaterialForm = {
   title: string;
-  /** youtube, pdf or image for a new material; a note (dummy data) can only be edited. */
+  /** youtube, video, pdf or image for a new material; a note (dummy data) can only be edited. */
   kind: MaterialKind;
   link: string;
+  /** A video file: camera angles side by side, 1-4. */
+  panes: number;
   note: string;
   levelId: number | null;
   itemId: number | null;
@@ -167,6 +196,7 @@ export function checkMaterialForm(form: MaterialForm, isNew: boolean): MaterialF
   if (!title) errors.title = 'materials.errors.titleRequired';
   else if (title.length > MATERIAL_TITLE_MAX) errors.title = 'materials.errors.titleTooLong';
   if (form.kind === 'youtube' && !youtubeVideoId(form.link)) errors.link = 'materials.errors.linkInvalid';
+  if (form.kind === 'video' && !videoLinkOk(form.link)) errors.link = 'materials.errors.videoLinkInvalid';
   if (isNew && (form.kind === 'pdf' || form.kind === 'image') && !form.file) errors.file = 'materials.errors.fileRequired';
   if (form.note.trim().length > MATERIAL_NOTE_MAX) errors.note = 'materials.errors.noteTooLong';
   return errors;
@@ -197,7 +227,8 @@ export async function addMaterial(myId: string, form: MaterialForm): Promise<Sav
     .insert({
       title: form.title.trim(),
       kind: form.kind,
-      url: form.kind === 'youtube' ? form.link.trim() : null,
+      url: form.kind === 'youtube' || form.kind === 'video' ? form.link.trim() : null,
+      panes: form.kind === 'video' ? form.panes : 1,
       storage_path: file?.path ?? null,
       file_name: file?.name ?? null,
       file_size: file?.size ?? null,
@@ -220,7 +251,8 @@ export async function updateMaterial(id: number, form: MaterialForm): Promise<Sa
     .from('materials')
     .update({
       title: form.title.trim(),
-      ...(form.kind === 'youtube' ? { url: form.link.trim() } : {}),
+      ...(form.kind === 'youtube' || form.kind === 'video' ? { url: form.link.trim() } : {}),
+      ...(form.kind === 'video' ? { panes: form.panes } : {}),
       body: form.note.trim() || null,
       level_id: form.levelId,
       item_id: form.itemId,
@@ -252,7 +284,7 @@ export async function deleteMaterial(material: Material): Promise<{ errorKey?: M
  */
 export async function openMaterial(material: Material): Promise<boolean> {
   try {
-    if (material.kind === 'youtube' && material.url) {
+    if ((material.kind === 'youtube' || material.kind === 'video') && material.url) {
       await Linking.openURL(material.url);
       return true;
     }
@@ -280,6 +312,8 @@ function materialErrorKey(message: string, code: string | undefined): MessageKey
   if (message === 'title_too_long') return 'materials.errors.titleTooLong';
   if (message === 'note_too_long') return 'materials.errors.noteTooLong';
   if (message === 'youtube_link_invalid') return 'materials.errors.linkInvalid';
+  if (message === 'video_link_invalid') return 'materials.errors.videoLinkInvalid';
+  if (message === 'panes_invalid') return 'materials.errors.panesInvalid';
   if (message.startsWith('material_file_')) return 'materials.errors.uploadFailed';
   if (code === '42501') return 'materials.errors.notAllowed';
   if (code === '23503') return 'materials.errors.gone';

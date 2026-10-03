@@ -5,6 +5,8 @@
 // - Taal player: loops a taal (table taals; offline from the copy on the phone) at any tempo with a
 //   slow-down of 50 %, 75 % or 100 %, the beat-name grid (vibhags with X / 2 / 0 marks) and the
 //   two-head view V1 (components/two-head-view.tsx) lit in time with the sound.
+// - Record myself (slice 4, components/record-myself.tsx): record one's own playing with the
+//   metronome or taal started from its first beat, keep it on the phone, play it back beside the sound.
 // - Practice timer (students only): starts with the first sound or by hand, logs itself on Stop when
 //   it ran at least a minute (S6; lib/practice-timer.ts, data/practice.ts).
 // Sound: lib/practice-audio(.web).ts; timing is kept by the audio clock, not by JavaScript timers.
@@ -22,12 +24,14 @@ import { Button } from '@/components/button';
 import { ChoiceGroup } from '@/components/choice-group';
 import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
+import { RecordMyself } from '@/components/record-myself';
 import { practiceTime } from '@/components/practice-parts';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { TwoHeadView } from '@/components/two-head-view';
 import { fetchTaals, logPractice, type Taal, type TaalList } from '@/data/practice';
 import { levelName } from '@/i18n/labels';
+import type { RecordingSetting } from '@/lib/my-recordings';
 import { createPracticePlayer } from '@/lib/practice-audio';
 import { clampBpm, effectiveBpm, metronomePattern, readTaal, tapTempo, taalPattern, MAX_BPM, MIN_BPM } from '@/lib/practice-pattern';
 import {
@@ -125,6 +129,47 @@ export function PracticeTools({ area }: PracticeToolsProps) {
     playingPattern.current = pattern.key;
     setPlaying(true);
     if (isStudent) startPracticeTimer(profileId, mode === 'taal' ? taalId : null);
+  };
+
+  // Record myself: what is chosen now, and starting a sound from its first beat.
+  const recordSetting: RecordingSetting | null =
+    mode === 'metronome'
+      ? { mode: 'metronome', bpm: metronomeBpm, beatsPerBar }
+      : taal
+        ? { mode: 'taal', taalId: taal.id, taalName: taal.name, taalBpm, speed }
+        : null;
+
+  const startFrom = async (next: NonNullable<typeof pattern>, nextBpm: number, timerTaal: number | null) => {
+    player.stop();
+    const ok = await player.start(next, nextBpm);
+    setSoundFailed(!ok);
+    if (!ok) return false;
+    playingPattern.current = next.key;
+    setPlaying(true);
+    if (isStudent) startPracticeTimer(profileId, timerTaal);
+    return true;
+  };
+
+  const startSoundOf = async (s: RecordingSetting) => {
+    if (s.mode === 'metronome') {
+      setMode('metronome');
+      setMetronomeBpm(s.bpm);
+      setBeatsPerBar(s.beatsPerBar);
+      return startFrom(metronomePattern(s.beatsPerBar), s.bpm, null);
+    }
+    const found = list?.taals.find((tl) => tl.id === s.taalId);
+    if (!found) return false;
+    setMode('taal');
+    setTaalId(found.id);
+    setTaalBpm(s.taalBpm);
+    setSpeed(s.speed);
+    return startFrom(taalPattern(found.bols), effectiveBpm(s.taalBpm, s.speed), found.id);
+  };
+
+  const stopSound = () => {
+    player.stop();
+    playingPattern.current = null;
+    setPlaying(false);
   };
 
   const switchMode = (next: Mode) => {
@@ -247,6 +292,13 @@ export function PracticeTools({ area }: PracticeToolsProps) {
           ) : null}
         </>
       )}
+
+      <RecordMyself
+        setting={recordSetting}
+        startSound={() => (pattern ? startFrom(pattern, bpm, mode === 'taal' ? taalId : null) : Promise.resolve(false))}
+        startSoundOf={startSoundOf}
+        stopSound={stopSound}
+      />
 
       {isStudent ? (
         <Button variant="link" icon="time" label={t('practiceLog.open')} onPress={() => router.push('/student/practice-log')} />

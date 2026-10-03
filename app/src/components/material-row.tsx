@@ -1,14 +1,16 @@
 // One material of the library (G5) or of My progress (S4): an icon for its kind (YouTube video,
-// PDF, photo, note), the title, the optional note, and Open. A YouTube link opens in the YouTube
-// app when the phone has it, else in the browser; a PDF or photo opens in the browser through a
-// signed link (src/data/materials.ts). No video player inside the app for now. For the Guru an
-// Edit button opens the material form.
+// PDF, photo, note), the title, the optional note, and Open. A lesson video (YouTube link or the
+// team's own video file) opens the V3 player inside the app (screens/lesson-player.tsx, Phase 2
+// slice 4); a PDF or photo opens in the browser through a signed link (src/data/materials.ts).
+// For the Guru an Edit button opens the material form.
 
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
-import { openMaterial, type Material } from '@/data/materials';
+import { useAuth } from '@/auth/auth-provider';
+import { lessonSourceOf, openMaterial, type Material } from '@/data/materials';
 import { fileSizeText } from '@/i18n/labels';
 import { radius, spacing, useTheme } from '@/theme/use-theme';
 
@@ -17,7 +19,7 @@ import { Button } from './button';
 import { Icon, type IconName } from './icon';
 
 /** The icon of each kind of material. */
-const KIND_ICON: Record<Material['kind'], IconName> = { youtube: 'video', pdf: 'pdf', image: 'photo', note: 'syllabus' };
+const KIND_ICON: Record<Material['kind'], IconName> = { youtube: 'video', video: 'lessonVideo', pdf: 'pdf', image: 'photo', note: 'syllabus' };
 
 /** Props for MaterialRow. */
 export type MaterialRowProps = {
@@ -32,10 +34,13 @@ export function MaterialRow({ material, onEdit }: MaterialRowProps) {
   const { colors } = useTheme();
   const [opening, setOpening] = useState(false);
   const [failed, setFailed] = useState(false);
+  const { profile } = useAuth();
 
   const kindLine =
     material.kind === 'youtube'
       ? t('materials.kinds.youtube')
+      : material.kind === 'video'
+        ? material.panes > 1 ? t('materials.kinds.videoPanes', { n: material.panes }) : t('materials.kinds.video')
       : material.kind === 'note'
         ? t('materials.kinds.note')
         : `${material.kind === 'pdf' ? t('materials.kinds.pdf') : t('materials.kinds.image')}${
@@ -43,6 +48,10 @@ export function MaterialRow({ material, onEdit }: MaterialRowProps) {
           }`;
 
   async function open() {
+    if (lessonSourceOf(material)) {
+      router.push(profile?.role === 'student' ? `/student/lesson/${material.id}` : `/staff/lesson/${material.id}`);
+      return;
+    }
     setOpening(true);
     setFailed(false);
     setFailed(!(await openMaterial(material)));
@@ -71,7 +80,7 @@ export function MaterialRow({ material, onEdit }: MaterialRowProps) {
           <Button
             variant="secondary"
             icon="open"
-            label={material.kind === 'youtube' ? t('materials.watch') : t('materials.open')}
+            label={material.kind === 'youtube' || material.kind === 'video' ? t('materials.watch') : t('materials.open')}
             loading={opening}
             onPress={() => void open()}
           />

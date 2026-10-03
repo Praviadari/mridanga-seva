@@ -2,7 +2,7 @@
 // address holds the assignment id, so a push notification "Arjun sent a recording" opens it).
 // Shows the student, the status, the due date, the recording (Play opens it in the browser view)
 // or link and the student's note; then the review: a score for each rubric line, a comment, Accept
-// or Ask for a redo, and for a level-up assessment "Send level-up to the Guru" (the Guru's
+// or Ask for a redo, a voice note recorded in the app (slice 4, expo-audio), and for a level-up assessment "Send level-up to the Guru" (the Guru's
 // decision, G7, comes in slice 2). Earlier recordings are listed with their reviews. While the
 // student has not sent it yet, Remind sends them a push notification.
 // Data: src/data/assessments.ts (review_submission, remind_assessment; migration 0016).
@@ -12,8 +12,10 @@ import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
+import { useAuth } from '@/auth/auth-provider';
 import { AppText } from '@/components/app-text';
 import { AssignmentChips, MediaList, ScoreLines } from '@/components/assessment-parts';
+import { AudioRecorderPanel, PlayButton } from '@/components/audio-recorder';
 import { Button } from '@/components/button';
 import { Checkbox } from '@/components/checkbox';
 import { ChoiceGroup } from '@/components/choice-group';
@@ -35,17 +37,22 @@ import {
   type ReviewFormErrors,
   type Submission,
 } from '@/data/assessments';
-import { levelName } from '@/i18n/labels';
+import { recordingAsMedia } from '@/data/assessment-files';
+import { fileSizeText, levelName } from '@/i18n/labels';
 import { formatDateTimeInIndia, formatDayMonthYear } from '@/lib/dates';
 import { spacing } from '@/theme/use-theme';
+
+/** Longest voice note: 5 minutes. */
+const VOICE_NOTE_SECONDS = 5 * 60;
 
 /** One student's work and the review form. */
 export default function ReviewScreen() {
   const { t } = useTranslation();
+  const { profile } = useAuth();
   const { id: idParam } = useLocalSearchParams<{ id: string }>();
   const id = Number(idParam);
   const [loaded, setLoaded] = useState<AssignmentDetail | 'not_found' | null | undefined>(undefined);
-  const [form, setForm] = useState<ReviewForm>({ scores: [], comment: '', outcome: null, sendLevelUp: false });
+  const [form, setForm] = useState<ReviewForm>({ scores: [], comment: '', outcome: null, sendLevelUp: false, voiceNote: null });
   const [errors, setErrors] = useState<ReviewFormErrors>({});
   const [serverError, setServerError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -105,14 +112,14 @@ export default function ReviewScreen() {
     setErrors(found);
     if (Object.keys(found).length > 0) return;
     setSaving(true);
-    const errorKey = await reviewSubmission(toReview.id, { ...form, sendLevelUp: form.outcome === 'accepted' && form.sendLevelUp });
+    const errorKey = await reviewSubmission(toReview.id, profile?.id ?? '', { ...form, sendLevelUp: form.outcome === 'accepted' && form.sendLevelUp });
     setSaving(false);
     if (errorKey) {
       setServerError(t(errorKey));
       return;
     }
     setMessage({ tone: 'success', text: form.outcome === 'redo' ? t('assessments.review.redoDone') : t('assessments.review.acceptedDone') });
-    setForm({ scores: a.rubric.map(() => null), comment: '', outcome: null, sendLevelUp: false });
+    setForm({ scores: a.rubric.map(() => null), comment: '', outcome: null, sendLevelUp: false, voiceNote: null });
     await load();
   }
 
@@ -187,6 +194,25 @@ export default function ReviewScreen() {
               style={styles.multiline}
               error={errors.comment ? t(errors.comment) : undefined}
             />
+            <AppText variant="label">{t('recording.voiceNoteTitle')}</AppText>
+            {form.voiceNote ? (
+              <View style={styles.voice}>
+                <AppText>{t('recording.voiceNoteReady', { size: fileSizeText(t, form.voiceNote.size) })}</AppText>
+                <PlayButton uri={form.voiceNote.uri} />
+                <Button variant="link" label={t('announcements.files.remove')} onPress={() => update({ voiceNote: null })} />
+              </View>
+            ) : (
+              <AudioRecorderPanel
+                mode="review"
+                maxSeconds={VOICE_NOTE_SECONDS}
+                useLabel={t('recording.useVoiceNote')}
+                onTake={async (take) => {
+                  const media = await recordingAsMedia(take, t('recording.voiceNoteName'));
+                  if (typeof media === 'string') setServerError(t(media, { max: '50 MB' }));
+                  else update({ voiceNote: media });
+                }}
+              />
+            )}
             <ChoiceGroup
               label={t('assessments.review.outcome')}
               choices={[
@@ -228,6 +254,12 @@ export default function ReviewScreen() {
                   </AppText>
                   <ScoreLines rubric={a.rubric} scores={s.scores} total={s.score} max={s.scoreMax} />
                   {s.comment ? <AppText>{s.comment}</AppText> : null}
+                  {s.voiceNote && !s.fileRemovedAt ? (
+                    <>
+                      <AppText variant="label">{t('recording.voiceNoteFrom', { name: s.reviewedByName ?? t('assessments.detail.someone') })}</AppText>
+                      <MediaList files={[s.voiceNote]} link={null} />
+                    </>
+                  ) : null}
                   {s.sendLevelUp ? <Notice tone="info">{t('assessments.review.sentToGuru')}</Notice> : null}
                 </>
               ) : null}
@@ -258,6 +290,12 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
   },
   history: {
+    gap: spacing.sm,
+  },
+  voice: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
     gap: spacing.sm,
   },
 });

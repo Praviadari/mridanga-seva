@@ -593,6 +593,8 @@ export type Submission = {
   sendLevelUp: boolean;
   /** When the file was deleted from Storage (30 days after the review). */
   fileRemovedAt: string | null;
+  /** The reviewer's spoken comment (C14, slice 4; deleted with the recording). */
+  voiceNote: MediaFile | null;
 };
 
 type SubmissionRow = {
@@ -610,10 +612,11 @@ type SubmissionRow = {
   comment: string | null;
   send_level_up: boolean;
   file_removed_at: string | null;
+  voice_note: unknown;
 };
 
 const SUBMISSION_COLUMNS =
-  'id, file, link, note, submitted_at, reviewed_by, reviewed_at, outcome, scores, score, score_max, comment, send_level_up, file_removed_at';
+  'id, file, link, note, submitted_at, reviewed_by, reviewed_at, outcome, scores, score, score_max, comment, send_level_up, file_removed_at, voice_note';
 
 function toSubmission(row: SubmissionRow, names: Map<string, string>): Submission {
   return {
@@ -632,6 +635,7 @@ function toSubmission(row: SubmissionRow, names: Map<string, string>): Submissio
     comment: row.comment,
     sendLevelUp: row.send_level_up,
     fileRemovedAt: row.file_removed_at,
+    voiceNote: parseMediaFile(row.voice_note),
   };
 }
 
@@ -736,7 +740,14 @@ export async function submitRecording(
 }
 
 /** C14: the review form as typed. */
-export type ReviewForm = { scores: (number | null)[]; comment: string; outcome: 'accepted' | 'redo' | null; sendLevelUp: boolean };
+export type ReviewForm = {
+  scores: (number | null)[];
+  comment: string;
+  outcome: 'accepted' | 'redo' | null;
+  sendLevelUp: boolean;
+  /** A voice note recorded in the app, uploaded when the review is saved (slice 4). */
+  voiceNote: PickedMedia | null;
+};
 
 export type ReviewFormErrors = Partial<Record<'scores' | 'comment' | 'outcome', MessageKey>>;
 
@@ -746,21 +757,32 @@ export function checkReviewForm(form: ReviewForm, rubric: RubricLine[]): ReviewF
     errors.scores = 'assessments.review.scoresMissing';
   }
   if (!form.outcome) errors.outcome = 'assessments.errors.outcome_required';
-  if (form.outcome === 'redo' && !form.comment.trim()) errors.comment = 'assessments.errors.comment_required';
+  if (form.outcome === 'redo' && !form.comment.trim() && !form.voiceNote) errors.comment = 'assessments.errors.comment_required';
   if (form.comment.trim().length > COMMENT_MAX) errors.comment = 'assessments.errors.comment_too_long';
   return errors;
 }
 
-/** C14: saves the review. */
-export async function reviewSubmission(submissionId: number, form: ReviewForm): Promise<MessageKey | undefined> {
+/** C14: uploads the voice note (if any) and saves the review; the note is removed again if that fails. */
+export async function reviewSubmission(submissionId: number, myId: string, form: ReviewForm): Promise<MessageKey | undefined> {
+  let voice: MediaFile | null = null;
+  if (form.voiceNote) {
+    const uploaded = await uploadMedia(myId, [form.voiceNote]);
+    if (!uploaded.media) return uploaded.errorKey;
+    voice = uploaded.media[0];
+  }
   const { error } = await supabase.rpc('review_submission', {
     p_submission: submissionId,
     p_scores: form.scores,
     p_comment: form.comment.trim() || null,
     p_outcome: form.outcome,
     p_send_level_up: form.sendLevelUp,
+    p_voice_note: voice,
   });
-  return error ? errorKeyOf(error.message) : undefined;
+  if (error) {
+    if (voice) await removeMedia([voice.path]);
+    return errorKeyOf(error.message);
+  }
+  return undefined;
 }
 
 // ---------------------------------------------------------------- S7: the student's list

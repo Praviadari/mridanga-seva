@@ -1,7 +1,8 @@
 // S7 One assessment (Phase 2), for the student: what to do (the Guru's instructions and files,
 // the coordinator's notes, the due date, how it is scored), and sending the recording: an audio
 // or video file from the phone (recorded with the phone's own recorder or camera; at most 50 MB)
-// or a link (an unlisted YouTube video, Google Drive ...), with a note. After the review: the
+// or a recording made here in the app (slice 4, expo-audio), or a link (an unlisted YouTube video,
+// Google Drive ...), with a note. After the review: the
 // score per rubric line, the coordinator's comment, and for a redo the way to send it again.
 // Opening it tells the coordinator it was seen. The address holds the assignment id, so a push
 // notification opens it.
@@ -15,6 +16,7 @@ import { StyleSheet, View } from 'react-native';
 import { useAuth } from '@/auth/auth-provider';
 import { AppText } from '@/components/app-text';
 import { AssignmentChips, MediaList, ScoreLines } from '@/components/assessment-parts';
+import { AudioRecorderPanel } from '@/components/audio-recorder';
 import { Button } from '@/components/button';
 import { Icon } from '@/components/icon';
 import { LoadingCards } from '@/components/loading-cards';
@@ -26,6 +28,7 @@ import {
   MAX_MEDIA_BYTES,
   pickGalleryVideo,
   pickRecordingFiles,
+  recordingAsMedia,
   type MediaPickResult,
   type PickedMedia,
 } from '@/data/assessment-files';
@@ -44,6 +47,9 @@ import { fileSizeText } from '@/i18n/labels';
 import { formatDateTimeInIndia, formatDayMonthYear } from '@/lib/dates';
 import { radius, spacing, useTheme } from '@/theme/use-theme';
 
+/** Longest recording made in the app for an assessment: 20 minutes (about 14 MB on a phone). */
+const RECORD_SECONDS = 20 * 60;
+
 /** The assessment, the student's recordings with their reviews, and the send form. */
 export default function MyAssessmentScreen() {
   const { t } = useTranslation();
@@ -61,6 +67,7 @@ export default function MyAssessmentScreen() {
   const [serverError, setServerError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [sent, setSent] = useState(false);
+  const [recorderOpen, setRecorderOpen] = useState(false);
   // True once "seen" went out, so coming back does not send it again.
   const seenSent = useRef(false);
 
@@ -177,6 +184,23 @@ export default function MyAssessmentScreen() {
             </View>
           ) : (
             <View style={styles.actions}>
+              {recorderOpen ? (
+                <AudioRecorderPanel
+                  mode="review"
+                  maxSeconds={RECORD_SECONDS}
+                  useLabel={t('recording.useForAssessment')}
+                  onTake={async (take) => {
+                    const media = await recordingAsMedia(take, t('recording.fileName'));
+                    if (typeof media === 'string') setPickError(t(media, { max: fileSizeText(t, MAX_MEDIA_BYTES) }));
+                    else {
+                      setFile(media);
+                      setRecorderOpen(false);
+                    }
+                  }}
+                />
+              ) : (
+                <Button icon="record" label={t('recording.recordHere')} onPress={() => setRecorderOpen(true)} />
+              )}
               <Button variant="secondary" icon="audio" label={t('assessments.files.chooseRecording')} onPress={() => void pick(pickRecordingFiles)} />
               <Button variant="secondary" icon="videoFile" label={t('assessments.files.addGalleryVideo')} onPress={() => void pick(() => pickGalleryVideo())} />
             </View>
@@ -227,6 +251,12 @@ export default function MyAssessmentScreen() {
                   </AppText>
                   <ScoreLines rubric={a.rubric} scores={s.scores} total={s.score} max={s.scoreMax} />
                   {s.comment ? <AppText>{s.comment}</AppText> : null}
+                  {s.voiceNote && !s.fileRemovedAt ? (
+                    <>
+                      <AppText variant="label">{t('recording.voiceNoteFrom', { name: s.reviewedByName ?? t('assessments.detail.someone') })}</AppText>
+                      <MediaList files={[s.voiceNote]} link={null} />
+                    </>
+                  ) : null}
                 </>
               ) : (
                 <AppText tone="muted">{t('assessments.submit.notReviewed')}</AppText>

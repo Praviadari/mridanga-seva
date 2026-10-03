@@ -4,9 +4,9 @@
 // (./announcement-files.ts); this file adds audio and video, and uploads into the other bucket.
 //
 // A file is uploaded only when the form is saved, never when it is picked. The type sent to
-// Storage comes from the file's ending, so it is always one the bucket accepts. Nothing here
-// records audio in the app: that needs a new native package (expo-audio) and a new APK, which is
-// Praveen's decision; a student records with the phone's own recorder or camera and picks the file.
+// Storage comes from the file's ending, so it is always one the bucket accepts. A student may pick
+// a file made with the phone's own recorder or camera, or record in the app (slice 4: expo-audio,
+// lib/recording.ts, next planned APK); recordingAsMedia turns such a take into a file to upload.
 
 import type { ParseKeys } from 'i18next';
 import * as Crypto from 'expo-crypto';
@@ -194,6 +194,18 @@ export async function pickRecordingFiles(room: number): Promise<MediaPickResult>
   } catch {
     return { files: [], errorKey: 'assessments.files.pickFailed' };
   }
+}
+
+/**
+ * A recording made in the app (lib/recording.ts) as a file to upload: S7 sends it as the student's
+ * recording, C14 as the coordinator's voice note (Phase 2 slice 4). A browser's .webm counts as
+ * 'video' by its ending, as in the bucket's list.
+ */
+export async function recordingAsMedia(
+  take: { uri: string; ending: string; mimeType: string; size: number; webFile?: Blob },
+  baseName: string,
+): Promise<PickedMedia | MessageKey> {
+  return takeRecording({ uri: take.uri, name: `${baseName}.${take.ending}`, mimeType: take.mimeType, size: take.size, webFile: take.webFile });
 }
 
 /** Opens the phone's gallery for one video (iPhones keep camera videos there, not in Files). */

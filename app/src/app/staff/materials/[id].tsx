@@ -28,6 +28,7 @@ import {
   fetchMaterial,
   MATERIAL_NOTE_MAX,
   MATERIAL_TITLE_MAX,
+  MAX_PANES,
   pickMaterialFile,
   updateMaterial,
   type Material,
@@ -57,6 +58,7 @@ export default function MaterialScreen() {
     title: '',
     kind: 'youtube',
     link: '',
+    panes: 1,
     note: '',
     levelId: Number(params.level) || 1,
     itemId: Number(params.item) || null,
@@ -89,6 +91,7 @@ export default function MaterialScreen() {
           title: material.title,
           kind: material.kind,
           link: material.url ?? '',
+          panes: material.panes,
           note: material.body ?? '',
           levelId: material.levelId,
           itemId: material.itemId,
@@ -131,7 +134,7 @@ export default function MaterialScreen() {
       .map((item) => ({ value: item.id, label: `${item.title} (${t('syllabusEditor.retiredChip')})` })),
   ];
   const update = (patch: Partial<MaterialForm>) => setForm((current) => ({ ...current, ...patch }));
-  const editingFile = material && material.kind !== 'youtube' && material.kind !== 'note';
+  const editingFile = material && material.kind !== 'youtube' && material.kind !== 'video' && material.kind !== 'note';
 
   async function pick() {
     if (form.kind !== 'pdf' && form.kind !== 'image') return;
@@ -177,6 +180,7 @@ export default function MaterialScreen() {
             label={t('materials.kindLabel')}
             choices={[
               { value: 'youtube', label: t('materials.kinds.youtube') },
+              { value: 'video', label: t('materials.kinds.video') },
               { value: 'pdf', label: t('materials.kinds.pdf') },
               { value: 'image', label: t('materials.kinds.image') },
             ]}
@@ -196,6 +200,31 @@ export default function MaterialScreen() {
             keyboardType="url"
             error={errors.link ? t(errors.link) : undefined}
           />
+        ) : null}
+
+        {form.kind === 'video' ? (
+          <>
+            <TextField
+              label={t('materials.videoLinkLabel')}
+              hint={t('materials.videoLinkHint')}
+              value={form.link}
+              onChangeText={(link) => update({ link })}
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="url"
+              error={errors.link ? t(errors.link) : undefined}
+            />
+            <ChoiceGroup<number>
+              chips
+              label={t('materials.panesLabel')}
+              choices={Array.from({ length: MAX_PANES }, (_, i) => ({ value: i + 1, label: String(i + 1) }))}
+              value={form.panes}
+              onChange={(panes) => update({ panes })}
+            />
+            <AppText variant="small" tone="muted">
+              {t('materials.panesHint')}
+            </AppText>
+          </>
         ) : null}
 
         {isNew && (form.kind === 'pdf' || form.kind === 'image') ? (

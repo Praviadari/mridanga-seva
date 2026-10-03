@@ -81,6 +81,12 @@ const SHAPES = {
   pause: 'stop-circle-outline',
   tap: 'hand-left-outline',
   taal: 'grid-outline',
+  // Media (Phase 2 slice 4): lesson-video mirror, A-B loop, zoom; recording.
+  mirror: 'swap-horizontal-outline',
+  loop: 'repeat-outline',
+  zoom: 'expand-outline',
+  record: 'radio-button-on-outline',
+  lessonVideo: 'film-outline',
 } as const;
 
 /** The icons the app may use. */

@@ -790,7 +790,9 @@
       "youtube": "YouTube video",
       "pdf": "PDF",
       "image": "Photo",
-      "note": "Note"
+      "note": "Note",
+      "video": "Video file",
+      "videoPanes": "Video file · {{n}} camera angles"
     },
     "suggestion": "suggestion, waiting for the facilitator",
     "openFailed": "Could not open it. Check your internet connection and try again.",
@@ -843,8 +845,14 @@
       "uploadFailed": "The file could not be sent. Nothing was saved. Try again.",
       "gone": "This lesson or its item is no longer there.",
       "removeFailed": "The file could not be removed, so nothing was deleted. Check your internet connection and try again.",
-      "notAllowed": "Only the facilitator can add and change lessons."
-    }
+      "notAllowed": "Only the facilitator can add and change lessons.",
+      "videoLinkInvalid": "Give an https link to an .mp4, .webm, .m4v or .mov file.",
+      "panesInvalid": "A video file has 1 to 4 camera angles side by side."
+    },
+    "videoLinkLabel": "Link to the video file",
+    "videoLinkHint": "The team's own copy (https, ending in .mp4, .webm, .m4v or .mov). Students can mirror and zoom it; a YouTube video cannot be mirrored or zoomed.",
+    "panesLabel": "Camera angles side by side",
+    "panesHint": "For a lesson filmed from 2-4 phones and joined side by side: students tap one angle to see it large."
   },
   "visitHistory": {
     "title": "My attendance",
@@ -1433,7 +1441,7 @@
       "lineLabel": "{{criterion}} (0 to {{max}})",
       "scoresMissing": "Give a score for every line.",
       "comment": "Comment",
-      "commentHint": "What went well and what to practise. Needed for a redo.",
+      "commentHint": "What went well and what to practise. Needed for a redo, unless you record a voice note.",
       "outcome": "Result",
       "accept": "Accept",
       "redo": "Ask for a redo",
@@ -1863,5 +1871,79 @@
       "taal_bols_invalid": "Each beat is - or up to 4 bols joined with a dot.",
       "taal_note_too_long": "The note is too long (300 characters at most)."
     }
+  },
+  "lessonPlayer": {
+    "title": "Lesson video",
+    "notFound": "This lesson video is not there any more.",
+    "errors": {
+      "rate": "This video does not play at that speed.",
+      "notEmbeddable": "The owner of this video does not let it play inside other apps. Open it in YouTube.",
+      "playBlocked": "The browser did not start the video. Tap the video once, then Play.",
+      "cannotPlay": "The video cannot be played. Check the internet, or open it in YouTube."
+    },
+    "play": "Play",
+    "pause": "Pause",
+    "back5": "− 5 s",
+    "forward5": "+ 5 s",
+    "loading": "Loading the video …",
+    "speed": "Speed",
+    "loopTitle": "Repeat a part (A-B loop)",
+    "loopHint": "While it plays, tap \"Start here (A)\" where the part begins and \"End here (B)\" where it ends. The part repeats until you clear it.",
+    "setA": "Start here (A)",
+    "setB": "End here (B)",
+    "clearLoop": "Clear",
+    "looping": "Repeating {{a}} – {{b}}",
+    "aSet": "A at {{a}}: now tap \"End here (B)\"",
+    "loopBAfterA": "B must come after A. Let it play past A first.",
+    "viewTitle": "Mirror and zoom",
+    "mirror": "Picture",
+    "asFilmed": "As filmed",
+    "mirrored": "Mirrored",
+    "mirrorHint": "Mirrored, the teacher's right hand is on your right, as when you play. Left-handed students may like it the other way.",
+    "zoom": "Camera angle",
+    "allPanes": "All",
+    "pane": "Angle {{n}}",
+    "zoomHint": "Or tap an angle on the video to see it large; tap again for all.",
+    "youtubeNoMirror": "YouTube's rules do not allow the app to mirror or zoom a YouTube video. Speed and A-B loop work. For mirror and zoom, the facilitator can add the lesson as a video file.",
+    "openYouTube": "Open in YouTube"
+  },
+  "recording": {
+    "record": "Record",
+    "stop": "Stop",
+    "recordingFor": "Recording {{time}} (up to {{max}})",
+    "upTo": "Up to {{max}}",
+    "ready": "Recorded {{time}}. Listen to it before you use it.",
+    "use": "Use this recording",
+    "again": "Record again",
+    "play": "Play",
+    "stopPlaying": "Stop",
+    "noMicrophone": "The app may not use the microphone. Allow it in the phone's settings (or the browser's), then try again.",
+    "failed": "Recording did not work. Try again.",
+    "recordHere": "Record here",
+    "useForAssessment": "Use for this assessment",
+    "fileName": "recording",
+    "voiceNoteTitle": "Voice note (optional)",
+    "voiceNoteReady": "Voice note ready ({{size}}); it is sent with the review.",
+    "useVoiceNote": "Add this voice note",
+    "voiceNoteName": "voice note",
+    "voiceNoteFrom": "Voice note from {{name}}"
+  },
+  "recordMyself": {
+    "title": "Record myself",
+    "intro": "Record your playing and listen to it beside the beat. Your recordings stay on this phone.",
+    "withSound": "Play the sound while I record: {{what}}",
+    "headphones": "With headphones the recording catches only your drum.",
+    "noSound": "Without the metronome or taal",
+    "metronomeAt": "Metronome · {{bpm}} a minute · {{beats}} beats",
+    "taalAt": "{{name}} · {{bpm}} a minute",
+    "taalAtSpeed": "{{name}} · {{bpm}} a minute at {{percent}} %",
+    "keptPhone": "Kept on this phone only, never sent. The newest {{max}} are kept.",
+    "keptWeb": "In the browser, recordings are kept only until you close or reload the page.",
+    "none": "No recordings yet.",
+    "recordedAt": "{{date}} · {{time}}",
+    "playWithSound": "Play with the sound",
+    "delete": "Delete",
+    "deleteSure": "Yes, delete it",
+    "keepFailed": "The recording could not be kept on the phone."
   }
 }
