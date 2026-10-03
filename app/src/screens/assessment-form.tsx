@@ -179,7 +179,8 @@ function FormBody({ header, editing }: { header: ReactNode; editing: Editing | n
       setServerError(t(errorKey));
       return;
     }
-    router.back();
+    // Back to the assessment; opened from a link, the form is replaced by it.
+    router.dismissTo({ pathname: '/staff/assessments/[id]', params: { id: String(editing.assessment.id) } });
   }
 
   const fixed = editing?.assessment;

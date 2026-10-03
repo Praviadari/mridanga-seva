@@ -60,9 +60,11 @@ const MAX_SIZE_FEW = 320;
 const DENSE_FROM = 9;
 const CIRCLE_DENSE = 56;
 const ITEM_WIDTH_DENSE = 80;
-/** A ring of ten (the staff homes on the Phase 2 branch, with Assessments) is a little denser still. */
-const CIRCLE_TEN = 52;
-const ITEM_WIDTH_TEN = 74;
+/**
+ * A ring of ten (the staff homes on the Phase 2 branch, with Assessments) draws smaller circles in
+ * the same slots, so the side labels stay inside a 375 px screen.
+ */
+const CIRCLE_TEN = 50;
 /** More modules than this are shown as the grid. */
 const MAX_ON_RING = 10;
 /** Below this window width the labels would overlap, so the grid is used. */
@@ -90,7 +92,7 @@ function Ring({ modules, width }: { modules: readonly Module[]; width: number })
   const dense = modules.length >= DENSE_FROM;
   const ten = modules.length >= MAX_ON_RING;
   const circle = ten ? CIRCLE_TEN : dense ? CIRCLE_DENSE : CIRCLE;
-  const itemWidth = ten ? ITEM_WIDTH_TEN : dense ? ITEM_WIDTH_DENSE : ITEM_WIDTH;
+  const itemWidth = dense ? ITEM_WIDTH_DENSE : ITEM_WIDTH;
   const radius = size / 2 - itemWidth / 2;
   const centre = size / 2;
   return (
