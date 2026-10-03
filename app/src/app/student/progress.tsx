@@ -18,6 +18,7 @@ import { Button } from '@/components/button';
 import { EmptyState } from '@/components/empty-state';
 import { ListRow } from '@/components/list-row';
 import { MaterialRow } from '@/components/material-row';
+import { PracticePanel } from '@/components/practice-parts';
 import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
 import { ProgressBar } from '@/components/progress-bar';
@@ -92,6 +93,9 @@ export default function MyProgressScreen() {
           <AppText tone="muted">{t('profile.noSyllabus')}</AppText>
         )}
       </Section>
+
+      {/* Phase 2 slice 3 (docs/DECISIONS.md #49): weekly practice, opens S6. */}
+      <PracticePanel profileId={myId} />
 
       {levelWide.length > 0 ? (
         <Section icon="library" title={t('progress.levelLessons', { level })}>

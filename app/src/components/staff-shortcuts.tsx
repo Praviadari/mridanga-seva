@@ -6,7 +6,8 @@
 // C12-C14, G6), and
 // the two modules not built yet, Instruments and Events, which open the Coming soon screen
 // (docs/DECISIONS.md #39). One component, so both homes offer the same screens in the same order.
-// Register a student (C2) is the first button on the Students tab.
+// Register a student (C2) is the first button on the Students tab. Practice tools (S5, Phase 2) is a
+// button under the ring.
 
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -50,5 +51,12 @@ export function StaffShortcuts() {
       onPress: () => router.push({ pathname: '/staff/coming-soon', params: { module: 'events' } }),
     },
   ];
-  return <ModuleRing title={t('home.staff.shortcuts')} modules={modules} />;
+  return (
+    <>
+      <ModuleRing title={t('home.staff.shortcuts')} modules={modules} />
+      {/* Phase 2 slice 3 (S5, docs/DECISIONS.md #49): the ring is full at ten, so Practice tools is a
+          button under it. */}
+      <Button variant="secondary" icon="practice" label={t('practice.title')} onPress={() => router.push('/staff/practice')} />
+    </>
+  );
 }

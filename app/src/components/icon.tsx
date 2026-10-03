@@ -70,6 +70,11 @@ const SHAPES = {
   // Promotion approval (Phase 2 slice 2): the level-up queue, a coordinator's feedback.
   promote: 'trending-up-outline',
   feedback: 'chatbubbles-outline',
+  // Practice tools (Phase 2 slice 3): the module, stop, tap tempo, the taal editor.
+  practice: 'musical-note-outline',
+  pause: 'stop-circle-outline',
+  tap: 'hand-left-outline',
+  taal: 'grid-outline',
 } as const;
 
 /** The icons the app may use. */

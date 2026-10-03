@@ -67,6 +67,8 @@ export default function StudentHomeScreen() {
     { key: 'progress', icon: 'syllabus', tone: 'purple', label: t('progress.title'), onPress: () => router.push('/student/progress') },
     // Phase 2 (S7, docs/DECISIONS.md #43); indigo here, as My attendance next to it is teal.
     { key: 'assessments', icon: 'assessment', tone: 'indigo', label: t('assessments.title'), onPress: () => router.push('/student/assessments') },
+    // Phase 2 slice 3 (S5 Practice tools, docs/DECISIONS.md #49).
+    { key: 'practice', icon: 'practice', tone: 'pink', label: t('practice.module'), onPress: () => router.push('/student/practice') },
     { key: 'visits', icon: 'visits', tone: 'teal', label: t('visitHistory.module'), onPress: () => router.push('/student/visits') },
     { key: 'profile', icon: 'profile', tone: 'green', label: t('myProfile.title'), onPress: () => router.push('/student/profile') },
     {
