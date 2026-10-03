@@ -17,12 +17,13 @@ are the words the app shows in English. The app also speaks Telugu and Hindi: se
 5. [Your home screen](#your-home-screen)
 6. [My QR card: checking in and out](#my-qr-card-checking-in-and-out)
 7. [Announcements (the News tab)](#announcements-the-news-tab)
-8. [My progress and lessons](#my-progress-and-lessons)
-9. [My attendance](#my-attendance)
-10. [My profile](#my-profile)
-11. [Choosing your language](#choosing-your-language)
-12. [Forgot your password?](#forgot-your-password)
-13. [Coming later](#coming-later)
+8. [Notifications](#notifications)
+9. [My progress and lessons](#my-progress-and-lessons)
+10. [My attendance](#my-attendance)
+11. [My profile](#my-profile)
+12. [Choosing your language](#choosing-your-language)
+13. [Forgot your password?](#forgot-your-password)
+14. [Coming later](#coming-later)
 
 ## Before you start
 
@@ -86,14 +87,14 @@ The home screen is the first tab, **Home**. From top to bottom:
 
 | Part | What it shows |
 |---|---|
-| Saffron header | The drum mark, **Hare Krishna** with your name, and the maha-mantra |
+| Saffron header | The drum mark, **Hare Krishna** with your name, the maha-mantra, and a bell with the number of unread notifications (see [Notifications](#notifications)) |
 | **My QR card** (big button) | Opens your QR code. It works even without internet |
 | **Visits this week (from Monday)** | How many times you came this week. (If the Facilitator sets "this week" to mean the last 7 days, it says **Visits in the last 7 days**) |
 | **Days since your last visit** | Shown as a number; "—" if you have not come yet |
 | **My level** | Your level (Beginner, Intermediate or Advanced), a progress bar of the syllabus items ticked, and **See every item** |
 | **Screens** (the ring) | Round buttons around the drum: **My QR**, **Announcements**, **My progress**, **Attendance**, **My profile**, and **Events** (marked under construction) |
 | **Announcements** | The latest three announcements for you. **New** marks the ones you have not opened; **New for you: N** counts them. **All announcements** opens the full list |
-| Foot of the page | The language picker, **My profile**, **Sign out**, and the version line |
+| Foot of the page | The language picker, **My profile**, **Notifications**, **Sign out**, and the version line |
 
 At the bottom of the screen are three tabs: **Home**, **My QR** and **News** (announcements).
 
@@ -148,6 +149,16 @@ person or by phone. Your earlier replies are listed under **Your replies**.
 **Notifications.** On the Android app, a new announcement appears as a notification on your phone,
 even when the app is closed. Tap it to open the announcement. The iPhone (web) version has no
 notifications yet; open the app to see what is new.
+
+## Notifications
+
+The bell on the home header, or **Notifications** at the foot of the home screen, opens your
+**Notifications** inbox: everything you were sent, newest first, on every phone and on the web
+(also on an iPhone, which gets no pop-up notifications yet).
+
+- **New** marks the ones you have not opened; **Unread: N** counts them.
+- Tap one to open it (for example, the announcement).
+- **Mark all read** clears the count. **Show older** loads earlier ones.
 
 ## My progress and lessons
 
@@ -207,7 +218,6 @@ Announcements and replies are shown exactly as people wrote them; the app does n
 
 These are planned or being built; they are not in the app yet:
 
-- **Notifications inbox** (a list of everything sent to you): being built for Phase 1.
 - **Events**, **assessments** (the Facilitator gives a piece to learn; you submit a recording),
   **practice tools** (metronome, taal player, a picture of both drum heads lighting up per stroke)
   and a **practice log**: Phase 2, being built on separate branches. See

@@ -18,8 +18,8 @@ time it is used.
 |---|---|---|---|
 | 1 | [Why this app exists](01-why-this-app.md) | Everyone | The class, the mridanga (khol), the WhatsApp-and-Excel problem, the spirit of seva |
 | 2 | [Student guide](02-student-guide.md) | Students and parents | Sign up, wait for access, the home screen, My QR, announcements, My progress, attendance, profile |
-| 3 | [Coordinator guide](03-coordinator-guide.md) | Coordinators | Register a student with consent, mark attendance, who is here now, follow-up calls, syllabus ticks, announcements and groups |
-| 4 | [Facilitator (Guru) guide](04-facilitator-guide.md) | The Guru | Dashboard, syllabus and lessons, coordinators, the student database and Excel import, settings, audit log |
+| 3 | [Coordinator guide](03-coordinator-guide.md) | Coordinators | Register a student with consent, mark attendance, who is here now, follow-up calls, syllabus ticks, announcements and groups, my reports |
+| 4 | [Facilitator (Guru) guide](04-facilitator-guide.md) | The Guru | Dashboard, syllabus and lessons, coordinators, the student database and Excel import, settings, reports, centres, audit log |
 | 5 | [Phones, install and updates](05-phones-and-updates.md) | Everyone | The Android app from a link, iPhone through Safari, updates and Restart, languages, using it offline |
 | 6 | [How the app works](06-how-it-works.md) | The curious, new helpers | App, web and database in plain words; why the rules live in the database; test and live; how updates reach phones |
 | 7 | [How it was built](07-how-it-was-built.md) | Anyone deciding whether to trust it | The approved screen list, written decisions, the checks on every change, the timeline, and what is not done yet |
@@ -42,7 +42,7 @@ The state on **3 October 2026**, on the main code:
 
 | Ready | Being built | Later |
 |---|---|---|
-| Sign-up, sign-in, password reset; three roles | Notifications inbox, reports, centres (Phase 1, round 9) | Events, polls, instruments, door tablet, Ishtagoshti, fund (Phase 2) |
+| Sign-up, sign-in, password reset; three roles | Phone check of the centre's attendance area (next Android app) | Events, polls, instruments, door tablet, Ishtagoshti, fund (Phase 2) |
 | Registration with roll numbers and parental consent for minors | Assessments and promotion approval (Phase 2, on branches) | Face attendance, only with consent (Phase 3) |
 | Attendance by QR code or by name; who is here now; check out all | Practice tools: metronome, taal player, two-head view, practice log (Phase 2, on a branch) | |
 | Student list and profile; follow-up calls with reasons | | |
@@ -50,6 +50,7 @@ The state on **3 October 2026**, on the main code:
 | Announcements with audiences, files, "seen by", private replies; groups; Android notifications | | |
 | Home screens for each role; attendance history; my profile | | |
 | Coordinators and roles; student database and Excel import; settings; audit log | | |
+| Notifications inbox; reports with a CSV file; centres | | |
 | English, Telugu, Hindi; Android app with self-updates; iPhone and laptop through the web | | |
 
 The class's pilot is planned at Abids from 16 to 29 November 2026, and Phase 1 goes live on

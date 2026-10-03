@@ -21,9 +21,10 @@ class, screen by screen. Words in **bold** are the words the app shows in Englis
 10. [Log a call](#log-a-call)
 11. [Announcements](#announcements)
 12. [Groups](#groups)
-13. [Syllabus and lessons (read only)](#syllabus-and-lessons-read-only)
-14. [What a coordinator can and cannot see](#what-a-coordinator-can-and-cannot-see)
-15. [Coming later](#coming-later)
+13. [My reports](#my-reports)
+14. [Syllabus and lessons (read only)](#syllabus-and-lessons-read-only)
+15. [What a coordinator can and cannot see](#what-a-coordinator-can-and-cannot-see)
+16. [Coming later](#coming-later)
 
 ## Getting a coordinator account
 
@@ -49,7 +50,9 @@ The **Home** tab shows:
 | **Calls due for my students** | Follow-up calls due for the students you mentor. Tap to open **Follow-up calls** |
 | **New joiners (last 4 weeks)** | Students who joined recently, newest first, with their number of visits. Tap a name to open the profile. Someone with no visits yet may need a call |
 | **Screens** (the ring) | **Students**, **Attendance**, **Here now**, **Follow-up calls**, **Announcements**, **Groups**, **Syllabus and lessons**; **Instruments** and **Events** are marked under construction |
-| Foot of the page | Language, **My profile**, **Sign out**, version line |
+| **My reports** (under the ring) | Your mentees' visits, statuses, calls and progress, with a CSV file (see [My reports](#my-reports)) |
+| Bell on the header | Your **Notifications** inbox, with the unread count (as for students: [Notifications](02-student-guide.md#notifications)) |
+| Foot of the page | Language, **My profile**, **Notifications**, **Sign out**, version line |
 
 Pull down to refresh on a phone. On Android, **A new version is ready** with **Restart now**
 appears when an update has arrived.
@@ -289,6 +292,24 @@ Groups replace the WhatsApp groups for announcements to "A group". Open **Groups
 Groups are never deleted, only switched off, so old announcements keep their audience
 ([DECISIONS.md #28](../DECISIONS.md)). Students without the app cannot be added.
 
+## My reports
+
+Tap **My reports** under the ring on your home screen. It covers **your mentees**.
+
+1. Choose the **Dates**: **This month**, **Last month**, **Last 4 weeks**, **Last 3 months**, or
+   **Other dates** (type **From** and **To**, then **Show**). A report covers at most one year.
+2. Read the summary: **Students in class now**, **Joined in these dates**, visits and how many
+   students came, **Calls made**, **Calls due now** and **Left in these dates**.
+3. Below: **Students by status, now**, **Visits per week** and **Visits per month** (visits,
+   students, hours), **Follow-up calls** (by outcome), and **Syllabus progress per level**.
+4. **Students**: one line per student (visits, hours, calls, last visit, syllabus). Tap a line to
+   open the profile. On a laptop it is a table.
+5. **CSV file**: one line per student, for Excel or Google Sheets. On the web, **Download CSV**; on
+   Android, **Save to a folder** or **Share**.
+
+The database gives each coordinator only their own mentees' report; the Facilitator sees the whole
+class ([DECISIONS.md #50](../DECISIONS.md)).
+
 ## Syllabus and lessons (read only)
 
 **Syllabus and lessons** in the ring shows each level's syllabus in teaching order, and the lessons
@@ -303,14 +324,13 @@ changes them.
 | See parents' details and consent records of minors | See the audit log, change the settings, edit the syllabus or lessons |
 | Post announcements and manage groups | Edit or delete someone else's announcement |
 | Read replies to your own announcements | Read replies to other people's announcements |
+| See reports on your own mentees | See the whole-class report, or change centres |
 
 These rules live in the database, not only in the screens, so no old app version or typed web
 address gets around them ([6. How the app works](06-how-it-works.md#the-rules-live-in-the-database)).
 
 ## Coming later
 
-- **My reports** (attendance and progress of your mentees, with a CSV download) and a
-  **notifications inbox**: being built for Phase 1 (round 9).
 - **Instruments** (the temple's mridangas and who has one), **Events**, **assessments**,
   **promotion** (nominating a student to move up a level, with coordinators' feedback) and a
   **duty roster**: Phase 2. See [How it was built](07-how-it-was-built.md#phases-and-dates).

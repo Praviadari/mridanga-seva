@@ -46,7 +46,7 @@ WhatsApp groups to replace; most members on iPhones; and **Phase 1 must cost not
 ## Write every decision down
 
 Every important choice is a numbered entry in [DECISIONS.md](../DECISIONS.md), with the date, the
-choice, the **reason**, and what was given up. By 3 Oct 2026 there were 48 entries, for example:
+choice, the **reason**, and what was given up. By 3 Oct 2026 there were 51 entries, for example:
 
 - #2 *Attendance is a visit, not a roll call* (because the class is drop-in);
 - #4 *Paused and Left only through a logged call* (so nobody is dropped without a reason);
@@ -66,7 +66,7 @@ Every change passes these checks before it goes further:
 |---|---|
 | **Type check** (`npx tsc --noEmit`) | Mistakes in the code's logic and names, and a word missing in Telugu or Hindi |
 | **Lint** (`npx expo lint`) | Common coding errors and unsafe patterns |
-| **Database smoke test** (`supabase/tests`) | Runs every database migration on a temporary database on the laptop, with the dummy data, then tries hundreds of things a person could do, as each role, and checks the database allows or refuses each one. On 3 Oct 2026 main passes **331 checks**: login linking, consent for minors, attendance, follow-up calls, ticks, announcements, replies, files, notifications, who may run each function, and row-level security. The Phase 2 branches add their own (416 on the promotion branch) |
+| **Database smoke test** (`supabase/tests`) | Runs every database migration on a temporary database on the laptop, with the dummy data, then tries hundreds of things a person could do, as each role, and checks the database allows or refuses each one. On 3 Oct 2026 main passes **368 checks**: login linking, consent for minors, attendance, follow-up calls, ticks, announcements, replies, files, notifications, the inbox, reports, centres, who may run each function, and row-level security. The Phase 2 branches add their own (416 on the promotion branch) |
 | **Notification test** | How the server words and batches notifications |
 | **Browser check per role** | The changed screens are opened in a browser as a student, a coordinator and the Facilitator, on the test project, at phone width (375 pixels) and laptop width (1280 pixels) |
 | **Contrast check** | Each new pair of text and background colours is measured against the WCAG AA standard for readability; the first draft of the new look failed twice and was fixed |
@@ -109,7 +109,7 @@ experience), each one small enough to check fully and send as an update:
 | 6 | 2 Oct 2026 | Staying signed in and signing out without internet; iPhone page settings |
 | 7 | 3 Oct 2026 | Syllabus editor, lessons, attendance history, **My profile** |
 | 8 | 3 Oct 2026 | Coordinators, student database and Excel import, settings, audit log |
-| 9 | being built | Notifications inbox, reports with CSV, centres |
+| 9 | 3 Oct 2026 | Notifications inbox, reports with CSV, centres; a fix for saving the open window on Settings |
 
 Volunteers' remarks and a volunteer's mock-up (the ring of circles around the drum) fed these rounds.
 
@@ -146,7 +146,7 @@ What was built each day. Dates are 2026.
 | **30 Sep** | Ticks with remarks; **announcements** for staff and students; posted by, edit, groups, private replies; the three **home screens**; photos and PDFs on announcements; **Android notifications**. First Android app built; the test web site online; volunteers begin testing |
 | **1 Oct** | Notifications tested on a real phone and by volunteers; fixes from the first end-to-end test; the Android app **updates itself** (EAS Update); UI/UX rounds 1 and 2 |
 | **2 Oct** | Rounds 3 to 6; a smaller Android app; "Facilitator" on the English screens; a new Android app for testers. Phase 2 assessments started on a branch. Rounds 5 and 6 published to test phones |
-| **3 Oct** | Round 7 (syllabus editor, lessons, attendance history, profile) and round 8 (coordinators, database and import, settings, audit log), published to test phones; promotion approval on a branch; round 9 and practice tools started; this guide |
+| **3 Oct** | Round 7 (syllabus editor, lessons, attendance history, profile) and round 8 (coordinators, database and import, settings, audit log), published to test phones; round 9 (notifications inbox, reports, centres); promotion approval on a branch; practice tools started; this guide |
 
 The full history is in git (`git log`), commit by commit.
 
@@ -166,12 +166,11 @@ Honesty about gaps is part of trust. As of 3 Oct 2026:
 
 **Still to build or set up for Phase 1**
 
-- Notifications inbox, reports and centres (round 9, being built).
+- Checking the centre's attendance area on phones (needs location in the next Android app).
 - Editing a student's details (name, phone, level) in the app.
 - Notifications on the live project and the live ("production") Android app, before the pilot.
 - Moving the service accounts (Expo, Firebase, Cloudflare) from the maintainer's personal account
   to a team account ([OPERATIONS.md "Handing over"](../OPERATIONS.md#handing-over)).
-- A fix for saving a changed open window on **Settings** (built in round 9).
 
 **Not chosen yet:** notifications on iPhone, the Play Store and App Store, the door tablet (Phase 2).
 

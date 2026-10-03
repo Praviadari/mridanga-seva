@@ -19,9 +19,11 @@ lessons, the coordinators, the whole student database, the settings and the audi
 6. [Student database](#student-database)
 7. [Import students from Excel or CSV](#import-students-from-excel-or-csv)
 8. [Settings](#settings)
-9. [Audit log](#audit-log)
-10. [Announcements and replies](#announcements-and-replies)
-11. [Coming later](#coming-later)
+9. [Reports](#reports)
+10. [Centres](#centres)
+11. [Audit log](#audit-log)
+12. [Announcements and replies](#announcements-and-replies)
+13. [Coming later](#coming-later)
 
 ## The first Facilitator account
 
@@ -46,7 +48,8 @@ The **Home** tab, from top to bottom:
 | **Students per status** | New, Active, Irregular, Inactive, Paused, Left, among every student |
 | **Follow-ups per coordinator** | For each coordinator: **Overdue: N · With the facilitator: N**. Tap to open the calls |
 | **Screens** (the ring) | The same modules as the coordinator home |
-| **Running the class** | **Coordinators** (roles for new sign-ups, mentees, duty hours), **Student database** (every record, and the Excel import), **Settings** (open window, this week, follow-up days), **Audit log** (who changed what, and when) |
+| **Running the class** | **Coordinators** (roles for new sign-ups, mentees, duty hours), **Student database** (every record, and the Excel import), **Settings** (open window, this week, follow-up days), **Audit log** (who changed what, and when), **Reports** (visits, statuses, calls and progress, with a CSV file), **Centres** (places, address, GPS point and attendance area) |
+| Bell on the header | Your **Notifications** inbox, with the unread count |
 
 The bottom tabs are the same as a coordinator's: **Home**, **Attendance**, **Students**, **Calls**,
 **News**. On a laptop they become a sidebar.
@@ -185,8 +188,28 @@ them the next morning. Every change is kept in the audit log.
 Tap **Save the settings**. The database checks every value (for example, Inactive must come after
 Irregular) ([DECISIONS.md #47](../DECISIONS.md)).
 
-> **Known fault (3 Oct 2026):** a changed **open window** is not saved by this screen; the other
-> settings are. The fix is built in round 9 and reaches the app with it.
+## Reports
+
+Open **Running the class → Reports**. It is the same screen coordinators know as
+[My reports](03-coordinator-guide.md#my-reports), but for **the whole class**. Under **Whose
+students**, choose **Everyone** or one coordinator's mentees; the student lines then show a mentor
+column. Choose the dates, read the totals, visits per week and month, calls and syllabus progress,
+and save the **CSV file** for Excel or Google Sheets ([DECISIONS.md #50](../DECISIONS.md)).
+
+## Centres
+
+Open **Running the class → Centres**: *Where the class meets, with its address and the area where
+attendance counts.* Today that is Abids; a new centre is a setting, not new code.
+
+- **Add a centre**, or tap one to change it: **Name**, **Address**, **Opens at** / **Closes at**.
+- **Attendance area**: paste the **GPS point or Google Maps link** (in Google Maps, press and hold
+  the place, copy the numbers or the long link). The app shows **Point read** and a **Check on
+  Google Maps** link. Set the **Radius in metres** around it.
+- **Switch off** / **Switch on**: a centre is never deleted, so its visits stay. At least one centre
+  must stay in use.
+
+The attendance area is stored now; phones will check it from the next Android app version, which
+adds location ([DECISIONS.md #51](../DECISIONS.md)).
 
 ## Audit log
 
@@ -210,8 +233,7 @@ As Facilitator you can post like a coordinator, and also:
 
 ## Coming later
 
-- **Reports** with CSV download, **Centres** with the class location and its attendance area, and
-  a **notifications inbox**: being built for Phase 1 (round 9, not yet in the app).
+- **Checking the attendance area on phones** (the centre's GPS area): with the next Android app.
 - **Assessments** (you create a piece to learn; coordinators pass it on, follow up and review),
   **promotion approval** (a mentor nominates, coordinators give feedback, you decide **Promote**,
   **Not yet** or **More feedback**), practice tools, events, polls, instruments, Ishtagoshti and
