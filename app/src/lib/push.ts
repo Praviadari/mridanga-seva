@@ -103,7 +103,10 @@ void notifications();
  */
 function screenOf(response: NotificationsModule.NotificationResponse | null): string | null {
   const url = response?.notification.request.content.data?.url;
-  return typeof url === 'string' && /^\/((staff|student)\/announcements|student\/assessments|staff\/assessments\/review)\/\d+$/.test(url) ? url : null;
+  return typeof url === 'string'
+    && /^\/(((staff|student)\/announcements|student\/assessments|staff\/assessments\/review|staff\/promotion)\/\d+|student\/progress)$/.test(url)
+    ? url
+    : null;
 }
 
 /**

@@ -60,6 +60,15 @@ const outbox = toOutboxMessages([
 check('assessment notifications open their screen; any other address is dropped', outbox.length === 2
   && outbox[0].data.url === '/student/assessments/4' && outbox[1].data.url === '/staff/assessments/review/4'
   && outbox[0].channelId === CHANNEL_ID, JSON.stringify(outbox.map((m) => m.data.url)));
+const promotionOutbox = toOutboxMessages([
+  { outbox_id: 4, title: 'Meera Iyer', body: 'Please give your feedback.', url: '/staff/promotion/7', token: 'T4' },
+  { outbox_id: 5, title: 'Mridanga Seva', body: 'Congratulations!', url: '/student/progress', token: 'T5' },
+  { outbox_id: 6, title: 'Odd', body: 'x', url: '/student/progress/7', token: 'T6' },
+  { outbox_id: 7, title: 'Odd', body: 'x', url: '/staff/promotion/', token: 'T7' },
+]);
+check('promotion notifications open the nomination or My progress; near misses are dropped',
+  promotionOutbox.map((m) => m.data.url).join(',') === '/staff/promotion/7,/student/progress',
+  JSON.stringify(promotionOutbox.map((m) => m.data.url)));
 
 console.log(failures ? `\n${failures} check(s) FAILED` : '\nAll checks passed');
 process.exit(failures ? 1 : 0);

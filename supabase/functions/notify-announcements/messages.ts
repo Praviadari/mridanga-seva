@@ -86,12 +86,15 @@ export type OutboxRow = {
   token: string;
 };
 
-/** The only screens an assessment notification may open (the app checks the same, src/lib/push.ts). */
-const OUTBOX_SCREEN = /^\/(student\/assessments|staff\/assessments\/review)\/\d+$/;
+/**
+ * The only screens a queued notification may open (the app checks the same, src/lib/push.ts): an
+ * assessment, a review, a promotion nomination (staff), My progress (a promoted student).
+ */
+const OUTBOX_SCREEN = /^\/((student\/assessments|staff\/assessments\/review|staff\/promotion)\/\d+|student\/progress)$/;
 
 /**
  * One message per queued notification (an assessment released, a reminder, a review, a recording
- * sent). A row asking for any other screen is dropped.
+ * sent; a promotion asked about, ready, decided). A row asking for any other screen is dropped.
  */
 export function toOutboxMessages(rows: OutboxRow[]): PushMessage[] {
   return rows.flatMap((row): PushMessage[] =>

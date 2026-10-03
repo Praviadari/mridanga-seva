@@ -1257,13 +1257,13 @@ await refuses('a material cannot list a file that is not in Storage', async () =
   addMaterial(guru, { kind: 'pdf', path: `${guru}/${await newId()}.pdf`, name: 'x.pdf', size: 1, level: 1 }));
 await refuses('the file of a material cannot be swapped', async () => asApp('authenticated', guru,
   `update materials set storage_path = $2 where id = $1`, [pdf.id, `${guru}/${await newId()}.pdf`]));
-const [arjunStudent] = await asOwner(`select level_id from students where profile_id = '${arjun}'`);
-const [lateStudent] = await asOwner(`select level_id from students where profile_id = '${late}'`);
-check('a student at or above the level opens the material file', arjunStudent.level_id >= 3 ? await canOpenMaterial(arjun, notation) : true,
-  `arjun level ${arjunStudent.level_id}`);
-check('a student below the level cannot see the material or open its file', lateStudent.level_id < 3
+const [arjunLevelRow] = await asOwner(`select level_id from students where profile_id = '${arjun}'`);
+const [lateLevelRow] = await asOwner(`select level_id from students where profile_id = '${late}'`);
+check('a student at or above the level opens the material file', arjunLevelRow.level_id >= 3 ? await canOpenMaterial(arjun, notation) : true,
+  `arjun level ${arjunLevelRow.level_id}`);
+check('a student below the level cannot see the material or open its file', lateLevelRow.level_id < 3
   ? !(await canOpenMaterial(late, notation)) && (await asApp('authenticated', late, `select id from materials where id = $1`, [pdf.id])).length === 0
-  : true, `late level ${lateStudent.level_id}`);
+  : true, `late level ${lateLevelRow.level_id}`);
 check('a student sees the lesson of level 1', (await asApp('authenticated', late, `select id from materials where id = $1`, [video.id])).length === 1);
 await refuses('a student cannot add a material', () => addMaterial(late, { kind: 'youtube', url: 'https://youtu.be/dQw4w9WgXcQ', level: 1 }));
 const [bareItem] = await asApp('authenticated', guru, `insert into syllabus_items (level_id, title) values (2, 'With a video') returning id`);
@@ -1291,6 +1291,135 @@ check('a student cannot change someone else\'s profile', (await asApp('authentic
 // Attendance history (S9): a student reads only their own visits.
 const lateVisits = await asApp('authenticated', late, `select distinct student_id from visits`);
 check('a student reads only their own visits', lateVisits.every((v) => v.student_id === registered.id), JSON.stringify(lateVisits));
+
+// ---------------------------------------------------------------- promotion approval (0014, Phase 2)
+// Meera (level 2, the coordinator's mentee) has the accepted level-up recording sub3 from above.
+const criteria = async (userId, studentId) =>
+  (await asApp('authenticated', userId, 'select promotion_criteria($1) as c', [studentId]))[0].c;
+await refusesWith('a student cannot run the criteria check', 'not_allowed', () => criteria(meera, meeraStudent));
+const pc0 = await criteria(coordinator, meeraStudent);
+check('criteria: level 2 → 3, the level-up recording found, 8 visits in 8 weeks needed', pc0.level_id === 2
+  && pc0.next_level_id === 3 && pc0.level_up?.submission_id === sub3 && pc0.level_up_ok === true
+  && pc0.visits_needed === 8 && pc0.visit_weeks === 8 && pc0.syllabus_percent === 100 && pc0.all_ok === false, JSON.stringify(pc0));
+await asOwner(`insert into student_progress (student_id, item_id)
+  select '${meeraStudent}', id from syllabus_items where level_id = 2 and retired_at is null on conflict do nothing`);
+await asOwner(`insert into visits (student_id, check_in, check_out, method)
+  select '${meeraStudent}', now() - make_interval(days => d * 5 + 1), now() - make_interval(days => d * 5 + 1) + interval '1 hour', 'manual'
+    from generate_series(1, 8) d`);
+const pc1 = await criteria(coordinator, meeraStudent);
+check('... with the syllabus ticked and 8 visits every criterion is met', pc1.syllabus_ok && pc1.visits_ok && pc1.all_ok
+  && pc1.syllabus_done === pc1.syllabus_total && pc1.visits >= 8 && pc1.taught_by.includes(coordinator), JSON.stringify(pc1));
+const readyFor = async (userId) => (await asApp('authenticated', userId, 'select student_id from promotion_ready_students()'))
+  .map((r) => r.student_id);
+check('Meera is ready to nominate for her mentor and the Guru, not for another coordinator',
+  (await readyFor(coordinator)).includes(meeraStudent) && (await readyFor(guru)).includes(meeraStudent)
+  && !(await readyFor(coordinator2)).includes(meeraStudent));
+check('Arjun (top level) is never on the ready list', !(await readyFor(guru)).includes(arjunStudent));
+const home = async (userId) => (await asApp('authenticated', userId, 'select promotion_home() as h'))[0].h;
+check('the coordinator\'s home counts one student ready', (await home(coordinator)).ready === 1);
+
+const nominate = (userId, studentId, reason, ask = []) => asApp('authenticated', userId,
+  'select nominate_for_promotion($1, $2, $3::uuid[]) as id', [studentId, reason, ask]).then((r) => r[0].id);
+await refusesWith('a student cannot nominate', 'not_allowed', () => nominate(meera, meeraStudent, 'Me'));
+await refusesWith('the top level cannot be nominated', 'top_level', () => nominate(coordinator, arjunStudent, 'Great'));
+await refusesWith('a nomination needs a reason', 'reason_required', () => nominate(coordinator, meeraStudent, '   '));
+const nom1 = await nominate(coordinator, meeraStudent, '  Steady in all taals.  ', [coordinator2, guru, meera, coordinator]);
+const [n1] = await asOwner(`select * from promotion_nominations where id = ${nom1}`);
+check('the coordinator nominates Meera for level 3 with the level-up recording; only other coordinators are asked',
+  n1.from_level === 2 && n1.to_level === 3 && Number(n1.submission_id) === sub3 && n1.reason === 'Steady in all taals.'
+  && n1.criteria.all_ok === true && n1.asked.length === 1 && n1.asked[0] === coordinator2 && n1.status === 'open',
+  JSON.stringify({ ...n1, criteria: undefined }));
+const answers = async (nom) => asOwner(`select coordinator_id, rating, comment from promotion_feedback where nomination_id = ${nom} order by created_at`);
+const a1 = await answers(nom1);
+check('... and the nominating coordinator\'s own answer is Ready', a1.length === 1 && a1[0].coordinator_id === coordinator
+  && a1[0].rating === 'ready', JSON.stringify(a1));
+const pushesTo = async (userId, url) => (await asOwner(`select count(*)::int as n from push_outbox
+  where profile_id = '${userId}' and url = '${url}'`))[0].n;
+check('the asked coordinator gets a notification', (await pushesTo(coordinator2, `/staff/promotion/${nom1}`)) === 1);
+await refusesWith('one open nomination per student', 'already_nominated', () => nominate(coordinator2, meeraStudent, 'Again'));
+check('a student sees no nominations or answers', (await asApp('authenticated', meera, 'select id from promotion_nominations')).length === 0
+  && (await asApp('authenticated', meera, 'select rating from promotion_feedback')).length === 0);
+check('another coordinator sees the nomination', (await asApp('authenticated', coordinator2, 'select id from promotion_nominations')).length >= 1);
+await refuses('the app cannot write a nomination directly', () => asApp('authenticated', coordinator,
+  `insert into promotion_nominations (student_id, from_level, to_level, reason) values ($1, 2, 3, 'x')`, [meeraStudent]));
+await refuses('... nor an answer', () => asApp('authenticated', coordinator2,
+  `insert into promotion_feedback (nomination_id, coordinator_id, rating, comment) values ($1, auth.uid(), 'ready', 'x')`, [nom1]));
+await refusesWith('a coordinator cannot change a student\'s level', 'level_guru_only', () =>
+  asApp('authenticated', coordinator, 'update students set level_id = 3 where id = $1', [meeraStudent]));
+
+const decide = (userId, nom, decision, note = null, after = null) => asApp('authenticated', userId,
+  'select decide_promotion($1, $2, $3, $4::date)', [nom, decision, note, after]);
+await refusesWith('the Guru cannot promote before 2 coordinators answered', 'feedback_needed', () => decide(guru, nom1, 'promote'));
+const answer = (userId, nom, rating, comment) => asApp('authenticated', userId,
+  'select give_promotion_feedback($1, $2, $3)', [nom, rating, comment]);
+await refusesWith('the Guru does not answer, the Guru decides', 'not_allowed', () => answer(guru, nom1, 'ready', 'Yes'));
+await refusesWith('an answer is ready, almost or not yet', 'rating_invalid', () => answer(coordinator2, nom1, 'maybe', 'Hm'));
+await refusesWith('an answer needs a comment', 'comment_required', () => answer(coordinator2, nom1, 'almost', ' '));
+await answer(coordinator2, nom1, 'almost', 'Tempo drifts in the fast part.');
+check('with 2 answers the Guru is told', (await pushesTo(guru, `/staff/promotion/${nom1}`)) === 1);
+await answer(coordinator2, nom1, 'ready', 'Better this week.');
+const a2 = await answers(nom1);
+check('answering again changes the answer; the Guru is not told twice', a2.length === 2 && a2[1].rating === 'ready'
+  && a2[1].comment === 'Better this week.' && (await pushesTo(guru, `/staff/promotion/${nom1}`)) === 1, JSON.stringify(a2));
+const [q1] = await asApp('authenticated', guru, 'select answers, ready, almost, not_yet, answers_needed, full_name from promotion_queue where id = $1', [nom1]);
+check('the queue shows the answers and how many are needed', q1?.answers === 2 && q1.ready === 2 && q1.almost === 0
+  && q1.answers_needed === 2 && q1.full_name === 'Meera Iyer', JSON.stringify(q1));
+check('the Guru\'s home counts one to decide', (await home(guru)).to_decide === 1);
+await refusesWith('a coordinator cannot decide', 'not_allowed', () => decide(coordinator, nom1, 'promote'));
+await refusesWith('a decision is promote, not yet or more', 'decision_invalid', () => decide(guru, nom1, 'maybe'));
+await refusesWith('More feedback says what about', 'note_required', () => decide(guru, nom1, 'more', ' '));
+await decide(guru, nom1, 'more', 'Listen to her chhanda once more.');
+const [m1] = await asOwner(`select status, more_note, ready_notified_at from promotion_nominations where id = ${nom1}`);
+check('More feedback keeps it open with the Guru\'s note', m1.status === 'open' && m1.more_note === 'Listen to her chhanda once more.'
+  && m1.ready_notified_at === null, JSON.stringify(m1));
+await answer(coordinator2, nom1, 'ready', 'Chhanda is fine.');
+check('... and the next answer tells the Guru again', (await pushesTo(guru, `/staff/promotion/${nom1}`)) === 2);
+await refusesWith('only the nominator or the Guru may withdraw', 'not_allowed', () =>
+  asApp('authenticated', coordinator2, 'select withdraw_nomination($1)', [nom1]));
+
+await decide(guru, nom1, 'promote', 'Well earned.');
+const [meeraNow] = await asOwner(`select level_id from students where id = '${meeraStudent}'`);
+const [hist] = await asOwner(`select from_level, to_level, approved_by from level_history where student_id = '${meeraStudent}' order by id desc limit 1`);
+const [n1After] = await asOwner(`select status, decided_by, level_history_id from promotion_nominations where id = ${nom1}`);
+check('Promote: Meera is at level 3, with a level-history row approved by the Guru', meeraNow.level_id === 3
+  && hist.from_level === 2 && hist.to_level === 3 && hist.approved_by === guru && n1After.status === 'promoted'
+  && n1After.decided_by === guru && n1After.level_history_id !== null, JSON.stringify({ meeraNow, hist, n1After }));
+check('... Meera and the nominator are told', (await pushesTo(meera, '/student/progress')) === 1
+  && (await pushesTo(coordinator, `/staff/promotion/${nom1}`)) === 1);
+await refusesWith('a decided nomination takes no more answers', 'nomination_closed', () => answer(coordinator2, nom1, 'ready', 'x'));
+await refusesWith('... nor a second decision', 'nomination_closed', () => decide(guru, nom1, 'promote'));
+
+// Not yet, and nominating again after the date.
+const nom2 = await nominate(guru, lateStudent, 'Ready early? Please look.');
+check('the Guru may nominate too, without an answer of their own; unmet criteria are kept',
+  (await answers(nom2)).length === 0 && (await asOwner(`select criteria from promotion_nominations where id = ${nom2}`))[0].criteria.all_ok === false);
+await refusesWith('Not yet needs guidance', 'note_required', () => decide(guru, nom2, 'not_yet', ' ', '2099-01-01'));
+await refusesWith('... and a date', 'date_required', () => decide(guru, nom2, 'not_yet', 'Practise the bols.'));
+await refusesWith('... in the future', 'date_past', () => decide(guru, nom2, 'not_yet', 'Practise the bols.', yesterday));
+await refusesWith('... at most a year ahead', 'date_too_far', () => decide(guru, nom2, 'not_yet', 'Practise the bols.', '2099-01-01'));
+await decide(guru, nom2, 'not_yet', 'Practise the bols.', tomorrow);
+const [n2] = await asOwner(`select status, guidance, renominate_after::text as d from promotion_nominations where id = ${nom2}`);
+check('Not yet keeps the guidance and the date', n2.status === 'not_yet' && n2.guidance === 'Practise the bols.' && n2.d === tomorrow,
+  JSON.stringify(n2));
+await refusesWith('before that date the student cannot be nominated again', 'too_soon', () => nominate(coordinator, lateStudent, 'Again'));
+await asOwner(`update promotion_nominations set renominate_after = today_ist() - 1 where id = ${nom2}`);
+const nom3 = await nominate(coordinator, lateStudent, 'Practised the bols.');
+await asApp('authenticated', coordinator, 'select withdraw_nomination($1)', [nom3]);
+check('after the date a new nomination is possible, and the nominator can withdraw it',
+  (await asOwner(`select status from promotion_nominations where id = ${nom3}`))[0].status === 'withdrawn');
+
+// Keeping the level-up recording: until 30 days after the decision.
+check('the level-up recording is kept right after the decision',
+  (await asApp('service_role', null, 'select * from claim_expired_submission_files()')).length === 0);
+await asOwner(`update promotion_nominations set decided_at = now() - interval '31 days' where id = ${nom1}`);
+const expiredLevelUp = await asApp('service_role', null, 'select * from claim_expired_submission_files()');
+check('... and handed for deleting 30 days after it', expiredLevelUp.length === 1 && expiredLevelUp[0].path === take2,
+  JSON.stringify(expiredLevelUp));
+const [{ ok: promotionFnsCallable }] = await asOwner(`select has_function_privilege('authenticated', 'queue_staff_push(uuid[], text, text, text)', 'execute')
+  or has_function_privilege('authenticated', 'promotion_tell_guru(bigint)', 'execute')
+  or has_function_privilege('authenticated', 'queue_student_promoted(uuid)', 'execute')
+  or has_function_privilege('anon', 'promotion_criteria(uuid)', 'execute') as ok`);
+check('app roles cannot run the promotion queue helpers; anon runs nothing', promotionFnsCallable === false);
 // ---------------------------------------------------------------- row-level security
 const seen =await asApp('authenticated', arjun, 'select full_name from students');
 check('student sees only their own student record', seen.length === 1 && seen[0].full_name === 'Arjun Rao');
