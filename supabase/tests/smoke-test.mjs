@@ -1011,7 +1011,7 @@ const guide = await filePath(guru, 'pdf');
 const demo = await filePath(guru, 'mp3');
 await aUpload(guru, guide);
 await aUpload(guru, demo, 900000);
-await refuses('a coordinator cannot upload assessment files', async () => aUpload(coordinator, await filePath(coordinator, 'mp3')));
+await refuses('a coordinator cannot upload assessment files (only voice notes, 0017)', async () => aUpload(coordinator, await filePath(coordinator, 'pdf')));
 await refuses('a file needs a known ending', async () => aUpload(guru, await filePath(guru, 'exe')));
 const draft = await createAssessment(guru, {
   media: [{ path: guide, name: ' Ekatala.pdf ', kind: 'pdf', size: 1 }, { path: demo, name: 'Demo.mp3', kind: 'audio', size: 1 }],
@@ -1767,6 +1767,63 @@ check('app roles cannot run the outbox trigger function', (await asOwner(`select
 check('table descriptions carry the Phase 2 numbers used on main', (await asOwner(`select
   obj_description('assessments'::regclass) like '%#52)%' and obj_description('promotion_nominations'::regclass) like '%#53)%'
   and obj_description('taals'::regclass) like '%#54)%' as ok`))[0].ok === true);
+
+// ---------------------------------------------------------------- media (0020, Phase 2)
+const addVideo = async (userId, url, panes, kind = 'video') => (await asApp('authenticated', userId,
+  `insert into materials (title, kind, url, level_id, panes) values ('Three angles', $1, $2, 1, $3) returning *`,
+  [kind, url, panes]))[0];
+const fileVideo = await addVideo(guru, ' https://cdn.example.org/lessons/kaherva-3-angles.mp4?v=2 ', 3);
+check('the Guru adds a lesson video file with 3 panes; link trimmed', fileVideo.kind === 'video' && fileVideo.panes === 3
+  && fileVideo.url === 'https://cdn.example.org/lessons/kaherva-3-angles.mp4?v=2' && fileVideo.approved_by === guru, JSON.stringify(fileVideo));
+await refusesWith('a video link must point to a video file', 'video_link_invalid', () =>
+  addVideo(guru, 'https://cdn.example.org/lessons/kaherva.html', 1));
+await refusesWith('... over https', 'video_link_invalid', () => addVideo(guru, 'http://cdn.example.org/a.mp4', 1));
+await refusesWith('a YouTube lesson has no panes (its player may not be zoomed)', 'panes_invalid', () =>
+  addVideo(guru, 'https://youtu.be/dQw4w9WgXcQ', 2, 'youtube'));
+await refuses('at most 4 panes', () => addVideo(guru, 'https://cdn.example.org/a.mp4', 5));
+check('a student of the level sees the video file', (await asApp('authenticated', late, 'select panes from materials where id = $1',
+  [fileVideo.id]))[0]?.panes === 3);
+await asApp('authenticated', guru, 'update materials set panes = 2 where id = $1', [fileVideo.id]);
+check('the Guru changes the panes', (await asOwner(`select panes from materials where id = ${fileVideo.id}`))[0].panes === 2);
+await asApp('authenticated', guru, 'delete from materials where id = $1', [fileVideo.id]);
+
+const voiceTask = await createAssessment(guru, { title: 'Voice note check', level: 1, sent: true });
+await release(coordinator, voiceTask.id, [meeraStudent]);
+const [meeraVoiceTask] = (await myAssignment(meera)).filter((a) => a.release_id !== null).slice(-1);
+const voiceSub = await submit(meera, meeraVoiceTask.id, null, 'https://youtu.be/meera-take-1');
+const voice = await filePath(coordinator2, 'm4a');
+await aUpload(coordinator2, voice, 250000);
+check('a coordinator uploads a voice note into their own folder', await aCanOpen(coordinator2, voice));
+const webVoice = await filePath(coordinator2, 'webm');
+await aUpload(coordinator2, webVoice, 1000);
+check('... also a browser recording (.webm)', await aCanOpen(coordinator2, webVoice));
+check('... and deletes an unused one', await aRemove(coordinator2, webVoice));
+await refuses('a coordinator still cannot upload a PDF', async () => aUpload(coordinator, await filePath(coordinator, 'pdf')));
+await refuses('... nor into someone else\'s folder', async () => aUpload(coordinator, await filePath(coordinator2, 'm4a')));
+check('another student cannot open the voice note before it is on a review', !(await aCanOpen(arjun, voice)));
+const reviewVoice = (userId, submission, scores, comment, outcome, voiceNote) => asApp('authenticated', userId,
+  'select review_submission($1, $2::int[], $3, $4, false, $5::jsonb)',
+  [submission, scores, comment, outcome, voiceNote ? JSON.stringify(voiceNote) : null]);
+await refusesWith('a voice note must be in Storage', 'file_missing', async () =>
+  reviewVoice(coordinator2, voiceSub, [2, 2], null, 'redo', { path: await filePath(coordinator2, 'm4a'), name: 'Voice note.m4a', kind: 'audio', size: 1 }));
+await refusesWith('... and the reviewer\'s own', 'file_not_yours', () =>
+  reviewVoice(coordinator, voiceSub, [2, 2], null, 'redo', { path: voice, name: 'Voice note.m4a', kind: 'audio', size: 1 }));
+await refusesWith('... and audio, not a PDF', 'file_invalid', () =>
+  reviewVoice(coordinator2, voiceSub, [2, 2], null, 'redo', { path: guide, name: 'x.pdf', kind: 'pdf', size: 1 }));
+await reviewVoice(coordinator2, voiceSub, [2, 3], '  ', 'redo', { path: voice, name: 'Voice note.m4a', kind: 'audio', size: 1 });
+const [meeraSeesVoice] = await asApp('authenticated', meera, `select voice_note, comment, outcome from assessment_submissions where id = $1`, [voiceSub]);
+check('a redo with only a voice note is saved; the student sees it', meeraSeesVoice?.outcome === 'redo'
+  && meeraSeesVoice.comment === null && meeraSeesVoice.voice_note?.path === voice && meeraSeesVoice.voice_note.size === 250000,
+  JSON.stringify(meeraSeesVoice));
+check('the student opens the voice note; another student cannot', await aCanOpen(meera, voice) && !(await aCanOpen(arjun, voice)));
+check('the coordinator cannot delete a voice note on a review', !(await aRemove(coordinator2, voice)));
+await asOwner(`update assessment_submissions set reviewed_at = now() - interval '31 days' where id = ${voiceSub}`);
+const expiredVoice = await asApp('service_role', null, 'select * from claim_expired_submission_files()');
+check('a voice note expires with its review (a link-only submission too)', expiredVoice.some((r) => r.path === voice
+  && Number(r.submission_id) === voiceSub), JSON.stringify(expiredVoice));
+const [{ ok: oldReviewGone }] = await asOwner(`select not exists (select 1 from pg_proc where proname = 'review_submission'
+  and pronargs = 5) and not has_function_privilege('anon', 'review_submission(bigint, int[], text, text, boolean, jsonb)', 'execute') as ok`);
+check('one review_submission (with the voice note), not callable by anon', oldReviewGone);
 // ---------------------------------------------------------------- row-level security
 const seen =await asApp('authenticated', arjun, 'select full_name from students');
 check('student sees only their own student record', seen.length === 1 && seen[0].full_name === 'Arjun Rao');
