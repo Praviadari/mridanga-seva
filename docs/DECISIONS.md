@@ -1461,3 +1461,61 @@ APKs built from it; phones on f9a084aa keep round 9 until they install the new A
 appear on the web version with the next test-site export. The Edge Function `notify-announcements`
 from the Phase 2 branches is on main and must be deployed again to TEST and LIVE. Slice 4
 (branch phase2-media) takes migrations from 0020 when it rebases on this merge.
+
+## 52. Media: the lesson-video player in a WebView, recording in the app — 3 Oct 2026
+
+**Status: proposed, on the branch `phase2-media` only** (from `phase2-practice`). The number follows
+main's last (#51); Phase 2 is being merged into main now, so it is renumbered after the merge's last
+(about #55), like the migration (0017 here → 0020 or later). Open points for Praveen are at the end.
+
+**Context.** The Screen List doc approves V3 (mirror, 0.5x / 0.75x, A-B loop, tap a pane to zoom) and
+V2 (lessons filmed from 2-3 phones and joined side by side). Lessons are unlisted YouTube links
+(`materials`). #43 put recording in the app into the next planned APK (expo-audio, added in slice 3),
+and left the coordinator's voice note on C14 waiting for it. S5 in the doc lists "record myself".
+
+**Decision.**
+- **One player page, in a WebView.** expo-video (SDK 57) plays files and streams (HLS, DASH), not
+  YouTube links, and pulling a stream out of YouTube breaks its terms. So V3 is one HTML page
+  (`lib/lesson-player-html.ts`) in an OS WebView on phones (**react-native-webview**, the one new
+  native package; in the next APK, already on the merge's list) and in an iframe in the browser.
+  YouTube plays in its own embedded player through the IFrame Player API; the team's own video file
+  plays in a `<video>` element in the same page. expo-video is not needed.
+- **YouTube's terms decide what each kind may do.** YouTube's developer policies (III.I: no
+  modifying the player or the video, no background playing) and its Required Minimum Functionality
+  (no changes to the player not in the API documentation, nothing drawn over it, at least 200 x 200
+  px, the app identified by its Referer) allow speed and seeking, which the API offers, but not
+  mirroring or zooming the picture. So a **YouTube lesson** has speed, ±5 s and the A-B loop, the
+  controls under the player, and a line saying why mirror and zoom are missing, with Open in YouTube.
+  A **video file** (new material kind `video`: an https link to the team's own .mp4 / .webm / .m4v /
+  .mov, with 1-4 camera angles side by side) also has mirror and tap-a-pane zoom. The video leaves
+  the screen paused.
+- **Speed** offers 0.5x / 0.75x / 1x when the video offers them (YouTube lists its own rates). The
+  **A-B loop** runs inside the page, so the bridge's delay does not shift it.
+- **Recording** uses expo-audio (mono, 96 kbit/s: .m4a on phones, about 0.7 MB a minute; .webm in the
+  browser). A take is heard before it is used and uploaded only when the form is sent. **S7**: "Record
+  here", up to 20 minutes, into the same bucket within #43's 50 MB and 10-a-day limits. **C14**: a
+  voice note, up to 5 minutes, sent with the review; a redo needs a comment or a voice note; it is
+  deleted with the recording (#43 keep time). Coordinators may now upload audio into their own folder,
+  10 files a day.
+- **Record myself** (S5): recordings stay on the phone (the newest 30, never uploaded; in the browser
+  only until the page is closed). "With the sound" starts the chosen metronome or taal from beat 1 as
+  recording starts and stores what played, so "Play with the sound" starts both together and a late
+  stroke is heard against the beat. Headphones keep the click out of the recording.
+
+**Why.** One page in a WebView covers both kinds of lesson with one code path that the browser can
+check. Following YouTube's terms keeps the team's channel and the app safe; the team keeps the
+mirror and zoom it asked for by keeping its own copy of the multi-angle lessons. Recording in the app
+replaces the WhatsApp round trip for assessments and feedback.
+
+**Consequences.** Migration `0017_media.sql` (TEST only; renumbered at the merge): `materials.kind`
+`video` + `panes`, `assessment_submissions.voice_note`, `review_submission` with `p_voice_note`,
+Storage rules and keep time (DATABASE.md "Media"). Smoke tests pass (section "media"). Phone tests
+with the next APK (react-native-webview, expo-audio): see NOTES.md "Phase 2 slice 4". YouTube could
+not be checked from the office network (FortiGate breaks TLS to youtube.com); its page logic was
+checked against a stand-in player, and a real YouTube check needs a hotspot or the phone.
+
+**Open for Praveen:** (1) where the team keeps its own lesson video files (Supabase's free 1 GB and
+50 MB a file are too small; e.g. Cloudflare R2 with 10 GB free, or any https host); until then
+mirror and zoom have nothing to work on; (2) the limits as built: 20 min recording, 5 min voice
+note, 30 kept recordings, 10 min Record-myself takes; (3) whether students should be able to send a
+Record-myself take straight to an open assessment (not built).

@@ -13,7 +13,7 @@
 import { Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Linking, StyleSheet, View } from 'react-native';
+import { Linking, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
@@ -25,7 +25,7 @@ import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { fetchMaterial, lessonSourceOf, type Material } from '@/data/materials';
 import type { PlayerCommand, PlayerEvent } from '@/lib/lesson-player-html';
-import { spacing, useTheme } from '@/theme/use-theme';
+import { maxDashboardWidth, spacing, useTheme } from '@/theme/use-theme';
 
 /** YouTube's embedded player must be at least 200 x 200 px (its required minimum functionality). */
 const MIN_YOUTUBE_HEIGHT = 200;
@@ -33,16 +33,18 @@ const SPEEDS = [0.5, 0.75, 1];
 /** The 'All' choice of the camera-angle chips. */
 const ALL_PANES = -1;
 
-/** 83.4 → "1:23". */
-export function clockText(seconds: number): string {
-  const s = Math.max(0, Math.floor(seconds));
-  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+/** 83.4 → "1:23"; with tenths (loop points, often a second apart) "1:23.4". */
+export function clockText(seconds: number, tenths = false): string {
+  const whole = Math.max(0, Math.floor(seconds));
+  const base = `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, '0')}`;
+  return tenths ? `${base}.${Math.floor((Math.max(0, seconds) * 10) % 10)}` : base;
 }
 
 /** The lesson-video player screen. */
 export function LessonPlayer() {
   const { t } = useTranslation();
   const { colors } = useTheme();
+  const window = useWindowDimensions();
   const { id: idParam } = useLocalSearchParams<{ id: string }>();
   const id = Number(idParam);
   const [loaded, setLoaded] = useState<Material | 'not_found' | null | undefined>(undefined);
@@ -127,7 +129,15 @@ export function LessonPlayer() {
     );
   }
 
-  const height = width === 0 ? MIN_YOUTUBE_HEIGHT : isFile ? Math.round(width / aspect) : Math.max(MIN_YOUTUBE_HEIGHT, Math.round((width * 9) / 16));
+  // A file keeps its own shape (one pane's when zoomed), at most 70 % of the window high, centred;
+  // YouTube is 16:9 and at least 200 px high.
+  // The box's width from onLayout; until it reports (react-native-web sometimes does not on a
+  // direct load), the window's width less the page margins.
+  const boxWidth = width > 0 ? width : Math.max(200, Math.min(window.width - 48, maxDashboardWidth));
+  const maxFileHeight = Math.max(MIN_YOUTUBE_HEIGHT, Math.round(window.height * 0.7));
+  const fileHeight = Math.min(Math.round(boxWidth / aspect), maxFileHeight);
+  const height = isFile ? fileHeight : Math.max(MIN_YOUTUBE_HEIGHT, Math.round((boxWidth * 9) / 16));
+  const frameWidth = isFile ? Math.min(boxWidth, Math.round(fileHeight * aspect)) : boxWidth;
   const send = (command: PlayerCommand) => frame.current?.send(command);
 
   const changeSpeed = (value: number) => {
@@ -170,7 +180,9 @@ export function LessonPlayer() {
     <Screen underHeader wide>
       {header}
       <View onLayout={(e) => setWidth(Math.round(e.nativeEvent.layout.width))} style={styles.frameBox}>
-        <LessonVideoFrame ref={frame} source={source} height={height} background={colors.background} onEvent={onEvent} />
+        <View style={{ width: frameWidth, maxWidth: '100%' }}>
+          <LessonVideoFrame ref={frame} source={source} height={height} background={colors.background} onEvent={onEvent} />
+        </View>
       </View>
       {error ? <Notice tone="error">{error}</Notice> : null}
 
@@ -207,8 +219,8 @@ export function LessonPlayer() {
         {loopA !== null ? (
           <AppText variant="label">
             {loopB !== null
-              ? t('lessonPlayer.looping', { a: clockText(loopA), b: clockText(loopB) })
-              : t('lessonPlayer.aSet', { a: clockText(loopA) })}
+              ? t('lessonPlayer.looping', { a: clockText(loopA, true), b: clockText(loopB, true) })
+              : t('lessonPlayer.aSet', { a: clockText(loopA, true) })}
           </AppText>
         ) : null}
       </Section>
@@ -266,6 +278,7 @@ const styles = StyleSheet.create({
   frameBox: {
     width: '100%',
     overflow: 'hidden',
+    alignItems: 'center',
   },
   row: {
     flexDirection: 'row',

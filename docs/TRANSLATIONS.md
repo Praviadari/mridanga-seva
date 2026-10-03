@@ -119,5 +119,15 @@ The code is in `app/src/i18n/index.ts`, `app/src/components/language-picker.tsx`
 - **Phase 2 merge (3 Oct 2026, [DECISIONS.md #55](DECISIONS.md)):** the locale files were merged key by key (1593 keys in each
   of en/te/hi, no key changed on both sides). `settings.promotionTitle` and `settings.promotionHint` (G10)
   were reworded, since promotion is now used; their Telugu and Hindi are drafts.
+- **Phase 2 media** (branch `phase2-media`, [DECISIONS.md #52](DECISIONS.md)): every Telugu and Hindi
+  line under `lessonPlayer.*`, `recording.*` and `recordMyself.*`, the new `materials.kinds.video`,
+  `materials.kinds.videoPanes`, `materials.errors.videoLinkInvalid`, `materials.errors.panesInvalid`,
+  `materials.videoLinkLabel`, `materials.videoLinkHint`, `materials.panesLabel`, `materials.panesHint`,
+  and the changed `assessments.submit.hint`, `assessments.review.commentHint`,
+  `assessments.errors.comment_required` are drafts for the review. Words to check first: "mirror"
+  అద్దంలా / दर्पण जैसा, "as filmed" తీసినట్లే / जैसा फ़िल्माया, "camera angle" కెమెరా కోణం / कैमरा
+  कोण, "A-B loop" kept as is, "voice note" వాయిస్ నోట్ / वॉइस नोट, "record myself" నన్ను నేను రికార్డ్
+  చేసుకోవడం / ख़ुद को रिकॉर्ड करें. `recording.fileName` and `recording.voiceNoteName` are the names of
+  the uploaded files and stay in English. Checked for mixed Telugu-Devanagari words on 3 Oct 2026.
 - Telugu and Devanagari letters are taller than Latin ones. The app's line heights allow for this;
   if a translated label looks cut off, report it with a screenshot.

@@ -43,6 +43,7 @@ export const LessonVideoFrame = forwardRef<LessonVideoFrameHandle, LessonVideoFr
       originWhitelist={['*']}
       source={{ html, baseUrl: PLAYER_BASE_URL }}
       style={[styles.frame, { height, backgroundColor: background }]}
+      onLoadEnd={() => view.current?.injectJavaScript('window.__lessonCommand && window.__lessonCommand({cmd:"hello"}); true;')}
       onMessage={(e) => {
         const event = readPlayerEvent(e.nativeEvent.data);
         if (event) onEvent(event);

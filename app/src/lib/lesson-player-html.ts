@@ -19,6 +19,7 @@ export type LessonSource =
 
 /** A command from the app to the page. */
 export type PlayerCommand =
+  | { cmd: 'hello' }
   | { cmd: 'play' }
   | { cmd: 'pause' }
   | { cmd: 'seek'; value: number }
@@ -81,6 +82,7 @@ export function lessonPlayerHtml(source: LessonSource, origin: string, backgroun
 (function () {
   var C = ${config};
   var stage = document.getElementById('stage');
+  var rates = [1];
   var yt = null, video = null, ready = false, loop = null, mirror = false, zoom = null;
   var panes = C.source.kind === 'file' ? Math.max(1, Math.min(4, C.source.panes || 1)) : 1;
 
@@ -121,15 +123,18 @@ export function lessonPlayerHtml(source: LessonSource, origin: string, backgroun
   }
 
   window.__lessonCommand = function (c) {
-    if (!ready || !c) return;
+    if (!c) return;
+    // The app asks again once its frame has loaded: a fast page may have spoken before it listened.
+    if (c.cmd === 'hello') { if (ready) { send({ event: 'ready', duration: length(), rates: rates }); sendAspect(); } return; }
+    if (!ready) return;
     if (c.cmd === 'play') { if (yt) yt.playVideo(); else if (video) { var p = video.play(); if (p && p.catch) p.catch(function () { send({ event: 'error', code: 'play_blocked' }); }); } }
     else if (c.cmd === 'pause') { if (yt) yt.pauseVideo(); else if (video) video.pause(); }
     else if (c.cmd === 'seek') seek(Math.max(0, Number(c.value) || 0));
     else if (c.cmd === 'rate') {
       var r = Number(c.value) || 1;
       if (yt) {
-        var rates = yt.getAvailablePlaybackRates() || [];
-        if (rates.indexOf(r) < 0) { send({ event: 'error', code: 'rate_unavailable' }); return; }
+        var offered = yt.getAvailablePlaybackRates() || [];
+        if (offered.indexOf(r) < 0) { send({ event: 'error', code: 'rate_unavailable' }); return; }
         yt.setPlaybackRate(r);
       } else if (video) video.playbackRate = r;
     }
@@ -161,9 +166,10 @@ export function lessonPlayerHtml(source: LessonSource, origin: string, backgroun
     send({ event: 'state', time: t, duration: length(), playing: playing(), rate: rate() });
   }, 100);
 
-  function becameReady(rates) {
+  function becameReady(list) {
     if (ready) return;
     ready = true;
+    rates = list;
     send({ event: 'ready', duration: length(), rates: rates });
   }
 
@@ -187,7 +193,8 @@ export function lessonPlayerHtml(source: LessonSource, origin: string, backgroun
     document.head.appendChild(api);
   } else {
     video = document.createElement('video');
-    video.src = C.source.url;
+    // A media fragment makes browsers paint the first frame before Play (else the box stays black).
+    video.src = C.source.url.indexOf('#') < 0 ? C.source.url + '#t=0.001' : C.source.url;
     video.preload = 'metadata';
     video.controls = false;
     video.setAttribute('playsinline', '');

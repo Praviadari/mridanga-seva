@@ -363,6 +363,34 @@ their beats, `lib/bols.ts` saying which head, zone, fingers and sound a bol is).
 no sound missed (183 clicks over 136.5 s), drift at the end −0.16 ms, worst error 0.16 ms (the detector's own resolution, about 7 samples), every interval 749.84-750.16 ms, each click 0.39-0.54 ms after its planned time (a constant: the click's 2 ms fade-in), 0 sounds scheduled late. The tab was in the background during the run, its timer slowed to about 1 a second, and the look-ahead grew to 1.5 s by itself. A plain `setInterval` metronome run beside it was off by up to 16 ms (539 ms in an earlier run while the page's main thread stalled). Tempo change 80 → 85 while playing: the next sounds came at 705.88 ms, none late; slow-down 50 % of 60 = 2000 ms a beat. In development builds the web player is on `globalThis.__practicePlayer` (schedule
 log, `late`, `minLead`) for such checks.
 
+## Media: lesson videos and recording (Phase 2, branch `phase2-media`)
+
+Not on main yet ([DECISIONS.md #52](DECISIONS.md)).
+
+- **V3 player = one HTML page** (`lib/lesson-player-html.ts`), shown in an OS WebView on phones
+  (`components/lesson-video-frame.tsx`, react-native-webview, next APK; loaded with base URL
+  `https://mridanga-seva.app` so YouTube sees a Referer) and in an iframe (`srcdoc`) in the browser
+  (`lesson-video-frame.web.tsx`), so both run the same code. The app sends commands (`play`, `pause`,
+  `seek`, `rate`, `mirror`, `zoom`, `loop`, `hello`) and the page answers with events (`ready`,
+  `state` 10 times a second, `aspect`, `zoom`, `error`): web by `postMessage` with a tag, phone by
+  `injectJavaScript` / `ReactNativeWebView.postMessage`. `hello` is sent when the frame has loaded,
+  because a fast page can speak before the app listens.
+- **YouTube** plays in YouTube's own embedded player through the IFrame Player API
+  (`setPlaybackRate`, `seekTo`, `getCurrentTime`); nothing is drawn over it, it is at least 200 px
+  high, and its picture is never transformed (YouTube's terms). **The team's own video file** plays in
+  a `<video>` element (a `#t=0.001` fragment paints the first frame), where mirror is `scaleX(-1)` on
+  the stage and zoom shows one of n side-by-side panes by making the video n times as wide and
+  shifting it; a tap maps to a pane (mirrored taps counted from the other side). The A-B loop runs
+  inside the page (back to A when the time passes B), so the bridge's delay does not matter.
+- **Recording** (`lib/recording.ts`, `components/audio-recorder.tsx`): expo-audio's recorder, mono
+  96 kbit/s; phones write .m4a (AAC), browsers .webm (Opus, MediaRecorder). iOS switches to recording
+  mode only while recording. A take is played back before it is used; it is uploaded only when the S7
+  or C14 form is sent (`recordingAsMedia` → `uploadMedia`). The upload re-types a browser Blob to the
+  bucket's type (`audio/webm` → `video/webm`).
+- **Record myself** keeps takes on the phone (`lib/my-recordings.ts`: `Paths.document/recordings/`,
+  `index.json` with what played; newest 30) — in the browser only in memory. Recording "with the
+  sound" restarts the metronome or taal from beat 1 as recording starts, so "Play with the sound"
+  later starts both together and they line up (give or take the device's latency).
 ## Phases
 
 | Phase | Adds | Target |

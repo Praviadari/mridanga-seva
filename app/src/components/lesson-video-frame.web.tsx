@@ -54,6 +54,7 @@ export const LessonVideoFrame = forwardRef<LessonVideoFrameHandle, LessonVideoFr
     title: 'lesson video',
     allow: 'autoplay; encrypted-media; fullscreen; picture-in-picture',
     allowFullScreen: true,
+    onLoad: () => frame.current?.contentWindow?.postMessage(JSON.stringify({ cmd: 'hello', tag: PLAYER_MESSAGE_TAG }), '*'),
     style: { width: '100%', height, border: 0, display: 'block', backgroundColor: background },
   });
 });

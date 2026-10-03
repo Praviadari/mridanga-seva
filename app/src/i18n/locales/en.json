@@ -1458,7 +1458,7 @@
     "submit": {
       "title": "Send your recording",
       "again": "Record it again and send it",
-      "hint": "Record with your phone's recorder or camera, then choose the file (at most 50 MB), or paste a link.",
+      "hint": "Record here in the app, or record with your phone's recorder or camera and choose the file (at most 50 MB), or paste a link.",
       "link": "Or a link (optional)",
       "linkHint": "For example an unlisted YouTube video or a Google Drive file. Starts with https://",
       "note": "Note for the coordinator (optional)",
@@ -1519,7 +1519,7 @@
       "already_reviewed": "Someone has already reviewed this recording.",
       "outcome_required": "Choose Accept or Ask for a redo.",
       "scores_invalid": "Give a score for every line, within its top score.",
-      "comment_required": "Write a comment so the student knows what to change.",
+      "comment_required": "Write a comment or record a voice note so the student knows what to change.",
       "comment_too_long": "The comment is at most 2000 characters.",
       "level_up_not_allowed": "Only an accepted level-up assessment can be sent to the facilitator."
     },
