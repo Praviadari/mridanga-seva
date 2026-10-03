@@ -1944,6 +1944,12 @@
     "playWithSound": "Play with the sound",
     "delete": "Delete",
     "deleteSure": "Yes, delete it",
-    "keepFailed": "The recording could not be kept on the phone."
+    "keepFailed": "The recording could not be kept on the phone.",
+    "sendToAssessment": "Send for an assessment",
+    "noOpenAssessment": "No assessment is waiting for a recording from you.",
+    "pickAssessment": "Which assessment?",
+    "assessmentChoice": "{{title}} (due {{date}})",
+    "takeGone": "That recording is no longer on this device.",
+    "attached": "Your recording from Record myself is attached. Listen to it, then Send."
   }
 }

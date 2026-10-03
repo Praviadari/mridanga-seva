@@ -3,14 +3,18 @@
 // it with the taal player: when "with the sound" is on, the metronome or taal starts from its first
 // beat the moment recording starts, and "Play with the sound" later starts the same sound and the
 // recording together, so a late or early stroke is heard against the beat. Headphones keep the
-// sound out of the recording.
+// sound out of the recording. A student may send a take to an assessment waiting for them: it opens
+// S7 with the take attached, to listen to and send (uploaded only then).
 
 import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
+import { router } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Platform, StyleSheet, View } from 'react-native';
 
-import { formatDateTimeInIndia } from '@/lib/dates';
+import { useAuth } from '@/auth/auth-provider';
+import { fetchMyAssessments, OPEN_STATUSES, type MyAssessmentItem } from '@/data/assessments';
+import { formatDateTimeInIndia, formatDayMonthYear } from '@/lib/dates';
 import {
   deleteMyRecording,
   keepMyRecording,
@@ -142,6 +146,10 @@ function RecordingRow({
 }) {
   const { t } = useTranslation();
   const { colors } = useTheme();
+  const { profile } = useAuth();
+  const isStudent = profile?.role === 'student';
+  // Sending to an assessment: undefined = not asked, null = could not load, [] = none waiting.
+  const [openWork, setOpenWork] = useState<MyAssessmentItem[] | null | undefined>(undefined);
   const player = useAudioPlayer(recording.uri);
   const status = useAudioPlayerStatus(player);
   // True while the recording plays beside its sound (the sound stops with it).
@@ -195,6 +203,16 @@ function RecordingRow({
             ) : null}
           </>
         )}
+        {isStudent && openWork === undefined ? (
+          <Button
+            variant="secondary"
+            icon="send"
+            label={t('recordMyself.sendToAssessment')}
+            onPress={() =>
+              void fetchMyAssessments().then((list) => setOpenWork(list ? list.filter((a) => OPEN_STATUSES.includes(a.status)) : null))
+            }
+          />
+        ) : null}
         {asking ? (
           <>
             <Button icon="delete" label={t('recordMyself.deleteSure')} onPress={() => void onDelete()} />
@@ -204,6 +222,24 @@ function RecordingRow({
           <Button variant="link" icon="delete" label={t('recordMyself.delete')} onPress={() => setAsking(true)} />
         )}
       </View>
+      {openWork === null ? <Notice tone="error">{t('common.networkError')}</Notice> : null}
+      {openWork && openWork.length === 0 ? <AppText tone="muted">{t('recordMyself.noOpenAssessment')}</AppText> : null}
+      {openWork && openWork.length > 0 ? (
+        <View style={styles.actions}>
+          <AppText variant="small" tone="muted">
+            {t('recordMyself.pickAssessment')}
+          </AppText>
+          {openWork.map((a) => (
+            <Button
+              key={a.assignmentId}
+              variant="link"
+              icon="assessment"
+              label={t('recordMyself.assessmentChoice', { title: a.title, date: formatDayMonthYear(a.dueOn) })}
+              onPress={() => router.push({ pathname: '/student/assessments/[id]', params: { id: String(a.assignmentId), take: recording.id } })}
+            />
+          ))}
+        </View>
+      ) : null}
     </View>
   );
 }

@@ -1464,9 +1464,9 @@ from the Phase 2 branches is on main and must be deployed again to TEST and LIVE
 
 ## 52. Media: the lesson-video player in a WebView, recording in the app — 3 Oct 2026
 
-**Status: proposed, on the branch `phase2-media` only** (from `phase2-practice`). The number follows
+**Status: decided by Praveen 3 Oct 2026 (answers at the end), on the branch `phase2-media` only** (from `phase2-practice`). The number follows
 main's last (#51); Phase 2 is being merged into main now, so it is renumbered after the merge's last
-(about #55), like the migration (0017 here → 0020 or later). Open points for Praveen are at the end.
+(about #55), like the migration (0017 here → 0020 or later).
 
 **Context.** The Screen List doc approves V3 (mirror, 0.5x / 0.75x, A-B loop, tap a pane to zoom) and
 V2 (lessons filmed from 2-3 phones and joined side by side). Lessons are unlisted YouTube links
@@ -1500,7 +1500,9 @@ and left the coordinator's voice note on C14 waiting for it. S5 in the doc lists
 - **Record myself** (S5): recordings stay on the phone (the newest 30, never uploaded; in the browser
   only until the page is closed). "With the sound" starts the chosen metronome or taal from beat 1 as
   recording starts and stores what played, so "Play with the sound" starts both together and a late
-  stroke is heard against the beat. Headphones keep the click out of the recording.
+  stroke is heard against the beat. Headphones keep the click out of the recording. A student can
+  **send a take to an assessment** waiting for them: it opens S7 with the take attached, to listen to
+  and send (uploaded only then, within the same limits).
 
 **Why.** One page in a WebView covers both kinds of lesson with one code path that the browser can
 check. Following YouTube's terms keeps the team's channel and the app safe; the team keeps the
@@ -1514,8 +1516,13 @@ with the next APK (react-native-webview, expo-audio): see NOTES.md "Phase 2 slic
 not be checked from the office network (FortiGate breaks TLS to youtube.com); its page logic was
 checked against a stand-in player, and a real YouTube check needs a hotspot or the phone.
 
-**Open for Praveen:** (1) where the team keeps its own lesson video files (Supabase's free 1 GB and
-50 MB a file are too small; e.g. Cloudflare R2 with 10 GB free, or any https host); until then
-mirror and zoom have nothing to work on; (2) the limits as built: 20 min recording, 5 min voice
-note, 30 kept recordings, 10 min Record-myself takes; (3) whether students should be able to send a
-Record-myself take straight to an open assessment (not built).
+**Praveen's answers (3 Oct 2026).** (1) The team's own lesson video files go to **Cloudflare R2**.
+Its free tier is 10 GB-month of storage, 1 million writes and 10 million reads a month, and no
+charge for downloads; but R2 is a paid product with a free allowance: it can only be switched on
+with a payment method on file (a card or PayPal; Cloudflare checks it with a temporary hold of about
+US$5, not a charge), and use above the allowance is billed, not stopped. For the pilot the public
+r2.dev address works but is rate-limited and meant for development; for real use Cloudflare wants
+the bucket behind a domain on Cloudflare (a domain costs about a few hundred rupees a year). Videos
+are uploaded in the Cloudflare dashboard, and the link is pasted into G5 as a Video file. (2) The
+limits stay as built. (3) Sending a Record-myself take to an assessment: yes, built (above); it uses
+the existing Supabase bucket and needs no paid plan.

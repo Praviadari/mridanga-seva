@@ -4,19 +4,20 @@
 // or a recording made here in the app (slice 4, expo-audio), or a link (an unlisted YouTube video,
 // Google Drive ...), with a note. After the review: the
 // score per rubric line, the coordinator's comment, and for a redo the way to send it again.
+// Opened from S5 Record myself with ?take=<recording id>, that take is attached, ready to listen to and send.
 // Opening it tells the coordinator it was seen. The address holds the assignment id, so a push
 // notification opens it.
 // Data: src/data/assessments.ts, files src/data/assessment-files.ts (migration 0016).
 
 import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
 import { useAuth } from '@/auth/auth-provider';
 import { AppText } from '@/components/app-text';
 import { AssignmentChips, MediaList, ScoreLines } from '@/components/assessment-parts';
-import { AudioRecorderPanel } from '@/components/audio-recorder';
+import { AudioRecorderPanel, PlayButton } from '@/components/audio-recorder';
 import { Button } from '@/components/button';
 import { Icon } from '@/components/icon';
 import { LoadingCards } from '@/components/loading-cards';
@@ -45,6 +46,8 @@ import {
 } from '@/data/assessments';
 import { fileSizeText } from '@/i18n/labels';
 import { formatDateTimeInIndia, formatDayMonthYear } from '@/lib/dates';
+import { listMyRecordings } from '@/lib/my-recordings';
+import { takeOf } from '@/lib/recording';
 import { radius, spacing, useTheme } from '@/theme/use-theme';
 
 /** Longest recording made in the app for an assessment: 20 minutes (about 14 MB on a phone). */
@@ -56,7 +59,7 @@ export default function MyAssessmentScreen() {
   const { colors } = useTheme();
   const { profile } = useAuth();
   const myId = profile?.id ?? '';
-  const { id: idParam } = useLocalSearchParams<{ id: string }>();
+  const { id: idParam, take: takeParam } = useLocalSearchParams<{ id: string; take?: string }>();
   const id = Number(idParam);
   const [loaded, setLoaded] = useState<AssignmentDetail | 'not_found' | null | undefined>(undefined);
   const [file, setFile] = useState<PickedMedia | null>(null);
@@ -68,6 +71,9 @@ export default function MyAssessmentScreen() {
   const [saving, setSaving] = useState(false);
   const [sent, setSent] = useState(false);
   const [recorderOpen, setRecorderOpen] = useState(false);
+  const [fromRecordMyself, setFromRecordMyself] = useState(false);
+  // The Record-myself take named in the address is attached once.
+  const takeUsed = useRef(false);
   // True once "seen" went out, so coming back does not send it again.
   const seenSent = useRef(false);
 
@@ -86,6 +92,24 @@ export default function MyAssessmentScreen() {
       void load();
     }, [load]),
   );
+
+  useEffect(() => {
+    if (!takeParam || takeUsed.current) return;
+    takeUsed.current = true;
+    void (async () => {
+      const kept = (await listMyRecordings()).find((r) => r.id === takeParam);
+      if (!kept) {
+        setPickError(t('recordMyself.takeGone'));
+        return;
+      }
+      const media = await recordingAsMedia(await takeOf(kept.uri, kept.durationMs, kept.recordedAt), t('recording.fileName'));
+      if (typeof media === 'string') setPickError(t(media, { max: fileSizeText(t, MAX_MEDIA_BYTES) }));
+      else {
+        setFile(media);
+        setFromRecordMyself(true);
+      }
+    })();
+  }, [takeParam, t]);
 
   const header = <Stack.Screen options={{ title: t('assessments.detail.title') }} />;
 
@@ -180,6 +204,7 @@ export default function MyAssessmentScreen() {
                   {fileSizeText(t, file.size)}
                 </AppText>
               </View>
+              {fromRecordMyself ? <PlayButton uri={file.uri} /> : null}
               <Button variant="link" label={t('announcements.files.remove')} onPress={() => setFile(null)} />
             </View>
           ) : (
@@ -205,6 +230,7 @@ export default function MyAssessmentScreen() {
               <Button variant="secondary" icon="videoFile" label={t('assessments.files.addGalleryVideo')} onPress={() => void pick(() => pickGalleryVideo())} />
             </View>
           )}
+          {fromRecordMyself && file ? <Notice tone="info">{t('recordMyself.attached')}</Notice> : null}
           {pickError ? <Notice tone="error">{pickError}</Notice> : null}
           <TextField
             label={t('assessments.submit.link')}

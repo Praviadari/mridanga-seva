@@ -120,7 +120,7 @@ The code is in `app/src/i18n/index.ts`, `app/src/components/language-picker.tsx`
   of en/te/hi, no key changed on both sides). `settings.promotionTitle` and `settings.promotionHint` (G10)
   were reworded, since promotion is now used; their Telugu and Hindi are drafts.
 - **Phase 2 media** (branch `phase2-media`, [DECISIONS.md #52](DECISIONS.md)): every Telugu and Hindi
-  line under `lessonPlayer.*`, `recording.*` and `recordMyself.*`, the new `materials.kinds.video`,
+  line under `lessonPlayer.*`, `recording.*` and `recordMyself.*` (including `recordMyself.sendToAssessment` … `attached`), the new `materials.kinds.video`,
   `materials.kinds.videoPanes`, `materials.errors.videoLinkInvalid`, `materials.errors.panesInvalid`,
   `materials.videoLinkLabel`, `materials.videoLinkHint`, `materials.panesLabel`, `materials.panesHint`,
   and the changed `assessments.submit.hint`, `assessments.review.commentHint`,
