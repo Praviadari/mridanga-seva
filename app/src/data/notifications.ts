@@ -11,8 +11,8 @@ import { belongsTo } from '@/auth/requested-path';
 import type { IconName } from '@/components/icon';
 import { supabase } from '@/lib/supabase';
 
-/** What a notice is about: an announcement, or a Phase 2 assessment or promotion notice. */
-export type NoticeKind = 'announcement' | 'assessment' | 'promotion' | 'notice';
+/** What a notice is about: an announcement, or a Phase 2 assessment, promotion, event or poll notice. */
+export type NoticeKind = 'announcement' | 'assessment' | 'promotion' | 'event' | 'poll' | 'notice';
 
 /** One notice in the inbox. */
 export type Notice = {
@@ -75,12 +75,13 @@ export async function markNoticesRead(ids?: number[]): Promise<boolean> {
 
 /**
  * The screens a push or a notice may open on this version of the app: an announcement, a student's
- * assessment, a recording to review, a nomination, or My progress (a promotion). src/lib/push.ts
+ * assessment, a recording to review, a nomination, My progress (a promotion), an event or a poll
+ * (migration 0021). src/lib/push.ts
  * uses the same list. A notice for a screen this version does not have opens nothing; the inbox
  * says so.
  */
 export function isNoticeScreen(url: string): boolean {
-  return /^\/(((staff|student)\/announcements|student\/assessments|staff\/assessments\/review|staff\/promotion)\/\d+|student\/progress)$/.test(url);
+  return /^\/(((staff|student)\/(announcements|events|polls)|student\/assessments|staff\/assessments\/review|staff\/promotion)\/\d+|student\/progress)$/.test(url);
 }
 
 /** The screen to open for `notice`, or null when this version cannot open it (or not in this area). */
@@ -97,6 +98,10 @@ export function noticeIcon(kind: NoticeKind): IconName {
       return 'promote';
     case 'announcement':
       return 'news';
+    case 'event':
+      return 'events';
+    case 'poll':
+      return 'poll';
     default:
       return 'bell';
   }

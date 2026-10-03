@@ -586,10 +586,11 @@ begin
 end $$;
 
 -- Per event the caller may open: how many it is for, the answers, performers and attendance, and
--- the caller's own answer, part and attendance. Students see these counts, never names.
+-- the caller's own answer, part and attendance, and whether the event is for them (they may answer).
+-- Students see these counts, never names.
 create or replace function event_counts(p_ids bigint[])
 returns table (event_id bigint, addressed int, going int, maybe int, not_going int, performers int, attended int,
-               my_response text, my_part text, i_attended boolean)
+               my_response text, my_part text, i_attended boolean, can_answer boolean)
 language sql stable security definer set search_path = public as $$
   select e.id,
          (select count(*)::int from event_people(e.id)),
@@ -600,7 +601,8 @@ language sql stable security definer set search_path = public as $$
          (select count(*)::int from event_attendance ea where ea.event_id = e.id),
          (select r.response from event_rsvps r where r.event_id = e.id and r.profile_id = auth.uid()),
          (select ep.part from event_performers ep where ep.event_id = e.id and ep.student_id = my_student_id()),
-         exists (select 1 from event_attendance ea where ea.event_id = e.id and ea.student_id = my_student_id())
+         exists (select 1 from event_attendance ea where ea.event_id = e.id and ea.student_id = my_student_id()),
+         event_visible_to(e.id, auth.uid())
     from events e
    where e.id = any (coalesce(p_ids, '{}'))
      and coalesce(my_role() in ('guru', 'coordinator', 'student'), false)

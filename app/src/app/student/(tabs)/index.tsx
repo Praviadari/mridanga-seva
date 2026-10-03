@@ -3,7 +3,8 @@
 // syllabus progress, and the latest announcements with the ones not opened yet marked "New"
 // (S10), then the language switch, Sign out and the app version (components/account-footer.tsx).
 // On the Android app, "A new version is ready" shows under the greeting once an update is
-// downloaded (components/update-notice.tsx). Read-only.
+// downloaded (components/update-notice.tsx). Under the ring: the next event and the polls waiting
+// for a vote (Phase 2 slice 5, src/data/events.ts, polls.ts). Read-only.
 // Numbers: student_home() through src/data/home.ts; announcements: src/data/announcements.ts.
 // It loads again each time it comes back into view, so "New" goes once an announcement is opened.
 
@@ -17,6 +18,7 @@ import { AnnouncementCard } from '@/components/announcement-card';
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { EmptyState } from '@/components/empty-state';
+import { ListRow } from '@/components/list-row';
 import { HomeHeader } from '@/components/home-header';
 import { LoadingCards } from '@/components/loading-cards';
 import { ModuleRing, type Module } from '@/components/module-ring';
@@ -27,7 +29,9 @@ import { Section } from '@/components/section';
 import { StatGrid, StatTile } from '@/components/stat-tile';
 import { UpdateNotice } from '@/components/update-notice';
 import { fetchMyAnnouncements, type MyAnnouncementList } from '@/data/announcements';
+import { fetchNextEvent, placeText, whenText, type EventItem, type EventNames } from '@/data/events';
 import { fetchStudentHome, type StudentHome } from '@/data/home';
+import { fetchPollsToVote } from '@/data/polls';
 import { audienceName, authorLine, lastVisitText, levelName } from '@/i18n/labels';
 import { formatDateTimeInIndia } from '@/lib/dates';
 
@@ -43,11 +47,21 @@ export default function StudentHomeScreen() {
   // undefined = loading, null = could not load.
   const [home, setHome] = useState<StudentHome | 'not_found' | null | undefined>(undefined);
   const [news, setNews] = useState<MyAnnouncementList | null | undefined>(undefined);
+  // Phase 2 slice 5: the next event and how many polls wait for a vote (null = none / not known).
+  const [nextEvent, setNextEvent] = useState<{ item: EventItem; names: EventNames } | null>(null);
+  const [pollsToVote, setPollsToVote] = useState(0);
 
   const load = useCallback(async () => {
-    const [loadedHome, loadedNews] = await Promise.all([fetchStudentHome(), fetchMyAnnouncements(myId)]);
+    const [loadedHome, loadedNews, loadedEvent, loadedPolls] = await Promise.all([
+      fetchStudentHome(),
+      fetchMyAnnouncements(myId),
+      fetchNextEvent(),
+      fetchPollsToVote(),
+    ]);
     setHome(loadedHome);
     setNews(loadedNews);
+    setNextEvent(loadedEvent);
+    setPollsToVote(loadedPolls);
   }, [myId]);
 
   useFocusEffect(
@@ -59,8 +73,8 @@ export default function StudentHomeScreen() {
   const unread = news ? news.announcements.filter((a) => !a.readByMe).length : 0;
 
   // The ring of the student's screens (docs/DECISIONS.md #41, #44): the three tabs' subjects plus My
-  // progress (S4), Assessments (S7, Phase 2), My attendance (S9) and My profile (A3), and Events as
-  // the one module not built yet.
+  // progress (S4), Assessments (S7, Phase 2), Practice (S5), My attendance (S9), My profile (A3) and
+  // Events and polls (S11, S12).
   const modules: Module[] = [
     { key: 'qr', icon: 'qr', tone: 'blue', label: t('tabs.myQr'), onPress: () => router.push('/student/my-qr') },
     { key: 'news', icon: 'news', tone: 'orange', label: t('announcements.title'), onPress: () => router.push('/student/announcements') },
@@ -71,13 +85,8 @@ export default function StudentHomeScreen() {
     { key: 'practice', icon: 'practice', tone: 'pink', label: t('practice.module'), onPress: () => router.push('/student/practice') },
     { key: 'visits', icon: 'visits', tone: 'teal', label: t('visitHistory.module'), onPress: () => router.push('/student/visits') },
     { key: 'profile', icon: 'profile', tone: 'green', label: t('myProfile.title'), onPress: () => router.push('/student/profile') },
-    {
-      key: 'events',
-      icon: 'events',
-      label: t('modules.events'),
-      soon: true,
-      onPress: () => router.push({ pathname: '/student/coming-soon', params: { module: 'events' } }),
-    },
+    // Phase 2 slice 5: events and polls (S11, S12; docs/DECISIONS.md #57).
+    { key: 'events', icon: 'events', tone: 'purple', label: t('events.module'), onPress: () => router.push('/student/events') },
   ];
 
   return (
@@ -135,6 +144,34 @@ export default function StudentHomeScreen() {
       ) : null}
 
       <ModuleRing title={t('home.staff.shortcuts')} modules={modules} />
+
+      {nextEvent || pollsToVote > 0 ? (
+        <Section icon="events" title={t('events.home.title')}>
+          {nextEvent ? (
+            <ListRow
+              leading="events"
+              title={nextEvent.item.event.title}
+              details={[
+                whenText(nextEvent.item.event),
+                ...(placeText(nextEvent.item.event, nextEvent.names) ? [placeText(nextEvent.item.event, nextEvent.names)] : []),
+                nextEvent.item.counts.myResponse
+                  ? t('events.list.myAnswer', { answer: t(`events.responses.${nextEvent.item.counts.myResponse}`) })
+                  : t('events.list.pleaseAnswer'),
+              ]}
+              highlighted={nextEvent.item.counts.myResponse === 'going'}
+              onPress={() => router.push({ pathname: '/student/events/[id]', params: { id: String(nextEvent.item.event.id) } })}
+            />
+          ) : null}
+          {pollsToVote > 0 ? (
+            <ListRow
+              leading="poll"
+              title={t('events.home.pollsToVote', { n: pollsToVote })}
+              highlighted
+              onPress={() => router.push({ pathname: '/student/events', params: { tab: 'polls' } })}
+            />
+          ) : null}
+        </Section>
+      ) : null}
 
       {news ? (
         <Section
