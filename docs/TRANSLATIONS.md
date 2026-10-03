@@ -116,5 +116,8 @@ The code is in `app/src/i18n/index.ts`, `app/src/components/language-picker.tsx`
   सम · ताली · खाली; "beat" as బీట్ / मात्रा; "practice" అభ్యాసం / अभ्यास; "placeholder" తాత్కాలికం /
   अस्थायी; the strokes' fingers (`practice.touch.*`) and open / damped (మోగుతుంది · మూసిన / गूँजता
   · बंद). Checked for mixed Telugu-Devanagari words on 3 Oct 2026.
+- **Phase 2 merge (3 Oct 2026, [DECISIONS.md #55](DECISIONS.md)):** the locale files were merged key by key (1593 keys in each
+  of en/te/hi, no key changed on both sides). `settings.promotionTitle` and `settings.promotionHint` (G10)
+  were reworded, since promotion is now used; their Telugu and Hindi are drafts.
 - Telugu and Devanagari letters are taller than Latin ones. The app's line heights allow for this;
   if a translated label looks cut off, report it with a screenshot.

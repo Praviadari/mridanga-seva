@@ -183,7 +183,7 @@ them the next morning. Every change is kept in the audit log.
 | **"This week" on the home screens** | **From Monday** or **Last 7 days** |
 | **Follow-up** | **Days without a visit before Irregular** (14), **Days without a visit before Inactive** (30), **Days to make the call** (3), **Days before trying again when not reachable**, **Tries before the facilitator is asked** |
 | **New joiners** | **Weeks a student counts as a new joiner** (4) |
-| **Promotion criteria (not used yet)** | Kept ready for Phase 2: visits needed, in how many weeks, share of the syllabus ticked, whether a level-up assessment is needed, and how many coordinators must answer |
+| **Promotion criteria** | Checked when a student is nominated (Phase 2); they advise, you decide: visits needed, in how many weeks, share of the syllabus ticked, whether a level-up assessment is needed, and how many coordinators must answer |
 
 Tap **Save the settings**. The database checks every value (for example, Inactive must come after
 Irregular) ([DECISIONS.md #47](../DECISIONS.md)).
@@ -236,8 +236,9 @@ As Facilitator you can post like a coordinator, and also:
 - **Checking the attendance area on phones** (the centre's GPS area): with the next Android app.
 - **Assessments** (you create a piece to learn; coordinators pass it on, follow up and review),
   **promotion approval** (a mentor nominates, coordinators give feedback, you decide **Promote**,
-  **Not yet** or **More feedback**), practice tools, events, polls, instruments, Ishtagoshti and
-  the fund: Phase 2, being built on branches. See
+  **Not yet** or **More feedback**) and practice tools are built (Phase 2); on Android they come
+  with the next app version. Events, polls, instruments, Ishtagoshti and the fund: Phase 2, later.
+  See
   [How it was built](07-how-it-was-built.md#phases-and-dates).
 
 ---

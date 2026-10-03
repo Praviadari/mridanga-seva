@@ -216,11 +216,11 @@ Announcements and replies are shown exactly as people wrote them; the app does n
 
 ## Coming later
 
-These are planned or being built; they are not in the app yet:
-
-- **Events**, **assessments** (the Facilitator gives a piece to learn; you submit a recording),
-  **practice tools** (metronome, taal player, a picture of both drum heads lighting up per stroke)
-  and a **practice log**: Phase 2, being built on separate branches. See
+- **Assessments** (the Facilitator gives a piece to learn; you submit a recording), **practice
+  tools** (metronome, taal player, a picture of both drum heads lighting up per stroke) and a
+  **practice log** are built (Phase 2). On the Android app they come with the next app version,
+  which you install once; on the web version with its next update.
+- **Events** are planned, not in the app yet. See
   [How it was built](07-how-it-was-built.md#phases-and-dates).
 
 ---

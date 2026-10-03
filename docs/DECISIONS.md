@@ -1414,3 +1414,50 @@ fingerprint changes, so from the Phase 2 merge on, main's JS reaches only the ne
 sound on phones is tested with that APK. Not in this slice (slice 4, native): V3 player controls
 (mirror, 0.5x / 0.75x, A-B loop: a WebView or expo-video), "record myself", in-app recording for
 assessments. The Telugu and Hindi lines are drafts (TRANSLATIONS.md).
+
+## 55. Phase 2 merges into main; one new APK carries every native package it needs — 3 Oct 2026
+
+**Context.** Phase 2 slices 1-3 (assessments, promotion, practice tools) were built on their own
+branches, with migrations 0012, 0014_promotion and 0016_practice and DECISIONS #43, #45 and #49,
+while main took 0013-0015 and #44-#51 for Phase 1 rounds 7-9. Praveen decided on 3 Oct 2026 (in the
+lead chat) to merge all three slices into main now and build a new APK. expo-audio (slice 3) changes
+the Android fingerprint, so after the merge no update from main reaches the installed APK f9a084aa
+(fingerprint 38ce7d9d). Round 9 was published to that APK first (update bf11f742 "Round-9").
+
+**Decision.**
+- **Renumbered after main's last**, in the order the slices were built: migrations 0012_assessments
+  → **0016_assessments**, 0014_promotion → **0017_promotion**, 0016_practice → **0018_practice**
+  (git mv; the SQL is unchanged, only the header comments), and DECISIONS #43 → **#52**, #45 →
+  **#53**, #49 → **#54**; each entry says its branch number. #43 stays unused on main. Main's own
+  #44-#51 keep their numbers and meanings. No object of 0016-0018 is defined in 0013-0015 too, so
+  running them after 0015 ends in the same database as TEST, which ran them in branch order.
+- **TEST runs only the new 0019; LIVE runs 0013 to 0019 in number order** (OPERATIONS.md).
+- **Phase 2 notices join the inbox** in a new migration, **0019_phase2_inbox.sql**, so the renamed
+  files stay as TEST ran them: a trigger copies every `push_outbox` row into `notifications`, with a
+  kind from the screen it opens; the last 30 days were copied in. The inbox opens the same screens
+  as the push (assessment, recording to review, nomination, My progress). 0019 also writes the table
+  descriptions that named the branch numbers again with #52-#54.
+- **One APK for all of Phase 2's native needs** (lead chat, 3 Oct 2026), because builds are slow
+  and limited: expo-audio (playing and in-app recording; microphone text "Mridanga Seva uses the
+  microphone only when you record your practice or an answer.", recording on Android) with its peer
+  expo-asset; **expo-location** (G9's attendance area: "while using the app" only, no background
+  location, no foreground service); **react-native-webview** 13.16.1 (slice 4's lesson video
+  controls); **expo-keep-awake** (screen on during the metronome, taal player and timer);
+  **expo-sharing** (CSV reports, files, an .ics "add to calendar" file, instead of expo-calendar);
+  **expo-screen-orientation** (lesson video and two-head view in landscape while the app stays
+  portrait); **expo-haptics** (a metronome vibration option); the image picker may record video
+  with sound (a microphone text instead of `false`); expo-camera stays QR-only, no audio. Packages
+  not used yet only need to be in the APK. expo-audio keeps its default background playback
+  (Android adds a media-playback foreground service, so the metronome can play with the screen off).
+- **Not wired yet:** the phone-side check against a centre's area (G9 stores it, #51). Attendance is
+  marked on the coordinator's phone by scanning the student's QR, so the check would run there;
+  whether it warns or blocks is a product choice. It can come as an update to the new APK.
+
+**Why.** Merging now stops the branches drifting from main (three numbering clashes in one day)
+and lets one APK carry what Phase 2 needs, so the volunteers install once.
+
+**Consequences.** Android fingerprint **185e839f**. From the merge on, updates from main reach only
+APKs built from it; phones on f9a084aa keep round 9 until they install the new APK. Phase 2 screens
+appear on the web version with the next test-site export. The Edge Function `notify-announcements`
+from the Phase 2 branches is on main and must be deployed again to TEST and LIVE. Slice 4
+(branch phase2-media) takes migrations from 0020 when it rebases on this merge.

@@ -518,8 +518,8 @@ newest first, filtered by table, person, action and time; 0014 adds indexes for 
 ## Notifications inbox
 
 Screen A2 (0015, [DECISIONS.md #49](DECISIONS.md)). `notifications` holds one row per person per
-notice they were sent: `kind` (`announcement` now; `assessment`, `promotion`, `notice` kept for
-Phase 2), `title`, `body` (the first 300 characters), `url` (the app screen it opens, the same one
+notice they were sent: `kind` (`announcement`; `assessment` and `promotion` for Phase 2's notices since 0019;
+`notice` for any other screen), `title`, `body` (the first 300 characters), `url` (the app screen it opens, the same one
 the push opens: `/staff/announcements/N` for staff, `/student/announcements/N` for students),
 `announcement_id` (the row goes with its announcement), `visible_at` (the publish time) and
 `read_at`.
@@ -541,10 +541,14 @@ the push opens: `/staff/announcements/N` for staff, `/student/announcements/N` f
 - **Housekeeping.** 0015 filled the inbox with the announcements of the last 30 days (and the
   scheduled ones), read where a receipt existed. The daily job `mridanga-inbox-cleanup` deletes
   notices older than a year.
-- **For Phase 2:** its `push_outbox` rows (profile, title, body, url) map one to one onto
-  `notifications`; at the merge, insert a row with the matching kind wherever an outbox row is
-  made (or a trigger on `push_outbox`), and widen the app's allowed screens in
-  `src/data/notifications.ts` as in `src/lib/push.ts`.
+- **Phase 2's notices** (0019, [DECISIONS.md #55](DECISIONS.md)): the trigger `push_outbox_inbox`
+  (`inbox_on_push_outbox`) copies every new `push_outbox` row (assessments, promotion) into
+  `notifications`, same person, title, line (300 characters) and screen, `visible_at` = when it was
+  queued; `inbox_kind_for_url` gives the kind from the screen. Outbox rows are made for every
+  active login, push or not, so web users get them too. 0019 also copied the outbox rows of the last
+  30 days. A Phase 2 notice is marked read when it is tapped in the inbox (its screen has no read
+  receipt). The app opens the same screens as the push (`isNoticeScreen` in
+  `src/data/notifications.ts`, used by `src/lib/push.ts`).
 
 ## Reports
 
@@ -780,7 +784,7 @@ and audit triggers (including `guard_student_progress`, `audit_student_progress`
 `guard_group`, `guard_announcement_reply`, `guard_syllabus_item`, `protect_syllabus_item`,
 `guard_progress_item_in_use`, `guard_material`, `guard_profile_details`, `guard_profile_admin`, `guard_student_mentor`,
 `follow_mentor_tasks`, `guard_setting`, `audit_setting`, `guard_centre`, `guard_centre_details`,
-`inbox_on_announcement`, `inbox_on_read`, `guard_student_level`, `guard_taal` and `inbox_on_push_outbox`),
+`inbox_on_announcement`, `inbox_on_read`, `guard_student_level`, `guard_taal` and `inbox_on_push_outbox`), `inbox_kind_for_url` (0019),
 `inbox_sync_announcement`, `inbox_cleanup`, the promotion helpers `promotion_push_line`,
 `queue_staff_push`, `promotion_tell_guru`, `queue_student_promoted`, `submission_file_expired` (0017),
 and the helpers `my_role`, `is_guru`, `is_staff`,

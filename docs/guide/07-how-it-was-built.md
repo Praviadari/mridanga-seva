@@ -46,7 +46,7 @@ WhatsApp groups to replace; most members on iPhones; and **Phase 1 must cost not
 ## Write every decision down
 
 Every important choice is a numbered entry in [DECISIONS.md](../DECISIONS.md), with the date, the
-choice, the **reason**, and what was given up. By 3 Oct 2026 there were 51 entries, for example:
+choice, the **reason**, and what was given up. By 3 Oct 2026 there were 55 entries (number 43 unused), for example:
 
 - #2 *Attendance is a visit, not a roll call* (because the class is drop-in);
 - #4 *Paused and Left only through a logged call* (so nobody is dropped without a reason);
@@ -66,7 +66,7 @@ Every change passes these checks before it goes further:
 |---|---|
 | **Type check** (`npx tsc --noEmit`) | Mistakes in the code's logic and names, and a word missing in Telugu or Hindi |
 | **Lint** (`npx expo lint`) | Common coding errors and unsafe patterns |
-| **Database smoke test** (`supabase/tests`) | Runs every database migration on a temporary database on the laptop, with the dummy data, then tries hundreds of things a person could do, as each role, and checks the database allows or refuses each one. On 3 Oct 2026 main passes **368 checks**: login linking, consent for minors, attendance, follow-up calls, ticks, announcements, replies, files, notifications, the inbox, reports, centres, who may run each function, and row-level security. The Phase 2 branches add their own (416 on the promotion branch) |
+| **Database smoke test** (`supabase/tests`) | Runs every database migration on a temporary database on the laptop, with the dummy data, then tries hundreds of things a person could do, as each role, and checks the database allows or refuses each one. On 3 Oct 2026, with Phase 2 merged, main passes **522 checks**: login linking, consent for minors, attendance, follow-up calls, ticks, announcements, replies, files, notifications, the inbox, reports, centres, assessments, promotion, practice, who may run each function, and row-level security |
 | **Notification test** | How the server words and batches notifications |
 | **Browser check per role** | The changed screens are opened in a browser as a student, a coordinator and the Facilitator, on the test project, at phone width (375 pixels) and laptop width (1280 pixels) |
 | **Contrast check** | Each new pair of text and background colours is measured against the WCAG AA standard for readability; the first draft of the new look failed twice and was fixed |
@@ -121,15 +121,16 @@ Volunteers' remarks and a volunteer's mock-up (the ring of circles around the dr
 | **2. Learning and community** | Assessments, promotion approval, practice tools (metronome, taal player, two-head view of the drum, practice log), events, polls, door tablet, instruments, Ishtagoshti (sloka study, free to anyone), fund records | Build Dec 2026-Feb 2027 · **live 1 Mar 2027** |
 | **3. Face attendance** | Attendance by face recognition, only with consent | **Live 30 Apr 2027**, before India's data-protection deadline of 13 May 2027 |
 
-**Phase 2 is being built now, beside Phase 1, on separate branches.** It stays off the main code
-until the maintainer decides, so the pilot app shows no half-finished screens:
+**Phase 2 was built beside Phase 1, on separate branches, and merged into the main code on
+3 Oct 2026.** It needs new native parts (sound, location), so on Android it arrives with the next
+app version, which everyone installs once:
 
-- **Assessments** (slice 1, done on its branch 3 Oct 2026): the Facilitator creates a piece to learn;
+- **Assessments** (slice 1, 3 Oct 2026): the Facilitator creates a piece to learn;
   coordinators release it to students, follow up and review submissions.
-- **Promotion approval** (slice 2, done on its branch 3 Oct 2026): a mentor nominates a student, other
+- **Promotion approval** (slice 2, 3 Oct 2026): a mentor nominates a student, other
   coordinators answer Ready / Almost / Not yet, and the Facilitator decides **Promote**, **Not yet**
   or **More feedback**.
-- **Practice tools** (slice 3, started 3 Oct 2026): metronome and taal player, the two-head view (both
+- **Practice tools** (slice 3, 3 Oct 2026): metronome and taal player, the two-head view (both
   drum heads drawn, the zone and hand lighting up per stroke), and a practice log.
 
 The two-head view answers a real problem: a student watching the teacher cannot see both drum

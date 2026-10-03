@@ -43,6 +43,15 @@ project id and its signing keystore stay the same, so nothing needs rebuilding.
    5. Run every later migration the same way, in number order: `0002_login_linking.sql`, then
       `0003_register_student.sql`, `0004_attendance.sql`, `0005_students_follow_up.sql`, and so on. **Run 0002 straight after
       0001**: without it the first Guru cannot be set (step 7) and internal functions are open.
+      **Numbers 0012 and 0016-0018 (Phase 2, renumbered 3 Oct 2026).** Main has no 0012. Phase 2 was
+      built on branches as 0012_assessments, 0014_promotion and 0016_practice; when it merged into
+      main they became `0016_assessments.sql`, `0017_promotion.sql` and `0018_practice.sql` (same
+      SQL), followed by `0019_phase2_inbox.sql` ([DECISIONS.md #55](DECISIONS.md)). The **test**
+      project ran the three under their old names and needs only **0019**. The **live** project
+      runs **0013, 0014, 0015, 0016, 0017, 0018, 0019 in number order** (0001-0011 are on it already;
+      check with `select count(*) from information_schema.tables where table_name = 'push_outbox';`
+      = 0 before 0016). Running a Phase 2 file again on the test project is not needed: it would
+      fail on its first `create table`, and a failed run changes nothing.
 3. **Test project only — add the dummy data:** do the same with [`supabase/seed.sql`](../supabase/seed.sql)
    in a new query. Check under **Table Editor → students**: 15 students, roll numbers
    `MS-2026-0001` to `MS-2026-0015`. Never run the seed on the live project. Its header lists the
@@ -348,6 +357,24 @@ testers into the class's real data. The message may not contain `"`, `%`, `$`, b
 backslashes. Uploading needs a network that does not inspect secure connections (see "Each
 build" above).
 
+**The next APK (Phase 2 merge, 3 Oct 2026; [DECISIONS.md #55](DECISIONS.md)).** Main's fingerprint
+is **185e839f** since the merge (the APK f9a084aa in use has 38ce7d9d), so from now on updates from
+main reach only the new APK; phones on f9a084aa keep round 9 (update bf11f742) until they install
+it. It carries every native package Phase 2 needs: expo-audio (with expo-asset), expo-location
+(while using the app only), react-native-webview, expo-keep-awake, expo-sharing,
+expo-screen-orientation, expo-haptics, and the image picker's microphone text. Steps, from a
+hotspot (the office network breaks uploads):
+
+1. In `app/`: `npx eas-cli@latest build -p android --profile preview`; check the build page shows
+   fingerprint 185e839f (or what `npx expo-updates runtimeversion:resolve --platform android`
+   prints on main then).
+2. Install it over the old app on a test phone, sign in, and check: the metronome sounds at 30, 80
+   and 240 beats a minute with no gap where the loop restarts, and keeps time against a reference
+   metronome for a few minutes; the taal player at 50 / 75 / 100 %; tempo changes while playing;
+   leaving the screen stops the sound; the screen and app in the background (expo-audio plays on,
+   with a media notice); the practice timer logs; Android asks for the microphone only when
+   recording and for location only "while using the app"; notices in the inbox open their screens.
+3. Then share the APK link with the volunteers as for f9a084aa.
 **Rolling back** a bad update (from `app/`): `npx eas-cli@latest update:rollback` and follow the
 questions: choose the channel's branch (`preview` or `production`), then either an earlier
 update or *the embedded update* (what came inside the APK). Phones get the rollback the same
@@ -440,6 +467,12 @@ Function gets the Supabase service-role key from Supabase by itself; nobody copi
     Only if the Expo account has "enhanced push security" switched on, also add the secret
     `EXPO_ACCESS_TOKEN` (a token from expo.dev → Access tokens) the same way as in step 9.
 
+**Deploy again after a change to the function.** The Phase 2 version (assessment and promotion
+notifications from `push_outbox`, deleting expired recordings with `{"cleanup": true}`) is on main
+since 3 Oct 2026; TEST and LIVE still run the older one, which ignores those rows (they wait, nothing
+breaks). Praveen deploys it with step 10's command to the test project (`fhuqykssenuhczdqbafu`)
+after the Sunday 4 Oct 2026 demo, and to the live one (`qeozvvizcojzxcjgnaei`) before Phase 2's
+notices are used there. Queued test notices of the last day may then arrive on test phones.
 **Then a new APK**, built after steps 3 and 5 (see "Building the Android app"):
 
 11. `npx eas-cli@latest build -p android --profile preview` (test project) or `--profile
