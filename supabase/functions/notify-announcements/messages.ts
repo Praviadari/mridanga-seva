@@ -88,9 +88,11 @@ export type OutboxRow = {
 
 /**
  * The only screens a queued notification may open (the app checks the same, src/lib/push.ts): an
- * assessment, a review, a promotion nomination (staff), My progress (a promoted student).
+ * assessment, a review, a promotion nomination (staff), My progress (a promoted student), an
+ * event or a poll (migration 0021, students and staff).
  */
-const OUTBOX_SCREEN = /^\/((student\/assessments|staff\/assessments\/review|staff\/promotion)\/\d+|student\/progress)$/;
+const OUTBOX_SCREEN =
+  /^\/((student\/assessments|staff\/assessments\/review|staff\/promotion|(student|staff)\/(events|polls))\/\d+|student\/progress)$/;
 
 /**
  * One message per queued notification (an assessment released, a reminder, a review, a recording
