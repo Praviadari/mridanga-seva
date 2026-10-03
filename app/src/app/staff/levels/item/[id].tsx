@@ -158,7 +158,8 @@ export default function SyllabusItemScreen() {
   async function removeItem() {
     if (!item) return;
     const outcome = await run('delete', () => deleteItem(item.id), t('syllabusEditor.deleted'));
-    if (!outcome.errorKey) router.back();
+    // To the level's page, also when the item was opened straight from an address.
+    if (!outcome.errorKey) router.replace({ pathname: '/staff/levels/[id]', params: { id: String(levelId) } });
   }
 
   return (
@@ -299,7 +300,11 @@ export default function SyllabusItemScreen() {
           {canDelete && asking === null ? (
             <Button variant="link" icon="delete" label={t('syllabusEditor.delete')} onPress={() => setAsking('delete')} />
           ) : null}
-          {!canDelete ? <AppText variant="small" tone="muted">{t('syllabusEditor.cannotDelete')}</AppText> : null}
+          {!canDelete && !retired ? (
+            <AppText variant="small" tone="muted">
+              {t('syllabusEditor.cannotDelete')}
+            </AppText>
+          ) : null}
         </Section>
       ) : null}
     </Screen>
