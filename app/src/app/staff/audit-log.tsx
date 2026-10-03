@@ -135,7 +135,7 @@ export default function AuditLogScreen() {
       {loaded
         ? loaded.entries.map((entry) => {
             const expanded = open.has(entry.id);
-            const changes = expanded ? changesOf(entry) : [];
+            const changes = expanded ? changesOf(entry, loaded.names) : [];
             return (
               <Pressable
                 key={entry.id}

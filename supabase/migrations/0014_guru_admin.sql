@@ -309,11 +309,14 @@ end $$;
 -- ---------------------------------------------------------------- 4. settings
 insert into settings (key, value) values
   ('week_starts', '"monday"'),
-  -- Placeholders for promotion (Phase 2, docs/DECISIONS.md #43): nothing reads them yet.
-  ('promotion_whole_syllabus', 'true'),
+  -- Promotion criteria (Phase 2, docs/DECISIONS.md #43): the same keys and defaults as the
+  -- promotion migration of the branch phase2-promotion, so G10 edits what promotion will read.
+  -- Nothing on main reads them yet; whichever migration runs first adds them.
+  ('promotion_syllabus_percent', '100'),
   ('promotion_min_visits', '8'),
   ('promotion_visit_weeks', '8'),
-  ('promotion_level_up_assessment', 'true')
+  ('promotion_needs_level_up', 'true'),
+  ('promotion_min_feedback', '2')
 on conflict (key) do nothing;
 
 -- One meaning of "this week" for every screen: from Monday (as since 0009), or the last 7 days
@@ -346,8 +349,10 @@ begin
     when 'retry_days'            then int4range(1, 14, '[]')
     when 'max_retries'           then int4range(1, 10, '[]')
     when 'new_joiner_weeks'      then int4range(1, 12, '[]')
+    when 'promotion_syllabus_percent' then int4range(0, 100, '[]')
     when 'promotion_min_visits'  then int4range(0, 100, '[]')
     when 'promotion_visit_weeks' then int4range(1, 52, '[]')
+    when 'promotion_min_feedback' then int4range(1, 10, '[]')
   end;
   if v_range is not null then
     begin
@@ -363,7 +368,7 @@ begin
     if new.value #>> '{}' not in ('monday', 'rolling7') or jsonb_typeof(new.value) <> 'string' then
       raise exception 'setting_invalid' using detail = 'week_starts is "monday" or "rolling7".';
     end if;
-  elsif new.key in ('promotion_whole_syllabus', 'promotion_level_up_assessment') then
+  elsif new.key = 'promotion_needs_level_up' then
     if jsonb_typeof(new.value) <> 'boolean' then
       raise exception 'setting_invalid' using detail = format('%s is true or false.', new.key);
     end if;

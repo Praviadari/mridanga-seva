@@ -1107,8 +1107,9 @@
       "new_joiner_weeks": "विद्यार्थी कितने हफ़्ते नया गिना जाए",
       "promotion_min_visits": "ज़रूरी विज़िट",
       "promotion_visit_weeks": "... पिछले कितने हफ़्तों में",
-      "promotion_whole_syllabus": "उस स्तर का पूरा सिलेबस टिक होना चाहिए",
-      "promotion_level_up_assessment": "स्वीकृत स्तर-वृद्धि आकलन ज़रूरी है"
+      "promotion_syllabus_percent": "स्तर के सिलेबस का कितना हिस्सा टिक होना चाहिए (%)",
+      "promotion_needs_level_up": "स्वीकृत स्तर-वृद्धि आकलन ज़रूरी है",
+      "promotion_min_feedback": "गुरुजी के फ़ैसले से पहले ज़रूरी कोऑर्डिनेटर के जवाब"
     },
     "errors": {
       "range": "{{min}} से {{max}} तक पूरी संख्या लिखें।",

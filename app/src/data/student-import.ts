@@ -41,7 +41,8 @@ const HEADINGS: Record<ImportField, string[]> = {
   pincode: ['pincode', 'pin', 'pin code', 'postal code', 'zip', 'zip code'],
   level: ['level', 'class', 'grade', 'stage'],
   joinedOn: ['joined', 'joined on', 'joining date', 'date of joining', 'doj', 'join date', 'start date', 'since'],
-  rollNo: ['roll', 'roll no', 'roll number', 'id', 'student id', 'reg no', 'registration number', 'number', 's no'],
+  // Not "S.No" or "Number": in most lists that is a row count, not a student's number.
+  rollNo: ['roll', 'roll no', 'roll number', 'student id', 'reg no', 'registration number', 'registration no'],
 };
 
 function normaliseHeading(text: string): string {

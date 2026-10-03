@@ -145,13 +145,30 @@ export function valueText(value: unknown): string {
   return result.length > 160 ? `${result.slice(0, 157)}...` : result;
 }
 
+/** Columns that hold a login id; shown as the person's name. */
+const PERSON_FIELDS = new Set([
+  'mentor_id', 'created_by', 'ticked_by', 'coordinator_id', 'profile_id', 'assignee_id', 'uploaded_by',
+  'approved_by', 'marked_by', 'verified_by', 'nominated_by', 'decided_by',
+]);
+
+/** A value as short text; ids of people, students and syllabus items become their names. */
+function namedValue(field: string, value: unknown, names: AuditNames): string {
+  const id = typeof value === 'string' || typeof value === 'number' ? String(value) : null;
+  if (id !== null) {
+    if (PERSON_FIELDS.has(field) && names.people.has(id)) return names.people.get(id) ?? id;
+    if (field === 'student_id' && names.students.has(id)) return names.students.get(id) ?? id;
+    if (field === 'item_id' && names.items.has(id)) return names.items.get(id) ?? id;
+  }
+  return valueText(value);
+}
+
 /** The fields an entry changed: for an edit the ones that differ, for an add or delete every filled one. */
-export function changesOf(entry: AuditEntry): FieldChange[] {
+export function changesOf(entry: AuditEntry, names: AuditNames): FieldChange[] {
   const before = entry.oldRow ?? {};
   const after = entry.newRow ?? {};
   const fields = [...new Set([...Object.keys(before), ...Object.keys(after)])];
   return fields
     .filter((field) => !QUIET_FIELDS.has(field))
-    .map((field) => ({ field, before: valueText(before[field]), after: valueText(after[field]) }))
-    .filter((c) => c.before !== c.after);
+    .filter((field) => valueText(before[field]) !== valueText(after[field]))
+    .map((field) => ({ field, before: namedValue(field, before[field], names), after: namedValue(field, after[field], names) }));
 }

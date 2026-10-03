@@ -7,7 +7,8 @@
 //   call_due_days, retry_days,     when a call is due, when to try again, tries before the Guru
 //   max_retries                    is asked (daily job, log_call)
 //   new_joiner_weeks               how long someone counts as a new joiner (home screens)
-//   promotion_*                    placeholders for promotion (Phase 2); nothing reads them yet
+//   promotion_*                    promotion criteria (Phase 2, same keys as the branch
+//                                  phase2-promotion); nothing on main reads them yet
 // Saved together by save_settings (migration 0014), which checks every value and keeps Irregular
 // before Inactive; every change goes to the audit log.
 
@@ -31,13 +32,15 @@ export const NUMBER_SETTINGS = {
   retry_days: { min: 1, max: 14 },
   max_retries: { min: 1, max: 10 },
   new_joiner_weeks: { min: 1, max: 12 },
+  promotion_syllabus_percent: { min: 0, max: 100 },
   promotion_min_visits: { min: 0, max: 100 },
   promotion_visit_weeks: { min: 1, max: 52 },
+  promotion_min_feedback: { min: 1, max: 10 },
 } as const;
 export type NumberSetting = keyof typeof NUMBER_SETTINGS;
 
-/** The yes/no settings (Phase 2 placeholders). */
-export const FLAG_SETTINGS = ['promotion_whole_syllabus', 'promotion_level_up_assessment'] as const;
+/** The yes/no settings (Phase 2 promotion). */
+export const FLAG_SETTINGS = ['promotion_needs_level_up'] as const;
 export type FlagSetting = (typeof FLAG_SETTINGS)[number];
 
 /** Everything G10 edits, as the form holds it (numbers and times as typed). */
@@ -50,6 +53,8 @@ export type SettingsForm = {
   centreName: string;
   opensAt: string;
   closesAt: string;
+  /** The window as loaded, so an unchanged window is not written again (and not logged). */
+  savedWindow: string;
 };
 
 type SettingRow = { key: string; value: unknown };
@@ -78,6 +83,7 @@ export async function fetchSettings(): Promise<SettingsForm | null> {
     centreName: centre?.name ?? '',
     opensAt: centre ? centre.opens_at.slice(0, 5) : '',
     closesAt: centre ? centre.closes_at.slice(0, 5) : '',
+    savedWindow: centre ? `-` : '',
   };
 }
 
@@ -119,10 +125,12 @@ export async function saveSettings(form: SettingsForm): Promise<{ errorKey?: Mes
   for (const key of FLAG_SETTINGS) values[key] = form.flags[key];
   const { error } = await supabase.rpc('save_settings', { p_values: values });
   if (error) return { errorKey: errorKeyOf(error.message) };
-  if (form.centreId !== null) {
+  const opensAt = parseTimeOfDay(form.opensAt);
+  const closesAt = parseTimeOfDay(form.closesAt);
+  if (form.centreId !== null && `-` !== form.savedWindow) {
     const { error: centreError } = await supabase
       .from('centres')
-      .update({ opens_at: parseTimeOfDay(form.opensAt), closes_at: parseTimeOfDay(form.closesAt) })
+      .update({ opens_at: opensAt, closes_at: closesAt })
       .eq('id', form.centreId);
     if (centreError) return { errorKey: errorKeyOf(centreError.message) };
   }

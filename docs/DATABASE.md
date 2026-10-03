@@ -486,8 +486,8 @@ The trigger `settings_guard` checks each value however it is written:
 | `new_joiner_weeks` | 1-12 (4) | home screens |
 | `week_starts` | `"monday"` or `"rolling7"` (`"monday"`) | `week_start_ist()` |
 | `call_reasons` | a list of codes | C11, `log_call` (not edited in the app yet) |
-| `promotion_whole_syllabus`, `promotion_level_up_assessment` | true / false (true) | nothing yet (Phase 2 promotion) |
-| `promotion_min_visits` 0-100 (8), `promotion_visit_weeks` 1-52 (8) | whole numbers | nothing yet (Phase 2 promotion) |
+| `promotion_syllabus_percent` 0-100 (100), `promotion_min_visits` 0-100 (8), `promotion_visit_weeks` 1-52 (8), `promotion_min_feedback` 1-10 (2) | whole numbers | nothing on main yet (Phase 2 promotion, same keys as the branch phase2-promotion) |
+| `promotion_needs_level_up` | true / false (true) | nothing on main yet (Phase 2 promotion) |
 
 Out-of-range values give `setting_invalid`; the app cannot add (`setting_unknown`) or delete
 (`setting_required`) a setting. Every change goes to `audit_log` with the key as `row_id`

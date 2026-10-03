@@ -1107,8 +1107,9 @@
       "new_joiner_weeks": "విద్యార్థిని కొత్తగా చేరినవారిగా లెక్కించే వారాలు",
       "promotion_min_visits": "అవసరమైన సందర్శనలు",
       "promotion_visit_weeks": "... గత ఎన్ని వారాల్లో",
-      "promotion_whole_syllabus": "ఆ స్థాయి సిలబస్ మొత్తం టిక్ అయి ఉండాలి",
-      "promotion_level_up_assessment": "ఆమోదించిన స్థాయి పెంపు అసెస్‌మెంట్ అవసరం"
+      "promotion_syllabus_percent": "టిక్ కావాల్సిన స్థాయి సిలబస్ శాతం (%)",
+      "promotion_needs_level_up": "ఆమోదించిన స్థాయి పెంపు అసెస్‌మెంట్ అవసరం",
+      "promotion_min_feedback": "గురువుగారు నిర్ణయించే ముందు కావాల్సిన కోఆర్డినేటర్ల అభిప్రాయాలు"
     },
     "errors": {
       "range": "{{min}} నుండి {{max}} వరకు పూర్ణ సంఖ్య ఇవ్వండి.",

@@ -1107,8 +1107,9 @@
       "new_joiner_weeks": "Weeks a student counts as a new joiner",
       "promotion_min_visits": "Visits needed",
       "promotion_visit_weeks": "... in the last how many weeks",
-      "promotion_whole_syllabus": "The whole level's syllabus must be ticked",
-      "promotion_level_up_assessment": "An accepted level-up assessment is needed"
+      "promotion_syllabus_percent": "Share of the level's syllabus that must be ticked (%)",
+      "promotion_needs_level_up": "An accepted level-up assessment is needed",
+      "promotion_min_feedback": "Coordinators' answers needed before the facilitator decides"
     },
     "errors": {
       "range": "Enter a whole number from {{min}} to {{max}}.",

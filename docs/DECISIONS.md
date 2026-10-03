@@ -1083,9 +1083,12 @@ asked "from Monday or the last 7 days" (NOTES_demo). The audit log was written b
   `save_settings` (all or nothing; Irregular must come before Inactive); each value checked by the
   trigger `settings_guard` (whole numbers in a range, known keys only, no delete from the app); each
   change written to the audit log with the key as the row id.
-- **Promotion criteria placeholders for Phase 2** (DECISIONS #43 on the branch phase2-assessments):
-  `promotion_whole_syllabus` (true), `promotion_min_visits` (8), `promotion_visit_weeks` (8),
-  `promotion_level_up_assessment` (true). Shown on G10 as "not used yet"; slice 2 (C22) reads these keys.
+- **Promotion criteria for Phase 2** (DECISIONS #43 on the branch phase2-assessments): the same keys and
+  defaults as the promotion migration on the branch phase2-promotion, `promotion_syllabus_percent`
+  (100), `promotion_min_visits` (8), `promotion_visit_weeks` (8), `promotion_needs_level_up` (true) and
+  `promotion_min_feedback` (2), so G10 edits what promotion reads. Shown on G10 as "not used yet"
+  while Phase 2 is not on main. (A first version of 0014 had two placeholder keys of its own; found
+  on TEST next to the Phase 2 keys on 3 Oct 2026 and replaced before 0014 reached main.)
 - **Later, listed on the screen:** reasons for a call (each new code needs a translation), centres
   and the attendance area (G9, round 9), notification times, the duty roster.
 - **G11** (`staff/audit-log.tsx`): read-only, newest first, 50 at a time, filtered in the database

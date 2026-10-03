@@ -157,18 +157,15 @@ export default function SettingsScreen() {
       </Section>
 
       <Section icon="level" title={t('settings.promotionTitle')} description={t('settings.promotionHint')}>
-        <Checkbox
-          label={t('settings.fields.promotion_whole_syllabus')}
-          checked={form.flags.promotion_whole_syllabus}
-          onChange={(on) => setForm({ ...form, flags: { ...form.flags, promotion_whole_syllabus: on } })}
-        />
+        {numberField('promotion_syllabus_percent')}
         {numberField('promotion_min_visits')}
         {numberField('promotion_visit_weeks')}
         <Checkbox
-          label={t('settings.fields.promotion_level_up_assessment')}
-          checked={form.flags.promotion_level_up_assessment}
-          onChange={(on) => setForm({ ...form, flags: { ...form.flags, promotion_level_up_assessment: on } })}
+          label={t('settings.fields.promotion_needs_level_up')}
+          checked={form.flags.promotion_needs_level_up}
+          onChange={(on) => setForm({ ...form, flags: { ...form.flags, promotion_needs_level_up: on } })}
         />
+        {numberField('promotion_min_feedback')}
       </Section>
 
       {message ? <Notice tone={message.tone}>{message.text}</Notice> : null}
