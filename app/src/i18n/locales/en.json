@@ -820,7 +820,7 @@
       "selectShown": "Select all shown ({{count}})",
       "unselectShown": "Unselect all shown",
       "noneShown": "No students to show.",
-      "submit": "Give to {{count}} students"
+      "submit": "Give to the picked students ({{count}})"
     },
     "tracker": {
       "title": "Students",
@@ -863,7 +863,9 @@
       "acceptedDone": "Saved. The student is told.",
       "redoDone": "Saved. The student is asked to record it again.",
       "history": "Earlier recordings ({{count}})",
-      "by": "by {{name}}"
+      "by": "by {{name}}",
+      "waitingRedo": "A redo was asked for. Waiting for the new recording.",
+      "allRecordings": "Recordings ({{count}})"
     },
     "submit": {
       "title": "Send your recording",

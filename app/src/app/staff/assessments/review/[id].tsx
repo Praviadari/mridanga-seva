@@ -149,7 +149,7 @@ export default function ReviewScreen() {
 
       {OPEN_STATUSES.includes(status) ? (
         <>
-          <Notice tone="info">{t('assessments.review.nothingYet')}</Notice>
+          <Notice tone="info">{status === 'redo' ? t('assessments.review.waitingRedo') : t('assessments.review.nothingYet')}</Notice>
           {student?.hasLogin ? (
             <Button variant="secondary" icon="send" label={t('assessments.remind.one')} onPress={() => void remind()} />
           ) : (
@@ -211,7 +211,7 @@ export default function ReviewScreen() {
       ) : null}
 
       {earlier.length > 0 ? (
-        <Section title={t('assessments.review.history', { count: earlier.length })}>
+        <Section title={t(toReview ? 'assessments.review.history' : 'assessments.review.allRecordings', { count: earlier.length })}>
           {earlier.map((s) => (
             <View key={s.id} style={styles.history}>
               <AppText variant="label">{t('assessments.review.sentAt', { date: formatDateTimeInIndia(s.submittedAt) })}</AppText>

@@ -3,7 +3,7 @@
 // list by level (the assessment's level first) and name, with "Select all shown". Students who
 // already have it are left out; students without the app login can be picked but get no
 // notification and see it only once they sign in. Releasing sends each student with the app a
-// push notification (Android) and opens the tracker again.
+// push notification (Android) and goes back to the assessment's tracker.
 // Data: src/data/assessments.ts (release_assessment, migration 0012).
 
 import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
@@ -117,7 +117,8 @@ export default function ReleaseAssessmentScreen() {
       setServerError(t(errorKey ?? 'common.genericError'));
       return;
     }
-    router.back();
+    // Back to the assessment and its tracker; opened from a link, the form is replaced by it.
+    router.dismissTo({ pathname: '/staff/assessments/[id]', params: { id: String(id) } });
   }
 
   return (

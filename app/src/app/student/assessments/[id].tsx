@@ -69,6 +69,8 @@ export default function MyAssessmentScreen() {
     setLoaded(result);
     if (result && result !== 'not_found' && !seenSent.current) {
       seenSent.current = await markAssessmentSeen(id);
+      // The database moved Not seen to Seen; show it without loading again.
+      if (seenSent.current && result.status === 'assigned') setLoaded({ ...result, status: 'seen' });
     }
   }, [id]);
 
