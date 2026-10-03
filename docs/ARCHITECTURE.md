@@ -65,7 +65,8 @@ flowchart LR
 
 A new login starts as `pending`. If its email matches a registered student, it is linked to that
 student and becomes `student` automatically, once the email is confirmed. Only the Guru can make
-someone a coordinator. See [DECISIONS.md #11 and #13](DECISIONS.md) and
+someone a coordinator, or link a login to a student record by hand, on screen G2; the database
+keeps the Guru role a dashboard matter and stops anyone changing their own role ([DECISIONS.md #45](DECISIONS.md)). See [DECISIONS.md #11 and #13](DECISIONS.md) and
 [DATABASE.md](DATABASE.md#linking-a-login-to-a-student).
 
 ## The app's code
@@ -83,7 +84,9 @@ app/
                        coming-soon.tsx open on top
       staff/           The Guru's and coordinators' screens: register, attendance, follow-up ...,
                        levels/ (G4 syllabus editor), materials/ (G5), visits/ (S9 of one student),
-                       profile.tsx (A3), and coming-soon.tsx for the modules not built yet; (tabs)/
+                       profile.tsx (A3), the Guru's coordinators/ (G2), database/ (G3 and the
+                       import), settings.tsx (G10) and audit-log.tsx (G11), and coming-soon.tsx
+                       for the modules not built yet; (tabs)/
                        holds Home (G1 or C1 by role) and the four used most
     auth/              Who is signed in, their role, and the sign-in / sign-up calls
     screens/           The two staff homes, G1 and C1 (shown by staff/(tabs)/index.tsx), and the
@@ -106,11 +109,13 @@ app/
                        status-chip.tsx (coloured level and status labels on lists and C8),
                        loading-cards.tsx (grey shapes while loading), empty-state.tsx,
                        account-footer.tsx (language, My profile, Sign out, version),
-                       material-row.tsx (a lesson with Open, on G4/G5 and S4; DECISIONS.md #44)
+                       material-row.tsx (a lesson with Open, on G4/G5 and S4; DECISIONS.md #44),
+                       admin-links.tsx ("Running the class" on G1) and guru-only.tsx (round 8)
     i18n/              Interface text in English, Telugu and Hindi (docs/TRANSLATIONS.md), and
                        labels.ts, which words levels, file sizes and lengths of time the same on
                        every screen
-    lib/               The Supabase client, on-device storage, date helpers (India time), push
+    lib/               The Supabase client, on-device storage, date helpers (India time), the
+                       Excel/CSV reader of the student import (sheet-reader.ts, with fflate), push
                        notifications and app updates (push.ts and app-update.ts on Android; the
                        .web.ts copies do nothing)
     theme/             Colours, spacing and text sizes, light and dark; the card look, the header
@@ -226,7 +231,8 @@ OPERATIONS.md "Publishing the web version".
 ## How follow-up flows (Phase 1)
 
 1. Each morning a daily job moves a student with no visit for 14 days to *Irregular* and gives
-   their mentor a *call* task, due in 3 days (the day limits are in `settings`).
+   their mentor a *call* task, due in 3 days (the day limits are in `settings`, set on G10). When
+   the mentor changes, the open tasks go to the new mentor ([DECISIONS.md #48](DECISIONS.md)).
 2. The coordinator opens *Follow-up calls* (C10). Students are grouped: *needs the Guru*
    (escalated), *call due*, *call later*, and Irregular or Inactive students with *no call planned*.
 3. Tapping a student opens the call screen (C11), with buttons that open the phone's dialler for

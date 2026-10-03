@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next';
 
 import { useAuth } from '@/auth/auth-provider';
 import { AccountFooter } from '@/components/account-footer';
+import { AdminLinks } from '@/components/admin-links';
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { EmptyState } from '@/components/empty-state';
@@ -89,7 +90,9 @@ export function GuruHome() {
             />
           </StatGrid>
           <AppText variant="small" tone="muted">
-            {t('home.guru.weekFrom', { date: formatDayMonthYear(board.weekStart) })}
+            {board.weekStarts === 'rolling7'
+              ? t('weekMeaning.guruRolling', { date: formatDayMonthYear(board.weekStart) })
+              : t('home.guru.weekFrom', { date: formatDayMonthYear(board.weekStart) })}
           </AppText>
 
           <Section icon="level" title={t('home.guru.byLevel')} description={t('home.guru.byLevelHint')}>
@@ -139,6 +142,8 @@ export function GuruHome() {
       ) : null}
 
       <StaffShortcuts />
+      {/* Round 8: the Guru's admin screens (G2, G3, G10, G11). */}
+      <AdminLinks />
       <AccountFooter />
     </Screen>
   );

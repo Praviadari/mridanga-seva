@@ -16,6 +16,8 @@ in number order:
 | `0009_home_screens.sql` | The numbers on the three home screens: `student_home`, `coordinator_dashboard` and `guru_dashboard`, and one meaning of "this week" (`week_start_ist`) ([DECISIONS.md #31](DECISIONS.md)) |
 | `0010_announcement_files.sql` | Photos and PDFs on announcements: the private Storage bucket `announcement-files`, checks on `attachments`, and who may upload, open and delete a file ([DECISIONS.md #32](DECISIONS.md)) |
 | `0011_push_notifications.sql` | Push notifications: `announcements.notified_at`, `push_tokens`, `register_push_token`, and the every-minute job that calls the Edge Function `notify-announcements` ([DECISIONS.md #33](DECISIONS.md)) |
+| `0013_syllabus_materials.sql` | The syllabus editor and the materials library: retiring items, their order, checks on items and materials, the bucket `material-files`, own name and phone ([DECISIONS.md #44](DECISIONS.md)). Number 0012 belongs to the Phase 2 branch `phase2-assessments` |
+| `0014_guru_admin.sql` | The facilitator's admin screens: roles, duty hours and mentees (G2), the student import (G3), checked settings and "this week" from Monday or the last 7 days (G10), audit log indexes (G11); a call task follows the mentor ([DECISIONS.md #45-#48](DECISIONS.md)) |
 
 Every table and important column also carries a `COMMENT ON` description, so you can read it in
 the Supabase dashboard (Table Editor → table → description).
@@ -28,15 +30,15 @@ consent), sample visits, groups and an announcement. Never run it on the live pr
 
 | Area | Tables | Notes |
 |---|---|---|
-| Settings | `settings` | Day limits for follow-up, list of reasons for leaving. Change here, not in code |
+| Settings | `settings` | Day limits for follow-up, list of reasons for leaving, what "this week" means, promotion criteria for Phase 2. The facilitator changes them on G10 (see "Settings") |
 | Places | `centres` | One row per class location (Abids today) with GPS point, radius and opening hours |
-| People | `profiles` | One row per login: role, name, language, treasurer flag |
+| People | `profiles` | One row per login: role, name, language, treasurer flag, duty hours (G2) |
 | Students | `students`, `guardians`, `consents`, `roll_counters` | A student record can exist without a login |
 | Attendance | `visits` | One row per check-in; `check_out` empty while the student is still there |
 | Follow-up | `call_logs`, `follow_up_tasks`, `status_history` | Every call and every status change is kept |
 | Learning | `levels`, `syllabus_items`, `student_progress`, `level_history`, `materials` | Three levels; each has an ordered syllabus |
 | Communication | `announcements`, `announcement_reads`, `announcement_replies`, `groups`, `group_members`, `push_tokens` | Groups replace the WhatsApp groups. Views `announcement_audience` and `announcement_seen` give "seen by", `announcement_reply_list` the replies with names, `group_summary` the member counts. Photos and PDFs are files in the Storage bucket `announcement-files`, listed in `announcements.attachments` |
-| Audit | `audit_log` | Who changed a student, profile, call log, level, syllabus tick or announcement, or deleted a reply, and when |
+| Audit | `audit_log` | Who changed a student, profile, call log, level, syllabus item or tick, material, announcement, setting or centre, or deleted a reply, and when (read on G11) |
 
 ## Student status
 
@@ -132,7 +134,7 @@ number, name, level, status, pause date, mentor, joined) plus:
 | Column | Meaning |
 |---|---|
 | `last_visit_at` | Check-in time of the latest visit; empty if the student has never come |
-| `days_since_visit` | Whole days (India time) since that visit, or since joining when there is none, the same count the daily job uses for Irregular and Inactive |
+| `days_since_visit` | Whole days (India time) since that visit; with none, since joining or since the record was made, whichever is later (0014: an imported record with an old joining date is not Irregular at once); the same count the daily job uses for Irregular and Inactive |
 | `here_now` | True while the student has an open visit |
 
 The student list (C7), the profile (C8) and the follow-up queue (C10) read it. It exists because
@@ -408,11 +410,98 @@ Words these functions use, the same on every screen:
 
 | Word | Meaning |
 |---|---|
-| This week | Monday to today, India time: `week_start_ist()` |
+| This week | Monday to today, India time, or the last 7 days when `settings.week_starts` = `rolling7` (0014, G10): `week_start_ist()` |
 | New joiner | `joined_on` within the last `settings.new_joiner_weeks` weeks (4), and not *Left* |
 | In class | Status is not *Left* |
 | Calls due for my students (C1) | Students with an open follow-up task due today or earlier, or escalated, that is assigned to me or whose mentor I am: the *needs the Guru* and *call due* groups of C10 for "My students" |
 | Overdue (G1) | Students with an open task past its due date, not escalated. Escalated ones are counted separately. Grouped by the task's assignee (the mentor when the task was made); no assignee = the student had no mentor |
+
+## Coordinators and roles
+
+Screen G2 (0014, [DECISIONS.md #45](DECISIONS.md)). The Guru writes `profiles.role`, `active` and
+the new `duty_hours` directly (policy `own_update` lets the Guru update any profile); the trigger
+`profiles_admin_guard` checks every change an app user makes:
+
+| Rule | Error code |
+|---|---|
+| Only the Guru writes duty hours; trimmed, at most 120 characters | `not_allowed`, `duty_hours_too_long` |
+| Nobody changes their own role or switches themselves off | `not_own_role` |
+| The Guru role is given and taken only in the dashboard | `guru_role_dashboard_only` |
+| The app gives roles only to pending logins: coordinator, or student once a student record links to the login | `role_change_not_allowed`, `student_needs_record` |
+| A coordinator (or the Guru) who still mentors students cannot be switched off | `has_mentees` |
+
+The older guard `profiles_guard` (0002) still stops anyone but the Guru from changing role,
+treasurer or active.
+
+`link_student_login(profile, student)` (Guru) links a pending, active login to a student record
+without a login and makes it a student, in one step; errors `not_allowed`, `profile_not_pending`,
+`student_not_found`, `student_already_linked`. `reassign_mentees(students, to)` (Guru) sets the
+mentor of the given students and returns how many changed.
+
+**Mentors and call tasks.** A new mentor must be an active coordinator or the Guru (trigger
+`students_mentor_guard`, error `mentor_not_staff`; app users only). When a student's mentor
+changes, their open follow-up tasks that were the old mentor's, or nobody's, go to the new mentor
+(trigger `students_follow_mentor`, [DECISIONS.md #48](DECISIONS.md)). 0014 also gave the open tasks
+without an assignee to the student's mentor at that time.
+
+## Importing students
+
+Screen G3 (0014, [DECISIONS.md #46](DECISIONS.md)). The app reads the file, checks every row and
+sends only the good rows to `import_students(rows)` (Guru only), which checks them again and saves
+each row on its own (a refused row does not stop the others). `rows` is a JSON array of objects:
+`line` (the row number in the file, given back), `full_name`, `dob`, `phone`, `email`, `area`,
+`pincode`, `level_id`, `joined_on` (dates `YYYY-MM-DD`). It returns one entry per row:
+`{line, id, roll_no}` or `{line, error}`.
+
+| Rule | Row error |
+|---|---|
+| Name required, at most 100 characters (spaces tidied) | `name_required`, `name_too_long` |
+| Date of birth required, a real date, not in the future | `dob_required`, `dob_invalid` |
+| Adults only: an under-18 is registered with C2, so the parent's consent is recorded | `minor_use_form` |
+| Joining date optional (today), not in the future, not before the birth or 2000 | `joined_invalid` |
+| Phone: 10-13 digits after removing spaces and dashes; not already used (last 10 digits) | `phone_invalid`, `duplicate_phone` |
+| Email looks like one and is not already used | `email_invalid`, `duplicate_email` |
+| Pincode 6 digits; level 1-3 (default 1) | `pincode_invalid`, `level_invalid` |
+| No student with the same name and date of birth | `duplicate_student` |
+| Anything else the database refuses | `row_failed` |
+
+Whole-call errors: `not_allowed`, `too_many_rows` (more than 500). The roll number comes from the
+usual trigger (by the joining year), the status is *New*, and a matching confirmed login is linked
+by email as for C2.
+
+## Settings
+
+The facilitator changes settings on G10 (0014, [DECISIONS.md #47](DECISIONS.md)) with
+`save_settings(values)`: a JSON object of key and value, saved all or nothing; it refuses a key not
+in the table (`setting_unknown`) and Irregular at or after Inactive (`irregular_after_inactive`).
+The trigger `settings_guard` checks each value however it is written:
+
+| Key | Value (default) | Read by |
+|---|---|---|
+| `irregular_days` | 3-90 (14) | daily job |
+| `inactive_days` | 7-365 (30) | daily job |
+| `call_due_days` | 1-14 (3) | daily job |
+| `retry_days` | 1-14 (3) | `log_call` |
+| `max_retries` | 1-10 (3) | `log_call` |
+| `new_joiner_weeks` | 1-12 (4) | home screens |
+| `week_starts` | `"monday"` or `"rolling7"` (`"monday"`) | `week_start_ist()` |
+| `call_reasons` | a list of codes | C11, `log_call` (not edited in the app yet) |
+| `promotion_whole_syllabus`, `promotion_level_up_assessment` | true / false (true) | nothing yet (Phase 2 promotion) |
+| `promotion_min_visits` 0-100 (8), `promotion_visit_weeks` 1-52 (8) | whole numbers | nothing yet (Phase 2 promotion) |
+
+Out-of-range values give `setting_invalid`; the app cannot add (`setting_unknown`) or delete
+(`setting_required`) a setting. Every change goes to `audit_log` with the key as `row_id`
+(`audit_setting`). The open window is on `centres` (`opens_at` before `closes_at`, trigger
+`centres_guard`, error `window_invalid`); `close_open_visits` closes visits left open at the closing
+time. Centre changes are logged too.
+
+## Audit log
+
+`audit_log` (0001) gets one row per change: `table_name`, `row_id`, `action` (`INSERT`, `UPDATE`,
+`DELETE`), `changed_by` (the login; empty for the dashboard and the daily jobs), `changed_at`,
+`old_row`, `new_row` (the whole row as JSON). Only the Guru reads it (policy `guru_read`); nothing
+in the app writes it except the security definer triggers. Screen G11 reads it 50 rows at a time,
+newest first, filtered by table, person, action and time; 0014 adds indexes for these filters.
 
 ## Linking a login to a student
 
@@ -429,8 +518,9 @@ logins are linked, so a coordinator who is also on a student record keeps the co
 Linking before confirmation would let anyone claim a record by typing its email
 ([DECISIONS.md #13](DECISIONS.md)).
 
-Roles other than `student` are given by the Guru in the app, or for the very first Guru, in the
-Supabase dashboard (OPERATIONS.md). The trigger `profiles_guard` stops app users other than the
+Roles other than `student` are given by the Guru in the app (G2, see "Coordinators and roles"), or for the very first Guru, in the
+Supabase dashboard (OPERATIONS.md). The Guru can also link a pending login to a student record
+that has no login (`link_student_login`), for a student whose record carries another email or none. The trigger `profiles_guard` stops app users other than the
 Guru from changing `role`, `is_treasurer` or `active`; the dashboard is not blocked.
 
 ## Database functions (call these from the app)
@@ -453,7 +543,11 @@ so every function is revoked from them and granted only where needed
 | `guru_dashboard()` | Guru | The Guru dashboard's numbers. See "Home screens" |
 | `move_syllabus_item(item, up)` | Guru | Moves a syllabus item one place up or down among the items in use. See "Syllabus editor" |
 | `syllabus_item_counts()` | Guru, coordinator | Ticks and materials per syllabus item. See "Syllabus editor" |
-| `week_start_ist()` | Anyone signed in | Monday of this week in India; used by the functions above |
+| `week_start_ist()` | Anyone signed in | First day of "this week" in India (Monday, or 6 days ago with `week_starts` = `rolling7`); used by the functions above |
+| `link_student_login(profile, student)` | Guru | Links a pending login to a student record without a login; the person becomes that student. Security definer. See "Coordinators and roles" |
+| `reassign_mentees(students, to)` | Guru | Moves the students to another mentor (an active coordinator or the Guru); returns how many. See "Coordinators and roles" |
+| `import_students(rows)` | Guru | Saves up to 500 adult students, each row on its own; returns the roll number or the error per row. See "Importing students" |
+| `save_settings(values)` | Guru | Saves several settings at once, all or nothing. See "Settings" |
 | `register_push_token(token, platform)` | Guru, coordinator, student | Saves this phone's Expo push token for the signed-in person, taking it over from another login on the same phone; at most 5 phones each. Security definer. Errors `not_allowed`, `bad_token`, `bad_platform`. See "Announcements" → "Push notifications" |
 | `claim_due_push()`, `release_push_claim(ids)` | Only the Edge Function (service role) | Mark waiting announcements notified and return the phones to notify; put them back when nothing could be sent |
 
@@ -469,7 +563,8 @@ Internal functions (not called by the app, and not allowed to): `refresh_student
 and audit triggers (including `guard_student_progress`, `audit_student_progress`,
 `guard_announcement`, `guard_announcement_attachments`, `guard_announcement_notified`,
 `guard_group`, `guard_announcement_reply`, `guard_syllabus_item`, `protect_syllabus_item`,
-`guard_progress_item_in_use`, `guard_material` and `guard_profile_details`), and the helpers `my_role`, `is_guru`, `is_staff`,
+`guard_progress_item_in_use`, `guard_material`, `guard_profile_details`, `guard_profile_admin`, `guard_student_mentor`,
+`follow_mentor_tasks`, `guard_setting`, `audit_setting` and `guard_centre`), and the helpers `my_role`, `is_guru`, `is_staff`,
 `setting_int`, `today_ist`.
 
 ## Scheduled jobs (pg_cron, times in UTC)
@@ -498,7 +593,8 @@ and audit triggers (including `guard_student_progress`, `audit_student_progress`
 | Push tokens | Own; delete own | Own; delete own | Own; delete own |
 | Groups | Name of the groups they are in | All; create, rename, switch off, add or remove members | Same as coordinator |
 | Staff names (`staff_names`) | Guru and coordinators' names only | Same | Same |
-| Settings, levels, syllabus, centres | Read | Read | Read / write |
+| Settings, levels, syllabus, centres | Read | Read | Read / write (settings through `save_settings`, checked) |
+| Roles, switching a login off, duty hours of others | — | — | Write (not their own role; Guru role only in the dashboard) |
 | Audit log | — | — | Read |
 
 ## Changing the database

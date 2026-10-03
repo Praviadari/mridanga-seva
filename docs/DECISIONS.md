@@ -992,3 +992,137 @@ history honest while the syllabus evolves. YouTube costs nothing and needs no ne
 the next publish to production. A material's file goes from Storage before its row; a file whose
 material row fails to save is taken out of Storage again. The Telugu and Hindi lines are drafts
 for the native-speaker review (docs/TRANSLATIONS.md).
+
+## 45. The facilitator gives roles and manages coordinators in the app — 3 Oct 2026
+
+**Context.** Until round 8 a signed-up person became a coordinator only when someone edited
+`profiles.role` in the Supabase Table Editor, and moving a coordinator's students meant editing each
+student. The team approved G2 Coordinators, G3 Students (whole database and import), G10 Settings
+and G11 Audit log in the Screen List doc; the pilot (16-29 Nov 2026) needs them on a laptop.
+
+**Decision** (Praveen's brief for round 8, 3 Oct 2026; details by the round 8 chat).
+- **G2 Coordinators** (`staff/coordinators/`): the Guru and coordinators with their number of mentees
+  and duty hours; the people waiting for a role; logins put aside. On a person: make a waiting
+  person a coordinator, or **link them to a student record** that has no login
+  (`link_student_login`, for a student whose record carries a different email or none; the
+  automatic link by confirmed email of #13 stays); write **duty hours** as free text
+  (`profiles.duty_hours`, up to 120 characters; the duty roster C20 is Phase 2); pick mentees and
+  **move them to another coordinator** in one step (`reassign_mentees`); switch a login off or on.
+- **Rules in the database** (trigger `profiles_admin_guard`, migration 0014): nobody changes their own
+  role or switches themselves off; the Guru role is given and taken only in the dashboard; the app
+  gives roles only to pending logins (coordinator, or student through a linked record); a
+  coordinator who still mentors students cannot be switched off until they are moved; a mentor is
+  an active coordinator or the Guru. Switching off keeps every record (`profiles.active`, #11).
+- **G3 Student database** (`staff/database/`): every record, Left ones too, with search and filters
+  for level, status, mentor and area; a table on a laptop, rows on a phone. C7 stays the everyday
+  list for coordinators. The import is #46.
+- **Entry:** a short list "Running the class" under the ring on the Guru home (G1), not new circles:
+  the ring holds nine (#44) and these are one person's laptop screens. The four screens tell a
+  coordinator who opens them by address that only the facilitator uses them; the database refuses
+  a coordinator anyway.
+
+**Why.** Giving roles is the "main thing" of the team's brief (coordinator management, 28 Sep 2026),
+and the Table Editor is neither safe nor usable for the volunteers. Linking a login to a record by
+the Guru's decision is safe where the email rule cannot help, because the Guru checks the person.
+
+**Consequences.** Migration 0014 must run on TEST before the screens work there, and on LIVE before
+the next production publish. A person who gets a role sees it after reopening the app or tapping
+Check again on the pending screen.
+
+## 46. Students are imported from Excel or CSV, adults only, row by row — 3 Oct 2026
+
+**Context.** The class keeps its students in an Excel list today. The pilot needs them in the app
+without typing each one into C2. The brief allowed a pure-JavaScript reader such as SheetJS.
+
+**Decision.**
+- **Reader:** fflate (MIT, pure JavaScript, from npm) opens the .xlsx zip, and
+  `src/lib/sheet-reader.ts` reads the first sheet's cells (shared and inline text, numbers,
+  true/false; formulas give their saved value); CSV with comma, semicolon or tab is read too. Not
+  SheetJS: the newest SheetJS on npm (`xlsx` 0.18.5) has two published advisories (prototype
+  pollution CVE-2023-30533, ReDoS CVE-2024-22363) that are fixed only in versions served from
+  SheetJS's own CDN, not npm, and it is several hundred KB. Measured on the web export: fflate adds
+  about 34 KB minified (13 KB gzipped); all of round 8 adds about 199 KB minified (51 KB gzipped)
+  to the entry bundle, much of it the new text in three languages. No native code: the fingerprint
+  stays 38ce7d9d. Old .xls files are refused with "save as .xlsx or CSV".
+- **Steps on one page** (`staff/database/import.tsx`): choose a file → the columns are matched to
+  name, date of birth, phone, email, area, pincode, level, joined on and an old roll number by
+  their headings (the Guru can change each) → every row is checked and listed with its problems →
+  only the good rows are sent, after a confirmation.
+- **Row rules** (app and again in `import_students`, migration 0014): name and **date of birth
+  required** (as for C2; under-18 cannot be told otherwise); **under 18 refused** with "register
+  with the form", so the parent's consent is recorded (#8, #16); a duplicate phone (same last 10
+  digits), email, name with date of birth, or old roll number, against the database and within the
+  file, is refused; dates as Excel day numbers, day-month-year, year-month-day or 15-Jun-2012; level
+  as Beginner / Intermediate / Advanced or 1-3, empty = Beginner. Each row is saved or refused on
+  its own; at most 500 rows a call (the app sends 200).
+- **Roll numbers** come from the same trigger as always, by the joining year (#3); the old roll
+  number is not kept, it only finds repeats. Imported students start as *New*.
+- **Days away count from when the record was made** if that is later than the joining date
+  (`student_overview` and the daily job, 0014): otherwise every imported student with an old joining
+  date would be *Irregular* the next morning, with a call task for each.
+
+**Why.** The import is a one-time job for the facilitator, done on a laptop; showing every problem
+before anything is saved, and saving the good rows only, lets them fix the file and import again
+without creating doubles.
+
+**Consequences.** Minors and rows without a date of birth stay in the file for C2. The seed's
+dummy students get a creation time equal to their joining date so their days away stay as before.
+
+## 47. Settings the database uses are edited on G10; the audit log is readable on G11 — 3 Oct 2026
+
+**Context.** The follow-up day limits were rows in `settings` changed only in the dashboard, the open
+window was fixed in `centres`, and "this week" always meant from Monday (#31), while the team had
+asked "from Monday or the last 7 days" (NOTES_demo). The audit log was written but not readable.
+
+**Decision.**
+- **G10** (`staff/settings.tsx`) offers only what the code reads: the open window of the centre
+  (`centres.opens_at`, `closes_at`; visits left open are closed at the closing time); **"this week"
+  = from Monday or the last 7 days** (`settings.week_starts` = `monday` / `rolling7`, read by
+  `week_start_ist()`, so every home number follows); days to Irregular and Inactive, days to make
+  a call, days to retry, tries before the Guru is asked, weeks as a new joiner. Saved together by
+  `save_settings` (all or nothing; Irregular must come before Inactive); each value checked by the
+  trigger `settings_guard` (whole numbers in a range, known keys only, no delete from the app); each
+  change written to the audit log with the key as the row id.
+- **Promotion criteria placeholders for Phase 2** (DECISIONS #43 on the branch phase2-assessments):
+  `promotion_whole_syllabus` (true), `promotion_min_visits` (8), `promotion_visit_weeks` (8),
+  `promotion_level_up_assessment` (true). Shown on G10 as "not used yet"; slice 2 (C22) reads these keys.
+- **Later, listed on the screen:** reasons for a call (each new code needs a translation), centres
+  and the attendance area (G9, round 9), notification times, the duty roster.
+- **G11** (`staff/audit-log.tsx`): read-only, newest first, 50 at a time, filtered in the database
+  by record type, person, kind of change and period; a row opens to show the values before and
+  after. Guru only (policy `guru_read`, 0001). Indexes for the filters; settings and centres are
+  now logged too.
+
+**Why.** Each setting changes what someone sees or is asked to do, so it belongs to the facilitator,
+checked by the database, and traceable.
+
+**Consequences.** A changed day limit takes effect at the next daily job (06:00 IST). The home
+screens read `week_starts` to word their line ("from Monday" or "last 7 days").
+
+## 48. A call follows the student's mentor; the profile holds the app language — 3 Oct 2026
+
+**Context.** Two defects seen on 3 Oct 2026. (a) The follow-up queue said "not given to anyone yet"
+for students who had a mentor: their call task had been made while they had none (the task copies
+the mentor when it is made), and changing the mentor later did not touch it. (b) A language picked
+on a device seemed lost after a reload (the coordinator: Telugu, then English): a language once picked
+on any device won over the profile at every start and was written back to the profile, so a person's
+second device (or browser) kept setting the profile back, and a device that had no choice of its own
+followed the profile.
+
+**Decision** (Praveen asked the chat to choose, round 8 brief).
+- **(a) The call is given to the mentor**, not only shown: when a student's mentor changes, their open
+  call tasks that were the old mentor's, or nobody's, go to the new mentor (trigger
+  `students_follow_mentor`); 0014 also gives the existing unassigned tasks to the student's current
+  mentor. The queue shows "for <name> (mentor)" when a task still has no assignee, and "not given to
+  anyone yet" only for a student with no mentor.
+- **(b) The profile holds the language;** the person's last choice wins on every device. A choice is
+  saved to the profile at once; the device marks it "unsaved" only until the save works (picked on
+  the sign-in screen, or without internet), and then sends it at the next profile load. Otherwise
+  the profile's language is used and remembered on the device for the next start.
+
+**Why.** Calls belong to the mentor (drop-in design, 28 Sep 2026); giving the task to them makes C1's
+"calls due for my students", G1's per-coordinator counts and C10 agree. For the language, one place
+of truth ends the tug of war between devices.
+
+**Consequences.** A device that had picked a language before round 8 takes the profile's language at
+its next start if they differ.

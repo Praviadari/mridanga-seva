@@ -101,7 +101,7 @@ export default function StudentHomeScreen() {
       {home && home !== 'not_found' ? (
         <>
           <StatGrid>
-            <StatTile icon="visits" value={String(home.visitsThisWeek)} label={t('home.student.visitsThisWeek')} />
+            <StatTile icon="visits" value={String(home.visitsThisWeek)} label={home.weekStarts === 'rolling7' ? t('weekMeaning.studentRolling') : t('home.student.visitsThisWeek')} />
             <StatTile
               icon="time"
               // Never came: no number of days to show; the line below says "No visit yet".

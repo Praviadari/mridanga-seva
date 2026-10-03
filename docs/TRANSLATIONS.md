@@ -78,5 +78,12 @@ The code is in `app/src/i18n/index.ts`, `app/src/components/language-picker.tsx`
   `progress.levelLessons`, `progress.retired` and `syllabus.errors.retired`. Words to check:
   "retire" (విరమించు / हटाना, against "delete" = తొలగించు / मिटाना), "lesson" (పాఠం / पाठ),
   "syllabus item" (అంశం / विषय), and "Share", "Copy link" kept in English as YouTube shows them.
+- **Round 8 keys for the review (3 Oct 2026):** `admin.*` ("Running the class" on G1),
+  `coordinators.*` (G2), `database.*` (G3), `importStudents.*` and `importErrors.*` (the import),
+  `settings.*` (G10), `auditLog.*` (G11), `weekMeaning.*` ("this week" as the last 7 days) and
+  `mentorTask.line` (C10). Words to check: "coordinator" kept as కోఆర్డినేటర్ / कोऑर्डिनेटर, "mentee"
+  (మెంటీ / मेंटी, from "mentor"), "switch off" a login (ఆపివేయండి / बंद करें), "import" (దిగుమతి /
+  आयात), "audit log" (ఆడిట్ లాగ్ / ऑडिट लॉग, kept as the English term), "duty hours" (డ్యూటీ సమయాలు /
+  ड्यूटी का समय), and the settings labels, which are long sentences.
 - Telugu and Devanagari letters are taller than Latin ones. The app's line heights allow for this;
   if a translated label looks cut off, report it with a screenshot.

@@ -15,7 +15,7 @@
 import type { Session } from '@supabase/supabase-js';
 import { createContext, use, useEffect, useState, type PropsWithChildren } from 'react';
 
-import { applyProfileLanguage, currentLanguage, hasChosenLanguage } from '@/i18n';
+import { applyProfileLanguage, currentLanguage, hasUnsavedChoice, markLanguageSaved } from '@/i18n';
 import { storedLoginUserId, supabase, supabaseConfigProblem } from '@/lib/supabase';
 
 import { forgetSavedProfile, readSavedProfile, saveProfile } from './saved-profile';
@@ -54,7 +54,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   // the first screen is already in the person's language.
   const [saved] = useState<Profile | null>(() => {
     const copy = supabaseConfigProblem ? null : readSavedProfile();
-    if (copy && !hasChosenLanguage()) applyProfileLanguage(copy.language);
+    if (copy && !hasUnsavedChoice()) applyProfileLanguage(copy.language);
     return copy;
   });
 
@@ -190,29 +190,44 @@ function withSavedFallback(result: ProfileResult): ProfileResult {
 }
 
 /**
- * Keeps the app language and the profile's saved language in step. A language picked on this
- * device (for example on the sign-in screen) wins and is saved to the profile, so future
- * messages use it; otherwise the profile's language is used, so a person gets their language
- * on a new phone without choosing again.
+ * Keeps the app language and the profile's saved language in step. The profile holds the
+ * person's language, so their last choice on any device is used everywhere. A language picked on
+ * this device that has not reached the profile yet (picked on the sign-in screen, or without
+ * internet) is saved to it now; otherwise the profile's language is used (docs/DECISIONS.md #48).
  */
 function syncLanguageWithProfile(profile: Profile): void {
-  if (!hasChosenLanguage()) {
-    applyProfileLanguage(profile.language);
+  if (hasUnsavedChoice()) {
+    saveProfileLanguage(profile, currentLanguage());
     return;
   }
-  saveProfileLanguage(profile, currentLanguage());
+  applyProfileLanguage(profile.language);
 }
 
 /**
  * Saves `language` as the signed-in person's language on their profile, when it differs. Used
- * when the profile loads and when the person switches language on a home screen.
- * Not awaited and errors ignored: the screen language is already right; the profile catches up
- * the next time the profile loads.
+ * when the profile loads and when the person switches language. Not awaited: the screen
+ * language is already right. When the save works, the device stops marking the choice as unsaved
+ * and the remembered profile gets the new language; when it fails (no internet), the next profile
+ * load tries again.
  * @param profile the signed-in person's profile; its `language` is updated in place.
  * @param language the language the app now shows.
  */
 export function saveProfileLanguage(profile: Profile, language: string): void {
-  if (profile.language === language) return;
+  if (profile.language === language) {
+    markLanguageSaved();
+    return;
+  }
+  // Set at once, so a second quick switch is compared with this one and not with the old value.
   profile.language = language;
-  void supabase.from('profiles').update({ language }).eq('id', profile.id).then(() => undefined);
+  void supabase
+    .from('profiles')
+    .update({ language })
+    .eq('id', profile.id)
+    .select('id')
+    .then(({ data, error }) => {
+      // A later switch has its own save; only the save of what the app shows ends the "unsaved".
+      if (error || !data || data.length === 0 || currentLanguage() !== language) return;
+      markLanguageSaved();
+      if (readSavedProfile()?.id === profile.id) saveProfile({ ...profile });
+    });
 }

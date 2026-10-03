@@ -11,6 +11,8 @@
 
 import { supabase } from '@/lib/supabase';
 
+import { fetchWeekStarts, type WeekStarts } from './settings';
+
 import type { StudentStatus } from './student-overview';
 
 // ---------------------------------------------------------------- S1 student home
@@ -34,6 +36,8 @@ export type StudentHome = {
   /** Ticked items of the student's current level, and how many items that level has. */
   syllabusDone: number;
   syllabusTotal: number;
+  /** What "this week" means (settings.week_starts, round 8). */
+  weekStarts: WeekStarts;
 };
 
 type StudentHomeRow = {
@@ -55,7 +59,7 @@ type StudentHomeRow = {
  * a student record, null when they could not be loaded (usually no internet).
  */
 export async function fetchStudentHome(): Promise<StudentHome | 'not_found' | null> {
-  const { data, error } = await supabase.rpc('student_home');
+  const [{ data, error }, weekStarts] = await Promise.all([supabase.rpc('student_home'), fetchWeekStarts()]);
   if (error) return null;
   const row = data as StudentHomeRow | null;
   if (!row) return 'not_found';
@@ -71,6 +75,7 @@ export async function fetchStudentHome(): Promise<StudentHome | 'not_found' | nu
     visitsThisWeek: row.visits_this_week,
     syllabusDone: row.syllabus_done,
     syllabusTotal: row.syllabus_total,
+    weekStarts,
   };
 }
 
@@ -177,6 +182,8 @@ export type GuruDashboard = {
   byStatus: { status: StudentStatus; students: number }[];
   /** Only people with something overdue or escalated; most urgent first. */
   followUps: FollowUpLoad[];
+  /** What "this week" means (settings.week_starts, round 8). */
+  weekStarts: WeekStarts;
 };
 
 type GuruDashboardRow = {
@@ -192,7 +199,7 @@ type GuruDashboardRow = {
 
 /** Loads the Guru dashboard (Guru only). Returns null when it could not be loaded. */
 export async function fetchGuruDashboard(): Promise<GuruDashboard | null> {
-  const { data, error } = await supabase.rpc('guru_dashboard');
+  const [{ data, error }, weekStarts] = await Promise.all([supabase.rpc('guru_dashboard'), fetchWeekStarts()]);
   if (error || !data) return null;
   const row = data as GuruDashboardRow;
   return {
@@ -209,5 +216,6 @@ export async function fetchGuruDashboard(): Promise<GuruDashboard | null> {
       overdue: f.overdue,
       escalated: f.escalated,
     })),
+    weekStarts,
   };
 }

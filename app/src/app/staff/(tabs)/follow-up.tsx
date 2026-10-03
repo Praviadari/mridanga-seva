@@ -52,16 +52,23 @@ export default function FollowUpScreen() {
   const haveMine = !!queue?.entries.some((entry) => isMine(entry, myId));
   const entries = (queue?.entries ?? []).filter((entry) => scope === 'everyone' || isMine(entry, myId));
 
-  /** The task line: "Call due 01-10-2026 · try 2 · for Radha", or "… · not given to anyone yet". */
+  /**
+   * The task line: "Call due 01-10-2026 · try 2 · for Radha". A task given to nobody falls to the
+   * student's mentor (since 0014 the database also moves it to them, docs/DECISIONS.md #48); only a
+   * student with no mentor says "not given to anyone yet".
+   */
   function taskText(entry: QueueEntry): string {
     const { task } = entry;
     if (!task) return t('followUp.noTask');
+    const mentorId = entry.student.mentorId;
     return [
       t('followUp.due', { date: formatDayMonthYear(task.dueOn) }),
       task.attempt > 1 ? t('followUp.attempt', { number: task.attempt }) : null,
       task.assigneeId
         ? t('followUp.assignee', { name: staffNames.get(task.assigneeId) || t('profile.unknownPerson') })
-        : t('followUp.unassigned'),
+        : mentorId
+          ? t('mentorTask.line', { name: staffNames.get(mentorId) || t('profile.unknownPerson') })
+          : t('followUp.unassigned'),
     ]
       .filter(Boolean)
       .join(' · ');

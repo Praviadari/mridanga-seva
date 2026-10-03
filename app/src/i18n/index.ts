@@ -7,7 +7,7 @@ import { getLocales } from 'expo-localization';
 import { createInstance } from 'i18next';
 import { initReactI18next } from 'react-i18next';
 
-import { readLocal, writeLocal } from '@/lib/local-storage';
+import { readLocal, removeLocal, writeLocal } from '@/lib/local-storage';
 
 import en from './locales/en.json';
 import hiJson from './locales/hi.json';
@@ -32,17 +32,28 @@ export const LANGUAGES: readonly { code: Language; nativeName: string }[] = [
 ];
 
 const STORAGE_KEY = 'language';
+// Set while a language picked on this device has not reached the person's profile yet (picked
+// before signing in, or saved without internet). Round 8 (docs/DECISIONS.md #48): before, any
+// language ever picked on a device won over the profile at every start, so two devices of one
+// person kept overwriting each other's choice and a choice seemed lost after a reload.
+const UNSAVED_KEY = 'languageUnsaved';
 
 function isLanguage(value: unknown): value is Language {
   return value === 'en' || value === 'te' || value === 'hi';
 }
 
 /**
- * True when the person picked a language on this device. That choice then wins over the one
- * saved on their profile (see syncLanguageWithProfile in src/auth/auth-provider.tsx).
+ * True when the person picked a language on this device that is not on their profile yet. That
+ * choice then goes to the profile (see syncLanguageWithProfile in src/auth/auth-provider.tsx);
+ * otherwise the profile's language is used.
  */
-export function hasChosenLanguage(): boolean {
-  return isLanguage(readLocal(STORAGE_KEY));
+export function hasUnsavedChoice(): boolean {
+  return readLocal(UNSAVED_KEY) === '1' && isLanguage(readLocal(STORAGE_KEY));
+}
+
+/** Notes that the language on this device is now the one saved on the profile. */
+export function markLanguageSaved(): void {
+  removeLocal(UNSAVED_KEY);
 }
 
 /** The language to start in: this device's saved choice, else the phone's language, else English. */
@@ -92,17 +103,18 @@ export function currentLanguage(): Language {
  */
 export function chooseLanguage(language: Language): void {
   writeLocal(STORAGE_KEY, language);
+  writeLocal(UNSAVED_KEY, '1');
   void i18n.changeLanguage(language);
 }
 
 /**
- * Switches to the language saved on the person's profile, without marking it as a choice made
- * on this device.
+ * Switches to the language saved on the person's profile and remembers it on this device, so
+ * the next start (and the sign-in screen after a sign-out) opens in it.
  */
 export function applyProfileLanguage(language: string): void {
-  if (isLanguage(language) && language !== currentLanguage()) {
-    void i18n.changeLanguage(language);
-  }
+  if (!isLanguage(language)) return;
+  writeLocal(STORAGE_KEY, language);
+  if (language !== currentLanguage()) void i18n.changeLanguage(language);
 }
 
 export default i18n;
