@@ -1462,15 +1462,15 @@ appear on the web version with the next test-site export. The Edge Function `not
 from the Phase 2 branches is on main and must be deployed again to TEST and LIVE. Slice 4
 (branch phase2-media) takes migrations from 0020 when it rebases on this merge.
 
-## 52. Media: the lesson-video player in a WebView, recording in the app — 3 Oct 2026
+## 56. Media: the lesson-video player in a WebView, recording in the app — 3 Oct 2026
 
-**Status: decided by Praveen 3 Oct 2026 (answers at the end), on the branch `phase2-media` only** (from `phase2-practice`). The number follows
-main's last (#51); Phase 2 is being merged into main now, so it is renumbered after the merge's last
-(about #55), like the migration (0017 here → 0020 or later).
+**Status: decided by Praveen 3 Oct 2026 (answers at the end), on the branch `phase2-media`, rebased on
+main after the Phase 2 merge (#55); not on main until the lead pushes it.** On the branch this entry
+was #52 and Assessments was #43; on main Assessments is #52, which is what "#52" below means.
 
 **Context.** The Screen List doc approves V3 (mirror, 0.5x / 0.75x, A-B loop, tap a pane to zoom) and
 V2 (lessons filmed from 2-3 phones and joined side by side). Lessons are unlisted YouTube links
-(`materials`). #43 put recording in the app into the next planned APK (expo-audio, added in slice 3),
+(`materials`). #52 put recording in the app into the next planned APK (expo-audio, added in slice 3),
 and left the coordinator's voice note on C14 waiting for it. S5 in the doc lists "record myself".
 
 **Decision.**
@@ -1493,9 +1493,9 @@ and left the coordinator's voice note on C14 waiting for it. S5 in the doc lists
   **A-B loop** runs inside the page, so the bridge's delay does not shift it.
 - **Recording** uses expo-audio (mono, 96 kbit/s: .m4a on phones, about 0.7 MB a minute; .webm in the
   browser). A take is heard before it is used and uploaded only when the form is sent. **S7**: "Record
-  here", up to 20 minutes, into the same bucket within #43's 50 MB and 10-a-day limits. **C14**: a
+  here", up to 20 minutes, into the same bucket within #52's 50 MB and 10-a-day limits. **C14**: a
   voice note, up to 5 minutes, sent with the review; a redo needs a comment or a voice note; it is
-  deleted with the recording (#43 keep time). Coordinators may now upload audio into their own folder,
+  deleted with the recording (#52 keep time). Coordinators may now upload audio into their own folder,
   10 files a day.
 - **Record myself** (S5): recordings stay on the phone (the newest 30, never uploaded; in the browser
   only until the page is closed). "With the sound" starts the chosen metronome or taal from beat 1 as
@@ -1509,7 +1509,7 @@ check. Following YouTube's terms keeps the team's channel and the app safe; the 
 mirror and zoom it asked for by keeping its own copy of the multi-angle lessons. Recording in the app
 replaces the WhatsApp round trip for assessments and feedback.
 
-**Consequences.** Migration `0017_media.sql` (TEST only; renumbered at the merge): `materials.kind`
+**Consequences.** Migration `0020_media.sql` (TEST ran it as 0017_media.sql): `materials.kind`
 `video` + `panes`, `assessment_submissions.voice_note`, `review_submission` with `p_voice_note`,
 Storage rules and keep time (DATABASE.md "Media"). Smoke tests pass (section "media"). Phone tests
 with the next APK (react-native-webview, expo-audio): see NOTES.md "Phase 2 slice 4". YouTube could

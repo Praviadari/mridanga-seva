@@ -1011,7 +1011,7 @@ const guide = await filePath(guru, 'pdf');
 const demo = await filePath(guru, 'mp3');
 await aUpload(guru, guide);
 await aUpload(guru, demo, 900000);
-await refuses('a coordinator cannot upload assessment files (only voice notes, 0017)', async () => aUpload(coordinator, await filePath(coordinator, 'pdf')));
+await refuses('a coordinator cannot upload assessment files (only voice notes, 0020)', async () => aUpload(coordinator, await filePath(coordinator, 'pdf')));
 await refuses('a file needs a known ending', async () => aUpload(guru, await filePath(guru, 'exe')));
 const draft = await createAssessment(guru, {
   media: [{ path: guide, name: ' Ekatala.pdf ', kind: 'pdf', size: 1 }, { path: demo, name: 'Demo.mp3', kind: 'audio', size: 1 }],

@@ -1,4 +1,4 @@
-// "Record myself" on S5 (Phase 2 slice 4, docs/DECISIONS.md #52): the recordings stay on the phone,
+// "Record myself" on S5 (Phase 2 slice 4, docs/DECISIONS.md #56): the recordings stay on the phone,
 // never uploaded. Each is an .m4a in the app's own document folder (recordings/), listed in
 // recordings/index.json with what was playing when it was made, so "Play with the sound" can start
 // the same metronome or taal beside it. At most MAX_RECORDINGS: the oldest goes when a new one comes.

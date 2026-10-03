@@ -65,7 +65,7 @@ export type Material = {
   itemId: number | null;
   /** false = a coordinator's suggestion waiting for the Guru (Phase 2). */
   approved: boolean;
-  /** A video file: camera angles side by side (1-4, V2); 1 for every other kind (migration 0017). */
+  /** A video file: camera angles side by side (1-4, V2); 1 for every other kind (migration 0020). */
   panes: number;
 };
 
@@ -152,7 +152,7 @@ export const MAX_PANES = 4;
 
 /**
  * True for a link to a video file the team keeps (https, .mp4 / .webm / .m4v / .mov, at most 500
- * characters), as video_link_ok in migration 0017. Mirror and zoom work only on such files.
+ * characters), as video_link_ok in migration 0020. Mirror and zoom work only on such files.
  */
 export function videoLinkOk(link: string): boolean {
   const value = link.trim();

@@ -718,9 +718,8 @@ reads their own practice; staff read everyone's. Anon reads nothing.
 
 ## Media (Phase 2)
 
-Migration 0017 (`0017_media.sql`), on the branch `phase2-media`, TEST project only until Phase 2 goes
-live ([DECISIONS.md #52](DECISIONS.md)); renumbered at the merge (after the merged Phase 2 files, so
-0020 or later). Screens V3, G5 video files, S7 and C14 recording (SCREENS.md). "Record myself" (S5)
+Migration 0020 (`0020_media.sql`; TEST ran the same statements as 0017_media.sql on 3 Oct 2026),
+on the branch `phase2-media` ([DECISIONS.md #56](DECISIONS.md)); LIVE runs it after 0019. Screens V3, G5 video files, S7 and C14 recording (SCREENS.md). "Record myself" (S5)
 keeps nothing in the database.
 
 | Change | What |
@@ -728,11 +727,11 @@ keeps nothing in the database.
 | `materials.kind` | Adds `video`: `url` is an https link (≤ 500) to the team's own `.mp4` / `.webm` / `.m4v` / `.mov` file (`video_link_ok`); no Storage file |
 | `materials.panes` | 1-4 camera angles side by side in a video file (V2), for "tap to zoom" in V3; always 1 for other kinds (a YouTube player may not be zoomed). `guard_material` redefined: errors `video_link_invalid`, `panes_invalid` |
 | `assessment_submissions.voice_note` | The reviewer's spoken comment `{path, name, kind, size}` in the bucket `assessment-files` (the size taken from Storage) |
-| `review_submission(…, p_voice_note)` | Replaces 0012's five-argument version: checks the voice note (own upload, in Storage, audio or a browser's .webm); a redo needs a comment **or** a voice note |
+| `review_submission(…, p_voice_note)` | Replaces 0016's five-argument version: checks the voice note (own upload, in Storage, audio or a browser's .webm); a redo needs a comment **or** a voice note |
 | Storage rules | `assessment_file_uploadable`: a coordinator may upload audio (or .webm) into their own folder, at most 10 files a day. `assessment_file_readable`: a file that a submission lists as its voice note opens for whoever may read the submission. `assessment_file_deletable`: such a file stays |
-| Keep time | `claim_expired_submission_files` and `assessment_daily` redefined: a submission with a file **or** a voice note expires as before (30 days after the review; level-up rules of 0014); both paths are returned, so the Edge Function deletes both unchanged |
+| Keep time | `claim_expired_submission_files` and `assessment_daily` redefined: a submission with a file **or** a voice note expires as before (30 days after the review; level-up rules of 0017); both paths are returned, so the Edge Function deletes both unchanged |
 
-Smoke tests: section "media (0017, Phase 2)".
+Smoke tests: section "media (0020, Phase 2)".
 ## Linking a login to a student
 
 A student record can exist without a login (many students never install the app). When a person
@@ -785,14 +784,14 @@ so every function is revoked from them and granted only where needed
 | `claim_due_push()`, `release_push_claim(ids)` | Only the Edge Function (service role) | Mark waiting announcements notified and return the phones to notify; put them back when nothing could be sent |
 | `release_assessment`, `mark_assessment_seen`, `submit_assessment`, `review_submission`, `remind_assessment` | See "Assessments (Phase 2)" | Phase 2 (0016) |
 | `claim_push_outbox()`, `release_push_outbox(ids)`, `claim_expired_submission_files()`, `release_submission_files(ids)` | Only the Edge Function (service role) | Send the queued assessment and promotion notifications; delete expired recordings (0016) |
-| `review_submission(…, p_voice_note)` | See "Media (Phase 2)" | Phase 2 (0017) replaces 0012's version |
+| `review_submission(…, p_voice_note)` | See "Media (Phase 2)" | Phase 2 (0020) replaces 0016's version |
 | `next_level`, `promotion_criteria`, `nominate_for_promotion`, `give_promotion_feedback`, `decide_promotion`, `withdraw_nomination`, `promotion_ready_students`, `promotion_home` | See "Promotion approval (Phase 2)" | Phase 2 (0017) |
 
 The Storage rules `announcement_file_readable`, `announcement_file_uploadable`,
 `announcement_file_deletable` and `announcement_file_path_ok` are run by row-level security as
 the person asking, so signed-in people may execute them; each answers only yes or no about that
 person's own access. The same holds for `material_file_readable`, `material_file_uploadable`,
-`material_file_deletable` and `youtube_link_ok` (0013), and `video_link_ok` (0017).
+`material_file_deletable` and `youtube_link_ok` (0013), and `video_link_ok` (0020).
 
 Internal functions (not called by the app, and not allowed to): `refresh_student_statuses`,
 `close_open_visits`, `send_due_push`, `handle_new_user`, `handle_user_confirmed`,

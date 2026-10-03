@@ -1,4 +1,4 @@
-// Recording audio in the app (Phase 2 slice 4, docs/DECISIONS.md #43, #52), with expo-audio (in
+// Recording audio in the app (Phase 2 slice 4, docs/DECISIONS.md #52, #56), with expo-audio (in
 // the next planned APK): "Record myself" on S5, a recording for an assessment on S7 and the
 // coordinator's voice note on C14 (components/audio-recorder.tsx).
 // Phones record AAC in an .m4a file (mono, 96 kbit/s: about 0.7 MB a minute, so 50 MB is over an

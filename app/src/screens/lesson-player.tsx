@@ -1,4 +1,4 @@
-// V3 Lesson-video player (Phase 2 slice 4, docs/DECISIONS.md #52), for students (route
+// V3 Lesson-video player (Phase 2 slice 4, docs/DECISIONS.md #56), for students (route
 // student/lesson/[id]) and staff (staff/lesson/[id]); the id is a material's.
 // - Every lesson video: play / pause, back and forward 5 s, speed 0.5x / 0.75x / 1x, an A-B loop
 //   (set A and B while it plays; the part repeats until cleared).

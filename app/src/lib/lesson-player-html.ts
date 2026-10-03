@@ -1,4 +1,4 @@
-// V3 lesson-video player (Phase 2 slice 4, docs/DECISIONS.md #52): the HTML page that plays one
+// V3 lesson-video player (Phase 2 slice 4, docs/DECISIONS.md #56): the HTML page that plays one
 // lesson. Phones show it in a WebView (components/lesson-video-frame.tsx), the browser in an iframe
 // (lesson-video-frame.web.tsx), so both run exactly this code.
 //

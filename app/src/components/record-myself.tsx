@@ -1,4 +1,4 @@
-// "Record myself" on S5 Practice tools (Phase 2 slice 4, docs/DECISIONS.md #52): record your own
+// "Record myself" on S5 Practice tools (Phase 2 slice 4, docs/DECISIONS.md #56): record your own
 // playing, keep it on this phone (lib/my-recordings.ts; never uploaded), play it back, and compare
 // it with the taal player: when "with the sound" is on, the metronome or taal starts from its first
 // beat the moment recording starts, and "Play with the sound" later starts the same sound and the

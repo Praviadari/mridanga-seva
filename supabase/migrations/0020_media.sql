@@ -10,7 +10,7 @@
 --    right head, front). YouTube's terms forbid changing its player's picture, so mirror and zoom
 --    work only on such files; YouTube lessons keep speed and the A-B loop (DECISIONS #56).
 -- 2. assessment_submissions.voice_note: the coordinator's spoken comment on a review (C14),
---    recorded in the app and uploaded to the bucket assessment-files (50 MB a file, as #43).
+--    recorded in the app and uploaded to the bucket assessment-files (50 MB a file, as #52).
 --    review_submission() takes it; a redo needs a comment OR a voice note. Coordinators may now
 --    upload audio (and a browser's .webm) into their own folder, at most 10 files a day.
 --    The voice note is deleted with the recording (claim_expired_submission_files).

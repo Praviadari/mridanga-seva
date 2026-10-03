@@ -105,8 +105,8 @@ APK (expo-audio); the browser works now.
 | S6 | Practice log: weekly practice (8 weeks from Monday), entries (timer or typed in), add practice for a day of the last week (1-240 minutes, a note), delete own entries of the last 14 days; weekly hours also on S4 My progress and, for staff, on C8 | Student (C8: staff) | Built, on main, needs the new APK | `app/src/app/student/practice-log.tsx`, `app/src/components/practice-parts.tsx`, `app/src/data/practice.ts` |
 | — | Taals: the list and a form (name, bols, vibhags, marks, level, placeholder, switched on, note, order) with a live grid preview; delete asks first. Opened from S5 "Edit taals" | Guru (coordinators read) | Built, on main, needs the new APK | `app/src/app/staff/taals/index.tsx`, `[id].tsx` |
 
-Slice 4 (branch `phase2-media`, from `phase2-practice`), media ([DECISIONS.md #52](DECISIONS.md)): the
-lesson-video player V3 (approved), "Record myself" in S5, and recording in the app for S7 and C14 (#43).
+Slice 4 (branch `phase2-media`, rebased on main after the Phase 2 merge), media ([DECISIONS.md #56](DECISIONS.md)): the
+lesson-video player V3 (approved), "Record myself" in S5, and recording in the app for S7 and C14 (#52).
 Phones need the next APK (react-native-webview, expo-audio); the browser works now, except YouTube on
 the office network (FortiGate).
 

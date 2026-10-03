@@ -1,5 +1,5 @@
 // The V3 player page (lib/lesson-player-html.ts) on Android and iOS: an OS WebView
-// (react-native-webview, in the next planned APK; docs/DECISIONS.md #52), as YouTube asks of apps
+// (react-native-webview, in the next planned APK; docs/DECISIONS.md #56), as YouTube asks of apps
 // that embed its player. The page is loaded with a base URL so YouTube sees who embeds it (its
 // terms ask for the HTTP Referer). The browser version is lesson-video-frame.web.tsx.
 

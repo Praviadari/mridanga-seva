@@ -1,4 +1,4 @@
-// V3 Lesson-video player for students (screens/lesson-player.tsx; Phase 2 slice 4, docs/DECISIONS.md #52).
+// V3 Lesson-video player for students (screens/lesson-player.tsx; Phase 2 slice 4, docs/DECISIONS.md #56).
 
 import { LessonPlayer } from '@/screens/lesson-player';
 

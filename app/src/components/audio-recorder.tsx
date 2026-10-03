@@ -1,4 +1,4 @@
-// Recording in the app (Phase 2 slice 4, docs/DECISIONS.md #52): Record, the running time, Stop.
+// Recording in the app (Phase 2 slice 4, docs/DECISIONS.md #56): Record, the running time, Stop.
 // Two ways to finish:
 // - 'review' (S7 recording, C14 voice note): after Stop the take can be played, used or recorded
 //   again; "Use" hands it to the screen, which uploads it when the form is sent.

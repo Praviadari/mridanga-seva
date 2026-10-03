@@ -365,7 +365,7 @@ log, `late`, `minLead`) for such checks.
 
 ## Media: lesson videos and recording (Phase 2, branch `phase2-media`)
 
-Not on main yet ([DECISIONS.md #52](DECISIONS.md)).
+On the branch `phase2-media`, rebased on main after the Phase 2 merge; not on main yet ([DECISIONS.md #56](DECISIONS.md)).
 
 - **V3 player = one HTML page** (`lib/lesson-player-html.ts`), shown in an OS WebView on phones
   (`components/lesson-video-frame.tsx`, react-native-webview, next APK; loaded with base URL
