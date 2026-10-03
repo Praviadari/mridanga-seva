@@ -214,6 +214,19 @@ Announcements and replies are shown exactly as people wrote them; the app does n
 3. Open the email and tap the link. It opens **Set a new password** in the browser.
 4. Type the new password twice and tap **Save password**. Then sign in with it.
 
+## Slokas (Ishtagoshti)
+
+The **Slokas** tab is for studying the scriptures, theme by theme (Phase 2, being built).
+
+- At the top is the **sloka of the day**, the same for everyone. Tap **Read the sloka**.
+- A sloka shows the verse in Sanskrit (Devanagari) and in Roman letters, **Play the recitation**
+  when there is one, the word meanings, and the temple's own translation and purport in your
+  language (or in another one if yours is not written yet; you can switch).
+- Tick **I have memorised this sloka**; the tab counts your memorised slokas.
+- **My notes** on a sloka are private: only you can see them, not even the Facilitator.
+- **Themes** gather slokas on one subject, with questions to think about before the next
+  Ishtagoshti. **All slokas** has a search.
+
 ## Coming later
 
 - **Assessments** (the Facilitator gives a piece to learn; you submit a recording), **practice

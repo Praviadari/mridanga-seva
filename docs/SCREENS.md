@@ -116,6 +116,21 @@ the office network (FortiGate).
 | G5 | Lessons: a new kind "Video file" (an https link to the team's own .mp4 / .webm / .m4v / .mov) with "Camera angles side by side" 1-4 | Guru | Built | `app/src/app/staff/materials/[id].tsx`, `app/src/data/materials.ts`, `app/src/components/material-row.tsx` |
 | S5 | Record myself: Record / Stop (up to 10 min); "Play the sound while I record" starts the chosen metronome or taal from its first beat with the recording; the recordings with date, length and what played; Play, Play with the sound (switches the screen to that taal, tempo and speed and plays both together), Delete (asks first), and for students Send for an assessment (picks an assessment waiting for them, opens S7 with the take attached). Kept on the phone only (newest 30); in the browser only until the page is closed | Student, staff | Built | `app/src/components/record-myself.tsx`, `audio-recorder.tsx`, `app/src/lib/my-recordings.ts` + `.web.ts`, `recording.ts` |
 | S7 / C14 | Record here (S7, up to 20 min) and the voice note (C14, up to 5 min): record, listen, use or record again; uploaded only when the form is sent | Student / coordinator | Built | `app/src/components/audio-recorder.tsx`, `app/src/data/assessment-files.ts` (`recordingAsMedia`), `app/src/data/assessments.ts` |
+
+Slice 6 (branch `phase2-ishtagoshti`), Ishtagoshti part 1, sloka study ([DECISIONS.md #57](DECISIONS.md)): I1-I3,
+I11, I12 (approved in the doc) for every signed-in role, as a "Slokas" tab (students' 4th, staff's 6th).
+The sloka of the day (S14) lives in I1. No native package: phones get it by an update. Later slices: I4
+memorise mode, I5 discussion + I8 moderation, I6 / I9 sessions, I10 recitation review, I13 report, I14
+public sign-up + I15 subscribers (slice 7).
+
+| # | Screen | Who | Status | Code |
+|---|---|---|---|---|
+| I1 | Ishtagoshti home (tab "Slokas"): the sloka of the day (Devanagari, transliteration, translation in my language; Read the sloka), slokas I have memorised, slokas to study, the themes, All slokas; editors: Add a sloka, Add a theme | Everyone signed in | Built | `app/src/screens/ishtagoshti-home.tsx` (routes `student/(tabs)/ishtagoshti.tsx`, `staff/(tabs)/ishtagoshti.tsx`), `app/src/data/ishtagoshti.ts`, `app/src/components/ishtagoshti-parts.tsx` |
+| I2 | A theme: introduction, its slokas in order, questions to think about; editors: Edit theme. All slokas: the list with a search over reference, verse and translations | Everyone signed in | Built | `app/src/screens/ishtagoshti-theme.tsx`, `ishtagoshti-slokas.tsx` (routes `*/ishtagoshti/theme/[id].tsx`, `*/ishtagoshti/slokas.tsx`) |
+| I3 | A sloka: Devanagari, transliteration, Play the recitation, word meanings, translation and purport in the reader's language (or another, by choice; "shown in English" when not written), credit "Translation and purport: name", the themes it is in, "I have memorised this sloka", my private notes; editors: Edit sloka, make it the sloka of a day (today up to a year ahead) or remove a day | Everyone signed in | Built | `app/src/screens/ishtagoshti-sloka.tsx` (routes `*/ishtagoshti/sloka/[id].tsx`) |
+| I11 | Theme editor: title, introduction, questions (a line each), slokas in order (Up, Down, Take out, add by search), Published, Sample, order; delete asks first (slokas stay). The weekly theme calendar comes with sessions (I6) | Guru, editors | Built | `app/src/app/staff/ishtagoshti/edit-theme/[id].tsx` |
+| I12 | Sloka editor: reference, Devanagari, transliteration, word meanings, translation + purport per language (English, Telugu, Hindi), translator (empty = Settings default), "the temple's own text, not BBT" (needed to publish), recitation (record here or choose an audio file, 10 MB; uploaded on Save), Published, Sample, order; delete asks first | Guru, editors | Built | `app/src/app/staff/ishtagoshti/edit-sloka/[id].tsx` |
+| G2 / G10 | G2: "May edit Ishtagoshti slokas and themes" on a coordinator. G10: the default translator's name | Guru | Built | `app/src/app/staff/coordinators/[id].tsx`, `app/src/app/staff/settings.tsx` |
 ## Build order
 
 ~~A1~~ → ~~C2, C3~~ → ~~C5, C6~~ → ~~C7, C8~~ → ~~C10, C11~~ → ~~C9~~ → ~~G4, G5~~ → ~~C15, S10~~ → ~~S1~~, ~~S3~~, ~~S4, S9~~ →

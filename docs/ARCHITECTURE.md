@@ -59,14 +59,14 @@ flowchart LR
 |---|---|---|
 | `guru` | The Guru / admin | Everything, including giving roles and approving promotions |
 | `coordinator` | Teachers who run the daily class | Register students, mark attendance, log follow-up calls, tick syllabus, post announcements |
-| `student` | Enrolled learners | See their own record, attendance, progress, materials and announcements |
+| `student` | Enrolled learners | See their own record, attendance, progress, materials and announcements; study Ishtagoshti slokas |
 | `kiosk` | The door tablet (Phase 2) | Only check students in and out |
 | `pending` | Anyone who signed up but has no role yet | Nothing until the Guru gives a role |
 
 A new login starts as `pending`. If its email matches a registered student, it is linked to that
 student and becomes `student` automatically, once the email is confirmed. Only the Guru can make
 someone a coordinator, or link a login to a student record by hand, on screen G2; the database
-keeps the Guru role a dashboard matter and stops anyone changing their own role ([DECISIONS.md #45](DECISIONS.md)). See [DECISIONS.md #11 and #13](DECISIONS.md) and
+keeps the Guru role a dashboard matter and stops anyone changing their own role ([DECISIONS.md #45](DECISIONS.md)). The Guru can also mark a coordinator as an **Ishtagoshti editor** (`profiles.ig_editor`), who then adds and edits slokas and themes ([DECISIONS.md #57](DECISIONS.md)); it is a permission on a coordinator, not a role. See [DECISIONS.md #11 and #13](DECISIONS.md) and
 [DATABASE.md](DATABASE.md#linking-a-login-to-a-student).
 
 ## The app's code
@@ -82,7 +82,8 @@ app/
       student/         The student's screens; (tabs)/ holds Home, My QR and Announcements; one
                        announcement, progress.tsx (S4), visits.tsx (S9), profile.tsx (A3),
                        notifications.tsx (A2), assessments/ (S7), practice.tsx (S5) and
-                       practice-log.tsx (S6) (Phase 2), and coming-soon.tsx open on top
+                       practice-log.tsx (S6) (Phase 2), ishtagoshti/ (I2, I3; the I1 tab is in
+                       (tabs)/), and coming-soon.tsx open on top
       staff/           The Guru's and coordinators' screens: register, attendance, follow-up ...,
                        levels/ (G4 syllabus editor), materials/ (G5), visits/ (S9 of one student),
                        profile.tsx (A3), the Guru's coordinators/ (G2), database/ (G3 and the
@@ -91,11 +92,13 @@ app/
                        for the modules not built yet; (tabs)/
                        holds Home (G1 or C1 by role) and the four used most. Phase 2:
                        assessments/ holds G6, C12-C14, promotion/ holds C22, C23, G7,
-                       practice.tsx (S5) and taals/ (the Guru's taal editor)
+                       practice.tsx (S5) and taals/ (the Guru's taal editor), ishtagoshti/ (I2, I3,
+                       and the editors' edit-sloka/ I12 and edit-theme/ I11)
     auth/              Who is signed in, their role, and the sign-in / sign-up calls
     screens/           The two staff homes, G1 and C1 (shown by staff/(tabs)/index.tsx), and the
                        pages both areas show: Coming soon, Attendance history (S9), My profile (A3),
-                       Notifications (A2)
+                       Notifications (A2); Phase 2: Practice tools (S5), the lesson player (V3), and
+                       Ishtagoshti I1-I3 (ishtagoshti-*.tsx, with an `area` of student or staff)
     data/              Reading and saving records: one file per area (students.ts ...), with the
                        form checks. Screens call these, never the database directly
     components/        Building blocks shared by screens: text, buttons, fields, choices, list rows,
@@ -174,7 +177,8 @@ saved login and the profile are being fetched.
   coordinator screen. Put a new screen there unless only one role may use it.
 - Each role has **tabs** ([DECISIONS.md #36](DECISIONS.md)): the student Home (S1), My QR (S3)
   and Announcements (S10) in `student/(tabs)/`; staff Home, Attendance (C5), Students (C7),
-  Calls (C10) and Announcements (C15) in `staff/(tabs)/`. The tabs are at the bottom on a phone;
+  Calls (C10) and Announcements (C15) in `staff/(tabs)/`; since Phase 2 slice 6 both also have
+  Slokas (Ishtagoshti I1). The tabs are at the bottom on a phone;
   for staff they become a sidebar from 900 px wide. A folder in brackets adds nothing to the
   address, so `/staff/students` and `/student/my-qr` stay as they were.
 - The first screen is the Home tab: `/student` (S1) or `/staff`, which shows the Guru dashboard
@@ -391,6 +395,29 @@ On the branch `phase2-media`, rebased on main after the Phase 2 merge; not on ma
   `index.json` with what played; newest 30) — in the browser only in memory. Recording "with the
   sound" restarts the metronome or taal from beat 1 as recording starts, so "Play with the sound"
   later starts both together and they line up (give or take the device's latency).
+
+## Ishtagoshti: sloka study (Phase 2, branch `phase2-ishtagoshti`)
+
+[DECISIONS.md #57](DECISIONS.md); tables in DATABASE.md "Ishtagoshti (Phase 2)".
+
+- **One set of screens, two areas.** I1-I3 are in `screens/ishtagoshti-*.tsx` and take `area`
+  (`student` or `staff`), because an area opens only its own routes; thin route files sit in
+  `student/` and `staff/`. Links go through `openIg` in `components/ishtagoshti-parts.tsx`. The editors'
+  screens (I11, I12) are staff routes only; whether the person may edit comes from `is_ig_editor()`,
+  and the database checks every write again.
+- **Languages.** A sloka holds a translation and purport per language (en, te, hi). `inLanguage`
+  picks the reader's own, else English, Telugu, Hindi; I3 says when it fell back and offers the
+  others as chips. The Devanagari and transliteration are the same for everyone; phones and browsers
+  draw Devanagari with their own fonts (no font file added).
+- **Copyright.** Only the temple's own translation, word meanings and purport: the editor ticks
+  "the temple's own, not BBT" and the database refuses to publish without it. The Sanskrit verse is
+  free to use.
+- **Sloka of the day** is `ig_sloka_of_day()`: an editor's pin for that day, else the published
+  slokas in turn, the same for everyone on an India date.
+- **Recitation** reuses slice 4's recorder (`AudioRecorderPanel`, review mode) and file picker;
+  uploaded on Save into the bucket `ishtagoshti-audio`, played through a one-hour signed link.
+- **Slice 7** (free public sign-up) adds its subscriber role to `ig_reader()`; notes and ticks are
+  kept per login (`profiles`), so they work for subscribers unchanged.
 ## Phases
 
 | Phase | Adds | Target |

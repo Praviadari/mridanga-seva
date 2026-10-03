@@ -41,7 +41,7 @@ consent), sample visits, groups and an announcement. Never run it on the live pr
 |---|---|---|
 | Settings | `settings` | Day limits for follow-up, list of reasons for leaving, what "this week" means, promotion criteria for Phase 2. The facilitator changes them on G10 (see "Settings") |
 | Places | `centres` | One row per class location (Abids today) with address, GPS point, radius and opening hours (G9, see "Centres") |
-| People | `profiles` | One row per login: role, name, language, treasurer flag, duty hours (G2) |
+| People | `profiles` | One row per login: role, name, language, treasurer flag, duty hours (G2), Ishtagoshti editor flag (`ig_editor`, 0021) |
 | Students | `students`, `guardians`, `consents`, `roll_counters` | A student record can exist without a login |
 | Attendance | `visits` | One row per check-in; `check_out` empty while the student is still there |
 | Follow-up | `call_logs`, `follow_up_tasks`, `status_history` | Every call and every status change is kept |
@@ -50,7 +50,8 @@ consent), sample visits, groups and an announcement. Never run it on the live pr
 | Assessments (Phase 2) | `assessments`, `assessment_releases`, `assessment_assignments`, `assessment_submissions`, `push_outbox` | Views `assessment_tracker` (C13) and `assessment_summary` (counts). Files in the Storage bucket `assessment-files` |
 | Promotion (Phase 2) | `promotion_nominations`, `promotion_feedback` | View `promotion_queue` (G7). See "Promotion approval (Phase 2)" |
 | Practice (Phase 2) | `taals`, `practice_logs` | Taals the S5 player loops (the Guru edits them); practice minutes from the S5 timer or typed in (S6). See "Practice tools (Phase 2)" |
-| Audit | `audit_log` | Who changed a student, profile, call log, level, syllabus item or tick, material, announcement, setting, centre or taal, or deleted a reply, and when (read on G11) |
+| Ishtagoshti (Phase 2) | `ig_slokas`, `ig_themes`, `ig_theme_slokas`, `ig_daily_pins`, `ig_notes`, `ig_memorised` | Sloka study (I1-I3, I11, I12): the temple's own translations, themes, the sloka of the day, private notes, memorised ticks. Recitations in the Storage bucket `ishtagoshti-audio`. See "Ishtagoshti (Phase 2)" |
+| Audit | `audit_log` | Who changed a student, profile, call log, level, syllabus item or tick, material, announcement, setting, centre, sloka or Ishtagoshti theme, or deleted a reply, and when (read on G11) |
 
 ## Student status
 
@@ -732,6 +733,36 @@ keeps nothing in the database.
 | Keep time | `claim_expired_submission_files` and `assessment_daily` redefined: a submission with a file **or** a voice note expires as before (30 days after the review; level-up rules of 0017); both paths are returned, so the Edge Function deletes both unchanged |
 
 Smoke tests: section "media (0020, Phase 2)".
+
+## Ishtagoshti (Phase 2)
+
+Migration 0021 (`0021_ishtagoshti.sql`, [DECISIONS.md #57](DECISIONS.md)); LIVE runs it after 0020.
+Screens I1, I2, I3, I11, I12 (SCREENS.md). Readers are the signed-in roles in `ig_reader()` (Guru,
+coordinator, student; slice 7 adds its free subscribers there). Editors are the Guru and the active
+coordinators with `profiles.ig_editor` (`is_ig_editor()`); only the Guru sets that flag, and only on a
+coordinator (trigger `profiles_ig_editor_guard`, errors `not_allowed`, `ig_editor_coordinator_only`).
+
+| Table | One row per | Written by |
+|---|---|---|
+| `ig_slokas` | Sloka: `ref` (e.g. BG 10.9, 1-60), `devanagari`, `transliteration` (IAST), `word_meanings` (a line per word), `translation_en/te/hi` (at least one), `purport_en/te/hi`, `translator` (credit; empty = `settings.ig_translator`), `own_text` (the editor confirms: the temple's own text, no BBT; needed to publish), `audio_path` / `audio_name` / `audio_size` (recitation), `sample`, `published`, `sort`, `updated_by` | Editors (row-level security); checked by `guard_ig_sloka` (errors `ref_invalid`, `devanagari_required`, `transliteration_required`, `text_too_long`, `translation_required`, `translator_too_long`, `own_text_needed`, `audio_invalid`, `audio_missing`); audited. Three SAMPLE rows seeded |
+| `ig_themes` | Theme (series): `title` 1-80, `intro`, `questions` (a line each), `sample`, `published`, `sort` | Editors; `guard_ig_theme` (`theme_title_invalid`, `text_too_long`); audited. Two SAMPLE rows seeded |
+| `ig_theme_slokas` | A sloka's place in a theme (`position`) | Only `set_theme_slokas` |
+| `ig_daily_pins` | A day (India) on which a sloka is the sloka of the day | Editors; `guard_ig_pin`: today up to a year ahead, published slokas only (`pin_day_invalid`, `pin_not_published`) |
+| `ig_notes` | A person's private note on a sloka (`profile_id`, ≤ 2000) | The writer only; nobody else reads it, not even the Guru |
+| `ig_memorised` | A person's "I have memorised it" tick, dated today | The person (insert / delete own); staff read all (for the later report I13) |
+
+| Function | Who | Does | Errors |
+|---|---|---|---|
+| `ig_sloka_of_day(day)` | Anyone signed in (security invoker) | The sloka pinned to that day (India, default today), else the published slokas in turn by `sort`, `id`, counted from 1 Jan 2026; the same for everyone; null when none is published | — |
+| `set_theme_slokas(theme, slokas[])` | Editors (security definer, checks inside) | Puts the slokas into the theme in that order; a repeat counts once; an empty list empties it | `not_allowed`, `theme_not_found`, `sloka_not_found`, `too_many` (100) |
+| `is_ig_editor()`, `ig_reader()` | Anyone signed in | Yes or no about the caller | — |
+
+Storage: private bucket `ishtagoshti-audio`, 10 MB a file, audio only (mp3, m4a, aac, wav, ogg,
+webm), path `<login id>/<random id>.<ending>`. Editors upload into their own folder and delete any; a
+file opens for whoever can see a sloka that lists it, and for editors (`ig_audio_readable`,
+`ig_audio_uploadable`). Settings: `ig_translator` (text ≤ 100, G10); 0021 redefines `guard_setting`
+with this key (a later redefinition must keep it). Smoke tests: section "Ishtagoshti (0021, Phase 2)".
+
 ## Linking a login to a student
 
 A student record can exist without a login (many students never install the app). When a person
@@ -786,12 +817,13 @@ so every function is revoked from them and granted only where needed
 | `claim_push_outbox()`, `release_push_outbox(ids)`, `claim_expired_submission_files()`, `release_submission_files(ids)` | Only the Edge Function (service role) | Send the queued assessment and promotion notifications; delete expired recordings (0016) |
 | `review_submission(…, p_voice_note)` | See "Media (Phase 2)" | Phase 2 (0020) replaces 0016's version |
 | `next_level`, `promotion_criteria`, `nominate_for_promotion`, `give_promotion_feedback`, `decide_promotion`, `withdraw_nomination`, `promotion_ready_students`, `promotion_home` | See "Promotion approval (Phase 2)" | Phase 2 (0017) |
+| `ig_sloka_of_day`, `set_theme_slokas`, `is_ig_editor`, `ig_reader` | See "Ishtagoshti (Phase 2)" | Phase 2 (0021) |
 
 The Storage rules `announcement_file_readable`, `announcement_file_uploadable`,
 `announcement_file_deletable` and `announcement_file_path_ok` are run by row-level security as
 the person asking, so signed-in people may execute them; each answers only yes or no about that
 person's own access. The same holds for `material_file_readable`, `material_file_uploadable`,
-`material_file_deletable` and `youtube_link_ok` (0013), and `video_link_ok` (0020).
+`material_file_deletable` and `youtube_link_ok` (0013), `video_link_ok` (0020), and `ig_audio_readable`, `ig_audio_uploadable` and `ig_audio_path_ok` (0021).
 
 Internal functions (not called by the app, and not allowed to): `refresh_student_statuses`,
 `close_open_visits`, `send_due_push`, `handle_new_user`, `handle_user_confirmed`,
@@ -801,7 +833,7 @@ and audit triggers (including `guard_student_progress`, `audit_student_progress`
 `guard_group`, `guard_announcement_reply`, `guard_syllabus_item`, `protect_syllabus_item`,
 `guard_progress_item_in_use`, `guard_material`, `guard_profile_details`, `guard_profile_admin`, `guard_student_mentor`,
 `follow_mentor_tasks`, `guard_setting`, `audit_setting`, `guard_centre`, `guard_centre_details`,
-`inbox_on_announcement`, `inbox_on_read`, `guard_student_level`, `guard_taal` and `inbox_on_push_outbox`), `inbox_kind_for_url` (0019),
+`inbox_on_announcement`, `inbox_on_read`, `guard_student_level`, `guard_taal`, `inbox_on_push_outbox`, `guard_profile_ig_editor`, `guard_ig_sloka`, `guard_ig_theme` and `guard_ig_pin`), `inbox_kind_for_url` (0019),
 `inbox_sync_announcement`, `inbox_cleanup`, the promotion helpers `promotion_push_line`,
 `queue_staff_push`, `promotion_tell_guru`, `queue_student_promoted`, `submission_file_expired` (0017),
 and the helpers `my_role`, `is_guru`, `is_staff`,
@@ -845,6 +877,9 @@ and the helpers `my_role`, `is_guru`, `is_staff`,
 | Assessment files (Storage) | Files of their assessments and their own recordings; upload audio or video while one is open (10 a day) | All on sent assessments and all recordings | All; upload; delete any |
 | Promotion nominations and answers (Phase 2) | — (a push when promoted) | All; nominate, answer, withdraw own, through the functions | All; nominate, decide, withdraw any |
 | A student's level | Read | Read (changed only by the Guru) | Read / write; Promote |
+| Ishtagoshti slokas, themes, pins (Phase 2) | Published ones | Published ones; editors (marked by the Guru) all, and write | All; write; marks editors |
+| Ishtagoshti notes, memorised ticks | Own only | Own notes; all ticks | Own notes; all ticks |
+| Recitations (Storage) | Those on published slokas | Same; editors all, upload, delete | All; upload; delete |
 
 ## Changing the database
 

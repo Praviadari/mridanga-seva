@@ -42,9 +42,10 @@ The state on **3 October 2026**, on the main code:
 
 | Ready | Being built | Later |
 |---|---|---|
-| Sign-up, sign-in, password reset; three roles | Phone check of the centre's attendance area (next Android app) | Events, polls, instruments, door tablet, Ishtagoshti, fund (Phase 2) |
+| Sign-up, sign-in, password reset; three roles | Phone check of the centre's attendance area (next Android app) | Events, polls, instruments, door tablet, Ishtagoshti public sign-up, fund (Phase 2) |
 | Registration with roll numbers and parental consent for minors | Assessments and promotion approval (Phase 2; on Android with the next app version) | Face attendance, only with consent (Phase 3) |
 | Attendance by QR code or by name; who is here now; check out all | Practice tools: metronome, taal player, two-head view, practice log (Phase 2; on Android with the next app version) | |
+| | Ishtagoshti sloka study: themes, sloka of the day, notes, memorised (Phase 2) | |
 | Student list and profile; follow-up calls with reasons | | |
 | Syllabus tick-off; syllabus editor; lessons (YouTube, PDF, photo) | | |
 | Announcements with audiences, files, "seen by", private replies; groups; Android notifications | | |

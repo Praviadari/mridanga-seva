@@ -316,6 +316,15 @@ class ([DECISIONS.md #50](../DECISIONS.md)).
 (videos, PDFs, photos) for each item. Coordinators can open the lessons; only the Facilitator
 changes them.
 
+## Slokas (Ishtagoshti)
+
+The **Slokas** tab works for you as for students: the sloka of the day, themes, your own notes and
+memorised ticks (see the [student guide](02-student-guide.md#slokas-ishtagoshti)). If the Facilitator
+has made you an **Ishtagoshti editor**, you also get **Add a sloka**, **Add a theme**, **Edit sloka**
+and **Make it the sloka of that day**. Type only the temple's own translation, word meanings and
+purport, never text copied from BBT books or vedabase; the app will not publish a sloka until you
+tick that it is the temple's own.
+
 ## What a coordinator can and cannot see
 
 | You can | You cannot |

@@ -132,7 +132,8 @@ Open a person to:
   picked students**. Their open calls go with them.
 - **Switch off** / **Switch on**: a switched-off login can sign in but sees nothing; records and
   history stay. A coordinator who still mentors students must hand them over first.
-
+- **Ishtagoshti editor**: tick **May edit Ishtagoshti slokas and themes** for the coordinators who
+  type in slokas (for example the senior devotee who writes the translations). Untick to take it away.
 Every change asks first and is kept in the audit log. Nobody can change their own role or switch
 themselves off; the Facilitator role is given only in the dashboard
 ([DECISIONS.md #45](../DECISIONS.md)).
@@ -184,7 +185,7 @@ them the next morning. Every change is kept in the audit log.
 | **Follow-up** | **Days without a visit before Irregular** (14), **Days without a visit before Inactive** (30), **Days to make the call** (3), **Days before trying again when not reachable**, **Tries before the facilitator is asked** |
 | **New joiners** | **Weeks a student counts as a new joiner** (4) |
 | **Promotion criteria** | Checked when a student is nominated (Phase 2); they advise, you decide: visits needed, in how many weeks, share of the syllabus ticked, whether a level-up assessment is needed, and how many coordinators must answer |
-
+| **Ishtagoshti translator** | The name shown as "Translation and purport: …" on a sloka whose own credit is left empty (Phase 2) |
 Tap **Save the settings**. The database checks every value (for example, Inactive must come after
 Irregular) ([DECISIONS.md #47](../DECISIONS.md)).
 
@@ -231,13 +232,24 @@ As Facilitator you can post like a coordinator, and also:
 - edit, pin, unpin or delete **any** announcement;
 - read **every** reply, and delete a reply.
 
-## Coming later
+## Slokas (Ishtagoshti)
 
+The **Slokas** tab (Phase 2, being built) is the sloka study for everyone. You and the Ishtagoshti
+editors add slokas (**Add a sloka**: reference, Sanskrit, transliteration, word meanings, translation
+and purport in English, Telugu and/or Hindi, the translator, a recitation recorded in the app) and
+themes (**Add a theme**: introduction, questions, slokas in order). A sloka is seen by others only
+when **Published** is ticked, and it can be published only when **the temple's own text, not BBT**
+is ticked. The **sloka of the day** goes through the published slokas by itself; on a sloka, **Make
+it the sloka of that day** fixes it for a date. Three **Sample** slokas and two Sample themes are
+there to show how it looks: delete or replace them when the real ones are typed in
+([DECISIONS.md #57](../DECISIONS.md)).
+
+## Coming later
 - **Checking the attendance area on phones** (the centre's GPS area): with the next Android app.
 - **Assessments** (you create a piece to learn; coordinators pass it on, follow up and review),
   **promotion approval** (a mentor nominates, coordinators give feedback, you decide **Promote**,
   **Not yet** or **More feedback**) and practice tools are built (Phase 2); on Android they come
-  with the next app version. Events, polls, instruments, Ishtagoshti and the fund: Phase 2, later.
+  with the next app version. Events, polls, instruments, free Ishtagoshti sign-up for the public and the fund: Phase 2, later.
   See
   [How it was built](07-how-it-was-built.md#phases-and-dates).
 

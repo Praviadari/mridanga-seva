@@ -1526,3 +1526,50 @@ the bucket behind a domain on Cloudflare (a domain costs about a few hundred rup
 are uploaded in the Cloudflare dashboard, and the link is pasted into G5 as a Video file. (2) The
 limits stay as built. (3) Sending a Record-myself take to an assessment: yes, built (above); it uses
 the existing Supabase bucket and needs no paid plan.
+
+## 57. Ishtagoshti part 1: sloka study for everyone signed in — 3 Oct 2026
+
+**Status: decided by Praveen 3 Oct 2026 (answers below), on the branch `phase2-ishtagoshti`; not on
+main until the lead pushes it.**
+
+**Context.** The Screen List doc approves Ishtagoshti I1-I15: a thematic study of Sanskrit slokas,
+a tab for every role, with the daily sloka moved into it. The team's answers of 28 Sep 2026: the
+translation is the **temple senior devotee's own** (no BBT text), and Ishtagoshti should be free to
+anyone (public sign-up I14, which needs consent wording: slice 7). Slice 6 builds the core for people
+who already have a login.
+
+**Decision.**
+- **Screens:** I1 home (sloka of the day, my memorised count, themes, all slokas), I2 a theme, I3 a
+  sloka, I11 theme editor, I12 sloka editor, as a "Slokas" tab for students and staff. Later
+  slices: I4 memorise mode, I5 discussion + I8 moderation, I6 / I9 sessions, I10 recitation review,
+  I13 report, I14 / I15 public sign-up and subscribers.
+- **Who edits (Praveen):** the Guru, and the coordinators the Guru marks as **Ishtagoshti editors** on
+  G2 (`profiles.ig_editor`, a permission like the treasurer flag, not a role). Everyone signed in with a
+  role reads the published slokas and themes; drafts are for editors.
+- **Translator credit (Praveen):** per sloka, "Translation and purport: name". The name is typed
+  once in G10 Settings as the default and can be changed on a sloka.
+- **Sloka of the day (Praveen):** automatic, the published slokas in turn, the same for everyone on
+  a day in India; an editor can pin a sloka to a date.
+- **Extras in this slice (Praveen):** private notes on a sloka (only the writer reads them), an "I
+  have memorised it" tick (I1 counts them; staff may read the ticks for the later report), and a
+  recitation audio (recorded in the app or an audio file, 10 MB).
+- **Copyright:** the Sanskrit verse and its transliteration are free; translation, word meanings and
+  purport must be the temple's own. The editor confirms that on each sloka, and the database refuses
+  to publish without it. Text is kept per language (English, Telugu, Hindi); a reader sees their own
+  language, else another one, marked.
+- **Samples:** three SAMPLE slokas (BG 10.9, Upadeśāmṛta 4, Śikṣāṣṭaka 3) and two SAMPLE themes,
+  marked Sample. Their meanings and translations are short placeholders written for the app, not the
+  temple's and not BBT's; the team replaces them in the app.
+- **Ready for slice 7:** reading is decided by one function, `ig_reader()`, to which slice 7 adds its
+  subscribers; notes and ticks hang on the login, not on a student record.
+
+**Why.** The temple's own text avoids the BBT copyright question entirely. A named-editor flag lets the
+senior devotee (or a typist) enter slokas without making them Guru, and without every coordinator
+editing scripture. Rotation keeps I1 alive every day without daily work; pins let the Guru match a
+festival or the week's Ishtagoshti.
+
+**Consequences.** Migration `0021_ishtagoshti.sql` (DATABASE.md "Ishtagoshti (Phase 2)"); it
+redefines `guard_setting` with the key `ig_translator`, so any later redefinition must keep it.
+Smoke tests pass (section "Ishtagoshti (0021, Phase 2)"). No native package: the Android fingerprint
+stays 185e839f, so phones on the new APK get it by an update. Telugu and Hindi strings are drafts
+for the review (TRANSLATIONS.md).

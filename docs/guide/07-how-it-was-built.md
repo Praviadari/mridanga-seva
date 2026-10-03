@@ -132,6 +132,9 @@ app version, which everyone installs once:
   or **More feedback**.
 - **Practice tools** (slice 3, 3 Oct 2026): metronome and taal player, the two-head view (both
   drum heads drawn, the zone and hand lighting up per stroke), and a practice log.
+- **Ishtagoshti part 1** (slice 6, 3 Oct 2026, on a branch): the Slokas tab for everyone signed in,
+  with themes, the sloka of the day, private notes and memorised ticks; the Facilitator and named
+  editors type in the temple's own translations.
 
 The two-head view answers a real problem: a student watching the teacher cannot see both drum
 heads at once.

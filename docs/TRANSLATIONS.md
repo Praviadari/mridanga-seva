@@ -129,5 +129,14 @@ The code is in `app/src/i18n/index.ts`, `app/src/components/language-picker.tsx`
   कोण, "A-B loop" kept as is, "voice note" వాయిస్ నోట్ / वॉइस नोट, "record myself" నన్ను నేను రికార్డ్
   చేసుకోవడం / ख़ुद को रिकॉर्ड करें. `recording.fileName` and `recording.voiceNoteName` are the names of
   the uploaded files and stay in English. Checked for mixed Telugu-Devanagari words on 3 Oct 2026.
-- Telugu and Devanagari letters are taller than Latin ones. The app's line heights allow for this;
+- **Phase 2 Ishtagoshti** (branch `phase2-ishtagoshti`, [DECISIONS.md #57](DECISIONS.md)): every Telugu
+  and Hindi line under `ishtagoshti.*` (about 140 keys), `tabs.ishtagoshti`, `settings.translator*`,
+  `settings.fields.ig_translator`, `coordinators.igEditor*` and `auditLog.tables.ig_*` is a draft for the
+  review. Words to check first: the tab "Slokas" శ్లోకాలు / श्लोक; ఇష్టగోష్ఠి / इष्टगोष्ठी; "purport"
+  భావార్థం / तात्पर्य; "word meanings" పదార్థాలు / शब्दार्थ; "transliteration" లిప్యంతరీకరణ /
+  लिप्यंतरण; "theme" అంశం / विषय (the same words as "syllabus item": maybe ఇతివృత్తం / प्रसंग);
+  "memorised" కంఠస్థం / कंठस्थ; "recitation" పఠనం / पाठ (पाठ is also "lesson"); "draft" చిత్తు ప్రతి /
+  मसौदा; "editor" ఎడిటర్ / संपादक; "sloka of the day" ఈ రోజు శ్లోకం / आज का श्लोक. The slokas
+  themselves (verse, translation, purport) are content typed by the team in each language, not
+  interface text. Checked for mixed Telugu-Devanagari words on 3 Oct 2026.- Telugu and Devanagari letters are taller than Latin ones. The app's line heights allow for this;
   if a translated label looks cut off, report it with a screenshot.
