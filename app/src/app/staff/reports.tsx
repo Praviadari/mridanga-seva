@@ -231,7 +231,14 @@ export default function ReportsScreen() {
                 total={100}
                 showComplete={false}
                 label={t('reports.levelLabel', { level: levelName(t, l.levelId, l.name), count: l.students })}
-                valueText={t('reports.levelLine', { percent: l.avgPercent, complete: l.complete, ticks: l.ticksInRange, items: l.items })}
+                valueText={t('reports.levelLine', {
+                  level: levelName(t, l.levelId, l.name),
+                  count: l.students,
+                  percent: l.avgPercent,
+                  complete: l.complete,
+                  ticks: l.ticksInRange,
+                  items: l.items,
+                })}
               />
             ))}
           </Section>

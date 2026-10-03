@@ -175,7 +175,7 @@ export default function CentreScreen() {
         {goodPoint ? (
           <>
             <AppText variant="small" tone="muted">
-              {t('centres.pointRead', { lat: goodPoint.lat, lng: goodPoint.lng })}
+              {t('centres.pointRead', { latitude: goodPoint.lat, longitude: goodPoint.lng })}
             </AppText>
             <Button variant="link" icon="open" label={t('centres.checkOnMap')} onPress={() => void Linking.openURL(mapUrl(goodPoint))} />
           </>

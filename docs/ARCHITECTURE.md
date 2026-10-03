@@ -80,17 +80,19 @@ app/
   src/
     app/               Screens. Every file is a screen (Expo Router); _layout.tsx files arrange them
       student/         The student's screens; (tabs)/ holds Home, My QR and Announcements; one
-                       announcement, progress.tsx (S4), visits.tsx (S9), profile.tsx (A3) and
-                       coming-soon.tsx open on top
+                       announcement, progress.tsx (S4), visits.tsx (S9), profile.tsx (A3),
+                       notifications.tsx (A2) and coming-soon.tsx open on top
       staff/           The Guru's and coordinators' screens: register, attendance, follow-up ...,
                        levels/ (G4 syllabus editor), materials/ (G5), visits/ (S9 of one student),
                        profile.tsx (A3), the Guru's coordinators/ (G2), database/ (G3 and the
-                       import), settings.tsx (G10) and audit-log.tsx (G11), and coming-soon.tsx
+                       import), settings.tsx (G10), audit-log.tsx (G11), notifications.tsx (A2),
+                       reports.tsx (C21 and G8) and centres/ (G9), and coming-soon.tsx
                        for the modules not built yet; (tabs)/
                        holds Home (G1 or C1 by role) and the four used most
     auth/              Who is signed in, their role, and the sign-in / sign-up calls
     screens/           The two staff homes, G1 and C1 (shown by staff/(tabs)/index.tsx), and the
-                       pages both areas show: Coming soon, Attendance history (S9), My profile (A3)
+                       pages both areas show: Coming soon, Attendance history (S9), My profile (A3),
+                       Notifications (A2)
     data/              Reading and saving records: one file per area (students.ts ...), with the
                        form checks. Screens call these, never the database directly
     components/        Building blocks shared by screens: text, buttons, fields, choices, list rows,
@@ -110,14 +112,18 @@ app/
                        loading-cards.tsx (grey shapes while loading), empty-state.tsx,
                        account-footer.tsx (language, My profile, Sign out, version),
                        material-row.tsx (a lesson with Open, on G4/G5 and S4; DECISIONS.md #44),
-                       admin-links.tsx ("Running the class" on G1) and guru-only.tsx (round 8)
+                       admin-links.tsx ("Running the class" on G1, "My reports" on C1) and
+                       guru-only.tsx (round 8); inbox-bell.tsx (the bell on the home header) and
+                       data-table.tsx (tables of the reports on a laptop) (round 9)
     i18n/              Interface text in English, Telugu and Hindi (docs/TRANSLATIONS.md), and
                        labels.ts, which words levels, file sizes and lengths of time the same on
                        every screen
     lib/               The Supabase client, on-device storage, date helpers (India time), the
                        Excel/CSV reader of the student import (sheet-reader.ts, with fflate), push
                        notifications and app updates (push.ts and app-update.ts on Android; the
-                       .web.ts copies do nothing)
+                       .web.ts copies do nothing), the report's CSV (csv.ts; save-csv.ts saves it to a
+                       folder or shares it on Android, save-csv.web.ts downloads it) and the reader of
+                       a Google Maps link for G9 (map-link.ts)
     theme/             Colours, spacing and text sizes, light and dark; the card look, the header
                        bars and the tab bar (use-theme.ts)
 supabase/
@@ -275,7 +281,10 @@ never deleted ([DECISIONS.md #28](DECISIONS.md)).
 
 Push notifications reach only the Android app built by EAS, once push is set up (OPERATIONS.md
 "Push notifications"). The web version (iPhones) has none yet: people there see new
-announcements when they open the app.
+announcements when they open the app, with the number of unread notices on the bell of the home
+header. That inbox (A2) is filled by the database for every addressee, push or not: a trigger on
+`announcements` writes one `notifications` row per person from `announcement_audience`, the same
+people the push goes to, and opening the announcement marks it read ([DECISIONS.md #49](DECISIONS.md)).
 
 ## Phases
 

@@ -18,6 +18,7 @@ in number order:
 | `0011_push_notifications.sql` | Push notifications: `announcements.notified_at`, `push_tokens`, `register_push_token`, and the every-minute job that calls the Edge Function `notify-announcements` ([DECISIONS.md #33](DECISIONS.md)) |
 | `0013_syllabus_materials.sql` | The syllabus editor and the materials library: retiring items, their order, checks on items and materials, the bucket `material-files`, own name and phone ([DECISIONS.md #44](DECISIONS.md)). Number 0012 belongs to the Phase 2 branch `phase2-assessments` |
 | `0014_guru_admin.sql` | The facilitator's admin screens: roles, duty hours and mentees (G2), the student import (G3), checked settings and "this week" from Monday or the last 7 days (G10), audit log indexes (G11); a call task follows the mentor ([DECISIONS.md #45-#48](DECISIONS.md)) |
+| `0015_inbox_reports_centres.sql` | The notifications inbox filled by the database (A2), the reports function `class_report` (C21, G8), and checks on centres with an address and the attendance area (G9) ([DECISIONS.md #49-#51](DECISIONS.md)) |
 
 Every table and important column also carries a `COMMENT ON` description, so you can read it in
 the Supabase dashboard (Table Editor → table → description).
@@ -31,13 +32,13 @@ consent), sample visits, groups and an announcement. Never run it on the live pr
 | Area | Tables | Notes |
 |---|---|---|
 | Settings | `settings` | Day limits for follow-up, list of reasons for leaving, what "this week" means, promotion criteria for Phase 2. The facilitator changes them on G10 (see "Settings") |
-| Places | `centres` | One row per class location (Abids today) with GPS point, radius and opening hours |
+| Places | `centres` | One row per class location (Abids today) with address, GPS point, radius and opening hours (G9, see "Centres") |
 | People | `profiles` | One row per login: role, name, language, treasurer flag, duty hours (G2) |
 | Students | `students`, `guardians`, `consents`, `roll_counters` | A student record can exist without a login |
 | Attendance | `visits` | One row per check-in; `check_out` empty while the student is still there |
 | Follow-up | `call_logs`, `follow_up_tasks`, `status_history` | Every call and every status change is kept |
 | Learning | `levels`, `syllabus_items`, `student_progress`, `level_history`, `materials` | Three levels; each has an ordered syllabus |
-| Communication | `announcements`, `announcement_reads`, `announcement_replies`, `groups`, `group_members`, `push_tokens` | Groups replace the WhatsApp groups. Views `announcement_audience` and `announcement_seen` give "seen by", `announcement_reply_list` the replies with names, `group_summary` the member counts. Photos and PDFs are files in the Storage bucket `announcement-files`, listed in `announcements.attachments` |
+| Communication | `announcements`, `announcement_reads`, `announcement_replies`, `groups`, `group_members`, `push_tokens` | Groups replace the WhatsApp groups. Views `announcement_audience` and `announcement_seen` give "seen by", `announcement_reply_list` the replies with names, `group_summary` the member counts. `notifications` is each person's inbox (A2, see "Notifications inbox"). Photos and PDFs are files in the Storage bucket `announcement-files`, listed in `announcements.attachments` |
 | Audit | `audit_log` | Who changed a student, profile, call log, level, syllabus item or tick, material, announcement, setting or centre, or deleted a reply, and when (read on G11) |
 
 ## Student status
@@ -503,6 +504,73 @@ time. Centre changes are logged too.
 in the app writes it except the security definer triggers. Screen G11 reads it 50 rows at a time,
 newest first, filtered by table, person, action and time; 0014 adds indexes for these filters.
 
+## Notifications inbox
+
+Screen A2 (0015, [DECISIONS.md #49](DECISIONS.md)). `notifications` holds one row per person per
+notice they were sent: `kind` (`announcement` now; `assessment`, `promotion`, `notice` kept for
+Phase 2), `title`, `body` (the first 300 characters), `url` (the app screen it opens, the same one
+the push opens: `/staff/announcements/N` for staff, `/student/announcements/N` for students),
+`announcement_id` (the row goes with its announcement), `visible_at` (the publish time) and
+`read_at`.
+
+- **Filled by the database, not by the push.** Trigger `announcements_inbox` calls
+  `inbox_sync_announcement` on every new announcement and on a change to its title, text,
+  audience or publish time: it adds the people of `announcement_audience` who have no row,
+  removes the rows of people no longer addressed, and copies the title, text and time. So web and
+  iPhone users, and phones that refused push, have the same inbox. The Edge Function setting
+  `notified_at` changes nothing here. A student who joins a level or group later gets no earlier
+  notices (S10 still lists those announcements).
+- **Read.** Opening an announcement adds a read receipt (0007); trigger `announcement_reads_inbox`
+  then marks its notice read. `mark_notifications_read(ids)` marks the given notices, or all
+  (`null`, "Mark all read"); it does **not** add read receipts, so "seen by" on C15 still counts
+  only people who opened the announcement.
+- **Who sees what.** A person reads only their own rows, and only from `visible_at` (a scheduled
+  announcement's notice waits). The app writes nothing directly. `inbox_unread_count()` gives the
+  number on the home header's bell.
+- **Housekeeping.** 0015 filled the inbox with the announcements of the last 30 days (and the
+  scheduled ones), read where a receipt existed. The daily job `mridanga-inbox-cleanup` deletes
+  notices older than a year.
+- **For Phase 2:** its `push_outbox` rows (profile, title, body, url) map one to one onto
+  `notifications`; at the merge, insert a row with the matching kind wherever an outbox row is
+  made (or a trigger on `push_outbox`), and widen the app's allowed screens in
+  `src/data/notifications.ts` as in `src/lib/push.ts`.
+
+## Reports
+
+Screens C21 and G8 (0015, [DECISIONS.md #50](DECISIONS.md)). `class_report(from, to, mentor)`
+returns one JSON object for the days `from` to `to` (India time, at most 367 days): a coordinator
+always gets their mentees; the Guru gets everyone, or `mentor`'s mentees. Security invoker,
+staff only. It counts like the home screens:
+
+| Number | Counted as |
+|---|---|
+| Statuses, in class | Now, from `student_overview`, whatever the dates (in class = not Left; the same as G1) |
+| New joiners | `joined_on` within the dates |
+| Left | Students whose status became Left within the dates (`status_history`) |
+| Visits, students who came, hours | Check-ins within the dates; hours from finished visits |
+| Per week | Weeks from Monday, or 7-day blocks ending on the last date when `week_starts` = `rolling7` |
+| Per month | Calendar months |
+| Calls made | `call_logs` within the dates, by outcome |
+| Calls due, with the facilitator, planned | Today: students with an open task due by today or escalated (as C1 and C10), escalated, due later |
+| Progress per level | Students (not Left) at each level now; the average share of the level's items in use that they have ticked, how many have all, and ticks given within the dates |
+| Student rows | One per student in scope (Left too): visits, hours and calls within the dates, last visit, days away, items ticked of the current level |
+
+Errors: `not_allowed`, `range_invalid`, `range_too_long`. The app turns the student rows into the
+CSV file.
+
+## Centres
+
+Screen G9 (0015, [DECISIONS.md #51](DECISIONS.md)). `centres` (0001) has a name, a GPS point
+(`lat`, `lng`), the radius `radius_m` of the attendance area, the open window and `active`; 0015
+adds `address`. Trigger `centres_details_guard` checks every write: a name of 1-60 characters,
+unique in any case; an address of at most 300; latitude and longitude together, in range, not
+0, 0, rounded to 6 decimals; a radius of 25-2000 m; the last centre in use cannot be switched off;
+the app never deletes a centre (visits, people and students point to it). The window is checked
+by `centres_guard` (0014). Only the Guru writes (policy `guru_write`, 0001); every change is in
+the audit log. **The phones do not check the area yet:** that needs `expo-location`, a native
+package, in the next planned APK. New students still get centre 1 (Abids) as home centre; a
+picker comes when a second centre opens.
+
 ## Linking a login to a student
 
 A student record can exist without a login (many students never install the app). When a person
@@ -548,6 +616,9 @@ so every function is revoked from them and granted only where needed
 | `reassign_mentees(students, to)` | Guru | Moves the students to another mentor (an active coordinator or the Guru); returns how many. See "Coordinators and roles" |
 | `import_students(rows)` | Guru | Saves up to 500 adult students, each row on its own; returns the roll number or the error per row. See "Importing students" |
 | `save_settings(values)` | Guru | Saves several settings at once, all or nothing. See "Settings" |
+| `mark_notifications_read(ids)` | Guru, coordinator, student | Marks the person's own due notices read (the given ids, or all with `null`); returns how many. Security definer. See "Notifications inbox" |
+| `inbox_unread_count()` | Anyone signed in | The person's unread notices that are due. See "Notifications inbox" |
+| `class_report(from, to, mentor)` | Guru, coordinator (own mentees) | The reports C21 and G8 as one JSON object. See "Reports" |
 | `register_push_token(token, platform)` | Guru, coordinator, student | Saves this phone's Expo push token for the signed-in person, taking it over from another login on the same phone; at most 5 phones each. Security definer. Errors `not_allowed`, `bad_token`, `bad_platform`. See "Announcements" → "Push notifications" |
 | `claim_due_push()`, `release_push_claim(ids)` | Only the Edge Function (service role) | Mark waiting announcements notified and return the phones to notify; put them back when nothing could be sent |
 
@@ -564,7 +635,8 @@ and audit triggers (including `guard_student_progress`, `audit_student_progress`
 `guard_announcement`, `guard_announcement_attachments`, `guard_announcement_notified`,
 `guard_group`, `guard_announcement_reply`, `guard_syllabus_item`, `protect_syllabus_item`,
 `guard_progress_item_in_use`, `guard_material`, `guard_profile_details`, `guard_profile_admin`, `guard_student_mentor`,
-`follow_mentor_tasks`, `guard_setting`, `audit_setting` and `guard_centre`), and the helpers `my_role`, `is_guru`, `is_staff`,
+`follow_mentor_tasks`, `guard_setting`, `audit_setting`, `guard_centre`, `guard_centre_details`,
+`inbox_on_announcement` and `inbox_on_read`), `inbox_sync_announcement`, `inbox_cleanup`, and the helpers `my_role`, `is_guru`, `is_staff`,
 `setting_int`, `today_ist`.
 
 ## Scheduled jobs (pg_cron, times in UTC)
@@ -574,6 +646,7 @@ and audit triggers (including `guard_student_progress`, `audit_student_progress`
 | `mridanga-status-refresh` | 00:30 UTC = 06:00 IST | `refresh_student_statuses()` — ends expired pauses, moves quiet students on, creates call tasks, flags overdue ones |
 | `mridanga-close-visits` | 15:30 UTC = 21:00 IST | `close_open_visits()` — closes visits left open, at the centre's closing time |
 | `mridanga-push` | Every minute | `send_due_push()` — calls the Edge Function `notify-announcements` when a published announcement waits for its push notification; does nothing while push is not set up (0011) |
+| `mridanga-inbox-cleanup` | 01:00 UTC = 06:30 IST | `inbox_cleanup()` — deletes inbox notices older than a year (0015) |
 
 ## Who can see what
 
@@ -591,6 +664,8 @@ and audit triggers (including `guard_student_progress`, `audit_student_progress`
 | Replies to announcements | Own; can add | Own, and all replies to their own announcements; can add | All; can add; can delete |
 | Photos and PDFs on announcements (Storage) | Those on announcements they can read | All on announcements, and own uploads; upload; delete own uploads and files on own announcements | All; upload; delete any |
 | Push tokens | Own; delete own | Own; delete own | Own; delete own |
+| Notifications inbox | Own, once due; mark own read | Same | Same |
+| Reports (`class_report`) | — | Own mentees | Everyone, or one coordinator's mentees |
 | Groups | Name of the groups they are in | All; create, rename, switch off, add or remove members | Same as coordinator |
 | Staff names (`staff_names`) | Guru and coordinators' names only | Same | Same |
 | Settings, levels, syllabus, centres | Read | Read | Read / write (settings through `save_settings`, checked) |
@@ -614,7 +689,7 @@ and audit triggers (including `guard_student_progress`, `audit_student_progress`
 data: login linking, the profile guard, registration and consent, attendance marking, the
 student overview, follow-up calls, syllabus ticks, announcements with their read receipts,
 edits, staff names and private replies, groups, the home-screen numbers, photos and PDFs (who
-may upload, open and delete a file), push tokens and the push queue, who may run each function,
+may upload, open and delete a file), push tokens and the push queue, the inbox, the reports and the centre checks, who may run each function,
 and row-level security. It needs only Node.js, no database server and no Supabase account.
 `npm test` also runs `push-messages.test.mjs`, which checks how the Edge Function words and
 batches the notifications (Node 23.6 or later reads its TypeScript directly).

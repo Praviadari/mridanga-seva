@@ -85,5 +85,12 @@ The code is in `app/src/i18n/index.ts`, `app/src/components/language-picker.tsx`
   (మెంటీ / मेंटी, from "mentor"), "switch off" a login (ఆపివేయండి / बंद करें), "import" (దిగుమతి /
   आयात), "audit log" (ఆడిట్ లాగ్ / ऑडिट लॉग, kept as the English term), "duty hours" (డ్యూటీ సమయాలు /
   ड्यूटी का समय), and the settings labels, which are long sentences.
-- Telugu and Devanagari letters are taller than Latin ones. The app's line heights allow for this;
+- **Round 9 keys for the review (3 Oct 2026):** `inbox.*` (A2 Notifications), `reports.*` (C21 My
+  reports, G8 Reports, the CSV column headings in `reports.csv.*`), `centres.*` (G9) and
+  `admin.reportsLine`, `admin.centresLine`, `admin.myReportsLine`. Words to check: "notification"
+  (నోటిఫికేషన్ / सूचना), "unread" (చదవనివి / बिना पढ़ी), "report" (నివేదిక / रिपोर्ट), "visits" as
+  attendance (హాజరులు / हाज़िरी), "attendance area" (హాజరు ప్రాంతం / हाज़िरी क्षेत्र), "radius"
+  (వ్యాసార్ధం / त्रिज्या: maybe too technical; "దూరం" / "दूरी" may read better), "switch off" a centre,
+  and the long lines `reports.levelLine` and `reports.callsLine`. The CSV headings are in the
+  language the person uses when they download it.- Telugu and Devanagari letters are taller than Latin ones. The app's line heights allow for this;
   if a translated label looks cut off, report it with a screenshot.

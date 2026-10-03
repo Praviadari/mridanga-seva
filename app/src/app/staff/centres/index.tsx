@@ -67,7 +67,7 @@ export default function CentresScreen() {
                 c.address ?? t('centres.noAddress'),
                 t('centres.windowLine', { opens: c.opensAt, closes: c.closesAt }),
                 c.lat !== null && c.lng !== null
-                  ? t('centres.areaLine', { lat: c.lat, lng: c.lng, radius: c.radiusM })
+                  ? t('centres.areaLine', { latitude: c.lat, longitude: c.lng, radius: c.radiusM })
                   : t('centres.noPoint'),
                 t('centres.studentsLine', { count: c.students }),
               ]}

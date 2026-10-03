@@ -1129,3 +1129,94 @@ of truth ends the tug of war between devices.
 
 **Consequences.** A device that had picked a language before round 8 takes the profile's language at
 its next start if they differ.
+
+## 49. The notifications inbox is a table the database fills, one row per person — 3 Oct 2026
+
+**Context.** A2 Notifications inbox is the last common Phase 1 screen. Push works only on the
+Android app; web users (most members use iPhones and the web version) get none. Phase 2 adds assessment and
+promotion notices through its own queue (`push_outbox`, branch phase2-promotion), with a
+title, a line of text and the screen to open.
+
+**Decision** (Praveen's brief preferred a table; round 9 chose it).
+- **A table `notifications`, filled by the database** (migration 0015), not derived from the
+  announcements on the fly: one row per person per notice, with a `kind`, the title, the start of
+  the text, the screen to open (the same as the push's), `visible_at` and `read_at`. A trigger on
+  announcements keeps it in line with `announcement_audience` on posting and on every edit of the
+  title, text, audience or time; it does not depend on push being set up. Phase 2's notices fit the
+  same row (kinds `assessment`, `promotion` are allowed already) and join it at the merge.
+- **Read state.** Opening an announcement marks its notice read (trigger on read receipts). "Mark
+  all read" marks notices only and adds no read receipts, so "seen by" (C15) keeps counting the
+  people who opened the announcement.
+- **No Edge Function change**: the push and the inbox are filled independently from the same
+  audience view, so the deployed `notify-announcements` (and phase2-promotion's version) stay as
+  they are.
+- **Entry points:** a bell with the unread count at the top right of the home header (S1, C1, G1),
+  and "Notifications" in the account card at the foot of every home. No ring circle: the staff ring
+  is full (#44) and the student ring already has Announcements.
+- **Start and housekeeping:** the inbox begins with the last 30 days of announcements; notices
+  older than a year are deleted daily.
+
+**Why.** Deriving the inbox from announcements would work for announcements only: Phase 2's
+notices have no table of their own to derive from, and "mark all read" would have to fake read
+receipts. One row per person also keeps what was *sent* stable when someone later changes level.
+
+**Consequences.** A student who joins a level or group later gets no earlier notices in the inbox
+(the announcements are still in S10). Migration 0015 must run on TEST and on LIVE before the
+screens work; without it the bell shows no number and the inbox says it could not load.
+
+## 50. Reports are counted in the database like the home screens; CSV with what is installed — 3 Oct 2026
+
+**Context.** The team approved C21 My reports and G8 Reports (basic). The numbers must agree
+with C1, G1 and `student_overview` as round 8 left them, and a coordinator may see only their
+mentees' figures. Exporting must not add a native package (fingerprint 38ce7d9d).
+
+**Decision.**
+- **One function `class_report(from, to, mentor)`** (0015, security invoker, staff only) for both
+  screens; a coordinator always gets their own mentees, the Guru everyone or one coordinator's
+  mentees. Counting rules are those of the home screens (table in DATABASE.md "Reports"): statuses
+  and days away from `student_overview`, weeks from Monday or 7-day blocks following
+  `week_starts`, progress over the items in use at the current level, calls due = due by today or
+  escalated. Statuses are "now", whatever the dates; the rest is for the dates chosen (at most a
+  year). Smoke tests check that the Guru's report has the same "in class" and statuses as G1.
+- **One screen** `staff/reports.tsx`: ranges this month, last month, last 4 weeks, last 3 months or
+  two dates; tiles, statuses, visits per week and month, calls, progress per level, and every
+  student's line; tables on a laptop (`components/data-table.tsx`), cards on a phone. Entry: the
+  Guru's "Running the class" list; "My reports" under the ring on C1.
+- **CSV** (`lib/csv.ts`): a byte-order mark so Excel shows Telugu and Hindi names, CRLF lines, and
+  a leading apostrophe before a cell starting with = + - @ so Excel does not run it as a formula.
+  On the web it downloads. On the Android app "Save to a folder" uses the folder picker of
+  `expo-file-system` (already in the APK) and "Share" sends the text through React Native's own
+  share sheet; `expo-sharing` would share the file itself but is a native package.
+
+**Why.** Counting in one database function keeps the screens, the CSV and the home numbers
+consistent and keeps the mentee rule in the database.
+
+**Consequences.** "Share" sends text, not a file attachment, until a future APK adds
+`expo-sharing` (not queued). The reports have no charts yet.
+
+## 51. Centres store their attendance area now; the phone checks it from the next APK — 3 Oct 2026
+
+**Context.** G9 Centres and geofence. `centres` (0001) already had a GPS point, a radius and the
+open window, but nothing checked them and only the dashboard could change them. Checking a
+phone's position needs `expo-location`, a native package, so a new APK.
+
+**Decision.**
+- **G9** (`staff/centres/`, Guru only): list, add, edit, switch off or on. The point is typed as
+  "17.3850, 78.4867" or pasted as a Google Maps link (`lib/map-link.ts` reads the place marker
+  `!3d…!4d…`, `q=`/`query=`/`ll=` and `@lat,lng`); a short `maps.app.goo.gl` link is refused with
+  "open it, then copy the long link or the numbers", because the app does not follow links.
+  "Check on Google Maps" opens the point. A radius of 25-2000 m (default 150). The open window
+  can be edited here too (G10 keeps editing the first centre's).
+- **Checks in the database** (`centres_details_guard`, 0015) and an `address` column; a centre is
+  switched off, never deleted from the app; the last centre in use stays on. Round 8's
+  `centres_guard` and audit trigger are unchanged.
+- **The phone-side check is not built:** the screens say "checked on phones from the next app
+  version". `expo-location` is queued for the next planned APK, together with `expo-audio`
+  (Phase 2 recording).
+
+**Why.** Storing the area now lets the team enter Abids' real point before the pilot; the check
+itself waits for the APK that is coming anyway, so no extra install for the volunteers.
+
+**Consequences.** Visits still carry centre 1 (Abids) and new students get centre 1 as home
+centre; a centre picker comes when a second centre opens. Round 9 also fixed G10, which never
+saved a changed open window (a lost template string made every window look unchanged).
