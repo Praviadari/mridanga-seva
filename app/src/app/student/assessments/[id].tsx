@@ -166,7 +166,7 @@ export default function MyAssessmentScreen() {
           description={t('assessments.submit.hint')}>
           {file ? (
             <View style={[styles.fileRow, { borderColor: colors.border }]}>
-              <Icon name={file.kind === 'video' ? 'video' : 'audio'} color={colors.primary} />
+              <Icon name={file.kind === 'video' ? 'videoFile' : 'audio'} color={colors.primary} />
               <View style={styles.fileText}>
                 <AppText variant="label">{file.name}</AppText>
                 <AppText variant="small" tone="muted">
@@ -178,7 +178,7 @@ export default function MyAssessmentScreen() {
           ) : (
             <View style={styles.actions}>
               <Button variant="secondary" icon="audio" label={t('assessments.files.chooseRecording')} onPress={() => void pick(pickRecordingFiles)} />
-              <Button variant="secondary" icon="video" label={t('assessments.files.addGalleryVideo')} onPress={() => void pick(() => pickGalleryVideo())} />
+              <Button variant="secondary" icon="videoFile" label={t('assessments.files.addGalleryVideo')} onPress={() => void pick(() => pickGalleryVideo())} />
             </View>
           )}
           {pickError ? <Notice tone="error">{pickError}</Notice> : null}

@@ -53,6 +53,18 @@ const LABEL_OVERHANG = 14;
 const MAX_SIZE = 400;
 /** A ring of four or fewer (the student home) is drawn smaller, so the circles sit close to the drum. */
 const MAX_SIZE_FEW = 320;
+/**
+ * A ring of nine (the staff homes since round 7) draws smaller circles in narrower slots, so
+ * neighbours keep a gap on a 375 px phone (nine slots of 92 px would overlap at that width).
+ */
+const DENSE_FROM = 9;
+const CIRCLE_DENSE = 56;
+const ITEM_WIDTH_DENSE = 80;
+/** A ring of ten (the staff homes on the Phase 2 branch, with Assessments) is a little denser still. */
+const CIRCLE_TEN = 52;
+const ITEM_WIDTH_TEN = 74;
+/** More modules than this are shown as the grid. */
+const MAX_ON_RING = 10;
 /** Below this window width the labels would overlap, so the grid is used. */
 const MIN_WIDTH = 340;
 
@@ -60,7 +72,7 @@ const MIN_WIDTH = 340;
 export function ModuleRing({ title, modules }: ModuleRingProps) {
   const { width } = useWindowDimensions();
   const largeText = useLargeText();
-  const asGrid = largeText || width < MIN_WIDTH || modules.length > 9;
+  const asGrid = largeText || width < MIN_WIDTH || modules.length > MAX_ON_RING;
   return (
     <View style={styles.block}>
       <AppText variant="subtitle">{title}</AppText>
@@ -75,7 +87,11 @@ function Ring({ modules, width }: { modules: readonly Module[]; width: number })
   const { colors } = useTheme();
   // 16 px page sides; on a phone the ring fills the width, on a laptop it stops at MAX_SIZE.
   const size = Math.min(width - 2 * spacing.md, modules.length <= 4 ? MAX_SIZE_FEW : MAX_SIZE);
-  const radius = size / 2 - ITEM_WIDTH / 2;
+  const dense = modules.length >= DENSE_FROM;
+  const ten = modules.length >= MAX_ON_RING;
+  const circle = ten ? CIRCLE_TEN : dense ? CIRCLE_DENSE : CIRCLE;
+  const itemWidth = ten ? ITEM_WIDTH_TEN : dense ? ITEM_WIDTH_DENSE : ITEM_WIDTH;
+  const radius = size / 2 - itemWidth / 2;
   const centre = size / 2;
   return (
     <View style={[styles.ring, { width: size, height: size + LABEL_ROOM }]}>
@@ -108,14 +124,15 @@ function Ring({ modules, width }: { modules: readonly Module[]; width: number })
       {modules.map((module, index) => {
         // Start at the top and go clockwise.
         const angle = -Math.PI / 2 + (index * 2 * Math.PI) / modules.length;
-        const left = centre + radius * Math.cos(angle) - ITEM_WIDTH / 2;
-        const top = centre + radius * Math.sin(angle) - CIRCLE / 2;
+        const left = centre + radius * Math.cos(angle) - itemWidth / 2;
+        const top = centre + radius * Math.sin(angle) - circle / 2;
         return (
           <ModuleButton
             key={module.key}
             module={module}
-            labelWidth={ITEM_WIDTH + 2 * LABEL_OVERHANG}
-            style={{ position: 'absolute', left, top, width: ITEM_WIDTH }}
+            circle={circle}
+            labelWidth={itemWidth + 2 * LABEL_OVERHANG}
+            style={{ position: 'absolute', left, top, width: itemWidth }}
           />
         );
       })}
@@ -143,10 +160,13 @@ function ModuleButton({
   module,
   style,
   labelWidth,
+  circle = CIRCLE,
 }: {
   module: Module;
   style: StyleProp<ViewStyle>;
   labelWidth?: number;
+  /** Diameter of the circle (smaller on a ring of nine). */
+  circle?: number;
 }) {
   const { t } = useTranslation();
   const { colors } = useTheme();
@@ -158,7 +178,7 @@ function ModuleButton({
       onPress={module.onPress}
       style={({ pressed }) => [styles.item, style, pressed && styles.pressed]}>
       <View>
-        <IconBadge name={module.icon} size={CIRCLE} tone={module.tone} />
+        <IconBadge name={module.icon} size={circle} tone={module.tone} />
         {module.soon ? (
           <View style={[styles.soonMark, { backgroundColor: soonLook.background, borderColor: colors.background }]}>
             <Icon name="construction" size={12} color={soonLook.text} />

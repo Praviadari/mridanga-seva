@@ -1,11 +1,14 @@
 // The quiet block at the end of each home screen (S1, C1, G1): the language switch, Sign out and
 // the app version line. Kept apart from the class's numbers, so the home starts with what the
-// person came for. Becomes part of a Profile screen (A3) when that is built.
+// person came for. "My profile" opens A3 (screens/my-profile.tsx), which has the same switch and
+// Sign out with the person's name and phone (round 7).
 
+import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
 import { signOut } from '@/auth/auth-actions';
+import { useAuth } from '@/auth/auth-provider';
 import { cardLook, spacing, useTheme } from '@/theme/use-theme';
 
 import { AppText } from './app-text';
@@ -18,6 +21,8 @@ import { VersionLine } from './update-notice';
 export function AccountFooter() {
   const { t } = useTranslation();
   const { colors } = useTheme();
+  const { profile } = useAuth();
+  const profilePath = profile?.role === 'student' ? '/student/profile' : '/staff/profile';
   return (
     <>
       <View style={[styles.card, cardLook(colors)]}>
@@ -28,6 +33,7 @@ export function AccountFooter() {
           </AppText>
         </View>
         <LanguagePicker />
+        <Button variant="link" icon="profile" label={t('myProfile.title')} onPress={() => router.push(profilePath)} />
         <Button variant="link" icon="signOut" label={t('common.signOut')} onPress={() => void signOut()} />
       </View>
       <VersionLine />

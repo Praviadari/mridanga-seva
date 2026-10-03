@@ -79,14 +79,16 @@ app/
   src/
     app/               Screens. Every file is a screen (Expo Router); _layout.tsx files arrange them
       student/         The student's screens; (tabs)/ holds Home, My QR and Announcements; one
-                       announcement, progress.tsx (S4), assessments/ (S7, Phase 2) and
-                       coming-soon.tsx open on top
+                       announcement, progress.tsx (S4), visits.tsx (S9), profile.tsx (A3),
+                       assessments/ (S7, Phase 2) and coming-soon.tsx open on top
       staff/           The Guru's and coordinators' screens: register, attendance, follow-up ...,
-                       and coming-soon.tsx for the modules not built yet; (tabs)/ holds Home (G1
-                       or C1 by role) and the four used most; assessments/ holds G6, C12-C14 (Phase 2)
+                       levels/ (G4 syllabus editor), materials/ (G5), visits/ (S9 of one student),
+                       profile.tsx (A3), and coming-soon.tsx for the modules not built yet; (tabs)/
+                       holds Home (G1 or C1 by role) and the four used most; assessments/ holds G6,
+                       C12-C14 and promotion/ holds C22, C23, G7 (Phase 2)
     auth/              Who is signed in, their role, and the sign-in / sign-up calls
     screens/           The two staff homes, G1 and C1 (shown by staff/(tabs)/index.tsx), and the
-                       Coming soon page both areas show
+                       pages both areas show: Coming soon, Attendance history (S9), My profile (A3)
     data/              Reading and saving records: one file per area (students.ts ...), with the
                        form checks. Screens call these, never the database directly
     components/        Building blocks shared by screens: text, buttons, fields, choices, list rows,
@@ -104,7 +106,8 @@ app/
                        (the drum mark), person-header.tsx (initials and name on C8, C11),
                        status-chip.tsx (coloured level and status labels on lists and C8),
                        loading-cards.tsx (grey shapes while loading), empty-state.tsx,
-                       account-footer.tsx (language, Sign out, version)
+                       account-footer.tsx (language, My profile, Sign out, version),
+                       material-row.tsx (a lesson with Open, on G4/G5 and S4; DECISIONS.md #44)
     i18n/              Interface text in English, Telugu and Hindi (docs/TRANSLATIONS.md), and
                        labels.ts, which words levels, file sizes and lengths of time the same on
                        every screen

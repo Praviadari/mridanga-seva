@@ -188,7 +188,7 @@ export default function NewAssessmentScreen() {
       <Section title={t('assessments.compose.files')} description={t('assessments.compose.filesHint', { max: MAX_MEDIA })}>
         {form.files.map((file) => (
           <View key={file.key} style={[styles.fileRow, { borderColor: colors.border }]}>
-            <Icon name={file.kind === 'audio' ? 'audio' : file.kind === 'video' ? 'video' : 'file'} color={colors.primary} />
+            <Icon name={file.kind === 'audio' ? 'audio' : file.kind === 'video' ? 'videoFile' : 'file'} color={colors.primary} />
             <View style={styles.fileText}>
               <AppText variant="label">{file.name}</AppText>
               <AppText variant="small" tone="muted">
@@ -208,7 +208,7 @@ export default function NewAssessmentScreen() {
             <Button variant="secondary" label={t('announcements.files.addPhotos')} disabled={picking} onPress={() => void add(pickMediaPhotos)} />
             <Button variant="secondary" label={t('announcements.files.addPdf')} disabled={picking} onPress={() => void add(pickMediaPdfs)} />
             <Button variant="secondary" icon="audio" label={t('assessments.files.addRecording')} disabled={picking} onPress={() => void add(pickRecordingFiles)} />
-            <Button variant="secondary" icon="video" label={t('assessments.files.addGalleryVideo')} disabled={picking} onPress={() => void add(() => pickGalleryVideo())} />
+            <Button variant="secondary" icon="videoFile" label={t('assessments.files.addGalleryVideo')} disabled={picking} onPress={() => void add(() => pickGalleryVideo())} />
           </View>
         ) : (
           <AppText tone="muted">{t('announcements.files.full', { max: MAX_MEDIA })}</AppText>

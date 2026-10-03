@@ -49,13 +49,27 @@ const SHAPES = {
   instruments: 'musical-notes-outline',
   events: 'calendar-number-outline',
   construction: 'construct-outline',
+  // Round 7: syllabus editor, materials, attendance history, profile.
+  library: 'library-outline',
+  video: 'logo-youtube',
+  pdf: 'document-text-outline',
+  photo: 'image-outline',
+  open: 'open-outline',
+  up: 'arrow-up',
+  down: 'arrow-down',
+  retire: 'archive-outline',
+  restore: 'arrow-undo-outline',
+  profile: 'person-circle-outline',
   // Assessments (Phase 2): the module, playing a recording, audio and video files, a link, a score.
   assessment: 'clipboard-outline',
   play: 'play-circle-outline',
   audio: 'mic-outline',
-  video: 'videocam-outline',
+  videoFile: 'videocam-outline',
   link: 'link-outline',
   score: 'star-outline',
+  // Promotion approval (Phase 2 slice 2): the level-up queue, a coordinator's feedback.
+  promote: 'trending-up-outline',
+  feedback: 'chatbubbles-outline',
 } as const;
 
 /** The icons the app may use. */

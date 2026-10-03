@@ -4,6 +4,7 @@
 // in or out. Staff only: this screen shows the parent's details and call notes, which students
 // never see (docs/DATABASE.md "Who can see what"). Data: src/data/student-profile.ts.
 // Progress is read-only here; its button opens C9 Syllabus tick-off (staff/syllabus/[id]).
+// "All visits by month" opens S9 Attendance history for this student (staff/visits/[id]).
 
 import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
@@ -227,6 +228,19 @@ export default function StudentProfileScreen() {
               : ` · ${t('profile.stillHere')}`}
           </AppText>
         ))}
+        {profile.totalVisits > 0 ? (
+          <Button
+            variant="secondary"
+            icon="visits"
+            label={t('visitHistory.allVisits')}
+            onPress={() =>
+              router.push({
+                pathname: '/staff/visits/[id]',
+                params: { id: student.id, name: `${student.fullName} · ${student.rollNo}` },
+              })
+            }
+          />
+        ) : null}
       </Section>
 
       <Section

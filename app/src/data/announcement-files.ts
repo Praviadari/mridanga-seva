@@ -28,6 +28,13 @@ export const FILES_BUCKET = 'announcement-files';
 export const MAX_FILES = 3;
 /** Largest file Storage accepts, in bytes: 5 MB. */
 export const MAX_FILE_BYTES = 5 * 1024 * 1024;
+/**
+ * Size limit for picking, and the message when a file is bigger. Announcements use 5 MB; the
+ * materials library (src/data/materials.ts) passes its own 10 MB.
+ */
+export type PickLimit = { maxBytes: number; tooBigKey: MessageKey };
+/** The announcements' limit. */
+const ANNOUNCEMENT_LIMIT: PickLimit = { maxBytes: MAX_FILE_BYTES, tooBigKey: 'announcements.files.tooBig' };
 /** Photos are made smaller to this many pixels on their longest side: sharp on any phone screen. */
 const PHOTO_LONGEST_SIDE = 1600;
 /** JPEG quality, 0 to 1: about 200-400 KB for a phone photo at 1600 pixels. */
@@ -128,7 +135,7 @@ async function shrinkPhoto(uri: string, width: number, height: number): Promise<
  * Opens the photo library and returns up to `room` photos, each made smaller. Nothing is uploaded.
  * An empty list without a message means the person cancelled.
  */
-export async function pickPhotos(room: number): Promise<PickResult> {
+export async function pickPhotos(room: number, limit: PickLimit = ANNOUNCEMENT_LIMIT): Promise<PickResult> {
   if (room <= 0) return { files: [], errorKey: 'announcements.files.tooMany' };
   try {
     // Android's photo picker needs no permission; iPhones ask once.
@@ -147,7 +154,7 @@ export async function pickPhotos(room: number): Promise<PickResult> {
     for (const [index, asset] of result.assets.slice(0, room).entries()) {
       const uri = await shrinkPhoto(asset.uri, asset.width, asset.height);
       const size = await sizeOf(uri);
-      if (size > MAX_FILE_BYTES) return { files, errorKey: 'announcements.files.tooBig' };
+      if (size > limit.maxBytes) return { files, errorKey: limit.tooBigKey };
       files.push({ key: Crypto.randomUUID(), name: jpegName(asset.fileName, index), kind: 'image', size, uri, mimeType: 'image/jpeg' });
     }
     const errorKey: MessageKey | undefined =
@@ -159,10 +166,10 @@ export async function pickPhotos(room: number): Promise<PickResult> {
 }
 
 /**
- * Opens the file chooser for PDFs and returns up to `room` of them, each at most 5 MB. Nothing is
+ * Opens the file chooser for PDFs and returns up to `room` of them, each at most the limit (5 MB). Nothing is
  * uploaded. An empty list without a message means the person cancelled.
  */
-export async function pickPdfs(room: number): Promise<PickResult> {
+export async function pickPdfs(room: number, limit: PickLimit = ANNOUNCEMENT_LIMIT): Promise<PickResult> {
   if (room <= 0) return { files: [], errorKey: 'announcements.files.tooMany' };
   try {
     const result = await DocumentPicker.getDocumentAsync({
@@ -182,8 +189,8 @@ export async function pickPdfs(room: number): Promise<PickResult> {
         continue;
       }
       const size = asset.size ?? (await sizeOf(asset.uri, asset.file));
-      if (size > MAX_FILE_BYTES) {
-        errorKey = 'announcements.files.tooBig';
+      if (size > limit.maxBytes) {
+        errorKey = limit.tooBigKey;
         continue;
       }
       files.push({
@@ -211,27 +218,28 @@ async function bodyOf(file: PickedFile): Promise<Blob | ArrayBuffer> {
 }
 
 /**
- * Uploads picked files into the signed-in person's folder (`myId` = their profile id), in order.
+ * Uploads picked files into the signed-in person's folder (`myId` = their profile id) of `bucket`, in order.
  * Returns them as announcement attachments. If one fails, the ones already uploaded are removed
  * again and nothing is returned but the message.
  */
 export async function uploadFiles(
   myId: string,
   files: PickedFile[],
+  bucket: string = FILES_BUCKET,
 ): Promise<{ attachments?: Attachment[]; errorKey?: MessageKey }> {
   const uploaded: Attachment[] = [];
   for (const file of files) {
     const path = `${myId}/${Crypto.randomUUID().toLowerCase()}.${file.kind === 'pdf' ? 'pdf' : 'jpg'}`;
     try {
       const { error } = await supabase.storage
-        .from(FILES_BUCKET)
+        .from(bucket)
         .upload(path, await bodyOf(file), { contentType: file.mimeType, upsert: false });
       if (error) {
-        await removeFiles(uploaded.map((a) => a.path));
+        await removeFiles(uploaded.map((a) => a.path), bucket);
         return { errorKey: storageErrorKey(error.message) };
       }
     } catch (failure) {
-      await removeFiles(uploaded.map((a) => a.path));
+      await removeFiles(uploaded.map((a) => a.path), bucket);
       return { errorKey: storageErrorKey(String(failure)) };
     }
     uploaded.push({ path, name: file.name, kind: file.kind, size: file.size });
@@ -244,10 +252,10 @@ export async function uploadFiles(
  * allows it for the uploader, the Guru, and the author of the announcement that lists the file.
  * Returns false when it could not be done (usually no internet). A file already gone is fine.
  */
-export async function removeFiles(paths: string[]): Promise<boolean> {
+export async function removeFiles(paths: string[], bucket: string = FILES_BUCKET): Promise<boolean> {
   if (paths.length === 0) return true;
   try {
-    const { error } = await supabase.storage.from(FILES_BUCKET).remove(paths);
+    const { error } = await supabase.storage.from(bucket).remove(paths);
     return !error;
   } catch {
     return false;
@@ -259,10 +267,10 @@ export async function removeFiles(paths: string[]): Promise<boolean> {
  * is made only for the person on the screen (Storage checks they may read the announcement).
  * Files that failed are missing from the map.
  */
-export async function signedLinks(paths: string[]): Promise<Map<string, string>> {
+export async function signedLinks(paths: string[], bucket: string = FILES_BUCKET): Promise<Map<string, string>> {
   if (paths.length === 0) return new Map();
   try {
-    const { data, error } = await supabase.storage.from(FILES_BUCKET).createSignedUrls(paths, LINK_SECONDS);
+    const { data, error } = await supabase.storage.from(bucket).createSignedUrls(paths, LINK_SECONDS);
     if (error || !data) return new Map();
     return new Map(
       data.flatMap((link) => (link.path && link.signedUrl && !link.error ? [[link.path, link.signedUrl] as const] : [])),

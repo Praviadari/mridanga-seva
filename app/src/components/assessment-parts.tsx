@@ -53,7 +53,7 @@ export function AssignmentChips({ status, dueOn }: { status: AssignmentStatus; d
   );
 }
 
-const KIND_ICON: Record<MediaKind, IconName> = { image: 'file', pdf: 'file', audio: 'audio', video: 'video' };
+const KIND_ICON: Record<MediaKind, IconName> = { image: 'file', pdf: 'file', audio: 'audio', video: 'videoFile' };
 
 /** Props for MediaList. */
 export type MediaListProps = {
