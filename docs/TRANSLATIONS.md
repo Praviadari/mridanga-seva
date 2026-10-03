@@ -84,5 +84,13 @@ The code is in `app/src/i18n/index.ts`, `app/src/components/language-picker.tsx`
   `progress.levelLessons`, `progress.retired` and `syllabus.errors.retired`. Words to check:
   "retire" (విరమించు / हटाना, against "delete" = తొలగించు / मिटाना), "lesson" (పాఠం / पाठ),
   "syllabus item" (అంశం / विषय), and "Share", "Copy link" kept in English as YouTube shows them.
+- **Phase 2 promotion approval** (branch `phase2-promotion`, [DECISIONS.md #45](DECISIONS.md)):
+  every Telugu and Hindi line under `promotion.*` and `assessments.edit.*` is a draft for the
+  review, and so are the notification lines in `promotion_push_line()` in
+  `supabase/migrations/0014_promotion.sql`. Words to check first: సిఫారసు / नामांकन (nomination),
+  స్థాయి పెంపు / स्तर-उन्नति (promotion, as for level-up), సిద్ధం · దాదాపు · ఇంకా కాదు /
+  तैयार · लगभग · अभी नहीं (the three answers), అభిప్రాయం / राय (feedback), నియమాలు / शर्तें
+  (criteria), సూచనలు / मार्गदर्शन (guidance). Coordinator and Guru as in the rest of the app
+  (కోఆర్డినేటర్ / कोऑर्डिनेटर, గురువుగారు / गुरुजी). Checked for mixed Telugu-Devanagari words on 3 Oct 2026.
 - Telugu and Devanagari letters are taller than Latin ones. The app's line heights allow for this;
   if a translated label looks cut off, report it with a screenshot.

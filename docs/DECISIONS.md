@@ -1056,3 +1056,57 @@ history honest while the syllabus evolves. YouTube costs nothing and needs no ne
 the next publish to production. A material's file goes from Storage before its row; a file whose
 material row fails to save is taken out of Storage again. The Telugu and Hindi lines are drafts
 for the native-speaker review (docs/TRANSLATIONS.md).
+
+## 45. Promotion: coordinators nominate and give feedback, only the Guru promotes — 3 Oct 2026
+
+**Status: proposed, on the branch `phase2-promotion` only** (from `phase2-assessments` with main
+merged in). Phase 2 reaches main and the phones only when Praveen decides.
+
+**Context.** The Screen List doc approves C22 Nominate for promotion, C23 Promotion feedback and
+G7 Level-up queue / Promotion approvals: a student moves up only when the Guru approves, after the
+coordinators who teach the student have given feedback; the app never promotes by itself and
+tells the mentor when a student meets the Guru's criteria. Praveen (3 Oct 2026): the criteria are
+settings with defaults (whole level syllabus ticked, 8+ visits in the last 8 weeks, one accepted
+level-up assessment), and an assessment can be edited (text, files, link any time; rubric, level,
+type only until the first release).
+
+**Decision.**
+- **Criteria as settings** (`promotion_syllabus_percent` 100, `promotion_min_visits` 8 in
+  `promotion_visit_weeks` 8, `promotion_needs_level_up` true, `promotion_min_feedback` 2),
+  checked by `promotion_criteria` on the server. "Visits" counts days in class; the syllabus
+  counts the items in use (retired ones left out, #44); the level-up is an accepted submission of a
+  level-up assessment *of the current level* sent to the Guru (`send_level_up`, #43).
+- **The criteria advise, the Guru decides.** A coordinator may nominate a student who misses a
+  criterion (the reason says why); the check at the time is kept with the nomination and shown to
+  the Guru. Coordinators see their own mentees who meet everything; the Guru sees all.
+- **Who.** Any coordinator (or the Guru) nominates and picks coordinators to ask; those who
+  ticked, marked a visit or reviewed in the last weeks, and the mentor, are suggested. A
+  nominating coordinator's own view counts as one "Ready". Only coordinators answer (Ready /
+  Almost / Not yet + a comment, changeable while open). **Promote needs 2 answers**; Not yet and
+  More feedback can be given at any time. One open nomination per student.
+- **The Guru's three answers.** Promote (confirm step; `students.level_id` and a `level_history`
+  row with the Guru as approver; the student gets a push), Not yet (guidance and a date, tomorrow
+  to a year ahead, before which the student cannot be nominated again), More feedback (a note;
+  coordinators who have not answered get a push). The nominator or the Guru may withdraw.
+- **Only the Guru changes a level**, enforced by a trigger: before this, a coordinator's phone
+  could change `students.level_id` through the general staff update policy.
+- **Students see no nominations or comments** (staff only); a promoted student gets a push that
+  opens My progress. Showing the nomination's state on S8 waits for a team pick of S8.
+- **Keeping the level-up recording:** while its nomination is open, then 30 days after the
+  decision; one never used for a nomination 180 days after its review (0012 left this to slice 2).
+- **Entry points:** cards on G1 (level-up queue: to decide, collecting, ready) and C1 (feedback
+  asked of me, my students ready), a Promotion block on C8. No ring circle; the staff ring already
+  holds ten since the merge with round 7 (circles drawn smaller, same slots).
+- **Editing an assessment (G6):** an Edit button for the Guru; after the first release the type,
+  level, level-up flag and rubric are shown, not editable (the database already refuses them).
+  Files taken off are deleted from Storage after the save.
+
+**Why.** It is the approved flow with the rules in the database, like attendance and assessments:
+a coordinator's phone cannot promote, skip the feedback or see more than staff should. Settings let
+the Guru tune the criteria without an app update. A soft criteria check keeps the Guru's judgement
+in charge while still telling coordinators who is ready.
+
+**Consequences.** Migration `0014_promotion.sql` (TEST only until Phase 2 goes live; after 0013).
+The Edge Function `notify-announcements` must be deployed again from this branch to send the
+promotion notifications (it now accepts `/staff/promotion/<id>` and `/student/progress`); until
+then they wait in `push_outbox`. The Telugu and Hindi texts are drafts (docs/TRANSLATIONS.md).

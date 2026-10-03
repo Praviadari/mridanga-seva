@@ -287,13 +287,32 @@ Not on main yet; it reaches the phones only when Praveen decides ([DECISIONS.md 
 4. The tracker (C13) shows each student Not seen / Seen / Submitted / Reviewed / Redo and Late.
    *Remind* queues a reminder; a daily job at 09:00 IST reminds anyone due today or tomorrow.
 5. A coordinator reviews (C14): plays the recording, scores each rubric line, comments, and
-   accepts or asks for a redo; for a level-up assessment, marks it for the Guru (slice 2: G7,
-   C22, C23). The student sees the score and the comment.
+   accepts or asks for a redo; for a level-up assessment, marks it for the Guru (the promotion
+   approval below). The student sees the score and the comment.
 6. The Edge Function sends the queued notifications with the announcements, and once a day
    deletes recordings 30 days past their review.
 
 Audio and video open in the phone's browser view (expo-web-browser); the app has no player and
 no in-app recorder, because each would be a native package and a new APK.
+
+## How promotion flows (Phase 2, branch `phase2-promotion`)
+
+Not on main yet ([DECISIONS.md #45](DECISIONS.md)). The app never promotes anyone by itself.
+
+1. `promotion_criteria` checks a student against the Guru's settings: the current level's
+   syllabus ticked, 8+ visits in 8 weeks, an accepted level-up recording (step 5 above). The C1
+   card and the Promotions list show a coordinator their own students who meet all of it; C8
+   shows the check for any student.
+2. A coordinator nominates (C22) with a reason and picks coordinators to ask (those who taught
+   the student lately come first). Their own view counts as one "Ready"; the asked ones get a
+   push notification.
+3. Coordinators answer (C23): Ready / Almost / Not yet with a comment. At 2 answers the Guru gets
+   a notification and the nomination moves to "Waiting for your decision" (the G1 card counts it).
+4. The Guru decides (G7), with the criteria, the recording and the answers side by side:
+   *Promote* (`students.level_id` + a `level_history` row; the student is told), *Not yet* with
+   guidance and a date before which the student cannot be nominated again, or *More feedback*.
+5. Only the Guru can change a student's level at all (a database trigger), and the level-up
+   recording is kept until 30 days after the decision.
 
 ## Phases
 

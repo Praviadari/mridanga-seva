@@ -479,6 +479,54 @@ a row of the last day waits; `claim_push_outbox()` marks them sent and returns o
 rows older than a day are never sent. The Edge Function from the same commit must be deployed;
 the one deployed for 0011 ignores the queue.
 
+## Promotion approval (Phase 2)
+
+Migration 0014, on the branch `phase2-promotion`, TEST project only until Phase 2 goes live
+([DECISIONS.md #45](DECISIONS.md)). Screens C22, C23, G7 (SCREENS.md). A student moves up only
+when the Guru approves; the app never promotes by itself.
+
+| Table | One row per | Written by |
+|---|---|---|
+| `promotion_nominations` | Nomination of a student for the next level: `from_level`, `to_level`, `reason`, `criteria` (the check at the time), `submission_id` (the level-up recording), `asked` (coordinators asked), `nominated_by`; `status` `open`, `promoted`, `not_yet`, `withdrawn`; `more_asked_at` + `more_note`; `decided_by`, `decided_at`, `guidance`, `renominate_after`, `level_history_id`. At most one `open` per student | The functions below; audited |
+| `promotion_feedback` | Coordinator's answer on a nomination (unique per coordinator): `rating` `ready`, `almost`, `not_yet`, `comment` | `nominate_for_promotion` (the nominating coordinator's "ready"), `give_promotion_feedback` |
+
+**Criteria** (settings the Guru can change; defaults in brackets): `promotion_syllabus_percent`
+(100: every item in use at the current level ticked), `promotion_min_visits` (8) days in class in
+the last `promotion_visit_weeks` (8) weeks, `promotion_needs_level_up` (true: an accepted
+submission of a level-up assessment of the current level, sent to the Guru with
+`send_level_up`), and `promotion_min_feedback` (2 coordinators' answers before Promote; the
+nominating coordinator's own counts). The criteria tell coordinators who is ready; a coordinator
+may still nominate when one is not met, and the check is kept with the nomination for the Guru.
+
+| Function | Who | Does | Errors |
+|---|---|---|---|
+| `promotion_criteria(student)` | Guru, coordinator | The check: level and next level, syllabus done/total, visits, the level-up recording found, `all_ok`, an open nomination, the "not yet" date still ahead, and `taught_by` (active coordinators who ticked, marked a visit or reviewed in those weeks, and the mentor) | `not_allowed`, `student_not_found` |
+| `nominate_for_promotion(student, reason, ask[])` | Guru, coordinator | A nomination to the next level with the criteria and the level-up recording; the coordinator's own answer "ready"; a notification to each asked active coordinator | `not_allowed`, `student_not_found`, `top_level`, `already_nominated`, `too_soon`, `reason_required`, `reason_too_long` |
+| `give_promotion_feedback(nomination, rating, comment)` | Coordinator | Saves or changes their answer while open; tells the Guru once enough have answered | `not_allowed`, `nomination_not_found`, `nomination_closed`, `rating_invalid`, `comment_required`, `comment_too_long` |
+| `decide_promotion(nomination, decision, note, renominate_after)` | Guru | `promote`: needs enough answers and the student still at `from_level`; sets `students.level_id`, writes `level_history`; tells the student (`/student/progress`) and the nominator. `not_yet`: guidance and a date (tomorrow to a year); tells the nominator and those who answered. `more`: a note; tells active coordinators who have not answered; stays open | `not_allowed`, `nomination_not_found`, `nomination_closed`, `decision_invalid`, `feedback_needed`, `level_changed`, `note_required`, `note_too_long`, `date_required`, `date_past`, `date_too_far` |
+| `withdraw_nomination(nomination)` | The nominator, the Guru | Open → withdrawn | `not_allowed`, `nomination_not_found`, `nomination_closed` |
+| `promotion_ready_students()` | Guru (everyone), coordinator (their mentees) | Students meeting every criterion, not left, below the top level, no open nomination, no "not yet" date ahead | `not_allowed` |
+| `promotion_home()` | Guru, coordinator | `{to_decide, collecting, to_answer, ready}` for G1 and C1 | `not_allowed` |
+
+The view `promotion_queue` (security invoker) gives each nomination with the student's name, roll
+number and current level, the answers (`answers`, `ready`, `almost`, `not_yet`,
+`last_answer_at`) and `answers_needed`. Staff only; students see no nominations or answers.
+
+**Only the Guru changes a level.** The trigger `students_level_guard` (`guard_student_level`)
+refuses a change of `students.level_id` by any signed-in person but the Guru (`level_guru_only`);
+before 0014 a coordinator's phone could change it through the `staff_update` policy. The
+dashboard and the SQL editor are not stopped.
+
+**Keeping level-up recordings.** A recording sent to the Guru stays while a nomination using it is
+open, and is deleted 30 days after that nomination is decided (promoted, not yet or withdrawn); one
+never used for a nomination goes 180 days after its review (`submission_file_expired`, used by
+`claim_expired_submission_files` and `assessment_daily`, both redefined in 0014).
+
+**Notifications** go through `push_outbox` (0012), worded by `promotion_push_line` in the
+person's language, to `/staff/promotion/<nomination>` or `/student/progress`; never to the person
+whose action it is. The Edge Function accepts these two screens since this branch, so it must be
+deployed again from it (the slice-1 redeploy is still pending on TEST).
+
 ## Linking a login to a student
 
 A student record can exist without a login (many students never install the app). When a person
@@ -523,6 +571,7 @@ so every function is revoked from them and granted only where needed
 | `claim_due_push()`, `release_push_claim(ids)` | Only the Edge Function (service role) | Mark waiting announcements notified and return the phones to notify; put them back when nothing could be sent |
 | `release_assessment`, `mark_assessment_seen`, `submit_assessment`, `review_submission`, `remind_assessment` | See "Assessments (Phase 2)" | Phase 2 (0012) |
 | `claim_push_outbox()`, `release_push_outbox(ids)`, `claim_expired_submission_files()`, `release_submission_files(ids)` | Only the Edge Function (service role) | Send the queued assessment notifications; delete expired recordings (0012) |
+| `next_level`, `promotion_criteria`, `nominate_for_promotion`, `give_promotion_feedback`, `decide_promotion`, `withdraw_nomination`, `promotion_ready_students`, `promotion_home` | See "Promotion approval (Phase 2)" | Phase 2 (0014) |
 
 The Storage rules `announcement_file_readable`, `announcement_file_uploadable`,
 `announcement_file_deletable` and `announcement_file_path_ok` are run by row-level security as
@@ -536,7 +585,7 @@ Internal functions (not called by the app, and not allowed to): `refresh_student
 and audit triggers (including `guard_student_progress`, `audit_student_progress`,
 `guard_announcement`, `guard_announcement_attachments`, `guard_announcement_notified`,
 `guard_group`, `guard_announcement_reply`, `guard_syllabus_item`, `protect_syllabus_item`,
-`guard_progress_item_in_use`, `guard_material` and `guard_profile_details`), and the helpers `my_role`, `is_guru`, `is_staff`,
+`guard_progress_item_in_use`, `guard_material`, `guard_profile_details` and `guard_student_level`), the promotion helpers `promotion_push_line`, `queue_staff_push`, `promotion_tell_guru`, `queue_student_promoted`, `submission_file_expired` (0014), and the helpers `my_role`, `is_guru`, `is_staff`,
 `setting_int`, `today_ist`.
 
 ## Scheduled jobs (pg_cron, times in UTC)
@@ -546,7 +595,7 @@ and audit triggers (including `guard_student_progress`, `audit_student_progress`
 | `mridanga-status-refresh` | 00:30 UTC = 06:00 IST | `refresh_student_statuses()` — ends expired pauses, moves quiet students on, creates call tasks, flags overdue ones |
 | `mridanga-close-visits` | 15:30 UTC = 21:00 IST | `close_open_visits()` — closes visits left open, at the centre's closing time |
 | `mridanga-push` | Every minute | `send_due_push()` — calls the Edge Function `notify-announcements` when a published announcement waits for its push notification; does nothing while push is not set up (0011); since 0012 also when an assessment notification of the last day waits in `push_outbox` |
-| `mridanga-assessments` | 03:30 UTC = 09:00 IST | `assessment_daily()` — reminders for assessments due today or tomorrow that are not sent yet; asks the Edge Function (`{"cleanup": true}`) to delete recordings 30 days past their review (0012) |
+| `mridanga-assessments` | 03:30 UTC = 09:00 IST | `assessment_daily()` — reminders for assessments due today or tomorrow that are not sent yet; asks the Edge Function (`{"cleanup": true}`) to delete recordings 30 days past their review (0012); level-up ones 30 days after the promotion decision (0014) |
 
 ## Who can see what
 
@@ -571,6 +620,8 @@ and audit triggers (including `guard_student_progress`, `audit_student_progress`
 | Assessments (Phase 2) | Those given to them, with the release notes and files | Sent ones; create none | All, drafts too; create, send, delete unreleased |
 | Assessment assignments, submissions, tracker | Own; submit through `submit_assessment` | All; release, remind, review through the functions | Same as coordinator |
 | Assessment files (Storage) | Files of their assessments and their own recordings; upload audio or video while one is open (10 a day) | All on sent assessments and all recordings | All; upload; delete any |
+| Promotion nominations and answers (Phase 2) | — (a push when promoted) | All; nominate, answer, withdraw own, through the functions | All; nominate, decide, withdraw any |
+| A student's level | Read | Read (changed only by the Guru) | Read / write; Promote |
 
 ## Changing the database
 
@@ -590,7 +641,8 @@ data: login linking, the profile guard, registration and consent, attendance mar
 student overview, follow-up calls, syllabus ticks, announcements with their read receipts,
 edits, staff names and private replies, groups, the home-screen numbers, photos and PDFs (who
 may upload, open and delete a file), push tokens and the push queue, assessments (Phase 2: drafts,
-releases, submitting, reviews, reminders, the push queue, keeping files), who may run each function,
+releases, submitting, reviews, reminders, the push queue, keeping files), promotion approval (criteria,
+nominate, answers, Promote / Not yet / More feedback, only the Guru changes a level), who may run each function,
 and row-level security. It needs only Node.js, no database server and no Supabase account.
 `npm test` also runs `push-messages.test.mjs`, which checks how the Edge Function words and
 batches the notifications (Node 23.6 or later reads its TypeScript directly).
