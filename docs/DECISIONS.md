@@ -1059,8 +1059,14 @@ for the native-speaker review (docs/TRANSLATIONS.md).
 
 ## 45. Promotion: coordinators nominate and give feedback, only the Guru promotes — 3 Oct 2026
 
-**Status: proposed, on the branch `phase2-promotion` only** (from `phase2-assessments` with main
-merged in). Phase 2 reaches main and the phones only when Praveen decides.
+**Status: decided 3 Oct 2026, on the branch `phase2-promotion` only** (from `phase2-assessments`
+with main merged in). Praveen left the open points to the build chat ("take the best viable
+decisions; we will configure later if it does not suit"): criteria advise and do not block, the
+nominating coordinator counts as one of the 2 answers, students see only the promotion push (no
+nomination status until S8 is picked), level-up recordings kept 30 days after the decision (180
+days if never nominated), no ring circle for promotions. The numbers are settings; the rest is a
+small change if the team wants it otherwise. Phase 2 reaches main and the phones only when
+Praveen decides.
 
 **Context.** The Screen List doc approves C22 Nominate for promotion, C23 Promotion feedback and
 G7 Level-up queue / Promotion approvals: a student moves up only when the Guru approves, after the
