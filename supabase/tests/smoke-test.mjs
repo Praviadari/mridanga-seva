@@ -1824,6 +1824,122 @@ check('a voice note expires with its review (a link-only submission too)', expir
 const [{ ok: oldReviewGone }] = await asOwner(`select not exists (select 1 from pg_proc where proname = 'review_submission'
   and pronargs = 5) and not has_function_privilege('anon', 'review_submission(bigint, int[], text, text, boolean, jsonb)', 'execute') as ok`);
 check('one review_submission (with the voice note), not callable by anon', oldReviewGone);
+
+// ---------------------------------------------------------------- Ishtagoshti (0021, Phase 2)
+const igSlokas = (userId) => asApp(userId ? 'authenticated' : 'anon', userId, 'select id, ref, sample, published from ig_slokas order by sort, id');
+const samples = await asOwner('select id, ref from ig_slokas where sample and published order by sort');
+const [{ n: sampleThemes }] = await asOwner('select count(*)::int as n from ig_themes where sample and published');
+const [{ n: sampleLinks }] = await asOwner('select count(*)::int as n from ig_theme_slokas');
+check('3 sample slokas and 2 sample themes are seeded, marked sample', samples.length === 3 && sampleThemes === 2 && sampleLinks === 3,
+  `${samples.length} slokas, ${sampleThemes} themes, ${sampleLinks} links`);
+check('a student reads the published slokas', (await igSlokas(arjun)).length === 3);
+check('a login waiting for a role reads none', (await igSlokas(pendingLogin)).length === 0);
+await refuses('anon cannot read themes at all', () => asApp('anon', null, 'select id from ig_themes'));
+const dayOf = async (userId, day) => (await asApp('authenticated', userId, 'select ig_sloka_of_day($1::date) as id', [day]))[0].id;
+const [{ d: igToday }] = await asOwner('select today_ist()::text as d');
+const todays = await dayOf(arjun, null);
+check('the sloka of the day is the same for two students, and changes the next day',
+  samples.some((s) => s.id === todays) && todays === (await dayOf(meera, null)) && (await dayOf(arjun, '2030-01-02')) !== (await dayOf(arjun, '2030-01-01')),
+  String(todays));
+
+const newSloka = (userId, fields = {}) => asApp('authenticated', userId,
+  `insert into ig_slokas (ref, devanagari, transliteration, translation_en, translation_te, translator, own_text, published, audio_path, audio_name)
+   values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) returning *`,
+  [fields.ref ?? ' BG   9.14 ', fields.dev ?? 'सततं कीर्तयन्तो माम्', fields.iast ?? 'satataṁ kīrtayanto mām', fields.en === undefined ? 'Test translation.' : fields.en,
+   fields.te ?? null, fields.translator ?? null, fields.own ?? false, fields.published ?? false, fields.audio ?? null, fields.audioName ?? null]).then((r) => r[0]);
+await refuses('a coordinator who is not an editor cannot add a sloka', () => newSloka(coordinator));
+await refuses('a student cannot add a sloka', () => newSloka(arjun));
+await refusesWith('a coordinator cannot make themselves an Ishtagoshti editor', 'not_allowed', () =>
+  asApp('authenticated', coordinator, 'update profiles set ig_editor = true where id = auth.uid()'));
+await refusesWith('only a coordinator is marked as an editor', 'ig_editor_coordinator_only', () =>
+  asApp('authenticated', guru, 'update profiles set ig_editor = true where id = $1', [arjun]));
+await asApp('authenticated', guru, 'update profiles set ig_editor = true where id = $1', [coordinator]);
+await asApp('authenticated', guru, `select save_settings('{"ig_translator": "  Senior devotee (test)  "}'::jsonb)`);
+await refusesWith('the default translator has at most 100 characters', 'setting_invalid', () =>
+  asApp('authenticated', guru, 'select save_settings($1::jsonb)', [JSON.stringify({ ig_translator: 'x'.repeat(101) })]));
+const draftSloka = await newSloka(coordinator);
+check('an editor coordinator adds a draft sloka; reference tidied, default translator filled in', draftSloka.ref === 'BG 9.14'
+  && draftSloka.translator === 'Senior devotee (test)' && draftSloka.updated_by === coordinator && !draftSloka.published, JSON.stringify(draftSloka));
+check('students do not see a draft', !(await igSlokas(arjun)).some((s) => s.id === draftSloka.id));
+await refusesWith('a sloka needs a translation in some language', 'translation_required', () => newSloka(guru, { en: null }));
+await refusesWith('a sloka needs its Devanagari', 'devanagari_required', () => newSloka(guru, { dev: '  ' }));
+await refusesWith('publishing needs the "temple\'s own text" confirmation (no BBT text)', 'own_text_needed', () =>
+  asApp('authenticated', coordinator, 'update ig_slokas set published = true where id = $1', [draftSloka.id]));
+await asApp('authenticated', coordinator, 'update ig_slokas set published = true, own_text = true, translator = $2 where id = $1',
+  [draftSloka.id, 'Test Prabhu']);
+check('published with its own credit, students see it', (await igSlokas(arjun)).some((s) => s.id === draftSloka.id)
+  && (await asOwner(`select translator from ig_slokas where id = ${draftSloka.id}`))[0].translator === 'Test Prabhu');
+await asApp('authenticated', arjun, `update ig_slokas set ref = 'changed' where id = $1`, [draftSloka.id]);
+check('a student cannot change a sloka', (await asOwner(`select ref from ig_slokas where id = ${draftSloka.id}`))[0].ref === 'BG 9.14');
+
+const [{ id: sampleTheme }] = await asOwner(`select id from ig_themes where sample order by sort limit 1`);
+await refusesWith('a student cannot change a theme\'s slokas', 'not_allowed', () =>
+  asApp('authenticated', arjun, 'select set_theme_slokas($1, $2::bigint[])', [sampleTheme, [draftSloka.id]]));
+await asApp('authenticated', coordinator, 'select set_theme_slokas($1, $2::bigint[])', [sampleTheme, [draftSloka.id, samples[0].id, draftSloka.id]]);
+const themeList = await asApp('authenticated', arjun, 'select sloka_id from ig_theme_slokas where theme_id = $1 order by position', [sampleTheme]);
+check('an editor sets a theme\'s slokas in order (a repeat counted once)', themeList.length === 2
+  && themeList[0].sloka_id === draftSloka.id && themeList[1].sloka_id === samples[0].id, JSON.stringify(themeList));
+const hiddenSloka = await newSloka(guru, { ref: 'Hidden 1.1' });
+await asApp('authenticated', guru, 'select set_theme_slokas($1, $2::bigint[])', [sampleTheme, [draftSloka.id, hiddenSloka.id]]);
+check('a student does not see a draft sloka in a theme', (await asApp('authenticated', arjun,
+  'select sloka_id from ig_theme_slokas where theme_id = $1', [sampleTheme])).every((r) => r.sloka_id !== hiddenSloka.id));
+await refusesWith('a theme needs a title', 'theme_title_invalid', () => asApp('authenticated', guru, `insert into ig_themes (title) values ('  ')`));
+
+const pin = (userId, day, slokaId) => asApp('authenticated', userId, 'insert into ig_daily_pins (day, sloka_id) values ($1, $2)', [day, slokaId]);
+await refuses('a student cannot pin the sloka of the day', () => pin(arjun, igToday, draftSloka.id));
+await refusesWith('only a published sloka can be pinned', 'pin_not_published', () => pin(guru, igToday, hiddenSloka.id));
+await refusesWith('a pin is for today or later', 'pin_day_invalid', () => pin(guru, '2020-01-01', draftSloka.id));
+await pin(coordinator, igToday, draftSloka.id);
+check('a pinned sloka is everyone\'s sloka of the day', (await dayOf(arjun, null)) === draftSloka.id && (await dayOf(meera, null)) === draftSloka.id);
+
+const note = (userId, slokaId, body) => asApp('authenticated', userId, 'insert into ig_notes (sloka_id, body) values ($1, $2)', [slokaId, body]);
+await note(arjun, draftSloka.id, 'Learn the second line first.');
+check('a student\'s note is private: not even the Guru reads it', (await asApp('authenticated', arjun, 'select body from ig_notes')).length === 1
+  && (await asApp('authenticated', meera, 'select body from ig_notes')).length === 0
+  && (await asApp('authenticated', guru, 'select body from ig_notes')).length === 0);
+await refuses('no note on a sloka the student cannot see', () => note(arjun, hiddenSloka.id, 'x'));
+await refuses('no note for someone else', () => asApp('authenticated', meera,
+  'insert into ig_notes (profile_id, sloka_id, body) values ($1, $2, $3)', [arjun, samples[1].id, 'x']));
+await asApp('authenticated', arjun, 'insert into ig_memorised (sloka_id) values ($1)', [samples[0].id]);
+check('a student ticks "memorised"; staff see it, another student does not',
+  (await asApp('authenticated', coordinator2, 'select 1 from ig_memorised where profile_id = $1', [arjun])).length === 1
+  && (await asApp('authenticated', meera, 'select 1 from ig_memorised')).length === 0);
+await refuses('a tick is for today, not back-dated', () => asApp('authenticated', meera,
+  `insert into ig_memorised (sloka_id, memorised_on) values ($1, today_ist() - 5)`, [samples[0].id]));
+await refuses('no tick on a draft', () => asApp('authenticated', meera, 'insert into ig_memorised (sloka_id) values ($1)', [hiddenSloka.id]));
+
+const igUpload = async (userId, path, size = 300000) => asApp('authenticated', userId,
+  `insert into storage.objects (bucket_id, name, owner, metadata) values ('ishtagoshti-audio', $1, auth.uid(), $2)`, [path, JSON.stringify({ size })]);
+const igCanOpen = async (userId, path) => (await asApp('authenticated', userId,
+  `select 1 from storage.objects where bucket_id = 'ishtagoshti-audio' and name = $1`, [path])).length === 1;
+const recitation = await filePath(coordinator, 'm4a');
+await igUpload(coordinator, recitation);
+await refuses('a student cannot upload a recitation', async () => igUpload(arjun, await filePath(arjun, 'm4a')));
+await refuses('a coordinator who is not an editor cannot either', async () => igUpload(coordinator2, await filePath(coordinator2, 'mp3')));
+await refuses('a recitation is audio', async () => igUpload(coordinator, await filePath(coordinator, 'pdf')));
+check('a student cannot open a recitation not on a published sloka', !(await igCanOpen(arjun, recitation)));
+await refusesWith('a recitation must be in Storage', 'audio_missing', async () => asApp('authenticated', coordinator,
+  'update ig_slokas set audio_path = $2, audio_name = $3 where id = $1', [draftSloka.id, await filePath(coordinator, 'm4a'), 'Recitation.m4a']));
+await asApp('authenticated', coordinator, 'update ig_slokas set audio_path = $2, audio_name = $3 where id = $1', [draftSloka.id, recitation, ' Recitation.m4a ']);
+const [withAudio] = await asOwner(`select audio_name, audio_size from ig_slokas where id = ${draftSloka.id}`);
+check('the recitation is saved with its size from Storage; students open it', withAudio.audio_name === 'Recitation.m4a'
+  && Number(withAudio.audio_size) === 300000 && (await igCanOpen(arjun, recitation)), JSON.stringify(withAudio));
+
+await asApp('authenticated', guru, 'update profiles set ig_editor = false where id = $1', [coordinator]);
+await asApp('authenticated', coordinator, `update ig_slokas set ref = 'changed' where id = $1`, [draftSloka.id]);
+check('when the Guru takes editing away, the coordinator can no longer change slokas',
+  (await asOwner(`select ref from ig_slokas where id = ${draftSloka.id}`))[0].ref === 'BG 9.14');
+await asApp('authenticated', guru, 'delete from ig_slokas where id = $1', [draftSloka.id]);
+const [{ n: leftOver }] = await asOwner(`select (select count(*) from ig_notes where sloka_id = ${draftSloka.id})
+  + (select count(*) from ig_daily_pins where sloka_id = ${draftSloka.id}) + (select count(*) from ig_theme_slokas where sloka_id = ${draftSloka.id}) as n`);
+check('deleting a sloka takes its notes, pins and theme places with it', Number(leftOver) === 0);
+check('slokas and themes changes are in the audit log', (await asOwner(`select count(*)::int as n from audit_log
+  where table_name in ('ig_slokas', 'ig_themes')`))[0].n >= 3);
+const [{ ok: igFnsOpen }] = await asOwner(`select has_function_privilege('anon', 'ig_sloka_of_day(date)', 'execute')
+  or has_function_privilege('anon', 'set_theme_slokas(bigint, bigint[])', 'execute')
+  or has_function_privilege('authenticated', 'guard_ig_sloka()', 'execute') as ok`);
+check('anon runs no Ishtagoshti function; the guard is not callable', igFnsOpen === false);
+
 // ---------------------------------------------------------------- row-level security
 const seen =await asApp('authenticated', arjun, 'select full_name from students');
 check('student sees only their own student record', seen.length === 1 && seen[0].full_name === 'Arjun Rao');
