@@ -55,6 +55,9 @@ insert into students (full_name, dob, email, area, pincode, level_id, status, jo
   ('Naveen Chandra',   '1999-01-05', 'naveen.c@example.com',      'Koti',         '500095', 2, 'left',      '2026-03-12', null),
   ('Gayatri Devi',     '1985-09-19', 'gayatri.d@example.com',     'Basheerbagh',  '500063', 3, 'active',    '2026-01-05', null),
   ('Bhaskar Murthy',   '2009-12-11', null,                        'Abids',        '500001', 2, 'active',    '2026-05-02', null);
+-- As if each was registered on the day they joined: since 0014 a record made after its joining
+-- date counts its days away from the day it was made (docs/DECISIONS.md #46).
+update students set created_at = joined_on::timestamp at time zone 'Asia/Kolkata' where created_at > joined_on;
 
 -- ---------------------------------------------------------------- guardians + written consent for minors
 insert into guardians (student_id, full_name, email, relation)

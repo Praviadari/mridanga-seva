@@ -1097,6 +1097,131 @@ check('a student cannot change someone else\'s profile', (await asApp('authentic
 // Attendance history (S9): a student reads only their own visits.
 const lateVisits = await asApp('authenticated', late, `select distinct student_id from visits`);
 check('a student reads only their own visits', lateVisits.every((v) => v.student_id === registered.id), JSON.stringify(lateVisits));
+
+// ---------------------------------------------------------------- Guru admin: roles (0014, G2)
+const helper = await signUp('helper@example.com', true);
+check('a coordinator cannot give a role (nothing changes)', (await asApp('authenticated', coordinator,
+  `update profiles set role = 'coordinator' where id = $1 returning id`, [helper])).length === 0 && (await roleOf(helper)) === 'pending');
+await asApp('authenticated', guru, `update profiles set role = 'coordinator' where id = $1`, [helper]);
+check('the Guru makes a signed-up person a coordinator', (await roleOf(helper)) === 'coordinator');
+await refuses('the app cannot turn a coordinator into a student', () =>
+  asApp('authenticated', guru, `update profiles set role = 'student' where id = $1`, [helper]));
+await refuses('the app cannot give the Guru role', () =>
+  asApp('authenticated', guru, `update profiles set role = 'guru' where id = $1`, [pendingLogin]));
+await refuses('the Guru cannot switch themselves off', () =>
+  asApp('authenticated', guru, `update profiles set active = false where id = $1`, [guru]));
+await refuses('a pending login becomes a student only with a student record', () =>
+  asApp('authenticated', guru, `update profiles set role = 'student' where id = $1`, [pendingLogin]));
+const walkIn = await signUp('walk.in@example.com', true);
+await refuses('a coordinator cannot link a login to a student', () =>
+  asApp('authenticated', coordinator, 'select link_student_login($1, $2)', [walkIn, adult.id]));
+await asApp('authenticated', guru, 'select link_student_login($1, $2)', [walkIn, adult.id]);
+check('the Guru links a pending login to a student record', (await roleOf(walkIn)) === 'student'
+  && (await asOwner(`select profile_id from students where id = '${adult.id}'`))[0].profile_id === walkIn);
+await refuses('a student record with a login cannot be linked again', () =>
+  asApp('authenticated', guru, 'select link_student_login($1, $2)', [pendingLogin, adult.id]));
+await refuses('only a pending login can be linked', () =>
+  asApp('authenticated', guru, 'select link_student_login($1, $2)', [helper, registered.id]));
+await asApp('authenticated', guru, `update profiles set duty_hours = '  Mon, Thu 16:00-19:00 ' where id = $1`, [helper]);
+check('the Guru writes duty hours, trimmed',
+  (await asOwner(`select duty_hours from profiles where id = '${helper}'`))[0].duty_hours === 'Mon, Thu 16:00-19:00');
+await refuses('a coordinator cannot write their own duty hours', () =>
+  asApp('authenticated', helper, `update profiles set duty_hours = 'Always' where id = auth.uid()`));
+
+// Mentees and call tasks
+const mentorOf = async (id) => (await asOwner(`select mentor_id from students where id = '${id}'`))[0].mentor_id;
+await asOwner(`insert into follow_up_tasks (student_id, assignee_id, kind, due_on) values ('${adult.id}', null, 'call', today_ist())`);
+const [{ n: movedCount }] = await asApp('authenticated', guru, 'select reassign_mentees($1, $2) as n', [[adult.id, registered.id], helper]);
+check('the Guru moves two students to another mentor', movedCount === 2 && (await mentorOf(adult.id)) === helper && (await mentorOf(registered.id)) === helper);
+const adultTask = await asOwner(`select assignee_id from follow_up_tasks where student_id = '${adult.id}' and done_at is null`);
+check('a call task given to nobody goes to the new mentor', adultTask.length > 0 && adultTask.every((t) => t.assignee_id === helper), JSON.stringify(adultTask));
+await refuses('a coordinator cannot move mentees in one step', () =>
+  asApp('authenticated', coordinator, 'select reassign_mentees($1, $2)', [[adult.id], coordinator]));
+await refuses('a pending login cannot become a mentor', () =>
+  asApp('authenticated', guru, 'select reassign_mentees($1, $2)', [[adult.id], pendingLogin]));
+await refuses('... not even when a coordinator edits the student', () =>
+  asApp('authenticated', coordinator, `update students set mentor_id = $2 where id = $1`, [adult.id, pendingLogin]));
+await refuses('a coordinator who still mentors students cannot be switched off', () =>
+  asApp('authenticated', guru, `update profiles set active = false where id = $1`, [helper]));
+await asApp('authenticated', guru, 'select reassign_mentees($1, $2)', [[adult.id, registered.id], coordinator2]);
+check('... and the task follows the mentor again', (await asOwner(
+  `select assignee_id from follow_up_tasks where student_id = '${adult.id}' and done_at is null`)).every((t) => t.assignee_id === coordinator2));
+await asApp('authenticated', guru, `update profiles set active = false where id = $1`, [helper]);
+await refuses('a switched-off coordinator loses the staff screens', () =>
+  asApp('authenticated', helper, 'select coordinator_dashboard()'));
+await asApp('authenticated', guru, `update profiles set active = true where id = $1`, [helper]);
+check('the Guru switches a coordinator on again', (await asOwner(`select active from profiles where id = '${helper}'`))[0].active === true);
+
+// ---------------------------------------------------------------- Guru admin: import (0014, G3)
+const importRows = (rows) => asApp('authenticated', guru, 'select import_students($1) as r', [JSON.stringify(rows)]);
+await refuses('a coordinator cannot import students', () =>
+  asApp('authenticated', coordinator, 'select import_students($1)', [JSON.stringify([{ line: 2, full_name: 'X', dob: '1990-01-01' }])]));
+const [{ r: imported }] = await importRows([
+  { line: 2, full_name: '  Kavya   Reddy ', dob: '1995-03-12', phone: '98480 22222', area: 'Abids', pincode: '500001', level_id: 2, joined_on: '2024-05-01' },
+  { line: 3, full_name: '', dob: '1990-01-01' },
+  { line: 4, full_name: 'Bad Date', dob: 'not a date' },
+  { line: 5, full_name: 'Young One', dob: `${year - 12}-01-01` },
+  { line: 6, full_name: 'Same Phone', dob: '1991-01-01', phone: '+919848022222' },
+  { line: 7, full_name: 'Adult Learner', dob: '1990-01-01' },
+  { line: 8, full_name: 'Bad Pin', dob: '1992-02-02', pincode: '5000' },
+  { line: 9, full_name: 'No Birthday' },
+  { line: 10, full_name: 'Ravi Teja', dob: '1988-08-08', email: 'ravi.teja@example.com' },
+]);
+const byLine = new Map(imported.map((r) => [r.line, r]));
+check('the import saves the good rows with roll numbers from the database',
+  /^MS-2024-\d{4}$/.test(byLine.get(2)?.roll_no ?? '') && /^MS-\d{4}-\d{4}$/.test(byLine.get(10)?.roll_no ?? ''), JSON.stringify(imported));
+check('... and refuses each bad row with its reason', [
+  [3, 'name_required'], [4, 'dob_invalid'], [5, 'minor_use_form'], [6, 'duplicate_phone'],
+  [7, 'duplicate_student'], [8, 'pincode_invalid'], [9, 'dob_required'],
+].every(([line, code]) => byLine.get(line)?.error === code), JSON.stringify(imported));
+const [kavya] = await asOwner(`select full_name, level_id, area, status from students where id = '${byLine.get(2).id}'`);
+check('an imported row is cleaned up and starts as New', kavya.full_name === 'Kavya Reddy' && kavya.level_id === 2 && kavya.status === 'new', JSON.stringify(kavya));
+const [kavyaOverview] = await asOwner(`select days_since_visit from student_overview where id = '${byLine.get(2).id}'`);
+check('an old joining date does not make an imported student Irregular at once', kavyaOverview.days_since_visit === 0, JSON.stringify(kavyaOverview));
+await asOwner('select refresh_student_statuses()');
+check('... not for the daily job either', (await asOwner(`select status from students where id = '${byLine.get(2).id}'`))[0].status === 'new');
+await refuses('more than 500 rows in one import are refused', () =>
+  importRows(Array.from({ length: 501 }, (_, i) => ({ line: i + 2, full_name: `P${i}`, dob: '1990-01-01' }))));
+
+// ---------------------------------------------------------------- Guru admin: settings (0014, G10)
+const settingOf = async (key) => (await asOwner(`select value from settings where key = '${key}'`))[0].value;
+const [{ n: savedCount }] = await asApp('authenticated', guru, 'select save_settings($1) as n',
+  [JSON.stringify({ irregular_days: 10, week_starts: 'rolling7', new_joiner_weeks: 4 })]);
+const [{ ws, expected }] = await asOwner(`select week_start_ist()::text as ws, (today_ist() - 6)::text as expected`);
+check('the Guru saves settings; "this week" can be the last 7 days', savedCount === 2 && (await settingOf('irregular_days')) === 10 && ws === expected,
+  `${savedCount} ${ws} ${expected}`);
+await refuses('a coordinator cannot save settings', () =>
+  asApp('authenticated', coordinator, 'select save_settings($1)', [JSON.stringify({ irregular_days: 20 })]));
+check('... nor change one directly (nothing changes)', (await asApp('authenticated', coordinator,
+  `update settings set value = '20' where key = 'irregular_days' returning key`)).length === 0);
+await refuses('a setting out of range is refused', () =>
+  asApp('authenticated', guru, 'select save_settings($1)', [JSON.stringify({ irregular_days: 1 })]));
+await refuses('Irregular must come before Inactive, all or nothing', () =>
+  asApp('authenticated', guru, 'select save_settings($1)', [JSON.stringify({ week_starts: 'monday', irregular_days: 40 })]));
+check('... so nothing of that save stays', (await settingOf('week_starts')) === 'rolling7' && (await settingOf('irregular_days')) === 10);
+await refuses('an unknown setting is refused', () =>
+  asApp('authenticated', guru, 'select save_settings($1)', [JSON.stringify({ colour: 'blue' })]));
+await refuses('the app cannot delete a setting', () =>
+  asApp('authenticated', guru, `delete from settings where key = 'retry_days'`));
+await asApp('authenticated', guru, 'select save_settings($1)', [JSON.stringify({ irregular_days: 14, week_starts: 'monday' })]);
+check('settings changes go to the audit log by key', (await asOwner(
+  `select count(*)::int as n from audit_log where table_name = 'settings' and row_id = 'week_starts'`))[0].n === 2);
+await refuses('a centre cannot close before it opens', () =>
+  asApp('authenticated', guru, `update centres set opens_at = '21:00', closes_at = '20:00' where id = 1`));
+await asApp('authenticated', guru, `update centres set opens_at = '15:00', closes_at = '20:30' where id = 1`);
+check('the Guru changes the open window, and it is logged', (await asOwner(
+  `select count(*)::int as n from audit_log where table_name = 'centres'`))[0].n === 1);
+await asApp('authenticated', guru, `update centres set opens_at = '14:30', closes_at = '20:00' where id = 1`);
+
+// ---------------------------------------------------------------- Guru admin: audit log (0014, G11)
+check('the Guru reads the audit log', (await asApp('authenticated', guru, 'select id from audit_log limit 5')).length === 5);
+check('coordinators and students read none of it', (await asApp('authenticated', coordinator, 'select id from audit_log')).length === 0
+  && (await asApp('authenticated', late, 'select id from audit_log')).length === 0);
+check('app roles cannot run the admin trigger functions', (await asOwner(`select
+  has_function_privilege('authenticated', 'guard_profile_admin()', 'execute')
+  or has_function_privilege('authenticated', 'follow_mentor_tasks()', 'execute')
+  or has_function_privilege('authenticated', 'guard_setting()', 'execute')
+  or has_function_privilege('anon', 'import_students(jsonb)', 'execute') as ok`))[0].ok === false);
 // ---------------------------------------------------------------- row-level security
 const seen =await asApp('authenticated', arjun, 'select full_name from students');
 check('student sees only their own student record', seen.length === 1 && seen[0].full_name === 'Arjun Rao');
