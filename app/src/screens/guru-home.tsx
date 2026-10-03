@@ -1,6 +1,6 @@
 // G1 Guru dashboard, the Guru's home: the whole class at a glance, under the saffron header and a
 // big Mark attendance button (C5). Students who came this week, students in class, new joiners,
-// follow-ups needing attention (opens C10); students per level and per status; overdue and
+// follow-ups needing attention (opens C10); the level-up queue (G7, Phase 2); students per level and per status; overdue and
 // escalated follow-ups per coordinator; then the tiles to every staff screen, the language
 // switch, Sign out and the app version. On the Android app, "A new version is
 // ready" shows under the greeting once an update is downloaded (components/update-notice.tsx).
@@ -21,6 +21,7 @@ import { ListRow } from '@/components/list-row';
 import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
 import { ProgressBar } from '@/components/progress-bar';
+import { PromotionHomeCard } from '@/components/promotion-parts';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { MarkAttendanceButton, StaffShortcuts } from '@/components/staff-shortcuts';
@@ -91,6 +92,9 @@ export function GuruHome() {
           <AppText variant="small" tone="muted">
             {t('home.guru.weekFrom', { date: formatDayMonthYear(board.weekStart) })}
           </AppText>
+
+          {/* Phase 2 (docs/DECISIONS.md #45): the level-up queue, G7. */}
+          <PromotionHomeCard guru />
 
           <Section icon="level" title={t('home.guru.byLevel')} description={t('home.guru.byLevelHint')}>
             {board.byLevel.map((l) => (

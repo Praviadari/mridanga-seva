@@ -1102,6 +1102,191 @@
       "comment_required": "Write a comment so the student knows what to change.",
       "comment_too_long": "The comment is at most 2000 characters.",
       "level_up_not_allowed": "Only an accepted level-up assessment can be sent to the facilitator."
+    },
+    "edit": {
+      "title": "Edit assessment",
+      "button": "Edit",
+      "save": "Save changes",
+      "lockedNote": "It has been given to students, so the type, level, level-up and rubric stay as they are. The title, instructions, files and link can change."
+    }
+  },
+  "promotion": {
+    "loadFailed": "Could not load the promotions.",
+    "queueTitle": "Level-up queue",
+    "listTitle": "Promotions",
+    "someone": "someone",
+    "levelStep": "{{from}} → {{to}}",
+    "answersLine": "Answers: {{count}} of {{needed}} · Ready {{ready}} · Almost {{almost}} · Not yet {{notYet}}",
+    "answersShort": "Answers: {{count}} of {{needed}}",
+    "nominatedLine": "Nominated {{date}} by {{name}}",
+    "rating": {
+      "ready": "Ready",
+      "almost": "Almost",
+      "not_yet": "Not yet"
+    },
+    "status": {
+      "open": "Waiting",
+      "promoted": "Promoted",
+      "not_yet": "Not yet",
+      "withdrawn": "Withdrawn"
+    },
+    "criteria": {
+      "syllabusAll": "Syllabus of this level: {{done}} of {{total}} ticked (all needed)",
+      "syllabusPart": "Syllabus of this level: {{done}} of {{total}} ticked ({{percent}}% needed)",
+      "visits": "Visits in the last {{weeks}} weeks: {{count}} ({{needed}} needed)",
+      "levelUpFound": "Level-up assessment accepted: {{title}} ({{score}} of {{max}})",
+      "levelUpMissing": "No accepted level-up assessment of this level yet"
+    },
+    "panel": {
+      "title": "Promotion",
+      "toLevel": "Next level: {{level}}",
+      "topLevel": "Already at the highest level.",
+      "open": "Nominated: waiting for the coordinators' feedback and the facilitator's decision.",
+      "openNomination": "Open the nomination",
+      "notYetUntil": "The facilitator said \"not yet\". A new nomination is possible after {{date}}.",
+      "nominate": "Nominate for promotion"
+    },
+    "home": {
+      "guruTitle": "Level-up queue",
+      "guruHint": "Students nominated for the next level. Only you promote.",
+      "toDecide": "To decide: {{count}}",
+      "collecting": "Collecting feedback: {{count}}",
+      "ready": "Ready to nominate: {{count}}",
+      "openQueue": "Open the level-up queue",
+      "coordinatorTitle": "Promotions",
+      "coordinatorHint": "Nominate students who meet the criteria, and give feedback on others.",
+      "toAnswer": "Your feedback asked: {{count}}",
+      "myReady": "Your students ready: {{count}}",
+      "openList": "Open promotions"
+    },
+    "list": {
+      "introGuru": "A student moves up only when you approve, after the coordinators who teach them have given feedback.",
+      "introCoordinator": "Nominate a student when they meet the criteria; give your feedback when other coordinators nominate. The facilitator decides.",
+      "toDecide": "Waiting for your decision ({{count}})",
+      "toDecideNone": "Nothing waiting for your decision.",
+      "collecting": "Collecting feedback ({{count}})",
+      "collectingHint": "Not enough coordinators have answered yet. You can still say \"not yet\" or ask for more feedback.",
+      "none": "None.",
+      "toAnswer": "Your feedback is asked ({{count}})",
+      "toAnswerHint": "Open one to rate the student: Ready, Almost or Not yet.",
+      "toAnswerNone": "No nomination waits for your feedback.",
+      "answered": "You have answered ({{count}})",
+      "readyAll": "Ready to nominate ({{count}})",
+      "readyMine": "Your students ready to nominate ({{count}})",
+      "readyHint": "They meet every criterion the facilitator set.",
+      "readyNone": "No student meets every criterion right now.",
+      "nominate": "Nominate",
+      "decided": "Decided lately"
+    },
+    "nominate": {
+      "title": "Nominate for promotion",
+      "criteria": "Criteria",
+      "allMet": "Every criterion is met.",
+      "notAllMet": "Not every criterion is met. You can still nominate; say why in the reason. The facilitator sees the check.",
+      "reasonTitle": "Why now",
+      "reason": "Reason",
+      "reasonHint": "What the student plays well now, and anything the facilitator should know.",
+      "askTitle": "Ask for feedback",
+      "askHint": "The coordinators picked get a notification. At least 2 coordinators must answer before the facilitator can promote; your nomination counts as one \"Ready\".",
+      "noCoordinators": "There are no other coordinators to ask.",
+      "taught": "{{name}} (taught this student lately)",
+      "send": "Nominate and ask {{count}} for feedback"
+    },
+    "detail": {
+      "title": "Promotion",
+      "reason": "Reason",
+      "asked": "Feedback asked from: {{names}}",
+      "openStudent": "Open the student's profile",
+      "promotedTitle": "Promoted to {{level}}",
+      "decidedBy": "By {{name}}, {{date}}",
+      "notYetTitle": "Not yet",
+      "withdrawn": "This nomination was withdrawn.",
+      "moreAsked": "More feedback asked {{date}}",
+      "criteria": "Criteria when nominated",
+      "criteriaHint": "From the settings the facilitator set.",
+      "recording": "Level-up recording",
+      "openReview": "Open the review",
+      "answers": "Coordinators' feedback ({{count}} of {{needed}})",
+      "answersHint": "Each coordinator who teaches the student: Ready, Almost or Not yet.",
+      "noAnswers": "No answers yet."
+    },
+    "answer": {
+      "title": "Your feedback",
+      "change": "Change your feedback",
+      "hint": "How ready is the student for the next level?",
+      "rating": "Ready?",
+      "comment": "Comment",
+      "commentHint": "What you saw in class: strong points and what still needs work.",
+      "save": "Save feedback",
+      "saved": "Saved. Thank you."
+    },
+    "decide": {
+      "title": "Your decision",
+      "hint": "The app never promotes by itself.",
+      "needsAnswers": "Promote is possible when {{count}} more coordinator(s) have answered.",
+      "choose": "Decision",
+      "promote": "Promote to {{level}}",
+      "notYet": "Not yet",
+      "more": "Ask for more feedback",
+      "noteLabel": {
+        "promote": "A word to the coordinators (optional)",
+        "not_yet": "Guidance",
+        "more": "What should the coordinators look at?"
+      },
+      "noteHint": {
+        "promote": "Shown on the nomination.",
+        "not_yet": "What to practise before the next nomination. The coordinators see it.",
+        "more": "The coordinators who have not answered get a notification."
+      },
+      "after": "Nominate again after",
+      "afterHint": "Day-month-year, for example 15-11-2026.",
+      "dateInvalid": "Write the date as day-month-year, for example 15-11-2026.",
+      "confirmTitle": "Promote {{name}} to {{level}}?",
+      "confirmBody": "The student's level changes now and is written in the level history.",
+      "confirmYes": "Yes, promote",
+      "confirmNo": "Cancel",
+      "send": {
+        "promote": "Promote to {{level}}",
+        "not_yet": "Save \"not yet\"",
+        "more": "Ask for more feedback"
+      },
+      "done": {
+        "promote": "Promoted. The student and the nominator are told.",
+        "not_yet": "Saved. The coordinators are told.",
+        "more": "Asked. The coordinators who have not answered are told."
+      }
+    },
+    "withdraw": {
+      "button": "Withdraw the nomination",
+      "ask": "Withdraw this nomination?",
+      "note": "The answers stay on record. The student can be nominated again.",
+      "yes": "Yes, withdraw",
+      "no": "Keep it",
+      "done": "Withdrawn."
+    },
+    "errors": {
+      "not_allowed": "You are not allowed to do this.",
+      "student_not_found": "This student is not there, or has left.",
+      "top_level": "The student is already at the highest level.",
+      "already_nominated": "This student is already nominated.",
+      "too_soon": "The facilitator said \"not yet\"; wait until after the date given.",
+      "reason_required": "Write the reason.",
+      "reason_too_long": "The reason is at most 2000 characters.",
+      "nomination_not_found": "This nomination is not there.",
+      "nomination_closed": "This nomination is already decided.",
+      "rating_invalid": "Choose Ready, Almost or Not yet.",
+      "comment_required": "Write a comment.",
+      "comment_too_long": "The comment is at most 1000 characters.",
+      "decision_invalid": "Choose a decision.",
+      "feedback_needed": "Not enough coordinators have answered yet.",
+      "level_changed": "The student's level has changed since the nomination.",
+      "note_required": "Write the guidance.",
+      "more_note_required": "Write what the coordinators should look at.",
+      "note_too_long": "The text is at most 2000 characters.",
+      "date_required": "Give the date.",
+      "date_past": "The date must be after today.",
+      "date_too_far": "The date is at most a year from today.",
+      "level_guru_only": "Only the facilitator changes a student's level."
     }
   }
 }

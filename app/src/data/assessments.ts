@@ -315,6 +315,9 @@ export type AssessmentForm = {
   levelId: number | null;
   levelUp: boolean;
   rubric: RubricField[];
+  /** Files already saved on the assessment that stay (editing only). */
+  kept: MediaFile[];
+  /** Files picked on this device, uploaded on save. */
   files: PickedMedia[];
   link: string;
 };
@@ -328,8 +331,24 @@ export function emptyAssessmentForm(defaultLines: string[]): AssessmentForm {
     levelId: null,
     levelUp: false,
     rubric: defaultLines.map((criterion, i) => ({ key: `line-${i}`, criterion, max: '5' })),
+    kept: [],
     files: [],
     link: '',
+  };
+}
+
+/** The form filled from a saved assessment, for editing (G6 edit, slice 2). */
+export function formFromAssessment(a: Assessment): AssessmentForm {
+  return {
+    title: a.title,
+    instructions: a.instructions,
+    kind: a.kind,
+    levelId: a.levelId,
+    levelUp: a.levelUp,
+    rubric: a.rubric.map((line, i) => ({ key: `line-${i}`, criterion: line.criterion, max: String(line.max) })),
+    kept: a.media,
+    files: [],
+    link: a.mediaLink ?? '',
   };
 }
 
@@ -361,7 +380,7 @@ export function checkAssessmentForm(form: AssessmentForm): AssessmentFormErrors 
   ) {
     errors.rubric = 'assessments.errors.rubric_invalid';
   }
-  if (form.files.length > MAX_MEDIA) errors.files = 'assessments.errors.too_many_media';
+  if (form.kept.length + form.files.length > MAX_MEDIA) errors.files = 'assessments.errors.too_many_media';
   if (!isLinkOk(form.link)) errors.link = 'assessments.errors.link_invalid';
   return errors;
 }
@@ -373,9 +392,7 @@ export function checkAssessmentForm(form: AssessmentForm): AssessmentFormErrors 
 export async function createAssessment(form: AssessmentForm, myId: string, send: boolean): Promise<{ id?: number; errorKey?: MessageKey }> {
   const uploaded = await uploadMedia(myId, form.files);
   if (!uploaded.media) return { errorKey: uploaded.errorKey };
-  const rubric = form.rubric
-    .filter((line) => line.criterion.trim() !== '')
-    .map((line) => ({ criterion: line.criterion.trim(), max: Number(line.max.trim()) }));
+  const rubric = rubricOf(form);
   try {
     const { data, error } = await supabase
       .from('assessments')
@@ -401,6 +418,54 @@ export async function createAssessment(form: AssessmentForm, myId: string, send:
     await removeMedia(uploaded.media.map((m) => m.path));
     return { errorKey: errorKeyOf(String(failure)) };
   }
+}
+
+/** The rubric lines as the database takes them (empty lines left out). */
+function rubricOf(form: AssessmentForm): RubricLine[] {
+  return form.rubric
+    .filter((line) => line.criterion.trim() !== '')
+    .map((line) => ({ criterion: line.criterion.trim(), max: Number(line.max.trim()) }));
+}
+
+/**
+ * G6 edit (Praveen, 3 Oct 2026): the title, instructions, files and link can change at any time;
+ * the type, level, level-up flag and rubric only until the first release (`locked` = released;
+ * the database refuses them after it, so scores keep their meaning). New files are uploaded first
+ * and removed again when the save fails; files taken off the assessment are deleted after it.
+ */
+export async function updateAssessment(
+  original: Assessment,
+  form: AssessmentForm,
+  myId: string,
+  locked: boolean,
+): Promise<MessageKey | undefined> {
+  const uploaded = await uploadMedia(myId, form.files);
+  if (!uploaded.media) return uploaded.errorKey;
+  const change: Record<string, unknown> = {
+    title: form.title.trim(),
+    instructions: form.instructions.trim(),
+    media: [...form.kept, ...uploaded.media],
+    media_link: form.link.trim() || null,
+  };
+  if (!locked) {
+    change.kind = form.kind;
+    change.level_id = form.levelId;
+    change.level_up = form.levelUp;
+    change.rubric = rubricOf(form);
+  }
+  try {
+    const { data, error } = await supabase.from('assessments').update(change).eq('id', original.id).select('id');
+    if (error || !data || data.length === 0) {
+      await removeMedia(uploaded.media.map((m) => m.path));
+      return error ? errorKeyOf(error.message) : 'assessments.errors.not_allowed';
+    }
+  } catch (failure) {
+    await removeMedia(uploaded.media.map((m) => m.path));
+    return errorKeyOf(String(failure));
+  }
+  const keptPaths = new Set(form.kept.map((m) => m.path));
+  await removeMedia(original.media.filter((m) => !keptPaths.has(m.path)).map((m) => m.path));
+  return undefined;
 }
 
 /** The Guru sends a draft to the coordinators. */

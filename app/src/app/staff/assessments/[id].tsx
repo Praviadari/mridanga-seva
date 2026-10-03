@@ -2,7 +2,7 @@
 // level-up), the releases with their due dates and notes (C12), and the tracker (C13): every
 // student it was given to, Not seen / Seen / Submitted / Reviewed / Redo and Late, with "Remind"
 // for everyone who has not sent it yet. Tapping a student opens their work (C14, review/[id].tsx).
-// The Guru can send a draft to the coordinators, or delete one that was never released.
+// The Guru can send a draft to the coordinators, edit it (G6 edit, slice 2), or delete one that was never released.
 // Data: src/data/assessments.ts; reminders are push notifications (migration 0012).
 
 import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
@@ -163,6 +163,14 @@ export default function StaffAssessmentScreen() {
 
       {isGuru && !a.sentAt ? (
         <Button icon="send" label={t('assessments.detail.send')} loading={busy === 'send'} onPress={() => void send()} />
+      ) : null}
+      {isGuru ? (
+        <Button
+          variant="secondary"
+          icon="edit"
+          label={t('assessments.edit.button')}
+          onPress={() => router.push({ pathname: '/staff/assessments/edit/[id]', params: { id: String(a.id) } })}
+        />
       ) : null}
       {a.sentAt ? (
         <Button

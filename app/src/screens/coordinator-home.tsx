@@ -1,7 +1,7 @@
 // C1 Coordinator dashboard, the coordinator's home: the saffron header, a big Mark attendance
 // button (C5), who is here now (opens C6), today's visits (opens C5), follow-up calls due for my
 // students (opens C10), and the new joiners of the last few weeks (settings.new_joiner_weeks;
-// each opens their profile, C8), then the tiles to every staff screen, the language switch, Sign
+// each opens their profile, C8), promotions (Phase 2: answers asked of me, my students ready to nominate), then the tiles to every staff screen, the language switch, Sign
 // out and the app version. On the Android app, "A new
 // version is ready" shows under the greeting once an update is downloaded
 // (components/update-notice.tsx). Read-only. Numbers: coordinator_dashboard() through
@@ -20,6 +20,7 @@ import { HomeHeader } from '@/components/home-header';
 import { ListRow } from '@/components/list-row';
 import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
+import { PromotionHomeCard } from '@/components/promotion-parts';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { MarkAttendanceButton, StaffShortcuts } from '@/components/staff-shortcuts';
@@ -88,6 +89,9 @@ export function CoordinatorHome() {
               label={t('home.staff.newJoiners', { weeks: board.newJoinerWeeks })}
             />
           </StatGrid>
+
+          {/* Phase 2 (docs/DECISIONS.md #45): answers asked of me (C23), my students ready to nominate (C22). */}
+          <PromotionHomeCard guru={false} />
 
           <Section
             icon="newJoiner"

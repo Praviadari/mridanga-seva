@@ -16,6 +16,7 @@ import { DetailGrid } from '@/components/detail-grid';
 import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
 import { PersonHeader } from '@/components/person-header';
+import { PromotionPanel } from '@/components/promotion-parts';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { VisitResultNotice } from '@/components/visit-result-notice';
@@ -275,6 +276,9 @@ export default function StudentProfileScreen() {
           </AppText>
         ))}
       </Section>
+
+      {/* Phase 2 (docs/DECISIONS.md #45): criteria check and nominate (C22). */}
+      <PromotionPanel studentId={student.id} />
     </Screen>
   );
 }
