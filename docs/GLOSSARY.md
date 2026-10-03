@@ -71,3 +71,37 @@
 | Area | In the app's code: the part of the app a person may use now (signed out, pending, guru, coordinator, student). See ARCHITECTURE.md "Navigation by role" |
 | Linking | Joining a login to the student record with the same email, once the email is confirmed (see DATABASE.md) |
 | RLS | Row-level security: database rules that decide which rows each person may read or change |
+
+## Technical words for beginners
+
+Added for the [beginner's guide](guide/README.md). Plain meanings, for readers who have never coded.
+
+| Term | Meaning |
+|---|---|
+| App (phone app) | A program installed on a phone. It draws the screens and talks to the server over the internet |
+| Web version | The same app running inside a browser (Safari, Chrome), with nothing installed. iPhones and laptops use it |
+| Server | A computer on the internet that is always on and keeps the class records. Ours is run by Supabase |
+| Database | Where the records are kept on the server. Each kind of record is a **table** (like one Excel sheet); each record is a **row** |
+| Supabase | The service that provides our database, login, file storage, scheduled jobs and the notification program, on a free plan |
+| Expo, React Native | The tools the app is written with. One code gives the Android app and the web version |
+| TypeScript | The programming language of the app: JavaScript with checks that catch mistakes before the app runs |
+| APK | An Android app package: the file that installs the app on an Android phone. Ours is shared by a link, not the Play Store |
+| EAS Build, EAS Update | Expo's cloud services: Build makes the APK; Update sends new screens and words to installed apps without a reinstall |
+| Fingerprint | A short code computed from the native part of the app. An update reaches only the APKs with the same fingerprint; a native change needs a new APK |
+| Native | The part of an app built into the APK itself: camera, notifications, icon, permissions. Changing it needs a new APK |
+| Publish | Sending an update to the phones. Done only on the maintainer's word, after a dry run (`--check-only`) |
+| Test project, live project | Two separate Supabase projects: test holds made-up students for trying changes; live holds the class's real records |
+| Seed data | The made-up students (`supabase/seed.sql`) loaded into a test project. Never into live |
+| Migration | A numbered file (`0001_…sql`, `0002_…sql`) that changes the database. They run in order; one already applied is never edited |
+| Trigger, guard | A check the database runs by itself whenever a row is saved, refusing the save if it breaks a rule |
+| Database function | An action that runs on the server as one step, such as checking a student in or logging a call. It either fully happens or not at all, and checks who is asking |
+| Public key, secret key | The public (anon / publishable) key is inside the app and safe, because RLS protects the data. The secret (`service_role`) key skips every rule and is never in the app or the code |
+| Edge Function | A small program that runs on Supabase's servers. Ours sends notifications to Android phones |
+| Push service, Firebase | The services that carry a notification to an Android phone (Expo's push service, then Google's Firebase Cloud Messaging) |
+| Smoke test | An automatic test that builds the whole database on a laptop and checks hundreds of rules, as each role (`supabase/tests`) |
+| Type check, lint | Automatic checks of the code: `npx tsc --noEmit` (types, missing translations) and `npx expo lint` (common mistakes) |
+| Git, repository, commit | Git keeps the code's full history. The repository is the project's folder with that history; a commit is one saved change with a message |
+| Branch, main | A branch is a separate line of work on the code. `main` is the branch the app is built from; other work joins it only when checked and agreed |
+| Pull request | A request on GitHub to add a branch's changes to `main`, where they are reviewed first |
+| Open source, MIT licence | The code is public for anyone to read, use and improve; the MIT licence says so and asks only that the copyright notice is kept |
+| Pilot | The first real use, by one class at Abids (planned 16-29 Nov 2026), before going live for everyone |
