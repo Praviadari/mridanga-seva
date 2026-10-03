@@ -1,7 +1,7 @@
 // The audit log (screen G11, the Guru only, read-only): who changed what and when, with the
 // values before and after. Rows are written by database triggers (audit_row and friends, migrations
 // 0001-0014) for students, profiles, call logs, level changes, syllabus items and ticks, materials,
-// announcements, deleted replies, settings and centres. Row-level security lets only the Guru read
+// announcements, deleted replies, settings and centres, and Ishtagoshti slokas and themes (0021). Row-level security lets only the Guru read
 // them (policy guru_read, 0001). Read 50 at a time, newest first, filtered in the database.
 
 import { supabase } from '@/lib/supabase';
@@ -19,6 +19,8 @@ export const AUDITED_TABLES = [
   'announcement_replies',
   'settings',
   'centres',
+  'ig_slokas',
+  'ig_themes',
 ] as const;
 export type AuditedTable = (typeof AUDITED_TABLES)[number];
 
@@ -128,6 +130,10 @@ export function subjectOf(entry: AuditEntry, names: AuditNames): string {
       return text(row.key);
     case 'centres':
       return text(row.name);
+    case 'ig_slokas':
+      return text(row.ref);
+    case 'ig_themes':
+      return text(row.title);
   }
   return entry.rowId;
 }
@@ -136,7 +142,7 @@ export function subjectOf(entry: AuditEntry, names: AuditNames): string {
 export type FieldChange = { field: string; before: string; after: string };
 
 /** Columns that change on their own or say nothing to a reader. */
-const QUIET_FIELDS = new Set(['id', 'qr_token', 'created_at', 'notified_at']);
+const QUIET_FIELDS = new Set(['id', 'qr_token', 'created_at', 'notified_at', 'updated_at']);
 
 /** A value as short text: lists and objects as JSON, at most 160 characters. */
 export function valueText(value: unknown): string {
@@ -148,7 +154,7 @@ export function valueText(value: unknown): string {
 /** Columns that hold a login id; shown as the person's name. */
 const PERSON_FIELDS = new Set([
   'mentor_id', 'created_by', 'ticked_by', 'coordinator_id', 'profile_id', 'assignee_id', 'uploaded_by',
-  'approved_by', 'marked_by', 'verified_by', 'nominated_by', 'decided_by',
+  'approved_by', 'marked_by', 'verified_by', 'nominated_by', 'decided_by', 'updated_by',
 ]);
 
 /** A value as short text; ids of people, students and syllabus items become their names. */

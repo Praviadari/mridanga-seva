@@ -231,8 +231,8 @@ export async function pickGalleryVideo(): Promise<MediaPickResult> {
   }
 }
 
-/** The bytes to upload: the browser's file on the web, the file's contents on a phone. */
-async function bodyOf(file: PickedMedia): Promise<Blob | ArrayBuffer> {
+/** The bytes to upload: the browser's file on the web, the file's contents on a phone (also Ishtagoshti recitations). */
+export async function bodyOf(file: PickedMedia): Promise<Blob | ArrayBuffer> {
   if (Platform.OS === 'web') {
     const blob = file.webFile ?? (await (await fetch(file.uri)).blob());
     // The upload sends the Blob's own type: give it the bucket's (a browser recording is 'audio/webm',

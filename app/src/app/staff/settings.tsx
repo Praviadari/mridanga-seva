@@ -1,7 +1,7 @@
 // G10 Settings, the Guru only: the class settings the database uses, in plain words: the open
 // window, what "this week" means, when a student counts as Irregular or Inactive and how calls
 // are planned, how long someone is a new joiner; and the promotion criteria that Phase 2 will
-// read (shown as "not used yet"). Settings planned for later are listed at the end. Saved
+// read (shown as "not used yet"); the default translator credit of Ishtagoshti slokas. Settings planned for later are listed at the end. Saved
 // together, all or nothing; every change is in the audit log (G11). Data: src/data/settings.ts.
 
 import { Stack, useFocusEffect } from 'expo-router';
@@ -167,6 +167,19 @@ export default function SettingsScreen() {
         />
         {numberField('promotion_min_feedback')}
       </Section>
+
+      {/* Phase 2 slice 6 (Ishtagoshti, docs/DECISIONS.md #57): shown once migration 0021 has added the setting. */}
+      {form.translator !== null ? (
+        <Section icon="sloka" title={t('settings.translatorTitle')} description={t('settings.translatorHint')}>
+          <TextField
+            label={t('settings.fields.ig_translator')}
+            value={form.translator}
+            onChangeText={(translator) => setForm({ ...form, translator })}
+            maxLength={100}
+            error={errors.translator ? t(errors.translator) : undefined}
+          />
+        </Section>
+      ) : null}
 
       {message ? <Notice tone={message.tone}>{message.text}</Notice> : null}
       <Button icon="check" label={t('settings.save')} loading={busy} onPress={() => void save()} />

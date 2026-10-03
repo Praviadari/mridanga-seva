@@ -87,6 +87,13 @@ const SHAPES = {
   zoom: 'expand-outline',
   record: 'radio-button-on-outline',
   lessonVideo: 'film-outline',
+  // Ishtagoshti (Phase 2 slice 6): the tab, a sloka, a theme, the sloka of the day, notes, memorised.
+  ishtagoshti: 'flower-outline',
+  sloka: 'reader-outline',
+  theme: 'albums-outline',
+  today: 'today-outline',
+  notes: 'journal-outline',
+  memorised: 'checkmark-done-outline',
 } as const;
 
 /** The icons the app may use. */

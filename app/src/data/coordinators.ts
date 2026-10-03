@@ -5,6 +5,8 @@
 // The rules are in the database (supabase/migrations/0014_guru_admin.sql, docs/DECISIONS.md #45):
 // nobody changes their own role, the Guru role stays a dashboard matter, a coordinator who still
 // mentors students stays on, and a student's open call tasks follow their mentor.
+// The Guru also marks coordinators as Ishtagoshti editors (profiles.ig_editor, migration 0021,
+// docs/DECISIONS.md #57): they may add and edit slokas and themes.
 
 import type { ParseKeys } from 'i18next';
 
@@ -25,6 +27,8 @@ export type Person = {
   dutyHours: string | null;
   active: boolean;
   createdAt: string;
+  /** Ishtagoshti editor; null = not known (the database has no such column yet, before 0021). */
+  igEditor: boolean | null;
 };
 
 /** A student as the mentee lists and the link picker show them. */
@@ -71,21 +75,25 @@ function toPerson(row: PersonRow): Person {
     dutyHours: row.duty_hours,
     active: row.active,
     createdAt: row.created_at,
+    igEditor: null,
   };
 }
 
 /** Loads the board. Returns null when it could not be loaded (usually no internet). */
 export async function fetchCoordinatorsBoard(): Promise<CoordinatorsBoard | null> {
-  const [people, students] = await Promise.all([
+  const [people, students, editors] = await Promise.all([
     supabase
       .from('profiles')
       .select('id, role, full_name, email, phone, duty_hours, active, created_at')
       .in('role', ['guru', 'coordinator', 'pending'])
       .order('full_name'),
     supabase.from('students').select('id, full_name, roll_no, level_id, status, mentor_id, profile_id').order('full_name'),
+    // Asked apart, so the page still works on a database without migration 0021.
+    supabase.from('profiles').select('id, ig_editor').eq('role', 'coordinator'),
   ]);
   if (people.error || students.error) return null;
-  const all = (people.data as PersonRow[]).map(toPerson);
+  const editorOf = editors.error ? null : new Map((editors.data as { id: string; ig_editor: boolean }[]).map((e) => [e.id, e.ig_editor]));
+  const all = (people.data as PersonRow[]).map(toPerson).map((p) => ({ ...p, igEditor: editorOf?.get(p.id) ?? null }));
   const staff = all
     .filter((p) => p.role === 'guru' || p.role === 'coordinator')
     .sort((a, b) => Number(b.active) - Number(a.active) || a.fullName.localeCompare(b.fullName));
@@ -145,6 +153,11 @@ export async function saveDutyHours(id: string, dutyHours: string): Promise<Chan
   return asResult(await supabase.from('profiles').update({ duty_hours: dutyHours.trim() || null }).eq('id', id).select('id'));
 }
 
+/** Lets a coordinator add and edit Ishtagoshti slokas and themes, or takes that away. */
+export async function setIgEditor(id: string, on: boolean): Promise<ChangeResult> {
+  return asResult(await supabase.from('profiles').update({ ig_editor: on }).eq('id', id).select('id'));
+}
+
 /** Links a waiting person to a student record without a login; they become that student. */
 export async function linkToStudent(profileId: string, studentId: string): Promise<ChangeResult> {
   const { error } = await supabase.rpc('link_student_login', { p_profile: profileId, p_student: studentId });
@@ -177,6 +190,7 @@ const KNOWN_ERRORS = [
   'student_not_found',
   'student_already_linked',
   'mentor_not_staff',
+  'ig_editor_coordinator_only',
 ] as const;
 
 function errorKeyOf(message: string): MessageKey {

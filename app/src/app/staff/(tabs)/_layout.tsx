@@ -1,5 +1,6 @@
-// The five main staff screens as tabs, for the Guru and coordinators: Home (G1 or C1 by role),
-// Mark attendance (C5), Students (C7), Follow-up calls (C10) and Announcements (C15). On a phone
+// The six main staff screens as tabs, for the Guru and coordinators: Home (G1 or C1 by role),
+// Mark attendance (C5), Students (C7), Follow-up calls (C10), Announcements (C15) and Ishtagoshti
+// (I1, Phase 2 slice 6, docs/DECISIONS.md #57). On a phone
 // the tabs sit at the bottom; on a wide screen (a laptop, a tablet held sideways) they become a
 // sidebar on the left (docs/DECISIONS.md #36). The other staff screens (a profile, a call, here
 // now, groups ...) open on top of the tabs from staff/_layout.tsx, with a back button.
@@ -43,6 +44,10 @@ export default function StaffTabsLayout() {
       <Tabs.Screen
         name="announcements"
         options={{ title: t('announcements.title'), tabBarLabel: t('tabs.news'), tabBarIcon: tabIcon('news') }}
+      />
+      <Tabs.Screen
+        name="ishtagoshti"
+        options={{ title: t('ishtagoshti.title'), tabBarLabel: t('tabs.ishtagoshti'), tabBarIcon: tabIcon('ishtagoshti') }}
       />
     </Tabs>
   );

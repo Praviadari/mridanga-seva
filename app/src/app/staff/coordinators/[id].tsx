@@ -3,6 +3,8 @@
 // or on (a coordinator who still mentors students must hand them over first). For someone waiting
 // for a role: make them a coordinator, or link them to their student record (for a student whose
 // email on the record differs from the login's), or put the login aside. Changes ask first.
+// A coordinator can be marked as an Ishtagoshti editor (slokas and themes; Phase 2 slice 6,
+// docs/DECISIONS.md #57).
 // Data: src/data/coordinators.ts; rules: migration 0014 (docs/DECISIONS.md #45).
 
 import { Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
@@ -30,6 +32,7 @@ import {
   moveMentees,
   saveDutyHours,
   setActive,
+  setIgEditor,
   type CoordinatorsBoard,
   type MenteeRow,
   type Person,
@@ -193,6 +196,20 @@ export default function PersonScreen() {
               onPress={() => void run(() => saveDutyHours(person.id, duty), t('coordinators.dutySaved'))}
             />
           </Section>
+
+          {person.role === 'coordinator' && person.igEditor !== null ? (
+            <Section icon="ishtagoshti" title={t('coordinators.igEditorTitle')} description={t('coordinators.igEditorHint')}>
+              <Checkbox
+                label={t('coordinators.igEditorLabel')}
+                checked={person.igEditor}
+                onChange={(on) =>
+                  busy
+                    ? undefined
+                    : void run(() => setIgEditor(person.id, on), on ? t('coordinators.igEditorOn') : t('coordinators.igEditorOff'))
+                }
+              />
+            </Section>
+          ) : null}
 
           <Section
             icon="students"

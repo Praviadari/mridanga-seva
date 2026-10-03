@@ -9,6 +9,8 @@
 //   new_joiner_weeks               how long someone counts as a new joiner (home screens)
 //   promotion_*                    promotion criteria (Phase 2: promotion_criteria and
 //                                  decide_promotion, migration 0017)
+//   ig_translator                  the default translator credit on Ishtagoshti slokas (Phase 2,
+//                                  migration 0021, docs/DECISIONS.md #57)
 // Saved together by save_settings (migration 0014), which checks every value and keeps Irregular
 // before Inactive; every change goes to the audit log.
 
@@ -48,6 +50,8 @@ export type SettingsForm = {
   weekStarts: WeekStarts;
   numbers: Record<NumberSetting, string>;
   flags: Record<FlagSetting, boolean>;
+  /** The default translator credit (Ishtagoshti); null = the database has no such setting yet (before 0021). */
+  translator: string | null;
   /** The centre whose window is shown (Abids, the only one in Phase 1). */
   centreId: number | null;
   centreName: string;
@@ -79,6 +83,7 @@ export async function fetchSettings(): Promise<SettingsForm | null> {
     weekStarts: byKey.get('week_starts') === 'rolling7' ? 'rolling7' : 'monday',
     numbers,
     flags,
+    translator: typeof byKey.get('ig_translator') === 'string' ? (byKey.get('ig_translator') as string) : null,
     centreId: centre?.id ?? null,
     centreName: centre?.name ?? '',
     opensAt: centre ? centre.opens_at.slice(0, 5) : '',
@@ -94,7 +99,7 @@ export async function fetchWeekStarts(): Promise<WeekStarts> {
 }
 
 /** Problems with fields of the form, as message keys. */
-export type SettingsErrors = Partial<Record<NumberSetting | 'opensAt' | 'closesAt', MessageKey>>;
+export type SettingsErrors = Partial<Record<NumberSetting | 'opensAt' | 'closesAt' | 'translator', MessageKey>>;
 
 /** Checks the form as the database will. */
 export function checkSettings(form: SettingsForm): SettingsErrors {
@@ -108,6 +113,7 @@ export function checkSettings(form: SettingsForm): SettingsErrors {
   if (!errors.irregular_days && !errors.inactive_days && Number(form.numbers.irregular_days) >= Number(form.numbers.inactive_days)) {
     errors.inactive_days = 'settings.errors.inactiveAfter';
   }
+  if (form.translator !== null && form.translator.trim().length > 100) errors.translator = 'settings.errors.translator';
   if (form.centreId !== null) {
     const opens = parseTimeOfDay(form.opensAt);
     const closes = parseTimeOfDay(form.closesAt);
@@ -123,6 +129,7 @@ export async function saveSettings(form: SettingsForm): Promise<{ errorKey?: Mes
   const values: Record<string, unknown> = { week_starts: form.weekStarts };
   for (const key of Object.keys(NUMBER_SETTINGS) as NumberSetting[]) values[key] = Number(form.numbers[key]);
   for (const key of FLAG_SETTINGS) values[key] = form.flags[key];
+  if (form.translator !== null) values.ig_translator = form.translator.trim();
   const { error } = await supabase.rpc('save_settings', { p_values: values });
   if (error) return { errorKey: errorKeyOf(error.message) };
   const opensAt = parseTimeOfDay(form.opensAt);
