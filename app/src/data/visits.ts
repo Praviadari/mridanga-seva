@@ -1,14 +1,24 @@
 // S9 Attendance history: one student's visits by month, newest first, with the time in and out
 // and the hours of each month. The same list is opened for staff from C8 Student profile.
 // Row-level security lets a student read only their own visits and staff read everyone's
-// (policy own_or_staff on visits, supabase/migrations/0001_phase1.sql).
+// (policy own_or_staff on visits, supabase/migrations/0001_phase1.sql). Staff also see a check-in's
+// location result (0024, DECISIONS #70); the student's own screen does not show it.
 
 import { supabase } from '@/lib/supabase';
 
 import { dateInIndia, todayInIndia } from '@/lib/dates';
 
+import type { LocationCheck } from './attendance';
+
 /** One visit. `checkOut` is null while the student is still at the centre. */
-export type HistoryVisit = { id: number; checkIn: string; checkOut: string | null };
+export type HistoryVisit = {
+  id: number;
+  checkIn: string;
+  checkOut: string | null;
+  /** The location check at check-in (staff only see it). */
+  locationCheck: LocationCheck;
+  distanceM: number | null;
+};
 
 /** The visits of one month in India, newest first. */
 export type VisitMonth = {
@@ -45,7 +55,7 @@ export async function fetchVisitHistory(studentId: string, months: number): Prom
   const [visits, earlier] = await Promise.all([
     supabase
       .from('visits')
-      .select('id, check_in, check_out')
+      .select('id, check_in, check_out, location_check, location_distance_m')
       .eq('student_id', studentId)
       .gte('check_in', since)
       .order('check_in', { ascending: false }),
@@ -54,10 +64,22 @@ export async function fetchVisitHistory(studentId: string, months: number): Prom
   if (visits.error || earlier.error) return null;
 
   const byMonth = new Map<string, VisitMonth>();
-  for (const row of visits.data as { id: number; check_in: string; check_out: string | null }[]) {
+  for (const row of visits.data as {
+    id: number;
+    check_in: string;
+    check_out: string | null;
+    location_check: LocationCheck;
+    location_distance_m: number | null;
+  }[]) {
     const month = dateInIndia(row.check_in).slice(0, 7);
     const entry = byMonth.get(month) ?? { month, visits: [], minutes: 0 };
-    entry.visits.push({ id: row.id, checkIn: row.check_in, checkOut: row.check_out });
+    entry.visits.push({
+      id: row.id,
+      checkIn: row.check_in,
+      checkOut: row.check_out,
+      locationCheck: row.location_check,
+      distanceM: row.location_distance_m,
+    });
     if (row.check_out) entry.minutes += Math.round((Date.parse(row.check_out) - Date.parse(row.check_in)) / 60_000);
     byMonth.set(month, entry);
   }

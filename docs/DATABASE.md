@@ -139,6 +139,27 @@ Errors: `toggle_visit` and `scan_qr` (0001) raise `not allowed` and `student not
 spaces; `mark_visit` and `check_out_all` raise `not_allowed`, `bad_action` and
 `student_not_found`. The app (`app/src/data/attendance.ts`) understands both spellings.
 
+### Location check at check-in (0024)
+
+When a coordinator or the Guru checks a student **in** (scan, or a tap on C5 or C8), the app sends
+the phone's report as `p_location` to `scan_qr` / `mark_visit` (and on to `toggle_visit`):
+`{status: 'fix', lat, lng, accuracy}` or `{status: 'refused' | 'no_fix' | 'no_location'}`.
+`visit_location_result` (internal) compares it with the area of the visit's centre (`centres.lat`,
+`lng`, `radius_m`, set on G9) and the visit stores only the result ([DECISIONS.md #70](DECISIONS.md)):
+
+| Column | Meaning |
+|---|---|
+| `location_check` | `inside` (within `radius_m` + the fix's accuracy, at most 100 m of it), `outside`, `refused` (permission refused), `no_fix` (no position within 8 s, location off), `no_location` (a browser without location), `no_area` (the centre has no point: nothing to compare); empty = not checked (visits before 0024, or an app without the check) |
+| `location_distance_m` | Whole metres from the centre's point, for `inside` / `outside` only |
+
+**Flagged** = `outside`, `refused`, `no_fix`, `no_location`. The visit is saved all the same;
+staff see the flag on C5's result card, C6, S9 (staff view) and the reports (`class_report` adds
+`visits_flagged`, `flagged_by_reason` and `flagged` per student row). The position itself is never
+stored. A check-out stores nothing. The trigger `visits_location_guard` refuses any change to the two
+columns from the app (error `location_locked`); staff may still correct the times. A malformed
+report raises `bad_location`. Students can read their own visits' result through row-level
+security, but their screen does not show it.
+
 ## Student overview
 
 `student_overview` is a view: one row per student with the list columns of `students` (roll

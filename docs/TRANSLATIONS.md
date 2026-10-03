@@ -35,6 +35,11 @@ themselves ([DECISIONS.md #12](DECISIONS.md)).
 - Reasons for a call are a list the Guru can extend (`settings.call_reasons`). A reason added
   there without a translation in these files is shown as the Guru typed it, in every language,
   until a translator adds `callReasons.<code>` ([DECISIONS.md #19](DECISIONS.md)).
+- The location check at check-in stores a code (`visits.location_check`: `outside`, `refused`,
+  `no_fix`, `no_location`) that `attendanceLocation.*` words three ways: `flag.*` (the sentence on the
+  result card), `short.*` (a list line, with `{{distance}}` in metres) and `reason.*` (the reports).
+  `app/src/i18n/location-flag.ts` picks the right one ([DECISIONS.md #70](DECISIONS.md)). The phone's own
+  permission prompt uses app.json's text (English), not these files.
 - The helpers in `app/src/i18n/labels.ts` (`levelName`, `statusName`, `callReasonName`,
   `lastVisitText`, `audienceName` ...) turn codes into words, so every screen words them the same way.
 - Language names in the language picker are always written in their own script (English,

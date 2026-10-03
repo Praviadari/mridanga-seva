@@ -4,7 +4,7 @@
 // database gives each saved student a roll number, as for C2, and refuses a bad row on its own.
 // Data: src/data/student-import.ts; rules: import_students in migration 0014 (DECISIONS #46).
 
-import { router, Stack } from 'expo-router';
+import { Stack } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
@@ -34,6 +34,7 @@ import {
 } from '@/data/student-import';
 import { levelName } from '@/i18n/labels';
 import { formatDayMonthYear } from '@/lib/dates';
+import { goBackOr } from '@/lib/go-back';
 import type { SheetRows } from '@/lib/sheet-reader';
 import { spacing, useTheme } from '@/theme/use-theme';
 
@@ -229,7 +230,7 @@ export default function ImportScreen() {
               {t('importStudents.andMore', { count: saved.length - PREVIEW_ROWS })}
             </AppText>
           ) : null}
-          <Button icon="students" label={t('importStudents.openDatabase')} onPress={() => router.back()} />
+          <Button icon="students" label={t('importStudents.openDatabase')} onPress={() => goBackOr('/staff/database')} />
         </Section>
       ) : null}
     </Screen>

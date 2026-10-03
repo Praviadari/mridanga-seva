@@ -32,6 +32,7 @@ import {
   levelName,
   outcomeName,
 } from '@/i18n/labels';
+import { locationForCheckIn } from '@/lib/attendance-location';
 import { ageOn, dateInIndia, formatDayMonthYear, timeInIndia, todayInIndia } from '@/lib/dates';
 
 /** What the screen loaded: the profile and the staff names it mentions. */
@@ -88,7 +89,9 @@ export default function StudentProfileScreen() {
 
   async function toggleAttendance() {
     setMarking(true);
-    setMarkOutcome(await markVisit(student.id, student.hereNow ? 'out' : 'in'));
+    // A check-in sends the phone's position, as on C5 (DECISIONS #70).
+    const action = student.hereNow ? 'out' : 'in';
+    setMarkOutcome(await markVisit(student.id, action, action === 'in' ? await locationForCheckIn() : undefined));
     await load();
     setMarking(false);
   }

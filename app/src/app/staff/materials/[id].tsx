@@ -6,7 +6,7 @@
 // it again. Removing asks first. The database checks everything again (migration 0013,
 // docs/DECISIONS.md #44); src/data/materials.ts does the work.
 
-import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
@@ -37,6 +37,7 @@ import {
 } from '@/data/materials';
 import { fetchSyllabusByLevel, LEVEL_IDS, type LevelSyllabus } from '@/data/syllabus-editor';
 import { fileSizeText, levelName } from '@/i18n/labels';
+import { goBackOr } from '@/lib/go-back';
 import { spacing } from '@/theme/use-theme';
 
 /** "Whole level" in the item choice (no item). */
@@ -156,7 +157,7 @@ export default function MaterialScreen() {
     const outcome = isNew ? await addMaterial(myId, form) : await updateMaterial(Number(params.id), form);
     setBusy(null);
     if (outcome.errorKey) setMessage(t(outcome.errorKey));
-    else router.back();
+    else goBackOr({ pathname: '/staff/levels/[id]', params: { id: String(form.levelId) } });
   }
 
   async function remove() {
@@ -166,7 +167,7 @@ export default function MaterialScreen() {
     const outcome = await deleteMaterial(material);
     setBusy(null);
     if (outcome.errorKey) setMessage(t(outcome.errorKey));
-    else router.back();
+    else goBackOr({ pathname: '/staff/levels/[id]', params: { id: String(form.levelId) } });
   }
 
   return (

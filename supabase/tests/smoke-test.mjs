@@ -1940,6 +1940,91 @@ const [{ ok: igFnsOpen }] = await asOwner(`select has_function_privilege('anon',
   or has_function_privilege('authenticated', 'guard_ig_sloka()', 'execute') as ok`);
 check('anon runs no Ishtagoshti function; the guard is not callable', igFnsOpen === false);
 
+
+// ---------------------------------------------------------------- attendance location (0024)
+// The marking phone's position is compared with the centre's area at check-in; the visit is saved
+// anyway and flagged when outside / refused / no fix / no location. Only distance + result are kept.
+await asApp('authenticated', guru, 'select check_out_all()');
+const [{ id: homeCentre }] = await asOwner(`select home_centre_id as id from students where id = '${registered.id}'`);
+await asOwner(`update centres set lat = 17.385, lng = 78.4867, radius_m = 150 where id = ${homeCentre}`);
+/** Marks `action` for a student as the coordinator, with the phone's report; returns the result. */
+const markAt = async (studentId, action, location) => (await asApp('authenticated', coordinator,
+  'select mark_visit($1, $2, null, $3::jsonb) as r', [studentId, action, location ? JSON.stringify(location) : null]))[0].r;
+const lastVisit = async (studentId) => (await asOwner(`select location_check, location_distance_m from visits
+  where student_id = '${studentId}' order by check_in desc, id desc limit 1`))[0];
+const inside = await markAt(registered.id, 'in', { status: 'fix', lat: 17.3851, lng: 78.4867, accuracy: 15 });
+check('a check-in inside the area is saved as inside, with the distance', inside.action === 'in'
+  && inside.location_check === 'inside' && inside.distance_m === 11, JSON.stringify(inside));
+const outAgain = await markAt(registered.id, 'out', { status: 'refused' });
+const afterOut = await lastVisit(registered.id);
+check('a check-out stores no location result', outAgain.action === 'out' && afterOut.location_check === 'inside',
+  JSON.stringify(afterOut));
+const far = await markAt(registered.id, 'in', { status: 'fix', lat: 17.395, lng: 78.4867, accuracy: 500 });
+check('a check-in 1 km away is saved but flagged outside (accuracy counts at most 100 m)', far.action === 'in'
+  && far.location_check === 'outside' && far.distance_m === 1112, JSON.stringify(far));
+await markAt(registered.id, 'out');
+const [refusedScan] = await asApp('authenticated', coordinator, 'select scan_qr($1, null, $2::jsonb) as r',
+  [qrToken, JSON.stringify({ status: 'refused' })]);
+check('a QR scan with location refused is saved and flagged refused', refusedScan.r.action === 'in'
+  && refusedScan.r.location_check === 'refused' && refusedScan.r.distance_m === null, JSON.stringify(refusedScan.r));
+check('... and keeps no distance', (await lastVisit(registered.id)).location_distance_m === null);
+await markAt(registered.id, 'out');
+for (const status of ['no_fix', 'no_location']) {
+  const result = await markAt(registered.id, 'in', { status });
+  check(`a check-in with ${status} is saved and flagged`, result.action === 'in' && result.location_check === status);
+  await markAt(registered.id, 'out');
+}
+const oldApp = await markAt(registered.id, 'in');
+check('a check-in without a report (older app) is saved, not checked', oldApp.action === 'in'
+  && oldApp.location_check === null && (await lastVisit(registered.id)).location_check === null);
+await markAt(registered.id, 'out');
+await refusesWith('a malformed report is refused', 'bad_location', () =>
+  markAt(registered.id, 'in', { status: 'fix', lat: 'north', lng: 78 }));
+await refusesWith('... and an unknown status', 'bad_location', () => markAt(registered.id, 'in', { status: 'teleported' }));
+check('... and nothing was saved for them', (await lastVisit(registered.id)).location_check === null);
+await asOwner(`update centres set lat = null, lng = null where id = ${homeCentre}`);
+const noArea = await markAt(registered.id, 'in', { status: 'fix', lat: 17.385, lng: 78.4867, accuracy: 5 });
+check('a centre without a point gives no_area, not a flag', noArea.location_check === 'no_area' && noArea.distance_m === null);
+await asOwner(`update centres set lat = 17.385, lng = 78.4867 where id = ${homeCentre}`);
+const [{ id: lastVisitId }] = await asOwner(`select id from visits where student_id = '${registered.id}' order by id desc limit 1`);
+await refusesWith('a coordinator cannot clear or change a location result', 'location_locked', () =>
+  asApp('authenticated', coordinator, `update visits set location_check = 'inside' where id = ${lastVisitId}`));
+await refusesWith('... nor its distance', 'location_locked', () =>
+  asApp('authenticated', guru, `update visits set location_distance_m = 1 where id = ${lastVisitId}`));
+const corrected = await asApp('authenticated', coordinator,
+  `update visits set check_in = check_in - interval '1 minute' where id = ${lastVisitId} returning id`);
+check('... but may still correct the times of the visit', corrected.length === 1);
+await refuses('a student cannot change a location result', () =>
+  asApp('authenticated', late, `update visits set location_check = null where id = ${lastVisitId} returning id`).then((rows) => {
+    if (rows.length === 0) throw new Error('no row changed (row-level security)');
+  }));
+await refuses('a student cannot run visit_location_result', () =>
+  asApp('authenticated', arjun, `select * from visit_location_result('{"status":"refused"}', 1::smallint)`));
+await refuses('anon cannot run visit_location_result', () =>
+  asApp('anon', null, `select * from visit_location_result('{"status":"refused"}', 1::smallint)`));
+await refuses('a student cannot mark with a location', () =>
+  asApp('authenticated', arjun, `select mark_visit('${registered.id}', 'in', null, '{"status":"refused"}')`));
+await refuses('anon cannot scan with a location', () =>
+  asApp('anon', null, `select scan_qr('${qrToken}', null, '{"status":"refused"}')`));
+const [{ ok: oneEach }] = await asOwner(`select (select count(*) from pg_proc where proname in ('toggle_visit', 'scan_qr', 'mark_visit')) = 3
+  and not has_function_privilege('anon', 'mark_visit(uuid, text, text, jsonb)', 'execute')
+  and not has_function_privilege('anon', 'scan_qr(uuid, text, jsonb)', 'execute')
+  and not has_function_privilege('anon', 'toggle_visit(uuid, visit_method, text, jsonb)', 'execute') as ok`);
+check('one version of each marking function, none callable by anon', oneEach);
+const positionColumns = await asOwner(`select column_name from information_schema.columns
+  where table_name = 'visits' and column_name ~ '(lat|lng|lon|position|coord)'`);
+check('visits keep no position (only distance and result)', positionColumns.length === 0,
+  positionColumns.map((c) => c.column_name).join(','));
+const flagged = (await asApp('authenticated', guru, 'select class_report(today_ist() - 1, today_ist(), null) as r'))[0].r;
+const flagReasons = Object.fromEntries(flagged.flagged_by_reason.map((x) => [x.reason, x.visits]));
+const regRow = flagged.rows.find((row) => row.id === registered.id);
+check('the report counts flagged visits by reason', flagged.visits_flagged === 4 && flagReasons.outside === 1
+  && flagReasons.refused === 1 && flagReasons.no_fix === 1 && flagReasons.no_location === 1, JSON.stringify(flagReasons));
+check('... and per student', regRow?.flagged === 4, String(regRow?.flagged));
+const ownVisits = await asApp('authenticated', late, 'select location_check from visits');
+check('a student reads only their own visits', ownVisits.length > 0
+  && ownVisits.length === (await asOwner(`select count(*)::int as n from visits where student_id = '${registered.id}'`))[0].n);
+await asApp('authenticated', guru, 'select check_out_all()');
 // ---------------------------------------------------------------- row-level security
 const seen =await asApp('authenticated', arjun, 'select full_name from students');
 check('student sees only their own student record', seen.length === 1 && seen[0].full_name === 'Arjun Rao');

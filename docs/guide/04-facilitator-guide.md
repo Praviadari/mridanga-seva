@@ -196,6 +196,9 @@ Open **Running the class → Reports**. It is the same screen coordinators know 
 students**, choose **Everyone** or one coordinator's mentees; the student lines then show a mentor
 column. Choose the dates, read the totals, visits per week and month, calls and syllabus progress,
 and save the **CSV file** for Excel or Google Sheets ([DECISIONS.md #50](../DECISIONS.md)).
+**Flagged check-ins** counts check-ins where the marking phone was outside the centre's area or gave no
+location, by reason and per student (also a CSV column). The visit still counts; look into names that
+repeat. A student's **All visits** list shows the reason under each flagged visit ([DECISIONS.md #70](../DECISIONS.md)).
 
 ## Centres
 
@@ -209,8 +212,9 @@ attendance counts.* Today that is Abids; a new centre is a setting, not new code
 - **Switch off** / **Switch on**: a centre is never deleted, so its visits stay. At least one centre
   must stay in use.
 
-The attendance area is stored now; phones will check it from the next Android app version, which
-adds location ([DECISIONS.md #51](../DECISIONS.md)).
+Each check-in compares the marking phone's position with this area; outside it, the visit is saved
+but flagged (see Reports). Without a point the area is not checked ([DECISIONS.md #51](../DECISIONS.md),
+[#70](../DECISIONS.md)).
 
 ## Audit log
 

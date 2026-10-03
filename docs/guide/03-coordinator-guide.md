@@ -124,6 +124,14 @@ other.
 
 Each check-in makes a quiet student **Active** again and closes their open follow-up calls.
 
+**Location at check-in.** When you check a student in, the app checks where **your** phone is (only
+while the app is open, to confirm you are at the class). The first time, the phone asks: tap **While
+using the app**. If you are outside the centre's area, refuse, or the phone finds no position within a
+few seconds, the student is **still checked in**, but the card adds a line such as **Outside the class
+area (320 m away) — flagged for the facilitator.** The facilitator sees these flags in the reports;
+**Who is here now** shows them too. To allow location later: phone **Settings → Apps → Mridanga Seva
+→ Location** ([DECISIONS.md #70](../DECISIONS.md)).
+
 ## Who is here now, and closing time
 
 Open **Here now** from the home screen or the ring. **Who is here now** lists every student checked

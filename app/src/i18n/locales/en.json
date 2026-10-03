@@ -193,6 +193,33 @@
       "alreadyMarked": "Another phone marked this student at the same moment. Check the list and try again."
     }
   },
+  "attendanceLocation": {
+    "why": "When you check a student in, the app checks your phone's location — only while the app is open, to confirm you are at the class. Outside the area the check-in is still saved, but flagged for the facilitator.",
+    "refusedNote": "Location is not allowed for this app, so check-ins are saved but flagged. To allow it: phone Settings → Apps → Mridanga Seva → Location.",
+    "flag": {
+      "outside": "Outside the class area ({{distance}} m away) — flagged for the facilitator.",
+      "refused": "Location not allowed — flagged for the facilitator.",
+      "no_fix": "No location found in time — flagged for the facilitator.",
+      "no_location": "This browser gives no location — flagged for the facilitator."
+    },
+    "short": {
+      "outside": "Outside area · {{distance}} m",
+      "refused": "Location refused",
+      "no_fix": "No location fix",
+      "no_location": "No location (web)"
+    },
+    "reason": {
+      "outside": "Outside the area",
+      "refused": "Location refused",
+      "no_fix": "No location in time",
+      "no_location": "Browser without location"
+    },
+    "studentFlagged": "Flagged check-ins: {{count}}",
+    "flaggedTile": "Flagged check-ins",
+    "flaggedHint": "Check-ins where the phone was outside the area or gave no location. The visit still counts; look into ones that repeat.",
+    "reasonLine": "{{reason}}: {{count}}",
+    "csvColumn": "Flagged check-ins"
+  },
   "hereNow": {
     "title": "Who is here now",
     "count": "Students here now: {{number}}",
@@ -1274,7 +1301,7 @@
   "centres": {
     "title": "Centres",
     "intro": "Where the class meets, with its address and the area where attendance counts.",
-    "phoneCheckLater": "The attendance area is stored now and checked on phones from the next app version.",
+    "phoneCheckLater": "Each check-in compares the marking phone's position with this area. Outside it, the visit is still saved but flagged in the reports.",
     "add": "Add a centre",
     "addTitle": "New centre",
     "offName": "{{name}} (switched off)",

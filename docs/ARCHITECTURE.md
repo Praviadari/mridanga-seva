@@ -193,6 +193,10 @@ saved login and the profile are being fetched.
   (`src/auth/requested-path.ts`, [DECISIONS.md #30](DECISIONS.md)). A web address or shared link
   to, say, one announcement therefore still opens that announcement after the login check, with
   the role's tabs underneath, so Back leads to them.
+- Every Back button in a screen calls `goBackOr(parent)` (`src/lib/go-back.ts`): back when there is
+  a screen behind, else `replace` with a sensible parent, so a screen opened from a notification or
+  a reload never leaves a blank screen. The lesson-video WebView (V3) catches the phone's Back while a
+  video is fullscreen and only leaves fullscreen ([DECISIONS.md #71](DECISIONS.md)).
 
 Hiding screens makes the app clear to use; it is **not** the security. The database refuses any
 read or write the person is not allowed, whatever the app shows.
@@ -234,6 +238,12 @@ read or write the person is not allowed, whatever the app shows.
    A tap calls `mark_visit` with *in* or *out*, and changes nothing if the student already is
    ([DECISIONS.md #18](DECISIONS.md)).
 4. Any check-in makes the student *Active* again and closes their open follow-up tasks.
+   A check-in also carries the marking phone's position (`src/lib/attendance-location.ts`,
+   expo-location, foreground only, asked the first time): the database compares it with the
+   centre's area and stores only the distance and the result. Outside the area, permission refused,
+   no fix within 8 s or a browser without location = saved anyway but **flagged** for the Guru
+   ([DECISIONS.md #70](DECISIONS.md), [DATABASE.md](DATABASE.md#location-check-at-check-in-0024)).
+   A fix is reused for 2 minutes, and C5 warms it up on opening, so a queue is not slowed down.
 5. *Who is here now* (C6) lists open visits. At closing time the coordinator taps *Check out all*
    (`check_out_all`).
 6. At 21:00 IST a daily job closes any visit still open, at the centre's closing time.

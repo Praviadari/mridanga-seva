@@ -2,9 +2,15 @@
 // (react-native-webview, in the next planned APK; docs/DECISIONS.md #56), as YouTube asks of apps
 // that embed its player. The page is loaded with a base URL so YouTube sees who embeds it (its
 // terms ask for the HTTP Referer). The browser version is lesson-video-frame.web.tsx.
+//
+// Fullscreen (YouTube's button): Android's WebView then lays a black view over the whole app. The
+// phone's Back used to close the screen underneath and leave that black view on top, with no way
+// out but closing the app. So while the video is fullscreen, Back only leaves fullscreen, and the
+// frame leaves fullscreen when the screen closes or another screen opens over it.
 
-import { forwardRef, useImperativeHandle, useMemo, useRef } from 'react';
-import { StyleSheet } from 'react-native';
+import { useFocusEffect } from 'expo-router';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
+import { BackHandler, StyleSheet } from 'react-native';
 import { WebView } from 'react-native-webview';
 
 import { lessonPlayerHtml, readPlayerEvent, type LessonSource, type PlayerCommand, type PlayerEvent } from '@/lib/lesson-player-html';
@@ -29,13 +35,28 @@ export const LessonVideoFrame = forwardRef<LessonVideoFrameHandle, LessonVideoFr
   ref,
 ) {
   const view = useRef<WebView>(null);
+  const [fullscreen, setFullscreen] = useState(false);
   const html = useMemo(() => lessonPlayerHtml(source, PLAYER_BASE_URL, background), [source, background]);
 
-  useImperativeHandle(ref, () => ({
-    send: (command) => {
-      view.current?.injectJavaScript(`window.__lessonCommand && window.__lessonCommand(${JSON.stringify(command)}); true;`);
-    },
-  }));
+  const send = useCallback((command: PlayerCommand) => {
+    view.current?.injectJavaScript(`window.__lessonCommand && window.__lessonCommand(${JSON.stringify(command)}); true;`);
+  }, []);
+
+  useImperativeHandle(ref, () => ({ send }), [send]);
+
+  // Back leaves fullscreen first. Added after the navigator's own handler, so it runs before it.
+  useEffect(() => {
+    if (!fullscreen) return;
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      send({ cmd: 'exitFullscreen' });
+      setFullscreen(false);
+      return true;
+    });
+    return () => subscription.remove();
+  }, [fullscreen, send]);
+
+  // Leaving the screen (another opened over it, or it closes) leaves fullscreen too.
+  useFocusEffect(useCallback(() => () => send({ cmd: 'exitFullscreen' }), [send]));
 
   return (
     <WebView
@@ -46,7 +67,8 @@ export const LessonVideoFrame = forwardRef<LessonVideoFrameHandle, LessonVideoFr
       onLoadEnd={() => view.current?.injectJavaScript('window.__lessonCommand && window.__lessonCommand({cmd:"hello"}); true;')}
       onMessage={(e) => {
         const event = readPlayerEvent(e.nativeEvent.data);
-        if (event) onEvent(event);
+        if (event?.event === 'fullscreen') setFullscreen(event.on);
+        else if (event) onEvent(event);
       }}
       allowsInlineMediaPlayback
       mediaPlaybackRequiresUserAction={false}

@@ -1576,3 +1576,61 @@ redefines `guard_setting` with the key `ig_translator`, so any later redefinitio
 Smoke tests pass (section "Ishtagoshti (0021, Phase 2)"). No native package: the Android fingerprint
 stays 185e839f, so phones on the new APK get it by an update. Telugu and Hindi strings are drafts
 for the review (TRANSLATIONS.md).
+
+## 70. Check-ins are checked against the centre's area, saved anyway and flagged — 3 Oct 2026
+
+**Status: decided by Praveen 3 Oct 2026; branch `fix-gps-back`, migration `0024_attendance_location.sql`
+(numbers 0024 and #70-#71 reserved by the lead; slices 5, 6, 8 hold 0021-0023 and #57-#69).**
+
+**Context.** #51 stored each centre's point and radius (G9) and left the phone-side check for the
+APK with expo-location. APK 0bfc5c14 has it (foreground only, #55), but no code used it: the phone
+showed no location prompt. Attendance is marked only on staff phones: the coordinator scans the
+student's My QR, or taps the name (C5, C8); students scan nothing.
+
+**Decision.**
+- **When:** every **check-in** by a coordinator or the Guru, by scan or tap (C5, C8). The position
+  of the **marking phone** is checked; students' phones are never asked. Check-outs, Check out all
+  and the nightly job are not checked.
+- **Permission:** foreground only, asked the first time a student is checked in; app.json's text
+  says why (only while the app is open, to confirm you are at the class). C5 says the same under the
+  scanner and, after a refusal for good, how to allow it in the phone's settings.
+- **Never blocks:** outside the area, permission refused, no fix within 8 s (indoors, location off)
+  or a browser without location: the visit is **saved and flagged**, with the reason (and the
+  distance in metres when outside). A fix is reused for 2 minutes and C5 warms it up on opening, so
+  the queue at the door is not slowed. The web version uses the browser's location.
+- **Inside** = within the radius plus the fix's own accuracy, at most 100 m of it (a phone indoors
+  often reports ±30-80 m). A centre without a point gives `no_area`, not a flag.
+- **Privacy:** the phone sends its position with the call; the database computes the distance
+  (`visit_location_result`, haversine) and keeps only `visits.location_check` and
+  `location_distance_m`, never the position. The result is written once by `toggle_visit`; the app
+  cannot change it (`visits_location_guard`), staff may still correct the times.
+- **Who sees it (Praveen's pick):** the result card on C5/C8 says "flagged for the facilitator";
+  **C6 Who is here now** and **S9 visit history (staff view)** show a red line on the visit; **C21/G8
+  reports** count flagged check-ins in total, by reason and per student, and the CSV has a column.
+  The student's own S9 does not show it.
+
+**Why.** Praveen chose to allow and flag rather than block: a weak signal indoors must never stop a
+student from being marked, and the Guru can look into repeated flags. Checking the marking phone
+fits how attendance is taken today; a student self check-in would be a new feature.
+
+**Consequences.** `toggle_visit`, `scan_qr`, `mark_visit` get a `p_location jsonb` parameter (default
+null = not checked, so an older app or the old test site still works); `class_report` gains the
+flag counts. TEST and LIVE run 0024 (after 0021-0023 when those land). Phone check after the lead
+publishes: prompt appears once, a check-in at the centre is not flagged, one far away is.
+
+## 71. Back never leaves a blank screen — 3 Oct 2026
+
+**Context.** On APK 0bfc5c14 + update "Slice-4", Praveen sometimes got a black screen after the
+phone's own Back, which stayed until the app was closed. react-native-webview shows a fullscreen
+video (YouTube's fullscreen button on V3) by laying a black view over the whole activity; the
+phone's Back went to the navigator, which closed the lesson screen underneath, and nothing removed
+the black view. Back buttons on three screens (C11, G3 import, G5) also called `router.back()` without a fallback, which has nowhere
+to go on a screen opened from a notification or a reload.
+
+**Decision.** The player page reports fullscreen on and off; while it is on, the frame catches the
+phone's Back and only leaves fullscreen, and leaving the screen leaves fullscreen too. Every Back
+button calls `goBackOr(parent)` (`lib/go-back.ts`) or the same `canGoBack() ? back() : replace()`
+pattern already used elsewhere.
+
+**Consequences.** JS only; the fingerprint stays 185e839f. To confirm on the phone after the
+update: lesson video → fullscreen → phone Back returns to the lesson, Back again returns to the list.

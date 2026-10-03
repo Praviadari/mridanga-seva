@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 
 import type { VisitResult } from '@/data/attendance';
 import { formatDuration } from '@/i18n/labels';
+import { locationFlagText } from '@/i18n/location-flag';
 import { timeInIndia } from '@/lib/dates';
 
 import { Notice } from './notice';
@@ -31,12 +32,17 @@ export function VisitResultNotice({ result }: VisitResultNoticeProps) {
 
   const title = t('attendance.student', { name: result.fullName, rollNo: result.rollNo });
   switch (result.action) {
-    case 'in':
+    case 'in': {
+      // A flagged check-in is saved all the same; the card says why it is flagged (DECISIONS #70).
+      const flag = locationFlagText(t, result.locationCheck, result.distanceM, true);
       return (
-        <Notice tone="success" title={title}>
-          {t('attendance.checkedIn', { time: timeInIndia(result.at) })}
+        <Notice tone={flag ? 'info' : 'success'} title={title}>
+          {flag
+            ? `${t('attendance.checkedIn', { time: timeInIndia(result.at) })} ${flag}`
+            : t('attendance.checkedIn', { time: timeInIndia(result.at) })}
         </Notice>
       );
+    }
     case 'out':
       return (
         <Notice tone="success" title={title}>

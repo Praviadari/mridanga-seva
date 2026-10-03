@@ -26,7 +26,9 @@ export type PlayerCommand =
   | { cmd: 'rate'; value: number }
   | { cmd: 'mirror'; value: boolean }
   | { cmd: 'zoom'; value: number | null }
-  | { cmd: 'loop'; value: { a: number; b: number } | null };
+  | { cmd: 'loop'; value: { a: number; b: number } | null }
+  /** Leaves fullscreen (the phone's Back while a video fills the screen). */
+  | { cmd: 'exitFullscreen' };
 
 /** An event from the page to the app. */
 export type PlayerEvent =
@@ -34,6 +36,8 @@ export type PlayerEvent =
   | { event: 'state'; time: number; duration: number; playing: boolean; rate: number }
   | { event: 'aspect'; ratio: number }
   | { event: 'zoom'; pane: number | null }
+  /** The video went fullscreen or came back (YouTube's or the browser's fullscreen button). */
+  | { event: 'fullscreen'; on: boolean }
   | { event: 'error'; code: string };
 
 /** Marks the page's messages on the web, where other frames post messages too. */
@@ -125,6 +129,7 @@ export function lessonPlayerHtml(source: LessonSource, origin: string, backgroun
   window.__lessonCommand = function (c) {
     if (!c) return;
     // The app asks again once its frame has loaded: a fast page may have spoken before it listened.
+    if (c.cmd === 'exitFullscreen') { if (fullscreenElement()) { var x = document.exitFullscreen || document.webkitExitFullscreen; if (x) { var q = x.call(document); if (q && q.catch) q.catch(function () {}); } } return; }
     if (c.cmd === 'hello') { if (ready) { send({ event: 'ready', duration: length(), rates: rates }); sendAspect(); } return; }
     if (!ready) return;
     if (c.cmd === 'play') { if (yt) yt.playVideo(); else if (video) { var p = video.play(); if (p && p.catch) p.catch(function () { send({ event: 'error', code: 'play_blocked' }); }); } }
@@ -157,6 +162,13 @@ export function lessonPlayerHtml(source: LessonSource, origin: string, backgroun
     if (typeof c === 'string') { try { c = JSON.parse(c); } catch (x) { return; } }
     if (c && c.tag === C.tag && c.cmd) window.__lessonCommand(c);
   });
+
+  // Fullscreen: on a phone the WebView then lays a black view over the whole app, which only the
+  // page can take away again; the app catches the phone's Back while it is shown.
+  function fullscreenElement() { return document.fullscreenElement || document.webkitFullscreenElement || null; }
+  function fullscreenChanged() { send({ event: 'fullscreen', on: !!fullscreenElement() }); }
+  document.addEventListener('fullscreenchange', fullscreenChanged);
+  document.addEventListener('webkitfullscreenchange', fullscreenChanged);
 
   // The A-B loop and the state for the app's buttons, 10 times a second.
   setInterval(function () {

@@ -4,6 +4,9 @@
 // A scan toggles (in, or out if already in); a tap does what its button says and nothing if
 // the student is already in that state (docs/DECISIONS.md #18). The database functions are
 // called through src/data/attendance.ts.
+// A check-in also sends the phone's position (src/lib/attendance-location.ts, DECISIONS #70): the
+// visit is saved anyway, and flagged for the Guru when the phone is outside the centre's area or
+// gives no position. The permission is asked the first time a student is checked in.
 
 import { router, Stack, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -29,6 +32,7 @@ import {
   type FoundStudent,
   type MarkOutcome,
 } from '@/data/attendance';
+import { locationForCheckIn, locationRefused, warmUpLocation } from '@/lib/attendance-location';
 import { dateInIndia, formatDayMonthYear, timeInIndia, todayInIndia } from '@/lib/dates';
 
 /**
@@ -60,6 +64,8 @@ export default function MarkAttendanceScreen() {
   // undefined = nothing searched yet, null = the search failed.
   const [found, setFound] = useState<FoundStudent[] | null | undefined>(undefined);
   const [markingId, setMarkingId] = useState<string | null>(null);
+  // True when location was refused for good on this phone: check-ins are flagged, say how to allow it.
+  const [noLocation, setNoLocation] = useState(false);
 
   const loadToday = useCallback(async () => {
     setToday(await fetchAttendanceToday());
@@ -69,6 +75,8 @@ export default function MarkAttendanceScreen() {
   useFocusEffect(
     useCallback(() => {
       void loadToday();
+      warmUpLocation();
+      void locationRefused().then(setNoLocation);
     }, [loadToday]),
   );
 
@@ -97,20 +105,25 @@ export default function MarkAttendanceScreen() {
     }
     working.current = true;
     setScanPaused(true);
-    const scanned: MarkOutcome = token ? await scanStudentQr(token) : { result: { action: 'unknown' } };
+    // A scan may be a check-in, so the position goes along; the database ignores it for a check-out.
+    const scanned: MarkOutcome = token
+      ? await scanStudentQr(token, await locationForCheckIn())
+      : { result: { action: 'unknown' } };
     // Remember the code only when it worked, so a scan that failed (no internet) can be retried.
     lastCode.current = token && scanned.result ? { token, at: now } : null;
     setOutcome(scanned);
     working.current = false;
     void loadToday();
+    void locationRefused().then(setNoLocation);
   }
 
   async function onTap(student: FoundStudent, action: 'in' | 'out') {
     setMarkingId(student.id);
-    setOutcome(await markVisit(student.id, action));
+    setOutcome(await markVisit(student.id, action, action === 'in' ? await locationForCheckIn() : undefined));
     // Keep the spinner until the list is fresh, so the button never shows the old meaning.
     await loadToday();
     setMarkingId(null);
+    void locationRefused().then(setNoLocation);
   }
 
   // When each student found by the search checked in, if they are here now.
@@ -146,6 +159,7 @@ export default function MarkAttendanceScreen() {
         label={t('staff.hereNow')}
         onPress={() => router.push('/staff/here-now')}
       />
+      {noLocation ? <Notice tone="info">{t('attendanceLocation.refusedNote')}</Notice> : null}
 
       {outcome?.result ? <VisitResultNotice result={outcome.result} /> : null}
       {outcome?.errorKey ? <Notice tone="error">{t(outcome.errorKey)}</Notice> : null}
@@ -175,6 +189,9 @@ export default function MarkAttendanceScreen() {
         ) : (
           <Button icon="qr" label={t('attendance.startScan')} onPress={() => setCameraOpen(true)} />
         )}
+        <AppText variant="small" tone="muted">
+          {t('attendanceLocation.why')}
+        </AppText>
       </Section>
 
       <Section icon="search" title={t('attendance.searchSection')}>

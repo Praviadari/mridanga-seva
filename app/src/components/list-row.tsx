@@ -38,10 +38,12 @@ export type ListRowProps = {
   leading?: 'initials' | IconName;
   /** A student's level and status as coloured labels under the title. */
   chips?: StudentChipsProps;
+  /** A line in red with a warning sign under the details, e.g. a flagged check-in. */
+  warning?: string;
 };
 
 /** A card-like row with a title, details and an optional button; tappable when `onPress` is given. */
-export function ListRow({ title, details = [], highlighted, action, onPress, leading, chips }: ListRowProps) {
+export function ListRow({ title, details = [], highlighted, action, onPress, leading, chips, warning }: ListRowProps) {
   const { colors } = useTheme();
   const { t } = useTranslation();
   const look = [
@@ -52,17 +54,17 @@ export function ListRow({ title, details = [], highlighted, action, onPress, lea
     return (
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={[title, ...(chips ? studentChipsText(t, chips) : []), ...details].join(', ')}
+        accessibilityLabel={[title, ...(chips ? studentChipsText(t, chips) : []), ...details, ...(warning ? [warning] : [])].join(', ')}
         onPress={onPress}
         style={({ pressed }) => [styles.row, look, pressed && styles.pressed]}>
-        <RowContent title={title} details={details} action={action} leading={leading} chips={chips} />
+        <RowContent title={title} details={details} action={action} leading={leading} chips={chips} warning={warning} />
         {action ? null : <Icon name="chevron" size={18} color={colors.textMuted} />}
       </Pressable>
     );
   }
   return (
     <View style={[styles.row, look]}>
-      <RowContent title={title} details={details} action={action} leading={leading} chips={chips} />
+      <RowContent title={title} details={details} action={action} leading={leading} chips={chips} warning={warning} />
     </View>
   );
 }
@@ -74,7 +76,9 @@ function RowContent({
   action,
   leading,
   chips,
-}: Pick<ListRowProps, 'title' | 'details' | 'action' | 'leading' | 'chips'>) {
+  warning,
+}: Pick<ListRowProps, 'title' | 'details' | 'action' | 'leading' | 'chips' | 'warning'>) {
+  const { colors } = useTheme();
   return (
     <>
       {leading === 'initials' ? <Initials name={title} /> : leading ? <IconBadge name={leading} size={40} /> : null}
@@ -86,6 +90,14 @@ function RowContent({
             {line}
           </AppText>
         ))}
+        {warning ? (
+          <View style={styles.warning}>
+            <Icon name="alert" size={16} color={colors.danger} />
+            <AppText variant="small" tone="danger" style={styles.warningText}>
+              {warning}
+            </AppText>
+          </View>
+        ) : null}
       </View>
       {action ? <Button {...action} /> : null}
     </>
@@ -130,6 +142,14 @@ const styles = StyleSheet.create({
   text: {
     flex: 1,
     gap: spacing.xs,
+  },
+  warning: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  warningText: {
+    flexShrink: 1,
   },
   initials: {
     alignItems: 'center',

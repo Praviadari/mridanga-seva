@@ -7,10 +7,13 @@
 //   already in that state (another phone marked them), nothing changes. A toggle here could undo
 //   another coordinator's mark, because the list on this phone may be a little out of date.
 // The functions are in supabase/migrations/0001_phase1.sql (toggle_visit, scan_qr) and
-// 0004_attendance.sql (mark_visit, check_out_all); see docs/DATABASE.md "Attendance".
+// 0004_attendance.sql (mark_visit, check_out_all); 0024 adds the phone's position at check-in (the
+// visit is saved anyway and flagged when it is outside the centre's area, docs/DECISIONS.md #70);
+// see docs/DATABASE.md "Attendance".
 
 import type { ParseKeys } from 'i18next';
 
+import type { PhoneLocation } from '@/lib/attendance-location';
 import { startOfTodayInIndia } from '@/lib/dates';
 import { supabase } from '@/lib/supabase';
 
@@ -53,12 +56,26 @@ export function qrTokenFromScan(text: string): string | null {
 
 // ---------------------------------------------------------------- results of marking
 
+/**
+ * The result of the location check at check-in (migration 0024). null = not checked (visits from
+ * before the check). 'no_area' = the centre has no point yet: nothing to compare, not flagged.
+ */
+export type LocationCheck = 'inside' | 'outside' | 'refused' | 'no_fix' | 'no_location' | 'no_area' | null;
+
+/** Results that are flagged for the Guru (the visit is saved all the same). */
+export const FLAGGED_CHECKS: readonly LocationCheck[] = ['outside', 'refused', 'no_fix', 'no_location'];
+
+/** True when a visit's location result is flagged. */
+export function isFlagged(check: LocationCheck | undefined): boolean {
+  return !!check && FLAGGED_CHECKS.includes(check);
+}
+
 /** Who was marked, as shown on the result card, so the coordinator can check it is the right person. */
 type Marked = { fullName: string; rollNo: string };
 
 /** What happened after a scan or a tap. `at` is an ISO timestamp from the database. */
 export type VisitResult =
-  | (Marked & { action: 'in'; at: string })
+  | (Marked & { action: 'in'; at: string; locationCheck: LocationCheck; distanceM: number | null })
   | (Marked & { action: 'out'; at: string; /** Length of the visit. */ minutes: number })
   | (Marked & { action: 'already_in' | 'already_out' })
   | { action: 'unknown' };
@@ -70,6 +87,8 @@ type VisitJson = {
   roll_no?: string;
   at?: string;
   minutes?: number;
+  location_check?: LocationCheck;
+  distance_m?: number | null;
 };
 
 function toVisitResult(json: VisitJson): VisitResult {
@@ -77,7 +96,13 @@ function toVisitResult(json: VisitJson): VisitResult {
   const marked = { fullName: json.full_name ?? '', rollNo: json.roll_no ?? '' };
   switch (json.action) {
     case 'in':
-      return { ...marked, action: 'in', at: json.at ?? '' };
+      return {
+        ...marked,
+        action: 'in',
+        at: json.at ?? '',
+        locationCheck: json.location_check ?? null,
+        distanceM: json.distance_m ?? null,
+      };
     case 'out':
       return { ...marked, action: 'out', at: json.at ?? '', minutes: json.minutes ?? 0 };
     default:
@@ -88,19 +113,27 @@ function toVisitResult(json: VisitJson): VisitResult {
 /** Either a result, or the key of the message to show when the call failed. */
 export type MarkOutcome = { result?: VisitResult; errorKey?: MessageKey };
 
-/** Checks a student in or out from a scanned QR token (see qrTokenFromScan). */
-export async function scanStudentQr(qrToken: string): Promise<MarkOutcome> {
-  const { data, error } = await supabase.rpc('scan_qr', { p_qr: qrToken });
+/**
+ * Checks a student in or out from a scanned QR token (see qrTokenFromScan). location is the
+ * phone's position (lib/attendance-location.ts); the database uses it only for a check-in.
+ */
+export async function scanStudentQr(qrToken: string, location?: PhoneLocation): Promise<MarkOutcome> {
+  const { data, error } = await supabase.rpc('scan_qr', { p_qr: qrToken, p_location: location ?? null });
   if (error) return { errorKey: attendanceErrorKey(error.message, error.code) };
   return { result: toVisitResult(data as VisitJson) };
 }
 
 /**
  * Checks a student in (`'in'`) or out (`'out'`) after a tap on their name. Changes nothing when
- * they already are, and says so in the result ('already_in' / 'already_out').
+ * they already are, and says so in the result ('already_in' / 'already_out'). location is the
+ * phone's position for a check-in (lib/attendance-location.ts).
  */
-export async function markVisit(studentId: string, action: 'in' | 'out'): Promise<MarkOutcome> {
-  const { data, error } = await supabase.rpc('mark_visit', { p_student: studentId, p_action: action });
+export async function markVisit(studentId: string, action: 'in' | 'out', location?: PhoneLocation): Promise<MarkOutcome> {
+  const { data, error } = await supabase.rpc('mark_visit', {
+    p_student: studentId,
+    p_action: action,
+    p_location: action === 'in' ? (location ?? null) : null,
+  });
   if (error) return { errorKey: attendanceErrorKey(error.message, error.code) };
   return { result: toVisitResult(data as VisitJson) };
 }
@@ -144,6 +177,9 @@ export type OpenVisit = {
   fullName: string;
   rollNo: string;
   levelId: number;
+  /** The location check of this check-in (flagged ones are marked in the list). */
+  locationCheck: LocationCheck;
+  distanceM: number | null;
 };
 
 /** What the attendance screens show at the top: who is here, and how many visits today. */
@@ -162,6 +198,8 @@ export type AttendanceToday = {
 type OpenVisitRow = {
   id: number;
   check_in: string;
+  location_check: LocationCheck;
+  location_distance_m: number | null;
   student: { id: string; full_name: string; roll_no: string; level_id: number } | null;
 };
 
@@ -174,7 +212,7 @@ export async function fetchAttendanceToday(): Promise<AttendanceToday | null> {
   const [open, today] = await Promise.all([
     supabase
       .from('visits')
-      .select('id, check_in, student:students (id, full_name, roll_no, level_id)')
+      .select('id, check_in, location_check, location_distance_m, student:students (id, full_name, roll_no, level_id)')
       .is('check_out', null)
       .order('check_in'),
     supabase
@@ -195,6 +233,8 @@ export async function fetchAttendanceToday(): Promise<AttendanceToday | null> {
               fullName: row.student.full_name,
               rollNo: row.student.roll_no,
               levelId: row.student.level_id,
+              locationCheck: row.location_check,
+              distanceM: row.location_distance_m,
             },
           ]
         : [],

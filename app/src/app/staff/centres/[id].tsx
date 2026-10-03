@@ -1,7 +1,7 @@
 // G9 one centre, the Guru only ('new' = add one): name, address, the GPS point typed as
 // "17.3850, 78.4867" or pasted as a Google Maps link, the radius of the attendance area, the open
 // window; "Check on Google Maps" opens the point; switch off or on, asking first. The area is
-// stored now and checked on phones from the next app version (expo-location, next planned APK).
+// checked at each check-in against the marking phone's position (lib/attendance-location.ts, #70).
 // Data: src/data/centres.ts.
 
 import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';

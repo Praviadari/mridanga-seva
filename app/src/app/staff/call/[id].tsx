@@ -33,6 +33,7 @@ import {
 import { RELATIONS } from '@/data/students';
 import { callReasonName, lastVisitText, outcomeName } from '@/i18n/labels';
 import { dateInIndia, formatDayMonthYear, parseDayMonthYear, todayInIndia } from '@/lib/dates';
+import { goBackOr } from '@/lib/go-back';
 
 /** A phone number to dial: whose it is (already translated) and the number. */
 type Dial = { who: string; phone: string };
@@ -99,7 +100,7 @@ export default function CallLogScreen() {
         <Notice tone="success" title={t('callLog.savedTitle')}>
           {t(`callLog.saved.${saved.outcome}`, { name: context.fullName, date })}
         </Notice>
-        <Button label={t('callLog.back')} onPress={() => router.back()} />
+        <Button label={t('callLog.back')} onPress={() => goBackOr('/staff/follow-up')} />
         <Button variant="secondary" label={t('callLog.openProfile')} onPress={openProfile} />
       </Screen>
     );

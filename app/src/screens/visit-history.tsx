@@ -2,22 +2,28 @@
 // visits and hours, then one line per visit with the day, the time in and out and how long. The
 // last three months load first; "Show earlier months" adds three more. Shown by two routes:
 // student/visits.tsx (my own visits, from the ring on S1) and staff/visits/[id].tsx (from C8
-// Student profile). Data: src/data/visits.ts. Read-only.
+// Student profile). Data: src/data/visits.ts. Read-only. For staff, a check-in flagged by the
+// location check (outside the centre's area, no position) gets a red line under it (DECISIONS #70).
 
 import { Stack, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { StyleSheet, View } from 'react-native';
 
+import { useAuth } from '@/auth/auth-provider';
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { EmptyState } from '@/components/empty-state';
+import { Icon } from '@/components/icon';
 import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { fetchVisitHistory, MONTHS_PER_PAGE, type VisitHistory } from '@/data/visits';
 import { formatDuration, monthName } from '@/i18n/labels';
+import { locationFlagText } from '@/i18n/location-flag';
 import { dateInIndia, formatDayMonthYear, timeInIndia } from '@/lib/dates';
+import { spacing, useTheme } from '@/theme/use-theme';
 
 /** Props for VisitHistoryScreen. */
 export type VisitHistoryScreenProps = {
@@ -29,6 +35,9 @@ export type VisitHistoryScreenProps = {
 /** The visits of one student by month. */
 export function VisitHistoryScreen({ studentId, subtitle }: VisitHistoryScreenProps) {
   const { t } = useTranslation();
+  const { colors } = useTheme();
+  const { area } = useAuth();
+  const isStaff = area === 'guru' || area === 'coordinator';
   const [months, setMonths] = useState(MONTHS_PER_PAGE);
   // undefined = loading, null = could not load.
   const [history, setHistory] = useState<VisitHistory | null | undefined>(undefined);
@@ -88,8 +97,11 @@ export function VisitHistoryScreen({ studentId, subtitle }: VisitHistoryScreenPr
                 count: month.visits.length,
                 time: formatDuration(t, month.minutes),
               })}>
-              {month.visits.map((visit) => (
-                <AppText key={visit.id}>
+              {month.visits.map((visit) => {
+                const flag = isStaff ? locationFlagText(t, visit.locationCheck, visit.distanceM) : null;
+                return (
+                <View key={visit.id} style={styles.visit}>
+                <AppText>
                   {`${formatDayMonthYear(dateInIndia(visit.checkIn))} · ${timeInIndia(visit.checkIn)}`}
                   {visit.checkOut
                     ? `–${timeInIndia(visit.checkOut)} · ${formatDuration(
@@ -98,7 +110,17 @@ export function VisitHistoryScreen({ studentId, subtitle }: VisitHistoryScreenPr
                       )}`
                     : ` · ${t('profile.stillHere')}`}
                 </AppText>
-              ))}
+                {flag ? (
+                  <View style={styles.flag}>
+                    <Icon name="alert" size={16} color={colors.danger} />
+                    <AppText variant="small" tone="danger">
+                      {flag}
+                    </AppText>
+                  </View>
+                ) : null}
+                </View>
+                );
+              })}
             </Section>
           ))
         : null}
@@ -116,3 +138,14 @@ export function VisitHistoryScreen({ studentId, subtitle }: VisitHistoryScreenPr
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  visit: {
+    gap: spacing.xs,
+  },
+  flag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+});

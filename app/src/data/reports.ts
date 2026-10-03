@@ -2,7 +2,8 @@
 // coordinator's mentees) for a date range: statuses now, new joiners and Left in the range, visits
 // per week and per month, follow-up calls done and due, syllabus progress per level, and one row
 // per student, which is also what the CSV file holds. Counted in the database by class_report
-// (migration 0015) the same way as the home screens (docs/DECISIONS.md #50).
+// (migration 0015) the same way as the home screens (docs/DECISIONS.md #50). Migration 0024 adds the
+// check-ins flagged by the location check, in total, by reason and per student (#70).
 
 import type { ParseKeys, TFunction } from 'i18next';
 
@@ -47,6 +48,8 @@ export type ReportRow = {
   calls: number;
   syllabusDone: number;
   syllabusTotal: number;
+  /** Check-ins in the range flagged by the location check. */
+  flagged: number;
 };
 
 /** The whole report. */
@@ -63,6 +66,9 @@ export type ClassReport = {
   visits: number;
   visitors: number;
   hours: number;
+  /** Check-ins in the range flagged by the location check (outside the area, no position). */
+  visitsFlagged: number;
+  flaggedByReason: { reason: string; visits: number }[];
   byWeek: VisitPeriod[];
   byMonth: VisitPeriod[];
   callsDone: number;
@@ -115,6 +121,9 @@ type Raw = {
   visits: number;
   visitors: number;
   hours: number;
+  /** Missing before migration 0024. */
+  visits_flagged?: number;
+  flagged_by_reason?: { reason: string; visits: number }[] | null;
   by_week: VisitPeriod[];
   by_month: VisitPeriod[];
   calls_done: number;
@@ -138,6 +147,7 @@ type Raw = {
     calls: number;
     syllabus_done: number;
     syllabus_total: number;
+    flagged?: number;
   }[];
 };
 
@@ -163,6 +173,8 @@ export async function fetchReport(from: string, to: string, mentorId: string | n
       visits: r.visits,
       visitors: r.visitors,
       hours: Number(r.hours),
+      visitsFlagged: r.visits_flagged ?? 0,
+      flaggedByReason: r.flagged_by_reason ?? [],
       byWeek: r.by_week.map((w) => ({ ...w, hours: Number(w.hours) })),
       byMonth: r.by_month.map((w) => ({ ...w, hours: Number(w.hours) })),
       callsDone: r.calls_done,
@@ -194,6 +206,7 @@ export async function fetchReport(from: string, to: string, mentorId: string | n
         calls: s.calls,
         syllabusDone: s.syllabus_done,
         syllabusTotal: s.syllabus_total,
+        flagged: s.flagged ?? 0,
       })),
     },
   };
@@ -212,7 +225,7 @@ export function reportCsvRows(report: ClassReport, t: TFunction): (string | numb
   const date = (iso: string | null) => (iso ? formatDayMonthYear(iso) : '');
   return [
     [t('reports.csv.range'), date(report.from), date(report.to)],
-    [t('reports.csv.totals'), t('reports.visits'), report.visits, t('reports.visitors'), report.visitors, t('reports.hours'), report.hours],
+    [t('reports.csv.totals'), t('reports.visits'), report.visits, t('reports.visitors'), report.visitors, t('reports.hours'), report.hours, t('attendanceLocation.csvColumn'), report.visitsFlagged],
     [],
     [
       t('database.columns.roll'),
@@ -228,6 +241,7 @@ export function reportCsvRows(report: ClassReport, t: TFunction): (string | numb
       t('reports.csv.calls'),
       t('reports.csv.syllabusDone'),
       t('reports.csv.syllabusTotal'),
+      t('attendanceLocation.csvColumn'),
     ],
     ...report.rows.map((s) => [
       s.rollNo,
@@ -243,6 +257,7 @@ export function reportCsvRows(report: ClassReport, t: TFunction): (string | numb
       s.calls,
       s.syllabusDone,
       s.syllabusTotal,
+      s.flagged,
     ]),
   ];
 }

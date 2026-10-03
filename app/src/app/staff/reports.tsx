@@ -35,6 +35,7 @@ import {
 } from '@/data/reports';
 import { fetchStaff, type StaffMember } from '@/data/student-overview';
 import { levelName, monthName, outcomeName, statusName } from '@/i18n/labels';
+import { FLAG_REASONS, type FlagReason } from '@/i18n/location-flag';
 import { toCsv } from '@/lib/csv';
 import { formatDayMonthYear, parseDayMonthYear } from '@/lib/dates';
 import { CSV_WAYS, downloadCsv, saveCsvToFolder, shareCsv, type CsvResult } from '@/lib/save-csv';
@@ -214,6 +215,18 @@ export default function ReportsScreen() {
             {periodRows(report.byMonth, (p) => monthName(t, p.start.slice(0, 7)))}
           </Section>
 
+          {/* Check-ins flagged by the location check (DECISIONS #70): the visits count all the same. */}
+          <Section icon="alert" title={t('attendanceLocation.flaggedTile')} description={t('attendanceLocation.flaggedHint')}>
+            <AppText variant="label">{String(report.visitsFlagged)}</AppText>
+            {report.flaggedByReason
+              .filter((r) => (FLAG_REASONS as readonly string[]).includes(r.reason))
+              .map((r) => (
+                <AppText key={r.reason} variant="small" tone="muted">
+                  {t('attendanceLocation.reasonLine', { reason: t(`attendanceLocation.reason.${r.reason as FlagReason}`), count: r.visits })}
+                </AppText>
+              ))}
+          </Section>
+
           <Section icon="calls" title={t('reports.callsTitle')} description={t('reports.callsHint')}>
             <AppText>{t('reports.callsLine', { due: report.callsDue, escalated: report.callsEscalated, planned: report.callsPlanned })}</AppText>
             {report.callsByOutcome.map((o) => (
@@ -270,6 +283,7 @@ export default function ReportsScreen() {
                   { label: t('reports.csv.lastVisit'), flex: 1.2 },
                   { label: t('reports.csv.calls'), flex: 0.7, align: 'right' as const },
                   { label: t('reports.syllabusColumn'), flex: 0.9, align: 'right' as const },
+                  { label: t('attendanceLocation.csvColumn'), flex: 0.9, align: 'right' as const },
                 ]}
                 rows={report.rows.slice(0, limit).map((s) => ({
                   key: s.id,
@@ -285,6 +299,7 @@ export default function ReportsScreen() {
                     s.lastVisitOn ? formatDayMonthYear(s.lastVisitOn) : t('reports.never'),
                     String(s.calls),
                     `${s.syllabusDone}/${s.syllabusTotal}`,
+                    String(s.flagged),
                   ],
                 }))}
               />
@@ -304,6 +319,7 @@ export default function ReportsScreen() {
                     }),
                     ...(isGuru ? [t('students.mentor', { name: s.mentorName ?? t('database.none') })] : []),
                   ]}
+                  warning={s.flagged > 0 ? t('attendanceLocation.studentFlagged', { count: s.flagged }) : undefined}
                   onPress={() => open(s.id)}
                 />
               ))

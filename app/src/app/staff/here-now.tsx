@@ -2,6 +2,7 @@
 // checked out, with the time they came. Each can be checked out with a tap, and "Check out all"
 // closes every visit at closing time in one database call (check_out_all, docs/DECISIONS.md
 // #18). "Check out all" lives here, not on C5, so the coordinator sees exactly who it affects.
+// A check-in flagged by the location check (outside the area, no position) says so in red (#70).
 
 import { Stack, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
@@ -25,6 +26,7 @@ import {
   type OpenVisit,
 } from '@/data/attendance';
 import { formatDuration } from '@/i18n/labels';
+import { locationFlagText } from '@/i18n/location-flag';
 import { dateInIndia, formatDayMonthYear, timeInIndia, todayInIndia } from '@/lib/dates';
 
 /** List of open visits, one check-out button each, and "Check out all" with a confirm step. */
@@ -124,6 +126,7 @@ export default function HereNowScreen() {
           title={visit.fullName}
           chips={{ levelId: visit.levelId }}
           details={[visit.rollNo, sinceText(visit, today.loadedAt)]}
+          warning={locationFlagText(t, visit.locationCheck, visit.distanceM) ?? undefined}
           action={{
             label: t('attendance.checkOut'),
             variant: 'secondary',
