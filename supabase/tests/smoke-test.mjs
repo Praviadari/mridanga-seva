@@ -2744,6 +2744,22 @@ await asOwner('create table public.zz_sweep_probe (id int)');
 check('... and a table made later by the owner is not given to anon', (await asOwner(
   `select has_table_privilege('anon', 'public.zz_sweep_probe', 'SELECT') as ok`))[0].ok === false);
 await asOwner('drop table public.zz_sweep_probe');
+// A login still waiting for a role (pending) reads no row of any table or view, except its own
+// profile and the reference lists open to every signed-in person (slice 7 narrows those).
+const openToAll = new Set(['settings', 'centres', 'levels', 'syllabus_items', 'groups']);
+const pendingReads = [];
+for (const { relname } of await asOwner(`select relname from pg_class
+  where relnamespace = 'public'::regnamespace and relkind in ('r', 'v', 'm', 'p') order by relname`)) {
+  if (openToAll.has(relname)) continue;
+  let rows = 0;
+  try {
+    rows = (await asApp('authenticated', stranger, `select count(*)::int as n from public.${relname}`))[0].n;
+  } catch {
+    rows = 0; // no table right at all: closed too
+  }
+  if (rows > (relname === 'profiles' ? 1 : 0)) pendingReads.push(`${relname}:${rows}`);
+}
+check('grant sweep: a pending login reads nothing but its own profile and the open lists', pendingReads.length === 0, pendingReads.join(' '));
 const internal = ['link_login_to_student(uuid,text)', 'refresh_student_statuses()', 'close_open_visits()', 'claim_due_push()',
   'release_push_claim(bigint[])', 'send_due_push()', 'privacy_caller_ok()', 'visit_location_result(jsonb,smallint)'];
 const openInternal = [];

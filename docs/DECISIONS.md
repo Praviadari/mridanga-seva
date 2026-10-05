@@ -1838,8 +1838,9 @@ tables and sequences. For functions, EXECUTE is revoked from PUBLIC and anon on 
 migration's role owns (not extensions'), keeping what authenticated and service_role had. New
 functions still get EXECUTE through PUBLIC (that default cannot be changed per schema, and changing
 it globally is too wide), so supabase/tests now runs a **grant sweep**: anon has no right on any
-table, view or sequence and may run no non-trigger function; listed internal functions are closed
-to authenticated.
+table, view or sequence and may run no non-trigger function; a pending login reads no row of any
+table or view except its own profile and the lists open to every signed-in person (settings,
+centres, levels, syllabus items, groups); listed internal functions are closed to authenticated.
 
 **Consequences.** Every new migration revokes its functions from `public, anon` (#14), or the sweep
 fails. anon reading a table now gets "permission denied" instead of no rows.
