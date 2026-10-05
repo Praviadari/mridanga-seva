@@ -1,5 +1,7 @@
 # For medical professionals
 
+Read in: **English** · [తెలుగు](te/for-medical-professionals.md) · [हिन्दी](hi/for-medical-professionals.md)
+
 Hare Krishna. 🙏 Many devotees who serve this class work in hospitals and clinics: doctors, nurses,
 pharmacists, therapists, technicians. This page explains the app in the language of your daily
 work. It is for you whether you come as a **parent**, a **student**, a **coordinator** or a **volunteer**.

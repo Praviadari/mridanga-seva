@@ -1,5 +1,7 @@
 # Desk card — for whoever is at the desk today
 
+Read in: **English** · [తెలుగు](te/desk-card.md) · [हिन्दी](hi/desk-card.md)
+
 One page. Print it and keep it at the desk. Hare Krishna, and thank you for your seva. 🙏
 
 [← Easy guide](README.md)

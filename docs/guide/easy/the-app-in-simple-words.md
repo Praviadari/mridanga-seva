@@ -1,5 +1,7 @@
 # The app in simple words
 
+Read in: **English** · [తెలుగు](te/the-app-in-simple-words.md) · [हिन्दी](hi/the-app-in-simple-words.md)
+
 How does the app work, and how does it keep our details safe? Here it is with everyday pictures,
 and no computer words.
 

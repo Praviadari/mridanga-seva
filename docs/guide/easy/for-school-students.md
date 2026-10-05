@@ -1,5 +1,7 @@
 # For school students
 
+Read in: **English** · [తెలుగు](te/for-school-students.md) · [हिन्दी](hi/for-school-students.md)
+
 Hare Krishna! 🙏 Welcome to the mridanga class.
 
 This page tells you how to use the class app, step by step. If a word is new, ask your parent or a

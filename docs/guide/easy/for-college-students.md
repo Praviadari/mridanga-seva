@@ -1,5 +1,7 @@
 # For college students
 
+Read in: **English** · [తెలుగు](te/for-college-students.md) · [हिन्दी](hi/for-college-students.md)
+
 Hare Krishna! 🙏 This page is for college students who learn at the class. It is short and
 practical: what to do on day one, every visit, at home, and in exam season.
 

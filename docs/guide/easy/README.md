@@ -1,5 +1,7 @@
 # Mridanga Seva app — the easy guide
 
+Read in: **English** · [తెలుగు](te/README.md) · [हिन्दी](hi/README.md)
+
 Hare Krishna. 🙏
 
 This is the **easy guide**. It is for everyone who is **not** a computer person:

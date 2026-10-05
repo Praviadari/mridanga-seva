@@ -67,7 +67,7 @@ docs/                  How it works and why — start with docs/README.md
 
 | Read | To understand |
 |---|---|
-| [docs/guide/easy/](docs/guide/easy/README.md) | **Not technical?** The easy guide in everyday words, for school and college students and people from the medical field |
+| [docs/guide/easy/](docs/guide/easy/README.md) | **Not technical?** The easy guide in everyday words, for school and college students and people from the medical field; also in [తెలుగు](docs/guide/easy/te/README.md) and [हिन्दी](docs/guide/easy/hi/README.md) |
 | [docs/guide/](docs/guide/README.md) | **New here? Start with the beginner's guide**: why the app exists, how to use it per role, how it works and how it was built, in plain words |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | How the app, database and roles fit together |
 | [docs/DATABASE.md](docs/DATABASE.md) | Tables, student status rules, database functions, scheduled jobs |
