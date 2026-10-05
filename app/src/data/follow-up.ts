@@ -316,6 +316,8 @@ function callErrorKey(message: string): MessageKey {
       return 'callLog.errors.dateRequired';
     case 'next_date_past':
       return 'callLog.errors.datePast';
+    case 'student_withdrawn': // consent withdrawn, the record is frozen (0025)
+      return 'common.studentWithdrawn';
   }
   if (isNetworkError(message)) return 'common.networkError';
   return 'common.genericError';

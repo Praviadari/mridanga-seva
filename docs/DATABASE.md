@@ -24,6 +24,7 @@ in number order:
 | `0018_practice.sql` | **Phase 2** (0016_practice on its branch and on TEST). Taals, the practice log and weekly minutes ([DECISIONS.md #54](DECISIONS.md)). See "Practice tools (Phase 2)" |
 | `0019_phase2_inbox.sql` | Every notice queued in `push_outbox` (assessments, promotion) also goes into the notifications inbox (A2) ([DECISIONS.md #55](DECISIONS.md)). See "Notifications inbox" |
 | `0023_team_tools.sql` | **Phase 2 slice 8.** C18 material suggestions (coordinators suggest, the Guru adds or declines), C19 inventory (items, loans, condition checks), C20 duty roster (shifts, people, the evening-before reminder) ([DECISIONS.md #65](DECISIONS.md)). See "Team tools (Phase 2)" |
+| `0025_security_round.sql` | Security round (audit fixes): NULL-safe role checks in `toggle_visit` / `scan_qr`; `profile_id`, `qr_token` and `created_by` frozen for app users (links only through the linking functions); an insert-only, commit-checked, audited consent register with the signed-form tick; `withdraw_consent`, `erase_student` and the `erasures` tombstones; anon loses every table, sequence and function right ([DECISIONS.md #72-#77](DECISIONS.md)). See "Withdrawal and erasure (0025)" |
 
 The Phase 2 files were renumbered when Phase 2 merged into main (#55). TEST ran them under their
 old numbers (0012, 0014_promotion, 0016_practice) and needs only 0019; LIVE runs 0013 to 0019 in
@@ -116,6 +117,17 @@ Errors from `register_student` are short codes the app turns into messages: `not
 `name_required`, `dob_required`, `minor_needs_guardian`, `minor_needs_id_check`, and
 `minor_needs_consent` from the trigger. New functions should follow the same pattern: raise a
 short `snake_case` code, and put the explanation for people reading the dashboard in `detail`.
+
+**Since 0025** ([DECISIONS.md #74](DECISIONS.md)): `register_student` takes `p_written_consent`, the
+coordinator's tick that the parent signed the paper form; for a minor it must be true
+(`written_consent_required`) and it is stored as `consents.signed_form` (NULL on consents written
+before 0025). For app users a consent is insert-only: `verified_by` and `given_at` are set by the
+server, a written one needs `signed_form = true`, nothing changes afterwards (`consent_locked`)
+except that the Guru may revoke it once, and only the Guru deletes one. The deferred triggers
+`consents_minor_recheck` and `guardians_minor_recheck` refuse, for everyone, a change that leaves a
+minor who is still on record (and not withdrawn) without a current data consent
+(`minor_needs_consent`) or a guardian (`minor_needs_guardian`). App users cannot add a student or
+leave a record without a date of birth (`dob_required`). Consents and guardians are audited.
 
 ## Attendance
 
@@ -539,6 +551,8 @@ time. Centre changes are logged too.
 `old_row`, `new_row` (the whole row as JSON). Only the Guru reads it (policy `guru_read`); nothing
 in the app writes it except the security definer triggers. Screen G11 reads it 50 rows at a time,
 newest first, filtered by table, person, action and time; 0014 adds indexes for these filters.
+0025 audits `consents` and `guardians` too. After an erasure (`erase_student`) the rows about the
+person keep table, action, time and who, with `old_row` and `new_row` emptied.
 
 ## Notifications inbox
 
@@ -895,6 +909,36 @@ reads; students and anon nothing.
 Notices (`fund_push_line`, `queue_fund_push`) go through `push_outbox` to `/staff/fund/<id>`: "needs your
 approval" to the approvers, "approved" / "Not approved: reason" to the maker. Smoke tests: section
 "class fund (0026)".
+
+## Withdrawal and erasure (0025)
+
+Both are the Guru's (Praveen, 5 Oct 2026), run in the app as the Guru or in the Supabase SQL
+editor as the owner; a coordinator gets `not_allowed`. The runbooks are in OPERATIONS.md
+("Consent withdrawal", "Erasure request"). [DECISIONS.md #75, #76](DECISIONS.md).
+
+**`withdraw_consent(student, note)`** freezes a record: `students.withdrawn_at` and
+`withdrawn_note` are set, every consent of the student is revoked, an open visit and open call
+tasks are closed, the login is switched off and its push tokens deleted. Returns
+`{ roll_no, consents_revoked, login_switched_off }`; errors `student_not_found`,
+`already_withdrawn`, `note_too_long`. Afterwards the record refuses app edits, visits, calls and
+ticks (`student_withdrawn`, triggers `*_refuse_withdrawn`), and the daily job's call tasks for it
+are dropped. The deferred consent check skips a withdrawn record, so this is the only way a minor
+may be left without a current consent. The students and consents audit rows it writes are the
+proof of the withdrawal.
+
+**`erase_student(student, reason, request_ref)`** removes a student, in this order: push tokens;
+past instrument loans (an open loan stops it: `open_loan`); the student row, with every row keyed
+on it (visits, calls, tasks, status and level history, ticks, guardians, consents, practice,
+assessments and submissions, event parts, nominations); the login (`auth.users`, which removes the
+profile, replies, read receipts, memberships and notices; if the owner may not delete from
+`auth.users`, only the profile goes and `login_deleted` is false); then every `audit_log` row whose
+row id or copied values hold the student id, the login id, the QR token or an email of hers loses
+`old_row` and `new_row`, keeping table, action, time and who. Last, a tombstone in **`erasures`**:
+roll number, time, who erased, reason, request reference and how many audit rows were redacted
+(Guru only). Returns `{ roll_no, login_deleted, audit_rows_redacted, files }`, where `files` lists
+the Storage paths (photo, recordings and voice notes) that must be deleted by hand. Errors
+`reason_required`, `reason_too_long`, `student_not_found`, `open_loan`.
+
 ## Linking a login to a student
 
 A student record can exist without a login (many students never install the app). When a person
@@ -915,11 +959,21 @@ Supabase dashboard (OPERATIONS.md). The Guru can also link a pending login to a 
 that has no login (`link_student_login`), for a student whose record carries another email or none. The trigger `profiles_guard` stops app users other than the
 Guru from changing `role`, `is_treasurer` or `active`; the dashboard is not blocked.
 
+**Since 0025** ([DECISIONS.md #73](DECISIONS.md)) no app user, the Guru included, writes
+`students.profile_id`, `qr_token`, `created_by` or the withdrawal fields directly
+(`students_frozen_guard`, error `student_field_locked`); the linking paths above run as the
+function owner and are not stopped, and saving an email on a record without a login still links.
+The Guru takes a wrong link off with `unlink_student_login` (the login goes back to `pending`), and
+a deleted record's login goes back to `pending` too. A student's own record is readable only while
+the login is an active student.
+
 ## Database functions (call these from the app)
 
 Supabase lets the app's roles (`anon`, `authenticated`) run any function unless told otherwise,
 so every function is revoked from them and granted only where needed
-([DECISIONS.md #14](DECISIONS.md)).
+([DECISIONS.md #14](DECISIONS.md)). Since 0025 anon holds no right at all in `public` (no table, sequence
+or function; [#77](DECISIONS.md)), and a role check never lets a NULL role through ([#72](DECISIONS.md)): a
+switched-off login is refused like a stranger.
 
 | Function | Who may call | What it does |
 |---|---|---|
@@ -938,6 +992,9 @@ so every function is revoked from them and granted only where needed
 | `week_start_ist()` | Anyone signed in | First day of "this week" in India (Monday, or 6 days ago with `week_starts` = `rolling7`); used by the functions above |
 | `link_student_login(profile, student)` | Guru | Links a pending login to a student record without a login; the person becomes that student. Security definer. See "Coordinators and roles" |
 | `reassign_mentees(students, to)` | Guru | Moves the students to another mentor (an active coordinator or the Guru); returns how many. See "Coordinators and roles" |
+| `unlink_student_login(student)` | Guru | Takes the login off a student record; the login goes back to `pending`. Security definer. See "Linking a login to a student" |
+| `withdraw_consent(student, note)` | Guru (or the owner in the SQL editor) | Records a withdrawal of consent and freezes the record. See "Withdrawal and erasure (0025)" |
+| `erase_student(student, reason, request_ref)` | Guru (or the owner in the SQL editor) | Erases the student, the login and the audit copies; leaves a tombstone. See "Withdrawal and erasure (0025)" |
 | `import_students(rows)` | Guru | Saves up to 500 adult students, each row on its own; returns the roll number or the error per row. See "Importing students" |
 | `save_settings(values)` | Guru | Saves several settings at once, all or nothing. See "Settings" |
 | `mark_notifications_read(ids)` | Guru, coordinator, student | Marks the person's own due notices read (the given ids, or all with `null`); returns how many. Security definer. See "Notifications inbox" |
@@ -976,6 +1033,8 @@ the events and polls helpers `audience_students`, `event_people`, `guard_event`,
 the team-tools helpers `team_push_line`, `queue_team_push`, `guru_ids`, `inventory_note`, `duty_daily`
 and the triggers `guard_material_suggestion`, `notify_material_suggestion`, `guard_inventory_item`,
 `inventory_item_added`, `inventory_check_recorded`, `guard_duty_shift`, `guard_duty_assignment` (0023),
+the security-round triggers `guard_student_frozen`, `note_level_change`, `release_student_login`,
+`guard_consent`, `recheck_minor_consent`, `refuse_withdrawn` and the check `privacy_caller_ok` (0025),
 and the helpers `my_role`, `is_guru`, `is_staff`,
 `setting_int`, `today_ist`.
 
@@ -995,9 +1054,11 @@ and the helpers `my_role`, `is_guru`, `is_staff`,
 
 | Data | Student | Coordinator | Guru |
 |---|---|---|---|
-| Own student record, visits, progress, level history | Read | Read / write | Read / write |
+| Own student record, visits, progress, level history | Read (while the login is an active student) | Read / write | Read / write |
 | Other students | — | Read / write | Read / write / delete |
-| Guardians, consents | — | Read / write | Read / write |
+| Guardians | — | Read / write (a minor keeps one) | Read / write (a minor keeps one) |
+| Consents | — | Read; add (verified by themselves, now) | Read; add; revoke or delete (a minor keeps a current one, unless withdrawn) |
+| Erasure tombstones (`erasures`) | — | — | Read |
 | Call logs, follow-up tasks, status history | — | Read / write | Read / write |
 | Materials | Approved ones up to own level | All; suggest (C18); take back or remove own suggestion | All; add, edit, delete; add or decline suggestions |
 | Material files (Storage) | Those on materials they can read | All on materials, and own uploads; upload for a suggestion (10 a day) | All; upload; delete any |

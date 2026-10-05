@@ -225,6 +225,15 @@ read or write the person is not allowed, whatever the app shows.
 - **Actions that change several things at once run as database functions** (`toggle_visit`,
   `scan_qr`, `log_call`), so they either fully happen or not at all, and they check the caller's role.
   Each function is granted only to the roles that need it ([DECISIONS.md #14](DECISIONS.md)).
+  Role checks are NULL-safe, so a switched-off login is refused like a stranger ([#72](DECISIONS.md)),
+  and anon (no login) holds no table, sequence or function right at all; a grant sweep in
+  `supabase/tests` keeps it so ([#77](DECISIONS.md)).
+- **A child's record has no side doors.** App users cannot attach a login, change a QR token or
+  remove consent by editing tables: links go through the linking functions, the consent register
+  is insert-only and checked at commit, and consents and guardians are audited ([#73, #74](DECISIONS.md)).
+- **Withdrawal and erasure are database functions** (`withdraw_consent`, `erase_student`, Guru
+  only): a withdrawal freezes the record and switches the login off; an erasure removes the record,
+  the login and the copies in `audit_log`, keeping a tombstone ([#75, #76](DECISIONS.md), OPERATIONS.md).
 - **Personal data is kept to a minimum.** Only the area and pincode, not the full address. Only the
   *type* of ID a coordinator checked for consent, never the ID number. See [DECISIONS.md #8](DECISIONS.md).
 

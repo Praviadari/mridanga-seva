@@ -2,7 +2,9 @@
 // then checks the rules that protect student data: login linking, the profile guard,
 // registration with consent, attendance marking, follow-up calls, syllabus ticks, announcements
 // with their read receipts, edits and private replies, groups, the home-screen numbers, who may
-// run which function, and row-level security.
+// run which function, and row-level security. The security round (0025) adds switched-off and
+// kiosk logins, the frozen record fields, the consent register, withdrawal, erasure (with a sweep
+// of every table for the child's data) and a grant sweep: anon may touch nothing in public.
 //
 // Run before pasting a migration into the live Supabase project:
 //   cd supabase/tests && npm install && npm test
@@ -172,14 +174,14 @@ check('already-confirmed sign-up is linked at once', (await linkOf('meera.iyer@e
 
 const late = await signUp('late.joiner@example.com', true);
 const [registered] = await asApp('authenticated', coordinator,
-  `insert into students (full_name, level_id) values ('Late Joiner', 1) returning id, roll_no`);
+  `insert into students (full_name, dob, level_id) values ('Late Joiner', '1994-04-04', 1) returning id, roll_no`);
 check('registering a student issues a roll number', /^MS-\d{4}-\d{4}$/.test(registered.roll_no), registered.roll_no);
 await asApp('authenticated', coordinator,
   `update students set email = 'late.joiner@example.com' where id = $1`, [registered.id]);
 check('email added to the record later links the login', (await linkOf('late.joiner@example.com')) === late);
 check('... and makes it a student', (await roleOf(late)) === 'student');
 
-await asApp('authenticated', guru, `insert into students (full_name, email) values ('Staff Too', 'coordinator@example.com')`);
+await asApp('authenticated', guru, `insert into students (full_name, dob, email) values ('Staff Too', '1980-08-08', 'coordinator@example.com')`);
 check('a coordinator\'s email on a student record keeps them coordinator', (await roleOf(coordinator)) === 'coordinator');
 
 // ---------------------------------------------------------------- registering a student (0003)
@@ -203,7 +205,7 @@ await refuses('minor without an ID check is refused', () =>
 const child = await register(coordinator, {
   p_full_name: 'Child One', p_dob: childDob, p_guardian_name: 'Parent One',
   p_guardian_phone: '9876543210', p_guardian_relation: 'mother', p_id_type_checked: 'aadhaar',
-  p_photo_consent: true });
+  p_photo_consent: true, p_written_consent: true });
 const consents = await asOwner(`select scope from consents where student_id = '${child.id}' order by scope`);
 const guardians = await asOwner(`select full_name from guardians where student_id = '${child.id}'`);
 check('minor saved with guardian and consents', guardians.length === 1 &&
@@ -2539,12 +2541,228 @@ check('app roles cannot run the fund helpers', (await asOwner(`select
 await asApp('authenticated', guru, 'update profiles set is_treasurer = false where id = $1', [coordinator2]);
 await refuses('a former treasurer can no longer record', () => record(coordinator2, 'income', donation, 100));
 
+// ---------------------------------------------------------------- security round (0025)
+// D1a-08: switched-off logins, a login without a profile, and the door tablet (kiosk).
+const offCoord = await signUp('off.coordinator@example.com', true);
+await asApp('authenticated', guru, `update profiles set role = 'coordinator' where id = '${offCoord}'`);
+await asApp('authenticated', guru, `update profiles set active = false where id = '${offCoord}'`);
+const secAdult = await register(coordinator, { p_full_name: 'Sec Round Adult', p_dob: '1999-09-09', p_email: 'sec.adult@example.com' });
+const secLogin = await signUp('sec.adult@example.com', true);
+check('0025: a confirmed sign-up still links to its record by email', (await linkOf('sec.adult@example.com')) === secLogin);
+const [{ qr_token: secQr }] = await asOwner(`select qr_token from students where id = '${secAdult.id}'`);
+await refusesWith('a switched-off coordinator cannot run toggle_visit', 'not allowed', () =>
+  asApp('authenticated', offCoord, `select toggle_visit($1, 'manual')`, [secAdult.id]));
+await refusesWith('... nor scan_qr', 'not allowed', () => asApp('authenticated', offCoord, 'select scan_qr($1)', [secQr]));
+await refusesWith('... not even with an unknown code (no probing)', 'not allowed', () =>
+  asApp('authenticated', offCoord, `select scan_qr('00000000-0000-4000-8000-000000000000')`));
+await refusesWith('... nor mark_visit', 'not_allowed', () => asApp('authenticated', offCoord, `select mark_visit($1, 'in')`, [secAdult.id]));
+await refusesWith('... nor log_call', 'not_allowed', () =>
+  logCall(offCoord, { p_student: secAdult.id, p_outcome: 'not_reachable', p_reason: null, p_comment: 'x' }));
+check('... and reads no student, guardian or consent', (await asApp('authenticated', offCoord, 'select id from students')).length === 0
+  && (await asApp('authenticated', offCoord, 'select id from guardians')).length === 0
+  && (await asApp('authenticated', offCoord, 'select id from consents')).length === 0);
+await asApp('authenticated', guru, `update profiles set active = false where id = '${secLogin}'`);
+check('a switched-off student no longer reads their own record or QR token',
+  (await asApp('authenticated', secLogin, 'select qr_token from students')).length === 0);
+await refusesWith('... and cannot check themselves in', 'not allowed', () => asApp('authenticated', secLogin, 'select scan_qr($1)', [secQr]));
+await asApp('authenticated', guru, `update profiles set active = true where id = '${secLogin}'`);
+check('switched on again, the student reads their record', (await asApp('authenticated', secLogin, 'select id from students')).length === 1);
+const noProfile = await signUp('no.profile@example.com', true);
+await asOwner(`delete from profiles where id = '${noProfile}'`);
+await refusesWith('a login without a profile cannot run toggle_visit', 'not allowed', () =>
+  asApp('authenticated', noProfile, `select toggle_visit($1, 'manual')`, [secAdult.id]));
+const kiosk = await signUp('door.tablet@example.com', true);
+await asOwner(`update profiles set role = 'kiosk' where id = '${kiosk}'`);
+const [kioskIn] = await asApp('authenticated', kiosk, 'select scan_qr($1) as r', [secQr]);
+const [kioskOut] = await asApp('authenticated', kiosk, 'select scan_qr($1) as r', [secQr]);
+check('the door tablet (kiosk) checks a student in and out by QR', kioskIn.r.action === 'in' && kioskOut.r.action === 'out');
+await refusesWith('... but cannot mark by name', 'not_allowed', () => asApp('authenticated', kiosk, `select mark_visit($1, 'in')`, [secAdult.id]));
+check('... reads no student, guardian, consent or call', (await asApp('authenticated', kiosk, 'select id from students')).length === 0
+  && (await asApp('authenticated', kiosk, 'select id from guardians')).length === 0
+  && (await asApp('authenticated', kiosk, 'select id from consents')).length === 0
+  && (await asApp('authenticated', kiosk, 'select id from call_logs')).length === 0);
+await refuses('... and cannot register a student', () => register(kiosk, { p_full_name: 'Kiosk Kid', p_dob: '1990-01-01' }));
+
+// D1a-04: profile_id, qr_token and created_by are frozen for app users; links go through the functions.
+const stranger = await signUp('stranger.sec@example.com', true);
+await refusesWith('a coordinator cannot attach a login to a child\'s record', 'student_field_locked', () =>
+  asApp('authenticated', coordinator, 'update students set profile_id = $2 where id = $1', [child.id, stranger]));
+await refusesWith('... nor swap a record to another login in one step', 'student_field_locked', () =>
+  asApp('authenticated', coordinator, `update students set profile_id = null, email = 'stranger.sec@example.com' where id = $1`, [secAdult.id]));
+check('... the record keeps its login', (await linkOf('sec.adult@example.com')) === secLogin && (await roleOf(stranger)) === 'pending');
+await refusesWith('... nor change a QR token', 'student_field_locked', () =>
+  asApp('authenticated', coordinator, 'update students set qr_token = gen_random_uuid() where id = $1', [secAdult.id]));
+await refusesWith('... nor who registered the student', 'student_field_locked', () =>
+  asApp('authenticated', coordinator, 'update students set created_by = $2 where id = $1', [secAdult.id, guru]));
+await refusesWith('even the Guru cannot set profile_id directly', 'student_field_locked', () =>
+  asApp('authenticated', guru, 'update students set profile_id = $2 where id = $1', [child.id, stranger]));
+await refusesWith('a record cannot lose its date of birth', 'dob_required', () =>
+  asApp('authenticated', coordinator, 'update students set dob = null where id = $1', [secAdult.id]));
+await refusesWith('a record cannot be added without a date of birth', 'dob_required', () =>
+  asApp('authenticated', coordinator, `insert into students (full_name) values ('No Dob')`));
+const unlinked = await register(coordinator, { p_full_name: 'Sec Later Email', p_dob: '1998-08-08' });
+const laterLogin = await signUp('sec.later@example.com', true);
+await asApp('authenticated', coordinator, `update students set email = 'sec.later@example.com' where id = $1`, [unlinked.id]);
+check('saving an email on a record without a login still links a waiting login (0002)',
+  (await linkOf('sec.later@example.com')) === laterLogin && (await roleOf(laterLogin)) === 'student');
+await refuses('a coordinator cannot unlink a login', () => asApp('authenticated', coordinator, 'select unlink_student_login($1)', [unlinked.id]));
+await asApp('authenticated', guru, 'select unlink_student_login($1)', [unlinked.id]);
+check('the Guru unlinks a login; it goes back to waiting', (await linkOf('sec.later@example.com')) === null && (await roleOf(laterLogin)) === 'pending');
+await asApp('authenticated', guru, 'select link_student_login($1, $2)', [laterLogin, unlinked.id]);
+check('... and links it again with link_student_login (0014)', (await linkOf('sec.later@example.com')) === laterLogin);
+await refusesWith('a coordinator cannot change a level', 'level_guru_only', () =>
+  asApp('authenticated', coordinator, 'update students set level_id = 2 where id = $1', [secAdult.id]));
+await asApp('authenticated', guru, 'update students set level_id = 2 where id = $1', [secAdult.id]);
+check('a level change by the Guru is kept in level_history', (await asOwner(
+  `select count(*)::int as n from level_history where student_id = '${secAdult.id}' and to_level = 2 and approved_by = '${guru}'`))[0].n === 1);
+const goner = await register(coordinator, { p_full_name: 'Sec Deleted', p_dob: '1997-07-07', p_email: 'sec.deleted@example.com' });
+const gonerLogin = await signUp('sec.deleted@example.com', true);
+await asApp('authenticated', guru, 'delete from students where id = $1', [goner.id]);
+check('a deleted record\'s login goes back to waiting', (await roleOf(gonerLogin)) === 'pending');
+
+// D1a-02, FS1a-04: the consent register. child = the minor registered above (data + photo consents).
+const consentCount = async (studentId) => (await asOwner(`select count(*)::int as n from consents where student_id = '${studentId}'`))[0].n;
+check('a coordinator cannot delete a minor\'s consent (0 rows)', (await asApp('authenticated', coordinator,
+  'delete from consents where student_id = $1 returning id', [child.id])).length === 0 && (await consentCount(child.id)) === 2);
+await refusesWith('... nor revoke it', 'not_allowed', () =>
+  asApp('authenticated', coordinator, `update consents set revoked_at = now() where student_id = $1 and scope = 'data'`, [child.id]));
+await refusesWith('... nor turn it into a photo consent', 'consent_locked', () =>
+  asApp('authenticated', coordinator, `update consents set scope = 'photo' where student_id = $1 and scope = 'data'`, [child.id]));
+await refusesWith('... nor move it to another student', 'consent_locked', () =>
+  asApp('authenticated', coordinator, 'update consents set student_id = $2 where student_id = $1', [child.id, secAdult.id]));
+await refusesWith('... nor rewrite who verified it and when', 'consent_locked', () =>
+  asApp('authenticated', coordinator, `update consents set verified_by = $2, given_at = now() - interval '1 year' where student_id = $1`, [child.id, guru]));
+const [forged] = await asApp('authenticated', coordinator, `insert into consents (student_id, scope, verified_by, given_at, method, otp_verified_at, signed_form)
+  values ($1, 'data', $2, '2020-01-01', 'written', now(), true) returning verified_by, given_at, otp_verified_at`, [child.id, guru]);
+check('a new consent is verified by whoever saves it, now (not back-dated, not "by the Guru")', forged.verified_by === coordinator
+  && Date.now() - new Date(forged.given_at).getTime() < 600000 && forged.otp_verified_at === null, JSON.stringify(forged));
+await refusesWith('a written consent needs the signed-form tick', 'written_consent_required', () =>
+  asApp('authenticated', coordinator, `insert into consents (student_id, scope) values ($1, 'photo')`, [child.id]));
+await refusesWith('the Guru cannot revoke a minor\'s last data consents (checked at commit)', 'minor_needs_consent', () =>
+  asApp('authenticated', guru, `update consents set revoked_at = now() where student_id = $1 and scope = 'data'`, [child.id]));
+await refusesWith('... nor delete them', 'minor_needs_consent', () =>
+  asApp('authenticated', guru, `delete from consents where student_id = $1 and scope = 'data'`, [child.id]));
+await asApp('authenticated', guru, `update consents set revoked_at = now()
+  where id = (select id from consents where student_id = $1 and scope = 'data' order by given_at desc limit 1)`, [child.id]);
+check('... but may revoke one of two, which then stays revoked', (await asOwner(
+  `select count(*)::int as n from consents where student_id = '${child.id}' and scope = 'data' and revoked_at is null`))[0].n === 1);
+await refusesWith('a revoked consent cannot be brought back', 'consent_locked', () =>
+  asApp('authenticated', guru, `update consents set revoked_at = null where student_id = $1 and revoked_at is not null`, [child.id]));
+await refusesWith('a minor cannot lose her last guardian (checked at commit)', 'minor_needs_guardian', () =>
+  asApp('authenticated', coordinator, 'update guardians set student_id = $2 where student_id = $1', [child.id, secAdult.id]));
+check('consent and guardian changes are in the audit log', (await asOwner(`select count(*)::int as n from audit_log
+  where table_name in ('consents', 'guardians') and (old_row ->> 'student_id' = '${child.id}' or new_row ->> 'student_id' = '${child.id}')`))[0].n >= 5);
+await refusesWith('a minor is not registered without the signed-form tick', 'written_consent_required', () =>
+  register(coordinator, { p_full_name: 'Sec Child', p_dob: childDob, p_guardian_name: 'Parent', p_guardian_phone: '9000012345',
+    p_guardian_relation: 'father', p_id_type_checked: 'aadhaar' }));
+await refusesWith('... nor with the tick false', 'written_consent_required', () =>
+  register(coordinator, { p_full_name: 'Sec Child', p_dob: childDob, p_guardian_name: 'Parent', p_guardian_phone: '9000012345',
+    p_guardian_relation: 'father', p_id_type_checked: 'aadhaar', p_written_consent: false }));
+const [{ d: eighteen }] = await asOwner(`select (today_ist() - interval '18 years')::date::text as d`);
+const [{ d: almost18 }] = await asOwner(`select (today_ist() - interval '18 years' + interval '1 day')::date::text as d`);
+check('exactly 18 today needs no parent', /^MS-/.test((await register(coordinator, { p_full_name: 'Sec Eighteen', p_dob: eighteen })).roll_no));
+await refusesWith('... one day short of 18 does', 'minor_needs_guardian', () => register(coordinator, { p_full_name: 'Sec Almost', p_dob: almost18 }));
+await refusesWith('a date of birth that makes an adult a minor is refused', 'minor_needs_consent', () =>
+  asApp('authenticated', coordinator, 'update students set dob = $2 where id = $1', [secAdult.id, childDob]));
+
+// D4-04: withdrawal. A minor with a login, a phone, an open visit and a logged call.
+const minor = await register(coordinator, { p_full_name: 'Sec Minor Child', p_dob: childDob, p_email: 'sec.minor@example.com',
+  p_guardian_name: 'Sec Parent', p_guardian_phone: '9000012345', p_guardian_email: 'sec.parent@example.com',
+  p_guardian_relation: 'mother', p_id_type_checked: 'aadhaar', p_written_consent: true });
+const minorLogin = await signUp('sec.minor@example.com', true);
+check('a registered minor\'s consent records the signed-form tick', (await asOwner(
+  `select signed_form from consents where student_id = '${minor.id}'`)).every((r) => r.signed_form === true));
+await registerToken(minorLogin, 'ExponentPushToken[secminor]');
+await logCall(coordinator, { p_student: minor.id, p_outcome: 'not_reachable', p_reason: null, p_comment: 'Mother says Sec Minor Child is unwell' });
+await asApp('authenticated', coordinator, `select toggle_visit($1, 'manual')`, [minor.id]);
+await refuses('a coordinator cannot record a withdrawal', () => asApp('authenticated', coordinator, 'select withdraw_consent($1)', [minor.id]));
+const [{ r: withdrawn }] = await asApp('authenticated', guru, 'select withdraw_consent($1, $2) as r', [minor.id, 'mother, by phone']);
+check('the Guru records the withdrawal: consents revoked, login off', withdrawn.consents_revoked === 1 && withdrawn.login_switched_off === true
+  && (await asOwner(`select active from profiles where id = '${minorLogin}'`))[0].active === false, JSON.stringify(withdrawn));
+check('... her phones are forgotten and her open visit closed', (await asOwner(`select count(*)::int as n from push_tokens where profile_id = '${minorLogin}'`))[0].n === 0
+  && (await asOwner(`select count(*)::int as n from visits where student_id = '${minor.id}' and check_out is null`))[0].n === 0);
+check('... the withdrawal is in the audit log', (await asOwner(`select count(*)::int as n from audit_log
+  where table_name = 'students' and row_id = '${minor.id}' and new_row ->> 'withdrawn_at' is not null`))[0].n === 1);
+await refusesWith('a withdrawn student cannot be checked in', 'student_withdrawn', () =>
+  asApp('authenticated', coordinator, `select toggle_visit($1, 'manual')`, [minor.id]));
+await refusesWith('... nor called', 'student_withdrawn', () =>
+  logCall(coordinator, { p_student: minor.id, p_outcome: 'not_reachable', p_reason: null, p_comment: 'x' }));
+await refusesWith('... nor edited', 'student_withdrawn', () =>
+  asApp('authenticated', coordinator, `update students set phone = '9000000404' where id = $1`, [minor.id]));
+await refusesWith('... nor save a phone for pushes', 'not_allowed', () => registerToken(minorLogin, 'ExponentPushToken[secminor2]'));
+check('... nor read her record', (await asApp('authenticated', minorLogin, 'select id from students')).length === 0);
+await refusesWith('a withdrawal is recorded once', 'already_withdrawn', () => asApp('authenticated', guru, 'select withdraw_consent($1)', [minor.id]));
+
+// D4-03: erasure. Afterwards nothing in any table, nor in audit_log, holds the child's data.
+await refuses('a coordinator cannot erase a student', () => asApp('authenticated', coordinator, `select erase_student($1, 'x')`, [minor.id]));
+await refusesWith('an erasure needs a reason', 'reason_required', () => asApp('authenticated', guru, `select erase_student($1, ' ')`, [minor.id]));
+const [{ qr_token: minorQr }] = await asOwner(`select qr_token from students where id = '${minor.id}'`);
+const [{ r: erased }] = await asApp('authenticated', guru, `select erase_student($1, 'parent asked', 'REQ-1') as r`, [minor.id]);
+check('the Guru erases the student and her login', erased.roll_no === minor.roll_no && erased.login_deleted === true
+  && erased.audit_rows_redacted > 0, JSON.stringify(erased));
+const needles = [minor.id, minorLogin, minorQr, 'sec.minor@example.com', 'Sec Minor Child', 'sec.parent@example.com', 'Sec Parent'];
+const tables = (await asOwner(`select c.relname from pg_class c where c.relnamespace = 'public'::regnamespace and c.relkind = 'r'`)).map((r) => r.relname);
+const holding = [];
+for (const table of tables) {
+  const [{ n }] = (await db.query(`select count(*)::int as n from public.${table} t
+    where exists (select 1 from unnest($1::text[]) x where position(lower(x) in lower(${table === 'audit_log' ? "coalesce(t.old_row::text, '') || coalesce(t.new_row::text, '')" : 't::text'})) > 0)`,
+    [needles])).rows; // audit_log: the kept skeleton names her row id, by design
+  if (n > 0) holding.push(`${table}:${n}`);
+}
+check('... no table, audit_log included, holds her name, ids, QR token, email or her parent\'s details', holding.length === 0, holding.join(' '));
+check('... auth.users has no login for her', (await asOwner(`select count(*)::int as n from auth.users where id = '${minorLogin}'`))[0].n === 0);
+check('... the audit log keeps the skeleton (table, action, time, who) of her rows', (await asOwner(`select count(*)::int as n from audit_log
+  where row_id = '${minor.id}' and old_row is null and new_row is null`))[0].n >= 2);
+check('... and a tombstone the Guru can read, a coordinator cannot', (await asApp('authenticated', guru,
+  `select reason, request_ref from erasures where roll_no = $1`, [minor.roll_no]))[0]?.request_ref === 'REQ-1'
+  && (await asApp('authenticated', coordinator, 'select id from erasures')).length === 0);
+const loaner = await register(coordinator, { p_full_name: 'Sec Borrower', p_dob: '1996-06-06' });
+const loanItem = (await addItem(guru, 'Sec khol')).id;
+await issue(coordinator, loanItem, loaner.id, null, 'good');
+await refusesWith('an erasure waits until a lent instrument is back', 'open_loan', () =>
+  asApp('authenticated', guru, `select erase_student($1, 'parent asked')`, [loaner.id]));
+// The owner in the SQL editor (no signed-in user) may record a withdrawal and erase too.
+await asOwner(`select set_config('request.jwt.claim.sub', '', false)`);
+check('the owner (SQL editor) records a withdrawal and erases an adult', (await asOwner(
+  `select withdraw_consent('${secAdult.id}', 'by email') as r`))[0].r.login_switched_off === true
+  && (await asOwner(`select erase_student('${secAdult.id}', 'asked by email') as r`))[0].r.login_deleted === true
+  && (await asOwner(`select count(*)::int as n from students where id = '${secAdult.id}'`))[0].n === 0);
+
+// D1a-11, D14-03: the grant sweep. anon has no right on any table, view or sequence, and may run
+// no function of ours (trigger functions cannot be called, so they are left out); internal
+// functions are not open to signed-in people either.
+const anonTables = await asOwner(`select c.relname from pg_class c where c.relnamespace = 'public'::regnamespace
+  and ((c.relkind in ('r', 'v', 'm', 'p') and has_table_privilege('anon', c.oid, 'SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER'))
+    or (c.relkind = 'S' and has_sequence_privilege('anon', c.oid, 'USAGE, SELECT, UPDATE')))`);
+check('grant sweep: anon has no right on any table, view or sequence', anonTables.length === 0, anonTables.map((r) => r.relname).join(' '));
+const anonFunctions = await asOwner(`select p.oid::regprocedure::text as f from pg_proc p
+  where p.pronamespace = 'public'::regnamespace and p.prorettype <> 'trigger'::regtype
+    and not exists (select 1 from pg_depend d where d.classid = 'pg_proc'::regclass and d.objid = p.oid and d.deptype = 'e')
+    and has_function_privilege('anon', p.oid, 'execute')`);
+check('grant sweep: anon may run no function of ours', anonFunctions.length === 0, anonFunctions.map((r) => r.f).join(' '));
+await asOwner('create table public.zz_sweep_probe (id int)');
+check('... and a table made later by the owner is not given to anon', (await asOwner(
+  `select has_table_privilege('anon', 'public.zz_sweep_probe', 'SELECT') as ok`))[0].ok === false);
+await asOwner('drop table public.zz_sweep_probe');
+const internal = ['link_login_to_student(uuid,text)', 'refresh_student_statuses()', 'close_open_visits()', 'claim_due_push()',
+  'release_push_claim(bigint[])', 'send_due_push()', 'privacy_caller_ok()', 'visit_location_result(jsonb,smallint)'];
+const openInternal = [];
+for (const f of internal) {
+  if ((await asOwner(`select has_function_privilege('authenticated', '${f}', 'execute') as ok`))[0].ok) openInternal.push(f);
+}
+check('grant sweep: internal functions are closed to signed-in people', openInternal.length === 0, openInternal.join(' '));
+check('... while the app functions stay open to them', (await asOwner(`select bool_and(has_function_privilege('authenticated', f, 'execute')) as ok
+  from unnest(array['erase_student(uuid,text,text)', 'withdraw_consent(uuid,text)', 'unlink_student_login(uuid)', 'scan_qr(uuid,text,jsonb)',
+    'toggle_visit(uuid,visit_method,text,jsonb)', 'register_student(text,date,text,text,text,text,smallint,uuid,text,text,text,text,text,boolean,boolean)',
+    'is_staff()', 'my_role()']) f`))[0].ok === true);
+
 // ---------------------------------------------------------------- row-level security
 const seen =await asApp('authenticated', arjun, 'select full_name from students');
 check('student sees only their own student record', seen.length === 1 && seen[0].full_name === 'Arjun Rao');
 check('student sees only their own profile',
   (await asApp('authenticated', arjun, 'select id from profiles')).length === 1);
-check('anon sees no students', (await asApp('anon', null, 'select id from students')).length === 0);
+// 0025: anon has no table rights at all, so it is refused before row-level security is asked.
+await refuses('anon cannot read students', () => asApp('anon', null, 'select id from students'));
 
 // ---------------------------------------------------------------- daily jobs
 await asOwner('select refresh_student_statuses()');

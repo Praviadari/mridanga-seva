@@ -119,14 +119,61 @@ project id and its signing keystore stay the same, so nothing needs rebuilding.
 
 For a student under 18, the parent fills in and signs a paper consent form at the desk, and the
 coordinator ticks in the app that it was received ([DECISIONS.md #16](DECISIONS.md)). The app
-stores only that it was given, when, by whom it was checked, and which type of ID was seen.
+stores only that it was given and the form signed (the tick, required since 0025, #74), when, by whom it
+was checked, and which type of ID was seen.
 
 Suggested practice, until the team agrees its own (with the temple's legal adviser):
 
 - Keep the signed forms together, in a closed file at the centre that only coordinators use.
-- A parent may withdraw consent at any time. Until a screen for this exists, the Guru fills in
-  `consents.revoked_at` in the dashboard and removes the student's details as agreed with the parent.
+- A parent (or an adult student) may withdraw consent at any time: see "Consent withdrawal" below.
+  A request to delete the data: "Erasure request".
 - The wording of the form itself is still to be agreed.
+
+## Consent withdrawal
+
+Only the Guru records a withdrawal ([DECISIONS.md #75](DECISIONS.md)). It **freezes** the record:
+the student's login is switched off, their phones get no more notifications, all consents are
+revoked, and nothing new (attendance, calls, ticks, edits) can be recorded. The history stays
+until the Guru erases the record or the parent consents again.
+
+1. Write down, privately: the date, who asked (parent / student), how (in person, phone, email),
+   and the student's roll number. Keep the parent's written request with the consent forms if
+   there is one.
+2. Supabase → SQL editor of the right project (TEST first when practising), find the student:
+   `select id, roll_no, full_name from students where roll_no = 'MS-2026-0042';`
+3. Run `select withdraw_consent('<id>', 'mother, by phone, 5 Oct 2026');` (the note is at most
+   500 characters; no ID numbers). It answers with the roll number, how many consents were
+   revoked and whether a login was switched off.
+4. Tell the coordinators that the student is withdrawn (the app answers "consent withdrawn" if
+   they try to mark or call them). Decide with the parent whether the record is to be erased; if
+   so, follow "Erasure request".
+
+**If the parent consents again:** a new paper form is signed. Then, in the SQL editor:
+`update students set withdrawn_at = null, withdrawn_note = null where id = '<id>';`, insert the new
+consent (`insert into consents (student_id, scope, method, id_type_checked, signed_form, verified_by)
+values ('<id>', 'data', 'written', '<id type>', true, '<Guru''s login id>');`), and switch the
+login on again in G2.
+
+## Erasure request
+
+Only the Guru erases ([DECISIONS.md #76](DECISIONS.md)). It cannot be undone, so check the
+request first.
+
+1. Check who asks: the parent of a minor, or the adult student themselves. Write down privately
+   the date, who asked, how, and a request reference (e.g. `ER-2026-01`).
+2. If the student holds a lent instrument, take it back and record the return in C19 first.
+3. Supabase → SQL editor, find the student (`select id, roll_no, full_name from students where
+   roll_no = '...';`), then run:
+   `select erase_student('<id>', 'parent asked to delete the data', 'ER-2026-01');`
+4. It answers `{ roll_no, login_deleted, audit_rows_redacted, files }`:
+   - `files`: Storage paths still to delete. Supabase → Storage → the bucket in the path
+     (`assessment-files`, or the photo's bucket) → find each path → Delete.
+   - `login_deleted: false`: the login could not be deleted from the SQL editor. Supabase →
+     Authentication → Users → find the email the parent gave → Delete user.
+5. Destroy the paper consent form as agreed with the parent, or keep it only as long as the team's
+   retention rule says (to be agreed).
+6. The tombstone (roll number, date, who, reason, reference) stays in `erasures`:
+   `select * from erasures order by erased_at desc;` This is the proof that the request was met.
 
 ## Publishing the web version
 

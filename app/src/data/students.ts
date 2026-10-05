@@ -160,13 +160,15 @@ export async function registerStudent(
     p_guardian_relation: minor ? form.relation : null,
     p_id_type_checked: minor ? form.idType : null,
     p_photo_consent: minor && form.photoConsent,
+    // "The parent signed the paper form": required by the database for a minor (0025).
+    p_written_consent: minor ? form.writtenConsent : null,
   });
   if (error) return { errorKey: registerErrorKey(error.message, error.code) };
   const result = data as { id: string; roll_no: string; linked: boolean };
   return { registered: { id: result.id, rollNo: result.roll_no, linked: result.linked } };
 }
 
-/** Maps an error from register_student to a message. The codes are listed in migration 0003. */
+/** Maps an error from register_student to a message. The codes are listed in migrations 0003 and 0025. */
 function registerErrorKey(message: string, code: string | undefined): MessageKey {
   switch (message) {
     case 'not_allowed':
@@ -175,6 +177,8 @@ function registerErrorKey(message: string, code: string | undefined): MessageKey
       return 'register.errors.nameRequired';
     case 'dob_required':
       return 'register.errors.dobInvalid';
+    case 'written_consent_required':
+      return 'register.errors.consentNeeded';
     case 'minor_needs_guardian':
     case 'minor_needs_id_check':
     case 'minor_needs_consent':

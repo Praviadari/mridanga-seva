@@ -12,6 +12,7 @@
     "loading": "Loading…",
     "language": "Language",
     "genericError": "Something went wrong. Please try again.",
+    "studentWithdrawn": "Consent for this student was withdrawn. Nothing new can be recorded for them; ask the Guru.",
     "networkError": "Cannot reach the server. Check your internet connection."
   },
   "password": {
@@ -1215,7 +1216,9 @@
       "settings": "Setting",
       "centres": "Centre",
       "ig_slokas": "Sloka",
-      "ig_themes": "Ishtagoshti theme"
+      "ig_themes": "Ishtagoshti theme",
+      "consents": "Consent",
+      "guardians": "Parent or guardian"
     }
   },
   "inbox": {

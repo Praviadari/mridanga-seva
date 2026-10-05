@@ -1737,6 +1737,113 @@ pattern already used elsewhere.
 **Consequences.** JS only; the fingerprint stays 185e839f. To confirm on the phone after the
 update: lesson video → fullscreen → phone Back returns to the lesson, Back again returns to the list.
 
+## 72. A switched-off login is refused everywhere, also where the role is NULL — 5 Oct 2026
+
+**Context.** `my_role()` is NULL for a switched-off login and for a login without a profile.
+`toggle_visit` (0001, again in 0024) refused with `if my_role() not in (...)`; `NULL not in (...)` is
+NULL, and an IF treats NULL as false, so the refusal never ran. A switched-off coordinator or
+student could check children in and out through `scan_qr` and `mark_visit`, and reactivate Left
+students. A sweep of every migration found no other current function with the pattern.
+
+**Decision.** Role checks are written NULL-safe: `if not coalesce(my_role() in (...), false)`
+(`is_guru()` and `is_staff()` already were). Migration 0025 replaces `toggle_visit` and `scan_qr`
+(scan_qr now checks before the lookup, so a switched-off login cannot probe codes). The door tablet
+role `kiosk` keeps check-in by QR and nothing else.
+
+**Consequences.** smoke-test.mjs checks a switched-off coordinator, a switched-off student, a login
+without a profile and a kiosk login. New functions must follow the pattern (CONTRIBUTING).
+
+## 73. Only the linking functions attach a login to a student record — 5 Oct 2026
+
+**Context.** The staff update policy on `students` has no column limits, so a coordinator could set
+`profile_id` to any login (or clear it and set another email in one update), and that login then
+read the child's record and became a student without the Guru. `qr_token` and `created_by` were
+equally open.
+
+**Decision.** A BEFORE trigger `students_frozen_guard` (0025), for app users only (`current_user`
+anon or authenticated, as 0014's guards), refuses changes to `profile_id`, `qr_token`,
+`created_by`, `created_at` and the withdrawal fields (`student_field_locked`), and a student without
+a date of birth (`dob_required`). Its name sorts before `students_link_login`, so saving an email on
+a record without a login still links (0002); only the definer paths change `profile_id`:
+confirmation linking (0002), `link_student_login` (0014) and the new Guru-only
+`unlink_student_login`. A level change stays the Guru's (0017) and is now kept in `level_history`
+when made on the table directly. A deleted record's login goes back to `pending`. A student's own
+record (and through it own visits, ticks and level history) is readable only while the login is
+an active student.
+
+**Consequences.** No app screen wrote these columns, so nothing in the app changes.
+
+## 74. The consent register is insert-only and checked at commit — 5 Oct 2026
+
+**Context.** #16 promised "no minor without consent", but the check ran only when a student was
+added or the date of birth changed. A coordinator could delete or revoke a minor's consent, move it
+to another student, or insert a back-dated one "verified by" the Guru, with no trace; the
+"parent signed the paper form" tick (C3) never reached the database.
+
+**Decision (Praveen 5 Oct 2026: the tick keeps its wording and is required).**
+- App users add consents only: `verified_by` and `given_at` are set by the server, `revoked_at` and
+  `otp_verified_at` start empty, a written consent needs `signed_form = true`
+  (`written_consent_required`). Nothing else changes afterwards (`consent_locked`), except that
+  the Guru may revoke a consent once. Deleting a consent is the Guru's.
+- A deferred check (`consents_minor_recheck`, `guardians_minor_recheck`) refuses, for everyone, any
+  change that leaves a minor on record without a current data consent or without a guardian; only a
+  withdrawal (#75) may, because it marks the record first.
+- `register_student` gains `p_written_consent` (required for a minor) and stores it; the app sends
+  the tick it already shows. Consents written before 0025 have `signed_form` NULL (unknown).
+- Consents and guardians are audited (`audit_row`) and appear in G11.
+
+**Consequences.** Migration and app update go out the same day: between 0025 and the update, a
+minor cannot be registered from an old app (adults are not affected).
+
+## 75. Withdrawing consent freezes the record — 5 Oct 2026
+
+**Context.** Revoking consent in the dashboard (OPERATIONS) stopped nothing: attendance, calls,
+edits and pushes went on.
+
+**Decision (Praveen 5 Oct 2026: Guru only; freeze, erase later).** `withdraw_consent(student, note)`
+(Guru in the app, or the owner in the SQL editor) marks `students.withdrawn_at` / `withdrawn_note`,
+revokes every consent of the student, closes an open visit and open call tasks, switches the login
+off and deletes its push tokens. A withdrawn record refuses edits, visits, calls and ticks
+(`student_withdrawn`), and the daily job's call tasks for it are dropped. History stays until the
+Guru erases the record (#76) or the parent consents again (OPERATIONS "Consent withdrawal").
+
+**Consequences.** The students and consents audit rows written by the call are the proof. No app
+screen yet: the Guru runs it in the SQL editor.
+
+## 76. A student can be erased, audit copies included — 5 Oct 2026
+
+**Context.** Deleting a student cascaded the rows but wrote a full copy of each into `audit_log`,
+which nobody could purge; the login, its profile and push tokens survived.
+
+**Decision (Praveen 5 Oct 2026: Guru only; the login goes too).** `erase_student(student, reason,
+request_ref)` (Guru in the app, or the owner in the SQL editor): forgets the phones, deletes past
+instrument loans (an open loan stops it: `open_loan`), deletes the record (cascade), deletes the
+login from `auth.users` (falls back to the profile if not allowed), and only then blanks
+`old_row` / `new_row` of every audit row whose id or values hold the student id, login id, QR token
+or email. The skeleton (table, action, time, who) stays. A tombstone in `erasures` keeps the roll
+number, time, Guru, reason and request reference. It returns the Storage paths (photo,
+recordings) for the runbook to delete by hand.
+
+**Consequences.** smoke-test.mjs sweeps every table and audit_log for the child's name, ids, QR
+token, email and parent's details after an erasure and finds none. OPERATIONS "Erasure request".
+
+## 77. anon holds no right in public; a grant sweep test guards it — 5 Oct 2026
+
+**Context.** Supabase gives anon (no login) every right on new tables, sequences and functions in
+`public`. Row-level security kept tables closed (no policy names anon), but 0023's five tables, for
+example, answered anon with 200 and no rows. Several helpers were executable by anon.
+
+**Decision.** 0025 revokes every table and sequence right from anon, and the default rights for new
+tables and sequences. For functions, EXECUTE is revoked from PUBLIC and anon on every function the
+migration's role owns (not extensions'), keeping what authenticated and service_role had. New
+functions still get EXECUTE through PUBLIC (that default cannot be changed per schema, and changing
+it globally is too wide), so supabase/tests now runs a **grant sweep**: anon has no right on any
+table, view or sequence and may run no non-trigger function; listed internal functions are closed
+to authenticated.
+
+**Consequences.** Every new migration revokes its functions from `public, anon` (#14), or the sweep
+fails. anon reading a table now gets "permission denied" instead of no rows.
+
 ## 80. Class fund ledger: who records, who approves, nothing deleted — 5 Oct 2026
 
 **Status: decided by Praveen 5 Oct 2026 (four answers below), on the branch `phase2-fund`; not on

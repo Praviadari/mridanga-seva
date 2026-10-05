@@ -3,12 +3,16 @@
 // 0001-0014) for students, profiles, call logs, level changes, syllabus items and ticks, materials,
 // announcements, deleted replies, settings and centres, and Ishtagoshti slokas and themes (0021). Row-level security lets only the Guru read
 // them (policy guru_read, 0001). Read 50 at a time, newest first, filtered in the database.
+// 0025 adds consents and guardians. After an erasure (erase_student) a row keeps its table, action,
+// time and who, but both value copies are empty: such a row shows no subject and no changes.
 
 import { supabase } from '@/lib/supabase';
 
 /** Tables whose changes are logged, in the order the filter offers them. */
 export const AUDITED_TABLES = [
   'students',
+  'consents',
+  'guardians',
   'call_logs',
   'student_progress',
   'level_history',
@@ -118,6 +122,10 @@ export function subjectOf(entry: AuditEntry, names: AuditNames): string {
     case 'call_logs':
     case 'level_history':
       return student();
+    case 'consents':
+      return [student(), text(row.scope)].filter(Boolean).join(' · ');
+    case 'guardians':
+      return [student(), text(row.full_name)].filter(Boolean).join(' · ');
     case 'student_progress':
       return `${student()} · ${names.items.get(text(row.item_id)) ?? text(row.item_id)}`;
     case 'syllabus_items':

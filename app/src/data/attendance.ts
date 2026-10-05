@@ -159,6 +159,9 @@ function attendanceErrorKey(message: string, code: string | undefined): MessageK
     case 'student not found':
     case 'student_not_found':
       return 'attendance.errors.notFound';
+    // Consent withdrawn: the record is frozen (0025).
+    case 'student_withdrawn':
+      return 'common.studentWithdrawn';
   }
   // Two phones checked in the same student at the same instant; one of them won.
   if (code === '23505') return 'attendance.errors.alreadyMarked';

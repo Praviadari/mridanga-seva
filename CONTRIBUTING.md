@@ -29,7 +29,9 @@ reports are all welcome.
 - **No secrets.** Never commit `.env` files or the Supabase `service_role` key.
 - **Database changes go in a new migration file** in `supabase/migrations/` (`0002_...sql`,
   `0003_...sql`). Never edit a migration that has already been applied. Every new table needs
-  row-level security policies.
+  row-level security policies. Every new function is revoked from `public, anon` (and internal
+  ones from `authenticated`), and a role check is NULL-safe: `if not coalesce(my_role() in (...), false)`
+  ([docs/DECISIONS.md](docs/DECISIONS.md) #14, #72, #77; the grant sweep in `supabase/tests` checks it).
 - **No hard-coded interface text.** Put every string in the translation files so it can be shown in
   English, Telugu and Hindi ([docs/TRANSLATIONS.md](docs/TRANSLATIONS.md)). Translators are very welcome.
 - **Respect content rights.** Do not add copyrighted scripture translations, purports, books or

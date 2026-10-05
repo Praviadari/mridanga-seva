@@ -170,5 +170,12 @@ The code is in `app/src/i18n/index.ts`, `app/src/components/language-picker.tsx`
   "approve" ఆమోదించండి / स्वीकृत करें, "reversal" రద్దు నమోదు / उलट प्रविष्टि, "bill" బిల్లు / बिल,
   "financial year" ఆర్థిక సంవత్సరం / वित्त वर्ष, the categories (విరాళం, ప్రాయోజకత్వం … / दान, प्रायोजन …).
   Amounts are shown as ₹ with Indian grouping in every language.
+
+- **Security round** (0025, [DECISIONS.md #72-#77](DECISIONS.md)): three new keys, drafts for the review:
+  `common.studentWithdrawn` (shown when a coordinator marks or calls a student whose consent was
+  withdrawn), `auditLog.tables.consents` and `auditLog.tables.guardians` (G11 filter). Words to check:
+  "withdrawn" వెనక్కి తీసుకోబడింది / वापस ले ली गई, "consent" అనుమతి / सहमति (as in the registration form). The
+  signed-form tick `register.writtenConsent` keeps its wording (Praveen, 5 Oct 2026). Checked for mixed
+  Telugu-Devanagari words on 5 Oct 2026.
 - Telugu and Devanagari letters are taller than Latin ones. The app's line heights allow for this;
   if a translated label looks cut off, report it with a screenshot.
