@@ -2772,6 +2772,243 @@ check('... while the app functions stay open to them', (await asOwner(`select bo
     'toggle_visit(uuid,visit_method,text,jsonb)', 'register_student(text,date,text,text,text,text,smallint,uuid,text,text,text,text,text,boolean,boolean)',
     'is_staff()', 'my_role()']) f`))[0].ok === true);
 
+
+// ---------------------------------------------------------------- Ishtagoshti public sign-up (0025, Phase 2)
+// A subscriber is a 'pending' login with an ig_subscribers row: it reads published slokas and themes
+// and keeps its own notes and ticks; everything else must refuse it (the sweep at the end).
+const igJoin = (userId, fields) => asApp('authenticated', userId,
+  `select ig_join(p_birth_year => $1, p_terms_version => $2, p_turned_18 => $3, p_phone => $4,
+     p_parent_name => $5, p_parent_email => $6, p_parent_relation => $7) as s`,
+  [fields.year, fields.terms ?? 'placeholder-2026-10', fields.turned18 ?? false, fields.phone ?? null,
+   fields.parent ?? null, fields.parentEmail ?? null, fields.relation ?? null]).then((r) => r[0].s);
+const igState = async (userId) => (await asApp('authenticated', userId, 'select ig_my_state() as s'))[0].s;
+const [{ n: publishedSlokas }] = await asOwner('select count(*)::int as n from ig_slokas where published');
+const thisYear = Number((await asOwner(`select extract(year from today_ist())::int as y`))[0].y);
+
+const unconfirmedPub = await signUp('pub.unconfirmed@example.com', false);
+await refusesWith('a login whose email is not confirmed cannot join', 'email_not_confirmed', () =>
+  igJoin(unconfirmedPub, { year: 1990 }));
+await refusesWith('a student does not join (already reads as a student)', 'not_pending', () => igJoin(arjun, { year: 1990 }));
+await refuses('anon cannot join', () => asApp('anon', null, `select ig_join(1990, 'x')`));
+const pubAdult = await signUp('pub.adult@example.com', true);
+check('before joining, a public login reads no sloka and its state is none',
+  (await igSlokas(pubAdult)).length === 0 && (await igState(pubAdult)).state === 'none');
+await refusesWith('a year of birth is checked', 'birth_year_invalid', () => igJoin(pubAdult, { year: thisYear - 2 }));
+await refusesWith('the terms must be agreed', 'terms_required', () => igJoin(pubAdult, { year: 1990, terms: ' ' }));
+await refusesWith('a phone, when given, is a phone number', 'phone_invalid', () => igJoin(pubAdult, { year: 1990, phone: 'call me' }));
+const adultState = await igJoin(pubAdult, { year: 1990, phone: ' +91 98765 43210 ' });
+check('an adult joins at once: state active, phone kept, no parent asked', adultState.state === 'active'
+  && adultState.minor === false && adultState.phone === '+91 98765 43210' && adultState.parent_email === null, JSON.stringify(adultState));
+check('... and reads the published slokas, themes and the sloka of the day', (await igSlokas(pubAdult)).length === publishedSlokas
+  && (await asApp('authenticated', pubAdult, 'select id from ig_themes')).length > 0 && (await dayOf(pubAdult, null)) !== null);
+await refusesWith('joining twice is refused', 'already_joined', () => igJoin(pubAdult, { year: 1991 }));
+const pubSloka = samples[1].id;
+await note(pubAdult, pubSloka, 'My own note.');
+await asApp('authenticated', pubAdult, 'insert into ig_memorised (sloka_id) values ($1)', [pubSloka]);
+check('a subscriber keeps a private note and a memorised tick', (await asApp('authenticated', pubAdult, 'select 1 from ig_notes')).length === 1
+  && (await asApp('authenticated', pubAdult, 'select 1 from ig_memorised')).length === 1);
+check('a coordinator sees neither the subscriber\'s profile nor their ticks; the Guru sees both',
+  (await asApp('authenticated', coordinator, 'select 1 from profiles where id = $1', [pubAdult])).length === 0
+  && (await asApp('authenticated', coordinator, 'select 1 from ig_memorised where profile_id = $1', [pubAdult])).length === 0
+  && (await asApp('authenticated', guru, 'select 1 from profiles where id = $1', [pubAdult])).length === 1
+  && (await asApp('authenticated', guru, 'select 1 from ig_memorised where profile_id = $1', [pubAdult])).length === 1);
+check('... while coordinators still see students\' ticks and profiles', (await asApp('authenticated', coordinator,
+  'select 1 from profiles where id = $1', [arjun])).length === 1);
+await refuses('a subscriber cannot write its subscription row directly', () => asApp('authenticated', pubAdult,
+  `update ig_subscribers set blocked_at = null, minor = false where profile_id = auth.uid() returning 1`).then((r) => { if (r.length === 0) throw new Error('0 rows'); }));
+await refuses('a subscriber cannot make itself a student', () =>
+  asApp('authenticated', pubAdult, `update profiles set role = 'student' where id = auth.uid()`));
+
+// A minor: parent's details, a code by email, nothing opens before it.
+const pubMinor = await signUp('pub.minor@example.com', true);
+await refusesWith('under 18 needs the parent\'s name', 'parent_name_invalid', () => igJoin(pubMinor, { year: thisYear - 14 }));
+await refusesWith('... and a real email', 'parent_email_invalid', () => igJoin(pubMinor, { year: thisYear - 14, parent: 'Parent', parentEmail: 'nope' }));
+await refusesWith('... that is not the child\'s own', 'parent_email_own', () =>
+  igJoin(pubMinor, { year: thisYear - 14, parent: 'Parent', parentEmail: 'PUB.MINOR@example.com' }));
+const minorState = await igJoin(pubMinor, { year: thisYear - 14, parent: '  Lakshmi Devi ', parentEmail: 'Parent.Of.Minor@example.com', relation: 'mother' });
+check('a minor joins as awaiting_parent and reads nothing yet', minorState.state === 'awaiting_parent'
+  && minorState.parent_email === 'parent.of.minor@example.com' && minorState.parent_name === 'Lakshmi Devi'
+  && (await igSlokas(pubMinor)).length === 0 && (await dayOf(pubMinor, null)) === null, JSON.stringify(minorState));
+await refuses('a minor waiting for the parent cannot write a note', () => note(pubMinor, pubSloka, 'x'));
+await refusesWith('a minor cannot skip the parent by changing the year of birth', 'age_change_not_allowed', () =>
+  igJoin(pubMinor, { year: 1990 }));
+const turning18 = await signUp('pub.turning18@example.com', true);
+check('in the year one turns 18, "not yet had the birthday" counts as under 18',
+  (await igJoin(turning18, { year: thisYear - 18, parent: 'P', parentEmail: 'p18@example.com' })).minor === true);
+const had18 = await signUp('pub.had18@example.com', true);
+check('... and "had the birthday" as 18', (await igJoin(had18, { year: thisYear - 18, turned18: true })).minor === false);
+const sendCode = async (userId) => (await asApp('authenticated', userId, 'select ig_send_parent_code() as r'))[0].r;
+check('without pg_net and the mail secrets, sending the code reports not_set_up and stores nothing',
+  (await sendCode(pubMinor)) === 'not_set_up' && (await asOwner(`select 1 from ig_parent_codes where profile_id = '${pubMinor}'`)).length === 0);
+await refusesWith('an adult has no parent code to send', 'not_awaiting_parent', () => sendCode(pubAdult));
+// Imitate pg_net and the Vault: requests are recorded instead of sent.
+await db.exec(`create schema net;
+  create table net.sent (url text, headers jsonb, body jsonb);
+  create function net.http_post(url text, body jsonb default '{}', params jsonb default '{}', headers jsonb default '{}',
+    timeout_milliseconds int default 5000) returns bigint language sql as
+    $$ insert into net.sent values (url, headers, body); select 1::bigint $$;
+  create schema vault;
+  create table vault.decrypted_secrets (name text, decrypted_secret text);
+  insert into vault.decrypted_secrets values ('mridanga_brevo_key', 'test-key'), ('mridanga_mail_from', 'noreply@example.com');`);
+check('with them, the code is sent', (await sendCode(pubMinor)) === 'sent');
+const [mail] = await asOwner('select url, headers, body from net.sent');
+const mailedCode = /code to type into the app: (\d{6})/.exec(mail?.body?.textContent ?? '')?.[1];
+check('... to the parent\'s email only, through Brevo, with a 6-digit code', mail.url === 'https://api.brevo.com/v3/smtp/email'
+  && mail.headers['api-key'] === 'test-key' && mail.body.to.length === 1 && mail.body.to[0].email === 'parent.of.minor@example.com'
+  && mailedCode !== undefined, JSON.stringify(mail?.body?.to));
+check('... stored only as a hash the minor cannot read', !(await asOwner('select code_hash from ig_parent_codes'))
+  .some((r) => r.code_hash.includes(mailedCode)) && (await igState(pubMinor)).code_sent_at !== null);
+await refuses('the minor cannot read the code table', () => asApp('authenticated', pubMinor, 'select * from ig_parent_codes'));
+await refusesWith('a second code within a minute is refused', 'code_too_soon', () => sendCode(pubMinor));
+const confirm = async (userId, code) => (await asApp('authenticated', userId, 'select ig_confirm_parent($1) as r', [code]))[0].r;
+const wrongCode = mailedCode === '000000' ? '111111' : '000000';
+check('a wrong code is counted', (await confirm(pubMinor, wrongCode)) === 'wrong'
+  && (await asOwner(`select tries from ig_parent_codes where profile_id = '${pubMinor}'`))[0].tries === 1);
+await asOwner(`update ig_parent_codes set tries = 5 where profile_id = '${pubMinor}'`);
+check('after 5 wrong tries even the right code is refused', (await confirm(pubMinor, mailedCode)) === 'too_many');
+await asOwner(`update ig_parent_codes set tries = 0, expires_at = now() - interval '1 second' where profile_id = '${pubMinor}'`);
+check('an old code has expired', (await confirm(pubMinor, mailedCode)) === 'expired');
+await asOwner(`update ig_parent_codes set expires_at = now() + interval '1 hour', sent_at = now() - interval '2 minutes' where profile_id = '${pubMinor}'`);
+check('the parent\'s code opens Ishtagoshti for the minor', (await confirm(pubMinor, ` ${mailedCode} `)) === 'confirmed'
+  && (await igState(pubMinor)).state === 'active' && (await igSlokas(pubMinor)).length === publishedSlokas
+  && (await asOwner(`select 1 from ig_parent_codes where profile_id = '${pubMinor}'`)).length === 0);
+await asOwner(`update ig_parent_codes set sends = 3, sent_at = now() - interval '2 minutes' where profile_id = '${turning18}'`);
+await asOwner(`insert into ig_parent_codes (profile_id, code_hash, expires_at, sends, sent_at)
+  values ('${turning18}', '-', now(), 3, now() - interval '2 minutes') on conflict (profile_id) do update set sends = 3, sent_at = excluded.sent_at`);
+await refusesWith('at most 3 codes a day per person', 'code_limit', () => sendCode(turning18));
+await asOwner(`update ig_parent_codes set sends = 0 where profile_id = '${turning18}'`);
+await asOwner(`insert into ig_parent_codes (profile_id, code_hash, expires_at, sends) values ('${pubMinor}', '-', now(), 100)`);
+await refusesWith('at most 100 codes a day for the whole app', 'code_daily_cap', () => sendCode(turning18));
+await asOwner(`delete from ig_parent_codes where profile_id = '${pubMinor}'`);
+await db.exec('drop schema net cascade; drop schema vault cascade;');
+
+// I15: the Guru's list, block / unblock, joins per week.
+await refusesWith('a coordinator cannot see the subscriber list', 'not_allowed', () => asApp('authenticated', coordinator, 'select * from ig_subscriber_list()'));
+await refusesWith('... nor block', 'not_allowed', () => asApp('authenticated', coordinator, 'select ig_block_subscriber($1, true)', [pubAdult]));
+await refuses('a subscriber cannot block itself or others', () => asApp('authenticated', pubMinor, 'select ig_block_subscriber($1, true)', [pubAdult]));
+const igList = await asApp('authenticated', guru, 'select * from ig_subscriber_list()');
+const adultRow = igList.find((r) => r.profile_id === pubAdult);
+check('the Guru lists the subscribers with their details and activity', igList.length === 4 && adultRow?.email === 'pub.adult@example.com'
+  && adultRow.memorised === 1 && adultRow.notes === 1 && adultRow.in_class === false, `${igList.length} rows`);
+const weeks = await asApp('authenticated', guru, 'select week_start::text, joins from ig_subscriber_weeks(4)');
+check('joins per week: 4 weeks, this week holds the 4 joins', weeks.length === 4 && weeks[3].joins === 4, JSON.stringify(weeks));
+await refusesWith('a block reason has at most 200 characters', 'reason_too_long', () =>
+  asApp('authenticated', guru, 'select ig_block_subscriber($1, true, $2)', [pubAdult, 'x'.repeat(201)]));
+await asApp('authenticated', guru, 'select ig_block_subscriber($1, true, $2)', [pubAdult, 'Test block']);
+check('a blocked subscriber reads nothing; the state says blocked without the reason',
+  (await igSlokas(pubAdult)).length === 0 && (await igState(pubAdult)).state === 'blocked' && !('block_reason' in (await igState(pubAdult))));
+await refuses('... and cannot write a note', () => note(pubAdult, samples[2].id, 'x'));
+await refusesWith('... nor join again', 'blocked', () => igJoin(pubAdult, { year: 1990 }));
+await asApp('authenticated', pubAdult, 'select ig_leave()');
+const [leftBlocked] = await asOwner(`select birth_year, phone, blocked_at from ig_subscribers where profile_id = '${pubAdult}'`);
+check('a blocked person who leaves: details, notes and ticks deleted, the block stays', leftBlocked?.blocked_at !== null
+  && leftBlocked.birth_year === null && leftBlocked.phone === null
+  && (await asOwner(`select (select count(*) from ig_notes where profile_id = '${pubAdult}') + (select count(*) from ig_memorised where profile_id = '${pubAdult}') as n`))[0].n == 0);
+await asApp('authenticated', guru, 'select ig_block_subscriber($1, false)', [pubAdult]);
+check('unblocking a person who left removes the row: they may join again',
+  (await asOwner(`select 1 from ig_subscribers where profile_id = '${pubAdult}'`)).length === 0);
+await igJoin(pubAdult, { year: 1990 });
+await asApp('authenticated', guru, 'select ig_block_subscriber($1, true)', [pubAdult]);
+await asApp('authenticated', guru, 'select ig_block_subscriber($1, false)', [pubAdult]);
+check('unblocked, the subscriber reads again', (await igSlokas(pubAdult)).length === publishedSlokas);
+await refusesWith('a student cannot "leave" (their notes are theirs as a student)', 'not_subscriber', () => asApp('authenticated', arjun, 'select ig_leave()'));
+await asApp('authenticated', guru, `update profiles set active = false where id = $1`, [had18]);
+check('a login the Guru switched off reads nothing, subscriber or not', (await igSlokas(had18)).length === 0);
+await asApp('authenticated', guru, `update profiles set active = true where id = $1`, [had18]);
+
+// The sweep: a reading subscriber (the confirmed minor) against EVERY table, view, bucket and callable
+// function. Allowed: Ishtagoshti reading, its own notes / ticks / subscription row, its own profile.
+const sweeper = pubMinor;
+await note(sweeper, pubSloka, 'Sweep note.');
+const relations = (await asOwner(`select c.relname as name, c.relkind as kind from pg_class c join pg_namespace n on n.oid = c.relnamespace
+  where n.nspname = 'public' and c.relkind in ('r', 'p', 'v', 'm') order by 1`)).map((r) => r.name);
+const igReadable = new Set(['ig_slokas', 'ig_themes', 'ig_theme_slokas', 'ig_daily_pins']);
+const ownOnly = { profiles: 'id', ig_notes: 'profile_id', ig_memorised: 'profile_id', ig_subscribers: 'profile_id' };
+const leaks = [];
+for (const rel of relations) {
+  let rows;
+  try {
+    rows = await asApp('authenticated', sweeper, `select * from "${rel}"`);
+  } catch {
+    continue; // refused outright
+  }
+  if (rows.length === 0 || igReadable.has(rel)) continue;
+  const key = ownOnly[rel];
+  if (key && rows.every((r) => r[key] === sweeper)) continue;
+  leaks.push(`${rel}: ${rows.length} rows`);
+}
+check(`a subscriber reads nothing outside Ishtagoshti and its own rows (${relations.length} tables and views)`, leaks.length === 0, leaks.join('; '));
+const objects = await asApp('authenticated', sweeper, 'select bucket_id from storage.objects');
+check('... and opens no stored file but Ishtagoshti recitations', objects.every((o) => o.bucket_id === 'ishtagoshti-audio'),
+  [...new Set(objects.map((o) => o.bucket_id))].join(','));
+const buckets = (await asOwner('select id from storage.buckets')).map((b) => b.id);
+const uploads = [];
+for (const bucket of buckets) {
+  try {
+    await asApp('authenticated', sweeper, `insert into storage.objects (bucket_id, name, owner, metadata) values ($1, $2, auth.uid(), '{"size": 10}')`,
+      [bucket, `${sweeper}/${await newId()}.m4a`]);
+    uploads.push(bucket);
+  } catch { /* refused */ }
+}
+check(`... and uploads to no bucket (${buckets.length})`, uploads.length === 0, uploads.join(','));
+/** Every table's rows as one fingerprint per table, to see whether anything changed. */
+const tableState = async () => Object.fromEntries((await asOwner(`select c.relname as name from pg_class c join pg_namespace n on n.oid = c.relnamespace
+  where n.nspname in ('public', 'storage') and c.relkind in ('r', 'p') order by 1`)).map((r) => [r.name, null]));
+const fingerprint = async () => {
+  const names = Object.keys(await tableState());
+  const out = {};
+  for (const name of names) {
+    const schema = (await asOwner(`select n.nspname as s from pg_class c join pg_namespace n on n.oid = c.relnamespace where c.relname = '${name}' and n.nspname in ('public', 'storage') limit 1`))[0].s;
+    out[name] = (await asOwner(`select md5(coalesce(string_agg(t::text, '|' order by t::text), '')) as h from "${schema}"."${name}" t`))[0].h;
+  }
+  return out;
+};
+const writes = [];
+const sweepBefore = await fingerprint();
+for (const rel of relations.filter((r) => !['ig_notes', 'ig_memorised'].includes(r))) {
+  for (const sql of [`delete from "${rel}"`, `insert into "${rel}" default values`]) {
+    try {
+      await asApp('authenticated', sweeper, sql);
+    } catch { /* refused */ }
+  }
+}
+const afterWrites = await fingerprint();
+for (const name of Object.keys(sweepBefore)) if (sweepBefore[name] !== afterWrites[name]) writes.push(name);
+check('... and changes no table by delete or insert', writes.length === 0, writes.join(', '));
+// Every function a signed-in login may run, called with empty (null) arguments. Allowed to answer:
+// the Ishtagoshti reading functions and helpers that only describe the caller or the date.
+const fns = await asOwner(`select p.oid::regprocedure::text as sig, p.proname as name, p.pronargs as n, p.proretset as set,
+    coalesce(array_to_string(array(select format_type(t, null) from unnest(p.proargtypes) t), ','), '') as args
+  from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+  where n.nspname = 'public' and p.prorettype <> 'trigger'::regtype and p.prokind = 'f'
+    and has_function_privilege('authenticated', p.oid, 'execute') order by 1`);
+const skip = new Set(['ig_leave', 'ig_send_parent_code', 'ig_confirm_parent', 'ig_join']); // tested above
+const mayAnswer = new Set(['my_role', 'today_ist', 'is_staff', 'is_guru', 'ig_reader', 'is_ig_editor', 'ig_my_state',
+  'ig_sloka_of_day', 'ig_audio_path_ok', 'ig_audio_readable', 'is_public_subscriber', 'has_class_role',
+  'gen_random_uuid', // pgcrypto's, in public only here (Supabase keeps it in extensions)
+  'practice_weeks', // empty weeks with 0 minutes for a null student
+  'scan_qr']); // {action: unknown} for a null code
+const answered = [];
+for (const fn of fns) {
+  if (skip.has(fn.name)) continue;
+  const args = fn.args ? fn.args.split(',').map((t) => `null::${t}`).join(', ') : '';
+  let rows;
+  try {
+    rows = await asApp('authenticated', sweeper, fn.set ? `select * from ${fn.name}(${args})` : `select ${fn.name}(${args}) as r`);
+  } catch {
+    continue; // refused or failed on empty input: nothing given away
+  }
+  const empty = rows.length === 0 || (!fn.set && rows.every((r) => r.r === null || r.r === false || r.r === 0
+    || (Array.isArray(r.r) && r.r.length === 0) || (typeof r.r === 'object' && r.r !== null && Object.keys(r.r).length === 0)));
+  if (!empty && !mayAnswer.has(fn.name)) answered.push(`${fn.name} → ${JSON.stringify(rows).slice(0, 80)}`);
+}
+const afterCalls = await fingerprint();
+const changedByCalls = Object.keys(sweepBefore).filter((name) => afterWrites[name] !== afterCalls[name]);
+check(`... and no callable function (${fns.length}) answers it with data`, answered.length === 0, answered.join('; '));
+check('... or changes any table', changedByCalls.length === 0, changedByCalls.join(', '));
+check('anon runs no subscriber function', (await asOwner(`select has_function_privilege('anon', 'ig_join(int, text, boolean, text, text, text, text)', 'execute')
+  or has_function_privilege('anon', 'ig_subscriber_list()', 'execute') or has_function_privilege('anon', 'ig_reader()', 'execute')
+  or has_function_privilege('authenticated', 'ig_new_parent_code(uuid)', 'execute') as ok`))[0].ok === false);
 // ---------------------------------------------------------------- row-level security
 const seen =await asApp('authenticated', arjun, 'select full_name from students');
 check('student sees only their own student record', seen.length === 1 && seen[0].full_name === 'Arjun Rao');
