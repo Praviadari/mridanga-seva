@@ -95,8 +95,8 @@ export async function fetchCoordinatorsBoard(): Promise<CoordinatorsBoard | null
     supabase.from('students').select('id, full_name, roll_no, level_id, status, mentor_id, profile_id').order('full_name'),
     // Asked apart, so the page still works on a database without migration 0021.
     supabase.from('profiles').select('id, ig_editor').eq('role', 'coordinator'),
-    // Public Ishtagoshti subscribers are not waiting for a class role: they are on I15 (0025,
-    // docs/DECISIONS.md #72). Asked apart, so the page still works without migration 0025.
+    // Public Ishtagoshti subscribers are not waiting for a class role: they are on I15 (0027,
+    // docs/DECISIONS.md #88). Asked apart, so the page still works without migration 0027.
     supabase.from('ig_subscribers').select('profile_id'),
   ]);
   if (people.error || students.error) return null;

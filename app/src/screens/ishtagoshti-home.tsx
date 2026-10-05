@@ -3,7 +3,7 @@
 // many slokas I have memorised, the themes, and all slokas. Editors (the Guru and coordinators the
 // Guru marked) also get "Add a sloka" and "Add a theme"; the Guru also the subscriber list (I15, slice 7).
 // Routes: student/(tabs)/ishtagoshti.tsx, staff/(tabs)/ishtagoshti.tsx and, for public subscribers,
-// subscriber/(tabs)/ishtagoshti.tsx (docs/DECISIONS.md #72). Data: src/data/ishtagoshti.ts.
+// subscriber/(tabs)/ishtagoshti.tsx (docs/DECISIONS.md #88). Data: src/data/ishtagoshti.ts.
 
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';

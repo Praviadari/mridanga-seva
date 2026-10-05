@@ -1,4 +1,4 @@
-// I15 Ishtagoshti subscribers, the Guru only (Phase 2 slice 7, docs/DECISIONS.md #72): counts, joins per
+// I15 Ishtagoshti subscribers, the Guru only (Phase 2 slice 7, docs/DECISIONS.md #88): counts, joins per
 // week (last 12 weeks), and the list of public subscribers, newest first, with a filter. A subscriber
 // opens to show their details (year of birth, phone, a minor's parent and whether the parent confirmed,
 // notes and ticks counted) and Block (optional reason) / Unblock. Coordinators see a "Guru only" line;

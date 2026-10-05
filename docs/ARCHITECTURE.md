@@ -72,7 +72,7 @@ keeps the Guru role a dashboard matter and stops anyone changing their own role 
 A **public Ishtagoshti subscriber** is not a role: a `pending` login that joined Ishtagoshti (I14) has
 a row in `ig_subscribers`, and `ig_reader()` lets it read the published slokas and themes and keep its
 own notes and ticks; every other rule still refuses it as `pending`. Under 18 it reads only after the
-parent typed in the code emailed to them; the Guru may block it ([DECISIONS.md #72](DECISIONS.md)).
+parent typed in the code emailed to them; the Guru may block it ([DECISIONS.md #88](DECISIONS.md)).
 
 ## The app's code
 
@@ -178,7 +178,7 @@ The app is split into **areas**: `signedOut` (sign-in screens), `recovery` (set 
 saved login and the profile are being fetched.
 
 - `src/auth/auth-provider.tsx` works out the area from the login and the `profiles` row; for a `pending`
-  login it also asks `ig_my_state()` (0025) whether it is an active Ishtagoshti subscriber.
+  login it also asks `ig_my_state()` (0027) whether it is an active Ishtagoshti subscriber.
 - `src/app/_layout.tsx` opens only that area's screens (Expo Router's `Stack.Protected`).
   A screen of another area cannot be opened, even by typing its address on the web.
 - The `staff/` folder is open to both `guru` and `coordinator`, because the Guru sees every
@@ -444,7 +444,7 @@ On the branch `phase2-media`, rebased on main after the Phase 2 merge; not on ma
   slokas in turn, the same for everyone on an India date.
 - **Recitation** reuses slice 4's recorder (`AudioRecorderPanel`, review mode) and file picker;
   uploaded on Save into the bucket `ishtagoshti-audio`, played through a one-hour signed link.
-- **Slice 7** (free public sign-up, branch `phase2-ishtagoshti-public`, [DECISIONS.md #72](DECISIONS.md)):
+- **Slice 7** (free public sign-up, branch `phase2-ishtagoshti-public`, [DECISIONS.md #88](DECISIONS.md)):
   the same screens take a third `area`, `subscriber`, with thin routes in `subscriber/`. The join screen
   (`join-ishtagoshti.tsx`) is under the `pending` guard; when `ig_my_state()` says active, the area turns
   into `subscriber` and the router moves on by itself. The parent's code is made, hashed and emailed by

@@ -1,7 +1,7 @@
 // Waiting room for people who are signed in but cannot use the app yet: a new account with no
 // role, an account the Guru switched off, a door-tablet login (Phase 2), or a profile that
 // could not be loaded. Explains which case it is and lets them check again. A login without a class
-// role may also join Ishtagoshti for free here (I14, docs/DECISIONS.md #72), or finish joining.
+// role may also join Ishtagoshti for free here (I14, docs/DECISIONS.md #88), or finish joining.
 
 import { router } from 'expo-router';
 import { useState } from 'react';

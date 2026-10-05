@@ -104,7 +104,7 @@ function RootNavigator() {
           <Stack.Screen name="student" />
         </Stack.Protected>
 
-        {/* A public Ishtagoshti subscriber: sloka study and its own account only (docs/DECISIONS.md #72). */}
+        {/* A public Ishtagoshti subscriber: sloka study and its own account only (docs/DECISIONS.md #88). */}
         <Stack.Protected guard={area === 'subscriber'}>
           <Stack.Screen name="subscriber" />
         </Stack.Protected>

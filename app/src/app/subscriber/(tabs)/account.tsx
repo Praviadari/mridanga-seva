@@ -1,4 +1,4 @@
-// My account for a public Ishtagoshti subscriber (Phase 2 slice 7, docs/DECISIONS.md #72): who is
+// My account for a public Ishtagoshti subscriber (Phase 2 slice 7, docs/DECISIONS.md #88): who is
 // signed in, the app language, how to join the class, leaving Ishtagoshti (details, notes and ticks are
 // deleted; asked twice) and signing out. Data: src/data/ig-subscribers.ts.
 

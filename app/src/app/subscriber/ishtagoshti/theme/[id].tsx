@@ -1,4 +1,4 @@
-// I2 One theme for a public subscriber (screens/ishtagoshti-theme.tsx; docs/DECISIONS.md #72).
+// I2 One theme for a public subscriber (screens/ishtagoshti-theme.tsx; docs/DECISIONS.md #88).
 
 import { IshtagoshtiTheme } from '@/screens/ishtagoshti-theme';
 

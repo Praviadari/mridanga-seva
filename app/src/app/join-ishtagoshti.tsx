@@ -1,4 +1,4 @@
-// I14 Join Ishtagoshti (Phase 2 slice 7, docs/DECISIONS.md #72): a login without a class role joins the
+// I14 Join Ishtagoshti (Phase 2 slice 7, docs/DECISIONS.md #88): a login without a class role joins the
 // free sloka study. Year of birth (and, in the year one turns 18, the birthday question), optional
 // phone, the notice and terms (PLACEHOLDER wording until the team gives it). Under 18: the parent's
 // name, email and relation; the database emails the parent a 6-digit code, and reading opens when the

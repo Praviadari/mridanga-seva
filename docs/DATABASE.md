@@ -779,7 +779,7 @@ Smoke tests: section "media (0020, Phase 2)".
 
 Migration 0021 (`0021_ishtagoshti.sql`, [DECISIONS.md #57](DECISIONS.md)); LIVE runs it after 0020.
 Screens I1, I2, I3, I11, I12 (SCREENS.md). Readers are the signed-in roles in `ig_reader()` (Guru,
-coordinator, student, and since 0025 the free public subscribers: see "Ishtagoshti subscribers"). Editors are the Guru and the active
+coordinator, student, and since 0027 the free public subscribers: see "Ishtagoshti subscribers"). Editors are the Guru and the active
 coordinators with `profiles.ig_editor` (`is_ig_editor()`); only the Guru sets that flag, and only on a
 coordinator (trigger `profiles_ig_editor_guard`, errors `not_allowed`, `ig_editor_coordinator_only`).
 
@@ -790,7 +790,7 @@ coordinator (trigger `profiles_ig_editor_guard`, errors `not_allowed`, `ig_edito
 | `ig_theme_slokas` | A sloka's place in a theme (`position`) | Only `set_theme_slokas` |
 | `ig_daily_pins` | A day (India) on which a sloka is the sloka of the day | Editors; `guard_ig_pin`: today up to a year ahead, published slokas only (`pin_day_invalid`, `pin_not_published`) |
 | `ig_notes` | A person's private note on a sloka (`profile_id`, ≤ 2000) | The writer only; nobody else reads it, not even the Guru |
-| `ig_memorised` | A person's "I have memorised it" tick, dated today | The person (insert / delete own); staff read all (for the later report I13), except, since 0025, coordinators do not read public subscribers' ticks |
+| `ig_memorised` | A person's "I have memorised it" tick, dated today | The person (insert / delete own); staff read all (for the later report I13), except, since 0027, coordinators do not read public subscribers' ticks |
 
 | Function | Who | Does | Errors |
 |---|---|---|---|
@@ -806,8 +806,8 @@ with this key (a later redefinition must keep it). Smoke tests: section "Ishtago
 
 ## Ishtagoshti subscribers (Phase 2)
 
-Migration 0025 (`0025_ishtagoshti_public.sql`, [DECISIONS.md #72](DECISIONS.md)); LIVE runs it after
-0024. Screens I14 (join, `app/join-ishtagoshti.tsx`) and I15 (Guru, `app/staff/ishtagoshti/subscribers.tsx`).
+Migration 0027 (`0027_ishtagoshti_public.sql`, [DECISIONS.md #88](DECISIONS.md)); LIVE runs it after
+0026 (the security round holds 0025, the fund 0026). Screens I14 (join, `app/join-ishtagoshti.tsx`) and I15 (Guru, `app/staff/ishtagoshti/subscribers.tsx`).
 A **public subscriber** is a login whose role stays `pending` and that has a row in `ig_subscribers`.
 `ig_reader()` lets it read when it is not blocked and, under 18, its parent confirmed; every other
 rule still refuses it as `pending`. `is_public_subscriber(id)` = has a row and role `pending`.
@@ -829,10 +829,10 @@ rule still refuses it as `pending`. `is_public_subscriber(id)` = has a row and r
 | `ig_block_subscriber(profile, blocked, reason)` | Guru | Blocks (reason ≤ 200) or unblocks; unblocking a blocked person who left removes the row | `not_allowed`, `not_found`, `reason_too_long` |
 | `has_class_role()`, `is_public_subscriber(id)` | Anyone signed in | Yes or no; used by the rules | — |
 
-`ig_new_parent_code(profile)` is internal (no app role may run it). 0025 also replaces four rules of
+`ig_new_parent_code(profile)` is internal (no app role may run it). 0027 also replaces four rules of
 0001: settings, centres, levels and syllabus items are read only with a class role (`has_class_role()`:
 Guru, coordinator, student, kiosk), no longer by any signed-in login; and coordinators no longer read
-public subscribers' profiles. Smoke tests: section "Ishtagoshti public sign-up (0025, Phase 2)", with a
+public subscribers' profiles. Smoke tests: section "Ishtagoshti public sign-up (0027, Phase 2)", with a
 sweep that runs as a subscriber over every table, view, bucket and callable function.
 ## Events and polls (Phase 2)
 
@@ -1039,7 +1039,7 @@ switched-off login is refused like a stranger.
 | `decide_material_suggestion`, `issue_inventory_item`, `return_inventory_item`, `check_inventory_item`, `save_duty_shift` | See "Team tools (Phase 2)" | Phase 2 slice 8 (0023) |
 | `record_fund_entry`, `decide_fund_entry`, `withdraw_fund_entry`, `reverse_fund_entry`, `fund_balance`, `is_treasurer`, `is_fund_keeper` | See "Class fund (Phase 2)" (0026) |
 | `ig_sloka_of_day`, `set_theme_slokas`, `is_ig_editor`, `ig_reader` | See "Ishtagoshti (Phase 2)" | Phase 2 (0021) |
-| `ig_my_state`, `ig_join`, `ig_send_parent_code`, `ig_confirm_parent`, `ig_leave`, `ig_subscriber_list`, `ig_subscriber_weeks`, `ig_block_subscriber` | See "Ishtagoshti subscribers (Phase 2)" | Phase 2 slice 7 (0025) |
+| `ig_my_state`, `ig_join`, `ig_send_parent_code`, `ig_confirm_parent`, `ig_leave`, `ig_subscriber_list`, `ig_subscriber_weeks`, `ig_block_subscriber` | See "Ishtagoshti subscribers (Phase 2)" | Phase 2 slice 7 (0027) |
 | `rsvp_event`, `event_counts`, `event_people_list`, `event_student_list`, `set_event_performers`, `mark_event_attendance`, `remind_event`, `vote_poll`, `poll_state`, `poll_voters`, `remind_poll` | See "Events and polls (Phase 2)" | Phase 2 (0022) |
 
 The Storage rules `announcement_file_readable`, `announcement_file_uploadable`,
@@ -1123,7 +1123,7 @@ and the helpers `my_role`, `is_guru`, `is_staff`,
 | Poll votes | Own choice (through `poll_state`) | Never read directly | Never read directly |
 | Class fund (Phase 2) | Nothing (no money is shown to students or parents) | All entries, bills, the balance; read only (a treasurer records, reverses, and approves the Guru's own) | All; record, approve or decline, reverse; treasurers and categories |
 
-A **public Ishtagoshti subscriber** (0025) reads only published slokas, themes, pins and their
+A **public Ishtagoshti subscriber** (0027) reads only published slokas, themes, pins and their
 recitations, and its own profile, subscription row, notes and ticks. A login still waiting for a role
 (`pending`) reads nothing at all.
 

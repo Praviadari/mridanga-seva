@@ -1,7 +1,7 @@
-// Ishtagoshti part 2, free public sign-up (Phase 2 slice 7, docs/DECISIONS.md #72): a login without a
+// Ishtagoshti part 2, free public sign-up (Phase 2 slice 7, docs/DECISIONS.md #88): a login without a
 // class role joins Ishtagoshti (I14) — year of birth, optional phone, the terms; under 18 the parent's
 // name and email, and a 6-digit code the database emails to the parent — and the Guru's subscriber
-// list (I15: block / unblock, joins per week). Database: supabase/migrations/0025_ishtagoshti_public.sql.
+// list (I15: block / unblock, joins per week). Database: supabase/migrations/0027_ishtagoshti_public.sql.
 // A subscriber's role stays 'pending'; ig_reader() lets it read slokas and themes and keep its own
 // notes and ticks, nothing else. The code never comes back to the app.
 

@@ -12,7 +12,7 @@
 // refreshed, instead of landing on sign-in (docs/DECISIONS.md #42).
 // Roles are given by the database, never chosen in the app (docs/ARCHITECTURE.md "Roles").
 // A login without a class role ('pending') that joined Ishtagoshti gets the 'subscriber' area: its
-// state comes from ig_my_state() (migration 0025, docs/DECISIONS.md #72).
+// state comes from ig_my_state() (migration 0027, docs/DECISIONS.md #88).
 
 import type { Session } from '@supabase/supabase-js';
 import { createContext, use, useEffect, useState, type PropsWithChildren } from 'react';
@@ -160,7 +160,7 @@ function areaForProfile(profile: Profile): Area {
     case 'student':
       return profile.role;
     case 'pending':
-      // A public login that joined Ishtagoshti reads slokas only (I14, docs/DECISIONS.md #72).
+      // A public login that joined Ishtagoshti reads slokas only (I14, docs/DECISIONS.md #88).
       return profile.ig_state === 'active' ? 'subscriber' : 'pending';
     default:
       return 'pending';
@@ -176,7 +176,7 @@ async function fetchProfile(userId: string): Promise<ProfileResult> {
     .maybeSingle<Profile>();
   if (error) return { userId, profile: null, failed: true };
   if (data?.role === 'pending' && data.active) {
-    // Before migration 0025 the function is missing: no state, and the pending screen offers no join.
+    // Before migration 0027 the function is missing: no state, and the pending screen offers no join.
     const state = await supabase.rpc('ig_my_state');
     if (state.error && state.error.code !== 'PGRST202') return { userId, profile: null, failed: true };
     if (!state.error) data.ig_state = ((state.data as { state?: IgState } | null)?.state ?? 'none') as IgState;

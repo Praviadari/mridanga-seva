@@ -14,7 +14,7 @@ import { AppText } from './app-text';
 import { ListRow } from './list-row';
 import { Chip } from './status-chip';
 
-/** Whose routes a screen opens: '/student/...', '/staff/...' or '/subscriber/...' (public, 0025). */
+/** Whose routes a screen opens: '/student/...', '/staff/...' or '/subscriber/...' (public, 0027). */
 export type IgArea = 'student' | 'staff' | 'subscriber';
 
 /** Opens a screen of Ishtagoshti in the area. */

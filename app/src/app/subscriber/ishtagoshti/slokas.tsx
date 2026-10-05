@@ -1,4 +1,4 @@
-// All Ishtagoshti slokas for a public subscriber (screens/ishtagoshti-slokas.tsx; docs/DECISIONS.md #72).
+// All Ishtagoshti slokas for a public subscriber (screens/ishtagoshti-slokas.tsx; docs/DECISIONS.md #88).
 
 import { IshtagoshtiSlokas } from '@/screens/ishtagoshti-slokas';
 

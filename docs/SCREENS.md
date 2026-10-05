@@ -133,7 +133,7 @@ slice 7 below.
 | I12 | Sloka editor: reference, Devanagari, transliteration, word meanings, translation + purport per language (English, Telugu, Hindi), translator (empty = Settings default), "the temple's own text, not BBT" (needed to publish), recitation (record here or choose an audio file, 10 MB; uploaded on Save), Published, Sample, order; delete asks first | Guru, editors | Built | `app/src/app/staff/ishtagoshti/edit-sloka/[id].tsx` |
 | G2 / G10 | G2: "May edit Ishtagoshti slokas and themes" on a coordinator. G10: the default translator's name | Guru | Built | `app/src/app/staff/coordinators/[id].tsx`, `app/src/app/staff/settings.tsx` |
 
-Slice 7 (branch `phase2-ishtagoshti-public`), Ishtagoshti part 2, free public sign-up ([DECISIONS.md #72](DECISIONS.md)):
+Slice 7 (branch `phase2-ishtagoshti-public`), Ishtagoshti part 2, free public sign-up ([DECISIONS.md #88](DECISIONS.md)):
 anyone may create a login (A1) and join Ishtagoshti from the pending screen. Such a **subscriber** gets its own small area
 (`app/src/app/subscriber/`): the tabs Slokas (I1, then I2, I3 and All slokas as for students) and Account. The consent and
 notice texts are placeholders ("TEST —") until the team gives the wording. No native package.

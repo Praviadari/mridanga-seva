@@ -552,7 +552,7 @@ never.
 ## Parent codes by email (Ishtagoshti, Phase 2)
 
 A child under 18 who joins Ishtagoshti (I14) gets in only after typing a 6-digit code that the
-database emails to the parent ([DECISIONS.md #72](DECISIONS.md)). The database sends it itself,
+database emails to the parent ([DECISIONS.md #88](DECISIONS.md)). The database sends it itself,
 through pg_net (already on for push) to Brevo's mail API. Until the two Vault secrets below exist,
 the app says "Emails to parents are not switched on yet" and nothing is stored.
 

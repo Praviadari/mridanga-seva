@@ -2773,7 +2773,7 @@ check('... while the app functions stay open to them', (await asOwner(`select bo
     'is_staff()', 'my_role()']) f`))[0].ok === true);
 
 
-// ---------------------------------------------------------------- Ishtagoshti public sign-up (0025, Phase 2)
+// ---------------------------------------------------------------- Ishtagoshti public sign-up (0027, Phase 2)
 // A subscriber is a 'pending' login with an ig_subscribers row: it reads published slokas and themes
 // and keeps its own notes and ticks; everything else must refuse it (the sweep at the end).
 const igJoin = (userId, fields) => asApp('authenticated', userId,

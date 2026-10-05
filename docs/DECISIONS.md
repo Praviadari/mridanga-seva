@@ -1890,7 +1890,7 @@ month, CSV like C21/G8), `/staff/fund/[id]` (record; approve / decline / withdra
 the two limits in G10. JS + SQL only: the fingerprint stays 185e839f. Not built (F-section items for
 later): donors and sponsors lists, pledges, sponsorship needs per event.
 
-## 72. Ishtagoshti part 2: free public sign-up, parent's code by email, the Guru's subscriber list — 5 Oct 2026
+## 88. Ishtagoshti part 2: free public sign-up, parent's code by email, the Guru's subscriber list — 5 Oct 2026
 
 **Status: decided by Praveen 5 Oct 2026 (answers below), on the branch `phase2-ishtagoshti-public`;
 not on main until the lead pushes it. The consent and notice texts are PLACEHOLDERS until the team
@@ -1937,8 +1937,8 @@ may run; only Ishtagoshti reading and its own rows answer. A code to the parent'
 lightest verifiable consent that needs no paid SMS and no visit; the class's written consent (C3)
 stays for students.
 
-**Consequences.** Migration `0025_ishtagoshti_public.sql` (DATABASE.md "Ishtagoshti subscribers").
-Smoke tests pass (section "Ishtagoshti public sign-up (0025, Phase 2)"). No native package: the
+**Consequences.** Migration `0027_ishtagoshti_public.sql` (DATABASE.md "Ishtagoshti subscribers").
+Smoke tests pass (section "Ishtagoshti public sign-up (0027, Phase 2)"). No native package: the
 fingerprint stays 185e839f. Before real use: the team's wording; a Brevo account, its API key and a
 verified sender in the Vault (OPERATIONS.md "Parent codes by email"); "Confirm email" ON (joining
 needs a confirmed email, else anyone could join with someone else's address). Not built: erasing the

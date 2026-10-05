@@ -16,7 +16,7 @@ export type Profile = {
   active: boolean;
   /**
    * Ishtagoshti subscription of a login without a class role (role 'pending'), from ig_my_state()
-   * (migration 0025, docs/DECISIONS.md #72). Missing for everyone else and before 0025.
+   * (migration 0027, docs/DECISIONS.md #88). Missing for everyone else and before 0027.
    */
   ig_state?: IgState;
 };

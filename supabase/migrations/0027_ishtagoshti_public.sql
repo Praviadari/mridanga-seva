@@ -1,6 +1,6 @@
--- Mridanga Seva — 0025: Ishtagoshti part 2, free public sign-up (Phase 2, slice 7: screens I14, I15).
--- Run once, after 0024_attendance_location.sql, in the Supabase SQL editor.
--- Why: docs/DECISIONS.md #72. How: docs/DATABASE.md "Ishtagoshti subscribers (Phase 2)".
+-- Mridanga Seva — 0027: Ishtagoshti part 2, free public sign-up (Phase 2, slice 7: screens I14, I15).
+-- Run once, after 0026 (slice 9, the fund), in the Supabase SQL editor. Numbers reserved by the lead 05-10-2026.
+-- Why: docs/DECISIONS.md #88. How: docs/DATABASE.md "Ishtagoshti subscribers (Phase 2)".
 --
 -- 1. A subscriber is NOT a new role. Anyone may already create a login (A1); it stays role 'pending',
 --    which every rule of the app refuses. Joining Ishtagoshti (I14) adds a row to ig_subscribers, and
@@ -245,7 +245,7 @@ begin
 
   select nullif(btrim(full_name), '') into v_child from profiles where id = v_me;
   v_new := ig_new_parent_code(v_me);
-  -- PLACEHOLDER wording (docs/DECISIONS.md #72): the team gives the real parent consent text.
+  -- PLACEHOLDER wording (docs/DECISIONS.md #88): the team gives the real parent consent text.
   v_text := 'Dear ' || v_row.parent_name || E',\n\n'
     || coalesce(v_child, 'Your child') || ' (born ' || v_row.birth_year || ') has asked to join Ishtagoshti, '
     || E'the free sloka study of the Mridanga Seva app, and gave this email address as their parent''s.\n\n'
@@ -384,11 +384,11 @@ revoke execute on function ig_reader() from public, anon;
 grant execute on function ig_reader() to authenticated;
 
 -- ---------------------------------------------------------------- descriptions
-comment on table ig_subscribers is 'I14/I15: a public login (role pending) that joined Ishtagoshti for free: year of birth, optional phone, the terms version agreed, a minor''s parent and when the parent confirmed by the emailed code, the Guru''s block. docs/DECISIONS.md #72.';
+comment on table ig_subscribers is 'I14/I15: a public login (role pending) that joined Ishtagoshti for free: year of birth, optional phone, the terms version agreed, a minor''s parent and when the parent confirmed by the emailed code, the Guru''s block. docs/DECISIONS.md #88.';
 comment on table ig_parent_codes is 'I14: the hashed 6-digit code emailed to a minor''s parent (24 hours, 5 tries, 3 sends a day). Read by no app user.';
 comment on function has_class_role is 'True for a signed-in login with a class role (Guru, coordinator, student, door tablet): reads settings, centres, levels, syllabus.';
 comment on function is_public_subscriber is 'True when the login joined Ishtagoshti and has no class role (pending).';
-comment on function ig_reader is 'True for a signed-in login that reads Ishtagoshti: Guru, coordinator, student, or a public subscriber not blocked whose parent confirmed when under 18 (0025).';
+comment on function ig_reader is 'True for a signed-in login that reads Ishtagoshti: Guru, coordinator, student, or a public subscriber not blocked whose parent confirmed when under 18 (0027).';
 comment on function ig_my_state is 'I14: the caller''s Ishtagoshti subscription: none, awaiting_parent, active or blocked, with the details they gave.';
 comment on function ig_join is 'I14: a login without a class role and with a confirmed email joins Ishtagoshti (year of birth, optional phone, terms version; a minor''s parent).';
 comment on function ig_new_parent_code is 'Internal: a new 6-digit parent code, stored hashed for 24 hours; returns the code.';

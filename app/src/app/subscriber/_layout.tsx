@@ -1,4 +1,4 @@
-// Screens for a public Ishtagoshti subscriber (Phase 2 slice 7, docs/DECISIONS.md #72): a login with no
+// Screens for a public Ishtagoshti subscriber (Phase 2 slice 7, docs/DECISIONS.md #88): a login with no
 // class role that joined the free sloka study (I14). Open only when useAuth().area is 'subscriber'
 // (src/app/_layout.tsx). Two tabs (Slokas, My account, (tabs)/_layout.tsx); a sloka, a theme and the
 // list of all slokas open on top with a back button. The database lets such a login read published

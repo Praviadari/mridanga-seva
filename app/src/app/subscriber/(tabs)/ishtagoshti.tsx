@@ -1,4 +1,4 @@
-// I1 Ishtagoshti home as a tab for a public subscriber (screens/ishtagoshti-home.tsx; docs/DECISIONS.md #72).
+// I1 Ishtagoshti home as a tab for a public subscriber (screens/ishtagoshti-home.tsx; docs/DECISIONS.md #88).
 
 import { IshtagoshtiHome } from '@/screens/ishtagoshti-home';
 
