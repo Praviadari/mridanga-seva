@@ -1,7 +1,7 @@
 // G10 Settings, the Guru only: the class settings the database uses, in plain words: the open
 // window, what "this week" means, when a student counts as Irregular or Inactive and how calls
 // are planned, how long someone is a new joiner; and the promotion criteria that Phase 2 will
-// read (shown as "not used yet"); the default translator credit of Ishtagoshti slokas. Settings planned for later are listed at the end. Saved
+// read (shown as "not used yet"); the default translator credit of Ishtagoshti slokas; the class fund's approval and bill limits. Settings planned for later are listed at the end. Saved
 // together, all or nothing; every change is in the audit log (G11). Data: src/data/settings.ts.
 
 import { Stack, useFocusEffect } from 'expo-router';
@@ -22,8 +22,10 @@ import { TextField } from '@/components/text-field';
 import {
   checkSettings,
   fetchSettings,
+  FUND_SETTINGS,
   NUMBER_SETTINGS,
   saveSettings,
+  type FundSetting,
   type NumberSetting,
   type SettingsErrors,
   type SettingsForm,
@@ -178,6 +180,24 @@ export default function SettingsScreen() {
             maxLength={100}
             error={errors.translator ? t(errors.translator) : undefined}
           />
+        </Section>
+      ) : null}
+
+      {/* Phase 2 slice 9 (class fund, docs/DECISIONS.md #80): shown once migration 0026 has added the settings. */}
+      {form.fund ? (
+        <Section icon="fund" title={t('settings.fundTitle')} description={t('settings.fundHint')}>
+          {(Object.keys(FUND_SETTINGS) as FundSetting[]).map((key) => (
+            <TextField
+              key={key}
+              label={t(`settings.fields.${key}`)}
+              hint={t('settings.fundRangeHint', { max: FUND_SETTINGS[key].max })}
+              value={form.fund?.[key] ?? ''}
+              onChangeText={(text) => form.fund && setForm({ ...form, fund: { ...form.fund, [key]: text.replace(/[^0-9]/g, '') } })}
+              keyboardType="number-pad"
+              maxLength={7}
+              error={errors[key] ? t('settings.fundRangeHint', { max: FUND_SETTINGS[key].max }) : undefined}
+            />
+          ))}
         </Section>
       ) : null}
 

@@ -10,6 +10,7 @@
 // button under the ring, and so is Ishtagoshti (I1, Phase 2 slice 6) for phones, where the Slokas
 // tab does not fit the bottom bar. Phase 2 slice 8 (docs/DECISIONS.md #65): Instruments opens C19
 // inventory, and two rows under the buttons open C20 duty roster and C18 material suggestions.
+// Phase 2 slice 9 (docs/DECISIONS.md #80): a third row opens the class fund ledger.
 
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -65,6 +66,8 @@ export function StaffShortcuts() {
         details={[t('suggestions.shortcutLine')]}
         onPress={() => router.push('/staff/suggestions')}
       />
+      {/* Phase 2 slice 9 (docs/DECISIONS.md #80): the class fund ledger, read by all staff. */}
+      <ListRow leading="fund" title={t('fund.title')} details={[t('fund.shortcutLine')]} onPress={() => router.push('/staff/fund')} />
     </>
   );
 }

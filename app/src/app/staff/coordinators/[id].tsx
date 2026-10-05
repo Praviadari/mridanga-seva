@@ -33,6 +33,7 @@ import {
   saveDutyHours,
   setActive,
   setIgEditor,
+  setTreasurer,
   type CoordinatorsBoard,
   type MenteeRow,
   type Person,
@@ -206,6 +207,21 @@ export default function PersonScreen() {
                   busy
                     ? undefined
                     : void run(() => setIgEditor(person.id, on), on ? t('coordinators.igEditorOn') : t('coordinators.igEditorOff'))
+                }
+              />
+            </Section>
+          ) : null}
+
+          {/* Phase 2 slice 9 (class fund, docs/DECISIONS.md #80). */}
+          {person.role === 'coordinator' ? (
+            <Section icon="fund" title={t('coordinators.treasurerTitle')} description={t('coordinators.treasurerHint')}>
+              <Checkbox
+                label={t('coordinators.treasurerLabel')}
+                checked={person.treasurer}
+                onChange={(on) =>
+                  busy
+                    ? undefined
+                    : void run(() => setTreasurer(person.id, on), on ? t('coordinators.treasurerOn') : t('coordinators.treasurerOff'))
                 }
               />
             </Section>

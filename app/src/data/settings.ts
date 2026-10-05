@@ -11,6 +11,8 @@
 //                                  decide_promotion, migration 0017)
 //   ig_translator                  the default translator credit on Ishtagoshti slokas (Phase 2,
 //                                  migration 0021, docs/DECISIONS.md #57)
+//   fund_approval_rupees,          the class fund: expenses over this wait for approval; a bill
+//   fund_bill_rupees               is needed over that (Phase 2, migration 0026, docs/DECISIONS.md #80)
 // Saved together by save_settings (migration 0014), which checks every value and keeps Irregular
 // before Inactive; every change goes to the audit log.
 
@@ -41,6 +43,13 @@ export const NUMBER_SETTINGS = {
 } as const;
 export type NumberSetting = keyof typeof NUMBER_SETTINGS;
 
+/** The class fund's two limits in whole rupees (Phase 2 slice 9), with the range the database accepts. */
+export const FUND_SETTINGS = {
+  fund_approval_rupees: { min: 0, max: 1000000 },
+  fund_bill_rupees: { min: 0, max: 1000000 },
+} as const;
+export type FundSetting = keyof typeof FUND_SETTINGS;
+
 /** The yes/no settings (Phase 2 promotion). */
 export const FLAG_SETTINGS = ['promotion_needs_level_up'] as const;
 export type FlagSetting = (typeof FLAG_SETTINGS)[number];
@@ -52,6 +61,8 @@ export type SettingsForm = {
   flags: Record<FlagSetting, boolean>;
   /** The default translator credit (Ishtagoshti); null = the database has no such setting yet (before 0021). */
   translator: string | null;
+  /** The fund limits as typed; null = the database has no such settings yet (before 0026). */
+  fund: Record<FundSetting, string> | null;
   /** The centre whose window is shown (Abids, the only one in Phase 1). */
   centreId: number | null;
   centreName: string;
@@ -84,6 +95,10 @@ export async function fetchSettings(): Promise<SettingsForm | null> {
     numbers,
     flags,
     translator: typeof byKey.get('ig_translator') === 'string' ? (byKey.get('ig_translator') as string) : null,
+    fund:
+      typeof byKey.get('fund_approval_rupees') === 'number' && typeof byKey.get('fund_bill_rupees') === 'number'
+        ? { fund_approval_rupees: String(byKey.get('fund_approval_rupees')), fund_bill_rupees: String(byKey.get('fund_bill_rupees')) }
+        : null,
     centreId: centre?.id ?? null,
     centreName: centre?.name ?? '',
     opensAt: centre ? centre.opens_at.slice(0, 5) : '',
@@ -99,7 +114,7 @@ export async function fetchWeekStarts(): Promise<WeekStarts> {
 }
 
 /** Problems with fields of the form, as message keys. */
-export type SettingsErrors = Partial<Record<NumberSetting | 'opensAt' | 'closesAt' | 'translator', MessageKey>>;
+export type SettingsErrors = Partial<Record<NumberSetting | FundSetting | 'opensAt' | 'closesAt' | 'translator', MessageKey>>;
 
 /** Checks the form as the database will. */
 export function checkSettings(form: SettingsForm): SettingsErrors {
@@ -114,6 +129,12 @@ export function checkSettings(form: SettingsForm): SettingsErrors {
     errors.inactive_days = 'settings.errors.inactiveAfter';
   }
   if (form.translator !== null && form.translator.trim().length > 100) errors.translator = 'settings.errors.translator';
+  if (form.fund) {
+    for (const key of Object.keys(FUND_SETTINGS) as FundSetting[]) {
+      const text = form.fund[key].trim();
+      if (!/^\d+$/.test(text) || Number(text) > FUND_SETTINGS[key].max) errors[key] = 'settings.errors.range';
+    }
+  }
   if (form.centreId !== null) {
     const opens = parseTimeOfDay(form.opensAt);
     const closes = parseTimeOfDay(form.closesAt);
@@ -130,6 +151,7 @@ export async function saveSettings(form: SettingsForm): Promise<{ errorKey?: Mes
   for (const key of Object.keys(NUMBER_SETTINGS) as NumberSetting[]) values[key] = Number(form.numbers[key]);
   for (const key of FLAG_SETTINGS) values[key] = form.flags[key];
   if (form.translator !== null) values.ig_translator = form.translator.trim();
+  if (form.fund) for (const key of Object.keys(FUND_SETTINGS) as FundSetting[]) values[key] = Number(form.fund[key]);
   const { error } = await supabase.rpc('save_settings', { p_values: values });
   if (error) return { errorKey: errorKeyOf(error.message) };
   const opensAt = parseTimeOfDay(form.opensAt);

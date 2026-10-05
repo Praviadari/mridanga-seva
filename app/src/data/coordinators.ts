@@ -6,7 +6,8 @@
 // nobody changes their own role, the Guru role stays a dashboard matter, a coordinator who still
 // mentors students stays on, and a student's open call tasks follow their mentor.
 // The Guru also marks coordinators as Ishtagoshti editors (profiles.ig_editor, migration 0021,
-// docs/DECISIONS.md #57): they may add and edit slokas and themes.
+// docs/DECISIONS.md #57): they may add and edit slokas and themes. And treasurers of the class fund
+// (profiles.is_treasurer, migration 0026, docs/DECISIONS.md #80): they record fund entries.
 
 import type { ParseKeys } from 'i18next';
 
@@ -29,6 +30,8 @@ export type Person = {
   createdAt: string;
   /** Ishtagoshti editor; null = not known (the database has no such column yet, before 0021). */
   igEditor: boolean | null;
+  /** Treasurer of the class fund (profiles.is_treasurer; used from migration 0026, docs/DECISIONS.md #80). */
+  treasurer: boolean;
 };
 
 /** A student as the mentee lists and the link picker show them. */
@@ -61,6 +64,7 @@ type PersonRow = {
   email: string | null;
   phone: string | null;
   duty_hours: string | null;
+  is_treasurer: boolean;
   active: boolean;
   created_at: string;
 };
@@ -76,6 +80,7 @@ function toPerson(row: PersonRow): Person {
     active: row.active,
     createdAt: row.created_at,
     igEditor: null,
+    treasurer: row.is_treasurer,
   };
 }
 
@@ -84,7 +89,7 @@ export async function fetchCoordinatorsBoard(): Promise<CoordinatorsBoard | null
   const [people, students, editors] = await Promise.all([
     supabase
       .from('profiles')
-      .select('id, role, full_name, email, phone, duty_hours, active, created_at')
+      .select('id, role, full_name, email, phone, duty_hours, is_treasurer, active, created_at')
       .in('role', ['guru', 'coordinator', 'pending'])
       .order('full_name'),
     supabase.from('students').select('id, full_name, roll_no, level_id, status, mentor_id, profile_id').order('full_name'),
@@ -158,6 +163,11 @@ export async function setIgEditor(id: string, on: boolean): Promise<ChangeResult
   return asResult(await supabase.from('profiles').update({ ig_editor: on }).eq('id', id).select('id'));
 }
 
+/** Makes a coordinator a treasurer of the class fund (records entries, approves the Guru's own), or takes that away. */
+export async function setTreasurer(id: string, on: boolean): Promise<ChangeResult> {
+  return asResult(await supabase.from('profiles').update({ is_treasurer: on }).eq('id', id).select('id'));
+}
+
 /** Links a waiting person to a student record without a login; they become that student. */
 export async function linkToStudent(profileId: string, studentId: string): Promise<ChangeResult> {
   const { error } = await supabase.rpc('link_student_login', { p_profile: profileId, p_student: studentId });
@@ -191,6 +201,7 @@ const KNOWN_ERRORS = [
   'student_already_linked',
   'mentor_not_staff',
   'ig_editor_coordinator_only',
+  'treasurer_coordinator_only',
 ] as const;
 
 function errorKeyOf(message: string): MessageKey {

@@ -156,6 +156,15 @@ C20 and C18.
 | C19 | Instruments: items with kind, condition and who holds each (since, due, overdue), filters In use / In the store / Lent out / Needs attention / Retired; an item: lend (find a student or coordinator, condition, note, bring-back date), take back (condition, note), condition check, history; the Guru adds, edits, retires, deletes one never lent. C8 and My profile show items on loan | Coordinator, Guru (students see what they hold) | Built | `app/src/app/staff/inventory/index.tsx`, `inventory/[id].tsx`, `app/src/data/inventory.ts`, `app/src/components/held-items.tsx` |
 | C20 / G2 | Duty roster: My shifts and the roster for 4 weeks by date with who is on each; the Guru adds a shift (date, centre, from-to inside open hours, duty, people, repeat weekly up to 12 weeks), changes or deletes one. Reminder (inbox + push) at 18:00 the evening before | Coordinator, Guru | Built | `app/src/app/staff/duty/index.tsx`, `duty/[id].tsx`, `app/src/data/duty.ts` |
 
+Slice 9, class fund ([DECISIONS.md #80](DECISIONS.md)), on the branch `phase2-fund`, migration 0026. No native
+change. A "Class fund" row under the staff homes' buttons opens it; G2 has the treasurer switch and G10 the two limits.
+
+| # | Screen | Who | Status | Code |
+|---|---|---|---|---|
+| F1-F3 | Class fund: balance now, income and expenses of the period, how many wait; "For your approval"; entries of this month / 3 months / this financial year (from 1 April) / all, filter income / expenses / waiting, with the balance after each (a table on a laptop); month by month; CSV export (download, or save / share on Android) | Coordinator (read), treasurer, Guru | Built | `app/src/app/staff/fund/index.tsx`, `app/src/data/fund.ts` |
+| F4-F6 | One entry: record (income or expense, category, amount in rupees, date, from / to whom, reference, note, bill photo or PDF; "waits for approval" shown over the limit); an entry: status, who recorded and decided, the bill, reversal links; Approve / Decline (reason) for its approver, Withdraw for its maker, Reverse (reason) for a keeper | Treasurer, Guru (coordinators read) | Built | `app/src/app/staff/fund/[id].tsx` |
+| F7 | Fund categories: built-in and own, add (income or expense, name), retire, offer again | Guru | Built | `app/src/app/staff/fund/categories.tsx` |
+| G2 / G10 | Treasurer switch on a coordinator's page; "Class fund" limits (approval over, bill over, in rupees) in Settings | Guru | Built | `coordinators/[id].tsx`, `settings.tsx` |
 ## Build order
 
 ~~A1~~ → ~~C2, C3~~ → ~~C5, C6~~ → ~~C7, C8~~ → ~~C10, C11~~ → ~~C9~~ → ~~G4, G5~~ → ~~C15, S10~~ → ~~S1~~, ~~S3~~, ~~S4, S9~~ →

@@ -82,8 +82,9 @@ export async function markNoticesRead(ids?: number[]): Promise<boolean> {
  */
 export function isNoticeScreen(url: string): boolean {
   return /^\/(((staff|student)\/(announcements|events|polls)|student\/assessments|staff\/assessments\/review|staff\/promotion)\/\d+|student\/progress)$/.test(url)
-    // Team tools (Phase 2 slice 8, staff only): suggestions, the duty roster, one inventory item.
-    || /^\/staff\/(suggestions|duty|inventory\/\d+)$/.test(url);
+    // Team tools (Phase 2 slice 8, staff only): suggestions, the duty roster, one inventory item;
+    // one fund entry (slice 9, migration 0026).
+    || /^\/staff\/(suggestions|duty|(inventory|fund)\/\d+)$/.test(url);
 }
 
 /** The screen to open for `notice`, or null when this version cannot open it (or not in this area). */

@@ -94,8 +94,8 @@ export type OutboxRow = {
 const OUTBOX_SCREEN =
   /^\/((student\/assessments|staff\/assessments\/review|staff\/promotion|(student|staff)\/(events|polls))\/\d+|student\/progress)$/;
 
-/** Team tools (0023, staff only): material suggestions, an item marked damaged, the duty roster. */
-const TEAM_SCREEN = /^\/staff\/(suggestions|duty|inventory\/\d+)$/;
+/** Team tools (0023, staff only): material suggestions, an item marked damaged, the duty roster; a fund entry (0026). */
+const TEAM_SCREEN = /^\/staff\/(suggestions|duty|(inventory|fund)\/\d+)$/;
 
 /**
  * One message per queued notification (an assessment released, a reminder, a review, a recording

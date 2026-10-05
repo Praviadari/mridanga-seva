@@ -91,5 +91,12 @@ check('team-tools notifications open suggestions, the duty roster or the item; n
   teamOutbox.map((m) => m.data.url).join(',') === '/staff/suggestions,/staff/duty,/staff/inventory/3',
   JSON.stringify(teamOutbox.map((m) => m.data.url)));
 
+const fundOutbox = toOutboxMessages([
+  { outbox_id: 19, title: 'Rs 2500 · Prasadam', body: 'An entry by Ravi needs your approval.', url: '/staff/fund/7', token: 'T13' },
+  { outbox_id: 20, title: 'Odd', body: 'x', url: '/student/fund/7', token: 'T14' },
+  { outbox_id: 21, title: 'Odd', body: 'x', url: '/staff/fund/', token: 'T15' },
+]);
+check('fund notifications (0026) open the entry; near misses are dropped',
+  fundOutbox.map((m) => m.data.url).join(',') === '/staff/fund/7', JSON.stringify(fundOutbox.map((m) => m.data.url)));
 console.log(failures ? `\n${failures} check(s) FAILED` : '\nAll checks passed');
 process.exit(failures ? 1 : 0);

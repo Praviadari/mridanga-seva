@@ -163,5 +163,12 @@ The code is in `app/src/i18n/index.ts`, `app/src/components/language-picker.tsx`
   "retire" an item (విరమించండి / हटाएँ: may read oddly), "shift" (షిఫ్ట్ / पाली), "duty roster"
   (డ్యూటీ పట్టిక / ड्यूटी रोस्टर), the kinds "Clay khol", "fibreglass", "skin heads", and the short
   weekdays in `duty.weekdays.*`. Checked for mixed Telugu-Devanagari words on 3 Oct 2026.
+- **Phase 2 class fund** (branch `phase2-fund`, [DECISIONS.md #80](DECISIONS.md)): every Telugu and Hindi line
+  under `fund.*`, `coordinators.treasurer*`, `settings.fund*` is a draft for the review, and the notice lines in
+  `fund_push_line` (migration 0026). Words to check first: "class fund" తరగతి నిధి / कक्षा कोष, "treasurer"
+  కోశాధికారి / कोषाध्यक्ष, "balance" నిల్వ / शेष राशि, "income" ఆదాయం / आय, "expense" ఖర్చు / खर्च,
+  "approve" ఆమోదించండి / स्वीकृत करें, "reversal" రద్దు నమోదు / उलट प्रविष्टि, "bill" బిల్లు / बिल,
+  "financial year" ఆర్థిక సంవత్సరం / वित्त वर्ष, the categories (విరాళం, ప్రాయోజకత్వం … / दान, प्रायोजन …).
+  Amounts are shown as ₹ with Indian grouping in every language.
 - Telugu and Devanagari letters are taller than Latin ones. The app's line heights allow for this;
   if a translated label looks cut off, report it with a screenshot.

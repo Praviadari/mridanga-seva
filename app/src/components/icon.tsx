@@ -101,6 +101,10 @@ const SHAPES = {
   performer: 'musical-notes-outline',
   attended: 'checkmark-done-outline',
   anonymous: 'eye-off-outline',
+  // Class fund (Phase 2 slice 9).
+  fund: 'wallet-outline',
+  income: 'arrow-down-circle-outline',
+  expense: 'arrow-up-circle-outline',
 } as const;
 
 /** The icons the app may use. */

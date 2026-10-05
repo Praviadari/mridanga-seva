@@ -1736,3 +1736,48 @@ pattern already used elsewhere.
 
 **Consequences.** JS only; the fingerprint stays 185e839f. To confirm on the phone after the
 update: lesson video → fullscreen → phone Back returns to the lesson, Back again returns to the list.
+
+## 80. Class fund ledger: who records, who approves, nothing deleted — 5 Oct 2026
+
+**Status: decided by Praveen 5 Oct 2026 (four answers below), on the branch `phase2-fund`; not on
+main until the lead pushes it.** Numbers #72-#79 are held by the security round (migration 0025).
+
+**Context.** The Screen List doc's fund section (F1-F10, approved by the team, rev 89) asks for a
+transparent in/out ledger with maker-checker (the recorder is not the approver). The team said on
+28 Sep 2026 that the fund is the **Mridanga team's own** (not the temple's), and #11 made the
+treasurer a permission on a coordinator (`profiles.is_treasurer`, in the schema since 0001, unused
+until now). Open until now: who sees the ledger, who grants the treasurer flag, the approval limit,
+the categories, when a bill is needed.
+
+**Decision (Praveen's answers, 5 Oct 2026).**
+- **Who sees it: the Guru, the treasurers and every coordinator** (coordinators read only). Students
+  and parents see no money at all: no screen, and the database refuses their reads.
+- **Treasurer:** the existing flag, switched by the Guru in G2 (person page), coordinators only. A
+  treasurer records entries and reverses them; only the Guru and treasurers ("keepers") write.
+- **Approval (maker-checker): expenses over Rs 2,000 wait** and count in the balance only once
+  approved. The Guru approves or declines (with a reason); an entry the Guru made is approved by a
+  treasurer (or another Guru). **Nobody approves their own entry** (error `own_entry`). The maker may
+  withdraw their own waiting entry. A reversal over the limit waits the same way.
+- **Bills: a photo or PDF of the bill is required for an expense over Rs 500** (10 MB, as the
+  materials; private bucket `fund-bills`). Both limits are G10 settings in whole rupees
+  (`fund_approval_rupees`, `fund_bill_rupees`; 0 = every expense).
+- **Categories:** income Donation, Sponsorship; expense Instrument repair or purchase, Prasadam,
+  Events and festivals, Travel, Printing and stationery, Other. The Guru adds own ones and retires
+  any; none is deleted.
+- **Never deleted, never changed.** An entry, once saved, changes only by a decision. A mistake is
+  undone by a **reversal**: a counter-entry dated today with the same kind and category and the
+  amount negative, with a reason. The database refuses delete and change even from the dashboard
+  (trigger `fund_entries_keep`); every row change is also in the audit log (G11).
+- **Records money only.** No payment integration, no money moved online; donors pay the temple or
+  team account as before and the keeper records the reference (UPI, cheque, temple receipt). No 80G
+  receipts (NOTES.md 28-09-2026). Amounts are whole paise (integers), at most Rs 1 crore an entry;
+  dates up to a year back, never in the future.
+
+**Consequences.** Migration 0026_fund.sql (tables `fund_categories`, `fund_entries`, functions
+`record_/decide_/withdraw_/reverse_fund_entry`, `fund_balance`; notices to `/staff/fund/<id>` through
+push_outbox, so the push function needs a redeploy for pushes, the inbox works without). Screens:
+`/staff/fund` (balance, waiting for me, entries of a period with the balance after each, month by
+month, CSV like C21/G8), `/staff/fund/[id]` (record; approve / decline / withdraw / reverse),
+`/staff/fund/categories` (Guru), a "Class fund" row on both staff homes, the treasurer switch in G2,
+the two limits in G10. JS + SQL only: the fingerprint stays 185e839f. Not built (F-section items for
+later): donors and sponsors lists, pledges, sponsorship needs per event.

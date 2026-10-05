@@ -2395,6 +2395,150 @@ check('app roles cannot run the team-tools helpers', (await asOwner(`select
   or has_function_privilege('authenticated', 'queue_team_push(uuid[], text, text, text, text)', 'execute')
   or has_function_privilege('anon', 'issue_inventory_item(bigint, uuid, uuid, text, text, date)', 'execute')
   or has_function_privilege('authenticated', 'guard_material_suggestion()', 'execute') as ok`))[0].ok === false);
+
+// ---------------------------------------------------------------- class fund (0026)
+// coordinator2 becomes the treasurer; coordinator is a coordinator who only reads; late is a student.
+await refuses('a coordinator cannot make themselves treasurer', () => asApp('authenticated', coordinator,
+  'update profiles set is_treasurer = true where id = auth.uid()'));
+await refusesWith('only a coordinator can be a treasurer', 'treasurer_coordinator_only', () => asApp('authenticated', guru,
+  'update profiles set is_treasurer = true where id = $1', [late]));
+await asApp('authenticated', guru, 'update profiles set is_treasurer = true where id = $1', [coordinator2]);
+check('the Guru makes a coordinator treasurer', (await asApp('authenticated', coordinator2, 'select is_treasurer() as t, is_fund_keeper() as k'))[0].k === true
+  && (await asApp('authenticated', coordinator, 'select is_fund_keeper() as k'))[0].k === false);
+const fundToday = (await asOwner('select today_ist()::text as d'))[0].d;
+const fundCat = async (code) => (await asOwner(`select id from fund_categories where code = '${code}'`))[0].id;
+const [donation, repair, prasadam] = [await fundCat('donation'), await fundCat('instruments'), await fundCat('prasadam')];
+const record = async (userId, direction, category, paise, extra = {}) => Number((await asApp('authenticated', userId,
+  'select record_fund_entry($1, $2::smallint, $3::date, $4::bigint, $5, $6, $7, $8, $9) as id',
+  [direction, category, extra.date ?? fundToday, paise, extra.party ?? null, extra.reference ?? null, extra.note ?? null,
+   extra.bill ?? null, extra.bill ? (extra.billName ?? 'Bill.jpg') : null]))[0].id);
+const uploadBill = async (userId, path = null, size = 2048) => {
+  const name = path ?? `${userId}/${await newId()}.jpg`;
+  await asApp('authenticated', userId, `insert into storage.objects (bucket_id, name, owner, metadata) values ('fund-bills', $1, auth.uid(), $2)`,
+    [name, JSON.stringify({ size, mimetype: 'image/jpeg' })]);
+  return name;
+};
+const canOpenBill = async (userId, path) => (await asApp('authenticated', userId,
+  `select 1 from storage.objects where bucket_id = 'fund-bills' and name = $1`, [path])).length === 1;
+const balanceAs = async (userId) => Number((await asApp('authenticated', userId, 'select fund_balance() as b'))[0].b);
+const entryOf = async (id) => (await asOwner(`select status, decided_by, decision_note, amount_paise from fund_entries where id = ${id}`))[0];
+const fundOutboxFor = async (userId, id) => teamOutboxFor(userId, `/staff/fund/${id}`);
+
+check('the categories are seeded; staff read them, a student does not', (await asApp('authenticated', coordinator,
+  'select id from fund_categories')).length === 8 && (await asApp('authenticated', late, 'select id from fund_categories')).length === 0);
+const [{ id: melaCat }] = await asApp('authenticated', guru, `insert into fund_categories (direction, name, code) values ('expense', '  Kirtan mela ', 'x') returning id, name, code`);
+check('the Guru adds a category, trimmed, without a code', (await asOwner(`select name, code from fund_categories where id = ${melaCat}`))[0].code === null);
+await refuses('a coordinator cannot add a category', () => asApp('authenticated', coordinator2,
+  `insert into fund_categories (direction, name) values ('income', 'Mine')`));
+await refusesWith('a category keeps its kind', 'category_frozen', () => asApp('authenticated', guru,
+  `update fund_categories set direction = 'income' where id = $1`, [melaCat]));
+await refuses('a category is not deleted', () => asApp('authenticated', guru, 'delete from fund_categories where id = $1', [melaCat]));
+
+const income = await record(coordinator2, 'income', donation, 1000000, { party: ' Sri Rama das ', reference: 'Temple receipt 1043' });
+check('the treasurer records a donation; it counts at once', (await entryOf(income)).status === 'approved' && (await balanceAs(guru)) === 1000000);
+await refuses('a coordinator who is not treasurer cannot record', () => record(coordinator, 'income', donation, 100));
+await refuses('a student cannot record', () => record(late, 'income', donation, 100));
+await refusesWith('the category must be of the same kind', 'category_invalid', () => record(coordinator2, 'income', repair, 100));
+await refusesWith('an amount is at least one paisa', 'amount_invalid', () => record(coordinator2, 'income', donation, 0));
+await refusesWith('a date is not in the future', 'date_future', () => record(coordinator2, 'income', donation, 100, { date: '2099-01-01' }));
+await refusesWith('an expense over Rs 500 needs a bill', 'bill_required', () => record(coordinator2, 'expense', repair, 50001));
+const small = await record(coordinator2, 'expense', prasadam, 50000, { note: 'Sunday prasadam' });
+check('an expense of Rs 500 needs no bill and counts at once', (await entryOf(small)).status === 'approved' && (await balanceAs(coordinator)) === 950000);
+await refuses('a coordinator who is not treasurer cannot upload a bill', () => uploadBill(coordinator));
+const bill1 = await uploadBill(coordinator2);
+await refusesWith('a bill from someone else\'s folder is refused', 'bill_not_yours', () => record(guru, 'expense', repair, 150000, { bill: bill1 }));
+await refusesWith('a bill must be in Storage', 'bill_missing', () => record(coordinator2, 'expense', repair, 150000, { bill: `${coordinator2}/${'0'.repeat(8)}-0000-0000-0000-${'0'.repeat(12)}.jpg` }));
+const repairEntry = await record(coordinator2, 'expense', repair, 150000, { bill: bill1, party: 'Drum maker' });
+check('an expense of Rs 1,500 with its bill counts at once', (await entryOf(repairEntry)).status === 'approved' && (await balanceAs(guru)) === 800000);
+check('every coordinator opens the bill; a student cannot', await canOpenBill(coordinator, bill1) && !(await canOpenBill(late, bill1)));
+check('a bill on an entry cannot be deleted', (await asApp('authenticated', coordinator2,
+  `delete from storage.objects where bucket_id = 'fund-bills' and name = $1 returning name`, [bill1])).length === 0);
+const orphan = await uploadBill(coordinator2);
+check('... a bill no entry lists can (a save that failed)', (await asApp('authenticated', coordinator2,
+  `delete from storage.objects where bucket_id = 'fund-bills' and name = $1 returning name`, [orphan])).length === 1);
+
+// Maker-checker
+const big = await record(coordinator2, 'expense', repair, 250000, { bill: await uploadBill(coordinator2) });
+check('an expense over Rs 2,000 waits and does not count yet', (await entryOf(big)).status === 'waiting' && (await balanceAs(guru)) === 800000);
+check('... the Guru is told', (await fundOutboxFor(guru, big)).some((r) => r.title === 'Rs 2500 · Instrument repair or purchase'
+  && /^An entry by .* needs your approval\.$/.test(r.body)));
+await refusesWith('the maker cannot approve their own entry', 'own_entry', () => asApp('authenticated', coordinator2,
+  'select decide_fund_entry($1, true)', [big]));
+await refuses('a coordinator who is not treasurer cannot approve', () => asApp('authenticated', coordinator, 'select decide_fund_entry($1, true)', [big]));
+await asApp('authenticated', guru, 'select decide_fund_entry($1, true)', [big]);
+check('the Guru approves it; now it counts', (await entryOf(big)).status === 'approved' && (await entryOf(big)).decided_by === guru
+  && (await balanceAs(guru)) === 550000);
+check('... and the treasurer is told', (await fundOutboxFor(coordinator2, big)).some((r) => r.body === 'Your entry was approved.'));
+await refusesWith('a decision is made once', 'already_decided', () => asApp('authenticated', guru, 'select decide_fund_entry($1, false, $2)', [big, 'No']));
+const guruBig = await record(guru, 'expense', prasadam, 300000, { bill: await uploadBill(guru) });
+await refusesWith('the Guru cannot approve the Guru\'s own entry', 'own_entry', () => asApp('authenticated', guru, 'select decide_fund_entry($1, true)', [guruBig]));
+check('... the treasurer is told instead', (await fundOutboxFor(coordinator2, guruBig)).length === 1 && (await fundOutboxFor(guru, guruBig)).length === 0);
+await asApp('authenticated', coordinator2, 'select decide_fund_entry($1, true)', [guruBig]);
+check('... and approves it', (await entryOf(guruBig)).status === 'approved' && (await balanceAs(guru)) === 250000);
+const treasurerBig = await record(coordinator2, 'expense', melaCat, 400000, { bill: await uploadBill(coordinator2) });
+await refusesWith('a treasurer cannot approve another treasurer\'s or own entry', 'own_entry', () => asApp('authenticated', coordinator2,
+  'select decide_fund_entry($1, true)', [treasurerBig]));
+await refusesWith('declining needs a reason', 'reason_required', () => asApp('authenticated', guru, 'select decide_fund_entry($1, false, $2)', [treasurerBig, '  ']));
+await asApp('authenticated', guru, 'select decide_fund_entry($1, false, $2)', [treasurerBig, ' Get a second quote. ']);
+check('the Guru declines with a reason; it never counts', (await entryOf(treasurerBig)).status === 'declined'
+  && (await entryOf(treasurerBig)).decision_note === 'Get a second quote.' && (await balanceAs(guru)) === 250000);
+check('... the treasurer is told why', (await fundOutboxFor(coordinator2, treasurerBig)).some((r) => r.body === 'Not approved: Get a second quote.'));
+const typoEntry = await record(coordinator2, 'expense', repair, 220000, { bill: await uploadBill(coordinator2) });
+await refusesWith('only the maker withdraws a waiting entry', 'not_yours', () => asApp('authenticated', guru, 'select withdraw_fund_entry($1)', [typoEntry]));
+await asApp('authenticated', coordinator2, 'select withdraw_fund_entry($1, $2)', [typoEntry, 'Typed 2200 for 220']);
+check('the maker withdraws their own waiting entry', (await entryOf(typoEntry)).status === 'withdrawn');
+
+// Never deleted, never changed: reversed
+await refuses('the app cannot write the ledger directly, not even the Guru', () => asApp('authenticated', guru,
+  `insert into fund_entries (direction, category_id, on_date, amount_paise, status, created_by) values ('income', $1, current_date, 100, 'approved', auth.uid())`, [donation]));
+check('... nor change or delete it', (await asApp('authenticated', guru, 'update fund_entries set amount_paise = 1 where id = $1 returning id', [income]).catch(() => [])).length === 0
+  && (await asApp('authenticated', guru, 'delete from fund_entries where id = $1 returning id', [income]).catch(() => [])).length === 0);
+await refusesWith('an entry is never deleted, not even in the dashboard', 'fund_entry_kept', () => asOwner(`delete from fund_entries where id = ${income}`));
+await refusesWith('... nor changed', 'fund_entry_frozen', () => asOwner(`update fund_entries set amount_paise = 1 where id = ${income}`));
+await refusesWith('a reversal needs a reason', 'reason_required', () => asApp('authenticated', coordinator2, 'select reverse_fund_entry($1, $2)', [repairEntry, ' ']));
+await refuses('a coordinator who is not treasurer cannot reverse', () => asApp('authenticated', coordinator, 'select reverse_fund_entry($1, $2)', [repairEntry, 'x']));
+const [{ id: reversal }] = await asApp('authenticated', coordinator2, 'select reverse_fund_entry($1, $2) as id', [repairEntry, 'Drum maker refunded']);
+check('a small entry is reversed by a negative counter-entry that counts at once', (await asOwner(
+  `select amount_paise::int as a, status, direction from fund_entries where id = ${reversal}`))[0].a === -150000 && (await balanceAs(guru)) === 400000);
+await refusesWith('an entry is reversed once', 'already_reversed', () => asApp('authenticated', guru, 'select reverse_fund_entry($1, $2)', [repairEntry, 'again']));
+await refusesWith('a reversal is not reversed', 'cannot_reverse', () => asApp('authenticated', guru, 'select reverse_fund_entry($1, $2)', [reversal, 'x']));
+await refusesWith('a declined entry is not reversed', 'cannot_reverse', () => asApp('authenticated', guru, 'select reverse_fund_entry($1, $2)', [treasurerBig, 'x']));
+const [{ id: bigReversal }] = await asApp('authenticated', coordinator2, 'select reverse_fund_entry($1, $2) as id', [income, 'Cheque bounced']);
+check('a big reversal waits for approval and does not count yet', (await entryOf(bigReversal)).status === 'waiting' && (await balanceAs(guru)) === 400000);
+await asApp('authenticated', guru, 'select decide_fund_entry($1, false, $2)', [bigReversal, 'It cleared on Monday']);
+const [{ id: reversalAgain }] = await asApp('authenticated', coordinator2, 'select reverse_fund_entry($1, $2) as id', [income, 'Cheque bounced after all']);
+check('after a declined reversal a new one may be tried', (await entryOf(reversalAgain)).status === 'waiting');
+await asApp('authenticated', coordinator2, 'select withdraw_fund_entry($1)', [reversalAgain]);
+
+// Who sees what
+check('every coordinator reads the ledger and the balance', (await asApp('authenticated', coordinator, 'select id from fund_entries')).length >= 9
+  && (await balanceAs(coordinator)) === 400000);
+check('a student sees no entry and a balance of 0', (await asApp('authenticated', late, 'select id from fund_entries')).length === 0
+  && (await balanceAs(late)) === 0);
+check('anon sees no entry or category', (await asApp('anon', null, 'select id from fund_entries').catch(() => [])).length === 0
+  && (await asApp('anon', null, 'select id from fund_categories').catch(() => [])).length === 0);
+await refuses('anon cannot run the fund functions', () => asApp('anon', null, 'select fund_balance()'));
+check('fund changes go to the audit log', (await asOwner(`select count(*)::int as n from audit_log where table_name = 'fund_entries'`))[0].n >= 14);
+
+// The limits are settings (G10)
+await refusesWith('the approval limit is a whole number of rupees, not negative', 'setting_invalid', () => asApp('authenticated', guru,
+  `select save_settings('{"fund_approval_rupees": -1}')`));
+await asApp('authenticated', guru, `select save_settings('{"fund_approval_rupees": 0, "fund_bill_rupees": 0}')`);
+await refusesWith('with the bill limit at 0 every expense needs a bill', 'bill_required', () => record(coordinator2, 'expense', prasadam, 100));
+const tiny = await record(coordinator2, 'expense', prasadam, 100, { bill: await uploadBill(coordinator2) });
+check('with the approval limit at 0 every expense waits', (await entryOf(tiny)).status === 'waiting');
+await asApp('authenticated', coordinator2, 'select withdraw_fund_entry($1)', [tiny]);
+await asApp('authenticated', guru, `select save_settings('{"fund_approval_rupees": 2000, "fund_bill_rupees": 500}')`);
+check('app roles cannot run the fund helpers', (await asOwner(`select
+  has_function_privilege('authenticated', 'queue_fund_push(uuid[], text, fund_entries, text)', 'execute')
+  or has_function_privilege('authenticated', 'fund_approvers(uuid)', 'execute')
+  or has_function_privilege('authenticated', 'guard_fund_entry()', 'execute')
+  or has_function_privilege('anon', 'record_fund_entry(text, smallint, date, bigint, text, text, text, text, text)', 'execute')
+  or has_table_privilege('authenticated', 'fund_entries', 'insert')
+  or has_table_privilege('anon', 'fund_categories', 'select') as ok`))[0].ok === false);
+await asApp('authenticated', guru, 'update profiles set is_treasurer = false where id = $1', [coordinator2]);
+await refuses('a former treasurer can no longer record', () => record(coordinator2, 'income', donation, 100));
+
 // ---------------------------------------------------------------- row-level security
 const seen =await asApp('authenticated', arjun, 'select full_name from students');
 check('student sees only their own student record', seen.length === 1 && seen[0].full_name === 'Arjun Rao');

@@ -874,6 +874,27 @@ The app lists approved materials only in G4 / S4 (`fetchMaterials`); suggestions
 
 Staff read the whole roster; students nothing. Smoke tests: section "team tools (0023, Phase 2)".
 
+## Class fund (Phase 2)
+
+Migration 0026_fund.sql, [DECISIONS.md #80](DECISIONS.md). The Mridanga team's own fund, recorded only
+(no payments). Keepers = the Guru and treasurers (`profiles.is_treasurer`, coordinators only, switched by
+the Guru: trigger `profiles_treasurer_guard`, error `treasurer_coordinator_only`). Every staff member
+reads; students and anon nothing.
+
+| Table / function | What |
+|---|---|
+| `fund_categories` | `direction` (`income` / `expense`), `code` (built-in ones: donation, sponsorship; instruments, prasadam, events, travel, printing, other), `name` (1-40, unique per direction ignoring case), `sort`, `retired_at`. Staff read; the Guru inserts and updates (kind and code frozen: `category_frozen`); never deleted. Audited |
+| `fund_entries` | `direction`, `category_id`, `on_date`, `amount_paise` (whole paise, ≠ 0, ≤ Rs 1 crore; **negative only on a reversal**, `reverses_id`), `party` (≤ 80), `reference` (≤ 60), `note` (≤ 500), bill (`bill_path`, `bill_name`, `bill_size`), `status` (`approved` counts; `waiting`, `declined`, `withdrawn` do not), maker and decider with times, `decision_note`. Staff read; **no app writes** (grants: select only). Trigger `fund_entries_keep` refuses every delete (`fund_entry_kept`) and every change but a decision of a waiting entry (`fund_entry_frozen`), even from the dashboard. One live reversal per entry. Audited |
+| `record_fund_entry(direction, category, on_date, amount_paise, party, reference, note, bill_path, bill_name)` | Keeper: saves an entry; an expense over `settings.fund_approval_rupees` (2000) is `waiting` and its approvers get a notice; an expense over `fund_bill_rupees` (500) needs a bill. Errors `not_allowed`, `category_invalid`, `amount_invalid`, `date_future`, `date_too_old` (> 366 days), `party_/reference_/note_too_long`, `bill_invalid`, `bill_not_yours`, `bill_missing`, `bill_required` |
+| `decide_fund_entry(entry, approve, note)` | Approve, or decline with a reason (`reason_required`). Approvers (`fund_approvers`): the Guru; for the Guru's own entry also treasurers; **never the maker** (`own_entry`). Once (`already_decided`). Tells the maker |
+| `withdraw_fund_entry(entry, note)` | The maker takes back their own waiting entry (`not_yours`) |
+| `reverse_fund_entry(entry, reason)` | Keeper: a counter-entry dated today (same kind and category, amount negative) undoes an approved entry that is not itself a reversal (`cannot_reverse`, `already_reversed`); over the approval limit it waits |
+| `fund_balance()` | Approved income minus approved expense in paise (security invoker: 0 for anyone who may not read) |
+| Bucket `fund-bills` | Private, 10 MB, JPEG / PNG / WebP / PDF. Read: staff, for a bill an entry lists or their own file; upload: keepers into their own folder, 20 a day; delete: only an own file no entry lists (a failed save) |
+
+Notices (`fund_push_line`, `queue_fund_push`) go through `push_outbox` to `/staff/fund/<id>`: "needs your
+approval" to the approvers, "approved" / "Not approved: reason" to the maker. Smoke tests: section
+"class fund (0026)".
 ## Linking a login to a student
 
 A student record can exist without a login (many students never install the app). When a person
@@ -929,6 +950,7 @@ so every function is revoked from them and granted only where needed
 | `review_submission(…, p_voice_note)` | See "Media (Phase 2)" | Phase 2 (0020) replaces 0016's version |
 | `next_level`, `promotion_criteria`, `nominate_for_promotion`, `give_promotion_feedback`, `decide_promotion`, `withdraw_nomination`, `promotion_ready_students`, `promotion_home` | See "Promotion approval (Phase 2)" | Phase 2 (0017) |
 | `decide_material_suggestion`, `issue_inventory_item`, `return_inventory_item`, `check_inventory_item`, `save_duty_shift` | See "Team tools (Phase 2)" | Phase 2 slice 8 (0023) |
+| `record_fund_entry`, `decide_fund_entry`, `withdraw_fund_entry`, `reverse_fund_entry`, `fund_balance`, `is_treasurer`, `is_fund_keeper` | See "Class fund (Phase 2)" (0026) |
 | `ig_sloka_of_day`, `set_theme_slokas`, `is_ig_editor`, `ig_reader` | See "Ishtagoshti (Phase 2)" | Phase 2 (0021) |
 | `rsvp_event`, `event_counts`, `event_people_list`, `event_student_list`, `set_event_performers`, `mark_event_attendance`, `remind_event`, `vote_poll`, `poll_state`, `poll_voters`, `remind_poll` | See "Events and polls (Phase 2)" | Phase 2 (0022) |
 
@@ -1006,6 +1028,7 @@ and the helpers `my_role`, `is_guru`, `is_staff`,
 | Event answers, performers, attendance | Own answer (through `rsvp_event`), own part and attendance; counts only | All by name; performers, attendance, Remind through the functions | Same as coordinator |
 | Polls (Phase 2) | Those for them; vote through `vote_poll`; results when the poll allows | All; create; edit, close, delete own; who voted, and what unless anonymous | All; same for any poll |
 | Poll votes | Own choice (through `poll_state`) | Never read directly | Never read directly |
+| Class fund (Phase 2) | Nothing (no money is shown to students or parents) | All entries, bills, the balance; read only (a treasurer records, reverses, and approves the Guru's own) | All; record, approve or decline, reverse; treasurers and categories |
 
 ## Changing the database
 

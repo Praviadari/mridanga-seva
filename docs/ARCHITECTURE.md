@@ -475,6 +475,23 @@ Not on main yet ([DECISIONS.md #65](DECISIONS.md)). No native change.
   `push_outbox` like the other Phase 2 notices: the inbox gets them at once (0019); the Edge Function
   pushes them once redeployed (it accepts `/staff/suggestions`, `/staff/duty`, `/staff/inventory/<id>`).
 
+## Class fund (Phase 2 slice 9, branch `phase2-fund`)
+
+Not on main yet ([DECISIONS.md #80](DECISIONS.md)). No native change.
+
+- **The app writes the ledger only through functions.** `fund_entries` grants signed-in people
+  `select` only; `record_/decide_/withdraw_/reverse_fund_entry` (security definer) check who may do
+  what, so maker-checker holds on every path, not only in the screens.
+- **Append-only.** A trigger refuses delete and any change but deciding a waiting entry, for every
+  role including the dashboard. A mistake is a reversal row (negative amount, `reverses_id`), so
+  sums per category and month need no special case; the running balance is computed in the app
+  from all entries in date order (`data/fund.ts`, a class fund stays small).
+- **Money is integers.** Whole paise in the database (`bigint`); the app parses rupees as typed
+  without floating point and shows them with Indian grouping (₹1,25,000.50).
+- **Bills** use the announcement-files upload code with their own private bucket `fund-bills`
+  (10 MB). A bill on an entry cannot be deleted.
+- **Notices** go through `push_outbox` like the team tools; the Edge Function accepts
+  `/staff/fund/<id>` once redeployed (the inbox works without).
 ## Phases
 
 | Phase | Adds | Target |
