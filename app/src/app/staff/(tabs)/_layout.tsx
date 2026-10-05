@@ -1,6 +1,8 @@
 // The six main staff screens as tabs, for the Guru and coordinators: Home (G1 or C1 by role),
 // Mark attendance (C5), Students (C7), Follow-up calls (C10), Announcements (C15) and Ishtagoshti
-// (I1, Phase 2 slice 6, docs/DECISIONS.md #57). On a phone
+// (I1, Phase 2 slice 6, docs/DECISIONS.md #57). Six labels do not fit a phone's bottom bar (62 px for
+// "Attendance", 65 px for Telugu "Students" in a 53 px slot at 375 px), so the Slokas tab shows only in the
+// sidebar; on a phone the staff home has a Slokas button under its ring (components/staff-shortcuts.tsx). On a phone
 // the tabs sit at the bottom; on a wide screen (a laptop, a tablet held sideways) they become a
 // sidebar on the left (docs/DECISIONS.md #36). The other staff screens (a profile, a call, here
 // now, groups ...) open on top of the tabs from staff/_layout.tsx, with a back button.
@@ -47,7 +49,13 @@ export default function StaffTabsLayout() {
       />
       <Tabs.Screen
         name="ishtagoshti"
-        options={{ title: t('ishtagoshti.title'), tabBarLabel: t('tabs.ishtagoshti'), tabBarIcon: tabIcon('ishtagoshti') }}
+        options={{
+          title: t('ishtagoshti.title'),
+          tabBarLabel: t('tabs.ishtagoshti'),
+          tabBarIcon: tabIcon('ishtagoshti'),
+          // null hides the button only; /staff/ishtagoshti still opens, with the tabs under it.
+          href: width >= SIDEBAR_FROM ? undefined : null,
+        }}
       />
     </Tabs>
   );

@@ -178,7 +178,8 @@ saved login and the profile are being fetched.
 - Each role has **tabs** ([DECISIONS.md #36](DECISIONS.md)): the student Home (S1), My QR (S3)
   and Announcements (S10) in `student/(tabs)/`; staff Home, Attendance (C5), Students (C7),
   Calls (C10) and Announcements (C15) in `staff/(tabs)/`; since Phase 2 slice 6 both also have
-  Slokas (Ishtagoshti I1). The tabs are at the bottom on a phone;
+  Slokas (Ishtagoshti I1): students as a 4th tab, staff only in the sidebar (on a phone the staff
+  home has an Ishtagoshti button, as six labels do not fit the bottom bar; the tab's `href` is null there). The tabs are at the bottom on a phone;
   for staff they become a sidebar from 900 px wide. A folder in brackets adds nothing to the
   address, so `/staff/students` and `/student/my-qr` stay as they were.
 - The first screen is the Home tab: `/student` (S1) or `/staff`, which shows the Guru dashboard

@@ -234,7 +234,7 @@ As Facilitator you can post like a coordinator, and also:
 
 ## Slokas (Ishtagoshti)
 
-The **Slokas** tab (Phase 2, being built) is the sloka study for everyone. You and the Ishtagoshti
+The **Slokas** tab (on a phone: the **Ishtagoshti** button under the ring on your home; Phase 2, being built) is the sloka study for everyone. You and the Ishtagoshti
 editors add slokas (**Add a sloka**: reference, Sanskrit, transliteration, word meanings, translation
 and purport in English, Telugu and/or Hindi, the translator, a recitation recorded in the app) and
 themes (**Add a theme**: introduction, questions, slokas in order). A sloka is seen by others only

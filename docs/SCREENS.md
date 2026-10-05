@@ -118,7 +118,8 @@ the office network (FortiGate).
 | S7 / C14 | Record here (S7, up to 20 min) and the voice note (C14, up to 5 min): record, listen, use or record again; uploaded only when the form is sent | Student / coordinator | Built | `app/src/components/audio-recorder.tsx`, `app/src/data/assessment-files.ts` (`recordingAsMedia`), `app/src/data/assessments.ts` |
 
 Slice 6 (branch `phase2-ishtagoshti`), Ishtagoshti part 1, sloka study ([DECISIONS.md #57](DECISIONS.md)): I1-I3,
-I11, I12 (approved in the doc) for every signed-in role, as a "Slokas" tab (students' 4th, staff's 6th).
+I11, I12 (approved in the doc) for every signed-in role, as a "Slokas" tab: the students' 4th tab; for staff a tab in the
+sidebar (900 px and wider) and, on a phone, an "Ishtagoshti" button under the staff ring (six labels do not fit the bottom bar).
 The sloka of the day (S14) lives in I1. No native package: phones get it by an update. Later slices: I4
 memorise mode, I5 discussion + I8 moderation, I6 / I9 sessions, I10 recitation review, I13 report, I14
 public sign-up + I15 subscribers (slice 7).

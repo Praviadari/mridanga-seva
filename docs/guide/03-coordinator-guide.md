@@ -318,7 +318,7 @@ changes them.
 
 ## Slokas (Ishtagoshti)
 
-The **Slokas** tab works for you as for students: the sloka of the day, themes, your own notes and
+The **Slokas** tab (on a phone: the **Ishtagoshti** button under the ring on your home) works for you as for students: the sloka of the day, themes, your own notes and
 memorised ticks (see the [student guide](02-student-guide.md#slokas-ishtagoshti)). If the Facilitator
 has made you an **Ishtagoshti editor**, you also get **Add a sloka**, **Add a theme**, **Edit sloka**
 and **Make it the sloka of that day**. Type only the temple's own translation, word meanings and

@@ -1540,7 +1540,10 @@ who already have a login.
 
 **Decision.**
 - **Screens:** I1 home (sloka of the day, my memorised count, themes, all slokas), I2 a theme, I3 a
-  sloka, I11 theme editor, I12 sloka editor, as a "Slokas" tab for students and staff. Later
+  sloka, I11 theme editor, I12 sloka editor, as a "Slokas" tab for students and staff. Staff phones
+  keep five bottom tabs (a sixth label does not fit: "Attendance" needs 62 px, Telugu "Students" 65 px,
+  in a 53 px slot at 375 px), so there the staff home has an Ishtagoshti button; the staff sidebar on
+  a wide screen has the tab. Later
   slices: I4 memorise mode, I5 discussion + I8 moderation, I6 / I9 sessions, I10 recitation review,
   I13 report, I14 / I15 public sign-up and subscribers.
 - **Who edits (Praveen):** the Guru, and the coordinators the Guru marks as **Ishtagoshti editors** on

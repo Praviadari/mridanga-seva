@@ -7,7 +7,8 @@
 // the two modules not built yet, Instruments and Events, which open the Coming soon screen
 // (docs/DECISIONS.md #39). One component, so both homes offer the same screens in the same order.
 // Register a student (C2) is the first button on the Students tab. Practice tools (S5, Phase 2) is a
-// button under the ring.
+// button under the ring, and so is Ishtagoshti (I1, Phase 2 slice 6) for phones, where the Slokas
+// tab does not fit the bottom bar.
 
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -57,6 +58,7 @@ export function StaffShortcuts() {
       {/* Phase 2 slice 3 (S5, docs/DECISIONS.md #54): the ring is full at ten, so Practice tools is a
           button under it. */}
       <Button variant="secondary" icon="practice" label={t('practice.title')} onPress={() => router.push('/staff/practice')} />
+      <Button variant="secondary" icon="ishtagoshti" label={t('ishtagoshti.title')} onPress={() => router.push('/staff/ishtagoshti')} />
     </>
   );
 }
