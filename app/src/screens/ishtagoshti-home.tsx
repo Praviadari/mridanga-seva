@@ -1,10 +1,11 @@
 // I1 Ishtagoshti home, the tab for every role (Phase 2 slice 6, docs/DECISIONS.md #57): the sloka
 // of the day (pinned by an editor, or the published slokas in turn, the same for everyone), how
 // many slokas I have memorised, the themes, and all slokas. Editors (the Guru and coordinators the
-// Guru marked) also get "Add a sloka" and "Add a theme". Routes: student/(tabs)/ishtagoshti.tsx and
-// staff/(tabs)/ishtagoshti.tsx. Data: src/data/ishtagoshti.ts.
+// Guru marked) also get "Add a sloka" and "Add a theme"; the Guru also the subscriber list (I15, slice 7).
+// Routes: student/(tabs)/ishtagoshti.tsx, staff/(tabs)/ishtagoshti.tsx and, for public subscribers,
+// subscriber/(tabs)/ishtagoshti.tsx (docs/DECISIONS.md #72). Data: src/data/ishtagoshti.ts.
 
-import { useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -95,6 +96,11 @@ export function IshtagoshtiHome({ area }: { area: IgArea }) {
             <Section icon="edit" title={t('ishtagoshti.editorTitle')} description={t('ishtagoshti.editorHint')}>
               <Button icon="add" label={t('ishtagoshti.addSloka')} onPress={() => openIg.editSloka('new')} />
               <Button variant="secondary" icon="add" label={t('ishtagoshti.addTheme')} onPress={() => openIg.editTheme('new')} />
+            </Section>
+          ) : null}
+          {area === 'staff' && profile?.role === 'guru' ? (
+            <Section icon="groups" title={t('igSubscribers.title')} description={t('igSubscribers.homeHint')}>
+              <Button variant="secondary" icon="groups" label={t('igSubscribers.open')} onPress={() => router.push('/staff/ishtagoshti/subscribers')} />
             </Section>
           ) : null}
         </>

@@ -14,7 +14,15 @@ export type Profile = {
   language: string;
   /** False when the Guru has switched the account off. */
   active: boolean;
+  /**
+   * Ishtagoshti subscription of a login without a class role (role 'pending'), from ig_my_state()
+   * (migration 0025, docs/DECISIONS.md #72). Missing for everyone else and before 0025.
+   */
+  ig_state?: IgState;
 };
+
+/** A public login's Ishtagoshti subscription: not joined, waiting for the parent's code, reading, blocked. */
+export type IgState = 'none' | 'awaiting_parent' | 'active' | 'blocked';
 
 /**
  * Which part of the app a person may use right now. The root layout (src/app/_layout.tsx)
@@ -23,7 +31,9 @@ export type Profile = {
  * - `loading`: still finding out (saved login, profile); the splash screen shows
  * - `signedOut`: sign in, create an account, forgot password
  * - `recovery`: opened a password-reset link (web only), must set a new password
- * - `pending`: signed in but no usable role yet (new sign-up, switched off, door tablet)
+ * - `pending`: signed in but no usable role yet (new sign-up, switched off, door tablet, an
+ *   Ishtagoshti subscriber waiting for the parent's code or blocked)
+ * - `subscriber`: a public login that joined Ishtagoshti (I14): sloka study only
  * - `guru`, `coordinator`, `student`: that role's screens
  */
 export type Area =
@@ -33,4 +43,5 @@ export type Area =
   | 'pending'
   | 'guru'
   | 'coordinator'
-  | 'student';
+  | 'student'
+  | 'subscriber';

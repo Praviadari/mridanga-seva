@@ -90,6 +90,8 @@ function RootNavigator() {
 
         <Stack.Protected guard={area === 'pending'}>
           <Stack.Screen name="pending" />
+          {/* I14: a login without a class role joins Ishtagoshti, or types the parent's code. */}
+          <Stack.Screen name="join-ishtagoshti" />
         </Stack.Protected>
 
         {/* The staff home (G1 for the Guru, C1 for a coordinator) and the coordinator screens the
@@ -100,6 +102,11 @@ function RootNavigator() {
 
         <Stack.Protected guard={area === 'student'}>
           <Stack.Screen name="student" />
+        </Stack.Protected>
+
+        {/* A public Ishtagoshti subscriber: sloka study and its own account only (docs/DECISIONS.md #72). */}
+        <Stack.Protected guard={area === 'subscriber'}>
+          <Stack.Screen name="subscriber" />
         </Stack.Protected>
       </Stack>
     </>

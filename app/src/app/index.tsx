@@ -19,10 +19,11 @@ const HOME: Record<Exclude<Area, 'loading'>, Href> = {
   guru: '/staff',
   coordinator: '/staff',
   student: '/student',
+  subscriber: '/subscriber/ishtagoshti',
 };
 
 /** Areas of a signed-in person; once one is reached, a remembered link has had its chance. */
-const SIGNED_IN: readonly Area[] = ['pending', 'guru', 'coordinator', 'student'];
+const SIGNED_IN: readonly Area[] = ['pending', 'guru', 'coordinator', 'student', 'subscriber'];
 
 /** Splash while loading, then a redirect to the requested screen or the person's home screen. */
 export default function Index() {

@@ -86,7 +86,7 @@ function toPerson(row: PersonRow): Person {
 
 /** Loads the board. Returns null when it could not be loaded (usually no internet). */
 export async function fetchCoordinatorsBoard(): Promise<CoordinatorsBoard | null> {
-  const [people, students, editors] = await Promise.all([
+  const [people, students, editors, subscribers] = await Promise.all([
     supabase
       .from('profiles')
       .select('id, role, full_name, email, phone, duty_hours, is_treasurer, active, created_at')
@@ -95,6 +95,9 @@ export async function fetchCoordinatorsBoard(): Promise<CoordinatorsBoard | null
     supabase.from('students').select('id, full_name, roll_no, level_id, status, mentor_id, profile_id').order('full_name'),
     // Asked apart, so the page still works on a database without migration 0021.
     supabase.from('profiles').select('id, ig_editor').eq('role', 'coordinator'),
+    // Public Ishtagoshti subscribers are not waiting for a class role: they are on I15 (0025,
+    // docs/DECISIONS.md #72). Asked apart, so the page still works without migration 0025.
+    supabase.from('ig_subscribers').select('profile_id'),
   ]);
   if (people.error || students.error) return null;
   const editorOf = editors.error ? null : new Map((editors.data as { id: string; ig_editor: boolean }[]).map((e) => [e.id, e.ig_editor]));
@@ -102,7 +105,8 @@ export async function fetchCoordinatorsBoard(): Promise<CoordinatorsBoard | null
   const staff = all
     .filter((p) => p.role === 'guru' || p.role === 'coordinator')
     .sort((a, b) => Number(b.active) - Number(a.active) || a.fullName.localeCompare(b.fullName));
-  const pending = all.filter((p) => p.role === 'pending');
+  const subscriberIds = new Set(subscribers.error ? [] : (subscribers.data as { profile_id: string }[]).map((s) => s.profile_id));
+  const pending = all.filter((p) => p.role === 'pending' && !subscriberIds.has(p.id));
   return {
     staff,
     waiting: pending.filter((p) => p.active).sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
