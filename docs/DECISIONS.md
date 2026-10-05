@@ -1632,6 +1632,53 @@ notices but phones get no push for them. No native package: the Android fingerpr
 Not done: event photos, a results notice when a poll closes, reminders at another hour, multi-choice
 polls. Telugu and Hindi strings are drafts for the review (TRANSLATIONS.md).
 
+## 65. Team tools: suggest material, inventory, duty roster — 3 Oct 2026
+
+**Status: decided by Praveen 3 Oct 2026 (four answers below), on the branch `phase2-team-tools`; not
+on main until the lead pushes it.** Numbers #57-#64 are held by slices 5 and 6.
+
+**Context.** The Screen List doc approves C18 "Suggest material: upload goes to the Guru for
+approval", C19 "Inventory: issue and return mridangas and other items, condition check", C20 "My
+duty roster: my shifts in the 14:30-20:00 window", and G2 lists the duty roster for the Guru. Phase 1
+left `materials.approved_by` empty for a coordinator's suggestion (0001) and wrote duty hours as free
+text (`profiles.duty_hours`, #45). The research table in NOTES.md gives the instrument kinds (clay
+khol, fibreglass Balaram / Tilak, fibreglass body with skin heads, brass) and the care rules.
+
+**Decision (Praveen's answers, 3 Oct 2026, all four as proposed).**
+- **C18: coordinators suggest; the Guru decides.** A coordinator adds a material with the same form
+  as G5 (YouTube link, video-file link, PDF or photo, up to 10 a day) and an optional reason. It waits
+  unseen by students. The Guru reviews it on the same form (may change the title, level or item),
+  then **Add to lessons** (it becomes an ordinary approved material) or **Decline** with a reason
+  the coordinator sees. Both sides get a notice. The coordinator may take back a waiting suggestion
+  and remove a declined one with its file. Students do not suggest.
+- **C19: the Guru adds items, coordinators lend.** The Guru adds an item (kind, name or number as
+  written on it, notes, condition now), edits it, retires it (not while lent) or deletes one added by
+  mistake (never lent). Any coordinator or the Guru lends an item to a student (with or without a
+  login) or a coordinator, with the condition seen, an optional note and bring-back date, and takes
+  it back with the condition seen. Condition: **Good / Needs care / Damaged / In repair**; a note is
+  needed for anything but Good; only Good or Needs care items go out; a condition check can be
+  recorded any time. Every condition seen is kept (history on the item); "Damaged" tells the Guru.
+  A borrower sees what they hold on My profile; C8 shows a student's items on loan.
+- **C20: the Guru plans; everyone on a shift is reminded.** A shift is a date, a centre, a time
+  inside the centre's open hours, an optional duty ("Desk and attendance"), and the coordinators on
+  it; a new shift can repeat weekly for up to 12 weeks (each week its own shift). Coordinators see
+  "My shifts" and the whole roster for 4 weeks. At 18:00 India time the evening before, everyone on
+  a shift gets an inbox notice and a push (once; again if the date or start time changes).
+  `profiles.duty_hours` (G2) stays as the usual-hours line.
+
+**Why.** Suggestions reuse the materials table and form, so an added suggestion is simply a lesson,
+with no copy to keep in step. One open loan per item and conditions written only through checks,
+loans and returns keep the inventory honest without an admin. The roster is the Guru's plan, as in
+G2; reminders come through the push queue and inbox the Phase 2 notices already use (#55).
+
+**Consequences.** Migration `0023_team_tools.sql` (DATABASE.md "Team tools"): materials columns and
+guard for suggestions, coordinator uploads to `material-files`, `inventory_items`, `inventory_loans`,
+`inventory_checks`, `duty_shifts`, `duty_assignments`, the functions and the pg_cron job
+`mridanga-duty`. The Edge Function `notify-announcements` accepts the three new screens and must be
+redeployed on TEST (and later LIVE) for the pushes; the inbox works without it. No native change:
+the Android fingerprint stays 185e839f. The Instruments circle on the staff ring is no longer
+"Coming soon".
+
 ## 70. Check-ins are checked against the centre's area, saved anyway and flagged — 3 Oct 2026
 
 **Status: decided by Praveen 3 Oct 2026; branch `fix-gps-back`, migration `0024_attendance_location.sql`

@@ -23,8 +23,9 @@ class, screen by screen. Words in **bold** are the words the app shows in Englis
 12. [Groups](#groups)
 13. [My reports](#my-reports)
 14. [Syllabus and lessons (read only)](#syllabus-and-lessons-read-only)
-15. [What a coordinator can and cannot see](#what-a-coordinator-can-and-cannot-see)
-16. [Coming later](#coming-later)
+15. [Team tools: instruments, duty roster, suggesting a lesson](#team-tools-instruments-duty-roster-suggesting-a-lesson)
+16. [What a coordinator can and cannot see](#what-a-coordinator-can-and-cannot-see)
+17. [Coming later](#coming-later)
 
 ## Getting a coordinator account
 
@@ -49,7 +50,7 @@ The **Home** tab shows:
 | **Visits today** | Visits so far today. Tap to open attendance |
 | **Calls due for my students** | Follow-up calls due for the students you mentor. Tap to open **Follow-up calls** |
 | **New joiners (last 4 weeks)** | Students who joined recently, newest first, with their number of visits. Tap a name to open the profile. Someone with no visits yet may need a call |
-| **Screens** (the ring) | **Students**, **Attendance**, **Here now**, **Follow-up calls**, **Announcements**, **Groups**, **Syllabus and lessons**; **Instruments** and **Events** are marked under construction |
+| **Screens** (the ring) | **Students**, **Attendance**, **Here now**, **Follow-up calls**, **Announcements**, **Groups**, **Syllabus and lessons**, **Instruments**, **Events**. Under the ring: **Duty roster** and **Material suggestions** (Phase 2) |
 | **My reports** (under the ring) | Your mentees' visits, statuses, calls and progress, with a CSV file (see [My reports](#my-reports)) |
 | Bell on the header | Your **Notifications** inbox, with the unread count (as for students: [Notifications](02-student-guide.md#notifications)) |
 | Foot of the page | Language, **My profile**, **Notifications**, **Sign out**, version line |
@@ -333,6 +334,37 @@ and **Make it the sloka of that day**. Type only the temple's own translation, w
 purport, never text copied from BBT books or vedabase; the app will not publish a sloka until you
 tick that it is the temple's own.
 
+## Team tools: instruments, duty roster, suggesting a lesson
+
+Phase 2 ([DECISIONS.md #65](../DECISIONS.md)).
+
+**Instruments** (the ring) lists the temple's mridangas, kartals and other items, with their
+condition and who has each. Filter: **In use**, **In the store**, **Lent out**, **Needs attention**,
+**Retired**. Tap an item:
+
+- **Lend**: type 2 or more letters of a student's or coordinator's name (or a roll number), pick the
+  person, choose the condition you see now (**Good** or **Needs care**; a damaged item cannot go
+  out), add a note and, if you like, a date to bring it back (day-month-year). **Lend it**.
+- **Take back**: choose the condition you see now. Anything but **Good** needs a note ("Baya strap
+  loose"). **Damaged** tells the facilitator.
+- **Condition check**: the same, without lending; use it when an item goes to or comes back from the
+  drum maker (**In repair**, then **Good**).
+- **History** shows every condition seen, who lent it to whom, and when.
+
+A student sees the items they hold on **My profile**; you see them on the student's profile under
+**Items on loan**.
+
+**Duty roster** (under the ring) shows **My shifts** for the next 4 weeks and the whole roster by
+date, with who is on each shift. The facilitator plans it. At 18:00 the evening before a shift you
+get a notice in your inbox (and a push on Android).
+
+**Material suggestions** (under the ring): **Suggest a material** opens the lesson form (a YouTube
+link, a video-file link, a PDF or a photo, for a level and optionally an item) with **Why this
+helps**. **Send to the facilitator**. Students do not see it until the facilitator adds it. Each
+suggestion shows **Waiting**, **Added to lessons** or **Declined** with the facilitator's reason;
+you can take back a waiting one or remove a declined one. You get a notice either way. At most 10
+a day.
+
 ## What a coordinator can and cannot see
 
 | You can | You cannot |
@@ -348,9 +380,8 @@ address gets around them ([6. How the app works](06-how-it-works.md#the-rules-li
 
 ## Coming later
 
-- **Instruments** (the temple's mridangas and who has one), **Events**, **assessments**,
-  **promotion** (nominating a student to move up a level, with coordinators' feedback) and a
-  **duty roster**: Phase 2. See [How it was built](07-how-it-was-built.md#phases-and-dates).
+- **Events**, **assessments** and **promotion** (nominating a student to move up a level, with
+  coordinators' feedback): Phase 2. See [How it was built](07-how-it-was-built.md#phases-and-dates).
 
 ---
 

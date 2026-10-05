@@ -93,7 +93,8 @@ app/
                        holds Home (G1 or C1 by role) and the four used most. Phase 2:
                        assessments/ holds G6, C12-C14, promotion/ holds C22, C23, G7,
                        practice.tsx (S5) and taals/ (the Guru's taal editor), ishtagoshti/ (I2, I3,
-                       and the editors' edit-sloka/ I12 and edit-theme/ I11)
+                       and the editors' edit-sloka/ I12 and edit-theme/ I11); slice 8:
+                       suggestions.tsx (C18), inventory/ (C19), duty/ (C20 roster)
     auth/              Who is signed in, their role, and the sign-in / sign-up calls
     screens/           The two staff homes, G1 and C1 (shown by staff/(tabs)/index.tsx), and the
                        pages both areas show: Coming soon, Attendance history (S9), My profile (A3),
@@ -457,6 +458,23 @@ On the branch `phase2-media`, rebased on main after the Phase 2 merge; not on ma
   cache (expo-file-system) and opens the share sheet (expo-sharing, already in the APK);
   `calendar-file.web.ts` downloads it. Whether a calendar app takes the shared file depends on the
   phone; the Google link always works.
+## Team tools (Phase 2 slice 8, branch `phase2-team-tools`)
+
+Not on main yet ([DECISIONS.md #65](DECISIONS.md)). No native change.
+
+- **C18 suggestions are materials.** A coordinator saves a material with the G5 form; the database
+  leaves `approved_by` empty, so row-level security already hides it from students and the lesson
+  lists ask for approved ones only. The Guru's decision is one function (`decide_material_suggestion`)
+  so the waiting / added / declined state cannot be set by a plain update.
+- **C19: conditions are a log.** Every condition seen (added, check, lent, back) is a row of
+  `inventory_checks`; a trigger copies the newest onto the item. Lending and taking back run as
+  functions so one open loan per item, the note rule and "no damaged item out" hold on every path.
+- **C20: the Guru plans in one call** (`save_duty_shift`: the shift and its people together, or
+  the same shift for several weeks). A pg_cron job at 18:00 India time queues the reminders.
+- **Notices** (a suggestion, its decision, an item marked damaged, tomorrow's duty) go through
+  `push_outbox` like the other Phase 2 notices: the inbox gets them at once (0019); the Edge Function
+  pushes them once redeployed (it accepts `/staff/suggestions`, `/staff/duty`, `/staff/inventory/<id>`).
+
 ## Phases
 
 | Phase | Adds | Target |

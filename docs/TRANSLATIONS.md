@@ -155,5 +155,13 @@ The code is in `app/src/i18n/index.ts`, `app/src/components/language-picker.tsx`
   కరతాళాలు, ప్రధాన గాయకులు, హార్మోనియం / मृदंग, करताल, मुख्य गायक, हारमोनियम; "who came" ఎవరు వచ్చారు /
   कौन आया. Event titles, places, reasons and poll questions and answers are typed by staff and shown
   as typed. Checked for mixed Telugu-Devanagari words on 5 Oct 2026.
+- **Phase 2 team tools** (branch `phase2-team-tools`, [DECISIONS.md #65](DECISIONS.md)): every Telugu and Hindi
+  line under `suggestions.*` (C18), `inventory.*` (C19) and `duty.*` (C20) is a draft for the review, and
+  the notice lines in `team_push_line` (migration 0023). Words to check first: "suggestion" సూచన / सुझाव,
+  "decline" తిరస్కరించండి / मना करें, "lend" ఇవ్వండి / दें and "take back" వెనక్కి తీసుకోండి / वापस लें,
+  the conditions (బాగుంది, శ్రద్ధ కావాలి, పాడైంది, మరమ్మతులో / ठीक, देखभाल चाहिए, ख़राब, मरम्मत में),
+  "retire" an item (విరమించండి / हटाएँ: may read oddly), "shift" (షిఫ్ట్ / पाली), "duty roster"
+  (డ్యూటీ పట్టిక / ड्यूटी रोस्टर), the kinds "Clay khol", "fibreglass", "skin heads", and the short
+  weekdays in `duty.weekdays.*`. Checked for mixed Telugu-Devanagari words on 3 Oct 2026.
 - Telugu and Devanagari letters are taller than Latin ones. The app's line heights allow for this;
   if a translated label looks cut off, report it with a screenshot.

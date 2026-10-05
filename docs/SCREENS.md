@@ -146,6 +146,16 @@ the inbox (and the push, once the Edge Function is redeployed). No native packag
 | C17 | Polls: New poll / Edit (question, 2-6 answers, closing day and time, who it is for, Anonymous, results after voting or only after closing; after the first vote only the wording and the closing time change); one poll with the results (staff: live, except in an anonymous poll), who has not voted, who voted (and what, unless anonymous), Remind (once in 12 hours), Close now, Delete while nobody voted | Coordinator, Guru | Built | `app/src/screens/poll-detail.tsx`, `poll-form.tsx` (routes `staff/polls/[id].tsx`, `new.tsx`, `edit/[id].tsx`), `app/src/data/polls.ts` |
 | S12 | Polls: the Polls tab ("n to vote"); one poll: choose one answer (saved at once, changeable until it closes), the results as bars when the poll allows | Student (staff for polls for them) | Built | same screens (route `student/polls/[id].tsx`) |
 
+Slice 8, team tools ([DECISIONS.md #65](DECISIONS.md)), on the branch `phase2-team-tools`, migration 0023.
+No native change. The staff ring's Instruments circle opens C19; two rows under Practice tools open
+C20 and C18.
+
+| # | Screen | Who | Status | Code |
+|---|---|---|---|---|
+| C18 | Material suggestions: a coordinator suggests a YouTube link, video-file link, PDF or photo with the G5 form and a reason; sees each one Waiting / Added to lessons / Declined (with the facilitator's reason), takes back a waiting one, removes a declined one. The Guru sees those waiting (oldest first) and those decided in 30 days; Review opens the form with Add to lessons and Decline (a reason). Notices both ways | Coordinator, Guru | Built | `app/src/app/staff/suggestions.tsx`, `app/src/app/staff/materials/[id].tsx`, `app/src/data/suggestions.ts` |
+| C19 | Instruments: items with kind, condition and who holds each (since, due, overdue), filters In use / In the store / Lent out / Needs attention / Retired; an item: lend (find a student or coordinator, condition, note, bring-back date), take back (condition, note), condition check, history; the Guru adds, edits, retires, deletes one never lent. C8 and My profile show items on loan | Coordinator, Guru (students see what they hold) | Built | `app/src/app/staff/inventory/index.tsx`, `inventory/[id].tsx`, `app/src/data/inventory.ts`, `app/src/components/held-items.tsx` |
+| C20 / G2 | Duty roster: My shifts and the roster for 4 weeks by date with who is on each; the Guru adds a shift (date, centre, from-to inside open hours, duty, people, repeat weekly up to 12 weeks), changes or deletes one. Reminder (inbox + push) at 18:00 the evening before | Coordinator, Guru | Built | `app/src/app/staff/duty/index.tsx`, `duty/[id].tsx`, `app/src/data/duty.ts` |
+
 ## Build order
 
 ~~A1~~ → ~~C2, C3~~ → ~~C5, C6~~ → ~~C7, C8~~ → ~~C10, C11~~ → ~~C9~~ → ~~G4, G5~~ → ~~C15, S10~~ → ~~S1~~, ~~S3~~, ~~S4, S9~~ →

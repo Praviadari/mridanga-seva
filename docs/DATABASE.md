@@ -23,6 +23,7 @@ in number order:
 | `0017_promotion.sql` | **Phase 2** (0014_promotion on its branch and on TEST). Nominations, coordinators' feedback, the Guru's decision; only the Guru changes a level ([DECISIONS.md #53](DECISIONS.md)). See "Promotion approval (Phase 2)" |
 | `0018_practice.sql` | **Phase 2** (0016_practice on its branch and on TEST). Taals, the practice log and weekly minutes ([DECISIONS.md #54](DECISIONS.md)). See "Practice tools (Phase 2)" |
 | `0019_phase2_inbox.sql` | Every notice queued in `push_outbox` (assessments, promotion) also goes into the notifications inbox (A2) ([DECISIONS.md #55](DECISIONS.md)). See "Notifications inbox" |
+| `0023_team_tools.sql` | **Phase 2 slice 8.** C18 material suggestions (coordinators suggest, the Guru adds or declines), C19 inventory (items, loans, condition checks), C20 duty roster (shifts, people, the evening-before reminder) ([DECISIONS.md #65](DECISIONS.md)). See "Team tools (Phase 2)" |
 
 The Phase 2 files were renumbered when Phase 2 merged into main (#55). TEST ran them under their
 old numbers (0012, 0014_promotion, 0016_practice) and needs only 0019; LIVE runs 0013 to 0019 in
@@ -50,6 +51,8 @@ consent), sample visits, groups and an announcement. Never run it on the live pr
 | Assessments (Phase 2) | `assessments`, `assessment_releases`, `assessment_assignments`, `assessment_submissions`, `push_outbox` | Views `assessment_tracker` (C13) and `assessment_summary` (counts). Files in the Storage bucket `assessment-files` |
 | Promotion (Phase 2) | `promotion_nominations`, `promotion_feedback` | View `promotion_queue` (G7). See "Promotion approval (Phase 2)" |
 | Practice (Phase 2) | `taals`, `practice_logs` | Taals the S5 player loops (the Guru edits them); practice minutes from the S5 timer or typed in (S6). See "Practice tools (Phase 2)" |
+| Inventory (Phase 2) | `inventory_items`, `inventory_loans`, `inventory_checks` | Temple instruments and other items, who holds each, every condition seen (C19). See "Team tools (Phase 2)" |
+| Duty roster (Phase 2) | `duty_shifts`, `duty_assignments` | Shifts per date and centre with the people on each (C20). Suggestions (C18) live in `materials` |
 | Ishtagoshti (Phase 2) | `ig_slokas`, `ig_themes`, `ig_theme_slokas`, `ig_daily_pins`, `ig_notes`, `ig_memorised` | Sloka study (I1-I3, I11, I12): the temple's own translations, themes, the sloka of the day, private notes, memorised ticks. Recitations in the Storage bucket `ishtagoshti-audio`. See "Ishtagoshti (Phase 2)" |
 | Audit | `audit_log` | Who changed a student, profile, call log, level, syllabus item or tick, material, announcement, setting, centre, sloka or Ishtagoshti theme, or deleted a reply, and when (read on G11) |
 
@@ -828,6 +831,49 @@ and `poll` (0022 widens `notifications_kind_check` and redefines `inbox_kind_for
 Function sends them once redeployed (it accepts `/student|staff/events|polls/<id>`). Smoke tests:
 section "events and polls (0022, Phase 2)".
 
+## Team tools (Phase 2)
+
+Migration 0023 (`0023_team_tools.sql`), on the branch `phase2-team-tools`
+([DECISIONS.md #65](DECISIONS.md)). Screens C18, C19, C20 (SCREENS.md). Notices go into
+`push_outbox` through `queue_team_push` (staff only, in each person's language), so they reach the
+inbox (0019) and, once the Edge Function is redeployed, the phone.
+
+**C18 suggestions** are rows of `materials` with `approved_by` empty:
+
+| Change | What |
+|---|---|
+| `materials.suggest_reason` | The coordinator's reason, ≤ 500 characters (empty for the Guru's own) |
+| `materials.decided_at`, `declined_reason` | Empty = waiting. Added: `approved_by` set. Declined: `decided_at` set, `approved_by` empty, reason ≤ 500 |
+| `guard_material_suggestion` (trigger `materials_suggestion_guard`, runs after `materials_guard`) | At most 10 suggestions a day per coordinator (`too_many_suggestions`); the three columns and approval change only through `decide_material_suggestion` (`suggestion_frozen`) |
+| `notify_material_suggestion` | A new suggestion tells every active Guru (screen `/staff/suggestions`) |
+| `decide_material_suggestion(material, approve, reason)` | Guru only: adds it to the lessons or declines it with a reason (`reason_required`), once (`already_decided`); tells the coordinator |
+| Policy `own_suggestion_delete` | A coordinator deletes their own material while it is not approved (take back, remove a declined one) |
+| `material_file_uploadable` | Redefined: the Guru, or a coordinator into their own folder, at most 10 files a day |
+
+The app lists approved materials only in G4 / S4 (`fetchMaterials`); suggestions show on C18.
+
+**C19 inventory:**
+
+| Table / function | What |
+|---|---|
+| `inventory_items` | Centre, `kind` (`clay_khol`, `fibreglass`, `fibre_skin`, `brass`, `kartals`, `other`), `label` (1-60, unique per centre ignoring case), notes (≤ 500), `condition` (`good`, `needs_care`, `damaged`, `in_repair`) with its note and time, `retired_at`. The Guru inserts, updates and deletes; the condition changes only through a check (`condition_frozen`); not retired while lent (`item_out`). Audited |
+| `inventory_loans` | One lending: item, a student **or** a staff member, issued by / at, optional `due_on`, condition out and in, notes, `returned_at`. One open loan per item. Written only by the functions; an item with loans cannot be deleted (foreign key) |
+| `inventory_checks` | Every condition seen: `added`, `check`, `issue`, `return`; the newest sets the item's condition (trigger); `damaged` tells the Guru (screen `/staff/inventory/<id>`) |
+| `issue_inventory_item(item, student, profile, condition, note, due_on)` | Staff: lends a good or needs-care item (`item_not_lendable`) to a student not Left or an active staff member (`borrower_required`, `borrower_not_found`); `due_past`, `item_out`, `item_retired` |
+| `return_inventory_item(loan, condition, note)` | Staff: takes it back once (`already_returned`) |
+| `check_inventory_item(item, condition, note)` | Staff: a condition check. Every condition but `good` needs a note (`note_required`, ≤ 500) |
+
+**C20 duty roster:**
+
+| Table / function | What |
+|---|---|
+| `duty_shifts` | Centre, `on_date`, `starts_at`, `ends_at` (inside the centre's `opens_at`-`closes_at`: `outside_hours`, `time_invalid`), `duty` (≤ 80). New or moved: not past, ≤ 1 year ahead |
+| `duty_assignments` | Shift + person (an active coordinator or the Guru: `not_a_coordinator`), `reminded_at` |
+| `save_duty_shift(id, centre, date, starts, ends, duty, people, weeks)` | Guru: a new shift (repeated weekly 1-12 times) or an edit (people replaced; a new date or start time is reminded again). Errors `people_required`, `weeks_invalid`, `shift_not_found` and the guards' |
+| `duty_daily()` | pg_cron `mridanga-duty`: reminds everyone on tomorrow's shifts once (screen `/staff/duty`) |
+
+Staff read the whole roster; students nothing. Smoke tests: section "team tools (0023, Phase 2)".
+
 ## Linking a login to a student
 
 A student record can exist without a login (many students never install the app). When a person
@@ -882,6 +928,7 @@ so every function is revoked from them and granted only where needed
 | `claim_push_outbox()`, `release_push_outbox(ids)`, `claim_expired_submission_files()`, `release_submission_files(ids)` | Only the Edge Function (service role) | Send the queued assessment and promotion notifications; delete expired recordings (0016) |
 | `review_submission(…, p_voice_note)` | See "Media (Phase 2)" | Phase 2 (0020) replaces 0016's version |
 | `next_level`, `promotion_criteria`, `nominate_for_promotion`, `give_promotion_feedback`, `decide_promotion`, `withdraw_nomination`, `promotion_ready_students`, `promotion_home` | See "Promotion approval (Phase 2)" | Phase 2 (0017) |
+| `decide_material_suggestion`, `issue_inventory_item`, `return_inventory_item`, `check_inventory_item`, `save_duty_shift` | See "Team tools (Phase 2)" | Phase 2 slice 8 (0023) |
 | `ig_sloka_of_day`, `set_theme_slokas`, `is_ig_editor`, `ig_reader` | See "Ishtagoshti (Phase 2)" | Phase 2 (0021) |
 | `rsvp_event`, `event_counts`, `event_people_list`, `event_student_list`, `set_event_performers`, `mark_event_attendance`, `remind_event`, `vote_poll`, `poll_state`, `poll_voters`, `remind_poll` | See "Events and polls (Phase 2)" | Phase 2 (0022) |
 
@@ -904,6 +951,9 @@ and audit triggers (including `guard_student_progress`, `audit_student_progress`
 `queue_staff_push`, `promotion_tell_guru`, `queue_student_promoted`, `submission_file_expired` (0017),
 the events and polls helpers `audience_students`, `event_people`, `guard_event`, `guard_event_delete`, `guard_poll`,
 `guard_poll_delete`, `event_push_line`, `queue_people_push`, `event_notify`, `poll_notify`, `events_polls_daily` (0022),
+the team-tools helpers `team_push_line`, `queue_team_push`, `guru_ids`, `inventory_note`, `duty_daily`
+and the triggers `guard_material_suggestion`, `notify_material_suggestion`, `guard_inventory_item`,
+`inventory_item_added`, `inventory_check_recorded`, `guard_duty_shift`, `guard_duty_assignment` (0023),
 and the helpers `my_role`, `is_guru`, `is_staff`,
 `setting_int`, `today_ist`.
 
@@ -916,6 +966,7 @@ and the helpers `my_role`, `is_guru`, `is_staff`,
 | `mridanga-push` | Every minute | `send_due_push()` — calls the Edge Function `notify-announcements` when a published announcement waits for its push notification; does nothing while push is not set up (0011); since 0016 also when an assessment or promotion notification of the last day waits in `push_outbox` |
 | `mridanga-inbox-cleanup` | 01:00 UTC = 06:30 IST | `inbox_cleanup()` — deletes inbox notices older than a year (0015) |
 | `mridanga-assessments` | 03:30 UTC = 09:00 IST | `assessment_daily()` — reminders for assessments due today or tomorrow that are not sent yet; asks the Edge Function (`{"cleanup": true}`) to delete recordings 30 days past their review (0016); level-up ones 30 days after the promotion decision (0017) |
+| `mridanga-duty` | 12:30 UTC = 18:00 IST | `duty_daily()` — reminds everyone on tomorrow's duty shifts, once (0023) |
 | `mridanga-events-polls` | 03:30 UTC = 09:00 IST | `events_polls_daily()` — reminds those going or maybe of an event tomorrow, and those who have not voted on a poll closing within 24 hours; each once (0022) |
 
 ## Who can see what
@@ -926,8 +977,8 @@ and the helpers `my_role`, `is_guru`, `is_staff`,
 | Other students | — | Read / write | Read / write / delete |
 | Guardians, consents | — | Read / write | Read / write |
 | Call logs, follow-up tasks, status history | — | Read / write | Read / write |
-| Materials | Approved ones up to own level | All (suggesting = Phase 2) | All; add, edit, delete |
-| Material files (Storage) | Those on materials they can read | All on materials, and own uploads | All; upload; delete any |
+| Materials | Approved ones up to own level | All; suggest (C18); take back or remove own suggestion | All; add, edit, delete; add or decline suggestions |
+| Material files (Storage) | Those on materials they can read | All on materials, and own uploads; upload for a suggestion (10 a day) | All; upload; delete any |
 | Own name and phone | Read / write | Read / write | Read / write |
 | Announcements | Published ones addressed to them | All, can post; edit, pin or delete own | All, can post; edit, pin or delete any |
 | Read receipts | Own; can add | All (for "seen by"); add own | All; add own |
@@ -946,6 +997,8 @@ and the helpers `my_role`, `is_guru`, `is_staff`,
 | Assessment files (Storage) | Files of their assessments and their own recordings; upload audio or video while one is open (10 a day) | All on sent assessments and all recordings | All; upload; delete any |
 | Promotion nominations and answers (Phase 2) | — (a push when promoted) | All; nominate, answer, withdraw own, through the functions | All; nominate, decide, withdraw any |
 | A student's level | Read | Read (changed only by the Guru) | Read / write; Promote |
+| Inventory items, loans (Phase 2) | Items they hold now and their own loans | All, with history; lend, take back, check through the functions | Same; add, edit, retire, delete one never lent |
+| Duty roster (Phase 2) | — | All shifts and who is on them | All; plan, change, delete |
 | Ishtagoshti slokas, themes, pins (Phase 2) | Published ones | Published ones; editors (marked by the Guru) all, and write | All; write; marks editors |
 | Ishtagoshti notes, memorised ticks | Own only | Own notes; all ticks | Own notes; all ticks |
 | Recitations (Storage) | Those on published slokas | Same; editors all, upload, delete | All; upload; delete |

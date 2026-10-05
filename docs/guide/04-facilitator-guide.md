@@ -23,7 +23,8 @@ lessons, the coordinators, the whole student database, the settings and the audi
 10. [Centres](#centres)
 11. [Audit log](#audit-log)
 12. [Announcements and replies](#announcements-and-replies)
-13. [Coming later](#coming-later)
+13. [Team tools: suggestions, instruments, duty roster](#team-tools-suggestions-instruments-duty-roster)
+14. [Coming later](#coming-later)
 
 ## The first Facilitator account
 
@@ -248,12 +249,31 @@ it the sloka of that day** fixes it for a date. Three **Sample** slokas and two 
 there to show how it looks: delete or replace them when the real ones are typed in
 ([DECISIONS.md #57](../DECISIONS.md)).
 
+## Team tools: suggestions, instruments, duty roster
+
+Phase 2 ([DECISIONS.md #65](../DECISIONS.md)). Coordinators' side: [Coordinator guide](03-coordinator-guide.md#team-tools-instruments-duty-roster-suggesting-a-lesson).
+
+- **Material suggestions** (under the ring): coordinators' suggestions wait here, oldest first, with
+  who suggested it and why. **Review** opens the lesson form: change the title, level or item if
+  needed, then **Add to lessons** (students see it from then on) or **Decline** with a reason the
+  coordinator reads. You get a notice for each new suggestion.
+- **Instruments** (the ring): **Add an item** with its kind (clay khol, fibreglass Balaram / Tilak,
+  fibreglass body with skin heads, brass, kartals, other), the name or number written on it, notes
+  and its condition now. On an item you can also **Edit**, **Retire** it (no longer lent; only when it
+  is back) or put it back in use, and **Delete** one added by mistake (never lent). Coordinators
+  lend, take back and check items; when one is marked **Damaged** you get a notice.
+- **Duty roster** (under the ring): **Add a shift**: the date, the centre, from and to (inside the
+  centre's open hours), what the duty is (optional, e.g. "Desk and attendance"), who is on it, and
+  **Repeat every week for** up to 12 weeks. Tap a shift to change it or delete it. Everyone on a
+  shift gets a reminder at 18:00 the evening before. **Duty hours** on a coordinator's page stay as
+  the usual-hours line.
+
 ## Coming later
 - **Checking the attendance area on phones** (the centre's GPS area): with the next Android app.
 - **Assessments** (you create a piece to learn; coordinators pass it on, follow up and review),
   **promotion approval** (a mentor nominates, coordinators give feedback, you decide **Promote**,
   **Not yet** or **More feedback**) and practice tools are built (Phase 2); on Android they come
-  with the next app version. Events, polls, instruments, free Ishtagoshti sign-up for the public and the fund: Phase 2, later.
+  with the next app version. Events, polls, free Ishtagoshti sign-up for the public and the fund: Phase 2, later.
   See
   [How it was built](07-how-it-was-built.md#phases-and-dates).
 
