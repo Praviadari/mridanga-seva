@@ -1889,3 +1889,57 @@ month, CSV like C21/G8), `/staff/fund/[id]` (record; approve / decline / withdra
 `/staff/fund/categories` (Guru), a "Class fund" row on both staff homes, the treasurer switch in G2,
 the two limits in G10. JS + SQL only: the fingerprint stays 185e839f. Not built (F-section items for
 later): donors and sponsors lists, pledges, sponsorship needs per event.
+
+## 72. Ishtagoshti part 2: free public sign-up, parent's code by email, the Guru's subscriber list — 5 Oct 2026
+
+**Status: decided by Praveen 5 Oct 2026 (answers below), on the branch `phase2-ishtagoshti-public`;
+not on main until the lead pushes it. The consent and notice texts are PLACEHOLDERS until the team
+gives the wording.**
+
+**Context.** The team wants Ishtagoshti free to anyone (28 Sep 2026; I14 public sign-up, I15
+subscribers for the Guru). Anyone could already create a login (A1); it waited on the pending screen
+with no access. A public member must read the slokas and nothing of the class: no students,
+announcements, attendance or staff data. Some will be under 18, and India's DPDP Rules 2025 (rule 10)
+ask for verifiable consent of a parent before a child's data is processed.
+
+**Decision.**
+- **A subscriber is a flag, not a role.** The login keeps role `pending`, which every existing rule
+  refuses, and gets a row in `ig_subscribers`. `ig_reader()` lets a pending login read when it has
+  such a row, is not blocked and, under 18, its parent has confirmed. Nothing else learns a new role.
+  A new value of the `app_role` enum was rejected: every policy that trusts "authenticated" or
+  `my_role()` would have to be checked again, and Postgres cannot use a new enum value in the same
+  transaction that adds it (the SQL editor runs a file as one).
+- **Joining (I14, Praveen):** after sign-in and a confirmed email, from the pending screen. Name and
+  email come from the login; plus the **year of birth** (in the year one turns 18 the form asks about
+  the birthday) and an **optional phone**. The person agrees to the notice; its version is stored.
+- **Under 18 (Praveen):** the parent's name, email and relation; the database emails the parent a
+  **6-digit code** (valid 24 hours, 5 tries, at most 3 a day per child and 100 a day for the app);
+  reading opens when the child types it. Before that nothing opens. The email goes from the database
+  through pg_net to Brevo's mail API (the Brevo key and sender in the Vault), like the push call of
+  #33; without them the app says parent emails are not switched on yet. A year of birth under 18
+  cannot later be changed to 18 or older.
+- **Wording (Praveen):** placeholders marked "TEST — the team's wording comes here" in en/te/hi, for
+  the notice, the parent text in the app and the email. `IG_TERMS_VERSION` / `terms_version`
+  record which text was agreed; change both when the team's text arrives.
+- **Who blocks (Praveen):** the Guru only, with an optional reason only the Guru sees. I15 also shows
+  the counts and joins per week. Sign-up is open on the web test site too.
+- **Less data in fewer hands:** coordinators no longer see public subscribers' profiles or memorised
+  ticks; "Leave Ishtagoshti" deletes the details, notes and ticks (a blocked person keeps only the
+  block, so leaving does not undo it).
+- **Found on the way:** 0001 let any signed-in login read settings, centres, levels and the syllabus
+  (`using (true)`), so also a login still waiting for a role. Now only logins with a class role (Guru,
+  coordinator, student, door tablet).
+
+**Why.** Keeping the role `pending` makes the safe answer the default: a forgotten policy refuses a
+subscriber instead of letting one in. The smoke test proves it with a sweep: as a subscriber it reads
+every table and view, writes to every table and bucket, and calls every function a signed-in login
+may run; only Ishtagoshti reading and its own rows answer. A code to the parent's email is the
+lightest verifiable consent that needs no paid SMS and no visit; the class's written consent (C3)
+stays for students.
+
+**Consequences.** Migration `0025_ishtagoshti_public.sql` (DATABASE.md "Ishtagoshti subscribers").
+Smoke tests pass (section "Ishtagoshti public sign-up (0025, Phase 2)"). No native package: the
+fingerprint stays 185e839f. Before real use: the team's wording; a Brevo account, its API key and a
+verified sender in the Vault (OPERATIONS.md "Parent codes by email"); "Confirm email" ON (joining
+needs a confirmed email, else anyone could join with someone else's address). Not built: erasing the
+login itself (Supabase Auth admin), a notice to the Guru on a new join, I4-I13.

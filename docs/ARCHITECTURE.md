@@ -61,13 +61,18 @@ flowchart LR
 | `coordinator` | Teachers who run the daily class | Register students, mark attendance, log follow-up calls, tick syllabus, post announcements |
 | `student` | Enrolled learners | See their own record, attendance, progress, materials and announcements; study Ishtagoshti slokas |
 | `kiosk` | The door tablet (Phase 2) | Only check students in and out |
-| `pending` | Anyone who signed up but has no role yet | Nothing until the Guru gives a role |
+| `pending` | Anyone who signed up but has no role yet | Nothing until the Guru gives a role; may join Ishtagoshti for free (below) |
 
 A new login starts as `pending`. If its email matches a registered student, it is linked to that
 student and becomes `student` automatically, once the email is confirmed. Only the Guru can make
 someone a coordinator, or link a login to a student record by hand, on screen G2; the database
 keeps the Guru role a dashboard matter and stops anyone changing their own role ([DECISIONS.md #45](DECISIONS.md)). The Guru can also mark a coordinator as an **Ishtagoshti editor** (`profiles.ig_editor`), who then adds and edits slokas and themes ([DECISIONS.md #57](DECISIONS.md)); it is a permission on a coordinator, not a role. See [DECISIONS.md #11 and #13](DECISIONS.md) and
 [DATABASE.md](DATABASE.md#linking-a-login-to-a-student).
+
+A **public Ishtagoshti subscriber** is not a role: a `pending` login that joined Ishtagoshti (I14) has
+a row in `ig_subscribers`, and `ig_reader()` lets it read the published slokas and themes and keep its
+own notes and ticks; every other rule still refuses it as `pending`. Under 18 it reads only after the
+parent typed in the code emailed to them; the Guru may block it ([DECISIONS.md #72](DECISIONS.md)).
 
 ## The app's code
 
@@ -168,10 +173,12 @@ request came from (see OPERATIONS.md).
 ## Navigation by role
 
 The app is split into **areas**: `signedOut` (sign-in screens), `recovery` (set a new password),
-`pending` (waiting for a role), `guru`, `coordinator` and `student`, plus `loading` while the
+`pending` (waiting for a role; also the Ishtagoshti join screen I14), `guru`, `coordinator`, `student` and
+`subscriber` (a public Ishtagoshti member: `subscriber/`, tabs Slokas and Account), plus `loading` while the
 saved login and the profile are being fetched.
 
-- `src/auth/auth-provider.tsx` works out the area from the login and the `profiles` row.
+- `src/auth/auth-provider.tsx` works out the area from the login and the `profiles` row; for a `pending`
+  login it also asks `ig_my_state()` (0025) whether it is an active Ishtagoshti subscriber.
 - `src/app/_layout.tsx` opens only that area's screens (Expo Router's `Stack.Protected`).
   A screen of another area cannot be opened, even by typing its address on the web.
 - The `staff/` folder is open to both `guru` and `coordinator`, because the Guru sees every
@@ -437,8 +444,13 @@ On the branch `phase2-media`, rebased on main after the Phase 2 merge; not on ma
   slokas in turn, the same for everyone on an India date.
 - **Recitation** reuses slice 4's recorder (`AudioRecorderPanel`, review mode) and file picker;
   uploaded on Save into the bucket `ishtagoshti-audio`, played through a one-hour signed link.
-- **Slice 7** (free public sign-up) adds its subscriber role to `ig_reader()`; notes and ticks are
-  kept per login (`profiles`), so they work for subscribers unchanged.
+- **Slice 7** (free public sign-up, branch `phase2-ishtagoshti-public`, [DECISIONS.md #72](DECISIONS.md)):
+  the same screens take a third `area`, `subscriber`, with thin routes in `subscriber/`. The join screen
+  (`join-ishtagoshti.tsx`) is under the `pending` guard; when `ig_my_state()` says active, the area turns
+  into `subscriber` and the router moves on by itself. The parent's code is made, hashed and emailed by
+  the database (`ig_send_parent_code`: pg_net → Brevo's API, key in the Vault), so it never reaches the
+  app. The Guru's list (I15) is `staff/ishtagoshti/subscribers.tsx`. The smoke test proves the
+  separation with a sweep run as a subscriber over every table, view, bucket and callable function.
 
 ## Events and polls (Phase 2, branch `phase2-events`)
 

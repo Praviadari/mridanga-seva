@@ -177,5 +177,15 @@ The code is in `app/src/i18n/index.ts`, `app/src/components/language-picker.tsx`
   "withdrawn" వెనక్కి తీసుకోబడింది / वापस ले ली गई, "consent" అనుమతి / सहमति (as in the registration form). The
   signed-form tick `register.writtenConsent` keeps its wording (Praveen, 5 Oct 2026). Checked for mixed
   Telugu-Devanagari words on 5 Oct 2026.
+- **Phase 2 Ishtagoshti public sign-up** (branch `phase2-ishtagoshti-public`, [DECISIONS.md #72](DECISIONS.md)):
+  every Telugu and Hindi line under `ishtagoshtiJoin.*` (I14, with its `errors.*`), `subscriberAccount.*`,
+  `igSubscribers.*` (I15), `pending.ig*`, `tabs.account` and the longer `signUp.subtitle` is a draft for the
+  review. **The notice and consent texts are PLACEHOLDERS** in all three languages (`ishtagoshtiJoin.termsBody`,
+  `ishtagoshtiJoin.parentTerms`, starting "TEST —"), and so is the English email to the parent in
+  `ig_send_parent_code` (migration 0025): the team's wording replaces them, and `IG_TERMS_VERSION`
+  changes with it. Words to check first: "subscriber / member" సభ్యులు / सदस्य; "block" నిలిపివేయండి /
+  रोकें and "unblock" తిరిగి అనుమతించండి / फिर से अनुमति दें; "parent" తల్లిదండ్రులు / माता-पिता; "code"
+  కోడ్ / कोड; "facilitator" ఫెసిలిటేటర్ / फ़ैसिलिटेटर; the Hindi "रहा/रही" and "रहूँगा/रहूँगी" (gendered
+  first person: maybe a neutral wording). Checked for mixed Telugu-Devanagari words on 5 Oct 2026.
 - Telugu and Devanagari letters are taller than Latin ones. The app's line heights allow for this;
   if a translated label looks cut off, report it with a screenshot.

@@ -121,8 +121,8 @@ Slice 6 (branch `phase2-ishtagoshti`), Ishtagoshti part 1, sloka study ([DECISIO
 I11, I12 (approved in the doc) for every signed-in role, as a "Slokas" tab: the students' 4th tab; for staff a tab in the
 sidebar (900 px and wider) and, on a phone, an "Ishtagoshti" button under the staff ring (six labels do not fit the bottom bar).
 The sloka of the day (S14) lives in I1. No native package: phones get it by an update. Later slices: I4
-memorise mode, I5 discussion + I8 moderation, I6 / I9 sessions, I10 recitation review, I13 report, I14
-public sign-up + I15 subscribers (slice 7).
+memorise mode, I5 discussion + I8 moderation, I6 / I9 sessions, I10 recitation review, I13 report. I14 / I15:
+slice 7 below.
 
 | # | Screen | Who | Status | Code |
 |---|---|---|---|---|
@@ -132,6 +132,18 @@ public sign-up + I15 subscribers (slice 7).
 | I11 | Theme editor: title, introduction, questions (a line each), slokas in order (Up, Down, Take out, add by search), Published, Sample, order; delete asks first (slokas stay). The weekly theme calendar comes with sessions (I6) | Guru, editors | Built | `app/src/app/staff/ishtagoshti/edit-theme/[id].tsx` |
 | I12 | Sloka editor: reference, Devanagari, transliteration, word meanings, translation + purport per language (English, Telugu, Hindi), translator (empty = Settings default), "the temple's own text, not BBT" (needed to publish), recitation (record here or choose an audio file, 10 MB; uploaded on Save), Published, Sample, order; delete asks first | Guru, editors | Built | `app/src/app/staff/ishtagoshti/edit-sloka/[id].tsx` |
 | G2 / G10 | G2: "May edit Ishtagoshti slokas and themes" on a coordinator. G10: the default translator's name | Guru | Built | `app/src/app/staff/coordinators/[id].tsx`, `app/src/app/staff/settings.tsx` |
+
+Slice 7 (branch `phase2-ishtagoshti-public`), Ishtagoshti part 2, free public sign-up ([DECISIONS.md #72](DECISIONS.md)):
+anyone may create a login (A1) and join Ishtagoshti from the pending screen. Such a **subscriber** gets its own small area
+(`app/src/app/subscriber/`): the tabs Slokas (I1, then I2, I3 and All slokas as for students) and Account. The consent and
+notice texts are placeholders ("TEST —") until the team gives the wording. No native package.
+
+| # | Screen | Who | Status | Code |
+|---|---|---|---|---|
+| A2w | Pending screen: "Ishtagoshti, free for everyone" card with Join Ishtagoshti (or "Type your parent's code"); "Ishtagoshti is paused for you" when blocked | A login without a class role | Built | `app/src/app/pending.tsx` |
+| I14 | Join Ishtagoshti: year of birth (in the year one turns 18: "had my 18th birthday"), phone (optional), notice and terms + "I agree". Under 18: parent's name, email, relation (optional), "my parent knows"; then the parent's code: Confirm, Send a new code (1 a minute, 3 a day), Change the details | A login without a class role, email confirmed | Built | `app/src/app/join-ishtagoshti.tsx`, `app/src/data/ig-subscribers.ts` |
+| I14a | Subscriber's Account tab: name, email, language, how to join the class, Leave Ishtagoshti (asks first; deletes details, notes, ticks), Sign out | Subscriber | Built | `app/src/app/subscriber/(tabs)/account.tsx` |
+| I15 | Subscribers: reading / waiting for parent / blocked / joined this week, joins per week (12 weeks), a filter, the list newest first; a subscriber opens to show year of birth, phone, a minor's parent and whether they confirmed, ticks and notes counted; Block (optional reason, only the Guru sees it) / Unblock. From the staff Ishtagoshti home | Guru | Built | `app/src/app/staff/ishtagoshti/subscribers.tsx` |
 
 Slice 5 (branch `phase2-events`), events and polls ([DECISIONS.md #61](DECISIONS.md)): C16 and C17 (approved in
 the doc) with the student side S11 and S12 (no team pick; built because an RSVP list and poll results need

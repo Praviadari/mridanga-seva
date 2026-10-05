@@ -549,6 +549,42 @@ switch on again, `select cron.schedule('mridanga-push', '* * * * *', 'select sen
 announcements published meanwhile are then sent if they are less than a day old, the older ones
 never.
 
+## Parent codes by email (Ishtagoshti, Phase 2)
+
+A child under 18 who joins Ishtagoshti (I14) gets in only after typing a 6-digit code that the
+database emails to the parent ([DECISIONS.md #72](DECISIONS.md)). The database sends it itself,
+through pg_net (already on for push) to Brevo's mail API. Until the two Vault secrets below exist,
+the app says "Emails to parents are not switched on yet" and nothing is stored.
+
+1. **Brevo** (team account, free plan: 300 emails a day): verify the sender address (Senders,
+   Domains & Dedicated IPs → Senders), then SMTP & API → API keys → Generate a new API key.
+2. **Supabase SQL editor** of the project (TEST first), once:
+
+   ```sql
+   select vault.create_secret('<the Brevo API key>', 'mridanga_brevo_key');
+   select vault.create_secret('<the verified sender address>', 'mridanga_mail_from');
+   ```
+
+   To change one later: `select vault.update_secret(id, '<new value>') from vault.secrets where name = 'mridanga_brevo_key';`
+3. **Check:** join as a test child with your own email as the parent's; the code arrives within a
+   minute. Brevo's answer stays for a few hours in
+   `select status_code, content from net._http_response order by created desc limit 5;`
+   (201 = accepted; 401 = wrong key; 400 = sender not verified).
+
+**Before real use:** Authentication → "Confirm email" must be ON (joining needs a confirmed email);
+the consent and notice texts must be the team's (search the locale files for "TEST —" and change
+`IG_TERMS_VERSION` in `app/src/data/ig-subscribers.ts` and the email text in `ig_send_parent_code`).
+The app sends at most 100 parent codes a day, well under Brevo's 300 shared with sign-up emails.
+
+**Testing without Brevo (TEST only):** give a test child a known code in the SQL editor, then type
+123456 in the app:
+
+```sql
+insert into ig_parent_codes (profile_id, code_hash, expires_at)
+select id, encode(sha256(convert_to(id::text || ':123456', 'UTF8')), 'hex'), now() + interval '1 day'
+  from auth.users where email = '<the test child''s email>'
+on conflict (profile_id) do update set code_hash = excluded.code_hash, expires_at = excluded.expires_at, tries = 0;
+```
 ## Files no announcement uses
 
 Photos and PDFs are removed from Storage by the app when an announcement or one of its files is
