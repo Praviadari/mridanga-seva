@@ -90,8 +90,9 @@ export default function IshtagoshtiSubscribersScreen() {
                 key={w.weekStart}
                 done={w.joins}
                 total={most}
-                label={t('igSubscribers.weekOf', { date: formatDayMonthYear(w.weekStart) })}
-                valueText={String(w.joins)}
+                label={t('igSubscribers.weeksTitle')}
+                valueText={`${t('igSubscribers.weekOf', { date: formatDayMonthYear(w.weekStart) })}: ${w.joins}`}
+                showComplete={false}
               />
             ))}
           </Section>
