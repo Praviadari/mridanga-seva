@@ -143,5 +143,17 @@ The code is in `app/src/i18n/index.ts`, `app/src/components/language-picker.tsx`
   "memorised" కంఠస్థం / कंठस्थ; "recitation" పఠనం / पाठ (पाठ is also "lesson"); "draft" చిత్తు ప్రతి /
   मसौदा; "editor" ఎడిటర్ / संपादक; "sloka of the day" ఈ రోజు శ్లోకం / आज का श्लोक. The slokas
   themselves (verse, translation, purport) are content typed by the team in each language, not
-  interface text. Checked for mixed Telugu-Devanagari words on 3 Oct 2026.- Telugu and Devanagari letters are taller than Latin ones. The app's line heights allow for this;
+  interface text. Checked for mixed Telugu-Devanagari words on 3 Oct 2026.
+- **Phase 2 events and polls** (branch `phase2-events`, [DECISIONS.md #61](DECISIONS.md)): every Telugu
+  and Hindi line under `events.*` and `polls.*` (226 keys) is a draft for the review, and so are the
+  notice lines written in the database (`event_push_line` in `0022_events_polls.sql`: new event, time
+  or place changed, cancelled, reminder, "please tell us", your part, new poll, poll reminder). Words to
+  check first: "event" కార్యక్రమం / कार्यक्रम; "poll" ఓటింగ్ / मतदान (also used for the ring label
+  "Events & polls" కార్యక్రమాలు, ఓటింగ్ / कार्यक्रम, मतदान); "anonymous" అజ్ఞాతం / गुमनाम; the answers
+  "Going / Maybe / Not going" వస్తాను / బహుశా / రాలేను and आएँगे / शायद / नहीं आएँगे (also used as count
+  labels); "performer" వాయించేవారు / बजाने वाले and "part" పాత్ర / भूमिका; the parts మృదంగం,
+  కరతాళాలు, ప్రధాన గాయకులు, హార్మోనియం / मृदंग, करताल, मुख्य गायक, हारमोनियम; "who came" ఎవరు వచ్చారు /
+  कौन आया. Event titles, places, reasons and poll questions and answers are typed by staff and shown
+  as typed. Checked for mixed Telugu-Devanagari words on 5 Oct 2026.
+- Telugu and Devanagari letters are taller than Latin ones. The app's line heights allow for this;
   if a translated label looks cut off, report it with a screenshot.

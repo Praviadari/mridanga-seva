@@ -1577,6 +1577,61 @@ Smoke tests pass (section "Ishtagoshti (0021, Phase 2)"). No native package: the
 stays 185e839f, so phones on the new APK get it by an update. Telugu and Hindi strings are drafts
 for the review (TRANSLATIONS.md).
 
+## 61. Events and polls: C16, C17, and the student side S11, S12 — 5 Oct 2026
+
+**Status: decided by Praveen 3 Oct 2026 (answers below), on the branch `phase2-events`; not on main
+until the lead pushes it.** Numbers reserved by the lead: migration 0022, DECISIONS #61-#64 (only #61
+used).
+
+**Context.** The Screen List doc approves C16 Events ("Create, RSVP list, assign performers, mark event
+attendance") and C17 Polls ("Create, choose audience, deadline, anonymous option, results"). S11
+(events: list, detail, RSVP, add to calendar) and S12 (polls: vote and see results) have no team pick
+yet, but an RSVP list and poll results need someone to answer and vote, so they are built with C16 and
+C17, as S7 was with the assessments (#52). S1's row in the doc already names "next event".
+
+**Decision.**
+- **Events:** coordinators and the Guru create one with a title, start (and an end on the same day), a
+  centre and/or a place, an audience (the announcement audiences: all students, one level, my mentees,
+  staff, a group) and a description. The author or the Guru edits, cancels with a reason, or deletes it
+  while nobody has answered. The audience is fixed once someone answered.
+- **Answers:** everyone it is for answers Going / Maybe / Not going and can change it until the
+  start. **Students see the counts, staff the names (Praveen).**
+- **Performers and attendance (Praveen: build both now):** staff pick student records (also students
+  without the app) with a part (Mridanga, Kartal, Lead singer, Harmonium or typed); new performers are
+  told. From the event's day on, staff tick who came.
+- **Polls:** a question, 2-6 answers, one choice, an audience, a closing time; staff choose
+  **anonymous** or not and **results after voting or only after closing**. A vote can change until
+  the poll closes (or is closed early). Answers, anonymity, the results rule and the audience are
+  fixed after the first vote.
+- **Anonymous (Praveen):** staff see **who** voted, not what, so they can remind the rest; nobody in
+  the app (the Guru included) sees a person's choice. Votes are not readable from the app at all, only
+  through functions. Found in the browser check: live counts next to the "who voted" list would show
+  who chose what (one person votes, one count goes up), so **in an anonymous poll staff see the counts
+  only after it closes**, like everyone. With very few voters the closed result can still give a choice
+  away; that is the nature of a small class.
+- **Reminders (Praveen: all three):** the day before an event at 09:00 IST to those going or maybe;
+  within 24 hours of a poll's closing to those who have not voted; and a Remind button for staff (those
+  who have not answered or voted), once in 12 hours.
+- **Add to calendar (#55):** no expo-calendar and no calendar permission. An .ics file (RFC 5545),
+  shared through expo-sharing on the phone and downloaded in the browser (iPhone Safari offers "Add to
+  Calendar"), plus a Google Calendar link that opens the event ready to save.
+- **Notices:** new event, new time or place, cancellation, your part, reminders, new poll — through
+  push_outbox, so the inbox has them too (kinds `event` and `poll`).
+- **Entry:** the Events circle of both rings (was "coming soon") is now "Events & polls": one screen
+  with an Events tab and a Polls tab. S1 shows the next event and "Polls waiting for your vote".
+
+**Why.** The audiences, notices and inbox already exist and are trusted; reusing them keeps one idea of
+"who it is for" across the app. Student records for performers and attendance count the students
+without a phone, who are many. Keeping votes away from every app query is the only way "anonymous" can
+mean what it says.
+
+**Consequences.** Migration `0022_events_polls.sql` (DATABASE.md "Events and polls (Phase 2)"); TEST
+ran it as `0021_events_polls.sql` plus a one-function patch (`poll_state`). The Edge Function
+`notify-announcements` accepts the event and poll screens; until it is redeployed, the inbox gets the
+notices but phones get no push for them. No native package: the Android fingerprint stays 185e839f.
+Not done: event photos, a results notice when a poll closes, reminders at another hour, multi-choice
+polls. Telugu and Hindi strings are drafts for the review (TRANSLATIONS.md).
+
 ## 70. Check-ins are checked against the centre's area, saved anyway and flagged — 3 Oct 2026
 
 **Status: decided by Praveen 3 Oct 2026; branch `fix-gps-back`, migration `0024_attendance_location.sql`

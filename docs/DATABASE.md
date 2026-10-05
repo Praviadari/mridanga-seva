@@ -571,6 +571,9 @@ the push opens: `/staff/announcements/N` for staff, `/student/announcements/N` f
   30 days. A Phase 2 notice is marked read when it is tapped in the inbox (its screen has no read
   receipt). The app opens the same screens as the push (`isNoticeScreen` in
   `src/data/notifications.ts`, used by `src/lib/push.ts`).
+- **Events and polls** (0022, [DECISIONS.md #61](DECISIONS.md)) queue their notices the same way;
+  0022 adds the kinds `event` and `poll` to `notifications.kind` and to `inbox_kind_for_url`
+  (`/student|staff/events/<id>`, `/student|staff/polls/<id>`).
 
 ## Reports
 
@@ -784,6 +787,47 @@ file opens for whoever can see a sloka that lists it, and for editors (`ig_audio
 `ig_audio_uploadable`). Settings: `ig_translator` (text ≤ 100, G10); 0021 redefines `guard_setting`
 with this key (a later redefinition must keep it). Smoke tests: section "Ishtagoshti (0021, Phase 2)".
 
+## Events and polls (Phase 2)
+
+Migration 0022 (`0022_events_polls.sql`, [DECISIONS.md #61](DECISIONS.md)); LIVE runs it after 0021.
+TEST ran it as `0021_events_polls.sql` on 5 Oct 2026, then a one-function patch (`poll_state`).
+Screens C16, C17, S11, S12 (SCREENS.md). Who an event or poll is for uses the announcement audiences
+(`all`, `level`, `mentees` of the author, `staff`, `group`), worked out by
+`audience_profiles(audience, level, group, author)` (active logins; unlike announcements the author
+counts when they fit) and `audience_students(...)` (student records not Left, logins or not; none for
+`staff`). Staff see every event and poll; a student those for them (and events they perform at).
+
+| Table | One row per | Written by |
+|---|---|---|
+| `events` | Event: `title` 1-120, `description` ≤ 4000, `starts_at`, `ends_at` (after the start, within 14 days), `centre_id` and/or `place` ≤ 200, the audience, `created_by`, `cancelled_at` + `cancel_reason` ≤ 500, `reminded_at` (day-before reminder), `last_reminded_at` (Remind) | Staff insert; the author or the Guru update / delete (row-level security). `guard_event`: errors `title_required`, `title_too_long`, `description_too_long`, `place_required`, `place_too_long`, `centre_invalid`, `starts_required`, `starts_past` (only when the start changes), `starts_too_far`, `ends_invalid`, `audience_invalid`, `level_required`, `group_required`, `audience_locked` (someone answered), `event_cancelled` (no change after cancelling), `event_over`, `reason_too_long`, `event_frozen`; delete only without answers, performers or attendance (`event_has_answers`); audited |
+| `event_rsvps` | A person's answer: `going`, `maybe`, `not_going` | Only `rsvp_event`; students read their own, staff all |
+| `event_performers` | A student record playing at an event, with `part` 1-60 | Only `set_event_performers` |
+| `event_attendance` | A student record that came to an event | Only `mark_event_attendance` |
+| `polls` | Poll: `question` 1-200, `options` (2-6 different, 1-80 each), `anonymous`, `results_when` (`after_vote` / `after_close`), `closes_at`, `closed_at` (closed early), the audience, `closing_reminded_at`, `last_reminded_at` | Staff insert; the author or the Guru update / delete. `guard_poll`: `question_required`, `question_too_long`, `options_invalid`, `closes_required`, `closes_past`, `closes_too_far`, the audience errors, `poll_has_votes` (answers, anonymous, results rule, audience after the first vote; delete only without votes), `poll_closed` (no change once closed), `poll_frozen`; audited |
+| `poll_votes` | A person's vote (`choice` from 0), changed in place | Only `vote_poll`. **No grant to the app at all**: read only through the functions below |
+
+| Function | Who | Does | Errors |
+|---|---|---|---|
+| `rsvp_event(event, response)` | Those the event is for, and its performers | Answers or changes the answer until the start | `not_allowed`, `event_not_found`, `event_cancelled`, `event_started`, `response_invalid` |
+| `event_counts(ids[])` | Anyone signed in (events they may open) | Per event: `addressed`, `going`, `maybe`, `not_going`, `performers`, `attended`, and the caller's `my_response`, `my_part`, `i_attended`, `can_answer`. Counts only | — |
+| `event_people_list(event)` | Staff | Everyone it is for (and anyone who answered) with name, roll number, role, answer | `not_allowed` |
+| `event_student_list(event, everyone)` | Staff | Student records to pick from: the audience's (or all not Left), plus those picked or ticked, with answer, part, attended | `not_allowed`, `event_not_found` |
+| `set_event_performers(event, [{student_id, part}])` | Staff | Replaces the performers; new ones and changed parts are told. Returns `{performers, notified, no_login}` | `not_allowed`, `event_not_found`, `event_cancelled`, `event_over`, `too_many` (40), `student_invalid`, `part_invalid` |
+| `mark_event_attendance(event, students[])` | Staff | Replaces the list of who came, from the event's day (India). Returns how many | `not_allowed`, `event_not_found`, `event_cancelled`, `too_early`, `student_invalid` |
+| `remind_event(event)` | Staff | Tells those who have not answered; once in 12 hours. Returns how many | `not_allowed`, `event_not_found`, `event_cancelled`, `event_started`, `too_soon` |
+| `vote_poll(poll, choice)` | Those the poll is for | Votes or changes the vote while open | `not_allowed`, `poll_not_found`, `poll_closed`, `choice_invalid` |
+| `poll_state(ids[])` | Anyone signed in (polls they may open) | Per poll: `addressed`, `voted`, `closed`, `can_vote`, `my_choice`, and `results` (votes per answer) when allowed: everyone once closed; staff while open only when not anonymous; others after voting when `results_when` = `after_vote` | — |
+| `poll_voters(poll)` | Staff | Everyone it is for (and any voter) with `voted_at`; `choice` only when the poll is not anonymous | `not_allowed`, `poll_not_found` |
+| `remind_poll(poll)` | Staff | Tells those who have not voted; once in 12 hours. Returns how many | `not_allowed`, `poll_not_found`, `poll_closed`, `too_soon` |
+
+Notices (push + inbox) go through `push_outbox` (0016) and `queue_people_push`, worded by
+`event_push_line` in the person's language: a new event (its audience, not the author), a new time or
+place and a cancellation (its audience and performers, not the person changing it), your part, Remind,
+the day-before reminder (going or maybe), a new poll, the poll reminders. The inbox gets kinds `event`
+and `poll` (0022 widens `notifications_kind_check` and redefines `inbox_kind_for_url`). The Edge
+Function sends them once redeployed (it accepts `/student|staff/events|polls/<id>`). Smoke tests:
+section "events and polls (0022, Phase 2)".
+
 ## Linking a login to a student
 
 A student record can exist without a login (many students never install the app). When a person
@@ -839,12 +883,13 @@ so every function is revoked from them and granted only where needed
 | `review_submission(…, p_voice_note)` | See "Media (Phase 2)" | Phase 2 (0020) replaces 0016's version |
 | `next_level`, `promotion_criteria`, `nominate_for_promotion`, `give_promotion_feedback`, `decide_promotion`, `withdraw_nomination`, `promotion_ready_students`, `promotion_home` | See "Promotion approval (Phase 2)" | Phase 2 (0017) |
 | `ig_sloka_of_day`, `set_theme_slokas`, `is_ig_editor`, `ig_reader` | See "Ishtagoshti (Phase 2)" | Phase 2 (0021) |
+| `rsvp_event`, `event_counts`, `event_people_list`, `event_student_list`, `set_event_performers`, `mark_event_attendance`, `remind_event`, `vote_poll`, `poll_state`, `poll_voters`, `remind_poll` | See "Events and polls (Phase 2)" | Phase 2 (0022) |
 
 The Storage rules `announcement_file_readable`, `announcement_file_uploadable`,
 `announcement_file_deletable` and `announcement_file_path_ok` are run by row-level security as
 the person asking, so signed-in people may execute them; each answers only yes or no about that
 person's own access. The same holds for `material_file_readable`, `material_file_uploadable`,
-`material_file_deletable` and `youtube_link_ok` (0013), `video_link_ok` (0020), and `ig_audio_readable`, `ig_audio_uploadable` and `ig_audio_path_ok` (0021).
+`material_file_deletable` and `youtube_link_ok` (0013), `video_link_ok` (0020), and `ig_audio_readable`, `ig_audio_uploadable` and `ig_audio_path_ok` (0021), and `audience_profiles`, `clean_audience`, `event_visible_to` and `poll_is_closed` (0022).
 
 Internal functions (not called by the app, and not allowed to): `refresh_student_statuses`,
 `close_open_visits`, `send_due_push`, `handle_new_user`, `handle_user_confirmed`,
@@ -857,6 +902,8 @@ and audit triggers (including `guard_student_progress`, `audit_student_progress`
 `inbox_on_announcement`, `inbox_on_read`, `guard_student_level`, `guard_taal`, `inbox_on_push_outbox`, `guard_profile_ig_editor`, `guard_ig_sloka`, `guard_ig_theme` and `guard_ig_pin`), `inbox_kind_for_url` (0019),
 `inbox_sync_announcement`, `inbox_cleanup`, the promotion helpers `promotion_push_line`,
 `queue_staff_push`, `promotion_tell_guru`, `queue_student_promoted`, `submission_file_expired` (0017),
+the events and polls helpers `audience_students`, `event_people`, `guard_event`, `guard_event_delete`, `guard_poll`,
+`guard_poll_delete`, `event_push_line`, `queue_people_push`, `event_notify`, `poll_notify`, `events_polls_daily` (0022),
 and the helpers `my_role`, `is_guru`, `is_staff`,
 `setting_int`, `today_ist`.
 
@@ -869,6 +916,7 @@ and the helpers `my_role`, `is_guru`, `is_staff`,
 | `mridanga-push` | Every minute | `send_due_push()` — calls the Edge Function `notify-announcements` when a published announcement waits for its push notification; does nothing while push is not set up (0011); since 0016 also when an assessment or promotion notification of the last day waits in `push_outbox` |
 | `mridanga-inbox-cleanup` | 01:00 UTC = 06:30 IST | `inbox_cleanup()` — deletes inbox notices older than a year (0015) |
 | `mridanga-assessments` | 03:30 UTC = 09:00 IST | `assessment_daily()` — reminders for assessments due today or tomorrow that are not sent yet; asks the Edge Function (`{"cleanup": true}`) to delete recordings 30 days past their review (0016); level-up ones 30 days after the promotion decision (0017) |
+| `mridanga-events-polls` | 03:30 UTC = 09:00 IST | `events_polls_daily()` — reminds those going or maybe of an event tomorrow, and those who have not voted on a poll closing within 24 hours; each once (0022) |
 
 ## Who can see what
 
@@ -901,6 +949,10 @@ and the helpers `my_role`, `is_guru`, `is_staff`,
 | Ishtagoshti slokas, themes, pins (Phase 2) | Published ones | Published ones; editors (marked by the Guru) all, and write | All; write; marks editors |
 | Ishtagoshti notes, memorised ticks | Own only | Own notes; all ticks | Own notes; all ticks |
 | Recitations (Storage) | Those on published slokas | Same; editors all, upload, delete | All; upload; delete |
+| Events (Phase 2) | Those for them, or where they perform | All; create; edit, cancel, delete own | All; create; edit, cancel, delete any |
+| Event answers, performers, attendance | Own answer (through `rsvp_event`), own part and attendance; counts only | All by name; performers, attendance, Remind through the functions | Same as coordinator |
+| Polls (Phase 2) | Those for them; vote through `vote_poll`; results when the poll allows | All; create; edit, close, delete own; who voted, and what unless anonymous | All; same for any poll |
+| Poll votes | Own choice (through `poll_state`) | Never read directly | Never read directly |
 
 ## Changing the database
 

@@ -429,6 +429,34 @@ On the branch `phase2-media`, rebased on main after the Phase 2 merge; not on ma
   uploaded on Save into the bucket `ishtagoshti-audio`, played through a one-hour signed link.
 - **Slice 7** (free public sign-up) adds its subscriber role to `ig_reader()`; notes and ticks are
   kept per login (`profiles`), so they work for subscribers unchanged.
+
+## Events and polls (Phase 2, branch `phase2-events`)
+
+[DECISIONS.md #61](DECISIONS.md); tables in DATABASE.md "Events and polls (Phase 2)".
+
+- **One set of screens, two areas.** `screens/events-home.tsx` (tabs Events | Polls, `?tab=polls`),
+  `event-detail.tsx` and `poll-detail.tsx` take `area`; the staff extras (names, Remind, Performers, Who
+  came, Edit, Cancel, Close) show only in the staff area. Forms (`event-form.tsx`, `poll-form.tsx`) and
+  `event-students.tsx` (performers and attendance, one screen with a `mode`) are staff routes only.
+  `components/audience-fields.tsx` is the audience chips of C15 for both forms.
+- **Who it is for** is the announcement audience, worked out in the database by
+  `audience_profiles()` (logins) and `audience_students()` (student records, for performers and
+  attendance). Row-level security uses the same function, so the list, the counts and the notices
+  always agree.
+- **Writes.** The app writes `events` and `polls` directly (create, edit, cancel, close, delete), like
+  announcements; answers, votes, performers, attendance and reminders go through functions.
+  `poll_votes` has no grant at all: counts, one's own choice and the voter list come from `poll_state()`
+  and `poll_voters()`, which leave the choice out of an anonymous poll (and its live counts for staff).
+- **Notices** are rows in `push_outbox` (0016), worded in the person's language by
+  `event_push_line()`; 0019's trigger copies them into the inbox (kinds `event`, `poll`). The screens
+  they open (`/student|staff/events|polls/<id>`) are in `isNoticeScreen` (app) and `OUTBOX_SCREEN`
+  (Edge Function). The daily job `events_polls_daily()` (09:00 IST) sends the day-before and
+  closing-day reminders.
+- **Add to calendar** (`lib/calendar-text.ts`): an iCalendar file in UTC (CRLF lines folded at 75
+  octets, a stable UID per event) and a Google Calendar link. `calendar-file.ts` writes the file to the
+  cache (expo-file-system) and opens the share sheet (expo-sharing, already in the APK);
+  `calendar-file.web.ts` downloads it. Whether a calendar app takes the shared file depends on the
+  phone; the Google link always works.
 ## Phases
 
 | Phase | Adds | Target |
