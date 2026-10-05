@@ -142,6 +142,9 @@ Real examples from this app:
 | **Replies are private** | A reply to an announcement can be read only by its writer, the author of the announcement and the Facilitator ([DECISIONS.md #29](../DECISIONS.md)) |
 | **Files follow the announcement** | A photo or PDF opens only for people allowed to read its announcement, through a link that works for one hour ([DECISIONS.md #32](../DECISIONS.md)) |
 | **Nobody gives themselves a role** | A guard stops anyone changing their own role. Only the Facilitator gives roles, and the Facilitator role itself is set only in the Supabase dashboard ([DECISIONS.md #45](../DECISIONS.md)) |
+| **Anonymous polls stay anonymous** | Votes are read only through database functions, which in an anonymous poll never show anyone in the app, the Facilitator included, what a person chose; staff see only who has voted, and the counts only after it closes ([DECISIONS.md #61](../DECISIONS.md)) |
+| **Private notes are private** | A student's notes on a sloka can be read only by that student ([DECISIONS.md #57](../DECISIONS.md)) |
+| **Only the Facilitator promotes** | A guard refuses any change of a student's level except the Facilitator's promotion decision, which is written in the level history ([DECISIONS.md #53](../DECISIONS.md)) |
 | **Every change is recorded** | Changes to students, logins, calls, ticks, lessons, announcements and settings are written to an audit log by the database, which the Facilitator can read |
 
 These rules are tested automatically on every change: see
@@ -252,8 +255,8 @@ flowchart LR
 
 **The fingerprint.** An update must fit the APK it lands on. Expo computes a **fingerprint** (a
 short code, like a seal) from everything native. An update reaches only the APKs with the same
-fingerprint. If a change touches the native layer (for example, a new audio feature), the
-fingerprint changes; the update would not fit the old APKs, so a new APK must be built and
+fingerprint. If a change touches the native layer (for example, a new audio feature, as Phase 2
+brought on 3 Oct 2026), the fingerprint changes; the update would not fit the old APKs, so a new APK must be built and
 installed. The publish script checks this and stops if no installed APK matches.
 
 That is why builders group native changes together for one new APK, and publish waiting screen

@@ -34,7 +34,11 @@ Android app package) ([DECISIONS.md #24](../DECISIONS.md)).
 4. Install. Android may warn that the app is from an unknown developer; choose to install anyway.
 5. Open **Mridanga Seva**, sign in, and allow notifications when asked.
 
-A newer APK installs over the old one and keeps your login. A phone holds either the test app or
+A newer APK installs over the old one and keeps your login.
+
+**The Phase 2 app (3 Oct 2026).** Phase 2 (practice sounds, recording, location, the lesson player)
+needed a new APK. An app installed before 3 Oct 2026 gets no more updates: install the new one once
+from the link the class shares. A phone holds either the test app or
 the live app, not both: installing one replaces the other, and you sign in again.
 
 ## iPhone: Safari and Add to Home Screen
@@ -83,7 +87,7 @@ At the very bottom of the home screen, under **Sign out**, a line says which ver
 **Please quote this line when you report a problem.**
 
 Some changes cannot come as an update and need a new APK, for example a new camera or audio
-feature. The class will share a new link when that happens. Why? See
+feature (this happened once, for Phase 2, on 3 Oct 2026). The class will share a new link when that happens. Why? See
 [How an update reaches phones](06-how-it-works.md#how-an-update-reaches-phones).
 
 The web version (iPhone, laptop) is updated on the server, so it always shows the newest version

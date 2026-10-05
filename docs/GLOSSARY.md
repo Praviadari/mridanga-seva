@@ -74,6 +74,38 @@
 | Linking | Joining a login to the student record with the same email, once the email is confirmed (see DATABASE.md) |
 | RLS | Row-level security: database rules that decide which rows each person may read or change |
 
+## Phase 2 words
+
+Added for [9. Learning and community](guide/09-learning-and-community.md).
+
+| Term | Meaning |
+|---|---|
+| Assessment | A piece the Facilitator asks students to play or sing and record; coordinators give it out and review it (C12-C14, G6, S7) |
+| Rubric | The lines an assessment is scored on, such as rhythm or clarity of the bols, each with a top score |
+| Redo | A review that asks the student to record the piece again |
+| Level-up assessment | An assessment whose accepted recording can support moving the student up a level |
+| Nomination | A coordinator's proposal that a student move up a level; other coordinators answer Ready, Almost or Not yet |
+| Promotion | Moving a student up a level. Only the Facilitator promotes; the app never does it by itself |
+| Level-up queue | The Facilitator's list of nominations waiting for a decision (G7) |
+| Metronome | A steady click at a chosen tempo, with the first beat of each bar accented |
+| Tempo | The speed of the beat, in beats a minute |
+| Taal player | Plays the bols of a taal in a loop at a chosen tempo and speed |
+| Both heads (two-head view) | A drawing of the drum's two heads in which the ring struck by each bol lights up (V1) |
+| Placeholder | A stand-in taal, sloka or syllabus item until the real one is entered |
+| Practice log | A student's practice minutes, from the timer or typed in, shown week by week |
+| A-B loop | Repeating one part of a lesson video, from point A to point B |
+| Mirrored | A lesson video flipped left to right, so the teacher's right hand is on the viewer's right |
+| Record myself | Recording one's own playing on the phone, with or without the metronome or taal |
+| Voice note | A short spoken comment a coordinator records with a review |
+| Event | A festival, yatra or programme where the class plays; students answer Going, Maybe or Not going |
+| Performer | A student picked to play at an event, with a part such as mridanga or kartal |
+| Poll | A question with 2 to 6 answers; each person chooses one. An anonymous poll never shows who chose what |
+| Sloka of the day | The sloka shown to everyone on the Slokas tab that day |
+| Ishtagoshti editor | A coordinator the Facilitator allows to add and edit slokas and themes |
+| Instrument loan | A temple instrument lent to a student or coordinator, with its condition and a date to bring it back |
+| Duty roster | Who is on duty at the class when, planned by the Facilitator |
+| Material suggestion | A lesson a coordinator proposes; the Facilitator adds it or declines it |
+| Flagged check-in | A visit saved while the marking phone was outside the centre's area or gave no location; the visit counts, the Facilitator sees the flag |
 ## Technical words for beginners
 
 Added for the [beginner's guide](guide/README.md). Plain meanings, for readers who have never coded.

@@ -4,7 +4,7 @@ Thank you for offering your seva. This page helps you start: first the ways to h
 then how to run the app on your own laptop, where things are in the code, and how to make a small
 change safely.
 
-[← Back to the guide](README.md) · Previous: [7. How it was built](07-how-it-was-built.md) · Next: [Glossary →](../GLOSSARY.md)
+[← Back to the guide](README.md) · Previous: [7. How it was built](07-how-it-was-built.md) · Next: [9. Learning and community →](09-learning-and-community.md)
 
 ---
 
@@ -224,4 +224,4 @@ Everyone taking part follows the [Code of Conduct](../../CODE_OF_CONDUCT.md).
 
 ---
 
-[← Back to the guide](README.md) · Previous: [7. How it was built](07-how-it-was-built.md) · Next: [Glossary →](../GLOSSARY.md)
+[← Back to the guide](README.md) · Previous: [7. How it was built](07-how-it-was-built.md) · Next: [9. Learning and community →](09-learning-and-community.md)

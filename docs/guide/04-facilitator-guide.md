@@ -23,8 +23,9 @@ lessons, the coordinators, the whole student database, the settings and the audi
 10. [Centres](#centres)
 11. [Audit log](#audit-log)
 12. [Announcements and replies](#announcements-and-replies)
-13. [Team tools: suggestions, instruments, duty roster](#team-tools-suggestions-instruments-duty-roster)
-14. [Coming later](#coming-later)
+13. [Slokas (Ishtagoshti)](#slokas-ishtagoshti)
+14. [Team tools: suggestions, instruments, duty roster](#team-tools-suggestions-instruments-duty-roster)
+15. [Assessments, promotion, practice, events and polls](#assessments-promotion-practice-events-and-polls)
 
 ## The first Facilitator account
 
@@ -48,12 +49,12 @@ The **Home** tab, from top to bottom:
 | **Students per level** | Beginner, Intermediate, Advanced, among students who have not left |
 | **Students per status** | New, Active, Irregular, Inactive, Paused, Left, among every student |
 | **Follow-ups per coordinator** | For each coordinator: **Overdue: N · With the facilitator: N**. Tap to open the calls |
-| **Screens** (the ring) | The same modules as the coordinator home |
+| **Level-up queue** | **To decide: N**, **Collecting feedback: N**, **Ready to nominate: N**, and **Open the level-up queue** ([promotion](09-learning-and-community.md#moving-up-a-level-promotion)) |
 | **Running the class** | **Coordinators** (roles for new sign-ups, mentees, duty hours), **Student database** (every record, and the Excel import), **Settings** (open window, this week, follow-up days), **Audit log** (who changed what, and when), **Reports** (visits, statuses, calls and progress, with a CSV file), **Centres** (places, address, GPS point and attendance area) |
 | Bell on the header | Your **Notifications** inbox, with the unread count |
 
 The bottom tabs are the same as a coordinator's: **Home**, **Attendance**, **Students**, **Calls**,
-**News**. On a laptop they become a sidebar.
+**News**. On a laptop they become a sidebar, with **Slokas** as a sixth.
 
 ## Syllabus and lessons
 
@@ -93,7 +94,10 @@ their level upward.
 
 1. On a level page (**Lessons for the whole level**) or an item page (**Lessons for this item**),
    tap **Add a lesson**.
-2. **Kind**: **YouTube video**, **PDF** or **Photo**.
+2. **Kind**: **YouTube video**, **Video file**, **PDF** or **Photo**.
+   - **Video file**: a web link to the team's own video (.mp4 and similar), with the number of camera
+     angles side by side (1 to 4), so students can mirror it and zoom one angle
+     ([lesson player](09-learning-and-community.md#lesson-videos-speed-repeat-mirror)).
    - **YouTube link**: in YouTube, tap Share and Copy link, then paste it here. Unlisted videos work.
    - **Choose a PDF** (up to 10 MB, for example notation) or **Choose a photo** (made smaller before
      sending).
@@ -239,7 +243,7 @@ As Facilitator you can post like a coordinator, and also:
 
 ## Slokas (Ishtagoshti)
 
-The **Slokas** tab (on a phone: the **Ishtagoshti** button under the ring on your home; Phase 2, being built) is the sloka study for everyone. You and the Ishtagoshti
+The **Slokas** tab (on a phone: the **Ishtagoshti** button under the ring on your home; Phase 2) is the sloka study for everyone. You and the Ishtagoshti
 editors add slokas (**Add a sloka**: reference, Sanskrit, transliteration, word meanings, translation
 and purport in English, Telugu and/or Hindi, the translator, a recitation recorded in the app) and
 themes (**Add a theme**: introduction, questions, slokas in order). A sloka is seen by others only
@@ -268,14 +272,21 @@ Phase 2 ([DECISIONS.md #65](../DECISIONS.md)). Coordinators' side: [Coordinator 
   shift gets a reminder at 18:00 the evening before. **Duty hours** on a coordinator's page stay as
   the usual-hours line.
 
-## Coming later
-- **Checking the attendance area on phones** (the centre's GPS area): with the next Android app.
-- **Assessments** (you create a piece to learn; coordinators pass it on, follow up and review),
-  **promotion approval** (a mentor nominates, coordinators give feedback, you decide **Promote**,
-  **Not yet** or **More feedback**) and practice tools are built (Phase 2); on Android they come
-  with the next app version. Events, polls, free Ishtagoshti sign-up for the public and the fund: Phase 2, later.
-  See
-  [How it was built](07-how-it-was-built.md#phases-and-dates).
+## Assessments, promotion, practice, events and polls
+
+These Phase 2 tools have their own page, with every step for the Facilitator:
+[9. Learning and community](09-learning-and-community.md).
+
+- [Assessments](09-learning-and-community.md#assessments): create one with a rubric and files;
+  coordinators give it to students and review.
+- [Promotion](09-learning-and-community.md#moving-up-a-level-promotion): the level-up queue, where
+  you decide **Promote**, **Not yet** or **Ask for more feedback**. Only you promote.
+- [Practice tools](09-learning-and-community.md#practice-tools-metronome-taal-player-both-heads),
+  including **Edit taals** to enter the class's real taals in place of the placeholders.
+- [Events](09-learning-and-community.md#events) and [polls](09-learning-and-community.md#polls).
+
+Still to come: fund records, the door tablet, more of Ishtagoshti (with a free public sign-up),
+and face attendance in Phase 3 ([still to come](09-learning-and-community.md#still-to-come)).
 
 ---
 

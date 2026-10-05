@@ -23,9 +23,10 @@ class, screen by screen. Words in **bold** are the words the app shows in Englis
 12. [Groups](#groups)
 13. [My reports](#my-reports)
 14. [Syllabus and lessons (read only)](#syllabus-and-lessons-read-only)
-15. [Team tools: instruments, duty roster, suggesting a lesson](#team-tools-instruments-duty-roster-suggesting-a-lesson)
-16. [What a coordinator can and cannot see](#what-a-coordinator-can-and-cannot-see)
-17. [Coming later](#coming-later)
+15. [Slokas (Ishtagoshti)](#slokas-ishtagoshti)
+16. [Team tools: instruments, duty roster, suggesting a lesson](#team-tools-instruments-duty-roster-suggesting-a-lesson)
+17. [What a coordinator can and cannot see](#what-a-coordinator-can-and-cannot-see)
+18. [Assessments, promotion, practice, events and polls](#assessments-promotion-practice-events-and-polls)
 
 ## Getting a coordinator account
 
@@ -38,8 +39,8 @@ class, screen by screen. Words in **bold** are the words the app shows in Englis
 
 ## Your home screen (dashboard)
 
-At the bottom (or on the left on a laptop) are five tabs: **Home**, **Attendance**, **Students**,
-**Calls** and **News**.
+At the bottom are five tabs: **Home**, **Attendance**, **Students**, **Calls** and **News**. On a
+laptop they become a sidebar on the left, with a sixth, **Slokas**.
 
 The **Home** tab shows:
 
@@ -50,7 +51,7 @@ The **Home** tab shows:
 | **Visits today** | Visits so far today. Tap to open attendance |
 | **Calls due for my students** | Follow-up calls due for the students you mentor. Tap to open **Follow-up calls** |
 | **New joiners (last 4 weeks)** | Students who joined recently, newest first, with their number of visits. Tap a name to open the profile. Someone with no visits yet may need a call |
-| **Screens** (the ring) | **Students**, **Attendance**, **Here now**, **Follow-up calls**, **Announcements**, **Groups**, **Syllabus and lessons**, **Instruments**, **Events**. Under the ring: **Duty roster** and **Material suggestions** (Phase 2) |
+| **Promotions** | **Your feedback asked: N** and **Your students ready: N** (see [promotion](09-learning-and-community.md#moving-up-a-level-promotion)) |
 | **My reports** (under the ring) | Your mentees' visits, statuses, calls and progress, with a CSV file (see [My reports](#my-reports)) |
 | Bell on the header | Your **Notifications** inbox, with the unread count (as for students: [Notifications](02-student-guide.md#notifications)) |
 | Foot of the page | Language, **My profile**, **Notifications**, **Sign out**, version line |
@@ -188,8 +189,12 @@ Tap a student anywhere (list, new joiners, a call) to open the **Student profile
   opens the full attendance history.
 - **Syllabus**: the student's level, **N of M done**, and **Tick syllabus items**.
 - **Level history**: each level change and who approved it.
+- **Promotion**: the criteria check and **Nominate for promotion**
+  ([how](09-learning-and-community.md#moving-up-a-level-promotion)).
+- **Practice**: the practice the student logged, week by week.
+- **Items on loan**: temple instruments the student has borrowed.
 
-Changing a student's name, phone or level in the app is not built yet. Ask the Facilitator. A
+Changing a student's name or phone in the app is not built yet; ask the Facilitator. A level changes only through [promotion](09-learning-and-community.md#moving-up-a-level-promotion). A
 mentor is chosen at registration; the Facilitator can move students to another mentor.
 
 ## Syllabus tick-off
@@ -378,10 +383,21 @@ a day.
 These rules live in the database, not only in the screens, so no old app version or typed web
 address gets around them ([6. How the app works](06-how-it-works.md#the-rules-live-in-the-database)).
 
-## Coming later
+## Assessments, promotion, practice, events and polls
 
-- **Events**, **assessments** and **promotion** (nominating a student to move up a level, with
-  coordinators' feedback): Phase 2. See [How it was built](07-how-it-was-built.md#phases-and-dates).
+These Phase 2 tools have their own page, with every step for coordinators:
+[9. Learning and community](09-learning-and-community.md).
+
+- [Assessments](09-learning-and-community.md#assessments): give the Facilitator's assessment to
+  students, follow up, and review recordings with a score, a comment and a voice note.
+- [Promotion](09-learning-and-community.md#moving-up-a-level-promotion): nominate a student who is
+  ready, and give feedback when another coordinator nominates.
+- [Practice tools](09-learning-and-community.md#practice-tools-metronome-taal-player-both-heads) and
+  [lesson videos](09-learning-and-community.md#lesson-videos-speed-repeat-mirror) to teach with.
+- [Events](09-learning-and-community.md#events) with performers and who came, and
+  [polls](09-learning-and-community.md#polls).
+
+Still to come: the door tablet and the fund records ([still to come](09-learning-and-community.md#still-to-come)).
 
 ---
 

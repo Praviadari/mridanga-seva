@@ -46,7 +46,7 @@ WhatsApp groups to replace; most members on iPhones; and **Phase 1 must cost not
 ## Write every decision down
 
 Every important choice is a numbered entry in [DECISIONS.md](../DECISIONS.md), with the date, the
-choice, the **reason**, and what was given up. By 3 Oct 2026 there were 55 entries (number 43 unused), for example:
+choice, the **reason**, and what was given up. By 5 Oct 2026 there were 60 entries, numbered up to 71 (some numbers were reserved for parallel work and left unused), for example:
 
 - #2 *Attendance is a visit, not a roll call* (because the class is drop-in);
 - #4 *Paused and Left only through a logged call* (so nobody is dropped without a reason);
@@ -66,7 +66,7 @@ Every change passes these checks before it goes further:
 |---|---|
 | **Type check** (`npx tsc --noEmit`) | Mistakes in the code's logic and names, and a word missing in Telugu or Hindi |
 | **Lint** (`npx expo lint`) | Common coding errors and unsafe patterns |
-| **Database smoke test** (`supabase/tests`) | Runs every database migration on a temporary database on the laptop, with the dummy data, then tries hundreds of things a person could do, as each role, and checks the database allows or refuses each one. On 3 Oct 2026, with Phase 2 merged, main passes **522 checks**: login linking, consent for minors, attendance, follow-up calls, ticks, announcements, replies, files, notifications, the inbox, reports, centres, assessments, promotion, practice, who may run each function, and row-level security |
+| **Database smoke test** (`supabase/tests`) | Runs every database migration on a temporary database on the laptop, with the dummy data, then tries hundreds of things a person could do, as each role, and checks the database allows or refuses each one. On 5 Oct 2026, with Phase 2 merged, main passes **752 checks**: login linking, consent for minors, attendance and the location flag, follow-up calls, ticks, announcements, replies, files, notifications, the inbox, reports, centres, assessments, promotion, practice, media, sloka study, events, polls, instruments, the duty roster, suggestions, who may run each function, and row-level security |
 | **Notification test** | How the server words and batches notifications |
 | **Browser check per role** | The changed screens are opened in a browser as a student, a coordinator and the Facilitator, on the test project, at phone width (375 pixels) and laptop width (1280 pixels) |
 | **Contrast check** | Each new pair of text and background colours is measured against the WCAG AA standard for readability; the first draft of the new look failed twice and was fixed |
@@ -118,24 +118,26 @@ Volunteers' remarks and a volunteer's mock-up (the ring of circles around the dr
 | Phase | What it brings | Dates (plan) |
 |---|---|---|
 | **1. Run the class** | Registration and consent, QR attendance, follow-up calls, syllabus and lessons, announcements and groups, dashboards, admin screens, reports | Build to 15 Nov 2026 · pilot at Abids 16-29 Nov · **live 1 Dec 2026** |
-| **2. Learning and community** | Assessments, promotion approval, practice tools (metronome, taal player, two-head view of the drum, practice log), events, polls, door tablet, instruments, Ishtagoshti (sloka study, free to anyone), fund records | Build Dec 2026-Feb 2027 · **live 1 Mar 2027** |
+| **2. Learning and community** | Assessments, promotion approval, practice tools (metronome, taal player, two-head view of the drum, practice log), lesson player, events, polls, instruments, duty roster, Ishtagoshti (sloka study, later free to anyone); still to build: door tablet, fund records | Mostly built early (Oct 2026), tried on the test app · **live 1 Mar 2027** (plan) |
 | **3. Face attendance** | Attendance by face recognition, only with consent | **Live 30 Apr 2027**, before India's data-protection deadline of 13 May 2027 |
 
-**Phase 2 was built beside Phase 1, on separate branches, and merged into the main code on
-3 Oct 2026.** It needs new native parts (sound, location), so on Android it arrives with the next
-app version, which everyone installs once:
+**Phase 2 was built early, beside Phase 1, in slices on separate branches, and merged into the main
+code from 3 to 5 Oct 2026.** Each slice was checked like any other change. It needs new native parts
+(sound, microphone, location, a video player), so on Android it came with a new app version built on
+3 Oct 2026, which everyone installs once. Step by step: [9. Learning and community](09-learning-and-community.md).
 
-- **Assessments** (slice 1, 3 Oct 2026): the Facilitator creates a piece to learn;
-  coordinators release it to students, follow up and review submissions.
-- **Promotion approval** (slice 2, 3 Oct 2026): a mentor nominates a student, other
-  coordinators answer Ready / Almost / Not yet, and the Facilitator decides **Promote**, **Not yet**
-  or **More feedback**.
-- **Practice tools** (slice 3, 3 Oct 2026): metronome and taal player, the two-head view (both
-  drum heads drawn, the zone and hand lighting up per stroke), and a practice log.
-- **Ishtagoshti part 1** (slice 6, 3 Oct 2026, on a branch): the Slokas tab for everyone signed in,
-  with themes, the sloka of the day, private notes and memorised ticks; the Facilitator and named
-  editors type in the temple's own translations.
+| Slice | Merged | What it brings |
+|---|---|---|
+| 1. Assessments | 3 Oct | The Facilitator creates a piece to learn; coordinators give it to students, follow up and review recordings with a rubric |
+| 2. Promotion approval | 3 Oct | A mentor nominates, other coordinators answer Ready / Almost / Not yet, the Facilitator decides |
+| 3. Practice tools | 3 Oct | Metronome, taal player, the two-head view, practice timer and log, the Facilitator's taal editor |
+| 4. Media | 3 Oct | The lesson player (speed, A-B loop, mirror, camera angles), Record myself, recording in the app for assessments and voice notes |
+| 6. Ishtagoshti part 1 | 5 Oct | The Slokas tab: themes, the sloka of the day, recitations, private notes, memorised ticks; editors type the temple's own translations |
+| 5. Events and polls | 5 Oct | Events with answers, performers and who came; polls, anonymous if wanted |
+| 8. Team tools | 5 Oct | Instruments with lending and condition, the duty roster, material suggestions |
+| Location check | 5 Oct | A check-in records whether the marking phone was at the centre; outside is allowed but flagged |
 
+Slice 7 (a free public sign-up for Ishtagoshti) is not built yet.
 The two-head view answers a real problem: a student watching the teacher cannot see both drum
 heads at once.
 
@@ -150,18 +152,23 @@ What was built each day. Dates are 2026.
 | **30 Sep** | Ticks with remarks; **announcements** for staff and students; posted by, edit, groups, private replies; the three **home screens**; photos and PDFs on announcements; **Android notifications**. First Android app built; the test web site online; volunteers begin testing |
 | **1 Oct** | Notifications tested on a real phone and by volunteers; fixes from the first end-to-end test; the Android app **updates itself** (EAS Update); UI/UX rounds 1 and 2 |
 | **2 Oct** | Rounds 3 to 6; a smaller Android app; "Facilitator" on the English screens; a new Android app for testers. Phase 2 assessments started on a branch. Rounds 5 and 6 published to test phones |
-| **3 Oct** | Round 7 (syllabus editor, lessons, attendance history, profile) and round 8 (coordinators, database and import, settings, audit log), published to test phones; round 9 (notifications inbox, reports, centres); promotion approval on a branch; practice tools started; this guide |
+| **3 Oct** | Round 7 (syllabus editor, lessons, attendance history, profile) and round 8 (coordinators, database and import, settings, audit log), published to test phones; round 9 (notifications inbox, reports, centres); Phase 2 slices 1 to 4 merged (assessments, promotion, practice tools, media); the new Android app built; this guide |
+| **5 Oct** | Phase 2: Ishtagoshti (sloka study), events and polls, team tools (instruments, duty roster, suggestions); the location check at check-in; a fix so the phone's Back never leaves a blank screen |
 
 The full history is in git (`git log`), commit by commit.
 
 ## What is not done yet
 
-Honesty about gaps is part of trust. As of 3 Oct 2026:
+Honesty about gaps is part of trust. As of 5 Oct 2026:
 
 **Needs the team's input**
 
 - **Telugu and Hindi review** by native speakers. The translations are careful drafts, not checked.
 - **The real syllabus** for each level, from the Guru. The test data has a placeholder.
+- **The real taals and slokas.** The taal player has placeholder taals, and Ishtagoshti has sample
+  slokas and themes, until the Guru and the translator enter the real ones.
+- **Where the team's own lesson videos are kept.** YouTube needs nothing; the team's own video files
+  need a storage choice ([DECISIONS.md #56](../DECISIONS.md)).
 - **The consent form wording**, ideally with the temple's legal adviser. The app records that a
   signed form was received; the form itself is still to be agreed
   ([OPERATIONS.md "Paper consent forms"](../OPERATIONS.md#paper-consent-forms)).
@@ -170,13 +177,16 @@ Honesty about gaps is part of trust. As of 3 Oct 2026:
 
 **Still to build or set up for Phase 1**
 
-- Checking the centre's attendance area on phones (needs location in the next Android app).
-- Editing a student's details (name, phone, level) in the app.
+- Moving testers and volunteers to the new Android app, and publishing the waiting updates.
+- Editing a student's name or phone in the app (a level changes through promotion).
 - Notifications on the live project and the live ("production") Android app, before the pilot.
 - Moving the service accounts (Expo, Firebase, Cloudflare) from the maintainer's personal account
   to a team account ([OPERATIONS.md "Handing over"](../OPERATIONS.md#handing-over)).
 
-**Not chosen yet:** notifications on iPhone, the Play Store and App Store, the door tablet (Phase 2).
+**Phase 2 still to build:** the door tablet, fund records, more of Ishtagoshti (memorise mode,
+discussion, sessions, recitation review, a free public sign-up).
+
+**Not chosen yet:** notifications on iPhone, the Play Store and App Store.
 
 ---
 

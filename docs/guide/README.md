@@ -24,12 +24,14 @@ time it is used.
 | 6 | [How the app works](06-how-it-works.md) | The curious, new helpers | App, web and database in plain words; why the rules live in the database; test and live; how updates reach phones |
 | 7 | [How it was built](07-how-it-was-built.md) | Anyone deciding whether to trust it | The approved screen list, written decisions, the checks on every change, the timeline, and what is not done yet |
 | 8 | [For a new helper](08-new-helper.md) | Volunteers and developers | Ways to help without code; running the app on a laptop; a map of the code; making a small change safely |
+| 9 | [Learning and community (Phase 2)](09-learning-and-community.md) | Everyone | Assessments, moving up a level, practice tools and both drum heads, lesson videos, Record myself, events, polls, sloka study, instruments and duty roster |
 | — | [Glossary](../GLOSSARY.md) | Everyone | Mridanga words (bol, taal, dayan), app words (visit, mentor, Irregular) and beginner's technical words |
 
 **Short on time?**
 
 - *I am a student:* read [Create your account](02-student-guide.md#create-your-account) and
-  [My QR card](02-student-guide.md#my-qr-card-checking-in-and-out).
+  [My QR card](02-student-guide.md#my-qr-card-checking-in-and-out); then try the
+  [practice tools](09-learning-and-community.md#practice-tools-metronome-taal-player-both-heads).
 - *I am a coordinator at the desk today:* read [Register a student](03-coordinator-guide.md#register-a-student)
   and [Mark attendance](03-coordinator-guide.md#mark-attendance).
 - *I want to know if the app is safe for children's data:* read
@@ -38,24 +40,21 @@ time it is used.
 
 ## What the app does today
 
-The state on **3 October 2026**, on the main code:
+The state on **5 October 2026**, on the main code:
 
-| Ready | Being built | Later |
+| Phase 1: run the class (ready) | Phase 2: learning and community (built, on the test app) | Still to come |
 |---|---|---|
-| Sign-up, sign-in, password reset; three roles | Phone check of the centre's attendance area (next Android app) | Events, polls, instruments, door tablet, Ishtagoshti public sign-up, fund (Phase 2) |
-| Registration with roll numbers and parental consent for minors | Assessments and promotion approval (Phase 2; on Android with the next app version) | Face attendance, only with consent (Phase 3) |
-| Attendance by QR code or by name; who is here now; check out all | Practice tools: metronome, taal player, two-head view, practice log (Phase 2; on Android with the next app version) | |
-| | Ishtagoshti sloka study: themes, sloka of the day, notes, memorised (Phase 2) | |
-| Student list and profile; follow-up calls with reasons | | |
-| Syllabus tick-off; syllabus editor; lessons (YouTube, PDF, photo) | | |
-| Announcements with audiences, files, "seen by", private replies; groups; Android notifications | | |
-| Home screens for each role; attendance history; my profile | | |
-| Coordinators and roles; student database and Excel import; settings; audit log | | |
-| Notifications inbox; reports with a CSV file; centres | | |
+| Sign-up, sign-in, password reset; three roles | Assessments with a rubric, recordings and voice-note reviews | Door tablet at the entrance |
+| Registration with roll numbers and parental consent for minors | Promotion: nominate, coordinators' feedback, the Facilitator decides | Fund records (donations and sponsorships) |
+| Attendance by QR code or by name; who is here now; check out all; location flag | Practice tools: metronome, taal player, both drum heads, practice timer and log | More Ishtagoshti: memorise mode, discussion, sessions, free public sign-up |
+| Student list and profile; follow-up calls with reasons | Lesson player: speed, A-B loop, mirror, camera angles; Record myself | Face attendance, only with consent (Phase 3) |
+| Syllabus tick-off; syllabus editor; lessons (YouTube, video file, PDF, photo) | Events (Going / Maybe / Not going, performers, who came) and polls | |
+| Announcements with audiences, files, "seen by", private replies; groups; Android notifications | Ishtagoshti sloka study: themes, sloka of the day, recitation, notes | |
+| Home screens; attendance history; my profile; notifications inbox | Instruments, duty roster, material suggestions | |
+| Coordinators and roles; student database and Excel import; settings; audit log; reports with CSV; centres | | |
 | English, Telugu, Hindi; Android app with self-updates; iPhone and laptop through the web | | |
-
 The class's pilot is planned at Abids from 16 to 29 November 2026, and Phase 1 goes live on
-1 December 2026. See [Phases and dates](07-how-it-was-built.md#phases-and-dates).
+1 December 2026; Phase 2 is planned to go live on 1 March 2027. See [Phases and dates](07-how-it-was-built.md#phases-and-dates).
 
 ## The other documents
 

@@ -23,7 +23,8 @@ are the words the app shows in English. The app also speaks Telugu and Hindi: se
 11. [My profile](#my-profile)
 12. [Choosing your language](#choosing-your-language)
 13. [Forgot your password?](#forgot-your-password)
-14. [Coming later](#coming-later)
+14. [Slokas (Ishtagoshti)](#slokas-ishtagoshti)
+15. [Assessments, practice, events and polls](#assessments-practice-events-and-polls)
 
 ## Before you start
 
@@ -92,18 +93,17 @@ The home screen is the first tab, **Home**. From top to bottom:
 | **Visits this week (from Monday)** | How many times you came this week. (If the Facilitator sets "this week" to mean the last 7 days, it says **Visits in the last 7 days**) |
 | **Days since your last visit** | Shown as a number; "—" if you have not come yet |
 | **My level** | Your level (Beginner, Intermediate or Advanced), a progress bar of the syllabus items ticked, and **See every item** |
-| **Screens** (the ring) | Round buttons around the drum: **My QR**, **Announcements**, **My progress**, **Attendance**, **My profile**, and **Events** (marked under construction) |
+| **Screens** (the ring) | Round buttons around the drum: **My QR**, **Announcements**, **My progress**, **Assessments**, **Practice**, **Attendance**, **My profile** and **Events & polls** |
 | **Announcements** | The latest three announcements for you. **New** marks the ones you have not opened; **New for you: N** counts them. **All announcements** opens the full list |
 | Foot of the page | The language picker, **My profile**, **Notifications**, **Sign out**, and the version line |
 
-At the bottom of the screen are three tabs: **Home**, **My QR** and **News** (announcements).
+At the bottom of the screen are four tabs: **Home**, **My QR**, **News** (announcements) and **Slokas** (sloka study).
 
 On a phone, pull the page down to refresh it. On the Android app, if a new version has arrived,
 a card says **A new version is ready** with a **Restart now** button
 (see [updates](05-phones-and-updates.md#updates-on-android)).
 
-**Events** opens a **Coming soon** page: festivals, yatras and programmes where the class plays.
-That part is still being built.
+**Assessments**, **Practice** and **Events & polls** are explained in [9. Learning and community](09-learning-and-community.md).
 
 ## My QR card: checking in and out
 
@@ -168,8 +168,10 @@ Tap **My progress** in the ring, or **See every item** on Home.
 - **Lessons for** your level: videos, PDFs and photos for the whole level.
 - Then every **syllabus item** of your level, in teaching order. An item that a coordinator ticked
   shows a tick and **Shown in class on** with the date. Others say **Not yet**.
-- Under each item are its own lessons. A YouTube lesson opens in the YouTube app or the browser; a
-  PDF or photo opens in the browser.
+- Under each item are its own lessons. **Watch** opens a video in the lesson player, with speed and
+  repeat-a-part ([how](09-learning-and-community.md#lesson-videos-speed-repeat-mirror)); a PDF or photo opens in the browser.
+- **Practice**: your practice time week by week, and **My practice log**
+  ([how](09-learning-and-community.md#practice-timer-and-practice-log)).
 
 Only coordinators tick items, when you show the item in class. The page explains it: *Moving up a
 level is the facilitator's decision.*
@@ -194,6 +196,7 @@ Tap **My profile** in the ring or at the foot of the home screen.
 - **My roll card**: your **Roll number** and the **Name on the roll**. The coordinators keep the
   name on the roll; ask one of them if it needs correcting.
 - A button to open **My QR card**.
+- Any temple instrument you have borrowed, with the date to bring it back.
 - The **Language** picker and **Sign out**.
 
 ## Choosing your language
@@ -216,7 +219,7 @@ Announcements and replies are shown exactly as people wrote them; the app does n
 
 ## Slokas (Ishtagoshti)
 
-The **Slokas** tab is for studying the scriptures, theme by theme (Phase 2, being built).
+The **Slokas** tab is for studying the scriptures, theme by theme (Phase 2).
 
 - At the top is the **sloka of the day**, the same for everyone. Tap **Read the sloka**.
 - A sloka shows the verse in Sanskrit (Devanagari) and in Roman letters, **Play the recitation**
@@ -227,14 +230,20 @@ The **Slokas** tab is for studying the scriptures, theme by theme (Phase 2, bein
 - **Themes** gather slokas on one subject, with questions to think about before the next
   Ishtagoshti. **All slokas** has a search.
 
-## Coming later
+## Assessments, practice, events and polls
 
-- **Assessments** (the Facilitator gives a piece to learn; you submit a recording), **practice
-  tools** (metronome, taal player, a picture of both drum heads lighting up per stroke) and a
-  **practice log** are built (Phase 2). On the Android app they come with the next app version,
-  which you install once; on the web version with its next update.
-- **Events** are planned, not in the app yet. See
-  [How it was built](07-how-it-was-built.md#phases-and-dates).
+These Phase 2 tools have their own page, with every step for students:
+[9. Learning and community](09-learning-and-community.md).
+
+- [Assessments](09-learning-and-community.md#assessments): record a piece and send it for review.
+- [Practice tools](09-learning-and-community.md#practice-tools-metronome-taal-player-both-heads):
+  metronome, taal player, both drum heads lighting up per stroke, practice timer, and
+  [Record myself](09-learning-and-community.md#record-myself).
+- [Events](09-learning-and-community.md#events) (Going, Maybe, Not going) and
+  [polls](09-learning-and-community.md#polls).
+
+On Android they need the new app version, installed once
+([which version](09-learning-and-community.md#which-app-version-has-them)).
 
 ---
 
