@@ -1249,8 +1249,8 @@ const canOpenMaterial = async (userId, path) => (await asApp('authenticated', us
   `select 1 from storage.objects where bucket_id = 'material-files' and name = $1`, [path])).length === 1;
 const notation = `${guru}/${await newId()}.pdf`;
 await uploadMaterial(guru, notation, 900000);
-await refuses('a coordinator cannot upload a material file (suggestions are Phase 2)', async () =>
-  uploadMaterial(coordinator, `${coordinator}/${await newId()}.pdf`));
+await refuses('a student cannot upload a material file (coordinators may since 0023, C18)', async () =>
+  uploadMaterial(late, `${late}/${await newId()}.pdf`));
 const pdf = await addMaterial(guru, { kind: 'pdf', path: notation, name: ' Kaherva.pdf ', size: 1, level: 3 });
 check('the Guru adds a PDF; its size comes from Storage', Number(pdf.file_size) === 900000 && pdf.file_name === 'Kaherva.pdf');
 await refuses('a material cannot list a file that is not in Storage', async () =>
@@ -2246,6 +2246,155 @@ check('anon runs no event or poll function; the queue and the daily job are not 
 await refuses('anon cannot read events', () => asApp('anon', null, 'select id from events'));
 await refuses('anon cannot read polls', () => asApp('anon', null, 'select id from polls'));
 for (const { id, language } of evLanguages) await asOwner(`update profiles set language = '${language}' where id = '${id}'`);
+
+
+// ---------------------------------------------------------------- team tools (0023, Phase 2)
+// C18 suggest material
+const teamOutboxFor = async (userId, url) => asOwner(`select title, body from push_outbox where profile_id = '${userId}' and url = '${url}' order by id`);
+const suggestion = await addMaterial(coordinator, { kind: 'youtube', url: 'https://youtu.be/dQw4w9WgXcQ', level: 1, title: 'Kaherva slow' });
+check('a coordinator suggests a material; it waits for the Guru', suggestion.approved_by === null && suggestion.decided_at === null
+  && suggestion.uploaded_by === coordinator, JSON.stringify(suggestion));
+check('... the Guru gets a notice, in the inbox too', (await teamOutboxFor(guru, '/staff/suggestions')).some((r) => r.title === 'Kaherva slow')
+  && (await asApp('authenticated', guru, `select kind from notifications where url = '/staff/suggestions'`)).length >= 1);
+check('a student does not see a waiting suggestion', (await asApp('authenticated', late, 'select id from materials where id = $1', [suggestion.id])).length === 0);
+await asApp('authenticated', coordinator, `update materials set suggest_reason = 'x' where id = $1`, [suggestion.id]);
+check('a coordinator cannot edit a suggestion (Guru-only updates)', (await asOwner(`select suggest_reason from materials where id = ${suggestion.id}`))[0].suggest_reason === null);
+await refusesWith('the Guru cannot approve by a plain update', 'suggestion_frozen', () => asApp('authenticated', guru,
+  'update materials set approved_by = auth.uid() where id = $1', [suggestion.id]));
+await refuses('a coordinator cannot decide a suggestion', () => asApp('authenticated', coordinator2,
+  'select decide_material_suggestion($1, true)', [suggestion.id]));
+await refusesWith('declining needs a reason', 'reason_required', () => asApp('authenticated', guru,
+  `select decide_material_suggestion($1, false, '  ')`, [suggestion.id]));
+await asApp('authenticated', guru, 'update materials set title = $2 where id = $1', [suggestion.id, 'Kaherva, slow']);
+await asApp('authenticated', guru, 'select decide_material_suggestion($1, true)', [suggestion.id]);
+const [approvedSuggestion] = await asOwner(`select approved_by, decided_at, title from materials where id = ${suggestion.id}`);
+check('the Guru edits the title and adds the suggestion to the lessons', approvedSuggestion.approved_by === guru
+  && approvedSuggestion.decided_at !== null && approvedSuggestion.title === 'Kaherva, slow');
+check('... a student of the level sees it now', (await asApp('authenticated', late, 'select id from materials where id = $1', [suggestion.id])).length === 1);
+check('... and the coordinator gets a notice', (await teamOutboxFor(coordinator, '/staff/suggestions')).some((r) => r.body.includes('added your suggestion')));
+await refusesWith('a decided suggestion cannot be decided again', 'already_decided', () => asApp('authenticated', guru,
+  `select decide_material_suggestion($1, false, 'No')`, [suggestion.id]));
+check('the coordinator cannot delete an approved material', (await asApp('authenticated', coordinator,
+  'delete from materials where id = $1 returning id', [suggestion.id])).length === 0);
+const suggestedPdf = `${coordinator}/${await newId()}.pdf`;
+await uploadMaterial(coordinator, suggestedPdf, 5000);
+check('a coordinator uploads a PDF for a suggestion into their own folder', await canOpenMaterial(coordinator, suggestedPdf));
+await refuses('... not into someone else\'s folder', async () => uploadMaterial(coordinator, `${coordinator2}/${await newId()}.pdf`));
+await refuses('a student cannot upload a material file', async () => uploadMaterial(late, `${late}/${await newId()}.pdf`));
+const [pdfSuggestion] = await asApp('authenticated', coordinator,
+  `insert into materials (title, kind, storage_path, file_name, file_size, level_id, suggest_reason)
+   values ('Notation', 'pdf', $1, 'Notation.pdf', 1, 2, '  Clear notation for the 8 beats.  ') returning *`, [suggestedPdf]);
+check('... and suggests it with a reason, trimmed', pdfSuggestion.suggest_reason === 'Clear notation for the 8 beats.'
+  && Number(pdfSuggestion.file_size) === 5000);
+check('the Guru opens the suggested file; a student cannot', await canOpenMaterial(guru, suggestedPdf) && !(await canOpenMaterial(arjun, suggestedPdf)));
+await asApp('authenticated', guru, `select decide_material_suggestion($1, false, ' We have this one already. ')`, [pdfSuggestion.id]);
+const [declined] = await asApp('authenticated', coordinator, `select approved_by, decided_at, declined_reason from materials where id = $1`, [pdfSuggestion.id]);
+check('the Guru declines with a reason; the coordinator sees it', declined.approved_by === null && declined.decided_at !== null
+  && declined.declined_reason === 'We have this one already.');
+check('... with a notice', (await teamOutboxFor(coordinator, '/staff/suggestions')).some((r) => r.body === 'Not added: We have this one already.'));
+check('the coordinator removes the declined suggestion and its file', (await asApp('authenticated', coordinator,
+  'delete from materials where id = $1 returning id', [pdfSuggestion.id])).length === 1 && (await asApp('authenticated', coordinator,
+  `delete from storage.objects where bucket_id = 'material-files' and name = $1 returning name`, [suggestedPdf])).length === 1);
+check('another coordinator cannot remove someone else\'s suggestion', (await (async () => {
+  const s = await addMaterial(coordinator2, { kind: 'youtube', url: 'https://youtu.be/dQw4w9WgXcQ', level: 1 });
+  const gone = await asApp('authenticated', coordinator, 'delete from materials where id = $1 returning id', [s.id]);
+  await asApp('authenticated', coordinator2, 'delete from materials where id = $1', [s.id]);
+  return gone.length === 0;
+})()));
+await refusesWith('a reason is at most 500 characters', 'reason_too_long', () => asApp('authenticated', coordinator,
+  `insert into materials (title, kind, url, level_id, suggest_reason) values ('x', 'youtube', 'https://youtu.be/dQw4w9WgXcQ', 1, repeat('a', 501))`));
+await asApp('authenticated', guru, 'delete from materials where id = $1', [suggestion.id]);
+
+// C19 inventory
+const addItem = async (userId, label, kind = 'fibreglass', condition = 'good', note = null) => (await asApp('authenticated', userId,
+  `insert into inventory_items (kind, label, condition, condition_note) values ($1, $2, $3, $4) returning *`, [kind, label, condition, note]))[0];
+const khol = await addItem(guru, '  Balaram blue 3 ');
+check('the Guru adds an instrument, trimmed, with its first check', khol.label === 'Balaram blue 3' && (await asOwner(
+  `select kind from inventory_checks where item_id = ${khol.id}`)).map((r) => r.kind).join() === 'added');
+await refuses('a coordinator cannot add an item', () => addItem(coordinator, 'Mine'));
+await refuses('the same name twice at a centre is refused', () => addItem(guru, 'balaram BLUE 3'));
+await refuses('a kind outside the list is refused', () => addItem(guru, 'Mridangam', 'mridangam'));
+await refusesWith('the condition is not changed directly', 'condition_frozen', () => asApp('authenticated', guru,
+  `update inventory_items set condition = 'damaged' where id = $1`, [khol.id]));
+const issue = (userId, item, student, profile, condition, note = null, due = null) => asApp('authenticated', userId,
+  'select issue_inventory_item($1, $2, $3, $4, $5, $6) as id', [item, student, profile, condition, note, due]);
+await refuses('a student cannot lend an item', () => issue(late, khol.id, lateStudent, null, 'good'));
+await refusesWith('a borrower is needed (one)', 'borrower_required', () => issue(coordinator, khol.id, lateStudent, coordinator2, 'good'));
+await refusesWith('a damaged item cannot go out', 'item_not_lendable', () => issue(coordinator, khol.id, lateStudent, null, 'damaged', 'Cracked'));
+await refusesWith('needs care needs a note', 'note_required', () => issue(coordinator, khol.id, lateStudent, null, 'needs_care', ' '));
+const [{ id: loan }] = await issue(coordinator, khol.id, lateStudent, null, 'needs_care', 'Strap loose', '2099-01-01');
+check('a coordinator lends it to a student with the condition seen', (await asOwner(
+  `select condition from inventory_items where id = ${khol.id}`))[0].condition === 'needs_care');
+await refusesWith('an item out cannot be lent again', 'item_out', () => issue(coordinator2, khol.id, arjunStudent, null, 'good'));
+check('the student sees the item they hold and their loan', (await asApp('authenticated', late,
+  'select label from inventory_items')).map((r) => r.label).join() === 'Balaram blue 3'
+  && (await asApp('authenticated', late, 'select id from inventory_loans')).length === 1);
+check('another student sees neither', (await asApp('authenticated', arjun, 'select id from inventory_items')).length === 0
+  && (await asApp('authenticated', arjun, 'select id from inventory_loans')).length === 0);
+check('a student cannot read the condition history', (await asApp('authenticated', late, 'select id from inventory_checks')).length === 0);
+await refuses('the app cannot write a loan itself', () => asApp('authenticated', coordinator,
+  `insert into inventory_loans (item_id, student_id, issued_by, condition_out) values ($1, $2, auth.uid(), 'good')`, [khol.id, lateStudent]));
+await refusesWith('an item on loan cannot be retired', 'item_out', () => asApp('authenticated', guru,
+  'update inventory_items set retired_at = now() where id = $1', [khol.id]));
+await asApp('authenticated', coordinator2, `select return_inventory_item($1, 'damaged', 'Baya head torn')`, [loan]);
+const [backItem] = await asOwner(`select condition, condition_note from inventory_items where id = ${khol.id}`);
+check('a coordinator takes it back damaged; the item shows it', backItem.condition === 'damaged' && backItem.condition_note === 'Baya head torn');
+check('... and the Guru is told', (await teamOutboxFor(guru, `/staff/inventory/${khol.id}`)).some((r) => r.body === 'Marked damaged: Baya head torn'));
+await refusesWith('a loan is returned once', 'already_returned', () => asApp('authenticated', coordinator,
+  `select return_inventory_item($1, 'good')`, [loan]));
+check('the student no longer sees the item', (await asApp('authenticated', late, 'select id from inventory_items')).length === 0
+  && (await asApp('authenticated', late, 'select id from inventory_loans')).length === 1);
+await asApp('authenticated', coordinator, `select check_inventory_item($1, 'in_repair', 'At the drum maker')`, [khol.id]);
+await asApp('authenticated', coordinator, `select check_inventory_item($1, 'good')`, [khol.id]);
+check('condition checks keep the history', (await asOwner(`select string_agg(kind || ':' || condition, ',' order by id) as h
+  from inventory_checks where item_id = ${khol.id}`))[0].h === 'added:good,issue:needs_care,return:damaged,check:in_repair,check:good');
+const [{ id: staffLoan }] = await issue(coordinator, khol.id, null, coordinator2, 'good');
+check('a coordinator can borrow an item and sees their loan', (await asApp('authenticated', coordinator2,
+  'select id from inventory_loans where returned_at is null')).some((r) => Number(r.id) === staffLoan));
+await asApp('authenticated', coordinator, `select return_inventory_item($1, 'good')`, [staffLoan]);
+await refuses('an item with loans cannot be deleted', () => asApp('authenticated', guru, 'delete from inventory_items where id = $1', [khol.id]));
+await asApp('authenticated', guru, 'update inventory_items set retired_at = now() where id = $1', [khol.id]);
+await refusesWith('a retired item cannot be lent', 'item_retired', () => issue(coordinator, khol.id, lateStudent, null, 'good'));
+const typo = await addItem(guru, 'Kartal pair 1', 'kartals');
+check('an item never lent can be deleted', (await asApp('authenticated', guru, 'delete from inventory_items where id = $1 returning id', [typo.id])).length === 1);
+check('item changes go to the audit log', (await asOwner(`select count(*)::int as n from audit_log where table_name = 'inventory_items'`))[0].n >= 3);
+
+// C20 duty roster
+const dutyDay = (await asOwner('select (today_ist() + 1)::text as d'))[0].d;
+const saveShift = (userId, id, date, from, to, duty, people, weeks = 1) => asApp('authenticated', userId,
+  'select save_duty_shift($1, 1::smallint, $2::date, $3::time, $4::time, $5, $6::uuid[], $7) as ids', [id, date, from, to, duty, people, weeks]);
+await refuses('a coordinator cannot plan a shift', () => saveShift(coordinator, null, dutyDay, '14:30', '17:00', null, [coordinator]));
+await refusesWith('a shift is inside the open hours', 'outside_hours', () => saveShift(guru, null, dutyDay, '13:00', '17:00', null, [coordinator]));
+await refusesWith('... ends after it starts', 'time_invalid', () => saveShift(guru, null, dutyDay, '17:00', '16:00', null, [coordinator]));
+await refusesWith('... not in the past', 'date_past', () => saveShift(guru, null, '2020-01-01', '14:30', '17:00', null, [coordinator]));
+await refusesWith('... has people', 'people_required', () => saveShift(guru, null, dutyDay, '14:30', '17:00', null, []));
+await refusesWith('... only coordinators', 'not_a_coordinator', () => saveShift(guru, null, dutyDay, '14:30', '17:00', null, [late]));
+const [{ ids: shiftIds }] = await saveShift(guru, null, dutyDay, '14:30', '17:00', '  Desk ', [coordinator, coordinator2], 3);
+check('the Guru plans a shift with two coordinators, repeated for 3 weeks', shiftIds.length === 3 && (await asOwner(
+  `select count(*)::int as n from duty_assignments where shift_id = any('{${shiftIds.join(',')}}')`))[0].n === 6);
+check('coordinators see the roster; a student does not', (await asApp('authenticated', coordinator, 'select id from duty_shifts')).length >= 3
+  && (await asApp('authenticated', late, 'select id from duty_shifts')).length === 0
+  && (await asApp('authenticated', late, 'select shift_id from duty_assignments')).length === 0);
+await refuses('a coordinator cannot change the roster', () => asApp('authenticated', coordinator,
+  `insert into duty_assignments (shift_id, profile_id) values ($1, auth.uid())`, [shiftIds[1]]).then((r) => r));
+check('... not even deleting', (await asApp('authenticated', coordinator, 'delete from duty_shifts where id = $1 returning id', [shiftIds[2]])).length === 0);
+// pg_cron runs with nobody signed in.
+await asOwner(`select set_config('request.jwt.claim.sub', '', false)`);
+const [{ n: dutyQueued }] = await asOwner('select duty_daily() as n');
+check('the evening job reminds both on tomorrow\'s shift', dutyQueued === 2, String(dutyQueued));
+check('... in their language, with the time and duty', (await teamOutboxFor(coordinator, '/staff/duty')).some((r) =>
+  r.body === 'You are on duty tomorrow: 14:30-17:00, Desk'));
+check('... once', (await asOwner('select duty_daily() as n'))[0].n === 0);
+await saveShift(guru, shiftIds[0], dutyDay, '15:00', '18:00', 'Desk', [coordinator]);
+check('an edit takes a person off and reminds again after a time change', (await asOwner(
+  `select profile_id, reminded_at from duty_assignments where shift_id = ${shiftIds[0]}`)).every((r) => r.reminded_at === null)
+  && (await asOwner(`select count(*)::int as n from duty_assignments where shift_id = ${shiftIds[0]}`))[0].n === 1);
+await asApp('authenticated', guru, 'delete from duty_shifts where id = any($1::bigint[])', [shiftIds]);
+check('app roles cannot run the team-tools helpers', (await asOwner(`select
+  has_function_privilege('authenticated', 'duty_daily()', 'execute')
+  or has_function_privilege('authenticated', 'queue_team_push(uuid[], text, text, text, text)', 'execute')
+  or has_function_privilege('anon', 'issue_inventory_item(bigint, uuid, uuid, text, text, date)', 'execute')
+  or has_function_privilege('authenticated', 'guard_material_suggestion()', 'execute') as ok`))[0].ok === false);
 // ---------------------------------------------------------------- row-level security
 const seen =await asApp('authenticated', arjun, 'select full_name from students');
 check('student sees only their own student record', seen.length === 1 && seen[0].full_name === 'Arjun Rao');

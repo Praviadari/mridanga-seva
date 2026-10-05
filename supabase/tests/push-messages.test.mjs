@@ -80,6 +80,16 @@ const eventOutbox = toOutboxMessages([
 check('event and poll notifications (0022) open their screen; near misses are dropped',
   eventOutbox.map((m) => m.data.url).join(',') === '/student/events/3,/staff/events/3,/student/polls/2,/staff/polls/2',
   JSON.stringify(eventOutbox.map((m) => m.data.url)));
+const teamOutbox = toOutboxMessages([
+  { outbox_id: 14, title: 'Kaherva slow', body: 'Ravi suggested a lesson material.', url: '/staff/suggestions', token: 'T8' },
+  { outbox_id: 15, title: 'Abids · 10-10-2026', body: 'You are on duty tomorrow: 14:30-17:00', url: '/staff/duty', token: 'T9' },
+  { outbox_id: 16, title: 'Balaram blue 3', body: 'Marked damaged: head torn', url: '/staff/inventory/3', token: 'T10' },
+  { outbox_id: 17, title: 'Odd', body: 'x', url: '/staff/inventory/', token: 'T11' },
+  { outbox_id: 18, title: 'Odd', body: 'x', url: '/student/duty', token: 'T12' },
+]);
+check('team-tools notifications open suggestions, the duty roster or the item; near misses are dropped',
+  teamOutbox.map((m) => m.data.url).join(',') === '/staff/suggestions,/staff/duty,/staff/inventory/3',
+  JSON.stringify(teamOutbox.map((m) => m.data.url)));
 
 console.log(failures ? `\n${failures} check(s) FAILED` : '\nAll checks passed');
 process.exit(failures ? 1 : 0);

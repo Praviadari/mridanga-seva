@@ -7,8 +7,8 @@
 // who may add, open and delete (migration 0013_syllabus_materials.sql, docs/DECISIONS.md #44).
 //
 // Students read the approved materials up to their own level (row-level security, policy
-// `visible` in 0001). Only the Guru adds, edits and removes materials in Phase 1;
-// coordinators' suggestions (C18) come in Phase 2.
+// `visible` in 0001). Only the Guru adds, edits and removes materials; coordinators
+// suggest them (C18, data/suggestions.ts, migration 0023), and the lists here show approved ones.
 
 import type { ParseKeys } from 'i18next';
 import * as WebBrowser from 'expo-web-browser';
@@ -114,6 +114,8 @@ export async function fetchMaterials(levelId: number): Promise<Material[] | null
     .from('materials')
     .select(COLUMNS)
     .or(`level_id.eq.${levelId},level_id.is.null`)
+    // Coordinators' suggestions (C18) wait on their own screen until the Guru adds them.
+    .not('approved_by', 'is', null)
     .order('created_at')
     .order('id');
   if (error) return null;
@@ -129,7 +131,7 @@ export async function fetchMaterial(id: number): Promise<Material | 'not_found' 
 
 /** How many materials each level has, and how many for every level (key null). */
 export async function countMaterialsByLevel(): Promise<Map<number | null, number> | null> {
-  const { data, error } = await supabase.from('materials').select('level_id');
+  const { data, error } = await supabase.from('materials').select('level_id').not('approved_by', 'is', null);
   if (error) return null;
   const counts = new Map<number | null, number>();
   for (const row of data as { level_id: number | null }[]) counts.set(row.level_id, (counts.get(row.level_id) ?? 0) + 1);
@@ -184,6 +186,8 @@ export type MaterialForm = {
   itemId: number | null;
   /** A picked PDF or photo (new materials only). */
   file: PickedFile | null;
+  /** C18: a coordinator's reason for suggesting it, for the Guru (Phase 2 slice 8). */
+  reason?: string;
 };
 
 /** Problems with the form, as translation keys per field. Empty = fine. */
@@ -235,6 +239,7 @@ export async function addMaterial(myId: string, form: MaterialForm): Promise<Sav
       body: form.note.trim() || null,
       level_id: form.levelId,
       item_id: form.itemId,
+      suggest_reason: form.reason?.trim() || null,
     })
     .select('id')
     .single<{ id: number }>();
@@ -315,6 +320,8 @@ function materialErrorKey(message: string, code: string | undefined): MessageKey
   if (message === 'video_link_invalid') return 'materials.errors.videoLinkInvalid';
   if (message === 'panes_invalid') return 'materials.errors.panesInvalid';
   if (message.startsWith('material_file_')) return 'materials.errors.uploadFailed';
+  if (message === 'reason_too_long') return 'suggestions.errors.reason_too_long';
+  if (message === 'too_many_suggestions') return 'suggestions.errors.too_many_suggestions';
   if (code === '42501') return 'materials.errors.notAllowed';
   if (code === '23503') return 'materials.errors.gone';
   if (isNetworkError(message)) return 'common.networkError';

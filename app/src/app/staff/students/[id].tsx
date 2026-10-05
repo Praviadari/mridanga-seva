@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next';
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { DetailGrid } from '@/components/detail-grid';
+import { HeldItemsPanel } from '@/components/held-items';
 import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
 import { PersonHeader } from '@/components/person-header';
@@ -285,6 +286,9 @@ export default function StudentProfileScreen() {
       <PromotionPanel studentId={student.id} />
       {/* Phase 2 slice 3 (docs/DECISIONS.md #54): the student's weekly practice. */}
       <PracticePanel studentId={student.id} />
+
+      {/* Phase 2 slice 8 (C19): items on loan. */}
+      <HeldItemsPanel by={{ studentId: student.id }} openable />
     </Screen>
   );
 }

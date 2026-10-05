@@ -8,12 +8,14 @@
 // (docs/DECISIONS.md #39). One component, so both homes offer the same screens in the same order.
 // Register a student (C2) is the first button on the Students tab. Practice tools (S5, Phase 2) is a
 // button under the ring, and so is Ishtagoshti (I1, Phase 2 slice 6) for phones, where the Slokas
-// tab does not fit the bottom bar.
+// tab does not fit the bottom bar. Phase 2 slice 8 (docs/DECISIONS.md #65): Instruments opens C19
+// inventory, and two rows under the buttons open C20 duty roster and C18 material suggestions.
 
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 
 import { Button } from './button';
+import { ListRow } from './list-row';
 import { ModuleRing, type Module } from './module-ring';
 
 /** The main action of a staff home: opens Mark attendance (C5). */
@@ -40,9 +42,10 @@ export function StaffShortcuts() {
     {
       key: 'instruments',
       icon: 'instruments',
+      tone: 'purple',
       label: t('modules.instruments'),
-      soon: true,
-      onPress: () => router.push({ pathname: '/staff/coming-soon', params: { module: 'instruments' } }),
+      // Phase 2 slice 8: C19 inventory.
+      onPress: () => router.push('/staff/inventory'),
     },
     // Phase 2 slice 5: events and polls (C16, C17; docs/DECISIONS.md #61).
     { key: 'events', icon: 'events', tone: 'orange', label: t('events.module'), onPress: () => router.push('/staff/events') },
@@ -54,6 +57,14 @@ export function StaffShortcuts() {
           button under it. */}
       <Button variant="secondary" icon="practice" label={t('practice.title')} onPress={() => router.push('/staff/practice')} />
       <Button variant="secondary" icon="ishtagoshti" label={t('ishtagoshti.title')} onPress={() => router.push('/staff/ishtagoshti')} />
+      {/* Phase 2 slice 8 (docs/DECISIONS.md #65): C20 duty roster and C18 material suggestions. */}
+      <ListRow leading="time" title={t('duty.title')} details={[t('duty.shortcutLine')]} onPress={() => router.push('/staff/duty')} />
+      <ListRow
+        leading="library"
+        title={t('suggestions.title')}
+        details={[t('suggestions.shortcutLine')]}
+        onPress={() => router.push('/staff/suggestions')}
+      />
     </>
   );
 }

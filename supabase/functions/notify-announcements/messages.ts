@@ -94,13 +94,16 @@ export type OutboxRow = {
 const OUTBOX_SCREEN =
   /^\/((student\/assessments|staff\/assessments\/review|staff\/promotion|(student|staff)\/(events|polls))\/\d+|student\/progress)$/;
 
+/** Team tools (0023, staff only): material suggestions, an item marked damaged, the duty roster. */
+const TEAM_SCREEN = /^\/staff\/(suggestions|duty|inventory\/\d+)$/;
+
 /**
  * One message per queued notification (an assessment released, a reminder, a review, a recording
  * sent; a promotion asked about, ready, decided). A row asking for any other screen is dropped.
  */
 export function toOutboxMessages(rows: OutboxRow[]): PushMessage[] {
   return rows.flatMap((row): PushMessage[] =>
-    OUTBOX_SCREEN.test(row.url)
+    OUTBOX_SCREEN.test(row.url) || TEAM_SCREEN.test(row.url)
       ? [{
           to: row.token,
           title: row.title,

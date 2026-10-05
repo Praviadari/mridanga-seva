@@ -14,6 +14,7 @@ import { useAuth } from '@/auth/auth-provider';
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { DetailGrid } from '@/components/detail-grid';
+import { HeldItemsPanel } from '@/components/held-items';
 import { LanguagePicker } from '@/components/language-picker';
 import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
@@ -138,6 +139,9 @@ export function MyProfileScreen() {
           <Button variant="secondary" icon="qr" label={t('myQr.open')} onPress={() => router.push('/student/my-qr')} />
         </Section>
       ) : null}
+
+      {/* Phase 2 slice 8 (C19): instruments I hold now. */}
+      {myId ? <HeldItemsPanel by={isStudent ? 'mine' : { profileId: myId }} openable={!isStudent} /> : null}
 
       <Section icon="language" title={t('common.language')}>
         <LanguagePicker />

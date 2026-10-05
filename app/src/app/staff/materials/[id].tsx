@@ -5,6 +5,9 @@
 // optional note. The file and the kind cannot change after saving: remove the material and add
 // it again. Removing asks first. The database checks everything again (migration 0013,
 // docs/DECISIONS.md #44); src/data/materials.ts does the work.
+// Phase 2 slice 8 (C18, docs/DECISIONS.md #65): a coordinator opens 'new' to suggest a material,
+// with a reason, for the Guru (data/suggestions.ts). The Guru opens a waiting suggestion here to
+// review it: edit it if needed, then Add to lessons or Decline with a reason.
 
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -35,6 +38,7 @@ import {
   type MaterialForm,
   type MaterialFormErrors,
 } from '@/data/materials';
+import { decideSuggestion, fetchSuggestion, SUGGEST_REASON_MAX, type Suggestion } from '@/data/suggestions';
 import { fetchSyllabusByLevel, LEVEL_IDS, type LevelSyllabus } from '@/data/syllabus-editor';
 import { fileSizeText, levelName } from '@/i18n/labels';
 import { goBackOr } from '@/lib/go-back';
@@ -43,7 +47,7 @@ import { spacing } from '@/theme/use-theme';
 /** "Whole level" in the item choice (no item). */
 const WHOLE_LEVEL = 0;
 
-type Loaded = { levels: LevelSyllabus[]; material: Material | null };
+type Loaded = { levels: LevelSyllabus[]; material: Material | null; suggestion: Suggestion | null };
 
 /** The material form. */
 export default function MaterialScreen() {
@@ -53,6 +57,9 @@ export default function MaterialScreen() {
   const { profile } = useAuth();
   const myId = profile?.id ?? '';
   const isGuru = profile?.role === 'guru';
+  // C18: a coordinator adding a material suggests it.
+  const suggesting = isNew && profile?.role === 'coordinator';
+  const allowed = isGuru || suggesting;
 
   const [loaded, setLoaded] = useState<Loaded | 'not_found' | null | undefined>(undefined);
   const [form, setForm] = useState<MaterialForm>({
@@ -69,6 +76,8 @@ export default function MaterialScreen() {
   const [busy, setBusy] = useState<'save' | 'pick' | 'delete' | null>(null);
   const [asking, setAsking] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [declining, setDeclining] = useState(false);
+  const [declineReason, setDeclineReason] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -86,7 +95,10 @@ export default function MaterialScreen() {
         setLoaded('not_found');
         return;
       }
-      setLoaded({ levels, material });
+      // A waiting suggestion: who suggested it and why, for the Guru's review.
+      const suggestion = material && !material.approved ? await fetchSuggestion(material.id) : null;
+      if (cancelled) return;
+      setLoaded({ levels, material, suggestion: suggestion && suggestion !== 'not_found' && suggestion.state === 'waiting' ? suggestion : null });
       if (material) {
         setForm({
           title: material.title,
@@ -106,16 +118,18 @@ export default function MaterialScreen() {
     };
   }, [isNew, params.id]);
 
-  const header = <Stack.Screen options={{ title: isNew ? t('materials.add') : t('materials.editTitle') }} />;
+  const header = <Stack.Screen
+      options={{ title: suggesting ? t('suggestions.suggest') : isNew ? t('materials.add') : t('materials.editTitle') }}
+    />;
 
-  if (!isGuru || loaded === undefined || loaded === null || loaded === 'not_found') {
+  if (!allowed || loaded === undefined || loaded === null || loaded === 'not_found') {
     return (
       <Screen underHeader centred>
         {header}
-        {!isGuru ? <Notice tone="info">{t('materials.guruOnly')}</Notice> : null}
-        {isGuru && loaded === undefined ? <LoadingCards /> : null}
-        {isGuru && loaded === 'not_found' ? <EmptyState icon="library" title={t('materials.notFound')} /> : null}
-        {isGuru && loaded === null ? (
+        {!allowed ? <Notice tone="info">{t('materials.guruOnly')}</Notice> : null}
+        {allowed && loaded === undefined ? <LoadingCards /> : null}
+        {allowed && loaded === 'not_found' ? <EmptyState icon="library" title={t('materials.notFound')} /> : null}
+        {allowed && loaded === null ? (
           <Notice tone="error" title={t('materials.loadFailed')}>
             {t('common.networkError')}
           </Notice>
@@ -124,7 +138,7 @@ export default function MaterialScreen() {
     );
   }
 
-  const { levels, material } = loaded;
+  const { levels, material, suggestion } = loaded;
   const level = levels.find((l) => l.levelId === form.levelId);
   // Items in use of the chosen level; a retired item stays choosable when it is already the one.
   const itemChoices = [
@@ -157,7 +171,25 @@ export default function MaterialScreen() {
     const outcome = isNew ? await addMaterial(myId, form) : await updateMaterial(Number(params.id), form);
     setBusy(null);
     if (outcome.errorKey) setMessage(t(outcome.errorKey));
-    else goBackOr({ pathname: '/staff/levels/[id]', params: { id: String(form.levelId) } });
+    // A coordinator's suggestion is listed on C18, not on the level page.
+    else goBackOr(suggesting ? '/staff/suggestions' : { pathname: '/staff/levels/[id]', params: { id: String(form.levelId) } });
+  }
+
+  /** The Guru's review: saves the edits, then adds the suggestion to the lessons or declines it. */
+  async function decide(approve: boolean) {
+    if (!material) return;
+    if (approve) {
+      const found = checkMaterialForm(form, false);
+      setErrors(found);
+      if (Object.keys(found).length > 0) return;
+    }
+    setBusy('save');
+    setMessage(null);
+    const saved = approve ? await updateMaterial(material.id, form) : {};
+    const outcome = saved.errorKey ? saved : await decideSuggestion(material.id, approve, declineReason);
+    setBusy(null);
+    if (outcome.errorKey) setMessage(t(outcome.errorKey));
+    else goBackOr('/staff/suggestions');
   }
 
   async function remove() {
@@ -174,6 +206,12 @@ export default function MaterialScreen() {
     <Screen underHeader>
       {header}
       {message ? <Notice tone="error">{message}</Notice> : null}
+      {suggesting ? <Notice tone="info">{t('suggestions.formIntro')}</Notice> : null}
+      {suggestion ? (
+        <Notice tone="info" title={t('suggestions.reviewTitle', { name: suggestion.suggestedBy })}>
+          {suggestion.reason ? t('suggestions.reasonLine', { reason: suggestion.reason }) : t('suggestions.noReason')}
+        </Notice>
+      ) : null}
 
       <Section icon="library" title={isNew ? t('materials.whatTitle') : t('materials.editTitle')}>
         {isNew ? (
@@ -270,6 +308,16 @@ export default function MaterialScreen() {
           maxLength={MATERIAL_NOTE_MAX + 50}
           error={errors.note ? t(errors.note) : undefined}
         />
+        {suggesting ? (
+          <TextField
+            label={t('suggestions.reasonLabel')}
+            hint={t('suggestions.reasonHint', { max: SUGGEST_REASON_MAX })}
+            value={form.reason ?? ''}
+            onChangeText={(reason) => update({ reason })}
+            multiline
+            maxLength={SUGGEST_REASON_MAX}
+          />
+        ) : null}
       </Section>
 
       <Section icon="level" title={t('materials.whereTitle')} description={t('materials.whereHint')}>
@@ -289,13 +337,44 @@ export default function MaterialScreen() {
       </Section>
 
       {busy === 'save' && isNew && form.file ? <AppText tone="muted">{t('announcements.files.uploading')}</AppText> : null}
-      <Button
-        icon="check"
-        label={isNew ? t('materials.addSave') : t('materials.save')}
-        loading={busy === 'save'}
-        disabled={busy !== null}
-        onPress={() => void save()}
-      />
+      {suggestion ? (
+        // C18 review: add it (with any edits above) or decline it with a reason.
+        declining ? (
+          <Section icon="alert" title={t('suggestions.declineTitle')}>
+            <TextField
+              label={t('suggestions.declineLabel')}
+              hint={t('suggestions.declineHint')}
+              value={declineReason}
+              onChangeText={setDeclineReason}
+              multiline
+              maxLength={SUGGEST_REASON_MAX}
+            />
+            <View style={styles.row}>
+              <Button
+                icon="send"
+                label={t('suggestions.declineYes')}
+                loading={busy === 'save'}
+                disabled={busy !== null || !declineReason.trim()}
+                onPress={() => void decide(false)}
+              />
+              <Button variant="link" label={t('syllabusEditor.cancel')} onPress={() => setDeclining(false)} />
+            </View>
+          </Section>
+        ) : (
+          <View style={styles.row}>
+            <Button icon="check" label={t('suggestions.approve')} loading={busy === 'save'} disabled={busy !== null} onPress={() => void decide(true)} />
+            <Button variant="secondary" icon="alert" label={t('suggestions.decline')} disabled={busy !== null} onPress={() => setDeclining(true)} />
+          </View>
+        )
+      ) : (
+        <Button
+          icon={suggesting ? 'send' : 'check'}
+          label={suggesting ? t('suggestions.send') : isNew ? t('materials.addSave') : t('materials.save')}
+          loading={busy === 'save'}
+          disabled={busy !== null}
+          onPress={() => void save()}
+        />
+      )}
 
       {material ? (
         asking ? (
