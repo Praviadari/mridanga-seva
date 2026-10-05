@@ -12,6 +12,11 @@ This guide is written for **beginners**: students, parents, coordinators, the Fa
 anyone who wants to help but has never written code. Every technical word is explained the first
 time it is used.
 
+> **Not a computer person?** Start with the **[easy guide](easy/README.md)**: short pages in everyday
+> words for [school students](easy/for-school-students.md), [college students](easy/for-college-students.md)
+> and [people from the medical field](easy/for-medical-professionals.md), plus a one-page
+> [desk card](easy/desk-card.md).
+
 ## Read the part you need
 
 | # | Part | For | What you will find |
