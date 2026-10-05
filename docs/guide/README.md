@@ -50,11 +50,12 @@ The state on **5 October 2026**, on the main code:
 | Phase 1: run the class (ready) | Phase 2: learning and community (built, on the test app) | Still to come |
 |---|---|---|
 | Sign-up, sign-in, password reset; three roles | Assessments with a rubric, recordings and voice-note reviews | Door tablet at the entrance |
-| Registration with roll numbers and parental consent for minors | Promotion: nominate, coordinators' feedback, the Facilitator decides | Fund records (donations and sponsorships) |
+| Registration with roll numbers and parental consent for minors | Promotion: nominate, coordinators' feedback, the Facilitator decides | |
 | Attendance by QR code or by name; who is here now; check out all; location flag | Practice tools: metronome, taal player, both drum heads, practice timer and log | More Ishtagoshti: memorise mode, discussion, sessions, free public sign-up |
 | Student list and profile; follow-up calls with reasons | Lesson player: speed, A-B loop, mirror, camera angles; Record myself | Face attendance, only with consent (Phase 3) |
 | Syllabus tick-off; syllabus editor; lessons (YouTube, video file, PDF, photo) | Events (Going / Maybe / Not going, performers, who came) and polls | |
 | Announcements with audiences, files, "seen by", private replies; groups; Android notifications | Ishtagoshti sloka study: themes, sloka of the day, recitation, notes | |
+| | Class fund: income and expenses, approval over ₹2,000 by a second person, bills, month by month, CSV | |
 | Home screens; attendance history; my profile; notifications inbox | Instruments, duty roster, material suggestions | |
 | Coordinators and roles; student database and Excel import; settings; audit log; reports with CSV; centres | | |
 | English, Telugu, Hindi; Android app with self-updates; iPhone and laptop through the web | | |

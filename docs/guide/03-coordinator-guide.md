@@ -397,7 +397,10 @@ These Phase 2 tools have their own page, with every step for coordinators:
 - [Events](09-learning-and-community.md#events) with performers and who came, and
   [polls](09-learning-and-community.md#polls).
 
-Still to come: the door tablet and the fund records ([still to come](09-learning-and-community.md#still-to-come)).
+- The [class fund](09-learning-and-community.md#class-fund): every coordinator reads it; a treasurer also records
+  entries, reverses mistakes and approves the Facilitator's own big expenses.
+
+Still to come: the door tablet ([still to come](09-learning-and-community.md#still-to-come)).
 
 ---
 

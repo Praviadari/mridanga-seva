@@ -183,7 +183,7 @@ Honesty about gaps is part of trust. As of 5 Oct 2026:
 - Moving the service accounts (Expo, Firebase, Cloudflare) from the maintainer's personal account
   to a team account ([OPERATIONS.md "Handing over"](../OPERATIONS.md#handing-over)).
 
-**Phase 2 still to build:** the door tablet, fund records, more of Ishtagoshti (memorise mode,
+**Phase 2 still to build:** the door tablet, more of Ishtagoshti (memorise mode,
 discussion, sessions, recitation review, a free public sign-up).
 
 **Not chosen yet:** notifications on iPhone, the Play Store and App Store.

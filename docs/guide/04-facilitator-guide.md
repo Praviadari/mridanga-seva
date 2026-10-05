@@ -285,7 +285,10 @@ These Phase 2 tools have their own page, with every step for the Facilitator:
   including **Edit taals** to enter the class's real taals in place of the placeholders.
 - [Events](09-learning-and-community.md#events) and [polls](09-learning-and-community.md#polls).
 
-Still to come: fund records, the door tablet, more of Ishtagoshti (with a free public sign-up),
+- The [class fund](09-learning-and-community.md#class-fund): mark treasurers on a coordinator's page, set the
+  approval and bill limits in Settings, keep the categories, approve or decline big expenses.
+
+Still to come: the door tablet, more of Ishtagoshti (with a free public sign-up),
 and face attendance in Phase 3 ([still to come](09-learning-and-community.md#still-to-come)).
 
 ---

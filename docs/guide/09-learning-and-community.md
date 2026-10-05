@@ -317,12 +317,32 @@ centre's attendance area. Outside it, or without a position, the visit is **stil
 Details: [coordinator guide](03-coordinator-guide.md#mark-attendance) and
 [Facilitator guide](04-facilitator-guide.md#reports).
 
+## Class fund
+
+The Mridanga team's **own** fund, recorded in the app ([DECISIONS.md #80](../DECISIONS.md)). The app
+**only records** money: nothing is paid through it, donors pay the temple or team account as before.
+
+- **Who:** the Facilitator and the **treasurers** (coordinators the Facilitator marks on their page in
+  Coordinators) record income and expenses. **Every coordinator can read** the ledger. Students and
+  parents see no money at all.
+- **An entry:** income or expense, a category (donation, sponsorship; instrument repair or purchase,
+  prasadam, events, travel, printing, other, and the Facilitator's own), the date, the amount in rupees,
+  from or to whom, a reference (UPI, cheque or temple receipt number), a note, and a photo or PDF of
+  the bill.
+- **Two people for big expenses:** an expense **over ₹2,000** waits for approval and counts in the
+  balance only after it. The Facilitator approves; when the Facilitator made the entry, a treasurer
+  approves. **Nobody approves their own entry.** A **bill is needed over ₹500.** Both amounts are in
+  Settings.
+- **Nothing is deleted.** A mistake is undone by a **reversal**: a new entry that takes the amount
+  back, with a reason. Both stay in the ledger, and every change is in the audit log.
+- **See it:** "Class fund" under the buttons on the home screen: the balance, what waits for you,
+  the entries of this month, 3 months, this financial year (from 1 April) or all with the balance
+  after each, month by month, and **Download CSV** (on Android: save to a folder or share) for Excel.
+
 ## Still to come
 
 These parts of the approved plan are **not built yet**:
 
-- **Fund records**: a transparent record of donations and sponsorships, where the person who records
-  is not the person who approves. The app will record money only; donors pay the temple directly.
 - **Door tablet**: a temple tablet at the door where students check themselves in.
 - **More Ishtagoshti**: a memorise mode, discussion with moderation, sessions, recitation review,
   and a free public sign-up for sloka study only.

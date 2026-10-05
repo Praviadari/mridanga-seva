@@ -132,7 +132,10 @@ export default function FundEntryScreen() {
     async function choose(kind: 'image' | 'pdf') {
       const picked = await pickBill(kind);
       if (picked.errorKey) setMessage({ tone: 'error', text: t(picked.errorKey) });
-      if (picked.files[0]) update({ bill: picked.files[0] });
+      if (picked.files[0]) {
+        update({ bill: picked.files[0] });
+        setErrors((current) => ({ ...current, bill: undefined }));
+      }
     }
 
     async function save() {
