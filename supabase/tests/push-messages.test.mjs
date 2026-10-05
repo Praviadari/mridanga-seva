@@ -69,6 +69,17 @@ const promotionOutbox = toOutboxMessages([
 check('promotion notifications open the nomination or My progress; near misses are dropped',
   promotionOutbox.map((m) => m.data.url).join(',') === '/staff/promotion/7,/student/progress',
   JSON.stringify(promotionOutbox.map((m) => m.data.url)));
+const eventOutbox = toOutboxMessages([
+  { outbox_id: 8, title: 'Kirtan', body: 'New event.', url: '/student/events/3', token: 'T8' },
+  { outbox_id: 9, title: 'Kirtan', body: 'New event.', url: '/staff/events/3', token: 'T9' },
+  { outbox_id: 10, title: 'Which day?', body: 'New poll.', url: '/student/polls/2', token: 'T10' },
+  { outbox_id: 11, title: 'Which day?', body: 'New poll.', url: '/staff/polls/2', token: 'T11' },
+  { outbox_id: 12, title: 'Odd', body: 'x', url: '/student/events/new', token: 'T12' },
+  { outbox_id: 13, title: 'Odd', body: 'x', url: '/student/polls/2/x', token: 'T13' },
+]);
+check('event and poll notifications (0022) open their screen; near misses are dropped',
+  eventOutbox.map((m) => m.data.url).join(',') === '/student/events/3,/staff/events/3,/student/polls/2,/staff/polls/2',
+  JSON.stringify(eventOutbox.map((m) => m.data.url)));
 
 console.log(failures ? `\n${failures} check(s) FAILED` : '\nAll checks passed');
 process.exit(failures ? 1 : 0);

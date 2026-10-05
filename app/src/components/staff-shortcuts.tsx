@@ -44,13 +44,8 @@ export function StaffShortcuts() {
       soon: true,
       onPress: () => router.push({ pathname: '/staff/coming-soon', params: { module: 'instruments' } }),
     },
-    {
-      key: 'events',
-      icon: 'events',
-      label: t('modules.events'),
-      soon: true,
-      onPress: () => router.push({ pathname: '/staff/coming-soon', params: { module: 'events' } }),
-    },
+    // Phase 2 slice 5: events and polls (C16, C17; docs/DECISIONS.md #61).
+    { key: 'events', icon: 'events', tone: 'orange', label: t('events.module'), onPress: () => router.push('/staff/events') },
   ];
   return (
     <>

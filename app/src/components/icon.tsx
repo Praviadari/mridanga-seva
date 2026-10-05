@@ -94,6 +94,13 @@ const SHAPES = {
   today: 'today-outline',
   notes: 'journal-outline',
   memorised: 'checkmark-done-outline',
+  // Events and polls (Phase 2 slice 5).
+  poll: 'stats-chart-outline',
+  calendarAdd: 'calendar-outline',
+  cancel: 'close-circle-outline',
+  performer: 'musical-notes-outline',
+  attended: 'checkmark-done-outline',
+  anonymous: 'eye-off-outline',
 } as const;
 
 /** The icons the app may use. */

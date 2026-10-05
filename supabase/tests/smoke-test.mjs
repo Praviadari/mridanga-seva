@@ -2025,6 +2025,227 @@ const ownVisits = await asApp('authenticated', late, 'select location_check from
 check('a student reads only their own visits', ownVisits.length > 0
   && ownVisits.length === (await asOwner(`select count(*)::int as n from visits where student_id = '${registered.id}'`))[0].n);
 await asApp('authenticated', guru, 'select check_out_all()');
+// ---------------------------------------------------------------- events and polls (0022, Phase 2)
+const inHours = (h) => new Date(Date.now() + h * 3600_000).toISOString();
+const addEvent = async (userId, fields = {}) => (await asApp('authenticated', userId,
+  `insert into events (title, description, starts_at, ends_at, centre_id, place, audience, audience_level, audience_group)
+   values ($1, $2, $3, $4, $5, $6, $7, $8, $9) returning *`,
+  [fields.title ?? 'Festival kirtan', fields.description ?? '', fields.starts ?? inHours(48), fields.ends ?? null,
+   fields.centre === undefined ? 1 : fields.centre, fields.place ?? null, fields.audience ?? 'all', fields.level ?? null,
+   fields.group ?? null]))[0];
+const outboxFor = async (profileId, urlLike) => (await asOwner(`select title, body, url from push_outbox
+  where profile_id = '${profileId}' and url like '${urlLike}' order by id`));
+// The checks below read the English lines; earlier sections switched some app languages.
+const evLanguages = await asOwner(`select id, language from profiles where id in ('${arjun}', '${meera}', '${late}')`);
+await asOwner(`update profiles set language = 'en' where id in ('${arjun}', '${meera}', '${late}')`);
+check('notices of events and polls have Telugu and Hindi lines', (await asOwner(`select
+  event_push_line('event_new', 'te', now()) like 'కొత్త కార్యక్రమం:%' and event_push_line('poll_remind', 'hi', now()) like 'याद रहे: मतदान%'
+  and event_push_line('event_performer', 'en', now(), 'Kartal') = 'Your part: Kartal.' as ok`))[0].ok === true);
+const [{ lv: evLevelA }] = await asOwner(`select level_id as lv from students where id = '${arjunStudent}'`);
+const [{ lv: evLevelM }] = await asOwner(`select level_id as lv from students where id = '${meeraStudent}'`);
+
+await refuses('a student cannot create an event', () => addEvent(arjun));
+await refusesWith('an event needs a title', 'title_required', () => addEvent(coordinator, { title: '  ' }));
+await refusesWith('... a centre or a place', 'place_required', () => addEvent(coordinator, { centre: null }));
+await refusesWith('... a start in the future', 'starts_past', () => addEvent(coordinator, { starts: inHours(-1) }));
+await refusesWith('... not more than a year ahead', 'starts_too_far', () => addEvent(coordinator, { starts: inHours(24 * 400) }));
+await refusesWith('... an end after the start', 'ends_invalid', () => addEvent(coordinator, { ends: inHours(47) }));
+await refusesWith('... a level for a level audience', 'level_required', () => addEvent(coordinator, { audience: 'level' }));
+await refusesWith('... an existing group for a group audience', 'group_required', () => addEvent(coordinator, { audience: 'group', group: 999999 }));
+const festival = await addEvent(coordinator, { title: '  Janmashtami kirtan ', place: ' Temple hall ', ends: inHours(51) });
+check('a coordinator creates an event; title and place trimmed, author recorded', festival.title === 'Janmashtami kirtan'
+  && festival.place === 'Temple hall' && festival.created_by === coordinator && festival.cancelled_at === null, JSON.stringify(festival));
+const arjunNew = await outboxFor(arjun, `/student/events/${festival.id}`);
+check('every student it is for gets a notice that opens the event, in their language', arjunNew.length === 1
+  && arjunNew[0].title === 'Janmashtami kirtan' && /^New event: \d\d-\d\d-\d{4} \d\d:\d\d\. Will you come\?$/.test(arjunNew[0].body),
+  JSON.stringify(arjunNew));
+check('... the author is not told', (await outboxFor(coordinator, `%/events/${festival.id}`)).length === 0);
+check('... and the notice is in the inbox as an event', (await asApp('authenticated', arjun,
+  `select kind from notifications where url = '/student/events/${festival.id}'`))[0]?.kind === 'event');
+check('a student sees the event', (await asApp('authenticated', arjun, 'select id from events where id = $1', [festival.id])).length === 1);
+
+// A level neither Arjun nor Meera is at, and a student login who is.
+const otherLevel = [1, 2, 3].find((l) => l !== evLevelA && l !== evLevelM);
+const [levelMate] = await asOwner(`select s.profile_id as id from students s join profiles p on p.id = s.profile_id and p.active
+  where s.level_id = ${otherLevel} and p.role = 'student' limit 1`);
+const levelEvent = await addEvent(guru, { title: 'Level yatra', audience: 'level', level: otherLevel });
+const seesLevel = async (userId) => (await asApp('authenticated', userId, 'select id from events where id = $1', [levelEvent.id])).length === 1;
+check('a level event is seen only by students of that level (and staff)', (await seesLevel(coordinator2))
+  && (!levelMate || (await seesLevel(levelMate.id))) && !(await seesLevel(arjun)) && !(await seesLevel(meera)), `level ${otherLevel}`);
+const rsvp = (userId, eventId, response) => asApp('authenticated', userId, 'select rsvp_event($1, $2)', [eventId, response]);
+await refusesWith('a student cannot answer an event not for them', 'not_allowed', () => rsvp(meera, levelEvent.id, 'going'));
+await refusesWith('an answer is going, maybe or not going', 'response_invalid', () => rsvp(arjun, festival.id, 'perhaps'));
+await rsvp(arjun, festival.id, 'maybe');
+await rsvp(arjun, festival.id, 'going');
+await rsvp(meera, festival.id, 'not_going');
+const countsOf = async (userId, eventId) => (await asApp('authenticated', userId, 'select * from event_counts($1::bigint[])', [[eventId]]))[0];
+const arjunCounts = await countsOf(arjun, festival.id);
+check('a student changes their answer; counts and their own answer come back', arjunCounts.going === 1
+  && arjunCounts.not_going === 1 && arjunCounts.maybe === 0 && arjunCounts.my_response === 'going' && arjunCounts.addressed >= 3,
+  JSON.stringify(arjunCounts));
+check('a student sees only their own answer row', (await asApp('authenticated', meera, 'select profile_id from event_rsvps')).every((r) => r.profile_id === meera));
+await refuses('a student cannot list who answered', () => asApp('authenticated', arjun, 'select * from event_people_list($1)', [festival.id]));
+const people = await asApp('authenticated', coordinator2, 'select * from event_people_list($1)', [festival.id]);
+check('staff see everyone it is for with their answer', people.find((p) => p.profile_id === arjun)?.response === 'going'
+  && people.find((p) => p.profile_id === meera)?.response === 'not_going' && people.some((p) => p.response === null), String(people.length));
+check('counts of an event not for them are not given to a student', (await asApp('authenticated', meera,
+  'select * from event_counts($1::bigint[])', [[levelEvent.id]])).length === 0);
+await refuses('the app cannot write answers directly', () => asApp('authenticated', arjun,
+  `insert into event_rsvps (event_id, profile_id, response) values ($1, auth.uid(), 'going')`, [festival.id]));
+
+await refusesWith('the audience stays once people answered', 'audience_locked', () => asApp('authenticated', coordinator,
+  `update events set audience = 'staff' where id = $1`, [festival.id]));
+await refuses('another coordinator cannot edit the event', async () => {
+  const rows = await asApp('authenticated', coordinator2, `update events set title = 'x' where id = $1 returning id`, [festival.id]);
+  if (rows.length === 0) throw new Error('no row changed');
+});
+const newStart = inHours(72);
+await asApp('authenticated', guru, 'update events set starts_at = $2, ends_at = null where id = $1', [festival.id, newStart]);
+const arjunChanged = await outboxFor(arjun, `/student/events/${festival.id}`);
+check('the Guru moves it; people are told the new time', arjunChanged.length === 2 && arjunChanged[1].body.startsWith('The time or place changed'),
+  JSON.stringify(arjunChanged));
+await refusesWith('an event somebody answered is not deleted', 'event_has_answers', () =>
+  asApp('authenticated', coordinator, 'delete from events where id = $1', [festival.id]));
+
+// Performers and attendance.
+const setPerformers = (userId, eventId, list) => asApp('authenticated', userId,
+  'select set_event_performers($1, $2::jsonb) as r', [eventId, JSON.stringify(list)]);
+await refuses('a student cannot pick performers', () => setPerformers(arjun, festival.id, []));
+await refusesWith('a part is 1 to 60 characters', 'part_invalid', () => setPerformers(coordinator, festival.id, [{ student_id: arjunStudent, part: ' ' }]));
+await refusesWith('... and a student once', 'student_invalid', () => setPerformers(coordinator, festival.id,
+  [{ student_id: arjunStudent, part: 'Mridanga' }, { student_id: arjunStudent, part: 'Kartal' }]));
+const [{ r: perf }] = await setPerformers(coordinator, festival.id, [{ student_id: arjunStudent, part: ' Mridanga ' }, { student_id: lateStudent, part: 'Kartal' }]);
+check('staff pick performers; the ones with a login are told their part', perf.performers === 2 && perf.notified === 2,
+  JSON.stringify(perf));
+check('... the notice names the part', (await outboxFor(arjun, `/student/events/${festival.id}`)).at(-1).body === 'Your part: Mridanga.');
+await setPerformers(coordinator, festival.id, [{ student_id: arjunStudent, part: 'Mridanga' }]);
+check('an unchanged part is not told again; a dropped performer is removed', (await outboxFor(arjun, `/student/events/${festival.id}`)).length === 3
+  && (await asOwner(`select count(*)::int as n from event_performers where event_id = ${festival.id}`))[0].n === 1);
+check('a performer sees their part in the counts', (await countsOf(arjun, festival.id)).my_part === 'Mridanga');
+await refusesWith('attendance waits for the event day', 'too_early', () => asApp('authenticated', coordinator,
+  'select mark_event_attendance($1, $2::uuid[])', [festival.id, [arjunStudent]]));
+const soon = await addEvent(coordinator, { title: 'Today kirtan', starts: inHours(0.05) });
+// Moved into the past by hand (the guard keeps the app from doing that).
+await asOwner('alter table events disable trigger events_guard');
+await asOwner(`update events set starts_at = now() - interval '1 hour' where id = ${soon.id}`);
+await asOwner('alter table events enable trigger events_guard');
+const [{ n: ticked }] = await asApp('authenticated', coordinator2, 'select mark_event_attendance($1, $2::uuid[]) as n',
+  [soon.id, [arjunStudent, lateStudent, arjunStudent]]);
+check('staff tick who came on the day (students without the app too)', ticked === 2
+  && (await countsOf(arjun, soon.id)).i_attended === true, String(ticked));
+await refusesWith('nobody answers after the start', 'event_started', () => rsvp(arjun, soon.id, 'going'));
+const listed = await asApp('authenticated', coordinator, 'select * from event_student_list($1, false)', [soon.id]);
+check('the student list for an event shows the audience with attendance', listed.some((s) => s.student_id === arjunStudent && s.attended && s.in_audience)
+  && listed.some((s) => s.student_id === meeraStudent && !s.attended), String(listed.length));
+
+// Reminders and cancelling.
+const [{ n: asked }] = await asApp('authenticated', coordinator, 'select remind_event($1) as n', [festival.id]);
+check('Remind tells only those who have not answered', asked > 0
+  && (await outboxFor(arjun, `/student/events/${festival.id}`)).length === 3
+  && (await outboxFor(late, `/student/events/${festival.id}`)).some((r) => r.body.startsWith('Please tell us')), String(asked));
+await refusesWith('... once in 12 hours', 'too_soon', () => asApp('authenticated', coordinator, 'select remind_event($1)', [festival.id]));
+await asOwner(`update events set starts_at = (today_ist() + 1 + time '18:00') at time zone 'Asia/Kolkata' where id = ${festival.id}`);
+await asOwner(`update events set reminded_at = null where id = ${festival.id}`);
+await asOwner('select events_polls_daily()');
+const dayBefore = (await outboxFor(arjun, `/student/events/${festival.id}`)).at(-1);
+check('the day before, those going or maybe are reminded', dayBefore.body === 'Reminder: tomorrow at 18:00.', JSON.stringify(dayBefore));
+check('... not those not going', !(await outboxFor(meera, `/student/events/${festival.id}`)).some((r) => r.body.startsWith('Reminder')));
+const beforeAgain = (await asOwner('select count(*)::int as n from push_outbox'))[0].n;
+await asOwner('select events_polls_daily()');
+check('... and only once', (await asOwner('select count(*)::int as n from push_outbox'))[0].n === beforeAgain);
+await asApp('authenticated', coordinator, `update events set cancelled_at = now(), cancel_reason = ' Rain ' where id = $1`, [festival.id]);
+const [cancelled] = await asOwner(`select cancelled_at, cancel_reason from events where id = ${festival.id}`);
+check('the author cancels with a reason; people are told', cancelled.cancelled_at !== null && cancelled.cancel_reason === 'Rain'
+  && (await outboxFor(meera, `/student/events/${festival.id}`)).at(-1).body.endsWith('is cancelled.'));
+await refusesWith('a cancelled event stays as it is', 'event_cancelled', () => asApp('authenticated', guru,
+  'update events set cancelled_at = null where id = $1', [festival.id]));
+await refusesWith('nobody answers a cancelled event', 'event_cancelled', () => rsvp(late, festival.id, 'going'));
+const empty = await addEvent(coordinator, { title: 'Typo event' });
+await asApp('authenticated', coordinator, 'delete from events where id = $1', [empty.id]);
+check('an event nobody answered can be deleted', (await asOwner(`select id from events where id = ${empty.id}`)).length === 0);
+
+// Polls.
+const addPoll = async (userId, fields = {}) => (await asApp('authenticated', userId,
+  `insert into polls (question, options, anonymous, results_when, closes_at, audience, audience_level, audience_group)
+   values ($1, $2::text[], $3, $4, $5, $6, $7, $8) returning *`,
+  [fields.question ?? 'Which day suits the practice?', fields.options ?? ['Saturday', 'Sunday'], fields.anonymous ?? false,
+   fields.resultsWhen ?? 'after_vote', fields.closes ?? inHours(72), fields.audience ?? 'all', fields.level ?? null, fields.group ?? null]))[0];
+await refuses('a student cannot create a poll', () => addPoll(arjun));
+await refusesWith('a poll has 2 to 6 answers', 'options_invalid', () => addPoll(coordinator, { options: ['Only one'] }));
+await refusesWith('... all different', 'options_invalid', () => addPoll(coordinator, { options: ['Sunday', ' sunday '] }));
+await refusesWith('... at most 6', 'options_invalid', () => addPoll(coordinator, { options: ['1', '2', '3', '4', '5', '6', '7'] }));
+await refusesWith('... and a closing time in the future', 'closes_past', () => addPoll(coordinator, { closes: inHours(-1) }));
+const poll = await addPoll(coordinator, { options: [' Saturday ', 'Sunday', 'Either'], resultsWhen: 'after_vote' });
+check('a coordinator creates a poll; answers trimmed', JSON.stringify(poll.options) === '["Saturday","Sunday","Either"]', JSON.stringify(poll.options));
+check('... the people it is for are told', (await outboxFor(arjun, `/student/polls/${poll.id}`))[0]?.body.startsWith('New poll. Please vote by'));
+const vote = (userId, pollId, choice) => asApp('authenticated', userId, 'select vote_poll($1, $2)', [pollId, choice]);
+const stateOf = async (userId, pollId) => (await asApp('authenticated', userId, 'select * from poll_state($1::bigint[])', [[pollId]]))[0];
+const before = await stateOf(arjun, poll.id);
+check('before voting a student sees no results (results after voting)', before.results === null && before.my_choice === null && before.can_vote,
+  JSON.stringify(before));
+await refusesWith('a choice must be one of the answers', 'choice_invalid', () => vote(arjun, poll.id, 3));
+await vote(arjun, poll.id, 0);
+await vote(arjun, poll.id, 1);
+await vote(meera, poll.id, 1);
+const after = await stateOf(arjun, poll.id);
+check('a student changes their vote and then sees the results', after.my_choice === 1 && JSON.stringify(after.results) === '[0,2,0]'
+  && after.voted === 2, JSON.stringify(after));
+await refuses('votes are never readable from the app', () => asApp('authenticated', coordinator, 'select * from poll_votes'));
+const voters = await asApp('authenticated', coordinator2, 'select * from poll_voters($1)', [poll.id]);
+check('staff see who voted what in a poll that is not anonymous', voters.find((v) => v.profile_id === arjun)?.choice === 1
+  && voters.some((v) => v.voted_at === null), String(voters.length));
+await refuses('a student cannot list the voters', () => asApp('authenticated', arjun, 'select * from poll_voters($1)', [poll.id]));
+await refusesWith('the answers stay once people voted', 'poll_has_votes', () => asApp('authenticated', coordinator,
+  `update polls set options = array['A', 'B'] where id = $1`, [poll.id]));
+await refusesWith('... and anonymous cannot be switched', 'poll_has_votes', () => asApp('authenticated', coordinator,
+  'update polls set anonymous = true where id = $1', [poll.id]));
+await refusesWith('a poll with votes is not deleted', 'poll_has_votes', () => asApp('authenticated', coordinator, 'delete from polls where id = $1', [poll.id]));
+
+const secret = await addPoll(guru, { question: 'Anonymous check', anonymous: true, resultsWhen: 'after_close', closes: inHours(10) });
+await vote(arjun, secret.id, 0);
+check('in an anonymous poll staff see that a person voted, not what', (await asApp('authenticated', guru,
+  'select * from poll_voters($1)', [secret.id])).every((v) => v.choice === null)
+  && (await asApp('authenticated', guru, 'select * from poll_voters($1)', [secret.id])).some((v) => v.profile_id === arjun && v.voted_at !== null));
+check('results after closing: a voter sees none while it is open; nor do staff in an anonymous poll',
+  (await stateOf(arjun, secret.id)).results === null && (await stateOf(coordinator, secret.id)).results === null);
+check('... while staff see live counts of a poll that is not anonymous', JSON.stringify((await stateOf(coordinator, poll.id)).results) === '[0,2,0]');
+await asOwner('select events_polls_daily()');
+check('within 24 hours of closing, those who have not voted are reminded',
+  (await outboxFor(meera, `/student/polls/${secret.id}`)).some((r) => r.body.startsWith('Reminder: the poll closes'))
+  && !(await outboxFor(arjun, `/student/polls/${secret.id}`)).some((r) => r.body.startsWith('Reminder')));
+const [{ n: pollAsked }] = await asApp('authenticated', guru, 'select remind_poll($1) as n', [secret.id]);
+await refusesWith('Remind on a poll: once in 12 hours', 'too_soon', () => asApp('authenticated', guru, 'select remind_poll($1)', [secret.id]));
+await asApp('authenticated', guru, 'update polls set closed_at = now() where id = $1', [secret.id]);
+check('the Guru closes it early; then everyone it is for sees the results', pollAsked > 0
+  && JSON.stringify((await stateOf(arjun, secret.id)).results) === '[1,0]' && (await stateOf(arjun, secret.id)).closed);
+await refusesWith('nobody votes on a closed poll', 'poll_closed', () => vote(meera, secret.id, 1));
+await refusesWith('a closed poll stays closed', 'poll_closed', () => asApp('authenticated', guru,
+  'update polls set closes_at = $2 where id = $1', [secret.id, inHours(48)]));
+
+const [{ id: eventGroup }] = await asApp('authenticated', coordinator, `insert into groups (name) values ('Kirtan team') returning id`);
+await asApp('authenticated', coordinator, 'insert into group_members (group_id, profile_id) values ($1, $2)', [eventGroup, meera]);
+const groupPoll = await addPoll(coordinator, { question: 'Group only', audience: 'group', group: eventGroup });
+check('a group poll is seen by its members only', (await asApp('authenticated', meera, 'select id from polls where id = $1', [groupPoll.id])).length === 1
+  && (await asApp('authenticated', arjun, 'select id from polls where id = $1', [groupPoll.id])).length === 0);
+await refusesWith('a student outside the group cannot vote', 'not_allowed', () => vote(arjun, groupPoll.id, 0));
+check('poll_state gives nothing for a poll not for them', (await asApp('authenticated', arjun,
+  'select * from poll_state($1::bigint[])', [[groupPoll.id]])).length === 0);
+await asApp('authenticated', coordinator, 'update groups set active = false where id = $1', [eventGroup]);
+const [{ n: groupAsked }] = await asApp('authenticated', coordinator, 'select remind_poll($1) as n', [groupPoll.id]);
+check('a group switched off later does not block a reminder', groupAsked === 1, String(groupAsked));
+await asApp('authenticated', coordinator, 'delete from polls where id = $1', [groupPoll.id]);
+check('a poll nobody voted on can be deleted', (await asOwner(`select id from polls where id = ${groupPoll.id}`)).length === 0);
+
+check('event and poll kinds in the inbox', (await kindOf('/staff/events/4')) === 'event' && (await kindOf('/student/polls/2')) === 'poll');
+const [{ ok: eventFnsOpen }] = await asOwner(`select has_function_privilege('anon', 'rsvp_event(bigint, text)', 'execute')
+  or has_function_privilege('anon', 'poll_state(bigint[])', 'execute') or has_function_privilege('anon', 'vote_poll(bigint, int)', 'execute')
+  or has_function_privilege('authenticated', 'queue_people_push(uuid[], text, text, text, timestamptz, text)', 'execute')
+  or has_function_privilege('authenticated', 'events_polls_daily()', 'execute')
+  or has_function_privilege('authenticated', 'event_notify()', 'execute') as ok`);
+check('anon runs no event or poll function; the queue and the daily job are not callable', eventFnsOpen === false);
+await refuses('anon cannot read events', () => asApp('anon', null, 'select id from events'));
+await refuses('anon cannot read polls', () => asApp('anon', null, 'select id from polls'));
+for (const { id, language } of evLanguages) await asOwner(`update profiles set language = '${language}' where id = '${id}'`);
 // ---------------------------------------------------------------- row-level security
 const seen =await asApp('authenticated', arjun, 'select full_name from students');
 check('student sees only their own student record', seen.length === 1 && seen[0].full_name === 'Arjun Rao');
