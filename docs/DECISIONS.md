@@ -2218,6 +2218,72 @@ were reserved for this round and are left unused. Not done here, each a team dec
 brief: D1b-06 (token take-over on a shared phone), D2-02 (lock-screen text), FS1b-04 (widened
 audience), receipts (D2-03's second half).
 
+## 120. Weekly encrypted backup with pg_dump, kept 8 weeks — 6 Oct 2026
+
+**Context.** The documented `supabase db dump` wrote the schema only, no rows (D10-01), and said
+nothing about encryption, owner or retention (D4-15). The free plan has no downloadable backups. The
+CLI's dump runs `pg_dump` inside Docker, which the maintainer's PC does not have.
+
+**Decision.** Every Monday and before every live migration, the owner (Praveen until a second person
+is named) dumps the live project over the session pooler with PostgreSQL's command-line tools into
+three files: `schema.sql` (public schema), `data-public.sql` (all public rows, COPY) and
+`data-auth.sql` (auth.users, identities, mfa_factors; no sessions or Supabase logs). No roles file:
+the app makes no roles of its own. The files go into a 7-Zip AES archive (file names hidden) whose
+password lives in the team password manager; the plain files are deleted. The last 8 archives are
+kept, and a `backup-log.csv` beside them records date, person, sizes, rows per dump and the drift
+query's ALL hash. A restore loads the data into a project built from the migrations, inside one
+transaction with triggers off, then re-applies every erasure and withdrawal dated after the backup
+from the private request register.
+
+**Consequences.** An erased child's data survives in older archives for up to 8 weeks; a restore
+must re-apply erasures or it brings the child back. Storage files, Vault secrets, function secrets
+and dashboard settings are not in the backup and are set up again by hand. One restore drill on the
+test project before the pilot, then yearly; its result is recorded in OPERATIONS. Closes D10-01, D4-15.
+
+## 121. Releases go database first; migrations stay additive for one release — 6 Oct 2026
+
+**Context.** OPERATIONS had no order between migrations and app updates (D10-10) and no way to see
+drift between the test and live projects (D10-08). An update reaches phones within minutes.
+
+**Decision.** Migrate test, check on test, back up and migrate live, run the drift query (from the
+audit, now in OPERATIONS) in both and compare its per-kind hashes, then publish the update and the
+live site. A migration never drops, renames or changes the parameters of anything the app in use
+calls in the same release. A weekly cron health query (last success, failures in 2 days, last
+error per job, plus `push_status`) runs with the backup.
+
+**Consequences.** A bad update can always be rolled back without touching the database. The drift
+query's `config_rows` and `vault_secret` kinds may differ on purpose between the projects. No
+schema_version table and no dashboard warning for a failed job yet (D10-09's "better" option).
+Closes D10-08, D10-09, D10-10, R2G3-03 (doc part).
+
+## 122. seed.sql refuses a project that has students or announcements — 6 Oct 2026
+
+**Context.** The seed once ran on the live project (29 Sep 2026), and nothing stopped it running
+again (FS1b-02); the clean-up in OPERATIONS deleted every student without a check (D10-11).
+
+**Decision.** `seed.sql` opens with a DO block that raises unless `students` and `announcements` are
+empty. The clean-up stays in OPERATIONS, guarded: it refuses unless every student, announcement,
+group, material and syllabus item is one the seed makes. The smoke test runs the seed twice and the
+clean-up (read from OPERATIONS.md) in both cases.
+
+**Consequences.** The guard cannot tell an empty live project from an empty test one; the operator
+still checks the project name. Copies of the fictional rows stay in `audit_log` after a clean-up.
+
+## 123. Runbooks for a key leak, an Expo compromise and a lost staff phone — 6 Oct 2026
+
+**Context.** The key-leak steps changed only `app/.env`, so a rotated app key would break every phone
+and site (D12b-05); nothing covered a hijacked Expo account (D11-01) or a lost phone (D3-14).
+
+**Decision.** OPERATIONS lists every key with what its leak allows and how to rotate it; a change of
+the app's URL or key goes to the .env files, `eas env:push` per environment, an update per channel,
+`export:web` per site, then a sign-in test on each, and only then is the old key deleted. An Expo
+compromise: lock the account, list updates, builds and channels, roll back, republish from main,
+rotate what Expo held, sign everyone out (`delete from auth.sessions`). A lost staff phone: switch
+the login off in G2, delete its sessions and push tokens, password recovery, remote lock.
+
+**Consequences.** No "sign out everywhere" button yet (D3-14's option); updates stay unsigned (#35).
+The keystore cannot be rotated for APKs shared by link. Closes D12b-05, D3-14; D11-01 runbook part.
+
 ## 124. An expired or used email link says so and offers a new one — 6 Oct 2026
 
 **Context.** Links in sign-up and password-reset emails open the web app. When a link had expired or

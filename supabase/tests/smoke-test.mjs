@@ -157,8 +157,42 @@ if (beforePush) {
   await asOwner(`delete from announcements where id in (${beforePush.published}, ${beforePush.later})`);
   await asOwner(`delete from audit_log where table_name = 'announcements'`);
 }
-await db.exec(readFileSync(new URL('seed.sql', supabaseDir), 'utf8'));
+const seedSql = readFileSync(new URL('seed.sql', supabaseDir), 'utf8');
+await db.exec(seedSql);
 console.log('ran   seed.sql\n');
+{ // FS1b-02: a second run (or a run on the live project) is refused before it changes anything.
+  const counts = async () => (await asOwner(`select (select count(*) from students)::int as s,
+    (select count(*) from announcements)::int as a, (select count(*) from syllabus_items)::int as i`))[0];
+  const before = await counts();
+  let refused = '';
+  try { await db.exec(seedSql); } catch (e) { refused = String(e.message); }
+  try { await db.exec('rollback'); } catch { /* no transaction left open */ }
+  const after = await counts();
+  check('seed.sql refuses a project that already has students or announcements', refused.includes('seed.sql refused'), refused);
+  check('... and changes nothing', JSON.stringify(before) === JSON.stringify(after), `${JSON.stringify(before)} -> ${JSON.stringify(after)}`);
+
+  // D10-11: the seed clean-up in docs/OPERATIONS.md (read from the doc, so the two cannot drift).
+  const ops = readFileSync(new URL('../docs/OPERATIONS.md', supabaseDir), 'utf8');
+  const cleanup = ops.match(/```sql\r?\n(\s*-- Seed clean-up \(guarded\)[\s\S]*?)```/)?.[1];
+  check('OPERATIONS.md holds the guarded seed clean-up', !!cleanup);
+  const [real] = await asOwner(`insert into announcements (title, body, audience) values ('Real notice', 'x', 'all') returning id`);
+  let cleanupRefused = '';
+  try { await db.exec(cleanup); } catch (e) { cleanupRefused = String(e.message); }
+  await asOwner(`delete from announcements where id = ${real.id}`);
+  const kept = await counts();
+  check('the seed clean-up refuses when a record is not the seed\'s, and deletes nothing',
+    cleanupRefused.includes('clean-up refused') && JSON.stringify(kept) === JSON.stringify(before), `${cleanupRefused} ${JSON.stringify(kept)}`);
+  await db.exec('begin');
+  let cleaned = null;
+  try {
+    await db.exec(cleanup);
+    cleaned = await counts();
+  } catch (e) { cleaned = String(e.message); }
+  await db.exec('rollback');
+  check('... on seed data alone it removes students, announcements and syllabus (tried, then rolled back)',
+    JSON.stringify(cleaned) === JSON.stringify({ s: 0, a: 0, i: 0 }), JSON.stringify(cleaned));
+  check('... and the rollback restored the seed', JSON.stringify(await counts()) === JSON.stringify(before));
+}
 
 // ---------------------------------------------------------------- first Guru and staff
 const guru = await signUp('guru@example.com', true);

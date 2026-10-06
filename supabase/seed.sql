@@ -11,6 +11,16 @@
 --   3. run the "assign mentors" block at the bottom.
 -- All names are fictional and all emails use example.com, a domain reserved for examples.
 
+-- Guard (docs/DECISIONS.md #122): the seed runs only on an empty project. On a project that already
+-- holds students or announcements (the live one, or a test project seeded before) it stops here and
+-- changes nothing: the SQL editor stops at the first error.
+do $$
+begin
+  if exists (select 1 from students) or exists (select 1 from announcements) then
+    raise exception 'seed.sql refused: this project already has students or announcements. The seed is for an empty TEST project only; nothing was changed.';
+  end if;
+end $$;
+
 -- Everything runs in one transaction (begin ... commit): students under 18 must have a parent's
 -- consent by the end of the transaction (0003, check_minor_consent), and their consents are added
 -- a few statements later.

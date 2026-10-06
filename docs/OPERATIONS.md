@@ -55,20 +55,41 @@ project id and its signing keystore stay the same, so nothing needs rebuilding.
 3. **Test project only — add the dummy data:** do the same with [`supabase/seed.sql`](../supabase/seed.sql)
    in a new query. Check under **Table Editor → students**: 15 students, roll numbers
    `MS-2026-0001` to `MS-2026-0015`. Never run the seed on the live project. Its header lists the
-   steps it cannot do (creating staff logins, assigning mentors).
+   steps it cannot do (creating staff logins, assigning mentors). Since 6 Oct 2026 the seed opens
+   with a guard: on a project that already has any student or announcement it stops with
+   *seed.sql refused* and changes nothing ([DECISIONS.md #122](DECISIONS.md)). The guard cannot
+   tell an **empty** live project from an empty test one, so still check the project name first.
 
-   **If the seed was run on the live project by mistake** (it happened once, on 29 Sep 2026), and
-   the live project has no real students yet, remove it in the live project's SQL editor. This
-   deletes every student and their records, so never run it once real students exist:
+   **If the seed was run on the live project by mistake** (it happened once, on 29 Sep 2026), remove
+   it in the live project's SQL editor with the block below. It refuses, and deletes nothing, if
+   the project holds any student, announcement, group, material or syllabus item that the seed did
+   not create, so it cannot remove real records. Copies of the fictional rows stay in `audit_log`.
    ```sql
-   begin;
-   delete from students;        -- also their parents, consents, visits, calls, follow-ups, progress
-   delete from roll_counters;   -- the first real student gets MS-<year>-0001 again
-   delete from announcements;   -- before groups: announcements point to groups
-   delete from materials;       -- before syllabus_items: materials point to syllabus items
-   delete from groups;
-   delete from syllabus_items;
-   commit;
+   -- Seed clean-up (guarded): removes the dummy data of seed.sql and nothing else.
+   do $$
+   begin
+     if exists (select 1 from students where full_name not in ('Arjun Rao', 'Meera Iyer',
+          'Karthik Reddy', 'Sanjana Varma', 'Rohan Gupta', 'Lakshmi Prasad', 'Vikram Joshi',
+          'Ananya Sharma', 'Suresh Naidu', 'Divya Menon', 'Harish Kumar', 'Pooja Patel',
+          'Naveen Chandra', 'Gayatri Devi', 'Bhaskar Murthy'))
+        or exists (select 1 from announcements where title <> 'Welcome to Mridanga Seva')
+        or exists (select 1 from groups where name not in ('Sunday Harinam', 'Festival kirtan',
+          'Beginners follow-up'))
+        or exists (select 1 from materials where title not in ('How to sit with the mridanga',
+          'Kaherva taal — notation'))
+        or exists (select 1 from syllabus_items where title not in ('Holding the mridanga', 'Dayan bols', 'Baya bols', 'Combined bols',
+          'Practice phrases', 'Elementary kirtan rhythm', 'Kaherva taal',
+          'Prabhupada / Dasapahira taal', 'Bhajani taal', 'Dadra and Khemta', 'Lopha taal',
+          'Fast 8- and 6-beat cycles', 'Cadences and tihais', 'Mukhras')) then
+       raise exception 'clean-up refused: this project holds records that seed.sql did not make. Nothing was deleted.';
+     end if;
+     delete from students;        -- also their parents, consents, visits, calls, follow-ups, progress
+     delete from roll_counters;   -- the first real student gets MS-<year>-0001 again
+     delete from announcements;   -- before groups: announcements point to groups
+     delete from materials;       -- before syllabus_items: materials point to syllabus items
+     delete from groups;
+     delete from syllabus_items;
+   end $$;
    ```
 
    **If the SQL editor only shows a spinning circle,** the network is blocking the editor's files
@@ -140,7 +161,7 @@ until the Guru erases the record or the parent consents again.
 
 1. Write down, privately: the date, who asked (parent / student), how (in person, phone, email),
    and the student's roll number. Keep the parent's written request with the consent forms if
-   there is one.
+   there is one. A restore from a backup needs this register ("Backups → Restoring", step 5).
 2. Supabase → SQL editor of the right project (TEST first when practising), find the student:
    `select id, roll_no, full_name from students where roll_no = 'MS-2026-0042';`
 3. Run `select withdraw_consent('<id>', 'mother, by phone, 5 Oct 2026');` (the note is at most
@@ -162,7 +183,8 @@ Only the Guru erases ([DECISIONS.md #76](DECISIONS.md)). It cannot be undone, so
 request first.
 
 1. Check who asks: the parent of a minor, or the adult student themselves. Write down privately
-   the date, who asked, how, and a request reference (e.g. `ER-2026-01`).
+   the date, who asked, how, and a request reference (e.g. `ER-2026-01`). After a restore from a
+   backup this register is how the erasure is made again ("Backups → Restoring", step 5).
 2. If the student holds a lent instrument, take it back and record the return in C19 first.
 3. Supabase → SQL editor, find the student (`select id, roll_no, full_name from students where
    roll_no = '...';`), then run:
@@ -433,6 +455,149 @@ way they get an update. A fix published later replaces it.
 (channels and the branch each one serves). The free plan covers 1,000 people a month who
 download updates; the class is about 200.
 
+## Releasing a change: database first
+
+A release that has a migration goes in this order, every time ([DECISIONS.md #121](DECISIONS.md)).
+An app update reaches the phones within minutes, so if it calls something the live database does
+not have yet, the class's app breaks.
+
+1. **Test project:** run the migration (setup step 2: check the project name first).
+2. **Check on test:** publish the change to the test channel and the test site
+   (`npm run update:preview`, `npm run export:web -- --env .env.test`) and try it, with the
+   checks the change's notes ask for.
+3. **Live project:** make a backup ("Backups"), then run the same migration.
+4. **Drift query** (below) in both projects, and compare the `KIND:` rows. Every kind must have the
+   same hash, except the intended differences: `config_rows` (the test project's settings and
+   centres are its own) and `vault_secret` while a secret exists in one project only. Anything else
+   is drift: find it before going on. (The `ALL` hash covers these too, so it matches between test
+   and live only when they are identical; it is what each backup logs, to compare one project with
+   itself.)
+5. **Then the app:** `npm run update:production`, and the live web site (`npm run export:web`, upload
+   to `mridanga-seva`).
+
+**Migrations stay additive for one release.** A migration may add tables, columns, functions and
+policies. It may not drop or rename a table, column or function that the app in use calls, or change
+a function's parameters, in the same release: phones run the old app until the update arrives, and
+phones on an older APK never get it. Remove the old thing in a later release, once no app in use
+calls it. Then a bad app update can always be rolled back ("Rolling back") without touching the
+database.
+
+A change with no migration skips steps 1, 3 and 4. A migration with no app change still runs
+steps 1-4.
+
+**Drift query** (read-only; paste into **SQL Editor → New query** in each project and Run). The first
+row (`ALL`) is one hash of everything below it; the `KIND:` rows are one hash per kind; then one row
+per object. To find a difference, download both results as CSV and compare them (`fc.exe a.csv b.csv`).
+Vault secrets appear by name only; versions are shown (`info`) but not hashed.
+
+```sql
+-- Drift check between the TEST and LIVE projects. READ-ONLY.
+with
+fn as (   -- every function and procedure we created (pgcrypto/pg_net members excluded)
+  select 'function'::text as kind, p.oid::regprocedure::text as name, md5(pg_get_functiondef(p.oid)) as hash
+    from pg_proc p
+   where p.pronamespace = 'public'::regnamespace and p.prokind in ('f', 'p')
+     and not exists (select 1 from pg_depend d where d.classid = 'pg_proc'::regclass and d.objid = p.oid and d.deptype = 'e')
+),
+fn_grants as (  -- who may EXECUTE each function
+  select 'function_grants', p.oid::regprocedure::text,
+         md5(coalesce((select string_agg(g, ',' order by g) from (
+             select (case when a.grantee = 0 then 'PUBLIC' else a.grantee::regrole::text end) || ':' || a.privilege_type as g
+               from aclexplode(p.proacl) a) s), 'default'))
+    from pg_proc p
+   where p.pronamespace = 'public'::regnamespace and p.prokind in ('f', 'p')
+     and not exists (select 1 from pg_depend d where d.classid = 'pg_proc'::regclass and d.objid = p.oid and d.deptype = 'e')
+),
+tbl as (  -- tables: columns (name, type, not null, default) and row-level security switches
+  select 'table', c.oid::regclass::text,
+         md5(concat_ws('|', c.relrowsecurity, c.relforcerowsecurity,
+           (select string_agg(a.attname || ' ' || format_type(a.atttypid, a.atttypmod)
+                   || case when a.attnotnull then ' not null' else '' end
+                   || coalesce(' default ' || pg_get_expr(ad.adbin, ad.adrelid), ''), ', ' order by a.attname)
+              from pg_attribute a left join pg_attrdef ad on ad.adrelid = a.attrelid and ad.adnum = a.attnum
+             where a.attrelid = c.oid and a.attnum > 0 and not a.attisdropped)))
+    from pg_class c
+   where c.relnamespace = 'public'::regnamespace and c.relkind in ('r', 'p')
+),
+rel_grants as (  -- table and view privileges per role
+  select 'table_grants', c.oid::regclass::text,
+         md5(coalesce((select string_agg(g, ',' order by g) from (
+             select (case when a.grantee = 0 then 'PUBLIC' else a.grantee::regrole::text end) || ':' || a.privilege_type as g
+               from aclexplode(c.relacl) a) s), 'default'))
+    from pg_class c
+   where c.relnamespace = 'public'::regnamespace and c.relkind in ('r', 'p', 'v', 'm')
+),
+con as (  -- primary keys, foreign keys, unique and check constraints
+  select 'constraint', conrelid::regclass::text || '.' || conname, md5(pg_get_constraintdef(oid))
+    from pg_constraint where connamespace = 'public'::regnamespace and conrelid <> 0
+),
+idx as (
+  select 'index', schemaname || '.' || indexname, md5(indexdef) from pg_indexes where schemaname = 'public'
+),
+pol as (  -- row-level security policies, including Storage's
+  select 'policy', schemaname || '.' || tablename || '.' || policyname,
+         md5(concat_ws('|', permissive, roles::text, cmd, qual, with_check))
+    from pg_policies where schemaname in ('public', 'storage')
+),
+trg as (  -- triggers whose function is ours, also those on auth.users (0002 login linking)
+  select 'trigger', t.tgrelid::regclass::text || '.' || t.tgname, md5(pg_get_triggerdef(t.oid))
+    from pg_trigger t join pg_proc p on p.oid = t.tgfoid
+   where not t.tgisinternal and p.pronamespace = 'public'::regnamespace
+),
+vw as (   -- views, with their options (security_invoker)
+  select 'view', c.oid::regclass::text,
+         md5(coalesce(array_to_string(c.reloptions, ','), '') || '|' || pg_get_viewdef(c.oid, true))
+    from pg_class c where c.relnamespace = 'public'::regnamespace and c.relkind in ('v', 'm')
+),
+typ as (
+  select 'enum', t.oid::regtype::text, md5(string_agg(e.enumlabel, ',' order by e.enumsortorder))
+    from pg_type t join pg_enum e on e.enumtypid = t.oid
+   where t.typnamespace = 'public'::regnamespace group by t.oid
+),
+cfg as (  -- configuration rows the migrations insert
+  select 'config_rows', 'settings', md5(coalesce(string_agg(key || '=' || value::text, ';' order by key), '')) from settings
+  union all
+  select 'config_rows', 'levels', md5(coalesce(string_agg(id || '=' || name || '/' || sort, ';' order by id), '')) from levels
+  union all
+  select 'config_rows', 'centres', md5(coalesce(string_agg(name || '/' || opens_at || '-' || closes_at || '/' || radius_m || '/' || active, ';' order by name), '')) from centres
+),
+ext as (  -- extensions switched on (pg_cron, pg_net, ...); presence counts, version is info only
+  select 'extension', extname, 'on' from pg_extension
+),
+cron_jobs as (
+  select 'cron_job', jobname, md5(concat_ws('|', schedule, command, active)) from cron.job
+),
+bucket as (
+  select 'bucket', id, md5(concat_ws('|', public, file_size_limit, allowed_mime_types::text)) from storage.buckets
+),
+vault_names as (  -- names only, never values
+  select 'vault_secret', name, 'present' from vault.secrets where name like 'mridanga%'
+),
+everything as (
+  select * from fn union all select * from fn_grants union all select * from tbl
+  union all select * from rel_grants union all select * from con union all select * from idx
+  union all select * from pol union all select * from trg union all select * from vw
+  union all select * from typ union all select * from cfg union all select * from ext
+  union all select * from cron_jobs union all select * from bucket union all select * from vault_names
+),
+info as (  -- shown, not hashed: these may differ for reasons that are not drift
+  select 'info'::text as kind, 'server_version'::text as name, current_setting('server_version') as hash
+  union all select 'info', 'extension_version:' || extname, extversion from pg_extension
+),
+per_kind as (
+  select 'KIND:' || kind as kind, count(*)::text || ' objects' as name,
+         md5(string_agg(name || '=' || hash, E'\n' order by name)) as hash
+    from everything group by kind
+)
+select 'ALL' as kind, (select count(*) from everything)::text || ' objects' as name,
+       (select md5(string_agg(kind || ':' || name || '=' || hash, E'\n' order by kind, name)) from everything) as hash,
+       0 as sort
+union all select kind, name, hash, 1 from per_kind
+union all select kind, name, hash, 2 from everything
+union all select kind, name, hash, 3 from info
+order by sort, kind, name;
+```
+
 ## Push notifications
 
 When an announcement is published, the Android app shows a notification on the phones of the
@@ -631,35 +796,277 @@ artwork (a white khol on saffron), drawn by `node scripts/make-placeholder-icons
 with images of the same sizes and keep the saffron colour in `app.json` and
 `app/src/theme/colors.ts` in step with it.
 
-## Weekly backup
+## Backups
 
-The free plan does not include downloadable backups (check Supabase's current pricing page). Once a
-week, export the data yourself:
+The free plan has no backups you can download, so the live project is copied once a week by hand
+([DECISIONS.md #120](DECISIONS.md)). A copy holds personal data of children: it is always
+encrypted, never put in the repository, a chat, WhatsApp or an email.
 
-- Use the Supabase CLI (`supabase db dump`) or `pg_dump` with the connection string from
-  Project Settings → Database.
-- Store the file somewhere private. It contains personal data of students, including minors — never
-  put it in the repository or a shared chat.
-- The dump holds the database only, not the photos and PDFs in Storage. They are usually copies
-  of posters and timetables their authors keep; if a copy is needed, download them from
-  **Storage → announcement-files**.
+| | |
+|---|---|
+| **Owner** | Praveen (maintainer) until the team names a second person who can do it too |
+| **When** | Every **Monday**, and before every migration on the live project ("Releasing a change") |
+| **Where** | The team's private cloud folder `Mridanga Seva backups` (owner and second person only) |
+| **Archive password** | One long password in the team password manager, entry *Mridanga Seva backup archive*. Without it the archives cannot be opened; never write it anywhere else |
+| **Keep** | The last **8** weekly archives; delete older ones (an erased child is gone from all copies 8 weeks after the erasure) |
+| **Log** | `backup-log.csv` in the same folder: one line per backup (below). It holds no personal data |
+
+A backup is three files, made with PostgreSQL's own `pg_dump` (the Supabase CLI's `db dump` runs
+`pg_dump` inside Docker, which this PC does not have; it is equivalent):
+
+| File | Holds | Needed for |
+|---|---|---|
+| `schema.sql` | Tables, functions, policies, grants of the `public` schema, as the project has them | Finding out how a rebuilt project differs ("Restoring") |
+| `data-public.sql` | Every row of every `public` table (`COPY` format) | The class's records |
+| `data-auth.sql` | The logins: `auth.users`, `auth.identities`, `auth.mfa_factors` (not sessions, not Supabase's own logs) | People keep their logins and passwords after a restore |
+
+The app makes no database roles of its own, so no roles file is needed (Supabase's roles exist in
+every project). Not in the backup, and set up again by hand after a restore: the photos and PDFs in
+Storage (copies of posters the authors keep; download from **Storage** if one is needed), the
+Vault secrets, the Edge Function and its secrets, and the dashboard settings (Auth, SMTP, Site URL).
+
+**Once, on the computer that makes backups:**
+
+1. Install **PostgreSQL command line tools** of the same major version as the project or newer
+   (`select version();` in the SQL editor shows it; 17 in Oct 2026): <https://www.postgresql.org/download/windows/>
+   → the EDB installer → tick only **Command Line Tools**. Install **7-Zip** (<https://7-zip.org>).
+2. The connection string: Supabase → **Connect** (top of the dashboard) → **Session pooler** → copy
+   the URI. It looks like `postgresql://postgres.<project-ref>:[YOUR-PASSWORD]@aws-…pooler.supabase.com:5432/postgres`.
+   Delete `:[YOUR-PASSWORD]` from it, so the tools ask for the password instead of keeping it in
+   the terminal's history. (The direct connection works only over IPv6, which most networks lack.)
+   The database password is in the password manager; if it is lost, **Project Settings → Database →
+   Reset database password** (nothing else uses it).
+
+**Each backup** (PowerShell; each `pg_dump` asks for the database password):
+
+```powershell
+$env:Path = "C:\Program Files\PostgreSQL\17\bin;$env:Path"
+$db  = "postgresql://postgres.qeozvvizcojzxcjgnaei@aws-…pooler.supabase.com:5432/postgres"   # the live project's string
+$day = Get-Date -Format yyyy-MM-dd
+$dir = "$env:USERPROFILE\mridanga-backup-$day"
+New-Item -ItemType Directory $dir | Out-Null
+pg_dump -d $db --schema-only --schema=public -f "$dir\schema.sql"
+pg_dump -d $db --data-only --schema=public -f "$dir\data-public.sql"
+pg_dump -d $db --data-only --table=auth.users --table=auth.identities --table=auth.mfa_factors -f "$dir\data-auth.sql"
+```
+
+A warning about *circular foreign-key constraints* is expected (the restore handles it). Then count
+the rows in the dump, per table; these numbers go into the log and are what a restore must show:
+
+```powershell
+$t = $null; $n = [ordered]@{}
+foreach ($l in [IO.File]::ReadLines("$dir\data-public.sql")) {
+  if ($t) { if ($l -eq '\.') { $t = $null } else { $n[$t]++ } }
+  elseif ($l -match '^COPY public\.("?[^ "(]+"?) ') { $t = $Matches[1].Trim('"'); $n[$t] = 0 }
+}
+$n.GetEnumerator() | Sort-Object Name | Format-Table -AutoSize
+"tables: $($n.Count)  rows: $(($n.Values | Measure-Object -Sum).Sum)  students: $($n['students'])"
+```
+
+Encrypt, check the archive opens, and delete the plain files (`-p` asks for the archive password;
+`-mhe=on` hides the file names too):
+
+```powershell
+& "C:\Program Files\7-Zip\7z.exe" a -t7z -mhe=on -p "$env:USERPROFILE\mridanga-backup-$day.7z" "$dir\*"
+& "C:\Program Files\7-Zip\7z.exe" t -p "$env:USERPROFILE\mridanga-backup-$day.7z"
+Remove-Item -Recurse $dir
+```
+
+Move the `.7z` to the backups folder, delete archives beyond the newest 8, and add a line to
+`backup-log.csv`:
+
+```text
+date,by,project,archive,size_kb,tables,rows,students,drift_all_hash,note
+2026-10-12,Praveen,live,mridanga-backup-2026-10-12.7z,412,61,5230,148,3f2a…,weekly
+```
+
+`drift_all_hash` is the `ALL` row of the drift query ("Releasing a change") run on the same day; a
+rebuilt project is compared with it.
+
+### Restoring
+
+Only the owner restores, with the Guru told. Two cases:
+
+- **The project is gone or broken beyond repair:** make a new project (setup steps 1, 2 with every
+  migration in number order, 4-7), then load the data as below. The new project has a new URL and
+  key: follow "When the app's Supabase URL or key changes" ("If a key leaks").
+- **The project is fine but data was lost** (a wrong delete): load the newest archive from before
+  the loss into the same project, as below. Everything written since that backup is lost, so first
+  write down what changed since (new students, visits) to enter again.
+
+1. Copy the archive to the computer, open it with 7-Zip (archive password) into a new folder `$dir`.
+2. Save this as `restore-begin.sql` in the same folder. It empties every `public` table so the copy
+   can be loaded (inside one transaction: if anything fails, nothing changes) and switches off
+   triggers and foreign-key checks for the load, as `pg_dump`'s own restore does:
+   ```sql
+   set session_replication_role = replica;
+   do $$ begin
+     execute (select 'truncate table ' || string_agg(format('public.%I', tablename), ', ')
+                from pg_tables where schemaname = 'public');
+   end $$;
+   ```
+3. **Check that `$db` names the project you mean to overwrite** (its ref is in the string), then:
+   ```powershell
+   psql -d $db --single-transaction -v ON_ERROR_STOP=1 -f "$dir\restore-begin.sql" -f "$dir\data-public.sql"
+   ```
+   Into a **new** project, load the logins too: put `-f "$dir\data-auth.sql"` between the two
+   files. (Not into the same project: its logins are still there and would clash.)
+4. Check: the row counts per table (query below) match the log line of that archive; the drift
+   query's `ALL` hash matches `drift_all_hash` of that line. If it does not, the rebuilt schema
+   differs from the old one: `pg_dump -d $db --schema-only --schema=public -f new-schema.sql`, then
+   `fc.exe "$dir\schema.sql" new-schema.sql` shows where.
+   ```sql
+   select table_name, (xpath('/row/n/text()', query_to_xml(format('select count(*) as n from public.%I', table_name),
+          false, true, '')))[1]::text::int as rows
+     from information_schema.tables where table_schema = 'public' and table_type = 'BASE TABLE'
+   union all select '(auth.users)', count(*)::int from auth.users
+   order by 1;
+   ```
+5. **Re-apply every erasure and withdrawal made after the backup's date.** The copy predates them,
+   so an erased child is back and a withdrawn one is active again. The private register of requests
+   ("Consent withdrawal" step 1, "Erasure request" step 1) has the date and roll number of each;
+   for each one dated on or after the backup day, find the student by roll number and run
+   `withdraw_consent` / `erase_student` again, with the same note and request reference. Check:
+   `select roll_no, erased_at from erasures order by erased_at desc;` lists every erasure of the
+   register.
+6. Everyone signs in again (sessions are not in the backup). Files the erasure step lists, and the
+   Storage, Vault, Edge Function and dashboard settings of a new project: set up as in "Setting up
+   a new environment" and "Push notifications". Then run the cron health query ("Scheduled jobs").
+
+### Restore drill
+
+Done once before the pilot, on the **test** project, and again once a year: back up the test project
+as above (its string has `fhuqykssenuhczdqbafu`), restore `data-public.sql` into it (step 3, without
+the logins), and compare the row counts with the dump's.
+
+| Date | Project | Tables | Rows in dump | Rows after restore | Same per table | Drift ALL hash before / after | By |
+|---|---|---|---|---|---|---|---|
+| *(pending: Praveen runs it, the numbers go here)* | test | | | | | | |
 
 ## Keeping the free project awake
 
 A free Supabase project pauses after 7 days without activity. Daily class use keeps it awake. During
 long holidays, open the app once a week, or restore the project from the dashboard if it pauses.
 
+## Scheduled jobs: health check
+
+The database runs seven jobs on its own (times in UTC; IST is 5:30 later): `mridanga-status-refresh`
+(00:30, student statuses and follow-up calls), `mridanga-close-visits` (15:30, checks out open
+visits), `mridanga-assessments` and `mridanga-events-polls` (03:30), `mridanga-inbox-cleanup`
+(01:00), `mridanga-duty` (12:30) and `mridanga-push` (every minute). If one fails, nothing tells
+anyone: students stop changing status and no calls are created. **Every Monday, with the backup**,
+run in the live project's SQL editor:
+
+```sql
+select j.jobname, j.schedule, j.active,
+       max(d.end_time) filter (where d.status = 'succeeded') as last_success,
+       count(*) filter (where d.status = 'failed' and d.start_time > now() - interval '2 days') as failed_2_days,
+       (array_agg(d.return_message order by d.start_time desc) filter (where d.status = 'failed'))[1] as last_error
+  from cron.job j left join cron.job_run_details d on d.jobid = j.jobid
+ group by j.jobid, j.jobname, j.schedule, j.active
+ order by j.jobname;
+select last_job_at, last_job_result from push_status;
+```
+
+Healthy: seven rows, all `active`; each daily job's `last_success` within the last day and
+`mridanga-push` within minutes; `failed_2_days` 0. Otherwise `last_error` says why (for example a
+setting changed in the dashboard to a wrong value); fix the cause and the job recovers on its next
+run. The push job always counts as succeeded, even when push is not set up: its own result is
+`last_job_result` (`not_set_up` = "Push notifications", step 13). A missing row means the job was
+removed: create it again with its `cron.schedule` line from `supabase/migrations/` (search for the
+job's name). A project that has not run every migration has fewer jobs (0001 makes the first two,
+0011 the push job, 0015, 0016, 0022 and 0023 one each).
+
 ## If a key leaks
 
-1. Supabase → Project Settings → API: rotate the leaked key.
-2. If it was the `service_role` key, treat all data as exposed: check `audit_log`, and tell the Guru.
-3. Remove the key from the repository history and update `app/.env`.
-4. The **Firebase service-account key**: in Firebase, Project settings → Service accounts →
-   **Manage service account permissions** (Google Cloud) → the service account → Keys → delete
-   the leaked key; generate a new one and upload it again ("Push notifications", steps 4-5).
-5. The **push secret**: make a new one in the Vault, in that project's SQL editor:
-   `select vault.update_secret((select id from vault.secrets where name = 'mridanga_push_secret'), encode(gen_random_bytes(32), 'hex'));`
-   then give the new value to the function ("Push notifications", step 9: replace `PUSH_SECRET`).
+First find out which key it is and which project (test or live); do the steps for that project
+([DECISIONS.md #123](DECISIONS.md)). A leaked secret that ever reached git stays in its history:
+rotating it is the fix, not deleting the file.
+
+| Key | What a leak allows | Do |
+|---|---|---|
+| **Publishable key** `sb_publishable_…` (`EXPO_PUBLIC_SUPABASE_KEY`) | Nothing extra: it is inside every APK and web page by design; row-level security protects the data | Nothing. Change it only if Supabase forces it, with the steps below |
+| **Secret key** `sb_secret_…`, or the legacy `service_role` key | Everything, past all row-level security | Project Settings → **API Keys**: make a new secret key, then delete the leaked one (a legacy `service_role` key: **disable the legacy keys**). Treat all data as exposed: tell the Guru, look through `audit_log` for the time since the leak. The Edge Function gets its key from Supabase by itself; deploy it again ("Push notifications", step 10) and post a test announcement |
+| **Database password** | Everything, like the secret key | Project Settings → **Database → Reset database password**; new one into the password manager. Only backups use it |
+| **Firebase service-account key** | Sending notifications to the app's phones | Firebase → Project settings → Service accounts → **Manage service account permissions** (Google Cloud) → the service account → Keys → delete the leaked key; make a new one and upload it ("Push notifications", steps 4-5) |
+| **Push secret** (`mridanga_push_secret`) | Calling the push function: it sends only what is queued | In that project's SQL editor: `select vault.update_secret((select id from vault.secrets where name = 'mridanga_push_secret'), encode(gen_random_bytes(32), 'hex'));` then replace the function's `PUSH_SECRET` ("Push notifications", step 9) |
+| **Brevo API key or SMTP key** | Sending email as the team | Brevo → SMTP & API: delete it, make a new one. API key: `vault.update_secret` of `mridanga_brevo_key` ("Parent codes by email"). SMTP key: Supabase → Authentication → SMTP settings. Then send a test sign-up email |
+| **Expo access token** or the Expo login | Publishing app updates to every phone | "If the Expo account is compromised" below |
+| **Android keystore** | Signing an APK that installs over the app | Cannot be changed for APKs shared by link. Tell users to install only from the team's link; move to the Play Store's app signing when the app goes there |
+
+### When the app's Supabase URL or key changes
+
+After a new publishable key (or a new project after a restore), every copy of the app must get the
+new value before the old one stops working. Make the new key first, do all of this, check, and only
+then delete the old key.
+
+1. **`.env` files:** `app/.env` (live) or `app/.env.test` (test) on every computer that builds or
+   publishes. Never commit them.
+2. **EAS environment** (from `app/`): `npx eas-cli@latest env:push --environment production --path .env`
+   for live, `--environment preview --path .env.test` for test; check with
+   `npx eas-cli@latest env:list --environment production`.
+3. **App updates, per channel:** `npm run update:production -- --message "New key"` (live) and/or
+   `npm run update:preview -- --message "New key"` (test). The script reads the key from EAS (step 2)
+   and checks it. Phones on an APK whose fingerprint no longer matches main get no update: build a
+   new APK for them ("Building the Android app"). Do not roll back to the embedded update afterwards:
+   it holds the old key.
+4. **Web sites, each one:** `npm run export:web` and upload to `mridanga-seva` (live);
+   `npm run export:web -- --env .env.test` and upload to `mridanga-seva-test` (test). The script's
+   first line names the project: check it.
+5. **Sign-in test on each:** the live APK, the test APK, the live site and the test site: sign in,
+   open the students list (staff) or the home screen (student). *App not set up* or a sign-in error =
+   that surface still has the old value.
+6. Then delete the old key in Supabase, and sign in once more on each to be sure.
+
+## If the Expo account is compromised
+
+Whoever controls the Expo account can publish an update that runs on every phone with the
+signed-in person's rights (updates are not signed, [DECISIONS.md #35](DECISIONS.md)). Act at once,
+from a computer that is not suspected:
+
+1. **Lock the account:** expo.dev → change the password; check that two-factor login is on; Account
+   settings → **Sessions**: revoke all others; **Access tokens**: delete every token (the
+   organisation `mridanga-seva` has its own token list too); **Members** of `mridanga-seva`: remove
+   anyone unknown.
+2. **See what was published:** from `app/`, `npx eas-cli@latest update:list --branch production`
+   and `--branch preview`, `npx eas-cli@latest channel:list` (each channel must point to the branch of
+   the same name), `npx eas-cli@latest build:list`. Any update or build nobody on the team made is
+   hostile.
+3. **Roll back** each affected channel: `npx eas-cli@latest update:rollback` → the branch → the
+   last update the team made, or *the embedded update* ("Rolling back"). Then publish a fresh update
+   from a clean `main` (`npm run update:production`), so phones land on known code.
+4. **Rotate what Expo held:** the `EXPO_ACCESS_TOKEN` function secret, if one is set (new token,
+   replace it in Supabase → Edge Functions → Secrets); the Firebase service-account key uploaded to
+   Expo ("If a key leaks"). The keystore is in Expo too: if it may have been downloaded, follow its
+   row in "If a key leaks".
+5. **The data:** a hostile update could read what each signed-in person may read. Tell the Guru.
+   Sign everyone out in each project's SQL editor (`delete from auth.sessions;`: phones cannot renew
+   their login; what they hold ends within an hour) and look through `audit_log` for the time since
+   the compromise.
+
+## If a staff phone is lost
+
+A Guru's or coordinator's phone holds a signed-in app that can open student records, including
+minors'. The person tells the Guru at once (the maintainer, if it is the Guru's phone).
+
+1. **Switch the login off** in G2 (Coordinators → the person). From that moment the database refuses everything that
+   login asks; the app on the lost phone shows *Account switched off*.
+2. **End its sessions and notifications** in the live project's SQL editor (find the user id in
+   Authentication → Users by their email):
+   ```sql
+   delete from auth.sessions where user_id = '<user id>';
+   delete from push_tokens where profile_id = '<user id>';
+   ```
+   The first stops the phone renewing its login; the second stops notifications (which can show
+   names) on its lock screen.
+3. **Password:** Authentication → Users → the user → **Send password recovery**, so the person sets a
+   new one (in case the phone held it).
+4. The person locks or erases the phone remotely (Google **Find My Device**,
+   <https://www.google.com/android/find>).
+5. **On the new phone:** switch the login on again in G2, install the APK, sign in.
+
+A student's lost phone: the same steps 2-3 for their login if they ask; their own record is all it
+can open.
 
 ## Handing over
 
