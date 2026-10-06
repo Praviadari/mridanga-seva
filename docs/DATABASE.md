@@ -31,12 +31,12 @@ in number order:
 | `0025_security_round.sql` | Security round (audit fixes): NULL-safe role checks in `toggle_visit` / `scan_qr`; `profile_id`, `qr_token` and `created_by` frozen for app users (links only through the linking functions); an insert-only, commit-checked, audited consent register with the signed-form tick; `withdraw_consent`, `erase_student` and the `erasures` tombstones; anon loses every table, sequence and function right ([DECISIONS.md #72-#77](DECISIONS.md)). See "Withdrawal and erasure (0025)" |
 | `0026_fund.sql` | **Phase 2 slice 9.** The class fund ledger: `fund_categories`, `fund_entries` (income and expenses in whole paise, references, optional bills in the private bucket `fund-bills`); treasurers marked by the Guru; maker-checker approval of larger expenses, nobody approves their own entry; the app records money only ([DECISIONS.md #80](DECISIONS.md)). See "Class fund (Phase 2)" |
 | `0027_ishtagoshti_public.sql` | **Phase 2 slice 7.** Free public sign-up for sloka study only: `ig_subscribers` (a pending login that joined Ishtagoshti; no new role) and `ig_parent_codes` (a 6-digit code emailed to the parent of an under-18, the verifiable consent of DPDP rule 10) ([DECISIONS.md #88](DECISIONS.md)). See "Ishtagoshti subscribers (Phase 2)" |
+| `0028_security_round_2.sql` | Security round 2 (audit brief 5): a `student` login without a student record counts as `pending`; materials for staff and students only; `email`, `created_at`, `centre_id` frozen for app users and `email` synced from the sign-in email; names without invisible characters and not a staff member's; phones with 7 to 15 digits; a listed file name cannot be uploaded again; a minor keeps a guardian with a phone ([DECISIONS.md #96-#98, #100](DECISIONS.md)). See "Security round 2 (0028)" |
 | `0029_function_comments.sql` | Descriptions (`COMMENT ON`) for the eight functions that had none: `setting_int`, `today_ist`, `my_role`, `is_guru`, `is_staff`, `is_minor`, `audit_row`, `release_submission_files`. Comments only; safe to run before or after 0028 and to run again |
 
 The Phase 2 files were renumbered when they merged into main (#55). TEST ran some under their
 branch numbers (0012, 0014_promotion, 0016_practice, 0017_media, 0021_events_polls), so it skips
-those; LIVE runs every file from 0013 on in number order (OPERATIONS.md). 0028 is reserved for the
-second security round and not on main yet.
+those; LIVE runs every file from 0013 on in number order (OPERATIONS.md). TEST has 0028 (run 6 Oct 2026).
 
 Every table and important column also carries a `COMMENT ON` description, so you can read it in
 the Supabase dashboard (Table Editor → table → description).
@@ -295,9 +295,13 @@ change to `materials` goes to `audit_log`.
 
 A person may change their own `profiles.full_name` and `phone` (A3, policy `own_update`). The
 trigger `profiles_details_guard` trims them when an app user changes them: name 1 to 80
-characters (`name_required`, `name_too_long`), phone 7 to 20 digits or spaces with an optional
-leading + (`phone_invalid`). The name on a student's roll (`students.full_name`) stays the
-coordinators' record.
+characters (`name_required`, `name_too_long`), without control or invisible characters
+(`name_invalid`; zero-width joiner and non-joiner are allowed) and not the name of the Guru or a
+coordinator (`name_taken`, case and repeated spaces ignored, 0028); phone with 7 to 15 digits,
+spaces and an optional leading + (`phone_invalid`). `email`, `created_at` and `centre_id`
+cannot be changed by any app user (`profile_field_locked`): `email` follows the sign-in email
+(trigger `on_auth_user_email_changed`), the centre is set in the dashboard. The name on a
+student's roll (`students.full_name`) stays the coordinators' record.
 
 ## Announcements
 
@@ -977,6 +981,27 @@ roll number, time, who erased, reason, request reference and how many audit rows
 the Storage paths (photo, recordings and voice notes) that must be deleted by hand. Errors
 `reason_required`, `reason_too_long`, `student_not_found`, `open_loan`.
 
+## Security round 2 (0028)
+
+[DECISIONS.md #96-#100](DECISIONS.md). Audit brief 5.
+
+- **A student needs a record.** `my_role()` returns `pending` for a login whose profile says
+  `student` but which no student record points at, so every rule that asks it treats that login as
+  waiting. `announcement_audience` (pushes, inbox, "seen by") and `audience_profiles` (events and
+  polls) count a student only with a record. When a record's `profile_id` changes (the dashboard, or
+  a linking function), the old login goes back to `pending` and its push tokens are deleted
+  (trigger `students_release_old_login`), unless another record points at it. A student marked
+  Left keeps everything until the login is switched off (Praveen, 6 Oct 2026).
+- **Materials** (policy `visible`): staff, or a student with a record, for approved materials up to
+  their level. Waiting logins and the door tablet read none, and so open no material file.
+- **Profiles:** see "Own name and phone". `staff_name_taken(id, name)` answers the name check (security
+  definer, yes or no only).
+- **Posted files:** `announcement_file_uploadable`, `material_file_uploadable` and
+  `ig_audio_uploadable` refuse a name that an announcement, a material or a sloka lists, so a file
+  deleted while still listed cannot come back with other content. Deleting is unchanged.
+- **A minor's guardian:** the commit-time check `recheck_minor_consent` asks for a guardian with a
+  phone and also runs when a guardian's phone changes (`minor_needs_guardian`).
+
 ## Linking a login to a student
 
 A student record can exist without a login (many students never install the app). When a person
@@ -1003,7 +1028,9 @@ Guru from changing `role`, `is_treasurer` or `active`; the dashboard is not bloc
 function owner and are not stopped, and saving an email on a record without a login still links.
 The Guru takes a wrong link off with `unlink_student_login` (the login goes back to `pending`), and
 a deleted record's login goes back to `pending` too. A student's own record is readable only while
-the login is an active student.
+the login is an active student. **Since 0028** a login taken off its record in the dashboard goes
+back to `pending` as well, and a confirmed change of sign-in email links a waiting login to a record
+with the new email.
 
 ## Database functions (call these from the app)
 
@@ -1099,9 +1126,10 @@ and the helpers `my_role`, `is_guru`, `is_staff`,
 | Consents | — | Read; add (verified by themselves, now) | Read; add; revoke or delete (a minor keeps a current one, unless withdrawn) |
 | Erasure tombstones (`erasures`) | — | — | Read |
 | Call logs, follow-up tasks, status history | — | Read / write | Read / write |
-| Materials | Approved ones up to own level | All; suggest (C18); take back or remove own suggestion | All; add, edit, delete; add or decline suggestions |
+| Materials | Approved ones up to own level (needs a student record) | All; suggest (C18); take back or remove own suggestion | All; add, edit, delete; add or decline suggestions |
 | Material files (Storage) | Those on materials they can read | All on materials, and own uploads; upload for a suggestion (10 a day) | All; upload; delete any |
-| Own name and phone | Read / write | Read / write | Read / write |
+| Own name and phone | Read / write (not a staff member's name) | Read / write (same) | Read / write (same) |
+| Own email, sign-up time, centre | Read (email follows the sign-in email) | Read | Read (changed only in the dashboard) |
 | Announcements | Published ones addressed to them | All, can post; edit, pin or delete own | All, can post; edit, pin or delete any |
 | Read receipts | Own; can add | All (for "seen by"); add own | All; add own |
 | Replies to announcements | Own; can add | Own, and all replies to their own announcements; can add | All; can add; can delete |
@@ -1133,7 +1161,7 @@ and the helpers `my_role`, `is_guru`, `is_staff`,
 
 A **public Ishtagoshti subscriber** (0027) reads only published slokas, themes, pins and their
 recitations, and its own profile, subscription row, notes and ticks. A login still waiting for a role
-(`pending`) reads nothing at all.
+(`pending`) reads nothing at all, and neither does a `student` login without a student record (0028).
 
 ## Changing the database
 

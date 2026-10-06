@@ -177,6 +177,11 @@ The code is in `app/src/i18n/index.ts`, `app/src/components/language-picker.tsx`
   "withdrawn" వెనక్కి తీసుకోబడింది / वापस ले ली गई, "consent" అనుమతి / सहमति (as in the registration form). The
   signed-form tick `register.writtenConsent` keeps its wording (Praveen, 5 Oct 2026). Checked for mixed
   Telugu-Devanagari words on 5 Oct 2026.
+- **Security round 2** (0028, [DECISIONS.md #97](DECISIONS.md)): two new keys, drafts for the review:
+  `myProfile.errors.nameInvalid` (a name with a hidden or control character) and
+  `myProfile.errors.nameTaken` (the name of the Guru or a coordinator); `myProfile.errors.phoneInvalid`
+  now says 7 to 15 digits. Words to check: "coordinator" సమన్వయకర్త / समन्वयक, "Guru" గురువు గారు /
+  गुरुजी, "surname" ఇంటి పేరు / उपनाम. Checked for mixed Telugu-Devanagari words on 6 Oct 2026.
 - **Phase 2 Ishtagoshti public sign-up** (branch `phase2-ishtagoshti-public`, [DECISIONS.md #88](DECISIONS.md)):
   every Telugu and Hindi line under `ishtagoshtiJoin.*` (I14, with its `errors.*`), `subscriberAccount.*`,
   `igSubscribers.*` (I15), `pending.ig*`, `tabs.account` and the longer `signUp.subtitle` is a draft for the

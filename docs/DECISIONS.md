@@ -1949,3 +1949,89 @@ login itself (Supabase Auth admin), a notice to the Guru on a new join, I4-I13.
 `ig_subscribers.parent_confirmed_at`, set only by the server like #74's `given_at`, with the code as
 the proof. 0025 changes none of 0027's rules. Its pending-login sweep now also covers settings,
 centres, levels and the syllabus, which 0027 closes to logins without a class role.
+
+## 96. A student login needs a student record — 6 Oct 2026
+
+**Context.** Every rule asks `my_role()`, which read only `profiles.role`. A login whose role says
+`student` but which no student record points at (the record unlinked or deleted outside the app, or
+the role set in the dashboard) kept the student's reach: announcements "to everyone" and their
+photos, staff names, push tokens and pushes, events, the inbox. 0025 sends a login back to `pending`
+when its record is deleted or unlinked through the app, but not for other paths. Separately, the
+materials policy (0001) asked only for the level, so any login (waiting, door tablet) read the
+approved materials for all levels and opened their files.
+
+**Decision.** Migration 0028: `my_role()` returns `pending` for a `student` login without a record,
+so one change covers every rule that asks it. The audiences worked out for other people
+(`announcement_audience`, which feeds pushes and the inbox, and `audience_profiles` for events and
+polls) need the record too. Existing such logins are set to `pending` and their phones forgotten; a
+trigger does the same when a record's `profile_id` changes. Materials need staff or a student.
+**Praveen decided (6 Oct 2026):** a student marked Left keeps announcements, photos, materials and
+pushes until the Guru switches the login off; only a login with no record loses them.
+
+**Consequences.** smoke-test.mjs sweeps every table as such a login (nothing but its own profile and
+the open lists) and checks announcements, files, audiences, staff names, pushes and materials.
+
+## 97. A login's identity is frozen in the app; names cannot copy a staff member's — 6 Oct 2026
+
+**Context.** The profile update policy has no column limits. Any login could rewrite its own
+`email` (a stranger could pre-claim a volunteer's address before the volunteer signed up, so the
+Table Editor showed two rows with that email), `created_at` and `centre_id`, and pick any name,
+including the Guru's or one with invisible characters, which students then see as "posted by".
+`profiles.email` also went stale when someone changed their sign-in email.
+
+**Decision.** 0028 extends `guard_profile_details` (0013): for app users `id`, `email`, `created_at`
+and `centre_id` are refused (`profile_field_locked`); the dashboard can still change them. `email`
+follows `auth.users.email` through a trigger, which also links a waiting login to a record with the
+new email (as on sign-up); copies rewritten earlier are put right once. **Praveen decided (6 Oct
+2026):** everyone still edits their own name, but control and invisible characters are refused
+(`name_invalid`; zero-width joiner and non-joiner stay, Telugu and Hindi use them) and so is the name
+of the Guru or a coordinator, ignoring case and repeated spaces (`name_taken`). A phone has 7 to 15
+digits (spaces and a leading + allowed). Role and active stay with 0014's `guard_profile_admin`.
+
+**Consequences.** Roles are given in G2, or in the dashboard by the login's user id, not by email
+(OPERATIONS.md). The A3 profile screen shows the two new messages.
+
+## 98. A posted file cannot be swapped — 6 Oct 2026
+
+**Context.** No bucket has an update policy, so a stored file cannot be replaced in place. But the
+uploader of an announcement file could delete it and upload different content under the same name
+while the announcement still listed it; readers saw the new content with no "Edited" mark (#27, #32).
+Material files and Ishtagoshti recordings had the same gap. Fund bills (0026) and assessment
+submissions (0016/0020) already refuse deleting a listed file.
+
+**Decision.** 0028: a file name that an announcement, a material or a sloka lists cannot be uploaded
+again (the upload rules check the listing). Deleting stays as it was, because the app removes an
+announcement's files just before deleting the announcement; a file taken off by an edit is marked
+Edited, and its name is free again.
+
+**Consequences.** No app change. A listed file deleted on purpose shows as missing to readers; it can
+no longer come back with other content.
+
+## 99. A switched-off login loses its screens at once — 6 Oct 2026
+
+**Context.** The app read the profile once, at start. A coordinator the Guru switched off kept the
+staff screens and the QR scanner until the app restarted; the database refused their calls (#72),
+but the screens showed an empty, misleading class.
+
+**Decision.** The app (an update, no new APK) reads the profile again when it comes back to the
+screen, when the login token is refreshed (about hourly), and when the database or Storage refuses a
+call as not allowed (`42501`, `not_allowed`, a row-level security refusal), at most once in 10
+seconds. The Supabase client's fetch reports such refusals (sign-in calls excluded). **Praveen
+decided (6 Oct 2026):** a switched-off person then sees the existing "Account switched off" screen
+with Check again and Sign out, not an automatic sign-out. A changed role moves the person to their
+new area the same way.
+
+**Consequences.** Without internet the remembered profile stays in use (#37, #42).
+
+## 100. A minor keeps a guardian with a phone — 6 Oct 2026
+
+**Context.** Registering a minor needs a guardian's name and phone (0003, 0025), and 0025's
+commit-time check keeps a current data consent and a guardian. The consent-edge tests (audit
+follow-up) found the only guardian's phone could still be cleared afterwards.
+
+**Decision.** 0028: the commit-time check asks for a guardian with a phone, and also runs when a
+guardian's phone changes. Tests now cover a dob edited to one day short of 18 (refused) and to
+exactly 18 (kept), a 17-year-old added straight to the table, a guardian with a blank phone or no
+name, and a minor's dob corrected to an adult's and back.
+
+**Consequences.** #101-#103 were reserved for this round and are left unused.

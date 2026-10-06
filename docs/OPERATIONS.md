@@ -112,8 +112,10 @@ project id and its signing keystore stay the same, so nothing needs rebuilding.
    phone. If the app shows *App not set up*, the URL or key in `app/.env` is missing; restart
    `npx expo start` after changing it.
 7. **First Guru account:** sign up in the app and confirm the email. Then in the Supabase
-   **Table Editor → profiles**, find the row with that email and set `role` to `guru`. After that,
-   the Guru gives roles from the app.
+   **Authentication → Users**, copy that login's **User UID**; in **Table Editor → profiles** find the
+   row with that `id` (not by email) and set `role` to `guru`. After that, the Guru gives roles from
+   the app (G2). Always match a login by its user id: before 0028 any login could write any email into
+   its own profile row, so a row found by email may be an impostor's ([DECISIONS.md #97](DECISIONS.md)).
 
 ## Paper consent forms
 

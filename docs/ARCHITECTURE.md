@@ -59,7 +59,7 @@ flowchart LR
 |---|---|---|
 | `guru` | The Guru / admin | Everything, including giving roles and approving promotions |
 | `coordinator` | Teachers who run the daily class | Register students, mark attendance, log follow-up calls, tick syllabus, post announcements |
-| `student` | Enrolled learners | See their own record, attendance, progress, materials and announcements; study Ishtagoshti slokas |
+| `student` | Enrolled learners (a login linked to a student record) | See their own record, attendance, progress, materials and announcements; study Ishtagoshti slokas. A `student` login with no record counts as `pending` ([DECISIONS.md #96](DECISIONS.md)) |
 | `kiosk` | The door tablet (Phase 2) | Only check students in and out |
 | `pending` | Anyone who signed up but has no role yet | Nothing until the Guru gives a role; may join Ishtagoshti for free (below) |
 
@@ -178,7 +178,11 @@ The app is split into **areas**: `signedOut` (sign-in screens), `recovery` (set 
 saved login and the profile are being fetched.
 
 - `src/auth/auth-provider.tsx` works out the area from the login and the `profiles` row; for a `pending`
-  login it also asks `ig_my_state()` (0027) whether it is an active Ishtagoshti subscriber.
+  login it also asks `ig_my_state()` (0027) whether it is an active Ishtagoshti subscriber. It reads the
+  profile again when the app comes back to the screen, when the login token is refreshed, and when the
+  database refuses a call as not allowed (the Supabase client's fetch in `src/lib/supabase.ts` reports
+  it), so a login switched off or given another role while the app is open moves to the "Account switched
+  off" screen or its new area at once ([DECISIONS.md #99](DECISIONS.md)).
 - `src/app/_layout.tsx` opens only that area's screens (Expo Router's `Stack.Protected`).
   A screen of another area cannot be opened, even by typing its address on the web.
 - The `staff/` folder is open to both `guru` and `coordinator`, because the Guru sees every
