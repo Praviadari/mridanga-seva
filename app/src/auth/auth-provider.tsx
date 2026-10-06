@@ -24,6 +24,8 @@ import { AppState } from 'react-native';
 import { applyProfileLanguage, currentLanguage, hasUnsavedChoice, markLanguageSaved } from '@/i18n';
 import { setRefusedListener, storedLoginUserId, supabase, supabaseConfigProblem } from '@/lib/supabase';
 
+// Loaded at start for its effect: it reads an email link's error from the address (D6-12).
+import './email-link';
 import { forgetSavedProfile, readSavedProfile, saveProfile } from './saved-profile';
 import type { Area, IgState, Profile } from './types';
 

@@ -1,13 +1,15 @@
 // A1 Login: sign in with email and password. Everyone uses this screen; the database decides
 // the role afterwards (docs/DECISIONS.md #7, #11). Links to create an account and to reset a
-// forgotten password.
+// forgotten password. Opened from an email link that expired or was used already, it says so and
+// offers a new confirmation email or a new password link (src/auth/email-link.ts, D6-12).
 
 import { router } from 'expo-router';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TextInput } from 'react-native';
 
-import { isValidEmail, signIn, type MessageKey } from '@/auth/auth-actions';
+import { isValidEmail, resendConfirmation, signIn, type MessageKey } from '@/auth/auth-actions';
+import { clearEmailLinkProblem, emailLinkProblem } from '@/auth/email-link';
 import { AppText } from '@/components/app-text';
 import { BrandHeader } from '@/components/brand';
 import { Button } from '@/components/button';
@@ -26,6 +28,28 @@ export default function SignInScreen() {
   const [formError, setFormError] = useState<MessageKey | null>(null);
   const [busy, setBusy] = useState(false);
   const passwordRef = useRef<TextInput>(null);
+  const emailRef = useRef<TextInput>(null);
+  // Shown while this screen is open; forgotten at once, so it does not come back later.
+  const [linkProblem] = useState(emailLinkProblem);
+  useEffect(clearEmailLinkProblem, []);
+  const [resentTo, setResentTo] = useState<string | null>(null);
+  const [resending, setResending] = useState(false);
+
+  /** Sends a new confirmation email to the email typed above. */
+  async function resend() {
+    setFormError(null);
+    if (!isValidEmail(email)) {
+      setFieldErrors({ email: 'validation.emailInvalid' });
+      emailRef.current?.focus();
+      return;
+    }
+    setFieldErrors({});
+    setResending(true);
+    const { errorKey } = await resendConfirmation(email);
+    setResending(false);
+    if (errorKey) setFormError(errorKey);
+    else setResentTo(email.trim());
+  }
 
   async function submit() {
     const errors = {
@@ -47,10 +71,31 @@ export default function SignInScreen() {
     <Screen centred header={<BrandHeader />}>
       <LanguagePicker />
 
+      {linkProblem ? (
+        <Section title={t(linkProblem === 'expired' ? 'signIn.linkExpiredTitle' : 'signIn.linkFailedTitle')}>
+          <Notice tone="error">{t('signIn.linkBody')}</Notice>
+          {resentTo ? <Notice tone="success">{t('signIn.resent', { email: resentTo })}</Notice> : null}
+          <Button
+            variant="secondary"
+            icon="send"
+            label={t('signIn.resendConfirmation')}
+            onPress={resend}
+            loading={resending}
+          />
+          <Button
+            variant="secondary"
+            icon="link"
+            label={t('signIn.newPasswordLink')}
+            onPress={() => router.push('/forgot-password')}
+          />
+        </Section>
+      ) : null}
+
       <Section title={t('signIn.title')} description={t('signIn.subtitle')}>
         {formError ? <Notice tone="error">{t(formError)}</Notice> : null}
 
         <TextField
+          ref={emailRef}
           label={t('common.email')}
           value={email}
           onChangeText={setEmail}

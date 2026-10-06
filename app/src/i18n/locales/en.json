@@ -28,7 +28,13 @@
     "submit": "Sign in",
     "forgotPassword": "Forgot password?",
     "noAccount": "New here?",
-    "createAccount": "Create an account"
+    "createAccount": "Create an account",
+    "linkExpiredTitle": "This email link has expired",
+    "linkFailedTitle": "This email link did not work",
+    "linkBody": "Each email link works only once, and only for a while. Ask for a new link here. For a new confirmation email, first type your email in the sign-in form below.",
+    "resendConfirmation": "Send a new confirmation email",
+    "newPasswordLink": "Send a new password link",
+    "resent": "If {{email}} has an account waiting to be confirmed, a new link is on its way. Check the inbox and the spam folder."
   },
   "signUp": {
     "title": "Create an account",
@@ -304,6 +310,7 @@
     "doneTitle": "Student registered",
     "doneBody": "{{name}} is registered. Roll number: {{rollNo}}",
     "linked": "Their app login is now connected to this record.",
+    "alreadySaved": "This student had already been saved: the answer to the first Save did not arrive. Nothing new was stored; check the details on the student's record.",
     "another": "Register another student",
     "done": "Done",
     "loadFailed": "Could not load levels and coordinators.",

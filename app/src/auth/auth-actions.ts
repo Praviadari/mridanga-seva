@@ -14,6 +14,7 @@ import type { ParseKeys } from 'i18next';
 import { Platform } from 'react-native';
 
 import { clearSavedCard } from '@/data/my-student';
+import { currentLanguage } from '@/i18n';
 import { unregisterPush } from '@/lib/push';
 import { forgetStoredLogin, storedLoginUserId, supabase } from '@/lib/supabase';
 
@@ -94,8 +95,10 @@ export async function signUp(
     email: email.trim(),
     password,
     options: {
-      // Read by the database function handle_new_user to fill profiles.full_name.
-      data: { full_name: fullName.trim() },
+      // Read by the database function handle_new_user to fill profiles.full_name and, from 0032,
+      // profiles.language: the language the app shows now (picked, or the phone's own), so the
+      // first sign-in keeps it instead of the default English (docs/DECISIONS.md #125).
+      data: { full_name: fullName.trim(), language: currentLanguage() },
       emailRedirectTo: emailLinkTarget(),
     },
   });
@@ -110,6 +113,20 @@ export async function signUp(
 export async function sendPasswordReset(email: string): Promise<AuthResult> {
   const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
     redirectTo: emailLinkTarget(),
+  });
+  return error ? { errorKey: authErrorKey(error) } : {};
+}
+
+/**
+ * Emails a new sign-up confirmation link, after the first one expired or was used (sign-in screen,
+ * src/auth/email-link.ts). Like sendPasswordReset, success does not say whether such an account
+ * exists.
+ */
+export async function resendConfirmation(email: string): Promise<AuthResult> {
+  const { error } = await supabase.auth.resend({
+    type: 'signup',
+    email: email.trim(),
+    options: { emailRedirectTo: emailLinkTarget() },
   });
   return error ? { errorKey: authErrorKey(error) } : {};
 }

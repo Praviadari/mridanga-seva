@@ -3,6 +3,7 @@
 // The database repeats every rule that matters, so a bug here cannot store a minor without
 // consent (docs/DATABASE.md "Registering a student").
 
+import * as Crypto from 'expo-crypto';
 import type { ParseKeys } from 'i18next';
 
 import { ageOn, isMinorOn, parseDayMonthYear, todayInIndia } from '@/lib/dates';
@@ -44,6 +45,12 @@ export type RegistrationForm = {
   photoConsent: boolean;
   /** The coordinator confirms the parent filled in and signed the paper consent form. */
   writtenConsent: boolean;
+  /**
+   * Random id of this form, sent with every Save of it. When the answer to a Save was lost and the
+   * coordinator saves again, the database returns the student saved the first time instead of
+   * storing a copy (migration 0032, docs/DECISIONS.md #126). A new form gets a new id.
+   */
+  requestId: string;
 };
 
 /** An empty form. The mentor starts as the person registering, if they are a coordinator. */
@@ -64,6 +71,7 @@ export function emptyRegistration(mentorId: string | null): RegistrationForm {
     idType: null,
     photoConsent: false,
     writtenConsent: false,
+    requestId: Crypto.randomUUID().toLowerCase(),
   };
 }
 
@@ -134,6 +142,11 @@ export type Registered = {
   rollNo: string;
   /** True when the student already had a confirmed app login with this email, now connected. */
   linked: boolean;
+  /**
+   * True when this form had been saved before (the answer was lost): nothing new was stored and
+   * this is the student saved then, with the details of that first Save.
+   */
+  repeated: boolean;
 };
 
 /**
@@ -144,7 +157,7 @@ export async function registerStudent(
   form: RegistrationForm,
 ): Promise<{ registered?: Registered; errorKey?: MessageKey }> {
   const minor = ageFromForm(form.dob)?.minor ?? false;
-  const { data, error } = await supabase.rpc('register_student', {
+  const args = {
     p_full_name: form.fullName.trim(),
     p_dob: parseDayMonthYear(form.dob),
     p_phone: cleanPhone(form.phone) || null,
@@ -162,13 +175,21 @@ export async function registerStudent(
     p_photo_consent: minor && form.photoConsent,
     // "The parent signed the paper form": required by the database for a minor (0025).
     p_written_consent: minor ? form.writtenConsent : null,
-  });
+  };
+  let { data, error } = await supabase.rpc('register_student', { ...args, p_request_id: form.requestId });
+  // PGRST202: the database has no register_student with p_request_id yet (before 0032).
+  if (error?.code === 'PGRST202') ({ data, error } = await supabase.rpc('register_student', args));
   if (error) return { errorKey: registerErrorKey(error.message, error.code) };
-  const result = data as { id: string; roll_no: string; linked: boolean };
-  return { registered: { id: result.id, rollNo: result.roll_no, linked: result.linked } };
+  const result = data as { id: string; roll_no: string; linked: boolean; repeated?: boolean };
+  return {
+    registered: { id: result.id, rollNo: result.roll_no, linked: result.linked, repeated: result.repeated === true },
+  };
 }
 
-/** Maps an error from register_student to a message. The codes are listed in migrations 0003 and 0025. */
+/**
+ * Maps an error from register_student to a message. The codes are listed in migrations 0003, 0025
+ * and 0032 (request_id_used cannot happen from this app, so it gets the general message).
+ */
 function registerErrorKey(message: string, code: string | undefined): MessageKey {
   switch (message) {
     case 'not_allowed':
@@ -178,8 +199,7 @@ function registerErrorKey(message: string, code: string | undefined): MessageKey
     case 'dob_required':
       return 'register.errors.dobInvalid';
     case 'written_consent_required':
-      return 'register.errors.consentNeeded';
-    case 'minor_needs_guardian':
+      return 'register.errors.consentNeeded';    case 'minor_needs_guardian':
     case 'minor_needs_id_check':
     case 'minor_needs_consent':
       return 'register.errors.minorNeedsConsent';

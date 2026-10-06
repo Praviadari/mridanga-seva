@@ -9,6 +9,7 @@
 // swapped, and the consent edges (dob edits across the 18-year line, a minor's guardian phone). Round 10
 // (0030) adds the follow-up rules (pause end, retry count, settings fallbacks and order), the status
 // side doors, frozen visit fields and the 30-second rescan; each check names its audit finding ID.
+// 0032 adds the sign-up language (D8-01) and one student per registration request (D6-08).
 //
 // Run before pasting a migration into the live Supabase project:
 //   cd supabase/tests && npm install && npm test
@@ -2939,7 +2940,7 @@ for (const f of internal) {
 check('grant sweep: internal functions are closed to signed-in people', openInternal.length === 0, openInternal.join(' '));
 check('... while the app functions stay open to them', (await asOwner(`select bool_and(has_function_privilege('authenticated', f, 'execute')) as ok
   from unnest(array['erase_student(uuid,text,text)', 'withdraw_consent(uuid,text)', 'unlink_student_login(uuid)', 'scan_qr(uuid,text,jsonb)',
-    'toggle_visit(uuid,visit_method,text,jsonb)', 'register_student(text,date,text,text,text,text,smallint,uuid,text,text,text,text,text,boolean,boolean)',
+    'toggle_visit(uuid,visit_method,text,jsonb)', 'register_student(text,date,text,text,text,text,smallint,uuid,text,text,text,text,text,boolean,boolean,uuid)',
     'is_staff()', 'my_role()']) f`))[0].ok === true);
 
 
@@ -3452,6 +3453,54 @@ check('the round 10 trigger functions are not callable by app roles', (await asO
   and not has_function_privilege('authenticated', 'guard_visit_update()', 'execute')
   and not has_function_privilege('authenticated', 'check_setting_order()', 'execute')
   and not has_function_privilege('anon', 'setting_int(text)', 'execute') as ok`))[0].ok === true);
+
+// ---------------------------------------------------------------- sign-in leftovers (0032)
+// D8-01: the language the app showed at sign-up is the new profile's language; anything else is 'en'.
+const [teLogin] = await asOwner(`insert into auth.users (email, email_confirmed_at, raw_user_meta_data)
+  values ('telugu.phone@example.com', null, '{"full_name": "Telugu Phone", "language": "te"}') returning id`);
+const [oddLogin] = await asOwner(`insert into auth.users (email, email_confirmed_at, raw_user_meta_data)
+  values ('odd.language@example.com', null, '{"full_name": "Odd", "language": "fr"}') returning id`);
+const langs = await asOwner(`select id, language from profiles where id in ('${teLogin.id}', '${oddLogin.id}')`);
+const langOf = (id) => langs.find((r) => r.id === id)?.language;
+check('D8-01: a sign-up from a Telugu phone gets a Telugu profile', langOf(teLogin.id) === 'te', langOf(teLogin.id));
+check('D8-01: a language the app does not offer falls back to English', langOf(oddLogin.id) === 'en', langOf(oddLogin.id));
+check('D8-01: ... and the sign-up still gets its name and stays pending', (await asOwner(
+  `select full_name, role from profiles where id = '${teLogin.id}'`))[0].full_name === 'Telugu Phone' && (await roleOf(teLogin.id)) === 'pending');
+
+// D6-08: the same form saved twice (the answer to the first was lost) stores the child once.
+const d608Request = '5f0c2a6e-8d1b-4c3a-9e2f-0a1b2c3d4e5f';
+const d608Child = {
+  p_full_name: 'Retry Child', p_dob: childDob, p_guardian_name: 'Retry Parent', p_guardian_phone: '9876500001',
+  p_guardian_relation: 'father', p_id_type_checked: 'pan', p_photo_consent: true, p_written_consent: true,
+  p_request_id: d608Request };
+const d608First = await register(coordinator, d608Child);
+const d608Again = await register(coordinator, d608Child);
+const d608Count = async (table, col = 'student_id') =>
+  (await asOwner(`select count(*)::int as n from ${table} where ${col} in
+    (select id from students where full_name = 'Retry Child')`))[0].n;
+check('D6-08: the first Save stores the child', d608First.repeated === false && /^MS-/.test(d608First.roll_no), JSON.stringify(d608First));
+check('D6-08: a repeated Save returns the same student, marked repeated',
+  d608Again.id === d608First.id && d608Again.roll_no === d608First.roll_no && d608Again.repeated === true, JSON.stringify(d608Again));
+check('D6-08: ... with one student, one guardian and two consents stored',
+  (await asOwner(`select count(*)::int as n from students where full_name = 'Retry Child'`))[0].n === 1 &&
+  (await d608Count('guardians')) === 1 && (await d608Count('consents')) === 2);
+const d608Changed = await register(coordinator, { ...d608Child, p_full_name: 'Retry Child Corrected' });
+check('D6-08: a repeat after editing the form still returns the first student (nothing new)',
+  d608Changed.id === d608First.id && (await asOwner(`select count(*)::int as n from students where full_name like 'Retry Child%'`))[0].n === 1);
+await refusesWith('D6-08: another person cannot use the same request id', 'request_id_used', () =>
+  register(guru, d608Child));
+const d608Other = await register(coordinator, { ...d608Child, p_request_id: '7a1e2b3c-4d5e-4f60-8a9b-0c1d2e3f4a5b' });
+check('D6-08: a new form (new request id) registers a second child', d608Other.id !== d608First.id && d608Other.repeated === false);
+const d608Plain = await register(coordinator, { p_full_name: 'No Request Id', p_dob: '1991-01-01' });
+check('D6-08: without a request id (older app) registration works as before', /^MS-/.test(d608Plain.roll_no) && d608Plain.repeated === false);
+await refusesWith('D6-08: a coordinator cannot change a student\'s request id', 'student_field_locked', () =>
+  asApp('authenticated', coordinator, `update students set request_id = null where id = $1`, [d608First.id]));
+check('D6-08: the request id trigger function is not callable by app roles', (await asOwner(`select
+  not has_function_privilege('authenticated', 'guard_student_request_id()', 'execute')
+  and not has_function_privilege('anon', 'guard_student_request_id()', 'execute')
+  and not has_function_privilege('anon', 'register_student(text, date, text, text, text, text, smallint, uuid, text, text, text, text, text, boolean, boolean, uuid)', 'execute') as ok`))[0].ok === true);
+// Clean up so the counts in the checks below stay as they were.
+await asOwner(`delete from students where id in ('${d608First.id}', '${d608Other.id}', '${d608Plain.id}')`);
 
 // ---------------------------------------------------------------- row-level security
 const seen =await asApp('authenticated', arjun, 'select full_name from students');

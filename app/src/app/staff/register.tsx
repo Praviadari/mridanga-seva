@@ -3,7 +3,8 @@
 // birth shows the student is under 18, the parent-and-consent part appears and must be completed
 // before anything is saved: a minor's details are never stored without consent
 // (docs/DECISIONS.md #8, #16). Saving calls register_student (src/data/students.ts), which
-// stores the student, guardian and consent together and gives the roll number.
+// stores the student, guardian and consent together and gives the roll number. Saving the same
+// form again after a lost answer returns the student saved the first time (docs/DECISIONS.md #126).
 
 import { router, Stack } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -107,6 +108,7 @@ export default function RegisterStudentScreen() {
         <Notice tone="success" title={t('register.doneTitle')}>
           {t('register.doneBody', { name: saved.name, rollNo: saved.registered.rollNo })}
         </Notice>
+        {saved.registered.repeated ? <AppText>{t('register.alreadySaved')}</AppText> : null}
         {saved.registered.linked ? <AppText>{t('register.linked')}</AppText> : null}
         <Button icon="add" label={t('register.another')} onPress={registerAnother} />
         <Button

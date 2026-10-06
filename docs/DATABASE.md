@@ -35,6 +35,7 @@ in number order:
 | `0029_function_comments.sql` | Descriptions (`COMMENT ON`) for the eight functions that had none: `setting_int`, `today_ist`, `my_role`, `is_guru`, `is_staff`, `is_minor`, `audit_row`, `release_submission_files`. Comments only; safe to run before or after 0028 and to run again |
 | `0030_round10_rules.sql` | Round 10 (audit brief 15): an ended pause gets a call task and restarts the Inactive clock; no duplicate tasks, only due tasks escalate; retry count starts again after a visit; settings fall back to defaults and keep Irregular before Inactive at commit; no insert straight into Paused/Left, `paused_until` only through a call; visits: only times correctable, audited; 30-second QR rescan rule (#107-#110). See "Round 10 rules (0030)" |
 | `0031_push_fixes.sql` | Push fixes (audit brief 11): the per-phone queue `push_queue` with `claim_push_queue` / `finish_push` (one bad token no longer stops a batch; a failed or stopped send is retried, never sent twice), `push_status`, and the job calls only an https Supabase address with a 32+ character secret ([DECISIONS.md #112-#115](DECISIONS.md)). See "Push queue (0031)". Needs the Edge Function redeployed |
+| `0032_auth_fixes.sql` | Sign-in leftovers: a new profile takes the language sent with the sign-up (D8-01); `students.request_id` + `register_student(..., p_request_id)`: a registration saved twice stores the student once (D6-08) ([DECISIONS.md #125, #126](DECISIONS.md)). See "Sign-in leftovers (0032)" |
 
 The Phase 2 files were renumbered when they merged into main (#55). TEST ran some under their
 branch numbers (0012, 0014_promotion, 0016_practice, 0017_media, 0021_events_polls), so it skips
@@ -135,6 +136,9 @@ Errors from `register_student` are short codes the app turns into messages: `not
 `name_required`, `dob_required`, `minor_needs_guardian`, `minor_needs_id_check`, and
 `minor_needs_consent` from the trigger. New functions should follow the same pattern: raise a
 short `snake_case` code, and put the explanation for people reading the dashboard in `detail`.
+
+**Since 0032** ([DECISIONS.md #126](DECISIONS.md)): `register_student` also takes `p_request_id`, the
+form's random id; saving the same form again returns the first student with `repeated: true`.
 
 **Since 0025** ([DECISIONS.md #74](DECISIONS.md)): `register_student` takes `p_written_consent`, the
 coordinator's tick that the parent signed the paper form; for a minor it must be true
@@ -1065,6 +1069,21 @@ added. Tests: the checks named D5-01, D5-16, D5-02, D5-03, D1b-04, D12a-04, D1a-
   push secret of at least 32 characters; anything else is `not_set_up`.
 - `claim_due_push`, `release_push_claim`, `claim_push_outbox` and `release_push_outbox` stay, so an
   Edge Function deployed before 0031 still works; the new one does not call them.
+
+## Sign-in leftovers (0032)
+
+[DECISIONS.md #125, #126](DECISIONS.md). Run after 0031.
+
+- **Language at sign-up (D8-01).** `handle_new_user` fills `profiles.language` from the sign-up's
+  user metadata `language` when it is `en`, `te` or `hi`; otherwise the default `en`.
+- **One student per registration (D6-08).** `students.request_id` (uuid, unique, NULL before 0032 and
+  for imports) is the random id of the app's registration form. `register_student(..., p_request_id)`
+  returns the student already saved with that id (`repeated: true`, nothing stored) instead of a copy;
+  `repeated: false` for a new one. Errors: `request_id_used` (the id belongs to a student another
+  person saved). Trigger `students_request_id_guard`: app users cannot change it
+  (`student_field_locked`).
+
+Tests: the checks named D8-01 and D6-08 in `supabase/tests/smoke-test.mjs`.
 
 ## Linking a login to a student
 

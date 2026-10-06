@@ -2217,3 +2217,57 @@ secret of at least 32 characters (OPERATIONS step 8 makes 64); anything else is 
 were reserved for this round and are left unused. Not done here, each a team decision or another
 brief: D1b-06 (token take-over on a shared phone), D2-02 (lock-screen text), FS1b-04 (widened
 audience), receipts (D2-03's second half).
+
+## 124. An expired or used email link says so and offers a new one — 6 Oct 2026
+
+**Context.** Links in sign-up and password-reset emails open the web app. When a link had expired or
+was used already, Supabase sent the person back with the reason in the address
+(`#error=access_denied&error_code=otp_expired`) and the app showed the plain sign-in screen: the old
+password failed and the reset seemed broken, in every language (audit D6-12, merged D8-03, FLOW-15).
+
+**Decision.** `app/src/auth/email-link.ts` reads `error` / `error_code` from the address (hash or
+query) once at start and removes them, so a reload does not repeat it. The sign-in screen then shows a
+card: "This email link has expired" (`otp_expired`) or "This email link did not work" (any other
+reason), why links stop working, and two buttons: **Send a new confirmation email** (to the email typed
+in the sign-in form; `supabase.auth.resend`) and **Send a new password link** (Forgot password). The
+error does not say which kind of link it was, so both are offered. The "sent" text does not say
+whether the account exists, like Forgot password.
+
+**Consequences.** JS-only (OTA). Phones never get these addresses (email links open the web app). A
+person who is still signed in on that browser lands on their own screens and sees nothing, which is
+harmless. Translations are drafts (TRANSLATIONS.md "Sign-in leftovers").
+
+## 125. A new login keeps the language its phone showed at sign-up — 6 Oct 2026
+
+**Context.** Before sign-in the app follows the phone's language when it is Telugu or Hindi. A new
+profile was always created with the default `en`, and at the first sign-in the profile's language wins
+(#48) unless the person had tapped a language on this device, so a Telugu phone switched to English
+right after the first sign-in (audit D8-01).
+
+**Decision.** The app sends the language it shows (picked, or the phone's own) with the sign-up, in
+the user metadata as `language`; 0032's `handle_new_user` stores it on the new profile when it is
+`en`, `te` or `hi`, else `en`. Later sign-ins on any device follow the profile, as #48 says.
+
+**Consequences.** Logins made before 0032 keep `en` until the person picks a language once. A sign-up
+on a laptop in English and a first sign-in on a Telugu phone shows English (the profile's), as
+intended by #48. Before 0032 runs, the extra metadata is ignored.
+
+## 126. A registration saved twice stores the student once — 6 Oct 2026
+
+**Context.** When the answer to Save on Register a student (C2) was lost (weak signal), the app showed
+"no internet" although the student, guardian and consent had been stored; a second Save stored the
+child again with a new roll number (audit D6-08; the probe made MS-2026-0016 and -0017).
+
+**Decision.** Each registration form gets a random id (`expo-crypto`, no new package) that every
+Save of that form sends as `p_request_id`. 0032 adds `students.request_id` (unique) and
+`register_student(..., p_request_id)`: when a student with that id exists, nothing new is stored and
+that student comes back with `repeated = true`; two calls at the same moment are caught by the unique
+index. The done screen then adds "This student had already been saved ... check the details". The id
+is another person's: `request_id_used`. App users cannot change `request_id` (trigger
+`students_request_id_guard`). "Register another" starts a new form with a new id.
+
+**Consequences.** A repeat after the coordinator edited the form returns the first record unchanged
+(the note asks them to check it). Students registered before 0032, by the import (G12) or in the
+dashboard have no request id. An app without 0032 on its database gets PGRST202 for the new argument
+and calls again without it, so the OTA can ship before the migration. #127 was reserved for this round
+and is left unused.

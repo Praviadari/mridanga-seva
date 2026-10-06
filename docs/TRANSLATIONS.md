@@ -52,7 +52,8 @@ themselves ([DECISIONS.md #12](DECISIONS.md)).
    choice is also saved to their profile — at once when they are signed in, otherwise when they
    sign in.
 2. Otherwise the language saved on their profile (after they sign in on a new phone).
-3. Otherwise the phone's or browser's language, if it is Telugu or Hindi.
+3. Otherwise the phone's or browser's language, if it is Telugu or Hindi. A new account starts with
+   the language the app showed at sign-up, so this choice survives the first sign-in (#125).
 4. Otherwise English.
 
 The code is in `app/src/i18n/index.ts`, `app/src/components/language-picker.tsx`, and
@@ -198,5 +199,11 @@ The code is in `app/src/i18n/index.ts`, `app/src/components/language-picker.tsx`
   and `callLog.confirmLeftBody` (what Left keeps: login, messages, notifications). Words to check: "fields"
   వివరాలు / जानकारी, "link" జత చేయు / जोड़ना, "switches the login off" లాగిన్‌ను ఆపే / लॉगिन बंद. Checked for mixed
   Telugu-Devanagari words on 6 Oct 2026.
+- **Sign-in leftovers** ([DECISIONS.md #124, #126](DECISIONS.md)): seven new keys, drafts for the review:
+  `signIn.linkExpiredTitle`, `signIn.linkFailedTitle`, `signIn.linkBody`, `signIn.resendConfirmation`,
+  `signIn.newPasswordLink`, `signIn.resent` (an email link that expired or was used) and
+  `register.alreadySaved` (a registration saved twice). Words to check: "expired" గడువు ముగిసింది / समय खत्म,
+  "confirm (an account)" నిర్ధారణ / पक्का करना (as in `signUp.checkEmail`), "saved" సేవ్ / सेव. Checked for
+  mixed Telugu-Devanagari words on 6 Oct 2026.
 - Telugu and Devanagari letters are taller than Latin ones. The app's line heights allow for this;
   if a translated label looks cut off, report it with a screenshot.
