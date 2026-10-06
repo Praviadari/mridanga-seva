@@ -2887,6 +2887,15 @@ check('the owner (SQL editor) records a withdrawal and erases an adult', (await 
   && (await asOwner(`select erase_student('${secAdult.id}', 'asked by email') as r`))[0].r.login_deleted === true
   && (await asOwner(`select count(*)::int as n from students where id = '${secAdult.id}'`))[0].n === 0);
 
+// Supabase refuses an UPDATE or DELETE without WHERE in calls through the API (safeupdate); PGlite
+// does not, so every statement of our functions is checked here (0031's finish_push failed on TEST).
+const unguarded = await asOwner(`select p.proname || ': ' || left(regexp_replace(s.stmt, '\\s+', ' ', 'g'), 80) as f
+  from pg_proc p, regexp_split_to_table(regexp_replace(p.prosrc, '--[^\\n]*', '', 'g'), ';') as s(stmt)
+ where p.pronamespace = 'public'::regnamespace and p.prolang in (select oid from pg_language where lanname in ('sql', 'plpgsql'))
+   and s.stmt ~* '\\m(update\\s+\\w+(\\s+\\w+)?\\s+set|delete\\s+from)\\M' and s.stmt !~* '\\mwhere\\M'`);
+check('every UPDATE and DELETE in our functions has a WHERE (Supabase safeupdate)', unguarded.length === 0,
+  unguarded.map((r) => r.f).join(' | '));
+
 // D1a-11, D14-03: the grant sweep. anon has no right on any table, view or sequence, and may run
 // no function of ours (trigger functions cannot be called, so they are left out); internal
 // functions are not open to signed-in people either.

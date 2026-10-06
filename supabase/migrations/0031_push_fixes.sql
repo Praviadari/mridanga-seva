@@ -160,7 +160,8 @@ begin
    where q.claimed_by = p_claim and q.failed = 'DeviceNotRegistered'
      and t.token = q.token and t.profile_id = q.profile_id;
 
-  update push_status set last_run_at = now(), last_run = p_summary;
+  -- Every UPDATE and DELETE has a WHERE: Supabase refuses one without (safeupdate) for calls through the API.
+  update push_status set last_run_at = now(), last_run = p_summary where id;
 end $$;
 
 -- ---------------------------------------------------------------- 3. the every-minute job
@@ -192,7 +193,7 @@ begin
       v_result := 'called';
     end if;
   end if;
-  update push_status set last_job_at = now(), last_job_result = v_result;
+  update push_status set last_job_at = now(), last_job_result = v_result where id;
   return v_result;
 end $$;
 
