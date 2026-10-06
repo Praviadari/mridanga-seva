@@ -704,7 +704,8 @@ function announcementErrorKey(message: string, code: string | undefined): Messag
     case 'attachments_invalid':
     case 'attachment_not_yours':
     case 'attachment_missing':
-      // The app never sends these; a file that vanished between upload and save is the likely case.
+      // The app should not send these: names are cut to 120 characters when picked (fitFileName),
+      // so a file that vanished between upload and save is the likely case.
       return 'announcements.files.saveFailed';
   }
   // 42501 = refused by row-level security: the person is not a coordinator or the Guru.

@@ -67,7 +67,7 @@ export function SyllabusItemCard({
           style={[
             styles.box,
             {
-              borderColor: done ? colors.success : colors.border,
+              borderColor: done ? colors.success : colors.controlBorder,
               backgroundColor: done ? colors.success : colors.background,
             },
           ]}>

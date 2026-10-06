@@ -15,6 +15,7 @@ import { AudienceFields } from '@/components/audience-fields';
 import { Button } from '@/components/button';
 import { Checkbox } from '@/components/checkbox';
 import { ChoiceGroup } from '@/components/choice-group';
+import { FormErrorSummary } from '@/components/form-error-summary';
 import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
@@ -228,6 +229,7 @@ export function PollFormScreen({ pollId }: { pollId?: number }) {
         />
       </Section>
       {!original ? <Notice tone="info">{t('polls.form.newNotice')}</Notice> : null}
+      <FormErrorSummary errors={errors} />
       {serverError ? <Notice tone="error">{serverError}</Notice> : null}
       <Button label={original ? t('polls.form.save') : t('polls.form.create')} loading={saving} onPress={() => void save()} />
     </Screen>

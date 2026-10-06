@@ -55,7 +55,7 @@ export function ChoiceGroup<T extends string | number>({
                 styles.option,
                 chips && styles.chip,
                 {
-                  borderColor: selected ? colors.primary : error ? colors.danger : colors.border,
+                  borderColor: selected ? colors.primary : error ? colors.danger : colors.controlBorder,
                   backgroundColor: selected ? colors.primary : colors.surface,
                 },
               ]}>
@@ -70,7 +70,7 @@ export function ChoiceGroup<T extends string | number>({
         })}
       </View>
       {error ? (
-        <AppText variant="small" tone="danger" role="alert">
+        <AppText variant="small" tone="danger" role="alert" accessibilityLiveRegion="polite">
           {error}
         </AppText>
       ) : null}

@@ -17,6 +17,7 @@ import { AppText } from '@/components/app-text';
 import { BrandHeader } from '@/components/brand';
 import { Button } from '@/components/button';
 import { Checkbox } from '@/components/checkbox';
+import { FormErrorSummary } from '@/components/form-error-summary';
 import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
@@ -213,6 +214,7 @@ function JoinForm({ mine, onJoined }: { mine: MySubscription; onJoined: (state: 
         <Checkbox label={t('ishtagoshtiJoin.termsAgree')} checked={terms} onChange={setTerms} error={errors.terms && t(errors.terms)} />
       </Section>
 
+      <FormErrorSummary errors={errors} />
       <Button icon="ishtagoshti" label={minor ? t('ishtagoshtiJoin.submitMinor') : t('ishtagoshtiJoin.submit')} onPress={submit} loading={busy} />
     </>
   );

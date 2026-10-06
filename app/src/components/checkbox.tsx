@@ -31,7 +31,7 @@ export function Checkbox({ label, checked, onChange, error }: CheckboxProps) {
           style={[
             styles.box,
             {
-              borderColor: error ? colors.danger : checked ? colors.primary : colors.border,
+              borderColor: error ? colors.danger : checked ? colors.primary : colors.controlBorder,
               backgroundColor: checked ? colors.primary : colors.surface,
             },
           ]}>
@@ -44,7 +44,7 @@ export function Checkbox({ label, checked, onChange, error }: CheckboxProps) {
         <AppText style={styles.label}>{label}</AppText>
       </Pressable>
       {error ? (
-        <AppText variant="small" tone="danger" role="alert">
+        <AppText variant="small" tone="danger" role="alert" accessibilityLiveRegion="polite">
           {error}
         </AppText>
       ) : null}

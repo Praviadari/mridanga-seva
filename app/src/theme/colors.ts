@@ -18,8 +18,13 @@ export type Palette = {
   text: string;
   /** Less important text: hints, captions. */
   textMuted: string;
-  /** Lines around fields and cards. */
+  /** Faint lines: table rules, file rows, the info notice. Too pale for a control's only edge. */
   border: string;
+  /**
+   * The edge of a control that has no other outline: text fields, unticked boxes, unselected
+   * choices. 3:1 or more on background and surface (WCAG 1.4.11; DECISIONS #104).
+   */
+  controlBorder: string;
   /** Main buttons and links. */
   primary: string;
   /** Text and icons drawn on top of `primary`. */
@@ -80,6 +85,7 @@ export const lightPalette: Palette = {
   text: '#1F1A17',
   textMuted: '#645A52',
   border: '#E3D6C9',
+  controlBorder: '#8C7B6C',
   primary: brand,
   onPrimary: '#FFFFFF',
   danger: '#B42318',
@@ -134,6 +140,7 @@ export const darkPalette: Palette = {
   text: '#F5EFE9',
   textMuted: '#B8ADA3',
   border: '#3F352E',
+  controlBorder: '#8A7B6E',
   primary: '#F59E0B',
   onPrimary: '#1F1A17',
   danger: '#F97066',

@@ -50,7 +50,10 @@ export default function FollowUpScreen() {
 
   const staffNames = useMemo(() => new Map((queue?.staff ?? []).map((s) => [s.id, s.fullName])), [queue]);
   const haveMine = !!queue?.entries.some((entry) => isMine(entry, myId));
-  const entries = (queue?.entries ?? []).filter((entry) => scope === 'everyone' || isMine(entry, myId));
+  // When "Mine" runs empty its switch disappears, so the list goes back to everyone: otherwise the
+  // queue would look empty with no way back to the others' calls (audit D6-04).
+  const shownScope = haveMine ? scope : 'everyone';
+  const entries = (queue?.entries ?? []).filter((entry) => shownScope === 'everyone' || isMine(entry, myId));
 
   /**
    * The task line: "Call due 01-10-2026 · try 2 · for Radha". A task given to nobody falls to the
@@ -99,7 +102,7 @@ export default function FollowUpScreen() {
             { value: 'everyone', label: t('followUp.everyone') },
             { value: 'mine', label: t('students.filters.mine') },
           ]}
-          value={scope}
+          value={shownScope}
           onChange={setScope}
         />
       ) : null}

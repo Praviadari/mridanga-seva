@@ -103,10 +103,26 @@ export function parseAttachments(value: unknown): Attachment[] {
 /** Files picked, and a message when some could not be taken (too big, not a PDF ...). */
 export type PickResult = { files: PickedFile[]; errorKey?: MessageKey };
 
+/** The longest file name the database keeps (0010, 0013, 0020, 0026: 1 to 120 characters). */
+export const MAX_FILE_NAME = 120;
+
+/**
+ * A file name cut to MAX_FILE_NAME characters, keeping its ending (".pdf"): a downloaded circular
+ * often has a longer name, and the database would refuse the whole post (audit FS3-02).
+ */
+export function fitFileName(name: string): string {
+  const chars = Array.from(name.trim());
+  if (chars.length <= MAX_FILE_NAME) return chars.join('');
+  const dot = name.trim().lastIndexOf('.');
+  const ending = dot > 0 ? Array.from(name.trim().slice(dot)) : [];
+  const keep = ending.length < 10 ? ending : [];
+  return chars.slice(0, MAX_FILE_NAME - keep.length).join('').trimEnd() + keep.join('');
+}
+
 /** `name` with its ending replaced by `.jpg`, or a plain name when there is none. */
 function jpegName(name: string | null | undefined, index: number): string {
   const base = (name ?? '').replace(/\.[^.]*$/, '').trim();
-  return `${base || `photo-${index + 1}`}.jpg`;
+  return fitFileName(`${base || `photo-${index + 1}`}.jpg`);
 }
 
 /** The size in bytes of a file the device holds. */
@@ -195,7 +211,7 @@ export async function pickPdfs(room: number, limit: PickLimit = ANNOUNCEMENT_LIM
       }
       files.push({
         key: Crypto.randomUUID(),
-        name: asset.name,
+        name: fitFileName(asset.name),
         kind: 'pdf',
         size,
         uri: asset.uri,

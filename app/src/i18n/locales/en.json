@@ -13,7 +13,8 @@
     "language": "Language",
     "genericError": "Something went wrong. Please try again.",
     "studentWithdrawn": "Consent for this student was withdrawn. Nothing new can be recorded for them; ask the Guru.",
-    "networkError": "Cannot reach the server. Check your internet connection."
+    "networkError": "Cannot reach the server. Check your internet connection.",
+    "fixFieldsAbove": "Some fields need a fix ({{count}}). The messages are in red above."
   },
   "password": {
     "show": "Show",
@@ -71,7 +72,7 @@
   "pending": {
     "title": "Waiting for access",
     "body": "Your account is ready. The facilitator will give you access soon.",
-    "studentHint": "Are you a student? Ask a coordinator to put this email on your student record, then tap Check again.",
+    "studentHint": "Are you a student? Ask the Guru to link this login to your student record, then tap Check again.",
     "kiosk": "The door tablet screens come in a later version.",
     "inactiveTitle": "Account switched off",
     "inactiveBody": "This account is not active. Please speak to the facilitator or a coordinator.",
@@ -173,6 +174,7 @@
     "title": "Mark attendance",
     "summary": "Here now: {{here}} · Visits today: {{visits}}",
     "loadFailed": "Could not load today's attendance.",
+    "loadFailedBody": "Cannot reach the server. You can still scan or check in by name: the buttons may not know who is already here until the list loads.",
     "scanSection": "Scan a QR code",
     "scanIntro": "Ask the student to open My QR in the app and hold it in front of the camera.",
     "startScan": "Scan a QR code",
@@ -495,7 +497,7 @@
     "commentHint": "Required. A short note for whoever calls next.",
     "save": "Save call",
     "confirmLeftTitle": "Mark {{name}} as Left?",
-    "confirmLeftBody": "They leave the follow-up list. Their record, roll number and history are kept.",
+    "confirmLeftBody": "They leave the follow-up list. Their record, roll number and history are kept, and their next visit makes them Active again. Their login keeps working, and they still get class messages and notifications, until the Guru switches the login off.",
     "confirmLeftYes": "Yes, save and mark as Left",
     "savedTitle": "Call saved",
     "saved": {

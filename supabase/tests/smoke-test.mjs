@@ -6,7 +6,9 @@
 // kiosk logins, the frozen record fields, the consent register, withdrawal, erasure (with a sweep
 // of every table for the child's data) and a grant sweep: anon may touch nothing in public. Security round 2
 // (0028) adds frozen profile identity columns, student logins without a record, posted files that cannot be
-// swapped, and the consent edges (dob edits across the 18-year line, a minor's guardian phone).
+// swapped, and the consent edges (dob edits across the 18-year line, a minor's guardian phone). Round 10
+// (0030) adds the follow-up rules (pause end, retry count, settings fallbacks and order), the status
+// side doors, frozen visit fields and the 30-second rescan; each check names its audit finding ID.
 //
 // Run before pasting a migration into the live Supabase project:
 //   cd supabase/tests && npm install && npm test
@@ -269,6 +271,12 @@ await refuses('anon cannot run mark_visit', () =>
   asApp('anon', null, `select mark_visit('${registered.id}', 'in')`));
 
 const [{ qr_token: qrToken }] = await asOwner(`select qr_token from students where id = '${registered.id}'`);
+// D5-11 (0030): a scan within 30 seconds of the check-in does not check out.
+const [rescan] = await asApp('authenticated', coordinator, `select scan_qr($1) as r`, [qrToken]);
+check('D5-11: a QR scan within 30 seconds of the check-in answers already_in', rescan.r.action === 'already_in', rescan.r.action);
+const [{ n: stillIn }] = await asOwner(`select count(*)::int as n from visits where student_id = '${registered.id}' and check_out is null`);
+check('... and the visit stays open', stillIn === 1);
+await asOwner(`update visits set check_in = check_in - interval '1 minute' where student_id = '${registered.id}' and check_out is null`);
 const [scanned] = await asApp('authenticated', coordinator, `select scan_qr($1) as r`, [qrToken]);
 check('scanning the QR of a student who is in checks them out', scanned.r.action === 'out');
 const [unknown] = await asApp('authenticated', coordinator,
@@ -2724,6 +2732,7 @@ await refusesWith('a login without a profile cannot run toggle_visit', 'not allo
 const kiosk = await signUp('door.tablet@example.com', true);
 await asOwner(`update profiles set role = 'kiosk' where id = '${kiosk}'`);
 const [kioskIn] = await asApp('authenticated', kiosk, 'select scan_qr($1) as r', [secQr]);
+await asOwner(`update visits set check_in = check_in - interval '1 minute' where student_id = '${secAdult.id}' and check_out is null`);
 const [kioskOut] = await asApp('authenticated', kiosk, 'select scan_qr($1) as r', [secQr]);
 check('the door tablet (kiosk) checks a student in and out by QR', kioskIn.r.action === 'in' && kioskOut.r.action === 'out');
 await refusesWith('... but cannot mark by name', 'not_allowed', () => asApp('authenticated', kiosk, `select mark_visit($1, 'in')`, [secAdult.id]));
@@ -3301,6 +3310,139 @@ check('... but may be, when another guardian has a phone', (await asOwner(
 const [grownUp] = await asApp('authenticated', coordinator, 'update students set dob = $2 where id = $1 returning dob::text as d', [child.id, eighteen]);
 const [childAgain] = await asApp('authenticated', coordinator, 'update students set dob = $2 where id = $1 returning dob::text as d', [child.id, childDob]);
 check('a minor\'s dob may be corrected to an adult\'s and back (consent and guardian kept)', grownUp?.d === eighteen && childAgain?.d === childDob);
+
+// ---------------------------------------------------------------- round 10 rules (0030)
+// Students made here by the owner, with dates in the past, so the daily job has something to judge.
+/** Inserts an adult student as the owner; returns its id. `extra` is a list of `column = sql value`. */
+async function r10Student(name, extra = {}) {
+  const cols = ['full_name', 'dob', 'mentor_id', 'joined_on', 'created_at', ...Object.keys(extra)];
+  const vals = [`'${name}'`, `'1990-01-01'`, `'${coordinator}'`, 'today_ist() - 200', `now() - interval '200 days'`, ...Object.values(extra)];
+  const [row] = await asOwner(`insert into students (${cols.join(', ')}) values (${vals.join(', ')}) returning id`);
+  return row.id;
+}
+const openTasksOf = async (id) =>
+  asOwner(`select kind, assignee_id, escalated, due_on::text from follow_up_tasks where student_id = '${id}' and done_at is null`);
+
+// D5-01 / D12a-10: an ended pause turns Irregular with a call task, and does not go Inactive the same morning.
+const r10Paused = await r10Student('R10 Paused Long', { status: `'paused'`, paused_until: 'today_ist() - 1' });
+await asOwner(`insert into visits (student_id, check_in, check_out, method)
+  values ('${r10Paused}', now() - interval '90 days', now() - interval '90 days' + interval '1 hour', 'manual')`);
+await asOwner('select refresh_student_statuses()');
+let r10Tasks = await openTasksOf(r10Paused);
+check('D5-01: an ended pause turns Irregular, not Inactive the same morning (last visit 90 days ago)',
+  (await statusOf(r10Paused)).status === 'irregular', (await statusOf(r10Paused)).status);
+check('D5-01: ... and the mentor gets a call task', r10Tasks.length === 1 && r10Tasks[0].kind === 'call'
+  && r10Tasks[0].assignee_id === coordinator, JSON.stringify(r10Tasks));
+check('D5-01: ... paused_until is cleared', (await statusOf(r10Paused)).paused_until === null);
+await asOwner('select refresh_student_statuses()');
+r10Tasks = await openTasksOf(r10Paused);
+check('D5-01: the next run keeps them Irregular (days to Inactive count from the pause end) with one task',
+  (await statusOf(r10Paused)).status === 'irregular' && r10Tasks.length === 1, JSON.stringify(r10Tasks));
+await asOwner(`update status_history set changed_at = changed_at - interval '31 days'
+  where student_id = '${r10Paused}' and from_status = 'paused'`);
+await asOwner('select refresh_student_statuses()');
+check('D5-01: inactive_days after the pause end they turn Inactive', (await statusOf(r10Paused)).status === 'inactive');
+
+// D5-16: no second open task; only due tasks are escalated.
+const r10Busy = await r10Student('R10 Has Task', { status: `'active'` });
+await asOwner(`insert into follow_up_tasks (student_id, assignee_id, kind, due_on) values ('${r10Busy}', '${coordinator}', 'call', today_ist() + 5)`);
+await asOwner('select refresh_student_statuses()');
+r10Tasks = await openTasksOf(r10Busy);
+check('D5-16: turning Irregular with an open task adds no second task',
+  (await statusOf(r10Busy)).status === 'irregular' && r10Tasks.length === 1, JSON.stringify(r10Tasks));
+await asOwner(`update students set status = 'inactive' where id = '${r10Busy}'`);
+await asOwner('select refresh_student_statuses()');
+check('D5-16: an Inactive student\'s task given a later date (a call was logged) is not escalated yet',
+  (await openTasksOf(r10Busy))[0]?.escalated === false);
+await asOwner(`update follow_up_tasks set due_on = today_ist() where student_id = '${r10Busy}' and done_at is null`);
+await asOwner('select refresh_student_statuses()');
+check('D5-16: ... and is escalated once it is due', (await openTasksOf(r10Busy))[0]?.escalated === true);
+
+// D5-02: a visit starts the failed-try count again.
+const r10Retry = await r10Student('R10 Retry', { status: `'irregular'` });
+for (let i = 0; i < 3; i++) {
+  await logCall(coordinator, { p_student: r10Retry, p_outcome: 'not_reachable', p_reason: null, p_comment: `No answer ${i + 1}` });
+}
+check('D5-02: (control) three failed tries in one absence escalate', (await openTasksOf(r10Retry))[0]?.escalated === true);
+await mark(r10Retry, 'in');
+await mark(r10Retry, 'out');
+await logCall(coordinator, { p_student: r10Retry, p_outcome: 'not_reachable', p_reason: null, p_comment: 'No answer after the visit' });
+r10Tasks = await asOwner(`select attempt, escalated from follow_up_tasks where student_id = '${r10Retry}' and done_at is null`);
+check('D5-02: after a visit the first failed try plans try 2 again, not escalated',
+  r10Tasks.length === 1 && r10Tasks[0].attempt === 2 && r10Tasks[0].escalated === false, JSON.stringify(r10Tasks));
+
+// D5-03: a bad or missing follow-up number falls back; Irregular before Inactive however it is written.
+const settingInt = async (k) => (await asOwner(`select setting_int('${k}') as n`))[0].n;
+await asOwner(`delete from settings where key = 'retry_days'`);
+check('D5-03: a missing retry_days falls back to 3', (await settingInt('retry_days')) === 3);
+await logCall(coordinator, { p_student: r10Retry, p_outcome: 'not_reachable', p_reason: null, p_comment: 'Still no answer' });
+check('D5-03: ... so a not-reachable call still saves its retry task',
+  (await asOwner(`select due_on - today_ist() as d from follow_up_tasks where student_id = '${r10Retry}' and done_at is null`))[0]?.d === 3);
+await asOwner(`insert into settings (key, value) values ('retry_days', '3')`);
+await asOwner('alter table settings disable trigger settings_guard');
+await asOwner(`update settings set value = '"three"' where key = 'max_retries'`);
+await asOwner(`update settings set value = '14.5' where key = 'irregular_days'`);
+await asOwner('alter table settings enable trigger settings_guard');
+check('D5-03: a value that is not a whole number falls back to its default',
+  (await settingInt('max_retries')) === 3 && (await settingInt('irregular_days')) === 14);
+let r10JobRan = true;
+try { await asOwner('select refresh_student_statuses()'); } catch { r10JobRan = false; }
+check('D5-03: ... and the daily job still runs', r10JobRan);
+await asOwner('alter table settings disable trigger settings_guard');
+await asOwner(`update settings set value = '3' where key = 'max_retries'`);
+await asOwner(`update settings set value = '14' where key = 'irregular_days'`);
+await asOwner('alter table settings enable trigger settings_guard');
+await refusesWith('D5-03: a direct UPDATE cannot put Irregular after Inactive (checked at commit)', 'irregular_after_inactive', () =>
+  asApp('authenticated', guru, `update settings set value = '40' where key = 'irregular_days'`));
+await refusesWith('D5-03: ... nor can the SQL editor', 'irregular_after_inactive', () =>
+  db.exec(`update settings set value = '45' where key = 'inactive_days'; update settings set value = '50' where key = 'irregular_days'`));
+check('D5-03: ... and nothing of that edit is kept', (await settingInt('inactive_days')) === 30 && (await settingInt('irregular_days')) === 14);
+const [{ n: bothDown }] = await asApp('authenticated', guru, `select save_settings('{"irregular_days": 5, "inactive_days": 10}') as n`);
+check('D5-03: save_settings may lower both numbers in one call', bothDown === 2 && (await settingInt('inactive_days')) === 10);
+await asApp('authenticated', guru, `select save_settings('{"irregular_days": 14, "inactive_days": 30}')`);
+
+// D1b-04 / D12a-04: no INSERT straight into Paused / Left; paused_until only through a call.
+await refusesWith('D1b-04: a coordinator cannot insert a student as Paused', 'status_on_insert', () =>
+  asApp('authenticated', coordinator, `insert into students (full_name, dob, status, paused_until) values ('R10 Side Door', '1990-01-01', 'paused', today_ist() + 400)`));
+await refusesWith('D12a-04: ... nor as Left', 'status_on_insert', () =>
+  asApp('authenticated', coordinator, `insert into students (full_name, dob, status) values ('R10 Side Door', '1990-01-01', 'left')`));
+const [r10New] = await asApp('authenticated', coordinator,
+  `insert into students (full_name, dob, paused_until) values ('R10 New Pause', '1990-01-01', today_ist() + 400) returning id, paused_until`);
+check('D1b-04: a pause date on a new record is dropped', r10New.paused_until === null);
+await refusesWith('D1b-04: a pause cannot be moved by a plain edit', 'student_field_locked', () =>
+  asApp('authenticated', coordinator, `update students set paused_until = today_ist() + 400 where id = $1`, [divya.id]));
+const r10Paused2 = await r10Student('R10 Paused Short', { status: `'paused'`, paused_until: 'today_ist() + 10' });
+await asApp('authenticated', coordinator, `update students set status = 'active' where id = $1`, [r10Paused2]);
+const r10Unpaused = await statusOf(r10Paused2);
+check('D1b-04: leaving Paused by an edit clears the pause date', r10Unpaused.status === 'active' && r10Unpaused.paused_until === null,
+  JSON.stringify(r10Unpaused));
+await logCall(coordinator, { p_student: r10Paused2, p_outcome: 'paused', p_reason: 'studies', p_comment: 'Exams', p_next_date: inAMonth });
+check('D1b-04: (control) a logged call still pauses', (await statusOf(r10Paused2)).paused_until === inAMonth);
+
+// D1a-06 / FR-05: a visit's student, marker, method and centre are frozen; times may be corrected, audited.
+await mark(r10Retry, 'in');
+const [r10Visit] = await asOwner(`select id from visits where student_id = '${r10Retry}' and check_out is null`);
+await refusesWith('D1a-06: a coordinator cannot move a visit to another student', 'visit_field_locked', () =>
+  asApp('authenticated', coordinator, `update visits set student_id = $2 where id = $1`, [r10Visit.id, r10Busy]));
+await refusesWith('FR-05: ... nor change who marked it', 'visit_field_locked', () =>
+  asApp('authenticated', coordinator, `update visits set marked_by = $2 where id = $1`, [r10Visit.id, guru]));
+await refusesWith('D1a-06: ... nor its method', 'visit_field_locked', () =>
+  asApp('authenticated', coordinator, `update visits set method = 'qr' where id = $1`, [r10Visit.id]));
+await refusesWith('D1a-06: ... nor put the check-in in the future', 'visit_time_future', () =>
+  asApp('authenticated', coordinator, `update visits set check_in = now() + interval '1 hour' where id = $1`, [r10Visit.id]));
+const [r10Fixed] = await asApp('authenticated', coordinator,
+  `update visits set check_in = check_in - interval '10 minutes', check_out = now() where id = $1 returning id`, [r10Visit.id]);
+const r10Audit = await asOwner(`select action, changed_by from audit_log where table_name = 'visits' and row_id = '${r10Visit.id}'`);
+check('D1a-06: correcting the times is allowed and kept in the audit log',
+  r10Fixed?.id === r10Visit.id && r10Audit.length === 1 && r10Audit[0].action === 'UPDATE' && r10Audit[0].changed_by === coordinator,
+  JSON.stringify(r10Audit));
+const r10Deleted = await asApp('authenticated', coordinator, `delete from visits where id = $1 returning id`, [r10Visit.id]);
+check('D1a-06: a coordinator cannot delete a visit', r10Deleted.length === 0);
+check('the round 10 trigger functions are not callable by app roles', (await asOwner(`select
+  not has_function_privilege('anon', 'guard_student_status()', 'execute')
+  and not has_function_privilege('authenticated', 'guard_visit_update()', 'execute')
+  and not has_function_privilege('authenticated', 'check_setting_order()', 'execute')
+  and not has_function_privilege('anon', 'setting_int(text)', 'execute') as ok`))[0].ok === true);
 
 // ---------------------------------------------------------------- row-level security
 const seen =await asApp('authenticated', arjun, 'select full_name from students');

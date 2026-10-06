@@ -34,7 +34,7 @@ export function TextField({ label, hint, error, secret, ref, style, ...inputProp
       <View
         style={[
           styles.box,
-          { backgroundColor: colors.surface, borderColor: error ? colors.danger : colors.border },
+          { backgroundColor: colors.surface, borderColor: error ? colors.danger : colors.controlBorder },
         ]}>
         <TextInput
           ref={ref}
@@ -59,7 +59,7 @@ export function TextField({ label, hint, error, secret, ref, style, ...inputProp
         ) : null}
       </View>
       {error ? (
-        <AppText variant="small" tone="danger" role="alert">
+        <AppText variant="small" tone="danger" role="alert" accessibilityLiveRegion="polite">
           {error}
         </AppText>
       ) : hint ? (

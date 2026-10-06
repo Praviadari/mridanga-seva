@@ -9,7 +9,7 @@
 // gives no position. The permission is asked the first time a student is checked in.
 
 import { router, Stack, useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { AppText } from '@/components/app-text';
@@ -52,6 +52,9 @@ export default function MarkAttendanceScreen() {
   // undefined = loading, null = could not load.
   const [today, setToday] = useState<AttendanceToday | null | undefined>(undefined);
   const [outcome, setOutcome] = useState<MarkOutcome | null>(null);
+  // The student whose row was tapped last: the result shows under that row, where the eye is.
+  // null after a scan, whose result shows at the top.
+  const [tappedId, setTappedId] = useState<string | null>(null);
 
   const [cameraOpen, setCameraOpen] = useState(false);
   // After each scan the camera stops reading until the coordinator asks for the next student.
@@ -111,6 +114,7 @@ export default function MarkAttendanceScreen() {
       : { result: { action: 'unknown' } };
     // Remember the code only when it worked, so a scan that failed (no internet) can be retried.
     lastCode.current = token && scanned.result ? { token, at: now } : null;
+    setTappedId(null);
     setOutcome(scanned);
     working.current = false;
     void loadToday();
@@ -119,7 +123,9 @@ export default function MarkAttendanceScreen() {
 
   async function onTap(student: FoundStudent, action: 'in' | 'out') {
     setMarkingId(student.id);
-    setOutcome(await markVisit(student.id, action, action === 'in' ? await locationForCheckIn() : undefined));
+    const marked = await markVisit(student.id, action, action === 'in' ? await locationForCheckIn() : undefined);
+    setTappedId(student.id);
+    setOutcome(marked);
     // Keep the spinner until the list is fresh, so the button never shows the old meaning.
     await loadToday();
     setMarkingId(null);
@@ -138,14 +144,28 @@ export default function MarkAttendanceScreen() {
       : t('hereNow.sinceEarlierDay', { date: formatDayMonthYear(day), time });
   }
 
+  const outcomeNotice = outcome ? (
+    <>
+      {outcome.result ? <VisitResultNotice result={outcome.result} /> : null}
+      {outcome.errorKey ? <Notice tone="error">{t(outcome.errorKey)}</Notice> : null}
+    </>
+  ) : null;
+  // A tapped student no longer in the results (the search changed): the result goes to the top.
+  const resultUnderRow = tappedId !== null && !!shown?.some((student) => student.id === tappedId);
+
   return (
     <Screen underHeader>
       <Stack.Screen options={{ title: t('attendance.title') }} />
 
       {today === null ? (
-        <Notice tone="error" title={t('attendance.loadFailed')}>
-          {t('common.networkError')}
-        </Notice>
+        // The scan and the name search still work: a failed list only means the buttons cannot
+        // tell who is already in (audit D6-03).
+        <>
+          <Notice tone="error" title={t('attendance.loadFailed')}>
+            {t('attendance.loadFailedBody')}
+          </Notice>
+          <Button variant="secondary" icon="refresh" label={t('common.tryAgain')} onPress={() => void loadToday()} />
+        </>
       ) : today ? (
         <AppText variant="label">
           {t('attendance.summary', { here: today.hereNow.length, visits: today.visitsToday })}
@@ -161,8 +181,7 @@ export default function MarkAttendanceScreen() {
       />
       {noLocation ? <Notice tone="info">{t('attendanceLocation.refusedNote')}</Notice> : null}
 
-      {outcome?.result ? <VisitResultNotice result={outcome.result} /> : null}
-      {outcome?.errorKey ? <Notice tone="error">{t(outcome.errorKey)}</Notice> : null}
+      {resultUnderRow ? null : outcomeNotice}
 
       <Section icon="attendance" title={t('attendance.scanSection')} description={t('attendance.scanIntro')}>
         {cameraOpen ? (
@@ -209,25 +228,29 @@ export default function MarkAttendanceScreen() {
         {shown?.map((student) => {
           const since = hereSince.get(student.id);
           return (
-            <ListRow
-              key={student.id}
-              leading="initials"
-              title={student.fullName}
-              chips={{ levelId: student.levelId }}
-              details={[
-                student.rollNo,
-                ...(since ? [sinceText(since)] : []),
-              ]}
-              highlighted={!!since}
-              action={{
-                label: since ? t('attendance.checkOut') : t('attendance.checkIn'),
-                variant: since ? 'secondary' : 'primary',
-                loading: markingId === student.id,
-                // Wait for today's list, so the button's meaning (in / out) is known.
-                disabled: !today || (markingId !== null && markingId !== student.id),
-                onPress: () => void onTap(student, since ? 'out' : 'in'),
-              }}
-            />
+            <Fragment key={student.id}>
+              <ListRow
+                leading="initials"
+                title={student.fullName}
+                chips={{ levelId: student.levelId }}
+                details={[
+                  student.rollNo,
+                  ...(since ? [sinceText(since)] : []),
+                ]}
+                highlighted={!!since}
+                action={{
+                  label: since ? t('attendance.checkOut') : t('attendance.checkIn'),
+                  variant: since ? 'secondary' : 'primary',
+                  loading: markingId === student.id,
+                  // Wait while today's list loads, so the button's meaning (in / out) is known. If it
+                  // could not load, the button says Check in: the database answers "already in" when
+                  // they are, and the list is fetched again after every tap.
+                  disabled: today === undefined || (markingId !== null && markingId !== student.id),
+                  onPress: () => void onTap(student, since ? 'out' : 'in'),
+                }}
+              />
+              {resultUnderRow && tappedId === student.id ? outcomeNotice : null}
+            </Fragment>
           );
         })}
       </Section>

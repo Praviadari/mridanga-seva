@@ -11,6 +11,7 @@ import { useAuth } from '@/auth/auth-provider';
 import { AudienceFields } from '@/components/audience-fields';
 import { Button } from '@/components/button';
 import { ChoiceGroup } from '@/components/choice-group';
+import { FormErrorSummary } from '@/components/form-error-summary';
 import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
@@ -233,6 +234,7 @@ export function EventFormScreen({ eventId }: { eventId?: number }) {
         style={{ minHeight: 120, textAlignVertical: 'top' }}
       />
       {original ? <Notice tone="info">{t('events.form.editNotice')}</Notice> : <Notice tone="info">{t('events.form.newNotice')}</Notice>}
+      <FormErrorSummary errors={errors} />
       {serverError ? <Notice tone="error">{serverError}</Notice> : null}
       <Button label={original ? t('events.form.save') : t('events.form.create')} loading={saving} onPress={() => void save()} />
     </Screen>

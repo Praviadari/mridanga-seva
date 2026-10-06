@@ -13,6 +13,7 @@ import { useAuth } from '@/auth/auth-provider';
 import { AnnouncementFields } from '@/components/announcement-form';
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
+import { FormErrorSummary } from '@/components/form-error-summary';
 import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
@@ -108,6 +109,7 @@ export default function NewAnnouncementScreen() {
         showWhen
         onOpenGroups={() => router.push('/staff/groups')}
       />
+      <FormErrorSummary errors={errors} />
       {serverError ? <Notice tone="error">{serverError}</Notice> : null}
       {saving && form.files.some(isPicked) ? <AppText tone="muted">{t('announcements.files.uploading')}</AppText> : null}
       <Button

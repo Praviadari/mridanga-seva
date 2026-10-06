@@ -47,7 +47,7 @@ export function BeatGrid({ bols, divisions, marks, current }: BeatGridProps) {
                   key={beat}
                   style={[
                     styles.cell,
-                    { borderColor: on ? colors.primary : colors.border, backgroundColor: on ? colors.primary : colors.surface },
+                    { borderColor: on ? colors.primary : colors.controlBorder, backgroundColor: on ? colors.primary : colors.surface },
                   ]}>
                   <AppText variant="small" style={{ color: on ? colors.onPrimary : colors.textMuted }}>
                     {beat + 1}

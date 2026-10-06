@@ -36,7 +36,7 @@ export function VisitResultNotice({ result }: VisitResultNoticeProps) {
       // A flagged check-in is saved all the same; the card says why it is flagged (DECISIONS #70).
       const flag = locationFlagText(t, result.locationCheck, result.distanceM, true);
       return (
-        <Notice tone={flag ? 'info' : 'success'} title={title}>
+        <Notice tone={flag ? 'info' : 'success'} title={title} announced>
           {flag
             ? `${t('attendance.checkedIn', { time: timeInIndia(result.at) })} ${flag}`
             : t('attendance.checkedIn', { time: timeInIndia(result.at) })}
@@ -54,13 +54,13 @@ export function VisitResultNotice({ result }: VisitResultNoticeProps) {
       );
     case 'already_in':
       return (
-        <Notice tone="info" title={title}>
+        <Notice tone="info" title={title} announced>
           {t('attendance.alreadyIn')}
         </Notice>
       );
     case 'already_out':
       return (
-        <Notice tone="info" title={title}>
+        <Notice tone="info" title={title} announced>
           {t('attendance.alreadyOut')}
         </Notice>
       );

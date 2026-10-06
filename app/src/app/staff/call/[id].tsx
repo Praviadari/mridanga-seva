@@ -12,6 +12,7 @@ import { Linking } from 'react-native';
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { ChoiceGroup } from '@/components/choice-group';
+import { FormErrorSummary } from '@/components/form-error-summary';
 import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
 import { PersonHeader } from '@/components/person-header';
@@ -221,9 +222,10 @@ export default function CallLogScreen() {
         />
       </Section>
 
+      <FormErrorSummary errors={errors} />
       {serverError ? <Notice tone="error">{serverError}</Notice> : null}
       {confirmingLeft ? (
-        <Notice tone="info" title={t('callLog.confirmLeftTitle', { name: context.fullName })}>
+        <Notice tone="info" title={t('callLog.confirmLeftTitle', { name: context.fullName })} announced>
           {t('callLog.confirmLeftBody')}
         </Notice>
       ) : null}
