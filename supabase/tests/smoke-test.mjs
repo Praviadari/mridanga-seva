@@ -2745,8 +2745,9 @@ check('... and a table made later by the owner is not given to anon', (await asO
   `select has_table_privilege('anon', 'public.zz_sweep_probe', 'SELECT') as ok`))[0].ok === false);
 await asOwner('drop table public.zz_sweep_probe');
 // A login still waiting for a role (pending) reads no row of any table or view, except its own
-// profile and the reference lists open to every signed-in person (slice 7 narrows those).
-const openToAll = new Set(['settings', 'centres', 'levels', 'syllabus_items', 'groups']);
+// profile and the group names open to every signed-in person. Since 0027 (slice 7) settings, centres,
+// levels and the syllabus are for class roles only, so they are swept too.
+const openToAll = new Set(['groups']);
 const pendingReads = [];
 for (const { relname } of await asOwner(`select relname from pg_class
   where relnamespace = 'public'::regnamespace and relkind in ('r', 'v', 'm', 'p') order by relname`)) {

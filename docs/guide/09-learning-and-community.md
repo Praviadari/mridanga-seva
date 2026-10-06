@@ -297,6 +297,12 @@ Step by step: [students](02-student-guide.md#slokas-ishtagoshti),
 [coordinators and editors](03-coordinator-guide.md#slokas-ishtagoshti),
 [the Facilitator](04-facilitator-guide.md#slokas-ishtagoshti).
 
+**Free for everyone.** People outside the class may join Ishtagoshti alone: they create an account,
+give their year of birth (and a phone if they like) and agree to the notice; under 18, a 6-digit code
+goes to the parent's email and nothing opens until it is typed in. They read the slokas and keep their
+own notes and ticks, and see nothing else of the class. The Facilitator sees the list and may block
+([DECISIONS.md #88](../DECISIONS.md); steps for them in the
+[student guide](02-student-guide.md#ishtagoshti-for-people-outside-the-class-free)).
 ## Team tools: instruments, duty roster, suggestions
 
 For the people who run the class ([DECISIONS.md #65](../DECISIONS.md)):
@@ -344,8 +350,9 @@ The Mridanga team's **own** fund, recorded in the app ([DECISIONS.md #80](../DEC
 These parts of the approved plan are **not built yet**:
 
 - **Door tablet**: a temple tablet at the door where students check themselves in.
-- **More Ishtagoshti**: a memorise mode, discussion with moderation, sessions, recitation review,
-  and a free public sign-up for sloka study only.
+- **More Ishtagoshti**: a memorise mode, discussion with moderation, sessions and recitation review.
+- **Emails to parents** for the free Ishtagoshti sign-up: built, switched on once the team has a
+  Brevo account (until then children under 18 cannot finish joining), with the team's consent wording.
 - **Face attendance** (Phase 3): only with consent, after the consent flow for it exists.
 
 ---

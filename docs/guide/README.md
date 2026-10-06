@@ -54,7 +54,7 @@ The state on **5 October 2026**, on the main code:
 | Attendance by QR code or by name; who is here now; check out all; location flag | Practice tools: metronome, taal player, both drum heads, practice timer and log | More Ishtagoshti: memorise mode, discussion, sessions, free public sign-up |
 | Student list and profile; follow-up calls with reasons | Lesson player: speed, A-B loop, mirror, camera angles; Record myself | Face attendance, only with consent (Phase 3) |
 | Syllabus tick-off; syllabus editor; lessons (YouTube, video file, PDF, photo) | Events (Going / Maybe / Not going, performers, who came) and polls | |
-| Announcements with audiences, files, "seen by", private replies; groups; Android notifications | Ishtagoshti sloka study: themes, sloka of the day, recitation, notes | |
+| Announcements with audiences, files, "seen by", private replies; groups; Android notifications | Ishtagoshti sloka study: themes, sloka of the day, recitation, notes; free public sign-up | |
 | | Class fund: income and expenses, approval over ₹2,000 by a second person, bills, month by month, CSV | |
 | Home screens; attendance history; my profile; notifications inbox | Instruments, duty roster, material suggestions | |
 | Coordinators and roles; student database and Excel import; settings; audit log; reports with CSV; centres | | |

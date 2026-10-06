@@ -253,6 +253,14 @@ it the sloka of that day** fixes it for a date. Three **Sample** slokas and two 
 there to show how it looks: delete or replace them when the real ones are typed in
 ([DECISIONS.md #57](../DECISIONS.md)).
 
+**Ishtagoshti subscribers** (Phase 2): people outside the class may join the sloka study for free
+(see the [student guide](02-student-guide.md#ishtagoshti-for-people-outside-the-class-free)). On the
+Slokas page, **Open the subscriber list** shows how many are reading, waiting for a parent's code or
+blocked, the joins per week, and the list. Tap a person to see their year of birth, phone, a minor's
+parent and whether the parent confirmed; **Block** (with a reason only you see) or **Unblock**.
+Coordinators do not see subscribers at all, and subscribers see nothing of the class. They are not
+in the "waiting for a role" list on Coordinators. The notice and consent texts are still
+placeholders until the team gives the wording ([DECISIONS.md #88](../DECISIONS.md)).
 ## Team tools: suggestions, instruments, duty roster
 
 Phase 2 ([DECISIONS.md #65](../DECISIONS.md)). Coordinators' side: [Coordinator guide](03-coordinator-guide.md#team-tools-instruments-duty-roster-suggesting-a-lesson).
@@ -288,7 +296,7 @@ These Phase 2 tools have their own page, with every step for the Facilitator:
 - The [class fund](09-learning-and-community.md#class-fund): mark treasurers on a coordinator's page, set the
   approval and bill limits in Settings, keep the categories, approve or decline big expenses.
 
-Still to come: the door tablet, more of Ishtagoshti (with a free public sign-up),
+Still to come: the door tablet, more of Ishtagoshti,
 and face attendance in Phase 3 ([still to come](09-learning-and-community.md#still-to-come)).
 
 ---

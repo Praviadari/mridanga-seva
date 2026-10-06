@@ -118,7 +118,7 @@ Volunteers' remarks and a volunteer's mock-up (the ring of circles around the dr
 | Phase | What it brings | Dates (plan) |
 |---|---|---|
 | **1. Run the class** | Registration and consent, QR attendance, follow-up calls, syllabus and lessons, announcements and groups, dashboards, admin screens, reports | Build to 15 Nov 2026 · pilot at Abids 16-29 Nov · **live 1 Dec 2026** |
-| **2. Learning and community** | Assessments, promotion approval, practice tools (metronome, taal player, two-head view of the drum, practice log), lesson player, events, polls, instruments, duty roster, Ishtagoshti (sloka study, later free to anyone); still to build: door tablet, fund records | Mostly built early (Oct 2026), tried on the test app · **live 1 Mar 2027** (plan) |
+| **2. Learning and community** | Assessments, promotion approval, practice tools (metronome, taal player, two-head view of the drum, practice log), lesson player, events, polls, instruments, duty roster, Ishtagoshti (sloka study, also free to anyone outside the class); still to build: door tablet, fund records | Mostly built early (Oct 2026), tried on the test app · **live 1 Mar 2027** (plan) |
 | **3. Face attendance** | Attendance by face recognition, only with consent | **Live 30 Apr 2027**, before India's data-protection deadline of 13 May 2027 |
 
 **Phase 2 was built early, beside Phase 1, in slices on separate branches, and merged into the main
@@ -134,10 +134,10 @@ code from 3 to 5 Oct 2026.** Each slice was checked like any other change. It ne
 | 4. Media | 3 Oct | The lesson player (speed, A-B loop, mirror, camera angles), Record myself, recording in the app for assessments and voice notes |
 | 6. Ishtagoshti part 1 | 5 Oct | The Slokas tab: themes, the sloka of the day, recitations, private notes, memorised ticks; editors type the temple's own translations |
 | 5. Events and polls | 5 Oct | Events with answers, performers and who came; polls, anonymous if wanted |
+| 7. Ishtagoshti part 2 | 6 Oct | A free public sign-up for sloka study only: a public member reads the slokas and nothing of the class; under 18, a code goes to the parent's email first; the Facilitator's subscriber list can block. A test checks, as such a member, every table, file store and function |
 | 8. Team tools | 5 Oct | Instruments with lending and condition, the duty roster, material suggestions |
 | Location check | 5 Oct | A check-in records whether the marking phone was at the centre; outside is allowed but flagged |
 
-Slice 7 (a free public sign-up for Ishtagoshti) is not built yet.
 The two-head view answers a real problem: a student watching the teacher cannot see both drum
 heads at once.
 
@@ -184,7 +184,7 @@ Honesty about gaps is part of trust. As of 5 Oct 2026:
   to a team account ([OPERATIONS.md "Handing over"](../OPERATIONS.md#handing-over)).
 
 **Phase 2 still to build:** the door tablet, more of Ishtagoshti (memorise mode,
-discussion, sessions, recitation review, a free public sign-up).
+discussion, sessions, recitation review).
 
 **Not chosen yet:** notifications on iPhone, the Play Store and App Store.
 

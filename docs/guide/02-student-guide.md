@@ -230,6 +230,22 @@ The **Slokas** tab is for studying the scriptures, theme by theme (Phase 2).
 - **Themes** gather slokas on one subject, with questions to think about before the next
   Ishtagoshti. **All slokas** has a search.
 
+### Ishtagoshti for people outside the class (free)
+
+Anyone may join the sloka study without joining the mridanga class (Phase 2):
+
+1. **Create an account** (name, email, password) and open the link in the confirmation email.
+2. Sign in. The **Waiting for access** page shows **Ishtagoshti, free for everyone**: tap **Join
+   Ishtagoshti**.
+3. Type the **year you were born** and, if you like, a phone number (only the Facilitator sees it).
+   Read the notice and tick **I have read this and agree**.
+4. **Under 18:** type your parent's name and email and tick that they know. The app emails your
+   parent a 6-digit code; ask them for it and type it in. Nothing opens before that.
+5. You get two tabs: **Slokas** (as above, with your own notes and memorised ticks) and
+   **Account** (language, **Leave Ishtagoshti**, which deletes your details, notes and ticks, and
+   **Sign out**). To learn mridanga too, register with a coordinator at the centre using the same
+   email: your notes stay with you.
+
 ## Assessments, practice, events and polls
 
 These Phase 2 tools have their own page, with every step for students:

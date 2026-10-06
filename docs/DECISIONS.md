@@ -1943,3 +1943,9 @@ fingerprint stays 185e839f. Before real use: the team's wording; a Brevo account
 verified sender in the Vault (OPERATIONS.md "Parent codes by email"); "Confirm email" ON (joining
 needs a confirmed email, else anyone could join with someone else's address). Not built: erasing the
 login itself (Supabase Auth admin), a notice to the Guru on a new join, I4-I13.
+
+**Rebased on the security round (6 Oct 2026).** Its consent register (#74) belongs to a student record
+(`consents.student_id`); a public subscriber has none, so the parent's confirmation stays in
+`ig_subscribers.parent_confirmed_at`, set only by the server like #74's `given_at`, with the code as
+the proof. 0025 changes none of 0027's rules. Its pending-login sweep now also covers settings,
+centres, levels and the syllabus, which 0027 closes to logins without a class role.
