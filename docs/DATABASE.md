@@ -23,13 +23,20 @@ in number order:
 | `0017_promotion.sql` | **Phase 2** (0014_promotion on its branch and on TEST). Nominations, coordinators' feedback, the Guru's decision; only the Guru changes a level ([DECISIONS.md #53](DECISIONS.md)). See "Promotion approval (Phase 2)" |
 | `0018_practice.sql` | **Phase 2** (0016_practice on its branch and on TEST). Taals, the practice log and weekly minutes ([DECISIONS.md #54](DECISIONS.md)). See "Practice tools (Phase 2)" |
 | `0019_phase2_inbox.sql` | Every notice queued in `push_outbox` (assessments, promotion) also goes into the notifications inbox (A2) ([DECISIONS.md #55](DECISIONS.md)). See "Notifications inbox" |
+| `0020_media.sql` | **Phase 2 slice 4** (0017_media on its branch and on TEST). Lessons of kind `video` (a link to the team's own video file) with `materials.panes` (camera angles side by side) for mirror and zoom in the lesson player V3; the coordinator's voice note on a review (`assessment_submissions.voice_note`, C14) ([DECISIONS.md #56](DECISIONS.md)). See "Media (Phase 2)" |
+| `0021_ishtagoshti.sql` | **Phase 2 slice 6.** Sloka study: `ig_slokas`, `ig_themes`, `ig_theme_slokas`, `ig_daily_pins` (sloka of the day), private `ig_notes`, `ig_memorised`; the private bucket `ishtagoshti-audio` for recitations; editors marked by `profiles.ig_editor`; a sloka is published only as the temple's own text ([DECISIONS.md #57](DECISIONS.md)). See "Ishtagoshti (Phase 2)" |
+| `0022_events_polls.sql` | **Phase 2 slice 5** (0021_events_polls on its branch and on TEST). `events`, `event_rsvps`, `event_performers`, `event_attendance`, `polls`, `poll_votes`; notices and reminders through the inbox and push; the daily job `mridanga-events-polls`; anonymous polls show no choice to anyone ([DECISIONS.md #61](DECISIONS.md)). See "Events and polls (Phase 2)" |
 | `0023_team_tools.sql` | **Phase 2 slice 8.** C18 material suggestions (coordinators suggest, the Guru adds or declines), C19 inventory (items, loans, condition checks), C20 duty roster (shifts, people, the evening-before reminder) ([DECISIONS.md #65](DECISIONS.md)). See "Team tools (Phase 2)" |
+| `0024_attendance_location.sql` | The location check at check-in: `toggle_visit`, `scan_qr` and `mark_visit` take the marking phone's position and save the result and the distance (never the position) on the visit; outside the area or without a position the visit is saved and flagged; `class_report` counts the flags ([DECISIONS.md #70](DECISIONS.md)). See "Attendance" |
 | `0025_security_round.sql` | Security round (audit fixes): NULL-safe role checks in `toggle_visit` / `scan_qr`; `profile_id`, `qr_token` and `created_by` frozen for app users (links only through the linking functions); an insert-only, commit-checked, audited consent register with the signed-form tick; `withdraw_consent`, `erase_student` and the `erasures` tombstones; anon loses every table, sequence and function right ([DECISIONS.md #72-#77](DECISIONS.md)). See "Withdrawal and erasure (0025)" |
+| `0026_fund.sql` | **Phase 2 slice 9.** The class fund ledger: `fund_categories`, `fund_entries` (income and expenses in whole paise, references, optional bills in the private bucket `fund-bills`); treasurers marked by the Guru; maker-checker approval of larger expenses, nobody approves their own entry; the app records money only ([DECISIONS.md #80](DECISIONS.md)). See "Class fund (Phase 2)" |
+| `0027_ishtagoshti_public.sql` | **Phase 2 slice 7.** Free public sign-up for sloka study only: `ig_subscribers` (a pending login that joined Ishtagoshti; no new role) and `ig_parent_codes` (a 6-digit code emailed to the parent of an under-18, the verifiable consent of DPDP rule 10) ([DECISIONS.md #88](DECISIONS.md)). See "Ishtagoshti subscribers (Phase 2)" |
 | `0029_function_comments.sql` | Descriptions (`COMMENT ON`) for the eight functions that had none: `setting_int`, `today_ist`, `my_role`, `is_guru`, `is_staff`, `is_minor`, `audit_row`, `release_submission_files`. Comments only; safe to run before or after 0028 and to run again |
 
-The Phase 2 files were renumbered when Phase 2 merged into main (#55). TEST ran them under their
-old numbers (0012, 0014_promotion, 0016_practice) and needs only 0019; LIVE runs 0013 to 0019 in
-number order (OPERATIONS.md).
+The Phase 2 files were renumbered when they merged into main (#55). TEST ran some under their
+branch numbers (0012, 0014_promotion, 0016_practice, 0017_media, 0021_events_polls), so it skips
+those; LIVE runs every file from 0013 on in number order (OPERATIONS.md). 0028 is reserved for the
+second security round and not on main yet.
 
 Every table and important column also carries a `COMMENT ON` description, so you can read it in
 the Supabase dashboard (Table Editor → table → description).
