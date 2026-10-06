@@ -20,6 +20,8 @@ import { PGlite } from '@electric-sql/pglite';
 import { pgcrypto } from '@electric-sql/pglite/contrib/pgcrypto';
 import { readdirSync, readFileSync } from 'node:fs';
 
+import { runPush } from '../functions/notify-announcements/send.ts';
+
 const supabaseDir = new URL('../', import.meta.url);
 const db = new PGlite({ extensions: { pgcrypto } });
 
@@ -973,6 +975,152 @@ const [{ ok: pushFnsCallable }] = await asOwner(`select has_function_privilege('
   or has_function_privilege('authenticated', 'release_push_claim(bigint[])', 'execute')
   or has_function_privilege('authenticated', 'guard_announcement_notified()', 'execute') as ok`);
 check('app roles cannot run the push job functions', pushFnsCallable === false);
+
+// ---------------------------------------------------------------- the push queue (0031, audit brief 11)
+// The Edge Function's sending part (send.ts) runs here against the real SQL; Expo is imitated and
+// records every message it delivers. FOREIGN is a token of another Expo project: Expo refuses a
+// request that mixes it with ours (PUSH_TOO_MANY_EXPERIENCE_IDS).
+const FOREIGN = 'ExponentPushToken[foreignAppXyz]';
+const delivered = [];
+function expo({ gone = [], down = false, rateLimited = [] } = {}) {
+  return async (messages) => {
+    if (down) return { kind: 'failed', reason: 'http_503' };
+    const tokens = messages.map((m) => m.to);
+    if (tokens.includes(FOREIGN) && tokens.length > 1) {
+      return { kind: 'refused', status: 400, code: 'PUSH_TOO_MANY_EXPERIENCE_IDS',
+        details: { '@mridanga-seva/mridanga-seva': tokens.filter((t) => t !== FOREIGN), '@someone/other-app': [FOREIGN] } };
+    }
+    return { kind: 'ok', tickets: messages.map((m) => {
+      if (gone.includes(m.to)) return { status: 'error', details: { error: 'DeviceNotRegistered' } };
+      if (rateLimited.includes(m.to)) return { status: 'error', details: { error: 'MessageRateExceeded' } };
+      delivered.push(`${m.data.announcementId ?? m.data.url}:${m.to}`);
+      return { status: 'ok', id: 'x' };
+    }) };
+  };
+}
+/** The Edge Function's database calls, as the service role. */
+const pushRpc = async (name, args) => {
+  try {
+    if (name === 'claim_push_queue') {
+      const rows = await asApp('service_role', null, 'select * from claim_push_queue()');
+      return { data: rows.map((r) => ({ ...r, message_id: Number(r.message_id), announcement_id: r.announcement_id === null ? null : Number(r.announcement_id) })), error: null };
+    }
+    await asApp('service_role', null, 'select finish_push($1::uuid, $2::bigint[], $3::bigint[], $4::jsonb, $5::jsonb)',
+      [args.p_claim, args.p_sent, args.p_retry, JSON.stringify(args.p_refused), JSON.stringify(args.p_summary)]);
+    return { data: null, error: null };
+  } catch (failure) {
+    return { data: null, error: { message: String(failure.message ?? failure) } };
+  }
+};
+const quietRun = async (post) => {
+  const realError = console.error;
+  console.error = () => {};
+  try { return await runPush(pushRpc, post); } finally { console.error = realError; }
+};
+const postAll = async (title) => (await asApp('authenticated', coordinator,
+  `insert into announcements (title, body, audience) values ($1, 'Sunday 17:00', 'all') returning id`, [title]))[0].id;
+const deliveredFor = (id) => delivered.filter((d) => d.startsWith(`${id}:`)).map((d) => d.slice(String(id).length + 1));
+const queueOf = (id) => asOwner(`select token, sent_at, failed, tries from push_queue where announcement_id = ${id} order by token`);
+const makeDue = () => asOwner('update push_queue set next_try_at = now() where sent_at is null and failed is null');
+await refuses('an app user cannot claim the push queue (0031)', () => asApp('authenticated', guru, 'select * from claim_push_queue()'));
+await refuses('... nor read it', () => asApp('authenticated', guru, 'select * from push_queue'));
+
+// D2-01: one foreign token and one stale phone in the audience.
+await registerToken(meera, FOREIGN);
+const pq_q1 = await postAll('Queue one');
+const pq_run1 = await quietRun(expo({ gone: [token(1)] }));
+const pq_rows1 = await queueOf(pq_q1);
+const pq_ours1 = pq_rows1.filter((r) => r.token !== FOREIGN && r.token !== token(1));
+check('D2-01: a foreign token and a stale phone do not block the others: every other phone gets it once',
+  pq_ours1.length >= 1 && pq_ours1.every((r) => r.sent_at !== null) && deliveredFor(pq_q1).sort().join() === pq_ours1.map((r) => r.token).sort().join(),
+  JSON.stringify({ run1: pq_run1, delivered: deliveredFor(pq_q1) }));
+check('... the foreign token is set aside (OtherProject), not sent and not deleted',
+  pq_rows1.find((r) => r.token === FOREIGN)?.failed === 'OtherProject' && !deliveredFor(pq_q1).includes(FOREIGN)
+  && (await asOwner(`select 1 from push_tokens where token = '${FOREIGN}'`)).length === 1);
+check('... only the token Expo calls DeviceNotRegistered is deleted',
+  pq_rows1.find((r) => r.token === token(1))?.failed === 'DeviceNotRegistered'
+  && (await asOwner(`select 1 from push_tokens where token = '${token(1)}'`)).length === 0);
+check('... and a second run sends nothing', (await quietRun(expo())).messages === 0);
+const [pq_status1] = await asOwner('select last_run_at, last_run from push_status');
+check('push_status keeps the last run\'s counts', pq_status1.last_run_at !== null && pq_status1.last_run.sent === pq_ours1.length
+  && pq_status1.last_run.refused === 2, JSON.stringify(pq_status1.last_run));
+await asOwner(`delete from push_tokens where token = '${FOREIGN}'`);
+await registerToken(arjun, token(1));
+
+// A failed send is tried again later, once, and never sent twice.
+const pq_q2 = await postAll('Queue two');
+const down = await quietRun(expo({ down: true }));
+check('Expo down: nothing sent, every row waits for a later try', down.sent === 0 && down.retry === down.messages && down.messages >= 2
+  && deliveredFor(pq_q2).length === 0, JSON.stringify(down));
+check('... not in the next minute (it waits 2 minutes)', (await quietRun(expo())).messages === 0
+  && (await asOwner('select send_due_push() as r'))[0].r === 'nothing_due');
+await makeDue();
+check('... the job sees the retry as due', (await asOwner('select send_due_push() as r'))[0].r === 'not_set_up');
+const retried = await quietRun(expo({ rateLimited: [token(2)] }));
+await makeDue();
+const pq_last = await quietRun(expo());
+const pq_rows2 = await queueOf(pq_q2);
+check('a retried push reaches each phone exactly once; a phone Expo turned away is tried again alone',
+  retried.retry === 1 && pq_last.messages === 1 && pq_last.sent === 1 && pq_rows2.every((r) => r.sent_at !== null)
+  && deliveredFor(pq_q2).length === pq_rows2.length && new Set(deliveredFor(pq_q2)).size === pq_rows2.length,
+  JSON.stringify({ retried, last: pq_last, delivered: deliveredFor(pq_q2) }));
+
+// A run that stops between claim and send (D2-04), and a late answer from it (R2G3-05).
+const pq_q3 = await postAll('Queue three');
+const [{ claim: lostClaim }] = await asApp('service_role', null, 'select * from claim_push_queue()');
+check('a claimed row is not claimed again while its run may still be sending', (await quietRun(expo())).messages === 0);
+await asOwner(`delete from push_tokens where token = '${token(2)}'`);
+await makeDue();
+const pq_resumed = await quietRun(expo());
+const pq_rows3 = await queueOf(pq_q3);
+check('... after the lease it is sent by the next run, once',
+  pq_resumed.sent >= 1 && pq_rows3.filter((r) => r.token !== token(2)).every((r) => r.sent_at !== null && r.tries === 2)
+  && deliveredFor(pq_q3).length === pq_rows3.filter((r) => r.token !== token(2)).length, JSON.stringify({ resumed: pq_resumed, rows3: pq_rows3 }));
+check('... a phone signed out meanwhile is not sent to (token_gone)', pq_rows3.find((r) => r.token === token(2))?.failed === 'token_gone'
+  && !deliveredFor(pq_q3).includes(token(2)));
+const pq_q3ids = (await asOwner(`select id from push_queue where announcement_id = ${pq_q3}`)).map((r) => Number(r.id));
+await asApp('service_role', null, 'select finish_push($1::uuid, $2::bigint[], $3::bigint[], $4::jsonb, $5::jsonb)',
+  [lostClaim, [], pq_q3ids, '{}', '{}']);
+check('... and the stopped run\'s late answer changes nothing', (await queueOf(pq_q3)).every((r) => r.sent_at !== null || r.failed !== null)
+  && (await quietRun(expo())).messages === 0);
+await registerToken(meera, token(2));
+
+// Notices from push_outbox (0016) go through the same queue, with their own screen.
+await asOwner(`insert into push_outbox (profile_id, title, body, url) values ('${meera}', 'Kirtan', 'New event.', '/student/events/9'),
+  ('${meera}', 'Odd', 'x', 'https://example.com')`);
+const pq_notices = await quietRun(expo());
+check('queued notices are sent with their screen; one asking for another address is refused (bad_url)',
+  pq_notices.sent === 1 && pq_notices.refused === 1 && delivered.includes(`/student/events/9:${token(2)}`)
+  && (await asOwner(`select failed from push_queue where url = 'https://example.com'`))[0]?.failed === 'bad_url', JSON.stringify(pq_notices));
+await db.exec(`delete from notifications where profile_id = '${meera}' and url in ('/student/events/9', 'https://example.com');
+  delete from push_outbox where profile_id = '${meera}' and url in ('/student/events/9', 'https://example.com');`);
+
+// R2G3-01: the job sends the push secret only to a Supabase project's https address.
+await db.exec(`create schema net;
+  create table net.sent (url text, headers jsonb, body jsonb);
+  create function net.http_post(url text, body jsonb default '{}', params jsonb default '{}', headers jsonb default '{}',
+    timeout_milliseconds int default 5000) returns bigint language sql as
+    $$ insert into net.sent values (url, headers, body); select 1::bigint $$;
+  create schema vault;
+  create table vault.decrypted_secrets (name text, decrypted_secret text);`);
+const callWith = async (url, secret) => {
+  await db.exec(`delete from vault.decrypted_secrets; insert into vault.decrypted_secrets values
+    ('mridanga_project_url', '${url}'), ('mridanga_push_secret', '${secret}')`);
+  return (await asOwner(`select call_notify_function('{}'::jsonb) as r`))[0].r;
+};
+const longSecret = 'a1'.repeat(32);
+check('R2G3-01: an http:// or foreign address is not called', (await callWith('http://abcdefghijklmnopqrst.supabase.co', longSecret)) === 'not_set_up'
+  && (await callWith('https://evil.example', longSecret)) === 'not_set_up' && (await asOwner('select * from net.sent')).length === 0);
+check('... nor with a secret shorter than 32 characters', (await callWith('https://abcdefghijklmnopqrst.supabase.co', 'short')) === 'not_set_up'
+  && (await asOwner('select * from net.sent')).length === 0);
+check('... and push_status says so (R2G3-03)', (await asOwner('select last_job_result from push_status'))[0].last_job_result === 'not_set_up');
+const pq_called = await callWith('https://abcdefghijklmnopqrst.supabase.co/', longSecret);
+const [pq_call] = await asOwner('select url, headers from net.sent');
+check('a project address and a long secret: the function is called', pq_called === 'called'
+  && pq_call?.url === 'https://abcdefghijklmnopqrst.supabase.co/functions/v1/notify-announcements'
+  && pq_call.headers['x-push-secret'] === longSecret
+  && (await asOwner('select last_job_result from push_status'))[0].last_job_result === 'called');
+await db.exec('drop schema net cascade; drop schema vault cascade;');
 
 // ---------------------------------------------------------------- assessments (0016, Phase 2)
 const [aBucket] = await asOwner(`select public, file_size_limit, allowed_mime_types from storage.buckets where id = 'assessment-files'`);
@@ -2764,7 +2912,8 @@ for (const { relname } of await asOwner(`select relname from pg_class
 }
 check('grant sweep: a pending login reads nothing but its own profile and the open lists', pendingReads.length === 0, pendingReads.join(' '));
 const internal = ['link_login_to_student(uuid,text)', 'refresh_student_statuses()', 'close_open_visits()', 'claim_due_push()',
-  'release_push_claim(bigint[])', 'send_due_push()', 'privacy_caller_ok()', 'visit_location_result(jsonb,smallint)'];
+  'release_push_claim(bigint[])', 'send_due_push()', 'privacy_caller_ok()', 'visit_location_result(jsonb,smallint)',
+  'claim_push_queue()', 'finish_push(uuid,bigint[],bigint[],jsonb,jsonb)', 'call_notify_function(jsonb)'];
 const openInternal = [];
 for (const f of internal) {
   if ((await asOwner(`select has_function_privilege('authenticated', '${f}', 'execute') as ok`))[0].ok) openInternal.push(f);

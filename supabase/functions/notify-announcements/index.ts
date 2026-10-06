@@ -1,31 +1,25 @@
-// Supabase Edge Function notify-announcements: sends a push notification to the phones of the
-// people a newly published announcement is addressed to. Called every minute, only when an
-// announcement is waiting, by the database job send_due_push() (migration 0011) through pg_net.
+// Supabase Edge Function notify-announcements: sends push notifications to the phones of the
+// people a newly published announcement, or a queued notice (assessment, promotion, event, poll,
+// fund, roster), is addressed to. Called every minute, only when something is waiting, by the
+// database job send_due_push() through pg_net.
 //
-// Steps: check the shared secret → claim_due_push() marks the waiting announcements notified and
-// returns one row per phone → one message per phone to Expo's push service, 100 per request →
-// tokens Expo no longer knows are deleted. If no request got through at all (for example Expo's
-// service was down), the announcements are put back so the next run tries again.
+// Steps (since migration 0031, docs/DECISIONS.md #112-#115): check the shared secret →
+// claim_push_queue() queues what fell due, one row per phone, and claims the waiting rows → one
+// message per row to Expo's push service, 100 per request → finish_push() records each row as
+// sent, to try again later, or refused. One bad token no longer stops the others, and a row is
+// never sent twice by a retry. The sending itself is ./send.ts (tested in supabase/tests).
 //
-// Since migration 0016 it also sends the queued assessment notifications (claim_push_outbox), and
-// when the daily job asks with {"cleanup": true}, deletes recordings 30 days past their review.
+// When the daily job asks with {"cleanup": true}, it also deletes recordings 30 days past their
+// review (migration 0016).
 //
 // Runs with the service role, which bypasses row-level security; that key never leaves Supabase.
+// Logs counts and Expo error codes only, never tokens or texts.
 // Deploy and settings: docs/OPERATIONS.md "Push notifications". Why: docs/DECISIONS.md #33.
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
-import {
-  batches,
-  toMessages,
-  toOutboxMessages,
-  unregisteredTokens,
-  type ClaimedRow,
-  type OutboxRow,
-  type PushTicket,
-} from './messages.ts';
-
-const EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send';
+import { batches } from './messages.ts';
+import { EXPO_PROJECT, expoPost, runPush, type Rpc } from './send.ts';
 
 /** Answers the caller with a small JSON object. */
 function reply(status: number, body: Record<string, unknown>): Response {
@@ -99,19 +93,6 @@ Deno.serve(async (request) => {
   const requestBody = (await request.json().catch(() => ({}))) as { cleanup?: boolean };
   const cleaned = requestBody.cleanup ? await removeExpiredFiles(db) : 0;
 
-  const { data, error } = await db.rpc('claim_due_push');
-  if (error) {
-    console.error('claim_due_push failed', error.message);
-    return reply(500, { error: 'claim_failed' });
-  }
-  const rows = (data ?? []) as ClaimedRow[];
-  // Assessment notifications (migration 0016): already worded per person, with the screen to open.
-  const queued = await db.rpc('claim_push_outbox');
-  if (queued.error) console.error('claim_push_outbox failed', queued.error.message);
-  const outboxRows = (queued.data ?? []) as OutboxRow[];
-  const messages = [...toMessages(rows), ...toOutboxMessages(outboxRows)];
-  const groups = batches(messages);
-
   // An access token is needed only if "enhanced push security" is switched on for the Expo account.
   const accessToken = Deno.env.get('EXPO_ACCESS_TOKEN');
   const headers: Record<string, string> = {
@@ -121,56 +102,11 @@ Deno.serve(async (request) => {
     ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
   };
 
-  let sent = 0;
-  let failedBatches = 0;
-  const gone: string[] = [];
-  for (const batch of groups) {
-    try {
-      const response = await fetch(EXPO_PUSH_URL, { method: 'POST', headers, body: JSON.stringify(batch) });
-      if (!response.ok) {
-        failedBatches++;
-        console.error('Expo push request refused', response.status, await response.text());
-        continue;
-      }
-      const tickets = ((await response.json()) as { data?: PushTicket[] }).data ?? [];
-      sent += tickets.filter((ticket) => ticket.status === 'ok').length;
-      gone.push(...unregisteredTokens(batch, tickets));
-      for (const ticket of tickets) {
-        if (ticket.status === 'error' && ticket.details?.error !== 'DeviceNotRegistered') {
-          // For example InvalidCredentials: the FCM key is missing or wrong (docs/OPERATIONS.md).
-          console.error('Expo push ticket error', ticket.details?.error, ticket.message);
-        }
-      }
-    } catch (failure) {
-      failedBatches++;
-      console.error('Expo push request failed', String(failure));
-    }
-  }
-
-  const announcementIds = [...new Set(rows.map((row) => row.announcement_id))];
-  if (groups.length > 0 && failedBatches === groups.length) {
-    // Nothing reached Expo: try again next minute. (When only some batches failed, the others
-    // were delivered; trying again would send those people the same notification twice.)
-    const released = await db.rpc('release_push_claim', { p_ids: announcementIds });
-    if (released.error) console.error('release_push_claim failed', released.error.message);
-    const outboxIds = [...new Set(outboxRows.map((row) => row.outbox_id))];
-    if (outboxIds.length > 0) {
-      const back = await db.rpc('release_push_outbox', { p_ids: outboxIds });
-      if (back.error) console.error('release_push_outbox failed', back.error.message);
-    }
-  }
-  if (gone.length > 0) {
-    const removed = await db.from('push_tokens').delete().in('token', gone);
-    if (removed.error) console.error('removing old tokens failed', removed.error.message);
-  }
-
-  return reply(200, {
-    announcements: announcementIds.length,
-    assessmentNotes: outboxRows.length,
-    removedFiles: cleaned,
-    messages: messages.length,
-    sent,
-    failedBatches,
-    removedTokens: gone.length,
-  });
+  const rpc: Rpc = async (name, args) => {
+    const { data, error } = await db.rpc(name, args);
+    return { data, error: error ? { message: error.message } : null };
+  };
+  const result = await runPush(rpc, expoPost(fetch, headers), Deno.env.get('EXPO_PROJECT') || EXPO_PROJECT);
+  if ('error' in result) return reply(500, { error: result.error, removedFiles: cleaned });
+  return reply(200, { ...result, removedFiles: cleaned });
 });

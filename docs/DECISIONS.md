@@ -641,6 +641,7 @@ the announcement's own words, not translated. Nothing is sent for replies yet, a
 receipts are read: a token is dropped only when Expo answers that the app is gone. Setting
 `notified_at` is not copied to the audit log. iPhone web push needs a service worker and VAPID
 keys, and the iPhone app added to the home screen (iOS 16.4 or later): a later decision.
+**Corrected 6 Oct 2026 (#112-#115):** the claim step did lose or repeat pushes when a run failed half-way (audit D2-01, D2-04); since 0031 each phone's push is a queue row of its own.
 
 ## 34. google-services.json is in the repository — 30 Sep 2026
 
@@ -2035,3 +2036,67 @@ exactly 18 (kept), a 17-year-old added straight to the table, a guardian with a 
 name, and a minor's dob corrected to an adult's and back.
 
 **Consequences.** #101-#103 were reserved for this round and are left unused.
+
+## 112. Pushes go through a per-phone queue — 6 Oct 2026
+
+**Context.** The audit (brief 11; D2-01, D2-03, D2-04, R2G3-05) found that the Edge Function
+claimed whole announcements and sent up to 100 phones in one request to Expo. Expo refuses a whole
+request when it holds a token of another Expo project, so one foreign token, saved by any
+signed-in student, stopped the push for everyone in that batch, for every announcement. A request
+that failed was retried only when every request of the run had failed; otherwise its phones were
+lost, and a retry after a partly sent run sent the others twice. Ticket errors such as
+InvalidCredentials counted as delivered.
+
+**Decision.** 0031 adds `push_queue`: one row per phone and notification, for announcements and
+for the `push_outbox` notices alike. Each row is sent, retried or given up on its own, and its
+result (`sent_at` or `failed` with a reason) is kept for 3 days. The message shapes and the screens
+a tap opens are unchanged (messages.ts). Rows older than a day are not sent, as before.
+
+**Consequences.** One bad phone affects only itself. A run reads at most 500 rows (enough for the
+class; the next minute takes the rest). `claim_due_push` and `claim_push_outbox` stay for an older
+deployed function; `push_outbox.sent_at` now means "queued".
+
+## 113. A claim has an id and a 5-minute lease; each row is retried alone — 6 Oct 2026
+
+**Context.** A run that stopped between marking an announcement notified and sending it lost the
+push; putting it back re-sent it to phones that had it (D2-04, R2G3-05).
+
+**Decision.** `claim_push_queue` gives each run a claim id and holds its rows for 5 minutes;
+`finish_push` records sent, retry or refused only for rows of its own claim. Requests that get no
+answer, 429, a 5xx or no answer within 15 seconds, and ticket errors other than
+DeviceNotRegistered and MessageTooBig, are retried after 2, 8, 18 and 32 minutes; after 5 tries the
+row is `gave_up`. A request Expo refuses as a whole (400) is split in halves until the message it
+refuses is alone; that one is refused with Expo's code. A run that stops is picked up by the next
+one after the lease. **Accepted:** if a run stops after Expo took the messages but before
+`finish_push`, those phones get the push a second time after the lease (at most once more). Expo's
+delivery receipts are still not read (#33; brief 11 does not ask for them).
+
+**Consequences.** `index.ts` is a thin wrapper; the logic is `send.ts`, tested with an imitated Expo
+in `push-messages.test.mjs` and against the real SQL in the smoke test (D2-15).
+
+## 114. Only DeviceNotRegistered deletes a token; another project's token is set aside — 6 Oct 2026
+
+**Context.** Expo names the tokens of each project in a PUSH_TOO_MANY_EXPERIENCE_IDS refusal.
+
+**Decision.** The function sends only this app's tokens (`@mridanga-seva/mridanga-seva`, or the
+`EXPO_PROJECT` function secret if set; if Expo does not name it, the project with the most tokens
+in that request) and marks the others `OtherProject`, never sent. A token is deleted only when Expo
+answers DeviceNotRegistered, and only if it still belongs to the same login. The function logs
+counts and Expo error codes, never a token, a title or Expo's answer text (D2-12).
+
+**Consequences.** A foreign token stays in `push_tokens` and costs one extra request per run in
+which it is due; the lead or the team may later decide to delete such tokens (D1b-06 is open).
+
+## 115. The push job checks its address and secret, and keeps a status row — 6 Oct 2026
+
+**Context.** `send_due_push` sent the push secret to whatever the Vault's project URL said
+(R2G3-01), and pg_cron's history cannot tell `not_set_up` from `called` (R2G3-03, D2-07).
+
+**Decision.** `call_notify_function` calls only `https://<20 letters/digits>.supabase.co` with a
+secret of at least 32 characters (OPERATIONS step 8 makes 64); anything else is `not_set_up`.
+`push_status` keeps the last job call and the last run's counts; OPERATIONS has the check query.
+
+**Consequences.** No alert or staff banner yet (D2-07's banner stays a team decision). #116-#119
+were reserved for this round and are left unused. Not done here, each a team decision or another
+brief: D1b-06 (token take-over on a shared phone), D2-02 (lock-screen text), FS1b-04 (widened
+audience), receipts (D2-03's second half).

@@ -46,7 +46,7 @@ flowchart LR
 | Database | All records, and the rules about them (who may see what, how a student's status changes) | `supabase/migrations/` |
 | Storage | Photos and PDFs on announcements, in the private bucket `announcement-files`; later student photos (only with consent). Phase 2: assessment files and students' recordings in `assessment-files` (50 MB a file, deleted 30 days after review) | Supabase Storage, rules in `supabase/migrations/0010_announcement_files.sql` and `0016_assessments.sql` |
 | Scheduled jobs | Move quiet students to *Irregular*, create follow-up calls, close check-ins left open (daily); send push notifications for new announcements (every minute) | `pg_cron`, defined in the migrations |
-| Push notifications | Tell Android phones about a new announcement; in Phase 2 also about assessments (given, reminded, reviewed, a recording sent), queued in `push_outbox` | Edge Function `supabase/functions/notify-announcements/` → Expo's push service → Firebase Cloud Messaging (OPERATIONS.md "Push notifications") |
+| Push notifications | Tell Android phones about a new announcement; in Phase 2 also about assessments (given, reminded, reviewed, a recording sent), queued in `push_outbox` | Edge Function `supabase/functions/notify-announcements/` → Expo's push service → Firebase Cloud Messaging (OPERATIONS.md "Push notifications"). Since 0031 every push is a row per phone in `push_queue`, sent, retried or given up on its own ([DECISIONS.md #112-#115](DECISIONS.md)) |
 | Email | Sends sign-up confirmation and password-reset emails | Brevo free plan, plugged into Supabase as SMTP |
 | Videos | Lesson videos stay on YouTube; the app only stores links | YouTube |
 | Web hosting | Serves the web version that iPhone users add to their home screen | Cloudflare Pages, uploaded from `app/dist` (OPERATIONS.md) |
@@ -141,6 +141,7 @@ app/
 supabase/
   migrations/          The database, in number order (docs/DATABASE.md)
   functions/           Edge Functions: notify-announcements sends the push notifications
+                        (index.ts wires send.ts; messages.ts words them)
   tests/               The database smoke test and the push message test
 ```
 
@@ -300,6 +301,8 @@ OPERATIONS.md "Publishing the web version".
    it at once ([DECISIONS.md #32](DECISIONS.md)).
 3. Within a minute of its publish time, the Edge Function sends a push notification to the
    Android phones of the people it is addressed to; a tap opens it ([DECISIONS.md #33](DECISIONS.md)).
+   Each phone is a row of `push_queue` (0031): one bad token does not stop the others, and a
+   failed send is tried again later without reaching anyone twice ([DECISIONS.md #112-#113](DECISIONS.md)).
 4. A student opens *Announcements* (S10). Row-level security gives them only the published ones
    addressed to them, and signed links to their files. Opening one saves a read receipt.
 5. Back on C15, each announcement shows "seen by N of M", worked out by the database views

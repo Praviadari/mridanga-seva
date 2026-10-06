@@ -522,6 +522,11 @@ since 3 Oct 2026; TEST and LIVE still run the older one, which ignores those row
 breaks). Praveen deploys it with step 10's command to the test project (`fhuqykssenuhczdqbafu`)
 after the Sunday 4 Oct 2026 demo, and to the live one (`qeozvvizcojzxcjgnaei`) before Phase 2's
 notices are used there. Queued test notices of the last day may then arrive on test phones.
+**Push fixes (0031, audit brief 11, 6 Oct 2026):** run `0031_push_fixes.sql` and deploy the function
+again, in either order: until both are done the old function keeps working (before 0031 runs, the
+new one answers `500 {"error":"claim_failed"}` and nothing is lost). From the repository folder:
+`npx supabase@latest functions deploy notify-announcements --project-ref <project-ref> --no-verify-jwt --use-api`.
+The secret `EXPO_PROJECT` is optional (default `@mridanga-seva/mridanga-seva`, the app's Expo project).
 **Then a new APK**, built after steps 3 and 5 (see "Building the Android app"):
 
 11. `npx eas-cli@latest build -p android --profile preview` (test project) or `--profile
@@ -545,6 +550,17 @@ notices are used there. Queued test notices of the last day may then arrive on t
     permission, or steps 3 and 5 were missing when the APK was built. The function's own log is
     under **Edge Functions → notify-announcements → Logs** (for example `InvalidCredentials` =
     the key of step 5 is missing or wrong).
+    Since 0031 the queue says what happened to each phone, without showing tokens or texts:
+    ```sql
+    select last_job_at, last_job_result, last_run_at, last_run from push_status;
+    select announcement_id, outbox_id, tries, next_try_at, sent_at, failed from push_queue order by id desc limit 20;
+    ```
+    `last_job_result` `not_set_up` with pg_net and the Vault in place = the project URL is not
+    `https://<ref>.supabase.co` or the push secret is shorter than 32 characters (step 8).
+    `last_run.errors` counts Expo's error codes; `failed` on a row: `DeviceNotRegistered` (app removed,
+    token deleted), `OtherProject` (a token of another Expo app), `token_gone` (signed out first),
+    `expired` (over a day), `gave_up` (5 tries), `bad_url`. Rows with neither `sent_at` nor `failed`
+    wait for `next_try_at`. Rows are deleted after 3 days.
 
 **Switching it off:** `select cron.unschedule('mridanga-push');` in the SQL editor stops it. To
 switch on again, `select cron.schedule('mridanga-push', '* * * * *', 'select send_due_push()');`:

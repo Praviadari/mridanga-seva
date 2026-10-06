@@ -1,7 +1,8 @@
-// The parts of the notify-announcements Edge Function that need no network: turning the rows
-// from claim_due_push() into Expo push messages, splitting them into batches, and reading Expo's
-// answer. Kept free of Deno and Supabase code so supabase/tests/push-messages.test.mjs can check
-// it with plain Node. The Edge Function itself is ./index.ts; docs/DATABASE.md "Push notifications".
+// The parts of the notify-announcements Edge Function that need no network: turning queued rows
+// (an announcement or a notice, one phone each) into Expo push messages, splitting them into
+// batches, and reading Expo's answer. Kept free of Deno and Supabase code so
+// supabase/tests/push-messages.test.mjs can check it with plain Node. Sending is ./send.ts, the
+// Edge Function itself ./index.ts; docs/DATABASE.md "Push notifications" and "Push queue (0031)".
 
 /** One row from claim_due_push() (migration 0011): one phone to notify about one announcement. */
 export type ClaimedRow = {

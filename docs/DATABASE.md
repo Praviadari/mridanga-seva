@@ -33,6 +33,7 @@ in number order:
 | `0027_ishtagoshti_public.sql` | **Phase 2 slice 7.** Free public sign-up for sloka study only: `ig_subscribers` (a pending login that joined Ishtagoshti; no new role) and `ig_parent_codes` (a 6-digit code emailed to the parent of an under-18, the verifiable consent of DPDP rule 10) ([DECISIONS.md #88](DECISIONS.md)). See "Ishtagoshti subscribers (Phase 2)" |
 | `0028_security_round_2.sql` | Security round 2 (audit brief 5): a `student` login without a student record counts as `pending`; materials for staff and students only; `email`, `created_at`, `centre_id` frozen for app users and `email` synced from the sign-in email; names without invisible characters and not a staff member's; phones with 7 to 15 digits; a listed file name cannot be uploaded again; a minor keeps a guardian with a phone ([DECISIONS.md #96-#98, #100](DECISIONS.md)). See "Security round 2 (0028)" |
 | `0029_function_comments.sql` | Descriptions (`COMMENT ON`) for the eight functions that had none: `setting_int`, `today_ist`, `my_role`, `is_guru`, `is_staff`, `is_minor`, `audit_row`, `release_submission_files`. Comments only; safe to run before or after 0028 and to run again |
+| `0031_push_fixes.sql` | Push fixes (audit brief 11): the per-phone queue `push_queue` with `claim_push_queue` / `finish_push` (one bad token no longer stops a batch; a failed or stopped send is retried, never sent twice), `push_status`, and the job calls only an https Supabase address with a 32+ character secret ([DECISIONS.md #112-#115](DECISIONS.md)). See "Push queue (0031)". Needs the Edge Function redeployed |
 
 The Phase 2 files were renumbered when they merged into main (#55). TEST ran some under their
 branch numbers (0012, 0014_promotion, 0016_practice, 0017_media, 0021_events_polls), so it skips
@@ -56,7 +57,7 @@ consent), sample visits, groups and an announcement. Never run it on the live pr
 | Attendance | `visits` | One row per check-in; `check_out` empty while the student is still there |
 | Follow-up | `call_logs`, `follow_up_tasks`, `status_history` | Every call and every status change is kept |
 | Learning | `levels`, `syllabus_items`, `student_progress`, `level_history`, `materials` | Three levels; each has an ordered syllabus |
-| Communication | `announcements`, `announcement_reads`, `announcement_replies`, `groups`, `group_members`, `push_tokens` | Groups replace the WhatsApp groups. Views `announcement_audience` and `announcement_seen` give "seen by", `announcement_reply_list` the replies with names, `group_summary` the member counts. `notifications` is each person's inbox (A2, see "Notifications inbox"). Photos and PDFs are files in the Storage bucket `announcement-files`, listed in `announcements.attachments` |
+| Communication | `announcements`, `announcement_reads`, `announcement_replies`, `groups`, `group_members`, `push_tokens`, `push_queue`, `push_status` | Groups replace the WhatsApp groups. Views `announcement_audience` and `announcement_seen` give "seen by", `announcement_reply_list` the replies with names, `group_summary` the member counts. `notifications` is each person's inbox (A2, see "Notifications inbox"). Photos and PDFs are files in the Storage bucket `announcement-files`, listed in `announcements.attachments` |
 | Assessments (Phase 2) | `assessments`, `assessment_releases`, `assessment_assignments`, `assessment_submissions`, `push_outbox` | Views `assessment_tracker` (C13) and `assessment_summary` (counts). Files in the Storage bucket `assessment-files` |
 | Promotion (Phase 2) | `promotion_nominations`, `promotion_feedback` | View `promotion_queue` (G7). See "Promotion approval (Phase 2)" |
 | Practice (Phase 2) | `taals`, `practice_logs` | Taals the S5 player loops (the Guru edits them); practice minutes from the S5 timer or typed in (S6). See "Practice tools (Phase 2)" |
@@ -414,7 +415,9 @@ deletes tokens Expo no longer knows, and, if not one request reached Expo, calls
 `release_push_claim()` so the next minute tries again. Until push is set up (pg_net, the Vault
 secrets, the deployed function), `send_due_push()` returns `not_set_up` and nothing happens.
 Setting `notified_at` is not copied to the audit log. Scheduled announcements are sent at their
-publish time; an edit is not sent again.
+publish time; an edit is not sent again. **Since 0031** the Edge Function no longer calls
+`claim_due_push` / `release_push_claim`: due announcements go into the per-phone queue, see
+"Push queue (0031)".
 
 **Private replies** (0008, [DECISIONS.md #29](DECISIONS.md)). Under an announcement a person can
 send one or more replies to its author: one `announcement_replies` row each. The app may send
@@ -1002,6 +1005,38 @@ the Storage paths (photo, recordings and voice notes) that must be deleted by ha
 - **A minor's guardian:** the commit-time check `recheck_minor_consent` asks for a guardian with a
   phone and also runs when a guardian's phone changes (`minor_needs_guardian`).
 
+## Push queue (0031)
+
+[DECISIONS.md #112-#115](DECISIONS.md). Audit brief 11.
+
+- **One row per phone.** `push_queue` holds every push to one phone: the announcement (`role`
+  picks the staff or student screen) or the `push_outbox` notice (`url`), the token, title and
+  text, `tries`, `next_try_at`, `claimed_by`, and the result: `sent_at`, or `failed` with the
+  reason. No app access at all. Rows are deleted 3 days after they were queued.
+- **`claim_push_queue()`** (Edge Function only) runs four steps in one transaction: deletes old
+  rows; queues the due announcements (as 0011: `notified_at` set, older than a day marked only)
+  and the waiting `push_outbox` rows (as 0016: `sent_at` now means "queued"), one row per phone
+  of the person; gives up on waiting rows whose token was deleted or moved to another login
+  (`token_gone`), that are more than a day old (`expired`) or were claimed 5 times (`gave_up`);
+  then claims up to 500 waiting rows with a new claim id and a 5-minute lease (`next_try_at`).
+  `for update skip locked`: two runs never take the same row.
+- **`finish_push(claim, sent, retry, refused, summary)`** (Edge Function only) records each row of
+  its own claim: sent; to retry after 2, 8, 18, 32 minutes (after the 5th try `gave_up`); or
+  refused with a reason (`DeviceNotRegistered`, `OtherProject`, `MessageTooBig`, `bad_url`, or
+  the code Expo gave). Only `DeviceNotRegistered` deletes the token. Rows another run has claimed
+  since are left alone, so a late answer changes nothing.
+- **Crash between claim and send:** the rows wait for their lease, then the next run sends them.
+  A run that stops *after* Expo took the messages but before `finish_push` sends them once more
+  after the lease: the one case of a double push (#113).
+- **`push_status`** (one row): `last_job_at` / `last_job_result` (`called` or `not_set_up`, each
+  call of `call_notify_function`) and `last_run_at` / `last_run` (the function's counts: messages,
+  sent, retry, refused, requests, failed requests, error codes). Never a token or a text.
+- **The job** (`send_due_push`) is also due when a queue row waits for its next try.
+  `call_notify_function` calls only an address `https://<20 letters/digits>.supabase.co` with a
+  push secret of at least 32 characters; anything else is `not_set_up`.
+- `claim_due_push`, `release_push_claim`, `claim_push_outbox` and `release_push_outbox` stay, so an
+  Edge Function deployed before 0031 still works; the new one does not call them.
+
 ## Linking a login to a student
 
 A student record can exist without a login (many students never install the app). When a person
@@ -1069,6 +1104,7 @@ switched-off login is refused like a stranger.
 | `claim_due_push()`, `release_push_claim(ids)` | Only the Edge Function (service role) | Mark waiting announcements notified and return the phones to notify; put them back when nothing could be sent |
 | `release_assessment`, `mark_assessment_seen`, `submit_assessment`, `review_submission`, `remind_assessment` | See "Assessments (Phase 2)" | Phase 2 (0016) |
 | `claim_push_outbox()`, `release_push_outbox(ids)`, `claim_expired_submission_files()`, `release_submission_files(ids)` | Only the Edge Function (service role) | Send the queued assessment and promotion notifications; delete expired recordings (0016) |
+| `claim_push_queue()`, `finish_push(claim, sent, retry, refused, summary)` | Only the Edge Function (service role) | Queue due pushes per phone and claim them; record each one sent, to retry or refused (0031). See "Push queue (0031)" |
 | `review_submission(…, p_voice_note)` | See "Media (Phase 2)" | Phase 2 (0020) replaces 0016's version |
 | `next_level`, `promotion_criteria`, `nominate_for_promotion`, `give_promotion_feedback`, `decide_promotion`, `withdraw_nomination`, `promotion_ready_students`, `promotion_home` | See "Promotion approval (Phase 2)" | Phase 2 (0017) |
 | `decide_material_suggestion`, `issue_inventory_item`, `return_inventory_item`, `check_inventory_item`, `save_duty_shift` | See "Team tools (Phase 2)" | Phase 2 slice 8 (0023) |
@@ -1084,7 +1120,7 @@ person's own access. The same holds for `material_file_readable`, `material_file
 `material_file_deletable` and `youtube_link_ok` (0013), `video_link_ok` (0020), and `ig_audio_readable`, `ig_audio_uploadable` and `ig_audio_path_ok` (0021), and `audience_profiles`, `clean_audience`, `event_visible_to` and `poll_is_closed` (0022).
 
 Internal functions (not called by the app, and not allowed to): `refresh_student_statuses`,
-`close_open_visits`, `send_due_push`, `handle_new_user`, `handle_user_confirmed`,
+`close_open_visits`, `send_due_push`, `call_notify_function`, `handle_new_user`, `handle_user_confirmed`,
 `link_login_to_student`, `link_student_email`, `assign_roll_no`, `check_minor_consent`, the guard
 and audit triggers (including `guard_student_progress`, `audit_student_progress`,
 `guard_announcement`, `guard_announcement_attachments`, `guard_announcement_notified`,
@@ -1110,7 +1146,7 @@ and the helpers `my_role`, `is_guru`, `is_staff`,
 |---|---|---|
 | `mridanga-status-refresh` | 00:30 UTC = 06:00 IST | `refresh_student_statuses()` — ends expired pauses, moves quiet students on, creates call tasks, flags overdue ones |
 | `mridanga-close-visits` | 15:30 UTC = 21:00 IST | `close_open_visits()` — closes visits left open, at the centre's closing time |
-| `mridanga-push` | Every minute | `send_due_push()` — calls the Edge Function `notify-announcements` when a published announcement waits for its push notification; does nothing while push is not set up (0011); since 0016 also when an assessment or promotion notification of the last day waits in `push_outbox` |
+| `mridanga-push` | Every minute | `send_due_push()` — calls the Edge Function `notify-announcements` when a published announcement waits for its push notification; does nothing while push is not set up (0011); since 0016 also when an assessment or promotion notification of the last day waits in `push_outbox`; since 0031 also when a `push_queue` row waits for its next try |
 | `mridanga-inbox-cleanup` | 01:00 UTC = 06:30 IST | `inbox_cleanup()` — deletes inbox notices older than a year (0015) |
 | `mridanga-assessments` | 03:30 UTC = 09:00 IST | `assessment_daily()` — reminders for assessments due today or tomorrow that are not sent yet; asks the Edge Function (`{"cleanup": true}`) to delete recordings 30 days past their review (0016); level-up ones 30 days after the promotion decision (0017) |
 | `mridanga-duty` | 12:30 UTC = 18:00 IST | `duty_daily()` — reminds everyone on tomorrow's duty shifts, once (0023) |
@@ -1186,7 +1222,8 @@ promotion approval (criteria, nominate, answers, Promote / Not yet / More feedba
 a level), practice tools (taals, the practice log), Phase 2 notices in the inbox, who may run each function,
 and row-level security. It needs only Node.js, no database server and no Supabase account.
 `npm test` also runs `push-messages.test.mjs`, which checks how the Edge Function words and
-batches the notifications (Node 23.6 or later reads its TypeScript directly).
+batches the notifications and how it sorts Expo's answers (send.ts, Expo imitated; Node 23.6 or later reads its
+TypeScript directly). The smoke test runs send.ts against the real push queue SQL (0031).
 
 ```bash
 cd supabase/tests
