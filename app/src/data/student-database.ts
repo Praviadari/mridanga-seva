@@ -70,6 +70,7 @@ export type DatabaseFilters = {
   area: string | 'all';
 };
 
+/** No search and every filter on 'all': the whole database (G3). */
 export const NO_DATABASE_FILTERS: DatabaseFilters = { search: '', levelId: 'all', status: 'all', mentor: 'all', area: 'all' };
 
 /** An area's spelling for comparing: "abids ", "Abids" and "ABIDS" are one area. */

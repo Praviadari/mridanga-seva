@@ -30,6 +30,7 @@ import { fetchStudentSummaries, type StudentSummary } from './student-overview';
 /** A translation key for a message. */
 type MessageKey = ParseKeys;
 
+/** Longest texts and sizes of the assessment forms (G6, C12, S7, C14); the database checks them too. */
 export const TITLE_MAX = 120;
 export const INSTRUCTIONS_MAX = 4000;
 export const NOTES_MAX = 2000;
@@ -751,6 +752,10 @@ export type ReviewForm = {
 
 export type ReviewFormErrors = Partial<Record<'scores' | 'comment' | 'outcome', MessageKey>>;
 
+/**
+ * C14: checks a review before it is saved: a score from 0 to the line's top for every rubric line, an
+ * outcome, and for a redo a comment or a voice note (#52). Returns a message key per field in error.
+ */
 export function checkReviewForm(form: ReviewForm, rubric: RubricLine[]): ReviewFormErrors {
   const errors: ReviewFormErrors = {};
   if (form.scores.length !== rubric.length || form.scores.some((s, i) => s === null || s < 0 || s > rubric[i].max)) {

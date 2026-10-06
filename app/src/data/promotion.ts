@@ -20,6 +20,7 @@ import { fetchStaff } from './student-overview';
 /** A translation key for a message. */
 type MessageKey = ParseKeys;
 
+/** Longest nomination reason, feedback comment and decision note (C22, C23, G7); the database checks them too. */
 export const REASON_MAX = 2000;
 export const COMMENT_MAX = 1000;
 export const NOTE_MAX = 2000;
@@ -277,6 +278,7 @@ export async function fetchPromotionList(myId: string): Promise<PromotionList | 
 /** The numbers for the staff homes (promotion_home). */
 export type PromotionHome = { toDecide: number; collecting: number; toAnswer: number; ready: number };
 
+/** The Promotions card on C1 and the Level-up queue card on G1; null when it could not be loaded. */
 export async function fetchPromotionHome(): Promise<PromotionHome | null> {
   const { data, error } = await supabase.rpc('promotion_home');
   if (error || !data) return null;

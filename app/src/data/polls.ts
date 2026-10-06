@@ -17,6 +17,7 @@ import { isNetworkError } from './errors';
 
 type MessageKey = ParseKeys;
 
+/** Longest question and answer, and how many answers a poll has (C17); the database checks them too. */
 export const QUESTION_MAX = 200;
 export const OPTION_MAX = 80;
 export const OPTIONS_MIN = 2;
@@ -253,11 +254,13 @@ export type PollForm = {
 
 export type PollFormErrors = Partial<Record<keyof PollForm, MessageKey>>;
 
+/** The form of a new poll: two empty answers, not anonymous, results after voting, closing at 20:00. */
 export const EMPTY_POLL_FORM: PollForm = {
   question: '', options: ['', ''], anonymous: false, resultsWhen: 'after_vote', date: '', time: '20:00', audience: null,
   levelId: null, groupId: null,
 };
 
+/** The edit form filled from a saved poll; the closing time is shown as day and time in India. */
 export function formFromPoll(p: Poll): PollForm {
   return {
     question: p.question,

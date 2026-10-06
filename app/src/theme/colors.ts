@@ -127,6 +127,7 @@ export const qrColours = {
   light: '#FFFFFF',
 } as const;
 
+/** The same colour names for the phone's dark mode, checked for contrast like lightPalette. */
 export const darkPalette: Palette = {
   background: '#16120F',
   surface: '#221C18',

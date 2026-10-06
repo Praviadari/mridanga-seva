@@ -1,11 +1,12 @@
 // The khol (mridanga) bols the practice tools know: which head, which zone of the head, which hand
 // and fingers, and whether the stroke rings (open) or is damped (closed). Used by the taal player
 // (S5) to pick a sound and by the two-head view (V1) to light the zone and the hand.
-// Source: NOTES.md "Research: the instrument" → Bols (kksongs khol lessons 2-4). The khol, not the
-// Carnatic mridangam: its bols and strokes differ and must not be mixed in.
+// Source: the kksongs khol course, lessons 2-4 (https://www.kksongs.org/khol/); the instrument's
+// parts are explained in docs/guide/01-why-this-app.md. The khol, not the Carnatic mridangam: its
+// bols and strokes differ and must not be mixed in.
 //
 // A taal's beat is written as '-' (rest) or 1-4 bols joined with '.', e.g. 'te.re' (two half-beats),
-// as stored in the taals table (supabase/migrations/0016_practice.sql). Bols are matched without
+// as stored in the taals table (supabase/migrations/0018_practice.sql). Bols are matched without
 // their long-vowel marks (tā = ta). The baya vowels are interchangeable (ka/ke/ki, gha/ghe/ghi).
 // Unverified mappings are marked below; the Guru's taals may use other syllables, which the app
 // shows and sounds as a plain stroke without a zone.

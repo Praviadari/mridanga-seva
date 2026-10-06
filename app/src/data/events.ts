@@ -25,6 +25,7 @@ import { isNetworkError } from './errors';
 
 type MessageKey = ParseKeys;
 
+/** Longest texts of the event forms (C16); the database checks them too. */
 export const EVENT_TITLE_MAX = 120;
 export const EVENT_DESCRIPTION_MAX = 4000;
 export const EVENT_PLACE_MAX = 200;
@@ -380,6 +381,7 @@ export type EventForm = {
 
 export type EventFormErrors = Partial<Record<keyof EventForm, MessageKey>>;
 
+/** The form of a new event: everything empty; who it is for must be chosen. */
 export const EMPTY_EVENT_FORM: EventForm = {
   title: '', description: '', date: '', time: '', endTime: '', centreId: null, place: '', audience: null, levelId: null, groupId: null,
 };

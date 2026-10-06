@@ -44,6 +44,7 @@ export type AuditEntry = {
 
 /** The filters; 'all' = none. `days` 0 = any time. */
 export type AuditFilters = { table: AuditedTable | 'all'; person: string | 'all'; action: AuditAction | 'all'; days: 0 | 1 | 7 | 30 };
+/** No filter: every change, any time (G11). */
 export const NO_AUDIT_FILTERS: AuditFilters = { table: 'all', person: 'all', action: 'all', days: 0 };
 
 /** Rows per page. */

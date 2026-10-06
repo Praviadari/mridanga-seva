@@ -25,6 +25,7 @@ in number order:
 | `0019_phase2_inbox.sql` | Every notice queued in `push_outbox` (assessments, promotion) also goes into the notifications inbox (A2) ([DECISIONS.md #55](DECISIONS.md)). See "Notifications inbox" |
 | `0023_team_tools.sql` | **Phase 2 slice 8.** C18 material suggestions (coordinators suggest, the Guru adds or declines), C19 inventory (items, loans, condition checks), C20 duty roster (shifts, people, the evening-before reminder) ([DECISIONS.md #65](DECISIONS.md)). See "Team tools (Phase 2)" |
 | `0025_security_round.sql` | Security round (audit fixes): NULL-safe role checks in `toggle_visit` / `scan_qr`; `profile_id`, `qr_token` and `created_by` frozen for app users (links only through the linking functions); an insert-only, commit-checked, audited consent register with the signed-form tick; `withdraw_consent`, `erase_student` and the `erasures` tombstones; anon loses every table, sequence and function right ([DECISIONS.md #72-#77](DECISIONS.md)). See "Withdrawal and erasure (0025)" |
+| `0029_function_comments.sql` | Descriptions (`COMMENT ON`) for the eight functions that had none: `setting_int`, `today_ist`, `my_role`, `is_guru`, `is_staff`, `is_minor`, `audit_row`, `release_submission_files`. Comments only; safe to run before or after 0028 and to run again |
 
 The Phase 2 files were renumbered when Phase 2 merged into main (#55). TEST ran them under their
 old numbers (0012, 0014_promotion, 0016_practice) and needs only 0019; LIVE runs 0013 to 0019 in

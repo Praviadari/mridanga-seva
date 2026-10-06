@@ -3,8 +3,10 @@
 // or a recording with Open / Play, and the scores of a review line by line.
 //
 // Files open through signed links that work for an hour (src/data/assessment-files.ts). Audio and
-// video play in the phone's browser view (expo-web-browser, already in the app): the app has no
-// media player of its own, and adding one is a native change (a new APK).
+// video play in the phone's browser view (expo-web-browser), which handles every file type the
+// assessments accept. Built when the APK had no media player; since APK 0bfc5c14 (3 Oct 2026) the
+// app also has expo-audio and react-native-webview (the lesson player, docs/DECISIONS.md #56), so
+// playing inside the app would now be a JavaScript-only change, not a new APK.
 
 import type { TFunction } from 'i18next';
 import * as WebBrowser from 'expo-web-browser';

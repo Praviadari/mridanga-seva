@@ -1,7 +1,8 @@
 // The saffron band at the top of the three home screens (S1, C1, G1): the drum mark, "Hare
 // Krishna" and the person's name, their role, and the Hare Krishna maha-mantra as the line of the
-// day. The mantra is the only devotional text the app shows for now: it is free to use in every
-// script, while book translations are not (docs/DECISIONS.md #36). The band itself, with its
+// day. The mantra is free to use in every script, while book translations are not, so the header
+// shows only the mantra (docs/DECISIONS.md #36); slokas with the temple's own translations live in
+// the Ishtagoshti tab (#57). The band itself, with its
 // gradient and the space for the notch, is components/saffron-band.tsx. The bell at the top right opens the
 // notifications inbox (A2, components/inbox-bell.tsx).
 

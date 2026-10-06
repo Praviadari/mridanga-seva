@@ -5,7 +5,7 @@
 // struck on lights up (kinar, maidan, the edge of the syahi, the syahi, or the whole head for a flat
 // hand), with a ripple when the stroke rings (open), in time with the sound, at any tempo, offline.
 // The words under each head say the bol, the zone and the fingers (the drawing is hidden from
-// screen readers; the words carry the same). Bols and strokes: lib/bols.ts (NOTES.md "Bols").
+// screen readers; the words carry the same). Bols and strokes: lib/bols.ts (with its source).
 // Drawn with react-native-svg; it re-renders only when the bol changes (lib/use-playhead.ts).
 
 import { useTranslation } from 'react-i18next';

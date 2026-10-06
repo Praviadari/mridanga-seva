@@ -11,7 +11,10 @@ import { supabase } from '@/lib/supabase';
 
 import { isNetworkError } from './errors';
 
-/** Kinds of item (NOTES.md research table: clay khol, fibreglass Balaram/Tilak, fibre body with skin heads, brass). */
+/**
+ * Kinds of item: clay khol, fibreglass (Balaram / Tilak), fibreglass body with skin heads, brass, as in
+ * the table "Kinds of mridanga" of docs/guide/01-why-this-app.md, plus kartals and other items.
+ */
 export const ITEM_KINDS = ['clay_khol', 'fibreglass', 'fibre_skin', 'brass', 'kartals', 'other'] as const;
 export type ItemKind = (typeof ITEM_KINDS)[number];
 
@@ -212,6 +215,10 @@ export async function fetchHeldItems(by: { studentId: string } | { profileId: st
 export type ItemForm = { kind: ItemKind; label: string; notes: string; condition: Condition; conditionNote: string };
 export type ItemFormErrors = Partial<Record<'label' | 'notes' | 'conditionNote', ParseKeys>>;
 
+/**
+ * C19: checks the Guru's item form: a name of at most LABEL_MAX, notes of at most NOTES_MAX, and for a
+ * new item in any condition but Good a note saying what is wrong. Returns a message key per field in error.
+ */
 export function checkItemForm(form: ItemForm, isNew: boolean): ItemFormErrors {
   const errors: ItemFormErrors = {};
   const label = form.label.trim();
