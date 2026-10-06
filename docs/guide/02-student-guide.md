@@ -63,7 +63,7 @@ If the app shows **Waiting for access**, your account exists but is not yet join
 record. This happens when the email you signed up with is not the one on your record, or you have
 not been registered yet.
 
-- Ask a coordinator to put this email on your student record.
+- Ask the Guru to link this login to your student record.
 - Then tap **Check again**.
 - **Sign out** is on the same screen if you want to use another account.
 

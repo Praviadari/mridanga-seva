@@ -2037,6 +2037,123 @@ name, and a minor's dob corrected to an adult's and back.
 
 **Consequences.** #101-#103 were reserved for this round and are left unused.
 
+## 104. Controls have an edge you can see — 6 Oct 2026
+
+**Context.** #36 checked text colours only. The `border` colour was the only edge of a text field, an
+unticked box and an unselected choice, at about 1.4:1 on the background in both schemes: near
+invisible in sunlight or for low vision (WCAG 1.4.11 asks 3:1; audit D7-04).
+
+**Decision.** A new theme colour, `controlBorder` (light `#8C7B6C`, dark `#8A7B6E`; 3.86-4.56:1 on
+background and surface), for text fields, checkboxes, unselected choices, the syllabus tick box and
+the beat grid's empty cells. `border` stays for faint decorative lines (tables, file rows, the info
+note). Every text pair of both palettes was measured again: all 4.5:1 or more.
+
+**Consequences.** An app update only (no new APK). New controls use `controlBorder`.
+
+## 105. Screen readers hear results; long forms say why they did not save — 6 Oct 2026
+
+**Context.** On Android, TalkBack said nothing when an error, a saved call or a scan result appeared:
+`role="alert"` only names the box (audit D7-01). On a long form, a refused Save showed its messages
+under fields scrolled out of view, so the button seemed dead (D7-07).
+
+**Decision.** `src/lib/announce.ts` speaks a message with `AccessibilityInfo.announceForAccessibility`
+on the phone (the web keeps its alert/status live regions). The Notice box speaks errors and
+confirmations when they appear or change; a plain info box only when asked (attendance results, the
+Left confirmation), so standing help text is not read out on every visit. Field errors are polite
+live regions. `FormErrorSummary` shows "Some fields need a fix (n)" beside the submit button of the
+call log, the announcement forms, the event and poll forms and the Ishtagoshti sign-up (registration
+already had one).
+
+**Consequences.** Register done and call saved are announced through their green Notice. A new form
+with field errors adds `FormErrorSummary`.
+
+## 106. A failed load blocks nothing; Mine never hides the queue; long file names fit — 6 Oct 2026
+
+**Context.** One failed load of today's attendance disabled every name check-in, with no Try again
+(audit D6-03). The follow-up queue's "Mine" filter stayed on after its switch disappeared, so the
+queue looked empty (D6-04). A file name over 120 characters made a whole post fail with "try again"
+(FS3-02, and the same limit for materials and fund bills, R2G2-01).
+
+**Decision.** Attendance shows Try again, and the name rows stay tappable: without the list a row
+says Check in, and the database answers "already checked in" when the student is (`mark_visit`); the
+list is fetched again after each tap. A tap's result shows under that row, a scan's at the top. The
+queue shows everyone when "Mine" has nobody. Picked file names are cut to 120 characters keeping
+their ending (`fitFileName`).
+
+**Consequences.** App update only.
+
+## 107. When a pause ends, the mentor calls; Inactive counts from the pause end — 6 Oct 2026
+
+**Context.** The daily job turned an ended pause Irregular with no call task, and a long pause could
+jump to Inactive the same morning, never reaching the calls-due list (audit D5-01, D12a-10). The job
+also added a second open task for a student who already had one, and escalated an Inactive
+student's task even when a call had just been logged with a later date (D5-16).
+
+**Decision.** **Praveen decided (6 Oct 2026):** the day after the pause-until date the student turns
+Irregular, the mentor gets a call task (due in `call_due_days`), and the days to Inactive count from
+the day the pause ended (its `status_history` row), not from the last visit. 0030: a call task is
+added only when no open one exists; an Inactive student's open tasks are escalated once they are due.
+
+**Consequences.** The screens' "days since visit" still count from the last visit, so a student back
+from a long pause can show many days away and still be Irregular.
+
+## 108. A visit starts the retry count again; settings cannot stop the daily job — 6 Oct 2026
+
+**Context.** The failed-try count spanned separate absences, so the first unanswered call after a
+student came back could escalate to the Guru (audit D5-02). 0014 checks settings ranges, but a value
+that slipped past (the dashboard, a trigger turned off) still stopped the daily job, and Irregular
+before Inactive was checked only in `save_settings` (D5-03).
+
+**Decision.** `log_call` counts failed tries since the last call that got through or the last visit,
+whichever is later. `setting_int` treats a value that is not a whole number as missing, and the
+follow-up numbers then fall back to the defaults of 0001 (14, 30, 3, 3, 3, 4 weeks). A constraint
+trigger checks Irregular before Inactive at commit for every write, so one save may still change both.
+
+**Consequences.** A retry task's `attempt` is the next try: the first failed call of a new absence
+plans try 2, not escalated.
+
+## 109. Paused and Left only through a call, on insert too — 6 Oct 2026
+
+**Context.** #4 makes a logged call the only way to Paused or Left, but an app user could insert a
+student straight as Paused or Left, or move `paused_until` far ahead with a plain edit, keeping a child
+out of follow-up with no call (audit D1b-04, D12a-04).
+
+**Decision.** 0030's `students_status_guard`, for app users: a new record starts New or Active
+(error `status_on_insert`); `paused_until` changes only through `log_call` (error
+`student_field_locked`, detail paused_until) and is cleared when the status leaves Paused. The daily
+job, `toggle_visit` and the dashboard are not stopped. Left to New by hand stays allowed (#4).
+
+**Consequences.** No app screen changes: the app never sends these.
+
+## 110. A visit's times may be corrected, nothing else; a rescan does not check out — 6 Oct 2026
+
+**Context.** The visits update policy let any coordinator move a visit to another student, back-date
+it or rewrite who marked it, with no trace (audit D1a-06, FR-05). The 30-second "same code" pause of
+the scanner lived only in one phone's memory, so a second phone (or the door tablet) scanning a
+moment later checked the student out after 0 minutes (D5-11).
+
+**Decision.** **Praveen decided (6 Oct 2026):** times only, audited. For app users a visit's student,
+centre, method, marker and device are frozen (error `visit_field_locked`), a check-in cannot be in the
+future (`visit_time_future`), and every update or delete of a visit goes to `audit_log`. In
+`toggle_visit`, a QR scan within 30 seconds of the check-in answers `already_in`; a tap on Check out
+still checks out at once.
+
+**Consequences.** The app has no visit-correction screen; corrections are made in the dashboard (as
+the owner, not stopped, still audited).
+
+## 111. Left keeps the login; the pending screen names the Guru — 6 Oct 2026
+
+**Context.** Marking a student Left changes nothing else (#25): the login, class messages and
+notifications go on. The confirmation did not say so (audit FLOW-08). The pending screen told a
+student to ask a coordinator to fix their email, which no coordinator can do in the app (FLOW-01).
+
+**Decision.** **Praveen decided (6 Oct 2026):** wording only. The Left confirmation says the login
+keeps working and messages and notifications continue until the Guru switches the login off. The
+pending screen says "Ask the Guru to link this login to your student record" (G2, #45).
+
+**Consequences.** No database change for either. A staff screen to correct a student's login email
+was not built.
+
 ## 112. Pushes go through a per-phone queue — 6 Oct 2026
 
 **Context.** The audit (brief 11; D2-01, D2-03, D2-04, R2G3-05) found that the Edge Function

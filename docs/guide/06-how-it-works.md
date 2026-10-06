@@ -190,7 +190,8 @@ Some work is done by the database on a timetable, with nobody pressing a button:
 
 - **Every morning:** students with no visit for 14 days become **Irregular**, and their mentor gets
   a call to make; after 30 days, **Inactive**. A paused student whose date has passed comes back
-  into follow-up.
+  into follow-up as **Irregular**, with a call for the mentor, and the 30 days count from the end
+  of the pause.
 - **Every night at 21:00 (India time):** any visit still open is closed at the closing time.
 - **Every minute:** announcements that have reached their time are sent as notifications to
   Android phones.

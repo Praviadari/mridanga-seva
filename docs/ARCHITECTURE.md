@@ -256,7 +256,9 @@ read or write the person is not allowed, whatever the app shows.
    is kept there, so it shows even without internet ([DECISIONS.md #21](DECISIONS.md)).
 2. The coordinator opens *Mark attendance* (C5) and scans it with their phone's camera
    (expo-camera). Without a camera, or on a laptop, they search the name and tap instead.
-3. A scan calls `scan_qr`, which toggles: in if the student has no open visit, otherwise out.
+3. A scan calls `scan_qr`, which toggles: in if the student has no open visit, otherwise out
+   (but not within 30 seconds of the check-in: a second phone scanning a moment later gets
+   "already checked in", [DECISIONS.md #110](DECISIONS.md)).
    A tap calls `mark_visit` with *in* or *out*, and changes nothing if the student already is
    ([DECISIONS.md #18](DECISIONS.md)).
 4. Any check-in makes the student *Active* again and closes their open follow-up tasks.
@@ -267,7 +269,7 @@ read or write the person is not allowed, whatever the app shows.
    ([DECISIONS.md #70](DECISIONS.md), [DATABASE.md](DATABASE.md#location-check-at-check-in-0024)).
    A fix is reused for 2 minutes, and C5 warms it up on opening, so a queue is not slowed down.
 5. *Who is here now* (C6) lists open visits. At closing time the coordinator taps *Check out all*
-   (`check_out_all`).
+   (`check_out_all`). Staff may correct only a visit's times, and each correction is audited (0030).
 6. At 21:00 IST a daily job closes any visit still open, at the centre's closing time.
 
 The camera also works in the web version (on `https` only). Browsers without built-in QR reading,
@@ -279,6 +281,8 @@ OPERATIONS.md "Publishing the web version".
 1. Each morning a daily job moves a student with no visit for 14 days to *Irregular* and gives
    their mentor a *call* task, due in 3 days (the day limits are in `settings`, set on G10). When
    the mentor changes, the open tasks go to the new mentor ([DECISIONS.md #48](DECISIONS.md)).
+   A pause that ended does the same, and its Inactive clock starts at the pause end; a student who
+   has an open task gets no second one ([DECISIONS.md #107](DECISIONS.md)).
 2. The coordinator opens *Follow-up calls* (C10). Students are grouped: *needs the Guru*
    (escalated), *call due*, *call later*, and Irregular or Inactive students with *no call planned*.
 3. Tapping a student opens the call screen (C11), with buttons that open the phone's dialler for
@@ -286,8 +290,11 @@ OPERATIONS.md "Publishing the web version".
    reason from the list, a comment and, for *coming back* or *taking a break*, the date.
 4. `log_call` saves it and applies the outcome: *taking a break* sets *Paused* until the date;
    *stopped coming* sets *Left* (the screen asks once more); *coming back* sets a new call for the
-   day after the date; *not reachable* sets a retry, handed to the Guru after several tries.
-   This is the only way to reach Paused or Left ([DECISIONS.md #4](DECISIONS.md)).
+   day after the date; *not reachable* sets a retry, handed to the Guru after several tries in
+   the same absence (a visit starts the count again, [DECISIONS.md #108](DECISIONS.md)).
+   This is the only way to reach Paused or Left ([DECISIONS.md #4](DECISIONS.md)), also for a
+   new record and for the pause date ([DECISIONS.md #109](DECISIONS.md)). Left changes nothing
+   else: the login and messages go on until the Guru switches the login off (#111).
 5. The next visit makes the student *Active* again and closes their open tasks.
 
 ## How announcements flow (Phase 1)

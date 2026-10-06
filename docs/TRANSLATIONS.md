@@ -192,5 +192,11 @@ The code is in `app/src/i18n/index.ts`, `app/src/components/language-picker.tsx`
   रोकें and "unblock" తిరిగి అనుమతించండి / फिर से अनुमति दें; "parent" తల్లిదండ్రులు / माता-पिता; "code"
   కోడ్ / कोड; "facilitator" ఫెసిలిటేటర్ / फ़ैसिलिटेटर; the Hindi "रहा/रही" and "रहूँगा/रहूँगी" (gendered
   first person: maybe a neutral wording). Checked for mixed Telugu-Devanagari words on 5 Oct 2026.
+- **Round 10** ([DECISIONS.md #105, #106, #111](DECISIONS.md)): two new keys and two rewritten ones, drafts for the
+  review: `common.fixFieldsAbove` (beside a submit button when fields need a fix), `attendance.loadFailedBody`
+  (today's list did not load; scanning and name check-in still work), `pending.studentHint` (now "ask the Guru")
+  and `callLog.confirmLeftBody` (what Left keeps: login, messages, notifications). Words to check: "fields"
+  వివరాలు / जानकारी, "link" జత చేయు / जोड़ना, "switches the login off" లాగిన్‌ను ఆపే / लॉगिन बंद. Checked for mixed
+  Telugu-Devanagari words on 6 Oct 2026.
 - Telugu and Devanagari letters are taller than Latin ones. The app's line heights allow for this;
   if a translated label looks cut off, report it with a screenshot.

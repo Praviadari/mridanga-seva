@@ -33,6 +33,7 @@ in number order:
 | `0027_ishtagoshti_public.sql` | **Phase 2 slice 7.** Free public sign-up for sloka study only: `ig_subscribers` (a pending login that joined Ishtagoshti; no new role) and `ig_parent_codes` (a 6-digit code emailed to the parent of an under-18, the verifiable consent of DPDP rule 10) ([DECISIONS.md #88](DECISIONS.md)). See "Ishtagoshti subscribers (Phase 2)" |
 | `0028_security_round_2.sql` | Security round 2 (audit brief 5): a `student` login without a student record counts as `pending`; materials for staff and students only; `email`, `created_at`, `centre_id` frozen for app users and `email` synced from the sign-in email; names without invisible characters and not a staff member's; phones with 7 to 15 digits; a listed file name cannot be uploaded again; a minor keeps a guardian with a phone ([DECISIONS.md #96-#98, #100](DECISIONS.md)). See "Security round 2 (0028)" |
 | `0029_function_comments.sql` | Descriptions (`COMMENT ON`) for the eight functions that had none: `setting_int`, `today_ist`, `my_role`, `is_guru`, `is_staff`, `is_minor`, `audit_row`, `release_submission_files`. Comments only; safe to run before or after 0028 and to run again |
+| `0030_round10_rules.sql` | Round 10 (audit brief 15): an ended pause gets a call task and restarts the Inactive clock; no duplicate tasks, only due tasks escalate; retry count starts again after a visit; settings fall back to defaults and keep Irregular before Inactive at commit; no insert straight into Paused/Left, `paused_until` only through a call; visits: only times correctable, audited; 30-second QR rescan rule (#107-#110). See "Round 10 rules (0030)" |
 | `0031_push_fixes.sql` | Push fixes (audit brief 11): the per-phone queue `push_queue` with `claim_push_queue` / `finish_push` (one bad token no longer stops a batch; a failed or stopped send is retried, never sent twice), `push_status`, and the job calls only an https Supabase address with a 32+ character secret ([DECISIONS.md #112-#115](DECISIONS.md)). See "Push queue (0031)". Needs the Edge Function redeployed |
 
 The Phase 2 files were renumbered when they merged into main (#55). TEST ran some under their
@@ -64,7 +65,7 @@ consent), sample visits, groups and an announcement. Never run it on the live pr
 | Inventory (Phase 2) | `inventory_items`, `inventory_loans`, `inventory_checks` | Temple instruments and other items, who holds each, every condition seen (C19). See "Team tools (Phase 2)" |
 | Duty roster (Phase 2) | `duty_shifts`, `duty_assignments` | Shifts per date and centre with the people on each (C20). Suggestions (C18) live in `materials` |
 | Ishtagoshti (Phase 2) | `ig_slokas`, `ig_themes`, `ig_theme_slokas`, `ig_daily_pins`, `ig_notes`, `ig_memorised` | Sloka study (I1-I3, I11, I12): the temple's own translations, themes, the sloka of the day, private notes, memorised ticks. Recitations in the Storage bucket `ishtagoshti-audio`. See "Ishtagoshti (Phase 2)" |
-| Audit | `audit_log` | Who changed a student, profile, call log, level, syllabus item or tick, material, announcement, setting, centre, sloka or Ishtagoshti theme, or deleted a reply, and when (read on G11) |
+| Audit | `audit_log` | Who changed a student, profile, call log, level, syllabus item or tick, material, announcement, setting, centre, sloka or Ishtagoshti theme, corrected or deleted a visit (0030), or deleted a reply, and when (read on G11) |
 
 ## Student status
 
@@ -83,7 +84,7 @@ stateDiagram-v2
   irregular --> left: call logged "discontinued"
   inactive --> paused: call logged "paused"
   inactive --> left: call logged "discontinued"
-  paused --> irregular: pause date passes
+  paused --> irregular: pause date passes (call task)
   inactive --> active: visits again
   paused --> active: visits again
   left --> active: visits again (same roll number)
@@ -92,8 +93,16 @@ stateDiagram-v2
 The day limits (14, 30, and 3 days to make a call) are rows in `settings`, not fixed in code.
 
 When a student becomes *Irregular*, the daily job creates a `follow_up_tasks` row of kind `call`
-for their mentor coordinator. When a call is logged as *Not reachable*, a `retry` task is created;
-after `max_retries` failed tries the task is marked `escalated` so the Guru sees it.
+for their mentor coordinator, unless an open task exists already. A pause that ended does the same
+(0030), and the days to *Inactive* then count from the day the pause ended, not from the last visit
+([DECISIONS.md #107](DECISIONS.md)). When a call is logged as *Not reachable*, a `retry` task is
+created; after `max_retries` failed tries in the same absence (since the last call that got through
+or the last visit) the task is marked `escalated` so the Guru sees it. An Inactive student's open
+tasks are escalated once they are due.
+
+For app users the status rules also hold on insert (0030, [#109](DECISIONS.md)): a new record starts
+*New* or *Active* (`status_on_insert`), and `paused_until` changes only through `log_call`
+(`student_field_locked`); it is cleared when the status leaves *Paused*.
 
 ## Roll numbers
 
@@ -147,7 +156,7 @@ visits from the app, all in database functions so that the rules sit in one plac
 
 | Action in the app | Function | What happens |
 |---|---|---|
-| Coordinator scans a student's QR code (C5), door tablet later | `scan_qr` → `toggle_visit` | Toggles: check in if the student is out, check out if in |
+| Coordinator scans a student's QR code (C5), door tablet later | `scan_qr` → `toggle_visit` | Toggles: check in if the student is out, check out if in. A scan within 30 seconds of the check-in answers `already_in` (0030: a second phone scanning a moment later does not end the visit) |
 | Coordinator taps *Check in* or *Check out* next to a name (C5, C6) | `mark_visit(student, 'in' / 'out')` | Does what the button says. If the student is already in that state, nothing changes and it returns `already_in` / `already_out` |
 | Coordinator taps *Check out all* (C6) | `check_out_all()` | Closes every open visit: today's end now, a visit left open from an earlier day ends at that day's closing time |
 
@@ -180,7 +189,8 @@ the phone's report as `p_location` to `scan_qr` / `mark_visit` (and on to `toggl
 staff see the flag on C5's result card, C6, S9 (staff view) and the reports (`class_report` adds
 `visits_flagged`, `flagged_by_reason` and `flagged` per student row). The position itself is never
 stored. A check-out stores nothing. The trigger `visits_location_guard` refuses any change to the two
-columns from the app (error `location_locked`); staff may still correct the times. A malformed
+columns from the app (error `location_locked`); staff may still correct the times (since 0030 only
+the times, see "Round 10 rules (0030)"). A malformed
 report raises `bad_location`. Students can read their own visits' result through row-level
 security, but their screen does not show it.
 
@@ -192,7 +202,7 @@ number, name, level, status, pause date, mentor, joined) plus:
 | Column | Meaning |
 |---|---|
 | `last_visit_at` | Check-in time of the latest visit; empty if the student has never come |
-| `days_since_visit` | Whole days (India time) since that visit; with none, since joining or since the record was made, whichever is later (0014: an imported record with an old joining date is not Irregular at once); the same count the daily job uses for Irregular and Inactive |
+| `days_since_visit` | Whole days (India time) since that visit; with none, since joining or since the record was made, whichever is later (0014: an imported record with an old joining date is not Irregular at once); the same count the daily job uses for Irregular and Inactive, except that since 0030 the job counts Inactive from a pause's end when that is later |
 | `here_now` | True while the student has an open visit |
 
 The student list (C7), the profile (C8) and the follow-up queue (C10) read it. It exists because
@@ -215,7 +225,7 @@ then acts on the outcome:
 |---|---|---|---|
 | `returning` (coming back) | required | required: the day they said they would come | A new `call` task for the day after that date. Their next visit closes it |
 | `paused` (taking a break) | required | required: pause-until date | Status *Paused* until that date; the daily job brings them back into follow-up after it |
-| `not_reachable` | none | not used | A `retry` task in `retry_days`; after `max_retries` failed tries in a row it is `escalated` to the Guru |
+| `not_reachable` | none | not used | A `retry` task in `retry_days`; after `max_retries` failed tries in this absence (since the last call that got through or the last visit, 0030) it is `escalated` to the Guru |
 | `discontinued` (stopped coming) | required | not used | Status *Left*. Roll number and history are kept; a visit makes them Active again |
 
 Reasons are codes from `settings.call_reasons`: `studies`, `work_timing`, `moved`, `health`,
@@ -1004,6 +1014,25 @@ the Storage paths (photo, recordings and voice notes) that must be deleted by ha
   deleted while still listed cannot come back with other content. Deleting is unchanged.
 - **A minor's guardian:** the commit-time check `recheck_minor_consent` asks for a guardian with a
   phone and also runs when a guardian's phone changes (`minor_needs_guardian`).
+
+## Round 10 rules (0030)
+
+Audit brief 15 ([DECISIONS.md #107-#111](DECISIONS.md)). Run after 0029.
+
+| Rule | Where | Errors |
+|---|---|---|
+| A pause that ended turns Irregular with a call task; Inactive counts from the pause end; no second open task; an Inactive student's tasks escalate once due | `refresh_student_statuses` | — |
+| Failed tries count since the last reached call or the last visit | `log_call` | — |
+| A setting that is not a whole number counts as missing; `irregular_days` 14, `inactive_days` 30, `call_due_days` 3, `retry_days` 3, `max_retries` 3, `new_joiner_weeks` 4 are the fallbacks | `setting_int` | — |
+| Days to Irregular fewer than days to Inactive, checked at commit for every write | constraint trigger `settings_order` | `irregular_after_inactive` |
+| App users insert New or Active only; `paused_until` only through a call, cleared outside Paused | trigger `students_status_guard` | `status_on_insert`, `student_field_locked` |
+| App users may correct only a visit's times; the check-in not in the future; every visit update and delete is audited | triggers `visits_update_guard`, `audit_visits` | `visit_field_locked`, `visit_time_future` |
+| A QR scan within 30 seconds of the check-in does not check out | `toggle_visit` | answers `already_in` |
+
+The dashboard and the SQL editor (not `anon` / `authenticated`) pass the student and visit guards;
+`log_call`, `toggle_visit` and the daily job pass through `app.via_call_log`. No table or column is
+added. Tests: the checks named D5-01, D5-16, D5-02, D5-03, D1b-04, D12a-04, D1a-06, FR-05 and D5-11 in
+`supabase/tests/smoke-test.mjs`.
 
 ## Push queue (0031)
 

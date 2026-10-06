@@ -118,7 +118,13 @@ A scan **toggles**: it checks the student in if they are out, and out if they ar
 2. Tap **Check in** or **Check out** next to the student. A student already in shows **Here since**.
 
 A tap does exactly what it says. If the student is already in, **Check in** changes nothing and
-says **Already checked in. Nothing changed.** ([DECISIONS.md #18](../DECISIONS.md)).
+says **Already checked in. Nothing changed.** ([DECISIONS.md #18](../DECISIONS.md)). The answer
+appears under the name you tapped. A second scan of the same student within 30 seconds also says
+**Already checked in**, so a student is never checked out by a double scan.
+
+If **Could not load today's attendance** appears, tap **Try again**. Meanwhile scanning and the
+name search still work: a name then shows **Check in**, and the app says so if the student is
+already in.
 
 If a code is not a student code of this class, the app says **Code not recognised**: search the name
 instead. Two phones marking the same student at the same moment are handled safely, one after the
@@ -219,7 +225,8 @@ If someone else ticked the same item a moment earlier, their tick is kept and th
 The **Calls** tab (**Follow-up calls**) lists students who have stopped coming. Tap a name to phone
 them and record the call.
 
-**Show: Everyone** or **My students** (those you mentor). Students are grouped:
+**Show: Everyone** or **My students** (those you mentor; when none of yours is left, the list
+shows everyone again). Students are grouped:
 
 | Group | Who |
 |---|---|
@@ -231,7 +238,9 @@ them and record the call.
 **How calls appear.** Each morning the app marks students with no visit for 14 days as
 **Irregular** and gives their mentor a call, due in 3 days. Each call is **for** the student's
 mentor; if the mentor changes, the call moves with the student
-([DECISIONS.md #48](../DECISIONS.md)). Any coordinator may still make it.
+([DECISIONS.md #48](../DECISIONS.md)). Any coordinator may still make it. When a pause ends, the
+student becomes **Irregular** and the mentor gets a call too. The try number starts again after a
+visit ([DECISIONS.md #107, #108](../DECISIONS.md)).
 
 ## Log a call
 
@@ -250,7 +259,10 @@ Tap a student in **Follow-up calls**, or **Log a call** on a profile.
 3. Choose a **Reason**: Studies / exams, Work or timing clash, Moved / too far, Health, Family,
    Lost interest, Joined another class, Travel, or Other (say in the comment).
 4. Write **What was said**. It is required: a short note for whoever calls next.
-5. Tap **Save call**. For **Stopped coming** the app asks once more: **Mark … as Left?**
+5. Tap **Save call**. For **Stopped coming** the app asks once more: **Mark … as Left?** Left
+   changes nothing else: their login keeps working, and they still get class messages and
+   notifications, until the Guru switches the login off ([DECISIONS.md #111](../DECISIONS.md)).
+   If a field needs a fix, a red note beside the button says so.
 
 **Why only through a call?** A student becomes **Paused** or **Left** only through a logged call,
 never by editing a field. So every student who leaves has a recorded reason, and nobody is dropped
