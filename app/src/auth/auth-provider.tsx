@@ -13,12 +13,16 @@
 // Roles are given by the database, never chosen in the app (docs/ARCHITECTURE.md "Roles").
 // A login without a class role ('pending') that joined Ishtagoshti gets the 'subscriber' area: its
 // state comes from ig_my_state() (migration 0027, docs/DECISIONS.md #88).
+// The profile is read again when the app comes back to the screen, when the login token is
+// refreshed, and when the database refuses a call as not allowed, so a person the Guru switched
+// off (or whose role changed) loses their screens and the QR scanner at once (docs/DECISIONS.md #99).
 
 import type { Session } from '@supabase/supabase-js';
-import { createContext, use, useEffect, useState, type PropsWithChildren } from 'react';
+import { createContext, use, useEffect, useRef, useState, type PropsWithChildren } from 'react';
+import { AppState } from 'react-native';
 
 import { applyProfileLanguage, currentLanguage, hasUnsavedChoice, markLanguageSaved } from '@/i18n';
-import { storedLoginUserId, supabase, supabaseConfigProblem } from '@/lib/supabase';
+import { setRefusedListener, storedLoginUserId, supabase, supabaseConfigProblem } from '@/lib/supabase';
 
 import { forgetSavedProfile, readSavedProfile, saveProfile } from './saved-profile';
 import type { Area, IgState, Profile } from './types';
@@ -41,6 +45,9 @@ const AuthContext = createContext<AuthState | null>(null);
 /** The profile fetched for one login; kept with the user id so a stale result is ignored. */
 type ProfileResult = { userId: string; profile: Profile | null; failed: boolean };
 
+/** At most one re-check of the profile in this time, however many calls are refused at once. */
+const RECHECK_GAP_MS = 10_000;
+
 /** Provides AuthState to everything inside it. Use once, around the whole app. */
 export function AuthProvider({ children }: PropsWithChildren) {
   const [session, setSession] = useState<Session | null>(null);
@@ -59,6 +66,27 @@ export function AuthProvider({ children }: PropsWithChildren) {
     if (copy && !hasUnsavedChoice()) applyProfileLanguage(copy.language);
     return copy;
   });
+  // Bumped to read the profile again (see the top of this file); lastRecheck spaces them out.
+  const [recheck, setRecheck] = useState(0);
+  const lastRecheck = useRef(0);
+
+  useEffect(() => {
+    if (supabaseConfigProblem) return;
+    const askRecheck = () => {
+      const now = Date.now();
+      if (now - lastRecheck.current < RECHECK_GAP_MS) return;
+      lastRecheck.current = now;
+      setRecheck((n) => n + 1);
+    };
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') askRecheck();
+    });
+    setRefusedListener(askRecheck);
+    return () => {
+      subscription.remove();
+      setRefusedListener(null);
+    };
+  }, []);
 
   useEffect(() => {
     if (supabaseConfigProblem) return;
@@ -73,6 +101,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
       // "No session" at start while a login is still saved: the token could not be refreshed for
       // lack of internet. Any later event (TOKEN_REFRESHED once online, SIGNED_OUT) settles it.
       setOfflineUserId(event === 'INITIAL_SESSION' && !newSession ? storedLoginUserId() : null);
+      // About hourly while the app is open: a good moment to see whether the role still holds.
+      if (event === 'TOKEN_REFRESHED') setRecheck((n) => n + 1);
       setSession(newSession);
       setSessionLoaded(true);
     });
@@ -90,7 +120,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     return () => {
       cancelled = true;
     };
-  }, [userId]);
+  }, [userId, recheck]);
 
   // Ignore a profile that belongs to an earlier login. While the fetch for this login runs, the
   // remembered copy stands in for it, but only when it is this same person's.

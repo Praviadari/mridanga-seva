@@ -930,7 +930,9 @@
     "errors": {
       "nameRequired": "Enter your name.",
       "nameTooLong": "The name is too long (at most 80 characters).",
-      "phoneInvalid": "Enter a phone number of 7 to 20 digits; it may start with +."
+      "nameInvalid": "Use letters and spaces only; the name holds a hidden or control character.",
+      "nameTaken": "This is the name of the Guru or a coordinator. Add your surname or an initial.",
+      "phoneInvalid": "Enter a phone number of 7 to 15 digits; it may start with +."
     }
   },
   "admin": {

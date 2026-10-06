@@ -44,6 +44,38 @@ function jwtRole(k: string): string | null {
   }
 }
 
+/** Called when the database refuses a call as not allowed; set by the auth provider. */
+let onRefused: (() => void) | null = null;
+
+/**
+ * Lets the auth provider hear about refused calls, so a login switched off (or given another role)
+ * while the app is open loses its screens at once instead of at the next start (docs/DECISIONS.md #99).
+ * @param listener called (not awaited) after a refused call; null stops it.
+ */
+export function setRefusedListener(listener: (() => void) | null): void {
+  onRefused = listener;
+}
+
+/**
+ * fetch for the client: answers as usual, and when the database or Storage refused the call as not
+ * allowed (permission code 42501, or the functions' own "not_allowed" / "not allowed"), tells the
+ * listener. Sign-in calls (/auth/) are left out: a wrong password is not a lost role.
+ */
+const watchedFetch: typeof fetch = async (input, init) => {
+  const response = await fetch(input, init);
+  const address = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+  if (onRefused && response.status >= 400 && response.status < 500 && !address.includes('/auth/v1/')) {
+    response
+      .clone()
+      .text()
+      .then((body) => {
+        if (/42501|not[ _]allowed|row-level security/.test(body)) onRefused?.();
+      })
+      .catch(() => undefined);
+  }
+  return response;
+};
+
 /**
  * The shared client. When the settings are missing it points at a dummy address and is never
  * used (see supabaseConfigProblem), which keeps every import of this file safe.
@@ -63,6 +95,7 @@ export const supabase = createClient(
       // when it is opened in a browser: PKCE would need a secret kept on the phone.
       flowType: 'implicit',
     },
+    global: { fetch: watchedFetch },
   },
 );
 

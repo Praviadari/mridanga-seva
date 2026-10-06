@@ -4,7 +4,9 @@
 // with their read receipts, edits and private replies, groups, the home-screen numbers, who may
 // run which function, and row-level security. The security round (0025) adds switched-off and
 // kiosk logins, the frozen record fields, the consent register, withdrawal, erasure (with a sweep
-// of every table for the child's data) and a grant sweep: anon may touch nothing in public.
+// of every table for the child's data) and a grant sweep: anon may touch nothing in public. Security round 2
+// (0028) adds frozen profile identity columns, student logins without a record, posted files that cannot be
+// swapped, and the consent edges (dob edits across the 18-year line, a minor's guardian phone).
 //
 // Run before pasting a migration into the live Supabase project:
 //   cd supabase/tests && npm install && npm test
@@ -3010,6 +3012,147 @@ check('... or changes any table', changedByCalls.length === 0, changedByCalls.jo
 check('anon runs no subscriber function', (await asOwner(`select has_function_privilege('anon', 'ig_join(int, text, boolean, text, text, text, text)', 'execute')
   or has_function_privilege('anon', 'ig_subscriber_list()', 'execute') or has_function_privilege('anon', 'ig_reader()', 'execute')
   or has_function_privilege('authenticated', 'ig_new_parent_code(uuid)', 'execute') as ok`))[0].ok === false);
+// ---------------------------------------------------------------- security round 2 (0028)
+// D1a-01 (+R2G2-03, FS1a-19): a login's identity columns are frozen in the app; names and phones checked.
+await refusesWith('0028: a student cannot rewrite their own profile email', 'profile_field_locked', () =>
+  asApp('authenticated', arjun, `update profiles set email = 'new.volunteer@example.com' where id = $1`, [arjun]));
+await refusesWith('... nor a pending stranger (no pre-claiming a volunteer\'s email)', 'profile_field_locked', () =>
+  asApp('authenticated', stranger, `update profiles set email = 'new.volunteer@example.com' where id = $1`, [stranger]));
+await refusesWith('... nor the Guru someone else\'s', 'profile_field_locked', () =>
+  asApp('authenticated', guru, `update profiles set email = 'x@example.com' where id = $1`, [coordinator]));
+await refusesWith('a coordinator cannot change their own sign-up time', 'profile_field_locked', () =>
+  asApp('authenticated', coordinator, `update profiles set created_at = '2020-01-01' where id = $1`, [coordinator]));
+await refusesWith('... nor their centre', 'profile_field_locked', () =>
+  asApp('authenticated', coordinator, 'update profiles set centre_id = null where id = $1', [coordinator]));
+await asOwner(`update profiles set centre_id = null where id = '${coordinator}'`);
+await asOwner(`update profiles set centre_id = 1 where id = '${coordinator}'`);
+check('... the dashboard still can', (await asOwner(`select centre_id from profiles where id = '${coordinator}'`))[0].centre_id === 1);
+await asOwner(`update profiles set full_name = 'Guru Maharaj' where id = '${guru}'`);
+await refusesWith('a coordinator cannot take the Guru\'s name (case and spaces ignored)', 'name_taken', () =>
+  asApp('authenticated', coordinator2, `update profiles set full_name = '  guru   MAHARAJ ' where id = $1`, [coordinator2]));
+await refusesWith('... nor a student', 'name_taken', () =>
+  asApp('authenticated', arjun, `update profiles set full_name = 'Guru Maharaj' where id = $1`, [arjun]));
+await refusesWith('a name with a zero-width space is refused', 'name_invalid', () =>
+  asApp('authenticated', coordinator2, `update profiles set full_name = 'Guru' || chr(8203) || ' Maharaj' where id = $1`, [coordinator2]));
+await refusesWith('... and one with a line break inside', 'name_invalid', () =>
+  asApp('authenticated', coordinator2, `update profiles set full_name = 'Ravi' || chr(10) || 'Kumar' where id = $1`, [coordinator2]));
+const [teluguName] = await asApp('authenticated', coordinator2,
+  `update profiles set full_name = 'శ్రీ' || chr(8204) || 'నివాస్' where id = $1 returning full_name`, [coordinator2]);
+check('... while a Telugu name with a zero-width non-joiner is kept', teluguName?.full_name?.includes(String.fromCharCode(0x200c)));
+const [guruSame] = await asApp('authenticated', guru, `update profiles set full_name = 'Guru Maharaj' where id = $1 returning full_name`, [guru]);
+check('the Guru keeps their own name', guruSame?.full_name === 'Guru Maharaj');
+for (const bad of ['1 2 3 4', '+ 9', '1234567890123456']) {
+  await refusesWith(`phone "${bad}" is refused (7 to 15 digits)`, 'phone_invalid', () =>
+    asApp('authenticated', arjun, 'update profiles set phone = $2 where id = $1', [arjun, bad]));
+}
+const [goodPhone] = await asApp('authenticated', arjun, `update profiles set phone = '+91 98765 43210' where id = $1 returning phone`, [arjun]);
+check('... and "+91 98765 43210" is kept', goodPhone?.phone === '+91 98765 43210');
+await asOwner(`update auth.users set email = 'arjun.new@example.com' where id = '${arjun}'`);
+check('a changed sign-in email reaches the profile (FS1a-19)',
+  (await asOwner(`select email from profiles where id = '${arjun}'`))[0].email === 'arjun.new@example.com');
+await register(coordinator, { p_full_name: 'Sec2 Sync Target', p_dob: '1993-03-03', p_email: 'sec2.target@example.com' });
+const syncLogin = await signUp('sec2.typo@example.com', true);
+await asOwner(`update auth.users set email = 'sec2.target@example.com' where id = '${syncLogin}'`);
+check('... and a waiting login is linked to the record with its new email',
+  (await linkOf('sec2.target@example.com')) === syncLogin && (await roleOf(syncLogin)) === 'student');
+const g2Login = await signUp('sec2.g2@example.com', true);
+await asApp('authenticated', guru, `update profiles set role = 'coordinator' where id = $1`, [g2Login]);
+await asApp('authenticated', guru, 'update profiles set active = false where id = $1', [g2Login]);
+check('G2 still works: the Guru makes a coordinator and switches them off (guard_profile_admin)',
+  (await asOwner(`select role, active from profiles where id = '${g2Login}'`)).every((r) => r.role === 'coordinator' && r.active === false));
+
+// FS1b-01 (+D1a-12, R2G2-06): a 'student' login without a student record gets nothing.
+const noRecord = await signUp('sec2.noRecord@example.com', true);
+await asOwner(`update profiles set role = 'student' where id = '${noRecord}'`); // e.g. set in the dashboard
+const [{ r: noRecordRole }] = await asApp('authenticated', noRecord, 'select my_role()::text as r');
+check('0028: a student login without a record counts as pending', noRecordRole === 'pending', noRecordRole);
+check('... reads no announcement (not even one to everyone)', (await asApp('authenticated', noRecord, 'select id from announcements')).length === 0);
+check('... cannot open a posted photo', !(await canOpen(noRecord, photo)));
+check('... is not in an announcement\'s audience (no push, no inbox row)', (await asOwner(
+  `select count(*)::int as n from announcement_audience where profile_id = '${noRecord}'`))[0].n === 0);
+check('... nor in an event audience', (await asOwner(
+  `select count(*)::int as n from audience_profiles('all', null, null, null) id where id = '${noRecord}'`))[0].n === 0);
+check('... gets no staff names', (await asApp('authenticated', noRecord, 'select * from staff_names()')).length === 0);
+await refusesWith('... cannot save a phone for pushes', 'not_allowed', () => registerToken(noRecord, 'ExponentPushToken[sec2orphan]'));
+const noRecordReads = [];
+for (const { relname } of await asOwner(`select relname from pg_class
+  where relnamespace = 'public'::regnamespace and relkind in ('r', 'v', 'm', 'p') order by relname`)) {
+  if (openToAll.has(relname)) continue;
+  let rows = 0;
+  try {
+    rows = (await asApp('authenticated', noRecord, `select count(*)::int as n from public.${relname}`))[0].n;
+  } catch {
+    rows = 0;
+  }
+  if (rows > (relname === 'profiles' ? 1 : 0)) noRecordReads.push(`${relname}:${rows}`);
+}
+check('... and reads nothing but its own profile and the open lists', noRecordReads.length === 0, noRecordReads.join(' '));
+const allLevels = `${guru}/${await newId()}.pdf`;
+await uploadMaterial(guru, allLevels);
+const allLevelPdf = await addMaterial(guru, { kind: 'pdf', path: allLevels, name: 'For everyone.pdf', size: 1 });
+check('an approved all-level material: a student reads it and opens its file',
+  (await asApp('authenticated', arjun, 'select id from materials where id = $1', [allLevelPdf.id])).length === 1
+  && await canOpenMaterial(arjun, allLevels));
+for (const [who, id] of [['a pending stranger', stranger], ['the door tablet', kiosk], ['a login without a record', noRecord]]) {
+  check(`... ${who} reads no material and cannot open the file`,
+    (await asApp('authenticated', id, 'select id from materials')).length === 0 && !(await canOpenMaterial(id, allLevels)));
+}
+await db.exec(`select set_config('app.via_call_log', 'on', false); update students set status = 'left' where profile_id = '${late}';
+  select set_config('app.via_call_log', '', false);`); // as log_call does
+const forLeft = await post(coordinator, { title: 'Sec2 for all', body: 'x', audience: 'all' });
+const leftSees = (await asApp('authenticated', late, 'select id from announcements where id = $1', [forLeft.id])).length;
+const [{ n: leftAddressed }] = await asOwner(`select count(*)::int as n from announcement_audience where profile_id = '${late}' and announcement_id = ${forLeft.id}`);
+check('a Left student keeps announcements (Praveen, 6 Oct 2026)', leftSees === 1 && leftAddressed === 1, `reads ${leftSees}, addressed ${leftAddressed}`);
+await asOwner(`update students set status = 'active' where profile_id = '${late}'`);
+const relinked = await register(coordinator, { p_full_name: 'Sec2 Moved', p_dob: '1992-02-02', p_email: 'sec2.moved@example.com' });
+const relinkedLogin = await signUp('sec2.moved@example.com', true);
+await registerToken(relinkedLogin, 'ExponentPushToken[sec2moved]');
+await asOwner(`update students set profile_id = null where id = '${relinked.id}'`); // the dashboard
+check('a login taken off its record (dashboard) goes back to waiting, its phones forgotten', (await roleOf(relinkedLogin)) === 'pending'
+  && (await asOwner(`select count(*)::int as n from push_tokens where profile_id = '${relinkedLogin}'`))[0].n === 0);
+
+// D1b-05 (+D12a-12, D14-13): a posted file cannot be swapped by delete + upload under the same name.
+await refuses('0028: a file deleted while an announcement lists it cannot be uploaded again', () => upload(guru, guruExtra));
+const swap = await filePath(coordinator);
+await upload(coordinator, swap);
+const swapPost = await postWithFiles(coordinator, [entry(swap, 'Poster.jpg')]);
+check('... the uploader may still delete a posted file', await removeFile(coordinator, swap));
+await refuses('... but not put different content under its name', () => upload(coordinator, swap, 999));
+for (const [who, id] of [['the uploader', coordinator], ['another coordinator', coordinator2], ['the Guru', guru]]) {
+  check(`${who} cannot replace a posted file in place (0 rows)`, (await asApp('authenticated', id,
+    `update storage.objects set metadata = '{"size": 1}' where bucket_id = 'announcement-files' and name = $1 returning name`, [photo])).length === 0);
+}
+await asApp('authenticated', coordinator, `update announcements set attachments = '[]' where id = $1`, [swapPost.id]);
+await upload(coordinator, swap, 999);
+check('once an edit (marked Edited) takes the file off, the name is free again', await canOpen(coordinator, swap));
+check('a material file deleted while its material lists it cannot be uploaded again', (await asApp('authenticated', guru,
+  `delete from storage.objects where bucket_id = 'material-files' and name = $1 returning name`, [allLevels])).length === 1
+  && await uploadMaterial(guru, allLevels).then(() => false, () => true));
+
+// D14-02: consent edges not covered by 0025 (dob edits across the 18-year line, guardian phone).
+const edge = await register(coordinator, { p_full_name: 'Sec2 Edge Adult', p_dob: '1990-02-02' });
+await refusesWith('0028 consent edges: an adult edited to one day short of 18 is refused', 'minor_needs_consent', () =>
+  asApp('authenticated', coordinator, 'update students set dob = $2 where id = $1', [edge.id, almost18]));
+const [edgeDob] = await asApp('authenticated', coordinator, 'update students set dob = $2 where id = $1 returning dob::text as d', [edge.id, eighteen]);
+check('... edited to exactly 18 today is kept', edgeDob?.d === eighteen, edgeDob?.d);
+await refusesWith('a 17-year-old added straight to the table without consent is refused at commit', 'minor_needs_consent', () =>
+  asApp('authenticated', guru, `insert into students (full_name, dob) values ('Sec2 Seventeen', $1)`, [almost18]));
+await refusesWith('a minor with a guardian name but a blank phone is refused', 'minor_needs_guardian', () =>
+  register(coordinator, { p_full_name: 'Sec2 Child', p_dob: childDob, p_guardian_name: 'Parent', p_guardian_phone: '   ',
+    p_guardian_relation: 'father', p_id_type_checked: 'aadhaar', p_written_consent: true }));
+await refusesWith('... and one with a phone but no guardian name', 'minor_needs_guardian', () =>
+  register(coordinator, { p_full_name: 'Sec2 Child', p_dob: childDob, p_guardian_name: ' ', p_guardian_phone: '9000012345',
+    p_guardian_relation: 'father', p_id_type_checked: 'aadhaar', p_written_consent: true }));
+await refusesWith('a minor\'s only guardian phone cannot be cleared later (checked at commit)', 'minor_needs_guardian', () =>
+  asApp('authenticated', coordinator, 'update guardians set phone = null where student_id = $1', [child.id]));
+await asApp('authenticated', coordinator, `insert into guardians (student_id, full_name, phone, relation) values ($1, 'Second Parent', '9000054321', 'father')`, [child.id]);
+await asApp('authenticated', coordinator, `update guardians set phone = null where student_id = $1 and full_name = 'Parent One'`, [child.id]);
+check('... but may be, when another guardian has a phone', (await asOwner(
+  `select count(*)::int as n from guardians where student_id = '${child.id}' and phone is not null`))[0].n === 1);
+const [grownUp] = await asApp('authenticated', coordinator, 'update students set dob = $2 where id = $1 returning dob::text as d', [child.id, eighteen]);
+const [childAgain] = await asApp('authenticated', coordinator, 'update students set dob = $2 where id = $1 returning dob::text as d', [child.id, childDob]);
+check('a minor\'s dob may be corrected to an adult\'s and back (consent and guardian kept)', grownUp?.d === eighteen && childAgain?.d === childDob);
+
 // ---------------------------------------------------------------- row-level security
 const seen =await asApp('authenticated', arjun, 'select full_name from students');
 check('student sees only their own student record', seen.length === 1 && seen[0].full_name === 'Arjun Rao');
