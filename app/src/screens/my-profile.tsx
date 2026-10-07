@@ -3,6 +3,7 @@
 // out. A student also sees their roll number and the way to My QR; the name on the roll is the
 // coordinators' record and changes only through them. Shown by two routes: student/profile.tsx
 // (from the ring on S1) and staff/profile.tsx (from "My profile" at the foot of the staff homes).
+// A student also opens About you here (0036); staff see the referral code they give to people they bring.
 // Data: src/data/my-profile.ts; the check is in the database too (0013, docs/DECISIONS.md #44).
 
 import { router, Stack } from 'expo-router';
@@ -21,6 +22,7 @@ import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { TextField } from '@/components/text-field';
+import { fetchMyReferralCode } from '@/data/about';
 import { checkMyDetails, fetchMyPhone, NAME_MAX, saveMyDetails, type MyDetailsErrors } from '@/data/my-profile';
 import { fetchMyStudent, type MyStudent } from '@/data/visits';
 
@@ -40,6 +42,13 @@ export function MyProfileScreen() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ tone: 'error' | 'success'; text: string } | null>(null);
   const [attempt, setAttempt] = useState(0);
+  const [referralCode, setReferralCode] = useState<string | null>(null);
+  const isStaff = profile?.role === 'guru' || profile?.role === 'coordinator';
+
+  useEffect(() => {
+    if (!isStaff || !myId) return;
+    void fetchMyReferralCode(myId).then(setReferralCode);
+  }, [isStaff, myId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -137,6 +146,20 @@ export function MyProfileScreen() {
           ) : null}
           {student === 'not_found' ? <AppText tone="muted">{t('myQr.noRecordBody')}</AppText> : null}
           <Button variant="secondary" icon="qr" label={t('myQr.open')} onPress={() => router.push('/student/my-qr')} />
+        </Section>
+      ) : null}
+
+      {isStudent ? (
+        <Section icon="about" title={t('about.cardTitle')} description={t('about.profileHint')}>
+          <Button variant="secondary" icon="about" label={t('about.cardEdit')} onPress={() => router.push('/student/about-you')} />
+        </Section>
+      ) : null}
+
+      {referralCode ? (
+        <Section icon="link" title={t('about.myCodeTitle')} description={t('about.myCodeHint')}>
+          <AppText variant="title" selectable accessibilityLabel={t('about.myCodeSpoken', { code: referralCode.split('').join(' ') })}>
+            {referralCode}
+          </AppText>
         </Section>
       ) : null}
 

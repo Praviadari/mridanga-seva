@@ -233,5 +233,12 @@ The privacy texts of 0034 (`signUp.privacyNotice`, `signUp.under18`, `register.p
   `_one` and `_other`. Telugu and Hindi keep their earlier draft in both: the reviewer writes a singular
   where the language needs one. `announcements.compose.timeHint` and `visitHistory.intro` now say "the
   centre's time" instead of "India time": కేంద్రం సమయం / केंद्र का समय (drafts).
+- **Account creation** ([DECISIONS.md #162-#167](DECISIONS.md)): new blocks `select`, `birthDate`, `about`,
+  `studentDetails`, `options`, `heardReport` and new keys in `signUp`, `register`, `coordinators`, `centres`,
+  `admin`; plural pairs `register.waitingTitle` and `heardReport.line`. Telugu and Hindi are drafts. The
+  option-list labels (gender, sources, occupations, service areas, relations) are **data**, seeded in
+  0036 with drafts in all three languages and edited by the Guru on G12, not in the JSON files. Words
+  to check: "referral code" రిఫరల్ కోడ్ / रेफ़रल कोड, "emergency contact" అత్యవసర సంప్రదింపు / आपातकालीन संपर्क,
+  "service areas" సేవా విభాగాలు / सेवा क्षेत्र, "as on your Aadhaar" (`signUp.fullNameId`).
 - Telugu and Devanagari letters are taller than Latin ones. The app's line heights allow for this;
   if a translated label looks cut off, report it with a screenshot.

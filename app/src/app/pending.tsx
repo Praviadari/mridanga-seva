@@ -15,12 +15,16 @@ import { Button } from '@/components/button';
 import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
+import { useAboutPrompt } from '@/lib/about-prompt';
 
 /** Pending-access screen with "Check again" and "Sign out". */
 export default function PendingScreen() {
   const { t } = useTranslation();
   const { session, profile, profileFailed, refreshProfile } = useAuth();
   const [checking, setChecking] = useState(false);
+  // Step 2 of joining (docs/DECISIONS.md #164): opens by itself once; the card below opens it later.
+  const waitingForDesk = !!profile?.active && profile.role === 'pending' && profile.ig_state !== 'active' && profile.ig_state !== 'blocked';
+  const aboutOpen = useAboutPrompt(profile?.id, '/about-you', waitingForDesk);
 
   async function checkAgain() {
     setChecking(true);
@@ -50,6 +54,16 @@ export default function PendingScreen() {
     <Screen centred header={<BrandHeader compact />}>
       <AppText variant="title">{t('pending.title')}</AppText>
       {message}
+      {waitingForDesk && aboutOpen !== null ? (
+        <Section icon="about" title={t('about.cardTitle')} description={aboutOpen ? t('about.cardBody') : t('about.cardDone')}>
+          <Button
+            icon="about"
+            variant={aboutOpen ? 'primary' : 'secondary'}
+            label={aboutOpen ? t('about.cardOpen') : t('about.cardEdit')}
+            onPress={() => router.push('/about-you')}
+          />
+        </Section>
+      ) : null}
       {profile?.active && profile.role === 'pending' && (profile.ig_state === 'none' || profile.ig_state === 'awaiting_parent') ? (
         <Section icon="ishtagoshti" title={t('pending.igTitle')} description={t('pending.igHint')}>
           <Button

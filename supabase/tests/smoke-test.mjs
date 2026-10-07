@@ -10,7 +10,8 @@
 // (0030) adds the follow-up rules (pause end, retry count, settings fallbacks and order), the status
 // side doors, frozen visit fields and the 30-second rescan; each check names its audit finding ID.
 // 0032 adds the sign-up language (D8-01) and one student per registration request (D6-08). 0033 adds a
-// time zone per centre (a New York centre's days around midnight) and the currency of fund entries.
+// time zone per centre (a New York centre's days around midnight) and the currency of fund entries. 0036 adds
+// account creation: option lists, the sign-up's details, About you, the desk, same-gender mentors, the report.
 // The test net at the end (audit brief 12) walks the whole schema: guardians, consents and the
 // audit log closed to students and pending logins, the function allow-lists, row-level security on
 // every table, a student-isolation loop over every student-linked table and view, write sweeps per
@@ -115,7 +116,7 @@ process.on('uncaughtException', (error) => {
 // D14-10: every check is counted, and the run fails when fewer (or more) checks ran than expected,
 // so a block skipped by a renamed migration or a commented-out section cannot pass unseen.
 // Adding or removing checks? Run the suite and set this to the new total it prints.
-const EXPECTED_CHECKS = 1220; // 0035 asset labels: +38
+const EXPECTED_CHECKS = 1280; // 0035 asset labels: +38; 0036 account creation: +60
 let failures = 0;
 let passes = 0;
 
@@ -2988,8 +2989,10 @@ check('grant sweep: anon has no right on any table, view or sequence', anonTable
 const anonFunctions = await asOwner(`select p.oid::regprocedure::text as f from pg_proc p
   where p.pronamespace = 'public'::regnamespace and p.prorettype <> 'trigger'::regtype
     and not exists (select 1 from pg_depend d where d.classid = 'pg_proc'::regclass and d.objid = p.oid and d.deptype = 'e')
-    and has_function_privilege('anon', p.oid, 'execute')`);
-check('grant sweep: anon may run no function of ours', anonFunctions.length === 0, anonFunctions.map((r) => r.f).join(' '));
+    and has_function_privilege('anon', p.oid, 'execute')
+    and p.oid <> 'sign_up_choices()'::regprocedure`);
+// The one exception (0036, docs/DECISIONS.md #163): the sign-up form's public centre and gender lists.
+check('grant sweep: anon may run no function of ours but sign_up_choices()', anonFunctions.length === 0, anonFunctions.map((r) => r.f).join(' '));
 await asOwner('create table public.zz_sweep_probe (id int)');
 check('... and a table made later by the owner is not given to anon', (await asOwner(
   `select has_table_privilege('anon', 'public.zz_sweep_probe', 'SELECT') as ok`))[0].ok === false);
@@ -3241,7 +3244,8 @@ const mayAnswer = new Set(['my_role', 'today_ist', 'my_time_zone', 'centre_tz', 
   'ig_sloka_of_day', 'ig_audio_path_ok', 'ig_audio_readable', 'is_public_subscriber', 'has_class_role',
   'gen_random_uuid', // pgcrypto's, in public only here (Supabase keeps it in extensions)
   'practice_weeks', // empty weeks with 0 minutes for a null student
-  'scan_qr']); // {action: unknown} for a null code
+  'scan_qr', // {action: unknown} for a null code
+  'my_about', 'sign_up_choices']); // 0036: the caller's own About you; the public sign-up lists (#163)
 const answered = [];
 for (const fn of fns) {
   if (skip.has(fn.name)) continue;
@@ -3792,6 +3796,221 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   const app = readFileSync(new URL('../app/src/lib/privacy-notice.ts', supabaseDir), 'utf8').match(/PRIVACY_NOTICE_VERSION = '([^']+)'/)?.[1];
   return !!site && site === app;
 })());
+// ---------------------------------------------------------------- account creation (0036)
+// Team MoM 05-10-2026, docs/DECISIONS.md #162-#167: option lists the Guru edits, the sign-up's date of
+// birth / gender / centre, About you, the desk, same-gender coordinators by referral code and load,
+// the "How students found us" report, and the one function anon may run. Kept in one block.
+{
+  const signUpWith = async (email, meta, confirmed = true) => (await db.query(
+    `insert into auth.users (email, email_confirmed_at, raw_user_meta_data) values ($1, ${confirmed ? 'now()' : 'null'}, $2) returning id`,
+    [email, JSON.stringify(meta)])).rows[0].id;
+  const about = async (who, p) => (await asApp('authenticated', who, 'select save_about_me($1::jsonb) as r', [JSON.stringify(p)]))[0].r;
+  const myAbout = async (who) => (await asApp('authenticated', who, 'select my_about() as r'))[0].r;
+  const details = async (who, student, p) => (await asApp('authenticated', who, 'select save_student_details($1, $2::jsonb) as r',
+    [student, JSON.stringify(p)]))[0].r;
+  const mentorOf = async (id) => (await asOwner(`select mentor_id from students where id = '${id}'`))[0].mentor_id;
+  const noRow = (rows) => { if (rows.length === 0) throw new Error('no row changed (row-level security)'); };
+  const adultDob = `${year - 30}-04-05`;
+  const minorDob = `${year - 12}-04-05`;
+
+  // Option lists: seeded, read by class roles, written by the Guru only, codes frozen, audited.
+  const lists = (await asOwner(`select list, count(*)::int as n from choice_options group by list order by list`))
+    .map((r) => `${r.list}:${r.n}`).join(' ');
+  check('0036: the six option lists are seeded', lists === 'gender:2 instrument:3 occupation:7 relation:5 service_area:11 source:9', lists);
+  check('0036: a student reads the option lists; a pending login none', (await asApp('authenticated', arjun,
+    'select count(*)::int as n from choice_options'))[0].n === 37 && (await asApp('authenticated', stranger,
+    'select count(*)::int as n from choice_options'))[0].n === 0);
+  await refusesWith('0036: a coordinator cannot add an option (Guru only)', 'new row violates row-level security policy for table "choice_options"', () =>
+    asApp('authenticated', coordinator, `insert into choice_options (list, code, label_en) values ('source', 'radio', 'Radio')`));
+  await refusesWith('0036: a coordinator cannot change a label', 'no row changed (row-level security)', async () =>
+    noRow(await asApp('authenticated', coordinator, `update choice_options set label_en = 'X' where list = 'source' and code = 'poster' returning id`)));
+  const [radio] = await asApp('authenticated', guru, `insert into choice_options (list, code, label_en, label_te, label_hi, sort)
+    values ('source', 'radio', '  Radio ', 'రేడియో', 'रेडियो', 85) returning id, label_en`);
+  check('0036: the Guru adds an option (label trimmed)', radio.label_en === 'Radio');
+  await asApp('authenticated', guru, `update choice_options set label_en = 'Radio programme', active = false where id = $1`, [radio.id]);
+  check('0036: an option edit is audited with who made it', (await asOwner(`select count(*)::int as n from audit_log
+    where table_name = 'choice_options' and row_id = '${radio.id}' and changed_by = '${guru}'`))[0].n === 2);
+  await refusesWith('0036: an option\'s code never changes', 'option_code_locked', () =>
+    asApp('authenticated', guru, `update choice_options set code = 'fm' where id = $1`, [radio.id]));
+  await refusesWith('0036: a label with an invisible character is refused', 'label_invalid', () =>
+    asApp('authenticated', guru, `update choice_options set label_hi = 'रेडि\u200bयो' where id = $1`, [radio.id]));
+  await refusesWith('0036: male / female, the parent relations and "other" are never deleted', 'option_required', () =>
+    asApp('authenticated', guru, `delete from choice_options where list = 'relation' and code = 'mother'`));
+  await asApp('authenticated', guru, `delete from choice_options where id = $1`, [radio.id]);
+  check('0036: an option nobody chose can be deleted', (await asOwner(`select count(*)::int as n from choice_options where id = ${radio.id}`))[0].n === 0);
+
+  // Anon: one function, public facts only; no table, no other function.
+  const pub = (await asApp('anon', null, 'select sign_up_choices() as r'))[0].r;
+  check('0036 #163: anon gets the active centres (id, name, city, country only) and gender options',
+    pub.centres.length >= 1 && pub.centres.every((c) => Object.keys(c).sort().join() === 'city,country_code,id,name')
+    && pub.genders.map((g) => g.code).join() === 'male,female'
+    && pub.instruments.map((g) => g.code).join() === 'mridanga,kartal,harmonium', JSON.stringify(pub).slice(0, 160));
+  await refusesWith('0036: anon cannot read the option table', 'permission denied for table choice_options', () =>
+    asApp('anon', null, 'select 1 from choice_options'));
+  await refusesWith('0036: anon cannot read person_details', 'permission denied for table person_details', () =>
+    asApp('anon', null, 'select 1 from person_details'));
+  await refusesWith('0036: anon cannot run my_about', 'permission denied for function my_about', () =>
+    asApp('anon', null, 'select my_about()'));
+
+  // Sign-up: date of birth (adults), gender and centre from the sign-up form; never fails on bad input.
+  const [abids] = await asOwner(`select id from centres where name = 'Abids'`);
+  const priya = await signUpWith('priya.ac@example.com', { full_name: 'Priya Sharma', language: 'hi', dob: adultDob, gender: 'female',
+    centre_id: abids.id, phone: '+91 98765 11111', diksha_name: ' Prema Devi Dasi ', learn: ['mridanga', 'kartal', 'juggling'] });
+  const priyaProfile = (await asOwner(`select gender, centre_id, language, role from profiles where id = '${priya}'`))[0];
+  check('0036: a sign-up keeps its gender, centre and language (pending)', priyaProfile.gender === 'female'
+    && priyaProfile.centre_id === abids.id && priyaProfile.language === 'hi' && priyaProfile.role === 'pending', JSON.stringify(priyaProfile));
+  const priyaSigned = (await asOwner(`select d.dob::text as dob, d.diksha_name, d.learn_interests, p.phone
+    from person_details d join profiles p on p.id = d.profile_id where d.profile_id = '${priya}'`))[0];
+  check('0036: ... and its date of birth, Diksha name and instruments on the login\'s details, its mobile on the profile',
+    priyaSigned?.dob === adultDob && priyaSigned.diksha_name === 'Prema Devi Dasi' && priyaSigned.phone === '+919876511111'
+    && JSON.stringify(priyaSigned.learn_interests) === '["kartal","mridanga"]', JSON.stringify(priyaSigned));
+  const kid = await signUpWith('kid.ac@example.com', { full_name: 'Kid Sign Up', dob: minorDob, gender: 'robot', centre_id: 999, phone: '12345' });
+  const kidRow = (await asOwner(`select p.gender, p.centre_id, p.phone, (select count(*)::int from person_details d where d.profile_id = p.id) as n
+    from profiles p where p.id = '${kid}'`))[0];
+  check('0036: an under-18 date of birth, an unknown gender and centre are not kept (under 18 = the desk, #150)',
+    kidRow.gender === null && kidRow.n === 0 && kidRow.centre_id === abids.id && kidRow.phone === null, JSON.stringify(kidRow));
+  const odd = await signUpWith('odd.ac@example.com', { full_name: 'Odd Input', dob: 'yesterday', centre_id: 'x' });
+  check('0036: a sign-up with nonsense in the new fields still makes the login', (await roleOf(odd)) === 'pending');
+
+  // Staff gender (Guru on G2) and referral codes.
+  const fem1 = await signUp('fem1.ac@example.com', true);
+  const fem2 = await signUp('fem2.ac@example.com', true);
+  const male1 = await signUp('male1.ac@example.com', true);
+  for (const [id, name] of [[fem1, 'Gita Coordinator'], [fem2, 'Radha Coordinator'], [male1, 'Madhav Coordinator']]) {
+    await asApp('authenticated', guru, `update profiles set role = 'coordinator', full_name = $2 where id = $1`, [id, name]);
+  }
+  await asApp('authenticated', guru, `update profiles set gender = 'female' where id in ($1, $2)`, [fem1, fem2]);
+  await asApp('authenticated', guru, `update profiles set gender = 'male' where id = $1`, [male1]);
+  const codes = await asOwner(`select id, referral_code as c from profiles where id in ('${fem1}', '${fem2}', '${male1}', '${guru}')`);
+  const codeOf = (id) => codes.find((r) => r.id === id).c;
+  check('0036 #165: coordinators and the Guru have a six-character referral code', codes.length === 4
+    && codes.every((r) => /^[A-HJ-NP-Z2-9]{6}$/.test(r.c)), JSON.stringify(codes.map((r) => r.c)));
+  await refusesWith('0036: a coordinator cannot set their own gender (the Guru does)', 'not_allowed', () =>
+    asApp('authenticated', fem1, `update profiles set gender = 'male' where id = $1`, [fem1]));
+  await refusesWith('0036: nobody writes a referral code', 'profile_field_locked', () =>
+    asApp('authenticated', guru, `update profiles set referral_code = 'AAAAAA' where id = $1`, [fem1]));
+  await refusesWith('0036: a gender is an option of the list', 'gender_unknown', () =>
+    asApp('authenticated', guru, `update profiles set gender = 'robot' where id = $1`, [fem1]));
+  await asApp('authenticated', priya, `update profiles set gender = 'female' where id = $1`, [priya]);
+  check('0036: a waiting login may set its own gender', (await asOwner(`select gender from profiles where id = '${priya}'`))[0].gender === 'female');
+
+  // About you (waiting login): saved as you go, codes checked, phones in E.164.
+  const a0 = await myAbout(priya);
+  check('0036: my_about gives a waiting login its own answers and the lists', a0.has_record === false && a0.gender === 'female'
+    && a0.country_code === 'IN' && a0.options.service_area.length === 11 && a0.about_state === null, JSON.stringify(a0).slice(0, 120));
+  await refusesWith('0036: a referral code nobody has is refused', 'referral_code_unknown', () => about(priya, { referral_code: 'ZZZZZZ' }));
+  await refusesWith('0036: a phone must be E.164', 'phone_invalid', () => about(priya, { phone: '98765 43210' }));
+  await refusesWith('0036: an unknown service area is refused', 'service_unknown', () => about(priya, { service_areas: ['kirtan', 'juggling'] }));
+  await refusesWith('0036: an unknown instrument is refused', 'instrument_unknown', () => about(priya, { learn_interests: ['sitar'] }));
+  const aLearn = await about(priya, { learn_interests: ['harmonium', 'mridanga', 'kartal'], diksha_name: 'Prema Devi Dasi' });
+  check('0036: About you changes the instruments and keeps the Diksha name', JSON.stringify(aLearn.learn_interests) === '["harmonium","kartal","mridanga"]'
+    && aLearn.diksha_name === 'Prema Devi Dasi', JSON.stringify(aLearn).slice(0, 160));
+  const a1 = await about(priya, { referral_code: codeOf(fem2).toLowerCase(), phone: '+91 98765 43210' });
+  const a2 = await about(priya, { occupation: 'other', occupation_other: ' Artist ', service_areas: ['kirtan', 'prasadam', 'kirtan'],
+    emergency_relation: 'spouse', emergency_name: 'Ravi Sharma', emergency_phone: '+919876500000', about_state: 'done' });
+  check('0036: answers are saved key by key (the referral stays when the next keys arrive)', a1.referred === true && a1.heard_via === 'referral'
+    && a1.phone === '+919876543210' && a2.referred === true && a2.occupation_other === 'Artist'
+    && JSON.stringify(a2.service_areas) === '["kirtan","prasadam"]' && a2.about_state === 'done', JSON.stringify(a2).slice(0, 200));
+  check('0036: a later "skip" does not undo "done"', (await about(priya, { about_state: 'skipped' })).about_state === 'done');
+  await refusesWith('0036: staff do not use About you', 'not_allowed', () => about(coordinator, { occupation: 'working' }));
+  check('0036: a student reads no person_details row directly; a pending login none', (await asApp('authenticated', arjun,
+    'select count(*)::int as n from person_details'))[0].n === 0 && (await asApp('authenticated', priya,
+    'select count(*)::int as n from person_details'))[0].n === 0);
+  check('0036: every About-you save is audited with who made it', (await asOwner(`select count(*)::int as n from audit_log
+    where table_name = 'person_details' and action = 'UPDATE' and changed_by = '${priya}'`))[0].n >= 4);
+
+  // The desk: sign-ups waiting, by centre; the unconfirmed are not listed.
+  await signUpWith('unconfirmed.ac@example.com', { full_name: 'Not Confirmed', gender: 'male' }, false);
+  const queens = (await asOwner(`select id from centres where name = 'Queens'`))[0].id;
+  const far = await signUpWith('far.ac@example.com', { full_name: 'Far Away', gender: 'male', centre_id: queens });
+  const deskList = (await asApp('authenticated', fem1, 'select waiting_sign_ups() as r'))[0].r;
+  const guruList = (await asApp('authenticated', guru, 'select waiting_sign_ups() as r'))[0].r;
+  const listed = (list, id) => list.some((r) => r.id === id);
+  check('0036: a coordinator sees the confirmed sign-ups of their centre, with what they gave', listed(deskList, priya)
+    && deskList.find((r) => r.id === priya).dob === adultDob && deskList.find((r) => r.id === priya).occupation === 'other'
+    && !listed(deskList, far) && !deskList.some((r) => r.email === 'unconfirmed.ac@example.com'));
+  check('0036: the Guru sees the sign-ups of every centre', listed(guruList, priya) && listed(guruList, far));
+  check('0036: a student gets no waiting list', (await asApp('authenticated', arjun, 'select waiting_sign_ups() as r'))[0].r === null);
+
+  // Auto-assignment: the referral first (same gender), else the least loaded same-gender coordinator.
+  const loadStudent = (await register(fem2, { p_full_name: 'Load For Radha', p_dob: '1990-01-01', p_mentor: fem2 })).id;
+  const priyaRec = (await register(fem1, { p_full_name: 'Priya Sharma', p_dob: adultDob, p_email: 'priya.ac@example.com' })).id;
+  const moved = (await asOwner(`select student_id, profile_id, dob from person_details where profile_id = '${priya}'`))[0];
+  check('0036: linking moves the login\'s details to the record and drops the sign-up date of birth',
+    moved.student_id === priyaRec && moved.dob === null && (await roleOf(priya)) === 'student');
+  check('0036 #165: the login\'s gender fills the record and the referring coordinator (same gender) becomes the mentor, before load',
+    (await mentorOf(priyaRec)) === fem2, String(await mentorOf(priyaRec)));
+  check('0036: the new mentor gets an inbox notice', (await asOwner(`select count(*)::int as n from notifications
+    where profile_id = '${fem2}' and url = '/staff/students/${priyaRec}'`))[0].n === 1);
+  const desk1 = (await register(male1, { p_full_name: 'Desk Woman', p_dob: '1985-05-05' })).id;
+  const d1 = await details(male1, desk1, { gender: 'female', referred_by: male1, occupation: 'working', service_areas: ['tech'] });
+  check('0036 #165: a referral from a coordinator of another gender is kept for the report but the least loaded woman mentors',
+    d1.mentor_id === fem1 && d1.referred_by === male1 && d1.gender === 'female', JSON.stringify(d1).slice(0, 160));
+  const desk2 = (await register(fem1, { p_full_name: 'Desk Man', p_dob: '1985-06-06' })).id;
+  await details(fem1, desk2, { gender: 'male' });
+  check('0036 #165: a man gets the male coordinator', (await mentorOf(desk2)) === male1);
+  check('0036: a coordinator reads no person_details row directly (as guardians since 0034)', (await asApp('authenticated', fem1,
+    'select count(*)::int as n from person_details'))[0].n === 0 && (await asApp('authenticated', guru,
+    'select count(*)::int as n from person_details'))[0].n > 0);
+  const viaFn = (await asApp('authenticated', fem1, 'select get_student_details($1) as r', [desk1]))[0].r;
+  check('0036: ... and reads a student\'s details through get_student_details (no sign-up date of birth)', viaFn.gender === 'female'
+    && viaFn.details.occupation === 'working' && !('dob' in viaFn.details) && !('profile_id' in viaFn.details), JSON.stringify(viaFn).slice(0, 120));
+  check('0036 + 0034: the coordinator\'s read of a student\'s details is in the access log', (await asOwner(`select count(*)::int as n
+    from access_log where function_name = 'get_student_details' and actor_id = '${fem1}' and student_id = '${desk1}' and row_count = 1`))[0].n === 1);
+  await refusesWith('0036: a student cannot read details through get_student_details', 'not_allowed', () =>
+    asApp('authenticated', arjun, 'select get_student_details($1)', [desk1]));
+  const chosen = (await register(fem1, { p_full_name: 'Chosen Mentor', p_dob: '1985-07-07', p_mentor: fem1 })).id;
+  await details(fem1, chosen, { gender: 'male' });
+  check('0036: a mentor chosen at the desk is kept', (await mentorOf(chosen)) === fem1);
+  // No coordinator of that gender: no mentor, one notice to the Guru (not one per save).
+  await asApp('authenticated', guru, `insert into choice_options (list, code, label_en) values ('gender', 'not_said', 'Prefer not to say')`);
+  const nobody = (await register(fem1, { p_full_name: 'No Match', p_dob: '1985-08-08' })).id;
+  await details(fem1, nobody, { gender: 'not_said' });
+  await details(fem1, nobody, { occupation: 'retired' });
+  await asApp('authenticated', fem1, `update students set home_centre_id = home_centre_id where id = $1`, [nobody]);
+  await details(fem1, nobody, { centre: abids.id, gender: 'not_said' });
+  check('0036 #165: no same-gender coordinator leaves the mentor empty', (await mentorOf(nobody)) === null);
+  check('0036 #165: ... and tells the Guru once in the inbox', (await asOwner(`select count(*)::int as n from notifications
+    where profile_id = '${guru}' and url = '/staff/students/${nobody}' and kind = 'notice'`))[0].n === 1);
+  await refusesWith('0036: an unknown gender is refused at the desk', 'gender_unknown', () => details(fem1, nobody, { gender: 'robot' }));
+  await refusesWith('0036: a student cannot use the desk function', 'not_allowed', () => details(arjun, nobody, { occupation: 'working' }));
+
+  // Under 18: the guardian is the emergency contact; a minor's contact is a parent or guardian.
+  await refusesWith('0036: a minor needs a guardian contact at the desk (emergency contact)', 'minor_needs_guardian', () =>
+    register(fem1, { p_full_name: 'Minor No Contact', p_dob: minorDob, p_id_type_checked: 'aadhaar', p_written_consent: true }));
+  const minorLogin = await signUp('minor.ac@example.com', true);
+  const minorRec = (await register(fem1, { p_full_name: 'Minor With Login', p_dob: minorDob, p_email: 'minor.ac@example.com',
+    p_guardian_name: 'Minor Parent', p_guardian_phone: '9876511111', p_guardian_relation: 'father', p_id_type_checked: 'aadhaar',
+    p_written_consent: true })).id;
+  const mm = await myAbout(minorLogin);
+  check('0036: a minor\'s About you knows the guardian is on record', mm.minor === true && mm.has_guardian === true && mm.has_record === true);
+  check('0036: ... so the minor can finish About you', (await about(minorLogin, { occupation: 'school_student', about_state: 'done' })).about_state === 'done');
+  await refusesWith('0036: a minor\'s emergency contact is a parent or guardian', 'minor_contact_relation', () =>
+    about(minorLogin, { emergency_relation: 'spouse', emergency_name: 'Not A Parent', emergency_phone: '+919876522222' }));
+  check('0036: a guardian with a phone counts as the minor\'s emergency contact (helper)', (await asOwner(`select minor_without_contact('${minorRec}',
+    row(null, null, null, null, null, null, null, null, null, null, null, null, '{}', null, null, '{}', null, now(), now(), null)::person_details) as a`))[0].a === false);
+
+  // Report: by source and by coordinator, Guru only.
+  const today = (await asOwner(`select today_ist()::text as d`))[0].d;
+  const rep = (await asApp('authenticated', guru, `select heard_about_report($1, $1) as r`, [today]))[0].r;
+  const src = (code) => rep.by_source.find((r) => r.code === code)?.people ?? 0;
+  const by = (id) => rep.by_coordinator.find((r) => r.id === id)?.people ?? 0;
+  check('0036: the report counts how people found us, by source and by referring coordinator', rep.people >= 3 && src('referral') === 2
+    && by(fem2) === 1 && by(male1) === 1 && rep.by_coordinator.every((r) => typeof r.name === 'string'), JSON.stringify(rep).slice(0, 200));
+  check('0036: ... and the instruments people want to learn', rep.by_interest.find((r) => r.code === 'harmonium')?.people === 1,
+    JSON.stringify(rep.by_interest));
+  await refusesWith('0036: a coordinator gets no report', 'not_allowed', () =>
+    asApp('authenticated', fem1, `select heard_about_report($1, $1)`, [today]));
+  await refusesWith('0036: the report covers at most a year', 'range_too_long', () =>
+    asApp('authenticated', guru, `select heard_about_report('2024-01-01', '2026-01-01')`));
+
+  // Clean up so the counts below stay as they were.
+  await asOwner(`delete from students where id in ('${loadStudent}', '${priyaRec}', '${desk1}', '${desk2}', '${chosen}', '${nobody}', '${minorRec}')`);
+  await asOwner(`update profiles set role = 'pending' where id in ('${fem1}', '${fem2}', '${male1}')`);
+  await asOwner(`delete from choice_options where list = 'gender' and code = 'not_said'`);
+  for (const id of [priya, kid, odd, far, fem1, fem2, male1, minorLogin]) await asOwner(`delete from auth.users where id = '${id}'`);
+  await asOwner(`delete from auth.users where email = 'unconfirmed.ac@example.com'`);
+}
 
 // ================================================================ test net (audit brief 12)
 // Checks that walk the whole schema, so a new table, view, policy or function is covered without
@@ -3854,7 +4073,8 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   // D14-03 / D12a-18: the function sweep. anon may run no function of ours, signed-in people only
   // the ones on this list. A new function that the app calls goes on the list in the same change
   // (and is revoked from anon); an internal one is revoked from authenticated too (CONTRIBUTING.md).
-  const ANON_MAY_RUN = [];
+  // 0036 (#163): the sign-up form's public lists (active centres' name, city, country; gender options).
+  const ANON_MAY_RUN = ['sign_up_choices()'];
   const SIGNED_IN_MAY_RUN = [
     'announcement_file_deletable(text)', 'announcement_file_path_ok(text)', 'announcement_file_readable(text)',
     'announcement_file_uploadable(text)', 'assessment_clean_file(jsonb,text[],boolean)', 'assessment_clean_link(text)',
@@ -3901,6 +4121,9 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
     // 0035: asset labels and stocktake (staff only inside; DECISIONS #161)
     'finish_stocktake(bigint,text)', 'mark_labels_printed(bigint[])', 'resolve_asset(text)', 'start_stocktake(smallint)',
     'stocktake_see(bigint,text,bigint)',
+    // 0036: account creation, About you, the desk, the report; option_ok for the guard triggers
+    'heard_about_report(date,date)', 'my_about()', 'option_ok(text,text,boolean)', 'save_about_me(jsonb)',
+    'save_student_details(uuid,jsonb)', 'sign_up_choices()', 'waiting_sign_ups()', 'get_student_details(uuid)',
   ];
   const runnableBy = async (role) => (await asOwner(`select p.oid::regprocedure::text as f from pg_proc p
     where p.pronamespace = 'public'::regnamespace
@@ -3912,7 +4135,7 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
     return { ok: extra.length === 0 && missing.length === 0, detail: `open but not on the list: ${extra.join(' ') || '-'}; on the list but closed or gone: ${missing.join(' ') || '-'}` };
   };
   const anonRuns = diffList(await runnableBy('anon'), ANON_MAY_RUN);
-  check('D14-03: anon may run exactly the functions on its allow-list (none), trigger functions included', anonRuns.ok, anonRuns.detail);
+  check('D14-03: anon may run exactly the functions on its allow-list (sign_up_choices only), trigger functions included', anonRuns.ok, anonRuns.detail);
   // 0001's trigger functions were never revoked from authenticated. Harmless: Postgres refuses to
   // call a trigger function directly (checked below). A later migration may revoke them; then
   // delete this list.

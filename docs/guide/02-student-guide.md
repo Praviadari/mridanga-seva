@@ -31,9 +31,9 @@ are the words the app shows in English. The app also speaks Telugu and Hindi: se
 - **Get the app.** On Android, install it from the link the class shares. On an iPhone, open the
   web version in Safari and add it to your home screen. Both are explained in
   [5. Phones, install and updates](05-phones-and-updates.md).
-- **Register at the desk first.** A coordinator registers you in the class records (it takes about
-  two minutes). Give them **the email you will use for the app**. That email is how the app knows
-  which student you are.
+- **Sign up in the app, then come to the desk** (or the other way round). A coordinator registers
+  you in the class records (it takes about two minutes). Use **the same email** in the app and at the
+  desk. That email is how the app knows which student you are.
 - **Under 18?** A parent or guardian must come with you and sign a paper consent form. Without it
   the app cannot keep your details. This protects you.
 
@@ -43,16 +43,32 @@ hand. The app makes it quicker and lets you see your own progress.
 ## Create your account
 
 1. Open the app. You see **Sign in**.
-2. Tap **Create an account** (under "New here?").
-3. Fill in:
-   - **Full name**
-   - **Email**: use the email you gave the coordinator, so your record is linked.
+2. Tap **New student registration** (under "New here?").
+3. Fill in (about a minute):
+   - **Full name as on your Aadhaar or other government ID**. The class keeps only the name, never
+     the ID number or a copy. At the desk a coordinator checks the name against your ID.
+   - **Dīkṣā (initiated) name**: only if you have received initiation. Optional.
+   - **Email**: if you were already registered at the desk, use the email you gave the coordinator,
+     so your record is linked.
    - **Password**: at least 8 characters. Tap **Show** to see what you typed.
    - **Type the password again**
+   - **Date of birth**: pick the day, month and year. **Under 18?** The app asks you to come to the
+     class desk with a parent instead: the desk registers you with the parent's consent.
+   - **Gender**: each student gets a coordinator of the same gender.
+   - **Mobile number**: pick the country (your centre's is chosen first), then type the number.
+   - **Your class centre**: country, then city, then the centre (with one centre it is already chosen).
+   - **Interested in learning**: tick Mṛdaṅga, Kartāl, Harmonium, or **All**.
 4. Tap **Create account**.
 5. You see **Check your email**. Open the email from the class and tap the link in it. This
    confirms the email is really yours.
 6. Go back to the app and sign in.
+7. **About you** opens once: a few optional questions in four short steps (your sign-up answers to
+   correct, a parent's or spouse's number as emergency contact, how you heard about the class, your
+   education or occupation and the service you would like to help with). Each step is saved when you tap **Save and continue**; **Skip for now** leaves.
+   If a coordinator invited you, type their **referral code** under "How did you hear about us?".
+   You can open About you again later from the waiting screen or **My profile**.
+8. Come to the class desk. The coordinator finds your sign-up, checks your name against your ID,
+   takes your photo and registers you; your login is then joined to your record.
 
 On an iPhone home-screen app, the email link opens in Safari. Confirm there, then go back to the
 home-screen app and sign in inside it.
@@ -188,6 +204,9 @@ Tap **Attendance** in the ring. The page **My attendance** lists every visit, by
 - Three months are shown first. Tap **Show earlier months** for more.
 
 ## My profile
+
+**About you** is here too: your phone, emergency contact, how you found the class, occupation and
+service areas. All optional; change them whenever you like. Only the coordinators and the Guru see them.
 
 Tap **My profile** in the ring or at the foot of the home screen.
 

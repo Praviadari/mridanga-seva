@@ -33,6 +33,7 @@ import { fetchNextEvent, placeText, whenText, type EventItem, type EventNames } 
 import { fetchStudentHome, type StudentHome } from '@/data/home';
 import { fetchPollsToVote } from '@/data/polls';
 import { audienceName, authorLine, lastVisitText, levelName } from '@/i18n/labels';
+import { useAboutPrompt } from '@/lib/about-prompt';
 import { formatDateTime } from '@/lib/dates';
 
 /** How many announcements the home shows; the rest are one tap away on S10. */
@@ -50,6 +51,8 @@ export default function StudentHomeScreen() {
   // Phase 2 slice 5: the next event and how many polls wait for a vote (null = none / not known).
   const [nextEvent, setNextEvent] = useState<{ item: EventItem; names: EventNames } | null>(null);
   const [pollsToVote, setPollsToVote] = useState(0);
+  // About you (step 2 of joining, docs/DECISIONS.md #164): opens by itself once after the first sign-in.
+  const aboutOpen = useAboutPrompt(profile?.id, '/student/about-you');
 
   const load = useCallback(async () => {
     const [loadedHome, loadedNews, loadedEvent, loadedPolls] = await Promise.all([
@@ -141,6 +144,12 @@ export default function StudentHomeScreen() {
             <Button variant="link" icon="syllabus" label={t('progress.open')} onPress={() => router.push('/student/progress')} />
           </Section>
         </>
+      ) : null}
+
+      {aboutOpen ? (
+        <Section icon="about" title={t('about.cardTitle')} description={t('about.cardBody')}>
+          <Button icon="about" label={t('about.cardOpen')} onPress={() => router.push('/student/about-you')} />
+        </Section>
       ) : null}
 
       <ModuleRing title={t('home.staff.shortcuts')} modules={modules} />

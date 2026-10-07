@@ -80,6 +80,21 @@ export async function signIn(email: string, password: string): Promise<AuthResul
   return error ? { errorKey: authErrorKey(error) } : {};
 }
 
+/** What the sign-up form adds to the name (0036, docs/DECISIONS.md #162); each may be missing. */
+export type SignUpDetails = {
+  /** 'YYYY-MM-DD', an adult's (under 18 signs up at the desk). */
+  dob?: string | null;
+  /** A gender option code. */
+  gender?: string | null;
+  centreId?: number | null;
+  /** Own mobile number in E.164. */
+  phone?: string | null;
+  /** The initiated (Diksha) name, optional. */
+  dikshaName?: string | null;
+  /** Instrument option codes the person wants to learn. */
+  learn?: string[];
+};
+
 /**
  * Creates a login. The database gives it the role `pending`, or `student` when the email
  * matches a student record (docs/DATABASE.md "Linking a login to a student").
@@ -90,6 +105,7 @@ export async function signUp(
   fullName: string,
   email: string,
   password: string,
+  details: SignUpDetails = {},
 ): Promise<AuthResult & { needsConfirmation?: boolean }> {
   const { data, error } = await supabase.auth.signUp({
     email: email.trim(),
@@ -97,8 +113,18 @@ export async function signUp(
     options: {
       // Read by the database function handle_new_user to fill profiles.full_name and, from 0032,
       // profiles.language: the language the app shows now (picked, or the phone's own), so the
-      // first sign-in keeps it instead of the default English (docs/DECISIONS.md #125).
-      data: { full_name: fullName.trim(), language: currentLanguage() },
+      // first sign-in keeps it instead of the default English (docs/DECISIONS.md #125). From 0036
+      // also the date of birth, gender and centre; a database before 0036 ignores them.
+      data: {
+        full_name: fullName.trim(),
+        language: currentLanguage(),
+        ...(details.dob ? { dob: details.dob } : {}),
+        ...(details.gender ? { gender: details.gender } : {}),
+        ...(details.centreId ? { centre_id: details.centreId } : {}),
+        ...(details.phone ? { phone: details.phone } : {}),
+        ...(details.dikshaName ? { diksha_name: details.dikshaName } : {}),
+        ...(details.learn && details.learn.length > 0 ? { learn: details.learn } : {}),
+      },
       emailRedirectTo: emailLinkTarget(),
     },
   });

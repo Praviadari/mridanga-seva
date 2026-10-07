@@ -21,6 +21,7 @@ import { PracticePanel } from '@/components/practice-parts';
 import { PromotionPanel } from '@/components/promotion-parts';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
+import { StudentDetailsPanel } from '@/components/student-details-panel';
 import { VisitResultNotice } from '@/components/visit-result-notice';
 import { markVisit, type MarkOutcome } from '@/data/attendance';
 import { fetchStaff } from '@/data/student-overview';
@@ -158,6 +159,9 @@ export default function StudentProfileScreen() {
           ]}
         />
       </Section>
+
+      {/* About you / the desk's details (0036). */}
+      <StudentDetailsPanel studentId={student.id} minor={profile.minor} />
 
       {showGuardians ? (
         <Section icon="guardian" title={t('register.guardianSection')} description={t('profile.guardianStaffOnly')}>

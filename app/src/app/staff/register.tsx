@@ -5,22 +5,42 @@
 // (docs/DECISIONS.md #8, #16). Saving calls register_student (src/data/students.ts), which
 // stores the student, guardian and consent together and gives the roll number. Saving the same
 // form again after a lost answer returns the student saved the first time (docs/DECISIONS.md #126).
+// Since 0036 (docs/DECISIONS.md #162-#165): the people who signed up and wait for the desk are listed at
+// the top and fill the form in one tap (the coordinator checks the name against the ID and takes the
+// photo); gender and the optional About-you details are asked here too; the mentor is chosen
+// automatically (a coordinator of the same gender) unless the coordinator picks one.
 
 import { router, Stack } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import type { MessageKey } from '@/auth/auth-actions';
-import { useAuth } from '@/auth/auth-provider';
+import { EmergencyPart, HeardPart, OccupationPart, YouPart } from '@/components/about-fields';
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { Checkbox } from '@/components/checkbox';
+import { ListRow } from '@/components/list-row';
 import { ChoiceGroup } from '@/components/choice-group';
 import { Notice } from '@/components/notice';
 import { PrivacyNoticeLink } from '@/components/privacy-notice-link';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { TextField } from '@/components/text-field';
+import {
+  aboutFormFrom,
+  aboutPatch,
+  checkAbout,
+  emptyAboutForm,
+  fetchReferrers,
+  fetchWaitingSignUps,
+  saveStudentDetails,
+  type AboutErrors,
+  type AboutForm,
+  type AboutPart,
+  type Referrer,
+  type WaitingSignUp,
+} from '@/data/about';
+import { activeSets, fetchAllOptions, type OptionSets } from '@/data/options';
 import {
   ageFromForm,
   checkGuardianConsent,
@@ -37,15 +57,19 @@ import {
   type RegistrationForm,
 } from '@/data/students';
 import { levelName } from '@/i18n/labels';
+import { classLocale } from '@/lib/class-locale';
+import { formatDateTime, formatTypedDate } from '@/lib/dates';
 
 type Choices = { levels: LevelOption[]; mentors: MentorOption[] };
+/** The 0036 parts: option lists, staff who bring people, sign-ups waiting. Null before 0036 or when not loaded. */
+type Extras = { options: OptionSets; referrers: Referrer[]; waiting: WaitingSignUp[] };
 
 /** Registration form, then a confirmation with the new roll number. */
 export default function RegisterStudentScreen() {
   const { t } = useTranslation();
-  const { profile } = useAuth();
-  // A coordinator is usually the new student's mentor; the Guru picks one.
-  const defaultMentor = profile?.role === 'coordinator' ? profile.id : null;
+  // No mentor picked = a coordinator of the student's gender is given by the database (#165), once
+  // the gender is known; a coordinator may still pick themselves or anyone else.
+  const defaultMentor: string | null = null;
 
   // undefined = still loading, null = could not load.
   const [choices, setChoices] = useState<Choices | null | undefined>(undefined);
@@ -54,12 +78,22 @@ export default function RegisterStudentScreen() {
   const [errors, setErrors] = useState<RegistrationErrors>({});
   const [formError, setFormError] = useState<MessageKey | null>(null);
   const [busy, setBusy] = useState(false);
-  const [saved, setSaved] = useState<{ registered: Registered; name: string } | null>(null);
+  const [saved, setSaved] = useState<{ registered: Registered; name: string; detailsFailed: boolean } | null>(null);
+  const [extras, setExtras] = useState<Extras | null>(null);
+  const [about, setAbout] = useState<AboutForm>(() => emptyAboutForm(classLocale().country));
+  const [aboutErrors, setAboutErrors] = useState<AboutErrors>({});
+  // The sign-up the form was filled from: its centre goes on the record; it leaves the waiting list.
+  const [fromSignUp, setFromSignUp] = useState<WaitingSignUp | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     fetchRegistrationChoices().then((result) => {
       if (!cancelled) setChoices(result);
+    });
+    // Asked apart: the form still works on a database without 0036 (then without these parts).
+    void Promise.all([fetchAllOptions(), fetchReferrers(), fetchWaitingSignUps()]).then(([rows, referrers, waiting]) => {
+      if (cancelled) return;
+      setExtras(rows && rows.length > 0 ? { options: activeSets(rows), referrers: referrers ?? [], waiting: waiting ?? [] } : null);
     });
     return () => {
       cancelled = true;
@@ -78,25 +112,59 @@ export default function RegisterStudentScreen() {
 
   const age = ageFromForm(form.dob);
   const minor = age?.minor ?? false;
+  // A minor's emergency contact is the parent of the guardian part (C3).
+  const aboutParts: AboutPart[] = minor ? ['you', 'heard', 'occupation'] : ['you', 'emergency', 'heard', 'occupation'];
+  const aboutContext = { minor, hasGuardian: minor, staff: true };
+  const setAboutField = <K extends keyof AboutForm>(key: K, value: AboutForm[K]) => setAbout((current) => ({ ...current, [key]: value }));
+  const waiting = useMemo(() => (extras?.waiting ?? []).filter((w) => w.id !== fromSignUp?.id), [extras, fromSignUp]);
+
+  /** Fills the form from a sign-up waiting for the desk. */
+  function fillFrom(person: WaitingSignUp) {
+    setForm((current) => ({
+      ...current,
+      fullName: person.full_name,
+      dob: person.dob ? formatTypedDate(person.dob) : current.dob,
+      email: person.email ?? current.email,
+      phone: person.phone ?? current.phone,
+    }));
+    setAbout(aboutFormFrom(person, classLocale().country));
+    setFromSignUp(person);
+    setErrors({});
+    setAboutErrors({});
+  }
 
   async function save() {
     const found = { ...checkStudentDetails(form), ...(minor ? checkGuardianConsent(form) : {}) };
+    const foundAbout = extras ? checkAbout(about, aboutParts, aboutContext) : {};
     setErrors(found);
-    if (Object.keys(found).length > 0) {
+    setAboutErrors(foundAbout);
+    if (Object.keys(found).length > 0 || Object.keys(foundAbout).length > 0) {
       setFormError('register.errors.fixFields');
       return;
     }
     setFormError(null);
     setBusy(true);
     const result = await registerStudent(form);
+    let detailsFailed = false;
+    if (result.registered && extras && !result.registered.repeated) {
+      // The details go after the record (#165: a gender set here gives the mentor). A failure here
+      // keeps the student; C8 offers the details again.
+      const patch = { ...aboutPatch(about, aboutParts, aboutContext), ...(fromSignUp?.centre_id ? { centre: fromSignUp.centre_id } : {}) };
+      const details = await saveStudentDetails(result.registered.id, patch);
+      detailsFailed = !!details.errorKey;
+    }
     setBusy(false);
-    if (result.registered) setSaved({ registered: result.registered, name: form.fullName.trim() });
+    if (result.registered) setSaved({ registered: result.registered, name: form.fullName.trim(), detailsFailed });
     else setFormError(result.errorKey ?? 'common.genericError');
   }
 
   function registerAnother() {
     setForm(emptyRegistration(defaultMentor));
+    setAbout(emptyAboutForm(classLocale().country));
     setErrors({});
+    setAboutErrors({});
+    if (fromSignUp) setExtras((current) => (current ? { ...current, waiting: current.waiting.filter((w) => w.id !== fromSignUp.id) } : current));
+    setFromSignUp(null);
     setSaved(null);
   }
 
@@ -111,6 +179,13 @@ export default function RegisterStudentScreen() {
         </Notice>
         {saved.registered.repeated ? <AppText>{t('register.alreadySaved')}</AppText> : null}
         {saved.registered.linked ? <AppText>{t('register.linked')}</AppText> : null}
+        {saved.detailsFailed ? <Notice tone="error">{t('register.detailsFailed')}</Notice> : null}
+        <Button
+          variant="secondary"
+          icon="person"
+          label={t('register.openStudent')}
+          onPress={() => router.push({ pathname: '/staff/students/[id]', params: { id: saved.registered.id } })}
+        />
         <Button icon="add" label={t('register.another')} onPress={registerAnother} />
         <Button
           variant="secondary"
@@ -138,6 +213,25 @@ export default function RegisterStudentScreen() {
       {header}
       <AppText tone="muted">{t('register.intro')}</AppText>
 
+      {waiting.length > 0 ? (
+        <Section icon="newJoiner" title={t('register.waitingTitle', { count: waiting.length })} description={t('register.waitingHint')}>
+          {waiting.slice(0, 10).map((w) => (
+            <ListRow
+              key={w.id}
+              leading="person"
+              title={w.full_name || w.email || ''}
+              details={[w.email ?? '', t('register.signedUpOn', { when: formatDateTime(w.created_at) })].filter(Boolean)}
+              action={{ label: t('register.fillFrom'), variant: 'secondary', onPress: () => fillFrom(w) }}
+            />
+          ))}
+        </Section>
+      ) : null}
+      {fromSignUp ? (
+        <Notice tone="info" title={t('register.filledTitle', { name: fromSignUp.full_name })}>
+          {t('register.filledBody')}
+        </Notice>
+      ) : null}
+
       <Section icon="person" title={t('register.studentSection')}>
         <TextField
           label={t('register.fullName')}
@@ -146,6 +240,7 @@ export default function RegisterStudentScreen() {
           error={errorFor('fullName')}
           autoComplete="off"
           autoCapitalize="words"
+          hint={t('register.fullNameHint')}
         />
         <TextField
           label={t('register.dob')}
@@ -207,12 +302,16 @@ export default function RegisterStudentScreen() {
               value={form.levelId}
               onChange={field('levelId')}
             />
+            {extras ? (
+              <YouPart form={about} set={setAboutField} errors={aboutErrors} options={extras.options} context={aboutContext} />
+            ) : null}
             <ChoiceGroup<string>
               label={t('register.mentor')}
               choices={[
+                // Empty string stands for "no mentor yet" inside the picker only; since 0036 the database
+                // then gives a coordinator of the student's gender (#165).
+                { value: '', label: extras ? t('register.mentorAuto') : t('register.noMentor') },
                 ...choices.mentors.map((m) => ({ value: m.id, label: m.fullName })),
-                // Empty string stands for "no mentor yet" inside the picker only.
-                { value: '', label: t('register.noMentor') },
               ]}
               value={form.mentorId ?? ''}
               onChange={(id) => field('mentorId')(id || null)}
@@ -282,6 +381,20 @@ export default function RegisterStudentScreen() {
             onChange={field('writtenConsent')}
             error={errorFor('writtenConsent')}
           />
+        </Section>
+      ) : null}
+
+      {extras ? (
+        <Section icon="about" title={t('register.moreTitle')} description={t('register.moreHint')}>
+          {minor ? null : (
+            <>
+              <AppText variant="label">{t('about.stepEmergency')}</AppText>
+              <EmergencyPart form={about} set={setAboutField} errors={aboutErrors} options={extras.options} context={aboutContext} />
+            </>
+          )}
+          <HeardPart form={about} set={setAboutField} errors={aboutErrors} options={extras.options} context={aboutContext}
+            referrers={extras.referrers} />
+          <OccupationPart form={about} set={setAboutField} errors={aboutErrors} options={extras.options} context={aboutContext} />
         </Section>
       ) : null}
 

@@ -3107,3 +3107,143 @@ retired while lent) and are already recorded with who and when in `inventory_che
 
 **Why / Consequences.** supabase/tests checks all of it ("asset labels and stocktake (0035)"), plus the grant sweeps
 and the WHERE sweep that run over every function.
+
+## 162. Joining in two steps: a one-minute sign-up, then "About you" — 7 Oct 2026
+
+**Context.** The team's minutes of 5 Oct 2026 list the fields a new student should give: name as per
+Aadhaar, phone, email, date of birth, bio verify / face scan, referred by (yes → coordinator; no → a
+source for analysis), a parent's or spouse's number, gender (female students with female
+coordinators, male with male), region, blood group (not final), service areas of interest and
+occupation. One long form at sign-up loses people; a form at the desk takes a coordinator's time.
+
+**Decision.** Two steps (lead plan, 7 Oct 2026; checked against the team's field list of 7 Oct 2026
+with Praveen's answers the same day). The sign-in screen's link reads **New student registration**.
+**Step 1, A1 sign-up** (about a minute): the full name *as on the Aadhaar or other government ID* —
+only the name is kept, never an ID number or a copy (#8) — and, optional, the **Dīkṣā (initiated)
+name** as a second field (the team's "name as per Dīkṣā / Aadhaar": the legal name stays the one the
+desk checks), email and password, the date of birth as three drop-downs (day, month name, year; no
+native picker before the next APK, I18N P6), gender, the **mobile number** (required, E.164, the
+centre's country first), the centre as country → city → centre (`centres.city`, the minutes'
+"region") and **Interested in learning** (Mṛdaṅga, Kartāl, Harmonium as an option list, and "All",
+which ticks every one). Under 18 the form stops and says to come to the desk with a parent (#150): a
+minor's data needs the parent's consent first. The values go in the sign-up's user metadata;
+`handle_new_user` keeps an adult's date of birth, the Dīkṣā name and the instruments (on
+`person_details`), an active gender option, an active centre and a well-formed E.164 mobile (on the
+profile), and ignores anything else, so a sign-up never fails on them. **Step 2, About you**
+(#164) opens by itself after the first sign-in. **At the desk** (C2) the coordinator sees the
+confirmed sign-ups of their centre (`waiting_sign_ups`), fills the form from one in a tap, checks the
+name against the ID and takes the photo; the same optional questions are there for walk-ins.
+
+**Why.** The sign-up asks only what routing needs (age, gender, centre); everything else waits until
+the person is in and can skip it. Keeping the desk as the place where identity is checked keeps the
+consent and photo rules where they already work.
+
+**Consequences.** The language (#125), the expired-link card (#124) and the request id (#126) are kept.
+A database without 0036 gets the old sign-up: the new app hides gender and centre when
+`sign_up_choices` is missing, and the old `handle_new_user` ignores the extra metadata. Face scan:
+#167.
+
+## 163. One function a visitor may run: the sign-up's centre and gender lists — 7 Oct 2026
+
+**Context.** Since 0025 the anon role holds no right at all in `public` (#77), checked by two sweeps.
+Step 1 must offer the centres and the gender options before anyone is signed in.
+
+**Decision.** `sign_up_choices()` (security definer, stable) is granted to anon: the active centres'
+id, name, city and ISO country, and the active gender options with their labels. Nothing else — no
+address, position, hours, people or counts. The sweeps allow exactly this one (`ANON_MAY_RUN`).
+
+**Why.** These facts are public (the website lists the centres); a fixed list in the app would not
+follow the Guru's edits, and an Edge Function only for this would be more to run. A single named
+exception is easy to audit.
+
+**Consequences.** Any other anon right still fails the test net. If the team ever treats a centre's
+existence as private, drop the grant and ask the centre after sign-in.
+
+## 164. About you: optional answers saved step by step, each with a stated purpose — 7 Oct 2026
+
+**Context.** The minutes' remaining fields (phone, parents'/spouse's number, referred by / source,
+occupation, service areas) are useful to the coordinators but not needed to join, and a login
+waiting for the desk reads no table (0028).
+
+**Decision.** `person_details` holds them: on the login (`profile_id`) until a student record exists,
+then on the record (`student_id`; linking moves the row, drops the sign-up date of birth and copies
+the login's gender to an empty `students.gender`). About you is four short steps — the sign-up's own
+answers to correct (Dīkṣā name, instruments, gender if none) and the phone (E.164 with a country picker
+defaulting to the centre's country, `libphonenumber-js/min`, pure JS, lead-approved; asked at sign-up
+since Praveen's answer of 7 Oct 2026, the parents' / spouse's number stays here),
+emergency contact (relation from a list, name, phone; required under 18 unless the desk's guardian is
+on record, and then a parent or guardian), how they heard of us (a coordinator's referral code, or a
+source with "Other: …"), education / occupation and service areas (tick any) — the team's "profile
+settings". Each step saves its own keys
+(`save_about_me`; a key not sent is left alone), "Skip for now" stores `about_state = 'skipped'` so the
+form does not open by itself again; it stays reachable from the waiting screen and My profile. The
+desk and C8 write the same through `save_student_details` (staff). Each step says why it asks; the
+privacy notice lists the purposes. The Guru reads `person_details` directly; coordinators read it
+through `get_student_details` (C8) and `waiting_sign_ups` (C2), which write to 0034's access log once
+it is on the database (called by name). Every write is audited (`audit_person_details`).
+
+**Why.** Saving per step keeps answers when a person stops half-way; optional and skippable keeps the
+data to what people choose to give (DPDP data minimisation); reading through functions follows the
+parents' contacts (0034, briefs 6/6b).
+
+**Consequences.** No blood group (#167). The minor rule can only bite on a record without a guardian,
+which 0028 already prevents; the check stays as a second line. Phone numbers outside India are
+accepted in E.164; the desk's own phone field keeps its old check (10-13 digits).
+
+## 165. Same-gender coordinators: referral code first, then the least loaded — 7 Oct 2026
+
+**Context.** The minutes: female students with female coordinators, male with male; "referred by"
+should name the coordinator — but a public list of coordinators' names must not exist.
+
+**Decision.** Staff get a gender (`profiles.gender`, set by the Guru on G2) and a six-character
+referral code (`profiles.referral_code`, letters and digits without I, O, 0, 1, made by the database
+when someone becomes staff, shown on their own My profile). A student without a mentor whose gender is
+known gets, by trigger (`assign_mentor`): the coordinator (or the Guru) whose code they gave, if the
+gender matches; else the active coordinator of the student's home centre with that gender and the
+fewest students in class (not Left, not withdrawn), the earlier staff member on a tie. Nobody fits:
+the mentor stays empty and the Gurus get an inbox notice (once a day per student). The new mentor
+gets an inbox notice. A mentor picked at the desk is kept; the Guru changes mentors as before (G2,
+C8). C2's mentor picker now starts at "Automatic".
+
+**Why.** A code ties a person to who brought them without exposing names; load balancing keeps
+mentees spread; the Guru keeps the last word. The team's list asked for a coordinator list under
+"Referred by: yes"; registration happens before sign-in, so such a list would be public — Praveen chose
+the code on 7 Oct 2026. The desk (staff) still picks the coordinator from a list.
+
+**Consequences.** Notices go to the inbox only: the Edge Function sends only the screens it knows,
+and `/staff/students/<id>` would be refused as bad_url until it is redeployed with that screen
+(later, with the next function change). Coordinators need a gender before matching works: the Guru
+sets it on G2 for every coordinator once. A code stays with its person; a new-code button is not built.
+
+## 166. Option lists are data the Guru edits (G12), and a report counts the answers (G13) — 7 Oct 2026
+
+**Context.** The team has not settled the lists (gender options, sources, occupations, service areas)
+and wants analysis of "how students found us".
+
+**Decision.** `choice_options` (list, code, en/te/hi labels, order, active), seeded with the lead's
+defaults and the team's instruments (`instrument`: Mṛdaṅga, Kartāl, Harmonium; "All" is a tick in the
+app, not a row); the occupation list is shown as "Education / occupation"; read by class roles, written by the Guru only; codes never change, an option in use is
+switched off rather than deleted, and male/female, the parent relations and every "other" cannot be
+deleted; every change is audited. G12 (Running the class → Option lists) edits labels, order and
+on/off and adds options. G13 (Running the class → How students found us) shows, for a range of dates,
+the people who answered, by source, by the instruments they want to learn and by referring
+coordinator, with how many are students now (`heard_about_report`, Guru only).
+
+**Why.** The team can change wording and add choices without a new app version; codes keep old
+answers readable.
+
+**Consequences.** A "prefer not to say" gender is one G12 row away; with no coordinator of that
+gender, those students wait for the Guru (#165).
+
+## 167. Not built: face scan and blood group — 7 Oct 2026
+
+**Context.** The minutes list "bio verify / face scan" and, as not final, blood group.
+
+**Decision.** Neither is built. Face recognition stays Phase 3 with its own opt-in consent (biometric
+data; `consents.scope = 'face'` exists since 0001) and its own APK; nothing about it is shown now.
+Blood group is deferred: the team is undecided and it is health data, needed only if the class runs
+events where it matters; the lead advised skipping it.
+
+**Consequences.** Open with the team: gender options, blood group (if ever: optional, Guru-only, with
+a purpose), face scan (Phase 3), the final option lists, the wording of "region" (now country → city →
+centre).

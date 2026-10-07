@@ -32,6 +32,12 @@ export type Person = {
   igEditor: boolean | null;
   /** Treasurer of the class fund (profiles.is_treasurer; used from migration 0026, docs/DECISIONS.md #80). */
   treasurer: boolean;
+  /** Gender option code (0036): coordinators mentor students of the same gender (docs/DECISIONS.md #165). */
+  gender: string | null;
+  /** The staff member's referral code (0036); null before 0036 or for others. */
+  referralCode: string | null;
+  /** False when the database has no 0036 yet (gender and code cannot be shown or set). */
+  hasPeopleColumns: boolean;
 };
 
 /** A student as the mentee lists and the link picker show them. */
@@ -81,12 +87,15 @@ function toPerson(row: PersonRow): Person {
     createdAt: row.created_at,
     igEditor: null,
     treasurer: row.is_treasurer,
+    gender: null,
+    referralCode: null,
+    hasPeopleColumns: false,
   };
 }
 
 /** Loads the board. Returns null when it could not be loaded (usually no internet). */
 export async function fetchCoordinatorsBoard(): Promise<CoordinatorsBoard | null> {
-  const [people, students, editors, subscribers] = await Promise.all([
+  const [people, students, editors, subscribers, genders] = await Promise.all([
     supabase
       .from('profiles')
       .select('id, role, full_name, email, phone, duty_hours, is_treasurer, active, created_at')
@@ -98,10 +107,21 @@ export async function fetchCoordinatorsBoard(): Promise<CoordinatorsBoard | null
     // Public Ishtagoshti subscribers are not waiting for a class role: they are on I15 (0027,
     // docs/DECISIONS.md #88). Asked apart, so the page still works without migration 0027.
     supabase.from('ig_subscribers').select('profile_id'),
+    // Gender and referral code (0036, docs/DECISIONS.md #165), asked apart for a database without them.
+    supabase.from('profiles').select('id, gender, referral_code').in('role', ['guru', 'coordinator', 'pending']),
   ]);
   if (people.error || students.error) return null;
   const editorOf = editors.error ? null : new Map((editors.data as { id: string; ig_editor: boolean }[]).map((e) => [e.id, e.ig_editor]));
-  const all = (people.data as PersonRow[]).map(toPerson).map((p) => ({ ...p, igEditor: editorOf?.get(p.id) ?? null }));
+  const peopleOf = genders.error
+    ? null
+    : new Map((genders.data as { id: string; gender: string | null; referral_code: string | null }[]).map((g) => [g.id, g]));
+  const all = (people.data as PersonRow[]).map(toPerson).map((p) => ({
+    ...p,
+    igEditor: editorOf?.get(p.id) ?? null,
+    gender: peopleOf?.get(p.id)?.gender ?? null,
+    referralCode: peopleOf?.get(p.id)?.referral_code ?? null,
+    hasPeopleColumns: peopleOf !== null,
+  }));
   const staff = all
     .filter((p) => p.role === 'guru' || p.role === 'coordinator')
     .sort((a, b) => Number(b.active) - Number(a.active) || a.fullName.localeCompare(b.fullName));
@@ -172,6 +192,11 @@ export async function setTreasurer(id: string, on: boolean): Promise<ChangeResul
   return asResult(await supabase.from('profiles').update({ is_treasurer: on }).eq('id', id).select('id'));
 }
 
+/** Sets a staff member's gender (an option code, 0036), used to match coordinators with students. */
+export async function setGender(id: string, gender: string): Promise<ChangeResult> {
+  return asResult(await supabase.from('profiles').update({ gender }).eq('id', id).select('id'));
+}
+
 /** Links a waiting person to a student record without a login; they become that student. */
 export async function linkToStudent(profileId: string, studentId: string): Promise<ChangeResult> {
   const { error } = await supabase.rpc('link_student_login', { p_profile: profileId, p_student: studentId });
@@ -206,6 +231,7 @@ const KNOWN_ERRORS = [
   'mentor_not_staff',
   'ig_editor_coordinator_only',
   'treasurer_coordinator_only',
+  'gender_unknown',
 ] as const;
 
 function errorKeyOf(message: string): MessageKey {

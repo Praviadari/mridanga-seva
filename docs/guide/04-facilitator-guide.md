@@ -143,6 +143,30 @@ Every change asks first and is kept in the audit log. Nobody can change their ow
 themselves off; the Facilitator role is given only in the dashboard
 ([DECISIONS.md #45](../DECISIONS.md)).
 
+## Gender, referral codes and automatic mentors
+
+On a coordinator's page (Coordinators) set their **Gender** once. New students without a chosen mentor
+then get a coordinator of the same gender automatically: the coordinator whose **referral code** they
+gave (if the gender matches), otherwise the coordinator of their centre with the fewest students. If no
+coordinator of that gender exists, the student stays without a mentor and you get a notice in the inbox:
+open it and choose a mentor on the student's page. Every coordinator sees their own referral code on
+My profile.
+
+## Option lists
+
+**Running the class → Option lists** holds the choices of the sign-up, About you and the desk: gender,
+the instruments people can learn, how people heard of us, education / occupation, service areas and
+the relation of an emergency contact. Change a
+label (English, Telugu, Hindi), move an option **Up** or **Down**, **Switch off** one that should no
+longer be offered (answers already given keep it), or **Add an option**. **Delete** works only for an
+option nobody chose; male, female, the parent relations and "Other" always stay.
+
+## How students found us
+
+**Running the class → How students found us** counts, for this month, last month, the last 4 weeks or
+3 months, the answers to "How did you hear about us?": by source, and by the coordinator who brought
+them, each with how many are students now; and how many want to learn each instrument.
+
 ## Student database
 
 Open **Running the class → Student database**. It lists **every student record, Left ones too**
@@ -206,6 +230,8 @@ location, by reason and per student (also a CSV column). The visit still counts;
 repeat. A student's **All visits** list shows the reason under each flagged visit ([DECISIONS.md #70](../DECISIONS.md)).
 
 ## Centres
+
+Each centre now has a **City**: people signing up choose country, then city, then centre.
 
 Open **Running the class → Centres**: *Where the class meets, with its address and the area where
 attendance counts.* Today that is Abids; a new centre is a setting, not new code.

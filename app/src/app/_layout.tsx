@@ -94,6 +94,8 @@ function RootNavigator() {
           <Stack.Screen name="pending" />
           {/* I14: a login without a class role joins Ishtagoshti, or types the parent's code. */}
           <Stack.Screen name="join-ishtagoshti" />
+          {/* Step 2 of joining, while waiting for the desk (docs/DECISIONS.md #164). */}
+          <Stack.Screen name="about-you" />
         </Stack.Protected>
 
         {/* The staff home (G1 for the Guru, C1 for a coordinator) and the coordinator screens the

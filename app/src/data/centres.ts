@@ -3,7 +3,8 @@
 // value (guard_centre_details, migration 0015; the window: centres_guard, 0014) and logs each change.
 // A centre is switched off, never deleted: visits and people point to it. The phone does not check
 // the area yet: that needs expo-location, a native package, in the next planned APK
-// (docs/DECISIONS.md #51).
+// (docs/DECISIONS.md #51). Since 0036 a centre has a city: the sign-up groups centres country → city →
+// centre (docs/DECISIONS.md #162); it is asked and saved apart, so the screen works without 0036.
 
 import type { ParseKeys } from 'i18next';
 
@@ -26,6 +27,8 @@ export type Centre = {
   active: boolean;
   /** Students (not Left) whose home centre it is. */
   students: number;
+  /** City for the sign-up's choice (0036); null when not set or the database has no such column. */
+  city: string | null;
 };
 
 /** The edit form, as typed. */
@@ -37,6 +40,7 @@ export type CentreForm = {
   radius: string;
   opensAt: string;
   closesAt: string;
+  city: string;
 };
 
 /** The radius the database accepts, in metres. */
@@ -58,13 +62,15 @@ const COLUMNS = 'id, name, address, lat, lng, radius_m, opens_at, closes_at, act
 
 /** Every centre, those in use first, with how many students call it home. Null = could not load. */
 export async function fetchCentres(): Promise<Centre[] | null> {
-  const [centres, students] = await Promise.all([
+  const [centres, students, cities] = await Promise.all([
     supabase.from('centres').select(COLUMNS).order('active', { ascending: false }).order('name'),
     supabase.from('students').select('home_centre_id').neq('status', 'left'),
+    supabase.from('centres').select('id, city'),
   ]);
   if (centres.error || students.error) return null;
   const counts = new Map<number, number>();
   for (const s of students.data as { home_centre_id: number }[]) counts.set(s.home_centre_id, (counts.get(s.home_centre_id) ?? 0) + 1);
+  const cityOf = new Map(cities.error ? [] : (cities.data as { id: number; city: string | null }[]).map((c) => [c.id, c.city]));
   return (centres.data as Row[]).map((r) => ({
     id: r.id,
     name: r.name,
@@ -76,6 +82,7 @@ export async function fetchCentres(): Promise<Centre[] | null> {
     closesAt: r.closes_at.slice(0, 5),
     active: r.active,
     students: counts.get(r.id) ?? 0,
+    city: cityOf.get(r.id) ?? null,
   }));
 }
 
@@ -89,8 +96,9 @@ export function formOf(centre: Centre | null): CentreForm {
         radius: String(centre.radiusM),
         opensAt: centre.opensAt,
         closesAt: centre.closesAt,
+        city: centre.city ?? '',
       }
-    : { name: '', address: '', location: '', radius: String(RADIUS.default), opensAt: '14:30', closesAt: '20:00' };
+    : { name: '', address: '', location: '', radius: String(RADIUS.default), opensAt: '14:30', closesAt: '20:00', city: '' };
 }
 
 /** Problems with fields of the form, as message keys. */
@@ -103,6 +111,7 @@ export function checkCentre(form: CentreForm): CentreErrors {
   if (!name) errors.name = 'centres.errors.nameRequired';
   else if (name.length > 60) errors.name = 'centres.errors.nameTooLong';
   if (form.address.trim().length > 300) errors.address = 'centres.errors.addressTooLong';
+  if (form.city.trim().length > 60) errors.city = 'centres.errors.cityTooLong';
   if (form.location.trim()) {
     const p = readPoint(form.location);
     if (p === 'short_link') errors.location = 'centres.errors.shortLink';
@@ -134,7 +143,11 @@ export async function saveCentre(id: number | null, form: CentreForm): Promise<{
   const query = id === null ? supabase.from('centres').insert(values) : supabase.from('centres').update(values).eq('id', id);
   const { data, error } = await query.select('id').single();
   if (error) return { errorKey: errorKeyOf(error.message) };
-  return { id: (data as { id: number }).id };
+  const savedId = (data as { id: number }).id;
+  // The city apart: a database before 0036 has no such column (PGRST204 / 42703), which is no error here.
+  const city = await supabase.from('centres').update({ city: form.city.trim() || null }).eq('id', savedId);
+  if (city.error && city.error.code !== 'PGRST204' && city.error.code !== '42703') return { errorKey: errorKeyOf(city.error.message) };
+  return { id: savedId };
 }
 
 /** Switches a centre off or on again. */

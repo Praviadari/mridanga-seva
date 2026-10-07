@@ -86,14 +86,16 @@ app/
   scripts/             Helper scripts: the web export, publishing an Android update (both check
                        the bundle holds the right Supabase project and no secret: bundle-checks.mjs),
                        lib/env-file.mjs (reads .env files with Expo's parser), the placeholder icon generator
-  tests/               node:test checks of the scripts (release-scripts.test.mjs)
+  tests/               node:test checks of the scripts (release-scripts.test.mjs) and of pure helpers
+                       (dates, phones and dates of birth: account-creation.test.mjs)
   src/
     app/               Screens. Every file is a screen (Expo Router); _layout.tsx files arrange them
       student/         The student's screens; (tabs)/ holds Home, My QR and Announcements; one
                        announcement, progress.tsx (S4), visits.tsx (S9), profile.tsx (A3),
                        notifications.tsx (A2), assessments/ (S7), practice.tsx (S5) and
                        practice-log.tsx (S6) (Phase 2), ishtagoshti/ (I2, I3; the I1 tab is in
-                       (tabs)/), and coming-soon.tsx open on top
+                       (tabs)/), about-you.tsx (A4, 0036) and coming-soon.tsx open on top
+      about-you.tsx    A4 About you for a login waiting for the desk (beside pending.tsx)
       staff/           The Guru's and coordinators' screens: register, attendance, follow-up ...,
                        levels/ (G4 syllabus editor), materials/ (G5), visits/ (S9 of one student),
                        profile.tsx (A3), the Guru's coordinators/ (G2), database/ (G3 and the
@@ -104,11 +106,13 @@ app/
                        assessments/ holds G6, C12-C14, promotion/ holds C22, C23, G7,
                        practice.tsx (S5) and taals/ (the Guru's taal editor), ishtagoshti/ (I2, I3,
                        and the editors' edit-sloka/ I12 and edit-theme/ I11); slice 8:
-                       suggestions.tsx (C18), inventory/ (C19: labels, scan, label/[token], stocktake/), duty/ (C20 roster)
+                       suggestions.tsx (C18), inventory/ (C19: labels, scan, label/[token], stocktake/), duty/ (C20 roster);
+                       account creation (0036): students/details/[id].tsx (C8's details form), options.tsx (G12),
+                       heard-about.tsx (G13)
     auth/              Who is signed in, their role, and the sign-in / sign-up calls
     screens/           The two staff homes, G1 and C1 (shown by staff/(tabs)/index.tsx), and the
                        pages both areas show: Coming soon, Attendance history (S9), My profile (A3),
-                       Notifications (A2); Phase 2: Practice tools (S5), the lesson player (V3), and
+                       Notifications (A2), About you (A4, about-you.tsx); Phase 2: Practice tools (S5), the lesson player (V3), and
                        Ishtagoshti I1-I3 (ishtagoshti-*.tsx, with an `area` of student or staff)
     data/              Reading and saving records: one file per area (students.ts ...), with the
                        form checks. Screens call these, never the database directly
@@ -131,7 +135,10 @@ app/
                        material-row.tsx (a lesson with Open, on G4/G5 and S4; DECISIONS.md #44),
                        admin-links.tsx ("Running the class" on G1, "My reports" on C1) and
                        guru-only.tsx (round 8); inbox-bell.tsx (the bell on the home header) and
-                       data-table.tsx (tables of the reports on a laptop) (round 9)
+                       data-table.tsx (tables of the reports on a laptop) (round 9); select-field.tsx
+                       (a drop-down in a dialog), birth-date-field.tsx (day / month / year),
+                       about-fields.tsx (the About-you parts, also on C2 and C8) and
+                       student-details-panel.tsx (C8) (account creation, 0036)
     i18n/              Interface text in English, Telugu and Hindi (docs/TRANSLATIONS.md), and
                        labels.ts, which words levels, file sizes and lengths of time the same on
                        every screen
@@ -145,7 +152,9 @@ app/
                        notifications and app updates (push.ts and app-update.ts on Android; the
                        .web.ts copies do nothing), the report's CSV (csv.ts; save-csv.ts saves it to a
                        folder or shares it on Android, save-csv.web.ts downloads it) and the reader of
-                       a Google Maps link for G9 (map-link.ts)
+                       a Google Maps link for G9 (map-link.ts); phone numbers in E.164 (phone.ts,
+                       libphonenumber-js/min), the date of birth from three drop-downs (birth-date.ts)
+                       and the one-time About-you prompt (about-prompt.ts) (0036)
     theme/             Colours, spacing and text sizes, light and dark; the card look, the header
                        bars and the tab bar (use-theme.ts)
 supabase/
@@ -160,8 +169,12 @@ change of colour or wording is made in one place.
 
 ## Logging in
 
-1. **Create an account** (sign-up screen): name, email, password. The database creates a
-   `profiles` row with role `pending`.
+1. **Create an account** (sign-up screen): name as on a government ID, email, password, date of
+   birth (under 18 → the class desk), gender, centre (0036, [DECISIONS.md #162](DECISIONS.md)); the
+   lists come from `sign_up_choices()`, the one function anon may run (#163). The database creates
+   a `profiles` row with role `pending` (gender, centre) and keeps an adult's date of birth on
+   `person_details`. After the first sign-in **About you** opens once (#164); the desk then
+   registers the person from the waiting sign-ups (C2) and the login links by email.
 2. **Confirm the email:** Supabase sends a link (through Brevo). The link opens the web version.
    On confirmation the database links the login to the student record with the same email, if
    there is one, and the role becomes `student`.

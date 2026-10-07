@@ -64,18 +64,32 @@ appears when an update has arrived.
 Open the **Students** tab and tap **Register a student** at the top. It takes about two minutes.
 Only the name and date of birth are required.
 
+**Someone who signed up in the app?** At the top you see the people of your centre who signed up and
+wait for the desk. Tap **Fill the form** on the right person: the form fills with what they gave
+(name, date of birth, email, phone, gender and their About-you answers). **Check the name against
+their Aadhaar or other ID** (never write down the number), take the photo, then save as usual.
+
 **Student**
 
 | Field | Notes |
 |---|---|
-| **Full name** | Required |
+| **Full name** | Required. As on the Aadhaar or other government ID you see |
 | **Date of birth** | Required. Day-month-year, for example 15-06-2012. The app shows the age |
 | **Phone** | 10 digits |
 | **Email** | The student's own email, if they will use the app. Their login is joined to this record by this email |
 | **Area** | Only the area, for example Koti. **Not the full address** |
 | **Pincode** | 6 digits |
 | **Level** | Beginner, Intermediate or Advanced |
-| **Mentor coordinator** | The coordinator who follows this student up, or **Not yet** |
+| **Gender** | Each student gets a coordinator of the same gender |
+| **Mentor coordinator** | **Automatic** (the default): the coordinator of the same gender with the fewest students, or the one whose referral code the student gave. Or pick one yourself |
+
+**More about the student (optional).** The About-you questions: emergency contact (adults; for a
+child the parent above is the contact), how they heard about us (pick the coordinator who brought them,
+or a source), occupation and service areas. The student can change these later in the app.
+
+**Your referral code** is on **My profile**: six letters and digits. Give it to people you invite;
+when they type it in About you, the class knows you brought them, and you become their mentor if you
+share their gender. The class never shows a list of coordinators' names to the public.
 
 **Parent or guardian (under 18 only).** If the date of birth makes the student under 18, the app
 says *Age N — under 18, a parent's consent is needed* and adds this section:
@@ -179,6 +193,10 @@ On a laptop the list shows two columns.
 The day limits (14, 30) are settings the Facilitator can change.
 
 ## A student's profile
+
+**About the student** shows what they told in About you or the desk recorded: gender, emergency
+contact, how they found us, occupation and service areas. **Edit these details** changes them; each
+change is recorded in the audit log. Reading them is staff-only.
 
 Tap a student anywhere (list, new joiners, a call) to open the **Student profile**.
 

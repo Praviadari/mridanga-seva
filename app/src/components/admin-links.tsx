@@ -22,6 +22,9 @@ export function AdminLinks() {
     { key: 'settings', icon: 'filter', title: t('settings.title'), detail: t('admin.settingsLine'), href: '/staff/settings' },
     { key: 'centres', icon: 'location', title: t('centres.title'), detail: t('admin.centresLine'), href: '/staff/centres' },
     { key: 'audit', icon: 'syllabus', title: t('auditLog.title'), detail: t('admin.auditLine'), href: '/staff/audit-log' },
+    // Account creation (0036, docs/DECISIONS.md #166): G12 option lists, G13 how students found us.
+    { key: 'options', icon: 'lists', title: t('options.title'), detail: t('admin.optionsLine'), href: '/staff/options' },
+    { key: 'heard', icon: 'newJoiner', title: t('heardReport.title'), detail: t('admin.heardLine'), href: '/staff/heard-about' },
   ];
   return (
     <Section icon="profile" title={t('admin.title')}>

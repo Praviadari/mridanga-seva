@@ -108,6 +108,11 @@ const SHAPES = {
   // Asset labels and stocktake (0035).
   print: 'print-outline',
   stocktake: 'list-outline',
+  // Account creation (0036)
+  dropdown: 'chevron-down',
+  close: 'close',
+  lists: 'list-outline',
+  about: 'id-card-outline',
 } as const;
 
 /** The icons the app may use. */

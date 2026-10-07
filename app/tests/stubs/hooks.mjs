@@ -14,5 +14,13 @@ export async function resolve(specifier, context, nextResolve) {
   // src/lib/class-locale.ts reads the database and the device's storage; the stand-in lets a test
   // pick the class's zone and country.
   if (/(^|\/)class-locale(\.ts)?$/.test(specifier)) return { url: stub('./class-locale.mjs'), shortCircuit: true };
+  // App source imports a sibling without its extension ('./dates'), as Metro allows; Node needs '.ts'.
+  if (/^\.\.?\/[^.]+$/.test(specifier)) {
+    try {
+      return await nextResolve(specifier, context);
+    } catch {
+      return nextResolve(`${specifier}.ts`, context);
+    }
+  }
   return nextResolve(specifier, context);
 }

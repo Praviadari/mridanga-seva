@@ -39,6 +39,7 @@ in number order:
 | `0033_time_zones.sql` | International basics: `centres.time_zone` (IANA, default Asia/Kolkata) and `centres.country_code` (ISO 3166, default IN); `today_ist()` = today at the caller's centre; attendance days, closing, home screens, reports, event and duty reminders in the right centre's zone; `close_open_visits` hourly; notices dated in each person's zone; `fund_entries.currency` (ISO 4217, default INR) ([DECISIONS.md #132-#136](DECISIONS.md)). See "Time zones and currency (0033)" |
 | `0034_access_log.sql` | Reads of parents' contacts, consents and call notes, and audit-log pages, go through logging functions into `access_log` (the Guru reads it; purged after 400 days); coordinators lose the direct reads; `consents.notice_version` ([DECISIONS.md #146-#151](DECISIONS.md)) |
 | `0035_asset_labels.sql` | QR asset labels for every seva asset: new kinds + `category`; `asset_token` (unguessable, frozen) and a per-centre `code` (KHOL-007) on every item, backfilled; `resolve_asset`, `mark_labels_printed`; stocktake (`inventory_stocktakes`, `inventory_stocktake_items`, `start_stocktake`, `stocktake_see`, `finish_stocktake`) ([DECISIONS.md #156-#161](DECISIONS.md)). 0034 is the privacy brief's; 0035 does not depend on it. See "Asset labels and stocktake (0035)" |
+| `0036_account_creation.sql` | Account creation (team MoM 05-10-2026): option lists the Guru edits (`choice_options`), `centres.city`, `profiles.gender` + `referral_code`, `students.gender`, `person_details` (About you, the desk), the sign-up's date of birth, gender and centre, `sign_up_choices()` (the one function anon may run), same-gender coordinator auto-assignment, the report `heard_about_report` ([DECISIONS.md #162-#167](DECISIONS.md)). See "Account creation and About you (0036)". Numbers 0034 and 0035 belong to the privacy and asset-label branches |
 
 The Phase 2 files were renumbered when they merged into main (#55). TEST ran some under their
 branch numbers (0012, 0014_promotion, 0016_practice, 0017_media, 0021_events_polls), so it skips
@@ -70,6 +71,7 @@ consent), sample visits, groups and an announcement. Never run it on the live pr
 | Duty roster (Phase 2) | `duty_shifts`, `duty_assignments` | Shifts per date and centre with the people on each (C20). Suggestions (C18) live in `materials` |
 | Ishtagoshti (Phase 2) | `ig_slokas`, `ig_themes`, `ig_theme_slokas`, `ig_daily_pins`, `ig_notes`, `ig_memorised` | Sloka study (I1-I3, I11, I12): the temple's own translations, themes, the sloka of the day, private notes, memorised ticks. Recitations in the Storage bucket `ishtagoshti-audio`. See "Ishtagoshti (Phase 2)" |
 | Access log | `access_log` | Who read a student's guardians, consents or call notes, or a page of the audit log, and when (0034; G11 "Reads of private details") |
+| People details (0036) | `person_details`, `choice_options` | What a person tells in About you or the desk records (emergency contact, how they found the class, occupation, service areas); the option lists the Guru edits (G12). See "Account creation and About you (0036)" |
 | Audit | `audit_log` | Who changed a student, profile, call log, level, syllabus item or tick, material, announcement, setting, centre, sloka or Ishtagoshti theme, corrected or deleted a visit (0030), or deleted a reply, and when (read on G11) |
 
 ## Student status
@@ -1161,6 +1163,59 @@ before). `audit_log` has no read policy. `register_student` makes the guardian's
 
 Tests: section "access log (0034)" in `supabase/tests/smoke-test.mjs`.
 
+## Account creation and About you (0036)
+
+[DECISIONS.md #162-#167](DECISIONS.md). Run after 0035 (it needs nothing from 0034 or 0035). Additive:
+the published app keeps working; a new app on a database without it hides the new parts.
+
+| Object | What |
+|---|---|
+| `choice_options` | The option lists: `list` (`gender`, `source`, `occupation`, `service_area`, `relation`, `instrument`), `code` (frozen), `label_en` / `label_te` / `label_hi`, `sort`, `active`. Class roles read; the Guru writes (G12). Trigger `choice_options_guard`: `option_code_locked`, `label_invalid`, `option_in_use` (delete), `option_required` (male, female, mother, father, guardian and every `other` are never deleted). Audited |
+| `option_ok(list, code, any)` | Yes or no: is the code an (active) option. Used by the guards |
+| `centres.city` | 1-60 characters; the sign-up groups centres country → city → centre (G9 edits it) |
+| `profiles.gender` | An option code. Trigger `profiles_people_guard`: only the Guru sets another person's, a waiting login its own (`not_allowed`); an active option (`gender_unknown`) |
+| `profiles.referral_code` | Six characters (`A-H J-N P-Z 2-9`), unique, made by `give_referral_code` when someone becomes coordinator or Guru (0036 gave the staff of the day theirs); app users cannot write it (`profile_field_locked`) |
+| `students.gender` | An option code (`students_gender_guard`, `gender_unknown`) |
+| `person_details` | One row per person: `profile_id` (a login, before a record exists) and/or `student_id`; `dob` (sign-up, adults, until a record exists), `diksha_name` (initiated name, optional), `learn_interests` (instrument codes), `emergency_relation` / `_name` / `_phone` (E.164), `heard_via` (`referral` or a source code), `referred_by` (a staff profile), `heard_other`, `occupation`, `occupation_other`, `service_areas` (codes), `service_other`, `about_state` (`skipped`, `done`), `updated_by`. Read: the Guru directly; coordinators through the functions below. No direct writes. Audited |
+
+**Sign-up.** `handle_new_user` (as 0032) also reads the user metadata `dob` (kept on `person_details`
+only for an adult), `gender` (an active option), `centre_id` (an active centre, else the first),
+`phone` (E.164, onto `profiles.phone`), `diksha_name` and `learn` (active instrument codes, both on
+`person_details`); anything else is ignored. `sign_up_choices()` — granted to anon — returns `{centres: [{id, name, city,
+country_code}], genders: [{code, en, te, hi}], instruments: [{code, en, te, hi}]}`, active ones only.
+
+**Linking.** Trigger `students_attach_details` (after insert or a change of `profile_id`): the login's
+row moves to the record (or fills the record's empty answers and is deleted), its `dob` is dropped,
+and the login's gender fills an empty `students.gender`. A login taken off keeps no row: the row
+stays with the record.
+
+**Functions.**
+
+| Function | Who | Does |
+|---|---|---|
+| `my_about()` | A waiting login or a student | Own answers, `has_record`, `minor`, `has_guardian`, `country_code` (the centre's), `referred` (true/false, never who), `about_state`, and the active option lists. Null for others |
+| `save_about_me(p)` | A waiting login or a student | Saves the keys present in `p`: `gender`, `phone` (E.164, onto the profile and an empty record phone), `emergency_*`, `heard_via`, `referral_code`, `heard_other`, `occupation(_other)`, `service_areas`, `service_other`, `diksha_name`, `learn_interests`, `about_state` ("done" is not undone by a later "skipped"). Returns `my_about()` |
+| `save_student_details(student, p)` | Guru, coordinator | The same keys for a record, plus `gender`, `centre` (home centre) and `referred_by` (a staff id) instead of a code |
+| `get_student_details(student)` | Guru, coordinator | `{gender, details}` for C8 (no `dob`, no `profile_id`); writes 0034's access log when `log_access` exists |
+| `waiting_sign_ups()` | Guru (all), coordinator (own centre) | Confirmed waiting logins of the last 180 days without a record, not Ishtagoshti subscribers, with their sign-up and About-you answers, newest first |
+| `heard_about_report(from, to)` | Guru | Rows made in the dates (Guru's centre days, at most 367): `people`, `answered`, `students`, `by_source`, `by_interest`, `by_coordinator` (each with `people`; source and coordinator also `students`) |
+
+Errors: `not_allowed`, `student_not_found`, `student_withdrawn`, `centre_unknown`, `gender_unknown`,
+`relation_unknown`, `source_unknown`, `occupation_unknown`, `service_unknown`, `instrument_unknown`, `too_many_services` (20),
+`name_too_long`, `name_invalid`, `phone_invalid`, `referral_code_unknown`, `text_too_long` (80),
+`minor_contact_relation` (under 18: mother, father or guardian), `minor_needs_emergency_contact`
+(under 18 without a guardian with a phone), `range_invalid`, `range_too_long`.
+
+**Auto-assignment** (`assign_mentor`, triggers `students_assign_mentor` on a student's gender or home
+centre and `person_details_assign_mentor` on a referral): a student without a mentor, with a gender,
+not Left or withdrawn, gets the referring coordinator or Guru when the gender matches, else the active
+coordinator of the home centre with that gender and the fewest students not Left; nobody → no mentor
+and an inbox notice (`kind = 'notice'`, `/staff/students/<id>`) to each active Guru, at most once a day
+per student. The new mentor gets an inbox notice (not when they made the change themselves). No push
+(#165).
+
+Tests: section "account creation (0036)" in `supabase/tests/smoke-test.mjs`.
+
 ## Linking a login to a student
 
 A student record can exist without a login (many students never install the app). When a person
@@ -1196,7 +1251,7 @@ with the new email.
 Supabase lets the app's roles (`anon`, `authenticated`) run any function unless told otherwise,
 so every function is revoked from them and granted only where needed
 ([DECISIONS.md #14](DECISIONS.md)). Since 0025 anon holds no right at all in `public` (no table, sequence
-or function; [#77](DECISIONS.md)), and a role check never lets a NULL role through ([#72](DECISIONS.md)): a
+or function; [#77](DECISIONS.md); one exception since 0036: `sign_up_choices()`, [#163](DECISIONS.md)), and a role check never lets a NULL role through ([#72](DECISIONS.md)): a
 switched-off login is refused like a stranger.
 
 | Function | Who may call | What it does |
@@ -1226,6 +1281,9 @@ switched-off login is refused like a stranger.
 | `mark_notifications_read(ids)` | Guru, coordinator, student | Marks the person's own due notices read (the given ids, or all with `null`); returns how many. Security definer. See "Notifications inbox" |
 | `inbox_unread_count()` | Anyone signed in | The person's unread notices that are due. See "Notifications inbox" |
 | `class_report(from, to, mentor)` | Guru, coordinator (own mentees) | The reports C21 and G8 as one JSON object. See "Reports" |
+| `sign_up_choices()` | Anyone, **anon too** (#163) | The sign-up's active centres and gender options. See "Account creation and About you (0036)" |
+| `my_about()`, `save_about_me(p)` | A waiting login or a student | About you. See "Account creation and About you (0036)" |
+| `save_student_details`, `get_student_details`, `waiting_sign_ups`, `heard_about_report` | Staff (the report: Guru) | The desk, C8, G13. See "Account creation and About you (0036)" |
 | `register_push_token(token, platform)` | Guru, coordinator, student | Saves this phone's Expo push token for the signed-in person, taking it over from another login on the same phone; at most 5 phones each. Security definer. Errors `not_allowed`, `bad_token`, `bad_platform`. See "Announcements" → "Push notifications" |
 | `claim_due_push()`, `release_push_claim(ids)` | Only the Edge Function (service role) | Mark waiting announcements notified and return the phones to notify; put them back when nothing could be sent |
 | `release_assessment`, `mark_assessment_seen`, `submit_assessment`, `review_submission`, `remind_assessment` | See "Assessments (Phase 2)" | Phase 2 (0016) |
@@ -1307,6 +1365,8 @@ and the helpers `my_role`, `is_guru`, `is_staff`,
 | Roles, switching a login off, duty hours of others | — | — | Write (not their own role; Guru role only in the dashboard) |
 | Audit log | — | — | Read through `get_audit_log` (each page logged) |
 | Access log (`access_log`) | — | — | Read |
+| Own About-you answers (`person_details`, 0036) | Read / write own (through `my_about`, `save_about_me`) | Read through `get_student_details`, `waiting_sign_ups` (own centre); write through `save_student_details` | Read all; write through `save_student_details`; G13 report |
+| Option lists (`choice_options`, 0036) | Read | Read | Read / write (G12) |
 | Assessments (Phase 2) | Those given to them, with the release notes and files | Sent ones; create none | All, drafts too; create, send, delete unreleased |
 | Assessment assignments, submissions, tracker | Own; submit through `submit_assessment` | All; release, remind, review through the functions | Same as coordinator |
 | Assessment files (Storage) | Files of their assessments and their own recordings; upload audio or video while one is open (10 a day) | All on sent assessments and all recordings | All; upload; delete any |

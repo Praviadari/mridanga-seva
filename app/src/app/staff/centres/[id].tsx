@@ -145,6 +145,14 @@ export default function CentreScreen() {
           error={errors.address ? t(errors.address) : undefined}
         />
         <TextField
+          label={t('centres.city')}
+          hint={t('centres.cityHint')}
+          value={form.city}
+          onChangeText={(city) => setForm({ ...form, city })}
+          maxLength={60}
+          error={errors.city ? t(errors.city) : undefined}
+        />
+        <TextField
           label={t('centres.opensAt')}
           hint={t('settings.timeHint')}
           value={form.opensAt}

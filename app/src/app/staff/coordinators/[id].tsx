@@ -5,10 +5,12 @@
 // email on the record differs from the login's), or put the login aside. Changes ask first.
 // A coordinator can be marked as an Ishtagoshti editor (slokas and themes; Phase 2 slice 6,
 // docs/DECISIONS.md #57).
+// Staff also get a gender (the Guru sets it; students are matched with a coordinator of the same gender)
+// and show their referral code (migration 0036, docs/DECISIONS.md #165).
 // Data: src/data/coordinators.ts; rules: migration 0014 (docs/DECISIONS.md #45).
 
 import { Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useAuth } from '@/auth/auth-provider';
@@ -32,12 +34,14 @@ import {
   moveMentees,
   saveDutyHours,
   setActive,
+  setGender,
   setIgEditor,
   setTreasurer,
   type CoordinatorsBoard,
   type MenteeRow,
   type Person,
 } from '@/data/coordinators';
+import { fetchAllOptions, optionLabel, type OptionRow } from '@/data/options';
 import { levelName, statusName } from '@/i18n/labels';
 import { formatDateTime } from '@/lib/dates';
 import { searchFold } from '@/lib/search-text';
@@ -48,8 +52,12 @@ type Asking = 'coordinator' | 'off' | 'on' | { link: MenteeRow } | null;
 
 /** One person's page. */
 export default function PersonScreen() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const [genders, setGenders] = useState<OptionRow[]>([]);
+  useEffect(() => {
+    void fetchAllOptions().then((rows) => setGenders((rows ?? []).filter((r) => r.list === 'gender' && r.active)));
+  }, []);
   const { profile } = useAuth();
   // undefined = loading, null = could not load.
   const [loaded, setLoaded] = useState<Loaded | 'not_found' | null | undefined>(undefined);
@@ -179,6 +187,20 @@ export default function PersonScreen() {
           { label: t('coordinators.signedUpLabel'), value: formatDateTime(person.createdAt) },
         ]}
       />
+
+      {isStaff && person.hasPeopleColumns ? (
+        <Section icon="person" title={t('coordinators.genderTitle')} description={t('coordinators.genderHint')}>
+          <ChoiceGroup
+            label={t('coordinators.genderLabel')}
+            choices={genders.map((g) => ({ value: g.code, label: optionLabel(g, i18n.language) }))}
+            value={person.gender}
+            onChange={(g) => (busy ? undefined : void run(() => setGender(person.id, g), t('coordinators.genderSaved')))}
+          />
+          {person.referralCode ? (
+            <AppText>{t('coordinators.referralCode', { code: person.referralCode })}</AppText>
+          ) : null}
+        </Section>
+      ) : null}
 
       {isStaff ? (
         <>
