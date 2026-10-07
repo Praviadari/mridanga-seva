@@ -117,7 +117,9 @@ export type RunningVersion =
   /** The JavaScript that came inside the APK. `date`: when it was built, in the class's date style and time zone (formatDateTime). */
   | { kind: 'installed'; version: string; date: string }
   /** An update downloaded later. `id`: the first 8 characters of its EAS update id. */
-  | { kind: 'update'; version: string; date: string; id: string };
+  | { kind: 'update'; version: string; date: string; id: string }
+  /** The web version (app-update.web.ts): which site (test or live), the commit and when it was exported. */
+  | { kind: 'web'; site: string; commit: string; date: string };
 
 /**
  * The version running now: the app version from app.json and the date of the running bundle.

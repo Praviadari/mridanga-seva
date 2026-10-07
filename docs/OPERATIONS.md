@@ -120,18 +120,19 @@ project id and its signing keystore stay the same, so nothing needs rebuilding.
 5. **Email (SMTP):** in Brevo, verify the sender email and create an SMTP key. In Supabase, go to
    Authentication → SMTP settings and enter Brevo's host `smtp-relay.brevo.com`, port 587, login and key.
    Without this, Supabase sends only 2 emails an hour.
-6. **App settings:** copy `app/.env.example` to `app/.env` and fill in the project URL and the
-   anon / publishable key (**Project Settings → API Keys**). Never use the `service_role` or
-   `sb_secret_...` key in the app: the app refuses to start with it. Put the test project's two
-   values in `app/.env.test` the same way; the test web site and test APK are built from it
-   ("Publishing the web version", "Building the Android app"). Then run the app:
+6. **App settings:** copy `app/.env.example` to `app/.env.development` and `app/.env.test` with
+   the **test** project's URL and anon / publishable key (**Project Settings → API Keys**), and
+   only on a computer that builds the class's site to `app/.env.live` with the live project's
+   values. Keep no plain `app/.env` (app/README.md "Settings files", [DECISIONS.md #145](DECISIONS.md)):
+   development then always talks to the test project. Never use the `service_role` or
+   `sb_secret_...` key in the app: the app refuses to start with it. Then run the app:
    ```bash
    cd app
    npm install
    npx expo start
    ```
    Press `w` for the web version in a browser, or scan the QR code with Expo Go on an Android
-   phone. If the app shows *App not set up*, the URL or key in `app/.env` is missing; restart
+   phone. If the app shows *App not set up*, the URL or key in `app/.env.development` is missing; restart
    `npx expo start` after changing it.
 7. **First Guru account:** sign up in the app and confirm the email. Then in the Supabase
    **Authentication → Users**, copy that login's **User UID**; in **Table Editor → profiles** find the
@@ -205,31 +206,58 @@ request first.
 iPhone users use the web version and can add it to their home screen. It is hosted on
 **Cloudflare Pages** ([DECISIONS.md #23](DECISIONS.md)), as two sites that look the same:
 
-| Site | Talks to | Settings file | Used by |
-|---|---|---|---|
-| `mridanga-seva-test` | the test Supabase project (dummy data) | `app/.env.test` | demos, testers, volunteers |
-| `mridanga-seva` | the live Supabase project | `app/.env` | the class, from the pilot on |
+| Site | Build with | Talks to | Settings file | Used by |
+|---|---|---|---|---|
+| `mridanga-seva-test` | `--site test` | the test Supabase project `fhuqykssenuhczdqbafu` (dummy data) | `app/.env.test` | demos, testers, volunteers |
+| `mridanga-seva` | `--site live` | the live Supabase project `qeozvvizcojzxcjgnaei` | `app/.env.live` | the class, from the pilot on (later at `app.mridangaseva.com`) |
 
 Both files hold the two lines of `app/.env.example`, filled in with that project's URL and
 publishable key. Build on any computer that has the file:
 
 ```bash
 cd app
-npm run export:web -- --env .env.test
+npm run export:web -- --site test
 ```
 
-That builds the test site; `npm run export:web` alone builds the live site. The first line it
-prints names the Supabase project it built for: check it before uploading. The site is written
+`--site live` builds the class's site. Without `--site` the script stops; it never guesses
+([DECISIONS.md #145](DECISIONS.md)). The last line it prints names the site, the Cloudflare project
+to upload to, the Supabase project and the build id: check it before uploading. The site is written
 to `app/dist/`. Always use this command, not a bare `npx expo export`, because
 `scripts/export-web.mjs`
 
-- hands the chosen file's settings to Expo and clears Metro's cache (an old cache once produced
-  a site that said *App not set up*);
+- reads the site's file, refuses if its URL is not that site's project, hands the settings to Expo
+  with `EXPO_NO_DOTENV=1` (so Expo loads no `.env` file of its own) and clears Metro's cache (an old
+  cache once produced a site that said *App not set up*);
 - moves the images Expo puts under `assets/node_modules` (such as the back arrow) to
   `assets/vendor` — Cloudflare Pages never uploads a folder named `node_modules`, so those images
   would be missing;
-- stops if the export holds the Supabase secret key, or does not hold exactly the URL and key of
-  the chosen file, so a test site can never talk to the live project.
+- stops if the export holds the Supabase secret key, names the other project, or does not hold
+  exactly the URL and key of the site's file, so a test site can never talk to the live project;
+- copies the QR reader into `dist/zxing/<version>/` after checking its SHA-256 ([#143](DECISIONS.md));
+- writes `dist/_headers` from `app/public/_headers`: the Content-Security-Policy with this site's
+  Supabase address, HSTS, `nosniff`, Referrer-Policy and Permissions-Policy ([#142](DECISIONS.md));
+- writes `dist/version.txt` (site, commit, build time, project). The same id shows under
+  **Sign out** on the web version, e.g. "Web version test · 244e9f8 · 07-10-2026 15:00"
+  ([#144](DECISIONS.md)). "+changes" after the commit means the folder had uncommitted changes:
+  commit first for a site people use.
+
+**After every upload, check the headers** (a minute, on the site's address):
+
+1. In a terminal: `curl.exe -sI https://mridanga-seva-test.pages.dev/` — the answer must contain
+   `content-security-policy:` (with the site's own `https://<ref>.supabase.co` in `connect-src`),
+   `permissions-policy: camera=(self), ...`, `strict-transport-security:` and
+   `x-content-type-options: nosniff`. No CSP line means `_headers` was not in the upload: upload
+   the whole `dist` folder again.
+2. `curl.exe -s https://mridanga-seva-test.pages.dev/version.txt` shows the site and commit just built.
+3. Open the site, sign in, press F12 → Console: no red "Content Security Policy" lines. Open
+   Attendance → scan (the camera starts and reads a QR code) and, if there is one, a lesson video.
+4. Add a row to the upload log below.
+
+**Upload log** (newest first; site, commit, build time from version.txt, who):
+
+| Date | Site | Commit | Built (UTC) | By |
+|---|---|---|---|---|
+| | | | | |
 
 **First upload** (once per site, logged in to the team's Cloudflare account; the dashboard's
 wording may differ a little):
@@ -265,10 +293,11 @@ copied to `dist/404.html`.
 
 **Camera on the web version.** Browsers let a page use the camera only on an `https://` address
 (or `localhost` during development); all the hosts above serve `https`. Browsers without built-in
-QR reading (Safari on iPhone, Firefox) get a QR reader that expo-camera downloads once from the
-public jsDelivr CDN (`fastly.jsdelivr.net`, package `zxing-wasm`). Only the reader program is
-downloaded; camera pictures never leave the phone. If that address is blocked on a network,
-scanning does not work there, but the name search on the same screen still does.
+QR reading (Safari on iPhone, Firefox, desktop Chrome on Windows) use a WebAssembly QR reader
+(`zxing-wasm`, about 1 MB) that the site itself serves from `/zxing/<version>/`, cached for a year
+([DECISIONS.md #143](DECISIONS.md)); no CDN is involved, and camera pictures never leave the
+phone. In development (`npx expo start`) the reader still comes from the jsDelivr CDN, because
+the dev server has no `zxing/` folder; the CSP does not apply there.
 
 ### Adding it to an iPhone home screen
 
@@ -364,7 +393,7 @@ build:
 | Profile | Talks to | Used by |
 |---|---|---|
 | `preview` | the test Supabase project (settings from `app/.env.test`) | demos, testers, volunteers |
-| `production` | the live Supabase project (settings from `app/.env`) | the class, from the pilot on |
+| `production` | the live Supabase project (settings from `app/.env.live`) | the class, from the pilot on |
 
 Both have the same package name, so a phone holds one or the other: installing one replaces the
 other, and the person signs in again. Each profile is also the **update channel** of the same
@@ -382,11 +411,11 @@ sign in to Expo.
 
 ```bash
 npx eas-cli@latest env:push --environment preview --path .env.test
-npx eas-cli@latest env:push --environment production --path .env
+npx eas-cli@latest env:push --environment production --path .env.live
 ```
 
 `env:push` copies each project's Supabase URL and publishable key to EAS. The build servers
-never see `app/.env` or `app/.env.test` (they are not in git), so without this step the APK would
+never see `app/.env.live` or `app/.env.test` (they are not in git), so without this step the APK would
 say *App not set up*. If it asks for a visibility, choose plain text: these values are inside
 every copy of the app anyway. `npx eas-cli@latest env:list --environment preview` shows what EAS
 has.
@@ -481,7 +510,7 @@ you to type `yes`. The script (`app/scripts/publish-update.mjs`):
 1. stops if the network cannot upload to EAS (an office network that inspects secure
    connections), or if no finished APK on that channel has the app's current fingerprint;
 2. takes the Supabase URL and key from the EAS environment of the same name — never from
-   `app/.env` or `app/.env.test` — and checks the URL is that channel's project (`preview` = test
+   the `app/.env*` files, and with `EXPO_NO_DOTENV=1` so Expo loads none of them either — and checks the URL is that channel's project (`preview` = test
    `fhuqyk…`, `production` = live `qeozvv…`);
 3. builds the Android bundle into `app/dist-update/` and checks it holds that project's URL and
    key, not the other project's address, and no secret key;
@@ -528,7 +557,7 @@ not have yet, the class's app breaks.
 
 1. **Test project:** run the migration (setup step 2: check the project name first).
 2. **Check on test:** publish the change to the test channel and the test site
-   (`npm run update:preview`, `npm run export:web -- --env .env.test`) and try it, with the
+   (`npm run update:preview`, `npm run export:web -- --site test`) and try it, with the
    checks the change's notes ask for.
 3. **Live project:** make a backup ("Backups"), then run the same migration.
 4. **Drift query** (below) in both projects, and compare the `KIND:` rows. Every kind must have the
@@ -537,8 +566,8 @@ not have yet, the class's app breaks.
    is drift: find it before going on. (The `ALL` hash covers these too, so it matches between test
    and live only when they are identical; it is what each backup logs, to compare one project with
    itself.)
-5. **Then the app:** `npm run update:production`, and the live web site (`npm run export:web`, upload
-   to `mridanga-seva`).
+5. **Then the app:** `npm run update:production`, and the live web site (`npm run export:web -- --site live`,
+   upload to `mridanga-seva`, header check).
 
 **Migrations stay additive for one release.** A migration may add tables, columns, functions and
 policies. It may not drop or rename a table, column or function that the app in use calls, or change
@@ -1072,9 +1101,9 @@ After a new publishable key (or a new project after a restore), every copy of th
 new value before the old one stops working. Make the new key first, do all of this, check, and only
 then delete the old key.
 
-1. **`.env` files:** `app/.env` (live) or `app/.env.test` (test) on every computer that builds or
-   publishes. Never commit them.
-2. **EAS environment** (from `app/`): `npx eas-cli@latest env:push --environment production --path .env`
+1. **`.env` files:** `app/.env.live` (live), or `app/.env.test` and `app/.env.development` (test),
+   on every computer that builds or publishes. Never commit them.
+2. **EAS environment** (from `app/`): `npx eas-cli@latest env:push --environment production --path .env.live`
    for live, `--environment preview --path .env.test` for test; check with
    `npx eas-cli@latest env:list --environment production`.
 3. **App updates, per channel:** `npm run update:production -- --message "New key"` (live) and/or
@@ -1082,9 +1111,9 @@ then delete the old key.
    and checks it. Phones on an APK whose fingerprint no longer matches main get no update: build a
    new APK for them ("Building the Android app"). Do not roll back to the embedded update afterwards:
    it holds the old key.
-4. **Web sites, each one:** `npm run export:web` and upload to `mridanga-seva` (live);
-   `npm run export:web -- --env .env.test` and upload to `mridanga-seva-test` (test). The script's
-   first line names the project: check it.
+4. **Web sites, each one:** `npm run export:web -- --site live` and upload to `mridanga-seva` (live);
+   `npm run export:web -- --site test` and upload to `mridanga-seva-test` (test). The script's
+   last line names the site and project: check it, then the header check.
 5. **Sign-in test on each:** the live APK, the test APK, the live site and the test site: sign in,
    open the students list (staff) or the home screen (student). *App not set up* or a sign-in error =
    that surface still has the old value.

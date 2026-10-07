@@ -80,7 +80,9 @@ parent typed in the code emailed to them; the Guru may block it ([DECISIONS.md #
 ```
 app/
   app.json             App name, icons, splash screen, web settings
-  .env                 Supabase URL and public key (not in git; copy .env.example)
+  .env.development     Supabase URL and public key of the TEST project for `expo start`; .env.test
+                       (test site) and .env.live (live site only) beside it (not in git; app/README.md)
+  public/_headers      CSP and security headers of the web version, a template export-web fills in
   scripts/             Helper scripts: the web export, publishing an Android update (both check
                        the bundle holds the right Supabase project), the placeholder icon generator
   src/
@@ -278,8 +280,9 @@ read or write the person is not allowed, whatever the app shows.
    closing time (21:00 IST for Abids; every centre in its own time zone since 0033, docs/I18N.md).
 
 The camera also works in the web version (on `https` only). Browsers without built-in QR reading,
-such as Safari on iPhone, use a reader that expo-camera downloads from a public CDN; see
-OPERATIONS.md "Publishing the web version".
+such as Safari on iPhone, use zxing-wasm, a WebAssembly reader the site serves itself from
+`/zxing/<version>/` (src/lib/qr-reader.web.ts, DECISIONS.md #143); see OPERATIONS.md "Publishing the
+web version".
 
 ## How follow-up flows (Phase 1)
 

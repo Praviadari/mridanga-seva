@@ -181,7 +181,8 @@ const expoCli = require.resolve('expo/bin/cli');
 const run = spawnSync(
   process.execPath,
   [expoCli, 'export', '--platform', 'android', '--output-dir', OUT, '--dump-assetmap', '--clear'],
-  { stdio: 'inherit', env: { ...process.env, ...settings } },
+  // EXPO_NO_DOTENV: Expo itself loads no .env file into the bundle (audit D11-08).
+  { stdio: 'inherit', env: { ...process.env, ...settings, EXPO_NO_DOTENV: '1' } },
 );
 if (run.status !== 0) fail('expo export failed (see above).');
 

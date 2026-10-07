@@ -2581,3 +2581,101 @@ recommendation; this number is kept for the decision record when the team answer
 **Consequences.** Until then a centre outside India can run attendance, follow-up, events and
 reports (#132-#136), but registration still asks for an Indian-style phone and pincode and treats
 under 18 as a minor.
+
+## 142. The web version sends a strict Content-Security-Policy and security headers — 7 Oct 2026
+
+**Context.** Audit D3-06: the web version, which holds staff sessions with access to children's
+records, was served with no CSP, no frame protection and no Permissions-Policy. There is no known
+injection today; this is defence in depth before `app.mridangaseva.com` goes live.
+
+**Decision.** `app/public/_headers` is a template that `scripts/export-web.mjs` fills in per site and
+writes to `dist/_headers` (it stops if a placeholder is left). The policy: `default-src 'self'`;
+`script-src 'self' 'wasm-unsafe-eval'`, the SHA-256 of the lesson player's script and
+`https://www.youtube.com`; `connect-src`/`img-src` only that site's Supabase project
+(`https://<ref>.supabase.co`, no `wss:` because Realtime is not used) plus `data:`/`blob:`;
+`media-src https:` (a lesson video file may live at any https address the team gives);
+`frame-src https://www.youtube.com`; `style-src 'self' 'unsafe-inline'`; `object-src 'none'`,
+`base-uri 'none'`, `form-action 'none'`, `frame-ancestors 'none'`, `upgrade-insecure-requests`.
+Also HSTS (2 years, includeSubDomains, no preload), `nosniff`, `X-Frame-Options: DENY`,
+`Referrer-Policy: strict-origin-when-cross-origin`, `Cross-Origin-Opener-Policy: same-origin`, and
+`Permissions-Policy` with camera, microphone and geolocation for the site itself, fullscreen /
+autoplay / encrypted-media / picture-in-picture also for YouTube, everything else `()`. The
+lesson player's script (`PLAYER_SCRIPT` in `src/lib/lesson-player-html.ts`) became one constant
+text, with the lesson passed in a `<script type="application/json">` block, because the player runs
+in a srcdoc frame that inherits the site's policy and only a fixed text can be allowed by hash;
+export-web hashes it with Node (type stripping) and stops if the bundle does not hold it word for
+word. Every outside host and why is listed at the top of `_headers`.
+
+**Why.** A hash keeps `'unsafe-inline'` out of script-src without moving the player to a separate
+page, which phones (a WebView loaded from a string) could not share. Per-site placeholders keep the
+TEST site from being allowed to talk to LIVE and the other way round. `'unsafe-inline'` for styles
+is needed by react-native-web and cannot run code. Microphone and geolocation are used (record
+yourself, recorded answers, coordinator check-in), so "camera only" from the brief was widened.
+
+**Consequences.** A new outside host (a map tile server, analytics, a font CDN) needs a line in
+`_headers` and a DECISIONS entry, or it is blocked. Cloudflare's Email Obfuscation, Web Analytics
+and Rocket Loader must stay off (they inject scripts). Any change to `PLAYER_SCRIPT` changes the
+hash automatically at the next export. After each upload, OPERATIONS.md "Publishing the web
+version" has a header check. Closes D3-06 (with #143).
+
+## 143. The web QR reader is served by the site, not by jsDelivr — 7 Oct 2026
+
+**Context.** Audit D11-12: in browsers without a built-in barcode reader, expo-camera loads
+barcode-detector, whose zxing-wasm downloaded `zxing_reader.wasm` from `fastly.jsdelivr.net` with no
+integrity check, into the page that holds staff sessions; a CDN block also stopped web scanning.
+
+**Decision.** export-web copies `zxing-wasm/dist/reader/zxing_reader.wasm` (the copy barcode-detector
+resolves, version pinned by package-lock, 3.1.3 now) to `dist/zxing/<version>/` after checking that
+its version and SHA-256 equal `ZXING_WASM_VERSION` / `ZXING_WASM_SHA256` exported by barcode-detector.
+`src/lib/qr-reader.web.ts` calls `setZXingModuleOverrides({ locateFile })` before the scanner's
+camera starts, pointing at `/zxing/<version>/zxing_reader.wasm`; the CSP allows no other host and
+`'wasm-unsafe-eval'` lets it compile. barcode-detector is imported by the same name expo-camera
+uses, so both share one module; it is not added to package.json (it comes with expo-camera, and a
+package.json change would be a new dependency). In development the CDN default stays (the dev server
+has no `zxing/` folder and no CSP).
+
+**Why.** Same-origin, hash-checked at build time, cached a year (`/zxing/*` immutable, versioned
+path), and it works on networks that block CDNs.
+
+**Consequences.** If expo-camera ever drops barcode-detector, the import and export-web fail loudly
+rather than silently; then revisit. An expo-camera upgrade that moves zxing-wasm to a new version
+just changes the folder name. Closes D11-12.
+
+## 144. The web version shows which upload it is — 7 Oct 2026
+
+**Context.** Audit D10-16: the web version showed no version, so nobody could prove which commit a
+site served (the test site once served an old bundle for days).
+
+**Decision.** export-web sets `EXPO_PUBLIC_BUILD = "<site> <commit>[+changes] <ISO time>"`;
+`runningVersion()` in `app-update.web.ts` returns `{ kind: 'web', site, commit, date }` and the
+version line under Sign out reads "Web version test · 244e9f8 · 07-10-2026 15:00" (en/te/hi).
+`dist/version.txt` holds site, commit, build time and project ref. OPERATIONS.md keeps an upload log.
+
+**Why.** One id in three places (the page, version.txt, the log) answers "what is live?" without
+opening developer tools.
+
+**Consequences.** "+changes" marks an export from a folder with uncommitted changes; a site people
+use should be built from a commit. Closes D10-16.
+
+## 145. Development defaults to TEST; the live values are used only by an explicit live build — 7 Oct 2026
+
+**Context.** Audits FS4-01, D10-07, D11-08: `app/.env` held the LIVE values, so `npx expo start`
+talked to the class's real data; `npm run export:web` with no flag built the live site; and Expo
+loaded `app/.env` into every export, test ones included.
+
+**Decision.** Settings files in `app/` (none in git): `.env.development` = TEST (Expo loads it under
+`expo start`), `.env.test` = TEST (test site, EAS preview env:push), `.env.live` = LIVE (only
+`export:web -- --site live` and EAS production env:push); no plain `.env`. export-web requires
+`--site test|live` (refuses without it, and refuses the old `--env`), maps it to a hard-coded
+project ref (test `fhuqykssenuhczdqbafu`, live `qeozvvizcojzxcjgnaei`, as publish-update's PROJECTS),
+refuses a file whose URL is not that project, refuses a bundle that names the other project, and
+prints the site and Cloudflare project last. Both export-web and publish-update run Expo with
+`EXPO_NO_DOTENV=1`. The main folder's files are moved by Praveen once (NOTES.md "07-10-2026 — Web
+hardening", steps).
+
+**Why.** A mistake now needs two explicit choices (`--site live` and a `.env.live` file) instead of
+none, and nothing in development can reach real children's records.
+
+**Consequences.** Worktrees get `.env.development` and `.env.test` (TEST) and never `.env.live`.
+Scripts or notes that say `--env .env.test` or `app/.env` are out of date. Closes FS4-01, D10-07,
+D11-08.

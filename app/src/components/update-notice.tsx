@@ -59,7 +59,8 @@ export function UpdateNotice() {
 
 /**
  * "Version 1.0.0 · update of 01-10-2026 15:30 (a1b2c3d4)": tells a tester, and whoever reads a
- * bug report, which version the phone runs. Nothing in development or on the web.
+ * bug report, which version the phone runs. On the web: "Web version test · 244e9f8 · 07-10-2026 15:30",
+ * the site, commit and export time (docs/DECISIONS.md #144). Nothing in development.
  */
 export function VersionLine() {
   const { t } = useTranslation();
@@ -67,9 +68,11 @@ export function VersionLine() {
   if (!running) return null;
   return (
     <AppText variant="small" tone="muted" style={styles.centre}>
-      {running.kind === 'update'
-        ? t('appUpdate.versionUpdate', { version: running.version, date: running.date, id: running.id })
-        : t('appUpdate.versionInstalled', { version: running.version, date: running.date })}
+      {running.kind === 'web'
+        ? t('appUpdate.versionWeb', { site: running.site, commit: running.commit, date: running.date })
+        : running.kind === 'update'
+          ? t('appUpdate.versionUpdate', { version: running.version, date: running.date, id: running.id })
+          : t('appUpdate.versionInstalled', { version: running.version, date: running.date })}
     </AppText>
   );
 }

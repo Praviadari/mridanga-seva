@@ -1,15 +1,16 @@
 // Camera view that reads QR codes, for the attendance screen (C5). Asks for the camera
 // permission first, and explains what to do when the camera is refused or missing.
 // Uses expo-camera (https://docs.expo.dev/versions/v57.0.0/sdk/camera/). On the web version the
-// camera works in the browser too; iPhones without built-in QR reading use a helper that
-// expo-camera downloads once (docs/ARCHITECTURE.md "How attendance flows").
+// camera works in the browser too; browsers without built-in QR reading use a WebAssembly reader
+// that the site itself serves (lib/qr-reader.web.ts, docs/ARCHITECTURE.md "How attendance flows").
 
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useIsFocused } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
+import { prepareQrReader } from '@/lib/qr-reader';
 import { radius, spacing, useTheme } from '@/theme/use-theme';
 
 import { AppText } from './app-text';
@@ -36,6 +37,11 @@ export function QrScanner({ onScan, paused }: QrScannerProps) {
   // Set when asking did not give the camera. A browser with no camera, or one that blocks it,
   // refuses without showing anything, so the screen must say so itself.
   const [refused, setRefused] = useState(false);
+  // The web version first points the QR reader at the site's own copy of it (lib/qr-reader.web.ts).
+  const [readerReady, setReaderReady] = useState(false);
+  useEffect(() => {
+    void prepareQrReader().then(() => setReaderReady(true));
+  }, []);
 
   async function askForCamera() {
     const answer = await requestPermission().catch(() => null);
@@ -45,7 +51,7 @@ export function QrScanner({ onScan, paused }: QrScannerProps) {
   // is covered by another one (e.g. "Who is here now" opened on top).
   const isFocused = useIsFocused();
 
-  if (!permission) return <AppText tone="muted">{t('common.loading')}</AppText>;
+  if (!permission || !readerReady) return <AppText tone="muted">{t('common.loading')}</AppText>;
 
   if (!permission.granted) {
     return (

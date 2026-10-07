@@ -745,7 +745,8 @@
     "restartFailedTitle": "ऐप अपने आप फिर से शुरू नहीं हो सका",
     "restartFailedBody": "ऐप को पूरी तरह बंद करें (स्वाइप करके) और फिर से खोलें: तब नया संस्करण शुरू होगा। इसकी जानकारी देते समय नीचे वाली लाइन भी भेजें।",
     "versionInstalled": "संस्करण {{version}} · इंस्टॉल किया हुआ, {{date}}",
-    "versionUpdate": "संस्करण {{version}} · {{date}} का अपडेट ({{id}})"
+    "versionUpdate": "संस्करण {{version}} · {{date}} का अपडेट ({{id}})",
+    "versionWeb": "वेब संस्करण {{site}} · {{commit}} · {{date}}"
   },
   "modules": {
     "instruments": "वाद्य",

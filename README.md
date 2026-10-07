@@ -80,7 +80,8 @@ docs/                  How it works and why — start with docs/README.md
 1. Install [Node.js](https://nodejs.org) (LTS).
 2. Create a free Supabase project and run the files in `supabase/migrations/` in its SQL editor,
    in number order (step by step: [docs/OPERATIONS.md](docs/OPERATIONS.md#setting-up-a-new-environment)).
-3. Copy `app/.env.example` to `app/.env` and fill in your project URL and **anon / publishable** key.
+3. Copy `app/.env.example` to `app/.env.development` and fill in your (test) project URL and
+   **anon / publishable** key ([app/README.md](app/README.md) "Settings files").
 4. Start the app, then press `w` to open the web version:
    ```bash
    cd app

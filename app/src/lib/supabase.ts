@@ -1,6 +1,8 @@
 // The one Supabase client the whole app uses to talk to the database and to log in.
-// Settings come from app/.env (copy app/.env.example): EXPO_PUBLIC_SUPABASE_URL and
-// EXPO_PUBLIC_SUPABASE_KEY. See docs/ARCHITECTURE.md "Security model".
+// Settings: EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_KEY, from app/.env.development (the
+// TEST project) under `npx expo start`, and handed in by scripts/export-web.mjs and
+// scripts/publish-update.mjs for builds (app/README.md "Settings files", docs/DECISIONS.md #145).
+// See docs/ARCHITECTURE.md "Security model".
 //
 // Setup follows the Expo guide for SDK 57: https://docs.expo.dev/guides/using-supabase/
 

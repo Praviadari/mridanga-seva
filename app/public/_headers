@@ -1,0 +1,47 @@
+# Cloudflare Pages response headers for the web version of the app (docs/DECISIONS.md #142).
+# A TEMPLATE: scripts/export-web.mjs fills in the two __NAMES__ below and writes the result to
+# dist/_headers, and refuses to finish if either is left. Upload only what export-web made.
+#   __SUPABASE__        the Supabase project of the site being built, e.g. https://<ref>.supabase.co
+#   __PLAYER_SCRIPT__   'sha256-...' of PLAYER_SCRIPT in src/lib/lesson-player-html.ts. The lesson
+#                       video plays in a srcdoc frame, which inherits this policy; that one script
+#                       is the only inline script allowed anywhere.
+#
+# Every outside host the web version loads, and why (checked 07-10-2026; add a host here only
+# with a DECISIONS entry):
+#   __SUPABASE__              data, sign-in, files and photos (REST, Auth, Storage, Edge Functions).
+#                             No Realtime is used, so no wss://.
+#   https://www.youtube.com   lesson videos: the IFrame Player API script and its player frame.
+#   https: (media only)       a lesson video FILE is the team's own copy at any https address
+#                             (materials kind 'video'); media cannot run code.
+# Not loaded at all: the zxing QR reader comes from this site (/zxing/, lib/qr-reader.web.ts),
+# fonts and icons are bundled, push and over-the-air updates do not run on the web, and maps,
+# calendars, YouTube "Open" and file links open in a new tab (navigation, not loads).
+# 'wasm-unsafe-eval' lets the QR reader compile its WebAssembly; it allows no JavaScript eval.
+# style-src needs 'unsafe-inline': react-native-web writes its styles into <style> elements and
+# the player page sets its background colour inline. Styles cannot run code.
+#
+# Permissions-Policy: camera (QR check-in), microphone (record yourself, recorded answers) and
+# geolocation (coordinator check-in at the class) for this site only; fullscreen, autoplay,
+# encrypted-media and picture-in-picture also for YouTube's player; everything else off.
+#
+# Check after an upload (docs/OPERATIONS.md "Publishing the web version"): the response headers of
+# the site show this policy, and the browser console shows no "Content Security Policy" errors.
+# Keep Cloudflare's Email Obfuscation, Web Analytics and Rocket Loader OFF: they inject scripts
+# this policy blocks.
+
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval' __PLAYER_SCRIPT__ https://www.youtube.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: __SUPABASE__; media-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' data: blob: __SUPABASE__; frame-src https://www.youtube.com; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; upgrade-insecure-requests
+  Strict-Transport-Security: max-age=63072000; includeSubDomains
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(self), microphone=(self), geolocation=(self), fullscreen=(self "https://www.youtube.com"), autoplay=(self "https://www.youtube.com"), encrypted-media=(self "https://www.youtube.com"), picture-in-picture=(self "https://www.youtube.com"), accelerometer=(), gyroscope=(), magnetometer=(), display-capture=(), midi=(), payment=(), publickey-credentials-get=(), screen-wake-lock=(), serial=(), usb=(), xr-spatial-tracking=(), browsing-topics=()
+  Cross-Origin-Opener-Policy: same-origin
+  X-Permitted-Cross-Domain-Policies: none
+
+/_expo/static/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/zxing/*
+  Cache-Control: public, max-age=31536000, immutable
+  Content-Type: application/wasm

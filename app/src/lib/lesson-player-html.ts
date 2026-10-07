@@ -65,26 +65,16 @@ function scriptJson(value: unknown): string {
 }
 
 /**
- * The page for one lesson. `origin` is the app's address (the browser's, or the WebView's base URL
- * on a phone): YouTube's player is told it, as its terms ask an embedding app to identify itself.
+ * The page's script. It is the same text for every lesson (the lesson itself is read from the
+ * JSON block before it), because the web version's Content-Security-Policy (app/public/_headers,
+ * docs/DECISIONS.md #142) lets only this exact script run inside the player frame: the frame's
+ * srcdoc page inherits the site's policy, and scripts/export-web.mjs puts the SHA-256 of this
+ * text into the policy. Keep it free of `${...}` and of backslashes, so the text is the same in
+ * the bundle and for the script that hashes it.
  */
-export function lessonPlayerHtml(source: LessonSource, origin: string, background: string): string {
-  const config = scriptJson({ source, origin, tag: PLAYER_MESSAGE_TAG });
-  return `<!doctype html>
-<html><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-<style>
-  html, body { margin: 0; padding: 0; height: 100%; background: ${background}; overflow: hidden; }
-  #stage { position: relative; width: 100%; height: 100%; overflow: hidden; }
-  #stage.mirror { transform: scaleX(-1); }
-  #yt, #yt iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
-  video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; background: #000; }
-  video.zoomed { object-fit: fill; }
-</style></head>
-<body><div id="stage"></div>
-<script>
+export const PLAYER_SCRIPT = `
 (function () {
-  var C = ${config};
+  var C = JSON.parse(document.getElementById('lesson-config').textContent);
   var stage = document.getElementById('stage');
   var rates = [1];
   var yt = null, video = null, ready = false, loop = null, mirror = false, zoom = null;
@@ -229,5 +219,26 @@ export function lessonPlayerHtml(source: LessonSource, origin: string, backgroun
     });
   }
 })();
-</script></body></html>`;
+`;
+
+/**
+ * The page for one lesson. `origin` is the app's address (the browser's, or the WebView's base URL
+ * on a phone): YouTube's player is told it, as its terms ask an embedding app to identify itself.
+ */
+export function lessonPlayerHtml(source: LessonSource, origin: string, background: string): string {
+  const config = scriptJson({ source, origin, tag: PLAYER_MESSAGE_TAG });
+  return `<!doctype html>
+<html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; background: ${background}; overflow: hidden; }
+  #stage { position: relative; width: 100%; height: 100%; overflow: hidden; }
+  #stage.mirror { transform: scaleX(-1); }
+  #yt, #yt iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+  video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; background: #000; }
+  video.zoomed { object-fit: fill; }
+</style></head>
+<body><div id="stage"></div>
+<script type="application/json" id="lesson-config">${config}</script>
+<script>${PLAYER_SCRIPT}</script></body></html>`;
 }
