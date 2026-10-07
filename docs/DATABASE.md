@@ -1304,9 +1304,18 @@ TypeScript directly). The smoke test runs send.ts against the real push queue SQ
 
 ```bash
 cd supabase/tests
-npm install
+npm ci
 npm test
 ```
+
+Node 22.18 or newer (`engines` in its package.json; `.nvmrc` says 24). The run ends with
+`All N/N checks passed`; it fails when any check fails or when the number of checks is not
+`EXPECTED_CHECKS`, so a skipped block cannot pass unseen. After the per-migration sections, the
+**test net** (audit brief 12, [DECISIONS.md #139](DECISIONS.md)) walks the whole schema. Adding a
+function the app calls? Put it on `SIGNED_IN_MAY_RUN` there in the same change. Adding a table
+with a `student_id` or `profile_id` column? The isolation loop covers it by itself. Every refusal
+check names its exact error ([#138](DECISIONS.md)). CI runs the same `npm test` on every pull
+request.
 
 It imitates Supabase's `auth` schema, roles, `storage.objects` and the service role, which is
 close but not exact: the bucket's size and type limits, pg_net and the Vault are not imitated.

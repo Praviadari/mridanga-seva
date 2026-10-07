@@ -564,6 +564,20 @@ A separate static site for the root of the domain, apart from the app ([DECISION
 English is at `/`, other languages at `/<code>/` with the same slugs (`/classes/`, `/join/`,
 `/get-the-app/`, `/privacy/`, `/contact/`); each language has its own `404.html`.
 
+## Tests and CI
+
+| Where | What it checks | Run |
+|---|---|---|
+| `supabase/tests/smoke-test.mjs` | Every migration and `seed.sql` on an in-memory Postgres (PGlite), then the rules per migration, and at the end the **test net** that walks the whole schema: function allow-lists, row-level security on every table, a student-isolation loop over every student-linked column, write sweeps per role, triggers, daily jobs, pg_cron jobs ([DECISIONS.md #138, #139](DECISIONS.md)) | `cd supabase/tests && npm test` |
+| `supabase/tests/push-messages.test.mjs` | The Edge Function's push wording and batching against an imitated Expo | part of the same `npm test` |
+| `app/tests/*.test.mjs` | Pure helpers (`src/lib/dates.ts`, `src/auth/requested-path.ts`) under Node's test runner; `tests/stubs/` stands in for `react-native` and `expo-linking` ([#140](DECISIONS.md)) | `cd app && npm test` |
+| `app/scripts/typed-routes.mjs` + `tsc` | Every `router.push` / `<Link>` path against the real screens | `node scripts/typed-routes.mjs && npx tsc --noEmit` |
+| `website/src/check.mjs` | The built site | `cd website && npm test` |
+| `.github/workflows/ci.yml` | All of the above, plus `expo lint`, on every pull request and push to `main` ([#141](DECISIONS.md)) | GitHub Actions |
+
+What the PGlite imitation cannot prove (real pg_cron, pg_net, Storage limits, two sessions at
+once) is listed in the smoke test's header; check those on TEST.
+
 ## Phases
 
 | Phase | Adds | Target |

@@ -1190,6 +1190,48 @@ minors'. The person tells the Guru at once (the maintainer, if it is the Guru's 
 A student's lost phone: the same steps 2-3 for their login if they ask; their own record is all it
 can open.
 
+## CI (GitHub Actions)
+
+`.github/workflows/ci.yml` runs on every pull request and every push to `main`
+([DECISIONS.md #141](DECISIONS.md)). Three jobs, all with Node from `.nvmrc` (24):
+
+| Job | Runs (in its folder) | Fails when |
+|---|---|---|
+| App | `npm ci`, `npx expo lint --no-cache`, `node scripts/typed-routes.mjs`, `npx tsc --noEmit`, `npm test` | lint, a type error or a mistyped route, an app unit test |
+| Database | `supabase/tests`: `npm ci`, `npm test` | any smoke-test or push-message check, or a total other than `EXPECTED_CHECKS` |
+| Website | `website`: `npm test` | the site does not build or its checker finds a problem |
+
+It needs no secrets and reads the code only (`permissions: contents: read`). The same commands
+run locally before a merge (see CONTRIBUTING.md). Results: the pull request's **Checks** tab, or
+the repository's **Actions** tab. A red run: open the failed step, read the first `FAIL` or error
+line, fix on the branch, push again; the run repeats itself.
+
+**Not yet:** CI does not block a merge until the three jobs are made required (GitHub → the
+repository → Settings → Rules → a ruleset for `main` → "Require status checks to pass": App,
+Database, Website). That is Praveen's call. CI does not run the app on a phone, deploy anything,
+publish an update or touch TEST/LIVE: those stay manual (sections above).
+
+**Actions are pinned by commit SHA**, with the version in a comment. Dependabot proposes newer
+ones monthly; check the action's release notes before merging.
+
+## Dependabot
+
+`.github/dependabot.yml` opens pull requests for outdated or vulnerable packages: npm weekly on
+Monday for `app/`, `supabase/tests/` and `website/` (minor and patch updates grouped into one pull
+request per folder), GitHub Actions monthly. Expo and React Native majors are skipped: those move
+together in an SDK upgrade (`npx expo install --fix`), not one by one.
+
+Reviewing one (never auto-merge, never merge on a green CI alone):
+1. Read what changed (the pull request lists versions and release notes).
+2. **`app/` updates:** in a worktree with the branch, `cd app`, `npm ci`, then
+   `npx expo-updates runtimeversion:resolve --platform android`. Same fingerprint as the installed
+   APK (185e839f today) → it can ship as an over-the-air update. A different one → it needs a new
+   APK build: merge only when a build is planned (OPERATIONS "Building the Android app").
+3. `supabase/tests/` and `website/` updates touch no phone: a green CI is enough after step 1.
+4. Merge, or close with a comment why (Dependabot then skips that version).
+
+A security alert comes as a Dependabot pull request too; treat it first.
+
 ## Handing over
 
 A new maintainer needs: access to the accounts above, this documentation, and the repository. Read

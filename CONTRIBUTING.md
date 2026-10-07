@@ -13,14 +13,32 @@ reports are all welcome.
 1. Fork the repository and create a branch from `main`, e.g. `fix/attendance-checkout`.
 2. Follow the setup steps in the [README](README.md).
 3. Keep each pull request to one change, with a clear description and screenshots for UI changes.
-4. Before opening the pull request, run in `app/`:
+4. Before opening the pull request, run the checks (Node 22.18 or newer; `.nvmrc` says 24). In `app/`:
    ```bash
    npx expo lint
+   node scripts/typed-routes.mjs
    npx tsc --noEmit
+   npm test
    ```
-   If you changed anything in `supabase/`, also run the database smoke test in `supabase/tests/`
-   (`npm install`, then `npm test`; see [docs/DATABASE.md](docs/DATABASE.md#testing-a-migration-before-it-goes-live)).
+   `typed-routes.mjs` writes the route types first, so `tsc` catches a mistyped screen path. If you
+   changed anything in `supabase/`, also run the database tests in `supabase/tests/` (`npm ci`,
+   then `npm test`; see [docs/DATABASE.md](docs/DATABASE.md#testing-a-migration-before-it-goes-live)).
+   If you changed `website/`, run `npm test` there. GitHub runs all of these on your pull request
+   (CI); a red check must be fixed before review.
 5. Add Expo packages with `npx expo install <package>`, not `npm install`, so versions match the SDK.
+
+## Tests
+
+| Change | Add or update |
+|---|---|
+| A pure helper in `app/src/` (dates, paths, parsing, no screen) | A `node --test` file in `app/tests/` (see `dates.test.mjs`). If the helper imports a native package, add a stub in `app/tests/stubs/`. |
+| A screen | No screen tests yet; describe how you checked it, with screenshots, in the pull request. |
+| A migration | Checks in `supabase/tests/smoke-test.mjs`, in a new section named after the migration: the **negative** side (each role that must be refused, with `refusesWith(name, 'exact error', fn)`, never "any error") and the **positive** side (the role the rule is for can still do it). Name the audit finding or decision in each check. Then set `EXPECTED_CHECKS` to the new total the run prints. |
+| A new database function the app calls | Add it to `SIGNED_IN_MAY_RUN` in the test net (end of the smoke test), and revoke it from anon. |
+| A new table | Row-level security on (the test net fails otherwise); its `student_id` / `profile_id` columns are checked by the isolation loop on their own. |
+
+What the in-memory database cannot prove (pg_cron on a schedule, pg_net, Storage limits, two
+sessions at once) is listed at the top of the smoke test: try those on the TEST project.
 
 ## Rules for this project
 
