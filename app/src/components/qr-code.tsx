@@ -60,10 +60,11 @@ export function QrCode({ value, size, label }: QrCodeProps) {
 
 /**
  * Works out the code's pattern and turns it into one SVG path. Squares that sit next to each other
- * in a row are joined into one rectangle, which keeps the path short.
- * @returns path in module units, already shifted by the quiet zone; modules = squares per side.
+ * in a row are joined into one rectangle, which keeps the path short. Also used for the printed
+ * asset labels (src/lib/label-sheet.ts).
+ * @returns path in module units, already shifted by QUIET_ZONE; modules = squares per side without it.
  */
-function qrShape(value: string): { path: string; modules: number } {
+export function qrShape(value: string): { path: string; modules: number; quietZone: number } {
   // Type number 0 lets the library pick the smallest code that holds the text.
   const code = createQrCode(0, 'Q');
   code.addData(value, ALPHANUMERIC.test(value) ? 'Alphanumeric' : 'Byte');
@@ -84,5 +85,5 @@ function qrShape(value: string): { path: string; modules: number } {
       parts.push(`M${start + QUIET_ZONE} ${row + QUIET_ZONE}h${run}v1h-${run}z`);
     }
   }
-  return { path: parts.join(''), modules };
+  return { path: parts.join(''), modules, quietZone: QUIET_ZONE };
 }

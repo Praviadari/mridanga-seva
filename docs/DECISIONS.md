@@ -3003,3 +3003,103 @@ it must never be put in an `EXPO_PUBLIC_` variable.
 PEM in web JS; sb_secret_ in Hermes bytecode). If a library ever adds its own `'sb_secret_'`
 literal, the bytecode check stops publish-update with a clear message: look at the match before
 changing the rule. Closes D11-06, D11-10, D11-19.
+## 156. Every seva asset in the inventory, with a free-text category — 7 Oct 2026
+
+**Context.** Praveen (07-10-2026): track ALL seva assets with QR stickers, not only the drums and kartals of C19 (#65).
+
+**Decision.** Migration 0035 widens `inventory_items.kind` with `harmonium`, `instrument` (other instruments: gong,
+conch, whompers), `sound` (speaker, mic, mixer, cables), `cover_bag` (drum covers and bags), `book`, `furniture`
+(chairs, mats, stands), `altar` (altar and puja items); the six old kinds stay. Each item gets an optional `category`
+(free text, ≤ 40) inside its kind, e.g. "Mixer", "Bhagavad Gita". Praveen chose this set over a minimal one.
+
+**Why.** A fixed kind keeps the code prefix and the filters simple; the category covers the variety without a table
+of categories to maintain.
+
+**Consequences.** The screen title is now "Instruments and assets". The old app (before the OTA) shows a new kind's
+key until it updates; it still works.
+
+## 157. Each item has an unguessable label token and a human code per centre — 7 Oct 2026
+
+**Context.** A printed label must lead to the item, survive being photographed, and still show nothing to a stranger.
+
+**Decision.** `asset_token`: 22 base64url characters from a random UUID (122 random bits), unique, set by the
+database and frozen for app users (`asset_locked`), like `students.qr_token` (#73). The QR holds the web link
+`https://app.mridangaseva.com/i/<token>` (one constant, `ASSET_LINK_ORIGIN` in `src/lib/asset-link.ts`; a TEST build
+and the TEST site print and open TEST links). `code`: prefix by kind + a number per centre and prefix, three digits
+at least, e.g. KHOL-007 (the four mridanga kinds share KHOL; KART, HARM, INST, SND, BAG, BOOK, FURN, PUJA, OTH), from
+`inventory_code_counters`, never reused, frozen for app users; correcting the kind keeps the code; a move to another
+centre gives a new code there and clears `labelled_at` (the label shows the centre, so it is printed again).
+Existing rows are backfilled in id order. Praveen chose prefix-by-kind over one running number.
+
+**Why.** A web link opens from any phone camera, so a finder or a volunteer without the app still reaches a sign-in
+page; the token, not the code, is the secret, so a code on a label cannot be guessed into another item's link.
+
+**Consequences.** Real stickers only after app.mridangaseva.com is live (brief 8). Opening the link in the APP
+instead of the browser needs Android App Links (intent filter with autoVerify + assetlinks.json on
+app.mridangaseva.com): a native change for the production APK (brief 9).
+
+## 158. Labels are printed from a web page laid out in millimetres — 7 Oct 2026
+
+**Context.** The label stock is an A4 sheet of 18 (3 x 6), 63.5 x 46.6 mm, Avery L7161 / J8161 type (Praveen's pack,
+scan of 06-10-2026). The app has no print module (no expo-print) and no native change is wanted.
+
+**Decision.** `/staff/inventory/labels` (Guru and coordinators) builds the sheets as HTML in mm (`src/lib/label-sheet.ts`:
+left 7.2, top 8.8, column pitch 66.0, row pitch 46.6) and prints them with the browser (`@page A4, margin 0`; the print
+copy is a direct child of `<body>`, everything else hidden when printing). Per label: QR 30 mm with its 4-module quiet
+zone (error correction Q, about 24 mm of code), "Mridanga Seva", the code, category or kind · centre, the name, and
+"Seva property — if found: info@mridangaseva.com". A half-used sheet starts at any position 1-18; a test print draws
+the outlines, centre marks and a 100 mm ruler on plain paper; a nudge (±5 mm right / down) for a printer that prints
+off-centre is kept in that browser. After printing, "mark printed" stamps `labelled_at` (`mark_labels_printed`), so
+"Not printed yet" lists what still needs a label. On a phone the page explains and opens itself in the browser.
+
+**Why.** CSS mm at 100 % scale is exact on any printer, needs no dependency and no native module; HTML with no
+script fits the web Content-Security-Policy (brief 13: inline styles allowed, no inline scripts).
+
+**Consequences.** The print window must be at 100 % (Actual size), margins None, no headers or footers; the page says
+so. Another label pack = change `SHEET` and note it here.
+
+## 159. One scanner path for labels: /i/<token> and the in-app scanners — 7 Oct 2026
+
+**Context.** A label is scanned by a phone camera app (opens the browser) or by the app's own scanners.
+
+**Decision.** `/i/<token>` is open to every area but shows nothing itself: staff are forwarded to
+`/staff/inventory/label/<token>`; signed-out visitors sign in first and land there (requested path); students and
+subscribers see "Mridanga Seva property" with the finder address. The staff screen calls `resolve_asset(token)`:
+the item opens, or "Label not found", or "Another centre's item" (a coordinator whose login has another centre;
+the Guru sees every centre). The attendance scanner opens the item for a label and still checks students in and out
+for `MS1:` codes (#17); a new "Scan a label" screen in C19 points a student code to attendance.
+
+**Why.** One resolving function keeps the centre rule and the anon refusal in the database.
+
+**Consequences.** Row-level security on `inventory_items` is unchanged (staff read every centre, as before 0035); the
+per-centre rule applies to resolving, stocktake and mark-printed. Tightening the list itself per centre is left for
+when a second real centre starts.
+
+## 160. Stocktake: count a centre, save what was not seen — 7 Oct 2026
+
+**Context.** With labels on every asset the team wants a regular count.
+
+**Decision.** `inventory_stocktakes` (centre, started/finished by and at, note, counts, summary jsonb) and
+`inventory_stocktake_items` (item, scan or tap, seen by, seen at). `start_stocktake(centre)` opens a count or joins
+the open one (one open per centre); `stocktake_see(count, token | item)` answers seen / already / unknown /
+other_centre / retired; `finish_stocktake(count, note)` saves expected (items in use), seen, lent (not seen but on
+loan, with the holder) and missing (neither), with the lists. Written only by these functions; staff read; the Guru
+may delete an open count started by mistake. Counts are in the audit log.
+
+**Why.** An item out on loan is not missing; listing it separately avoids false alarms.
+
+**Consequences.** Screens `/staff/inventory/stocktake` and `/staff/inventory/stocktake/<id>`. A missing item is
+only listed: the Guru decides to retire it.
+
+## 161. Asset labels: who may do what — 7 Oct 2026
+
+**Context.** Audit rules: anon reaches nothing; every UPDATE/DELETE in SQL has a WHERE (#116 lesson).
+
+**Decision.** anon has no right on the new tables or functions (checked: 401 / 42501 on TEST); `inventory_code_counters`
+has no app access; the helpers `inventory_new_token`, `inventory_next_code`, `inventory_code_prefix`,
+`inventory_centre_ok` are internal; `resolve_asset`, `mark_labels_printed` and the stocktake functions are for staff
+(`not_allowed` otherwise). Lend, take back and condition checks stay as in #65 (condition only through a check, not
+retired while lent) and are already recorded with who and when in `inventory_checks`.
+
+**Why / Consequences.** supabase/tests checks all of it ("asset labels and stocktake (0035)"), plus the grant sweeps
+and the WHERE sweep that run over every function.

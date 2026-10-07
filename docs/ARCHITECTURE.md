@@ -104,7 +104,7 @@ app/
                        assessments/ holds G6, C12-C14, promotion/ holds C22, C23, G7,
                        practice.tsx (S5) and taals/ (the Guru's taal editor), ishtagoshti/ (I2, I3,
                        and the editors' edit-sloka/ I12 and edit-theme/ I11); slice 8:
-                       suggestions.tsx (C18), inventory/ (C19), duty/ (C20 roster)
+                       suggestions.tsx (C18), inventory/ (C19: labels, scan, label/[token], stocktake/), duty/ (C20 roster)
     auth/              Who is signed in, their role, and the sign-in / sign-up calls
     screens/           The two staff homes, G1 and C1 (shown by staff/(tabs)/index.tsx), and the
                        pages both areas show: Coming soon, Attendance history (S9), My profile (A3),
@@ -516,6 +516,14 @@ Not on main yet ([DECISIONS.md #65](DECISIONS.md)). No native change.
 - **C19: conditions are a log.** Every condition seen (added, check, lent, back) is a row of
   `inventory_checks`; a trigger copies the newest onto the item. Lending and taking back run as
   functions so one open loan per item, the note rule and "no damaged item out" hold on every path.
+- **C19 asset labels (0035, DECISIONS #156-#161).** Each item has a database-made `asset_token` and code. The
+  label's QR is a web link (`lib/asset-link.ts`, one origin constant; TEST builds and the TEST site use the TEST
+  site), so any camera opens it; `/i/<token>` (always open, shows nothing) forwards staff to
+  `/staff/inventory/label/<token>`, which asks `resolve_asset` (centre rule in SQL). The app's scanners sort text with
+  `lib/scan-text.ts` (asset link, `MS1:` student code, or other). Printing is browser-only: `lib/label-sheet.ts`
+  makes script-free HTML in mm for the A4 sheet of 18; `components/label-print.web.tsx` shows a scaled preview and
+  puts the print copy directly under `<body>`, and the print CSS hides everything else (no print module, no native
+  change). Stocktake is three functions over two tables; the summary is saved as jsonb when the count finishes.
 - **C20: the Guru plans in one call** (`save_duty_shift`: the shift and its people together, or
   the same shift for several weeks). A pg_cron job at 18:00 India time queues the reminders.
 - **Notices** (a suggestion, its decision, an item marked damaged, tomorrow's duty) go through

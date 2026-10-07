@@ -3,7 +3,9 @@
 // holds it; staff lend it (find a student or staff member, the condition seen, an optional due
 // date and note), take it back (condition seen, a note unless good) or record a condition check;
 // the history, newest first. The Guru also edits the kind, name and notes, retires it or puts it
-// back, and deletes one added by mistake. Data: data/inventory.ts; migration 0023.
+// back, and deletes one added by mistake. Since 0035: the label code and centre, a free-text
+// category, and Print label (./labels.tsx); scanning a label opens this screen (DECISIONS #159).
+// Data: data/inventory.ts; migrations 0023, 0035.
 
 import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import type { ParseKeys } from 'i18next';
@@ -23,6 +25,7 @@ import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { TextField } from '@/components/text-field';
 import {
+  CATEGORY_MAX,
   checkItem,
   checkItemForm,
   CONDITIONS,
@@ -50,7 +53,7 @@ import { spacing } from '@/theme/use-theme';
 
 type Mode = 'lend' | 'return' | 'check' | 'edit' | 'delete' | null;
 
-const EMPTY_FORM: ItemForm = { kind: 'fibreglass', label: '', notes: '', condition: 'good', conditionNote: '' };
+const EMPTY_FORM: ItemForm = { kind: 'fibreglass', label: '', category: '', notes: '', condition: 'good', conditionNote: '' };
 
 /** One inventory item. */
 export default function InventoryItemScreen() {
@@ -115,7 +118,7 @@ export default function InventoryItemScreen() {
     }
     if (next === 'edit' && loaded && loaded !== 'not_found' && loaded.item) {
       const { item } = loaded;
-      setForm({ kind: item.kind, label: item.label, notes: item.notes ?? '', condition: item.condition, conditionNote: '' });
+      setForm({ kind: item.kind, label: item.label, category: item.category ?? '', notes: item.notes ?? '', condition: item.condition, conditionNote: '' });
     }
   }
 
@@ -134,7 +137,7 @@ export default function InventoryItemScreen() {
     return true;
   }
 
-  const title = isNew ? t('inventory.add') : loaded && loaded !== 'not_found' && loaded.item ? loaded.item.label : t('inventory.title');
+  const title = isNew ? t('inventory.add') : loaded && loaded !== 'not_found' && loaded.item ? loaded.item.code : t('inventory.title');
   const header = <Stack.Screen options={{ title }} />;
 
   if ((isNew && !isGuru) || loaded === undefined || loaded === null || loaded === 'not_found') {
@@ -226,7 +229,10 @@ export default function InventoryItemScreen() {
       {message ? <Notice tone={message.tone}>{message.text}</Notice> : null}
 
       {item ? (
-        <Section icon="instruments" title={item.label} description={t(`inventory.kinds.${item.kind}`)}>
+        <Section
+          icon="instruments"
+          title={` · ${item.label}`}
+          description={[t(`inventory.kinds.${item.kind}`), item.category, item.centreName].filter(Boolean).join(' · ')}>
           <AppText>
             {t('inventory.conditionNow', { condition: t(`inventory.conditions.${item.condition}`) })}
             {item.conditionNote ? ` · ${item.conditionNote}` : ''}
@@ -261,6 +267,12 @@ export default function InventoryItemScreen() {
                 />
               )}
               <Button variant="secondary" icon="check" label={t('inventory.check')} onPress={() => open('check')} />
+              <Button
+                variant="link"
+                icon="print"
+                label={t('labels.printOne')}
+                onPress={() => router.push({ pathname: '/staff/inventory/labels', params: { ids: String(item.id) } })}
+              />
             </View>
           ) : null}
           {mode === null && !item.holder && !item.retiredAt && !LENDABLE.includes(item.condition) ? (
@@ -363,6 +375,14 @@ export default function InventoryItemScreen() {
             onChangeText={(label) => update({ label })}
             maxLength={LABEL_MAX + 10}
             error={errors.label ? t(errors.label) : undefined}
+          />
+          <TextField
+            label={t('inventory.categoryLabel')}
+            hint={t('inventory.categoryHint', { max: CATEGORY_MAX })}
+            value={form.category}
+            onChangeText={(category) => update({ category })}
+            maxLength={CATEGORY_MAX + 10}
+            error={errors.category ? t(errors.category) : undefined}
           />
           <TextField
             label={t('inventory.notesLabel')}

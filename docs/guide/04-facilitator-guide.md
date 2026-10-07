@@ -274,7 +274,14 @@ Phase 2 ([DECISIONS.md #65](../DECISIONS.md)). Coordinators' side: [Coordinator 
   and its condition now. On an item you can also **Edit**, **Retire** it (no longer lent; only when it
   is back) or put it back in use, and **Delete** one added by mistake (never lent). Coordinators
   lend, take back and check items; when one is marked **Damaged** you get a notice.
-- **Duty roster** (under the ring): **Add a shift**: the date, the centre, from and to (inside the
+- **Asset labels** (since 7 Oct 2026, [DECISIONS.md #156-#161](../DECISIONS.md)): the kinds now cover every
+  seva asset (also harmonium, other instruments, sound, drum covers and bags, books, furniture, altar and puja
+  items), with an optional **Category** ("Mixer", "Bhagavad Gita"). The app gives each item a code
+  (KHOL-007: drums share KHOL; KART, HARM, INST, SND, BAG, BOOK, FURN, PUJA, OTH) and a secret QR link; neither
+  can be changed, so a printed sticker stays right when you correct the kind. **Print labels**, **Scan a label**
+  and **Stocktake** work as in the [Coordinator guide](03-coordinator-guide.md#team-tools-instruments-duty-roster-suggesting-a-lesson);
+  you can count any centre, and delete a count started by mistake while it is open. The sticker shows nothing
+  to a stranger: the QR opens a sign-in page, and a finder reads "if found: info@mridangaseva.com".- **Duty roster** (under the ring): **Add a shift**: the date, the centre, from and to (inside the
   centre's open hours), what the duty is (optional, e.g. "Desk and attendance"), who is on it, and
   **Repeat every week for** up to 12 weeks. Tap a shift to change it or delete it. Everyone on a
   shift gets a reminder at 18:00 the evening before. **Duty hours** on a coordinator's page stay as

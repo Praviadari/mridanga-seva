@@ -105,6 +105,9 @@ const SHAPES = {
   fund: 'wallet-outline',
   income: 'arrow-down-circle-outline',
   expense: 'arrow-up-circle-outline',
+  // Asset labels and stocktake (0035).
+  print: 'print-outline',
+  stocktake: 'list-outline',
 } as const;
 
 /** The icons the app may use. */

@@ -38,6 +38,7 @@ in number order:
 | `0032_auth_fixes.sql` | Sign-in leftovers: a new profile takes the language sent with the sign-up (D8-01); `students.request_id` + `register_student(..., p_request_id)`: a registration saved twice stores the student once (D6-08) ([DECISIONS.md #125, #126](DECISIONS.md)). See "Sign-in leftovers (0032)" |
 | `0033_time_zones.sql` | International basics: `centres.time_zone` (IANA, default Asia/Kolkata) and `centres.country_code` (ISO 3166, default IN); `today_ist()` = today at the caller's centre; attendance days, closing, home screens, reports, event and duty reminders in the right centre's zone; `close_open_visits` hourly; notices dated in each person's zone; `fund_entries.currency` (ISO 4217, default INR) ([DECISIONS.md #132-#136](DECISIONS.md)). See "Time zones and currency (0033)" |
 | `0034_access_log.sql` | Reads of parents' contacts, consents and call notes, and audit-log pages, go through logging functions into `access_log` (the Guru reads it; purged after 400 days); coordinators lose the direct reads; `consents.notice_version` ([DECISIONS.md #146-#151](DECISIONS.md)) |
+| `0035_asset_labels.sql` | QR asset labels for every seva asset: new kinds + `category`; `asset_token` (unguessable, frozen) and a per-centre `code` (KHOL-007) on every item, backfilled; `resolve_asset`, `mark_labels_printed`; stocktake (`inventory_stocktakes`, `inventory_stocktake_items`, `start_stocktake`, `stocktake_see`, `finish_stocktake`) ([DECISIONS.md #156-#161](DECISIONS.md)). 0034 is the privacy brief's; 0035 does not depend on it. See "Asset labels and stocktake (0035)" |
 
 The Phase 2 files were renumbered when they merged into main (#55). TEST ran some under their
 branch numbers (0012, 0014_promotion, 0016_practice, 0017_media, 0021_events_polls), so it skips
@@ -65,7 +66,7 @@ consent), sample visits, groups and an announcement. Never run it on the live pr
 | Assessments (Phase 2) | `assessments`, `assessment_releases`, `assessment_assignments`, `assessment_submissions`, `push_outbox` | Views `assessment_tracker` (C13) and `assessment_summary` (counts). Files in the Storage bucket `assessment-files` |
 | Promotion (Phase 2) | `promotion_nominations`, `promotion_feedback` | View `promotion_queue` (G7). See "Promotion approval (Phase 2)" |
 | Practice (Phase 2) | `taals`, `practice_logs` | Taals the S5 player loops (the Guru edits them); practice minutes from the S5 timer or typed in (S6). See "Practice tools (Phase 2)" |
-| Inventory (Phase 2) | `inventory_items`, `inventory_loans`, `inventory_checks` | Temple instruments and other items, who holds each, every condition seen (C19). See "Team tools (Phase 2)" |
+| Inventory (Phase 2) | `inventory_items`, `inventory_loans`, `inventory_checks`, `inventory_code_counters`, `inventory_stocktakes`, `inventory_stocktake_items` | Every seva asset with its label code and token, who holds each, every condition seen, the counts (C19). See "Team tools (Phase 2)" and "Asset labels and stocktake (0035)" |
 | Duty roster (Phase 2) | `duty_shifts`, `duty_assignments` | Shifts per date and centre with the people on each (C20). Suggestions (C18) live in `materials` |
 | Ishtagoshti (Phase 2) | `ig_slokas`, `ig_themes`, `ig_theme_slokas`, `ig_daily_pins`, `ig_notes`, `ig_memorised` | Sloka study (I1-I3, I11, I12): the temple's own translations, themes, the sloka of the day, private notes, memorised ticks. Recitations in the Storage bucket `ishtagoshti-audio`. See "Ishtagoshti (Phase 2)" |
 | Access log | `access_log` | Who read a student's guardians, consents or call notes, or a page of the audit log, and when (0034; G11 "Reads of private details") |
@@ -940,6 +941,24 @@ The app lists approved materials only in G4 / S4 (`fetchMaterials`); suggestions
 | `issue_inventory_item(item, student, profile, condition, note, due_on)` | Staff: lends a good or needs-care item (`item_not_lendable`) to a student not Left or an active staff member (`borrower_required`, `borrower_not_found`); `due_past`, `item_out`, `item_retired` |
 | `return_inventory_item(loan, condition, note)` | Staff: takes it back once (`already_returned`) |
 | `check_inventory_item(item, condition, note)` | Staff: a condition check. Every condition but `good` needs a note (`note_required`, ≤ 500) |
+
+**Asset labels and stocktake (0035)** ([DECISIONS.md #156-#161](DECISIONS.md)):
+
+| Table / function | What |
+|---|---|
+| `inventory_items` (new columns) | `kind` adds `harmonium`, `instrument`, `sound`, `cover_bag`, `book`, `furniture`, `altar`; `category` (≤ 40, `category_too_long`); `asset_token` (22 base64url characters, unique, frozen for app users: `asset_locked`); `code` (unique per centre, e.g. KHOL-007, frozen; a centre move gives a new one); `labelled_at` |
+| `inventory_code_counters` | Last number per centre and prefix. No app access |
+| `guard_inventory_asset` (trigger `inventory_items_asset_guard`) | Sets token and code on insert (the app cannot choose them), trims the category, freezes token and code |
+| `resolve_asset(token)` | Staff: `{result: ok, id, code, label, centre, retired}`, `unknown`, or `other_centre` (a coordinator whose login has another centre). Students and anon refused |
+| `mark_labels_printed(ids)` | Staff: stamps `labelled_at` on their centres' items; returns how many |
+| `inventory_stocktakes` | A count: centre, started / finished by and at, note, `expected`, `seen`, `lent`, `missing`, `summary` `{lent: [...], missing: [...]}`. One open per centre. Staff read; the Guru deletes an open one. Audited |
+| `inventory_stocktake_items` | Items seen in a count: `how` (scan / tap), `seen_by`, `seen_at`. Written only by `stocktake_see` |
+| `start_stocktake(centre)` | Staff of that centre: opens a count or returns the open one (`centre_not_found`) |
+| `stocktake_see(count, token, item)` | Marks an item seen: `seen`, `already`, `unknown`, `other_centre`, `retired` (the last three not counted); `stocktake_closed` |
+| `finish_stocktake(count, note)` | Saves the summary: expected = items in use at the centre; lent = not seen but on loan (with the holder); missing = neither |
+
+Internal: `inventory_new_token`, `inventory_next_code`, `inventory_code_prefix`, `inventory_centre_ok`. Smoke tests:
+section "asset labels and stocktake (0035)".
 
 **C20 duty roster:**
 

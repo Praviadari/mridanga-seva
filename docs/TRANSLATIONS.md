@@ -171,6 +171,15 @@ The code is in `app/src/i18n/index.ts`, `app/src/components/language-picker.tsx`
   "retire" an item (విరమించండి / हटाएँ: may read oddly), "shift" (షిఫ్ట్ / पाली), "duty roster"
   (డ్యూటీ పట్టిక / ड्यूटी रोस्टर), the kinds "Clay khol", "fibreglass", "skin heads", and the short
   weekdays in `duty.weekdays.*`. Checked for mixed Telugu-Devanagari words on 3 Oct 2026.
+- **Asset labels and stocktake** (branch `asset-labels`, migration 0035, [DECISIONS.md #156-#161](DECISIONS.md)): every
+  Telugu and Hindi line under `labels.*`, `stocktake.*` and the new `inventory.*` keys (title, intros, the seven new kinds,
+  category, search, five errors) is a draft. Words to check first: "assets" ఆస్తులు / संपत्ति, "stocktake" వస్తువుల
+  లెక్కింపు / वस्तुओं की गिनती, "seen" కనిపించింది / दिखी, "missing" కనిపించనివి / गायब, "label" లేబుల్ / लेबल,
+  "test print" టెస్ట్ ప్రింట్ / टेस्ट छपाई, "nudge" జరపండి / खिसकाएँ, the kinds (హార్మోనియం, సౌండ్, పీఠం, పూజా
+  సామగ్రి / हारमोनियम, साउंड, वेदी, पूजा सामग्री), and the finder line printed on every label
+  (`labels.finder`: సేవా ఆస్తి — దొరికితే / सेवा संपत्ति — मिले तो). The label prints in the language of the person
+  printing; "Mridanga Seva" (`labels.brand`) stays in Latin letters. Counts use `_one` / `_other`. Checked for mixed
+  Telugu-Devanagari words on 7 Oct 2026.
 - **Phase 2 class fund** (branch `phase2-fund`, [DECISIONS.md #80](DECISIONS.md)): every Telugu and Hindi line
   under `fund.*`, `coordinators.treasurer*`, `settings.fund*` is a draft for the review, and the notice lines in
   `fund_push_line` (migration 0026). Words to check first: "class fund" తరగతి నిధి / कक्षा कोष, "treasurer"

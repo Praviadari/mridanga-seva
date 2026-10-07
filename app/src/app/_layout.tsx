@@ -77,6 +77,8 @@ function RootNavigator() {
         screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}>
         {/* Always open: shows the splash while loading, then forwards to the area's first screen. */}
         <Stack.Screen name="index" />
+        {/* Always open too: an asset label's link (/i/<token>) forwards by area and shows nothing itself. */}
+        <Stack.Screen name="i/[token]" />
 
         <Stack.Protected guard={area === 'signedOut'}>
           <Stack.Screen name="sign-in" />

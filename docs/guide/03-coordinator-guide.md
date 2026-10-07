@@ -371,6 +371,25 @@ condition and who has each. Filter: **In use**, **In the store**, **Lent out**, 
 A student sees the items they hold on **My profile**; you see them on the student's profile under
 **Items on loan**.
 
+**QR labels and stocktake** (since 7 Oct 2026, [DECISIONS.md #156-#161](../DECISIONS.md)). Every seva asset
+(drums, kartals, harmonium, sound, books, furniture, altar items ...) has a code such as **KHOL-007** and a QR
+sticker.
+
+- **Scan a label** (on Instruments and assets, or the camera on **Mark attendance**): point the camera at the
+  sticker and the item opens: lend, take back or check it as above. A phone's own camera app opens the same
+  item in the browser after you sign in. "Another centre's item" means it belongs to another centre: tell
+  its coordinator. "Label not found": tell the facilitator.
+- **Print labels** works on a computer with a printer, in the browser (on the phone the button opens the
+  browser). Tick the items (**Not printed yet** shows those without a sticker), tap the first free label on
+  the sheet (a half-used sheet starts later), **Print**. In the print window: A4, scale 100 % ("Actual
+  size"), margins None, headers and footers off. After a good print tap **mark printed**. New pack or new
+  printer: first tick **Test print** and print on plain paper; hold it against a label sheet up to the light;
+  if the outlines are off, type the shift in **Move right / Move down** (mm) and print the test again.
+- **Stocktake**: **Start or join a count** for your centre, then scan every sticker (or tap **Seen** for an
+  item whose sticker is damaged). **Not seen yet** shrinks as you go; two people can count at once. **Finish
+  the count** saves the summary: seen, **missing** (not seen and not lent out) and lent out, with who did it.
+  Look for the missing ones and tell the facilitator.
+
 **Duty roster** (under the ring) shows **My shifts** for the next 4 weeks and the whole roster by
 date, with who is on each shift. The facilitator plans it. At 18:00 the evening before a shift you
 get a notice in your inbox (and a push on Android).

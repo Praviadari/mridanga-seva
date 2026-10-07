@@ -4129,6 +4129,104 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
     badJobs.join(' | ') || cronJobs.map((j) => j.jobname).join(' '));
 }
 // ================================================================ end of test net (audit brief 12)
+// ---------------------------------------------------------------- asset labels and stocktake (0035)
+// Every item has a frozen, unguessable label token and a per-centre code; the token finds the item
+// only for staff of its centre; a count lists what was not seen. nyCentre / nyStaff come from 0033.
+{
+  const tokenFormat = /^[A-Za-z0-9_-]{22}$/;
+  const existing = await asOwner('select id, code, asset_token from inventory_items order by id');
+  check('0035: every item has a code and a token', existing.length > 0
+    && existing.every((r) => /^[A-Z]{3,4}-\d{3,}$/.test(r.code) && tokenFormat.test(r.asset_token)), JSON.stringify(existing));
+  check('0035: tokens are all different', new Set(existing.map((r) => r.asset_token)).size === existing.length);
+  const add = async (label, kind, centre = 1) => (await asApp('authenticated', guru,
+    `insert into inventory_items (kind, label, centre_id, category, asset_token, code) values ($1, $2, $3, $4, 'AAAAAAAAAAAAAAAAAAAAAA', 'X-1') returning *`,
+    [kind, label, centre, '  Mixer  ']))[0];
+  const harmonium = await add('Harmonium 1', 'harmonium');
+  const speaker = await add('Speaker left', 'sound');
+  const speaker2 = await add('Speaker right', 'sound');
+  check('0035: new kinds are accepted; the database sets the code and token, not the app', harmonium.code === 'HARM-001'
+    && speaker.code === 'SND-001' && speaker2.code === 'SND-002' && harmonium.asset_token !== 'AAAAAAAAAAAAAAAAAAAAAA'
+    && tokenFormat.test(harmonium.asset_token) && harmonium.category === 'Mixer', JSON.stringify([harmonium.code, speaker2.code, harmonium.category]));
+  const kholBefore = (await asOwner(`select coalesce(max(split_part(code, '-', 2)::int), 0) as n from inventory_items where centre_id = 1 and code like 'KHOL-%'`))[0].n;
+  const drum = await add('Tilak red 2', 'fibreglass');
+  check('0035: the four mridanga kinds share KHOL numbering', drum.code === `KHOL-${String(kholBefore + 1).padStart(3, '0')}`, drum.code);
+  await refusesWith('0035: the token is frozen for app users', 'asset_locked', () => asApp('authenticated', guru,
+    `update inventory_items set asset_token = 'BBBBBBBBBBBBBBBBBBBBBB' where id = $1`, [harmonium.id]));
+  await refusesWith('0035: the code is frozen for app users', 'asset_locked', () => asApp('authenticated', guru,
+    `update inventory_items set code = 'HARM-099' where id = $1`, [harmonium.id]));
+  await asApp('authenticated', guru, `update inventory_items set kind = 'instrument' where id = $1`, [harmonium.id]);
+  check('0035: a kind correction keeps the printed code', (await asOwner(`select code from inventory_items where id = ${harmonium.id}`))[0].code === 'HARM-001');
+  await refusesWith('0035: a category is at most 40 characters', 'category_too_long', () => asApp('authenticated', guru,
+    `update inventory_items set category = repeat('a', 41) where id = $1`, [harmonium.id]));
+  await refuses('0035: a kind outside the list is still refused', () => add('Tanpura', 'tanpura'));
+  const nyBook = await add('Gita 1', 'book', nyCentre.id);
+  check('0035: codes count per centre', nyBook.code === 'BOOK-001');
+
+  const resolve = (userId, token) => asApp('authenticated', userId, 'select resolve_asset($1) as r', [token]).then((rows) => rows[0].r);
+  check('0035: a coordinator resolves a label of their centre', (await resolve(coordinator, speaker.asset_token)).id == speaker.id);
+  check('0035: an unknown token says unknown', (await resolve(coordinator, 'zzzzzzzzzzzzzzzzzzzzzz')).result === 'unknown'
+    && (await resolve(coordinator, "x' or 1=1 --")).result === 'unknown');
+  const other = await resolve(nyStaff, speaker.asset_token);
+  check('0035: another centre\'s coordinator is refused with the centre named', other.result === 'other_centre' && !('id' in other), JSON.stringify(other));
+  check('0035: the Guru resolves every centre', (await resolve(guru, nyBook.asset_token)).result === 'ok');
+  await refuses('0035: a student cannot resolve a token', () => resolve(late, speaker.asset_token));
+  await refuses('0035: anon cannot resolve a token', () => asApp('anon', null, 'select resolve_asset($1)', [speaker.asset_token]));
+  await refuses('0035: anon cannot read items by token', () => asApp('anon', null, 'select id from inventory_items where asset_token = $1', [speaker.asset_token]));
+  check('0035: a student does not find an item by its token', (await asApp('authenticated', arjun,
+    'select id from inventory_items where asset_token = $1', [speaker.asset_token])).length === 0);
+  await refuses('0035: nobody in the app reads the code counters', () => asApp('authenticated', guru, 'select * from inventory_code_counters'));
+
+  check('0035: staff mark labels printed, only their centre\'s', (await asApp('authenticated', coordinator,
+    'select mark_labels_printed($1::bigint[]) as n', [[speaker.id, nyBook.id]]))[0].n === 1
+    && (await asOwner(`select labelled_at is not null as ok from inventory_items where id = ${nyBook.id}`))[0].ok === false);
+  await asOwner(`update inventory_items set centre_id = ${nyCentre.id} where id = ${speaker2.id}`);
+  const moved = (await asOwner(`select code, labelled_at, asset_token from inventory_items where id = ${speaker2.id}`))[0];
+  check('0035: a move to another centre gives a code there and keeps the token', moved.code === 'SND-001'
+    && moved.asset_token === speaker2.asset_token && moved.labelled_at === null, JSON.stringify(moved));
+  await asOwner(`update inventory_items set centre_id = 1 where id = ${speaker2.id}`);
+
+  // Stocktake at centre 1: seen by scan and tap, one lent out, the rest missing.
+  await refuses('0035: a student cannot start a count', () => asApp('authenticated', late, 'select start_stocktake(1::smallint)'));
+  await refuses('0035: a coordinator cannot count another centre', () => asApp('authenticated', nyStaff, 'select start_stocktake(1::smallint)'));
+  const [{ id: st }] = await asApp('authenticated', coordinator, 'select start_stocktake(1::smallint) as id');
+  check('0035: a second person joins the open count', Number((await asApp('authenticated', guru, 'select start_stocktake(1::smallint) as id'))[0].id) === Number(st));
+  const see = (userId, token, item = null) => asApp('authenticated', userId, 'select stocktake_see($1, $2, $3) as r', [st, token, item]).then((rows) => rows[0].r);
+  check('0035: a scan marks an item seen, a second scan says already', (await see(coordinator, speaker.asset_token)).result === 'seen'
+    && (await see(guru, speaker.asset_token)).result === 'already');
+  check('0035: a tap marks one seen too', (await see(coordinator, null, harmonium.id)).result === 'seen');
+  check('0035: another centre\'s item is not counted', (await see(coordinator, nyBook.asset_token)).result === 'other_centre');
+  check('0035: an unknown label is not counted', (await see(coordinator, 'zzzzzzzzzzzzzzzzzzzzzz')).result === 'unknown');
+  await refuses('0035: a coordinator of another centre cannot mark in this count', () => see(nyStaff, speaker2.asset_token));
+  await refuses('0035: the app cannot write a count itself', () => asApp('authenticated', coordinator,
+    `insert into inventory_stocktake_items (stocktake_id, item_id, how, seen_by) values ($1, $2, 'tap', auth.uid())`, [st, drum.id]));
+  const [{ id: drumLoan }] = await asApp('authenticated', coordinator, 'select issue_inventory_item($1, $2, null, $3) as id', [drum.id, lateStudent, 'good']);
+  const [expected] = await asOwner(`select count(*)::int as n, count(*) filter (where exists (select 1 from inventory_loans l
+    where l.item_id = i.id and l.returned_at is null))::int as out from inventory_items i where centre_id = 1 and retired_at is null`);
+  const [{ r: summary }] = await asApp('authenticated', coordinator, `select finish_stocktake($1, ' Shelf A done ') as r`, [st]);
+  const missingIds = summary.missing.map((m) => Number(m.id));
+  const lentDrum = summary.lent.find((l) => Number(l.id) === Number(drum.id));
+  check('0035: the count saves expected / seen / lent / missing', summary.expected === expected.n && summary.seen === 2
+    && summary.lent.length === expected.out && lentDrum?.holder && summary.missing.length === expected.n - 2 - expected.out
+    && missingIds.includes(Number(speaker2.id)) && !missingIds.includes(Number(drum.id)),
+    JSON.stringify({ e: summary.expected, s: summary.seen, l: summary.lent.length, m: summary.missing.length, out: expected.out }));
+  const [saved] = await asApp('authenticated', guru, 'select finished_by, note, expected, seen, lent, missing from inventory_stocktakes where id = $1', [st]);
+  check('0035: ... with who finished it and the note', saved.finished_by === coordinator && saved.note === 'Shelf A done'
+    && saved.seen === 2 && saved.lent === expected.out && saved.missing === expected.n - 2 - expected.out, JSON.stringify(saved));
+  await refusesWith('0035: a finished count is closed', 'stocktake_closed', () => see(coordinator, speaker2.asset_token));
+  check('0035: a finished count cannot be deleted', (await asApp('authenticated', guru, 'delete from inventory_stocktakes where id = $1 returning id', [st])).length === 0);
+  check('0035: a student reads no counts', (await asApp('authenticated', late, 'select id from inventory_stocktakes')).length === 0
+    && (await asApp('authenticated', late, 'select item_id from inventory_stocktake_items')).length === 0);
+  check('0035: counts are audited', (await asOwner(`select count(*)::int as n from audit_log where table_name = 'inventory_stocktakes' and row_id = '${st}'`))[0].n >= 2);
+  const [{ id: st2 }] = await asApp('authenticated', guru, 'select start_stocktake(1::smallint) as id');
+  check('0035: the Guru may delete an open count', (await asApp('authenticated', guru, 'delete from inventory_stocktakes where id = $1 returning id', [st2])).length === 1);
+  check('0035: helpers are closed to app roles; the app functions are open to signed-in people only', (await asOwner(`select
+    not has_function_privilege('authenticated', 'inventory_next_code(smallint,text)', 'execute')
+    and not has_function_privilege('authenticated', 'inventory_centre_ok(smallint)', 'execute')
+    and not has_function_privilege('anon', 'stocktake_see(bigint,text,bigint)', 'execute')
+    and has_function_privilege('authenticated', 'finish_stocktake(bigint,text)', 'execute') as ok`))[0].ok === true);
+  // Clean up so the counts below stay as they were.
+  await asApp('authenticated', coordinator, `select return_inventory_item($1, 'good')`, [drumLoan]);
+}
 
 // ---------------------------------------------------------------- row-level security
 const seen =await asApp('authenticated', arjun, 'select full_name from students');

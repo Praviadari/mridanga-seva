@@ -32,6 +32,7 @@ import {
   type FoundStudent,
   type MarkOutcome,
 } from '@/data/attendance';
+import { assetTokenFromScan } from '@/lib/asset-link';
 import { locationForCheckIn, locationRefused, warmUpLocation } from '@/lib/attendance-location';
 import { localDate, formatDate, localTime, todayLocal } from '@/lib/dates';
 
@@ -101,6 +102,13 @@ export default function MarkAttendanceScreen() {
 
   async function onScan(text: string) {
     if (working.current) return;
+    // An asset label (0035, DECISIONS #159) opens the item instead; student codes go on below.
+    const asset = assetTokenFromScan(text);
+    if (asset) {
+      setScanPaused(true);
+      router.push({ pathname: '/staff/inventory/label/[token]', params: { token: asset } });
+      return;
+    }
     const token = qrTokenFromScan(text);
     const now = Date.now();
     if (token && lastCode.current?.token === token && now - lastCode.current.at < SAME_CODE_PAUSE_MS) {
