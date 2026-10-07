@@ -2652,9 +2652,10 @@ header and still needs a run on TEST.
 though the packages need 22.13+ and the push test needs type stripping (D11-15, D14-17).
 
 **Decision.** `npm test` in `app/` runs `node --test tests/*.test.mjs`: plain Node reads the
-TypeScript of `src/lib/dates.ts` and `src/auth/requested-path.ts` directly; `react-native` and
-`expo-linking` are replaced by two small stubs through a module resolve hook
-(`tests/stubs/`). No test library, no new dependency, no change to app code, so the fingerprint
+TypeScript of `src/lib/dates.ts` and `src/auth/requested-path.ts` directly; `react-native`,
+`expo-linking`, `@/i18n` and `./class-locale` are replaced by small stand-ins through a module
+resolve hook (`tests/stubs/`), so a test can set the class's time zone (India and New York are
+tested). No test library, no new dependency, no change to app code, so the fingerprint
 stays 185e839f (`PackageJsonScriptsAll` is skipped by `fingerprint.config.js`; the `engines`
 field does not count either — checked with `npx expo-updates runtimeversion:resolve`).
 `node scripts/typed-routes.mjs` writes the typed routes with the Expo CLI's own generator, without
