@@ -11,14 +11,36 @@
 // side doors, frozen visit fields and the 30-second rescan; each check names its audit finding ID.
 // 0032 adds the sign-up language (D8-01) and one student per registration request (D6-08). 0033 adds a
 // time zone per centre (a New York centre's days around midnight) and the currency of fund entries.
+// The test net at the end (audit brief 12) walks the whole schema: guardians, consents and the
+// audit log closed to students and pending logins, the function allow-lists, row-level security on
+// every table, a student-isolation loop over every student-linked table and view, write sweeps per
+// role, the roll-number / status-history / audit triggers, the two daily jobs on fixed cases and
+// the pg_cron job list.
 //
-// Run before pasting a migration into the live Supabase project:
-//   cd supabase/tests && npm install && npm test
+// Run before pasting a migration into the live Supabase project, and on every pull request (CI):
+//   cd supabase/tests && npm ci && npm test        (Node 22.18 or newer, see package.json engines)
+//
+// How to add a check: call check(name, ok, detail) for a fact, refusesWith(name, 'exact error', fn)
+// for a refusal (never "any error": D14-09). Write the negative AND the positive side (the role
+// the rule is for can still do it). Name the audit finding or decision in the check. The run
+// counts every check and fails if the total is not EXPECTED_CHECKS: set it to the new total.
 //
 // PGlite is real Postgres compiled to WebAssembly, so no database server is needed. Supabase's
 // own pieces are imitated at the top (auth.users, auth.uid(), the anon / authenticated roles and
 // their default grants, pg_cron). The imitation is close, not exact: a pass here does not replace
-// a careful first run on a test project (docs/OPERATIONS.md).
+// a careful first run on a test project (docs/OPERATIONS.md). What a PASS here does NOT prove
+// (D14-12), so check these by hand on TEST when a change touches them:
+//   - pg_cron: jobs are recorded, never run on a schedule; only the schedule's shape and that the
+//     command's functions exist are checked. The time zone of a schedule is not.
+//   - pg_net / push delivery: no HTTP leaves the test; call_notify_function answers not_set_up and
+//     the Edge Function is driven with a fake Expo (push-messages.test.mjs).
+//   - Storage: only storage.objects rows and their policies; size and type limits, signed URLs
+//     and the Storage API's upsert are not imitated.
+//   - Auth: auth.users is a bare table; sign-up, email confirmation, JWT expiry and rate limits
+//     are Supabase's. Supabase's safeupdate (UPDATE/DELETE need a WHERE) is checked by a sweep.
+//   - Concurrency: one connection, so races between two sessions (two coordinators, the push
+//     claim) are not exercised; row locks are only read in the code.
+//   - Extensions and versions: PGlite's Postgres version and pgcrypto only.
 
 import { PGlite } from '@electric-sql/pglite';
 import { pgcrypto } from '@electric-sql/pglite/contrib/pgcrypto';
@@ -50,8 +72,12 @@ const supabaseImitation = `
     $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
   grant execute on function auth.uid() to anon, authenticated;
   create schema cron;
-  create function cron.schedule(name text, schedule text, command text) returns bigint
-    language sql as $$ select 1::bigint $$;
+  -- pg_cron's job table, so the test net can check every scheduled command (D14-12); a job is
+  -- never run here. Scheduling a name again replaces its job, as in pg_cron.
+  create table cron.job (jobid bigint generated always as identity primary key, jobname text unique, schedule text, command text);
+  create function cron.schedule(name text, schedule text, command text) returns bigint language sql as $$
+    insert into cron.job (jobname, schedule, command) values (name, schedule, command)
+    on conflict (jobname) do update set schedule = excluded.schedule, command = excluded.command returning jobid $$;
   -- The Edge Functions' role: it bypasses row-level security, like Supabase's service_role.
   create role service_role nologin bypassrls;
   grant usage on schema public, auth to service_role;
@@ -84,36 +110,54 @@ process.on('uncaughtException', (error) => {
   process.exit(1);
 });
 
+// D14-10: every check is counted, and the run fails when fewer (or more) checks ran than expected,
+// so a block skipped by a renamed migration or a commented-out section cannot pass unseen.
+// Adding or removing checks? Run the suite and set this to the new total it prints.
+const EXPECTED_CHECKS = 1133;
 let failures = 0;
+let passes = 0;
 
 /** Prints PASS or FAIL for one check. */
 function check(name, ok, detail = '') {
   console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? `  (${detail})` : ''}`);
-  if (!ok) failures++;
+  if (ok) passes++;
+  else failures++;
 }
 
-/** Runs SQL as the database owner, like the Supabase SQL editor or pg_cron. */
+/** Runs SQL as the database owner, like the Supabase SQL editor or pg_cron: nobody signed in. */
 async function asOwner(sql) {
   return (await db.query(sql)).rows;
 }
 
-/** Runs SQL as an app user: role 'anon' or 'authenticated', signed in as `userId` (or nobody). */
+/**
+ * Runs SQL as an app user: role 'anon' or 'authenticated', signed in as `userId` (or nobody).
+ * D14-11: the sign-in is cleared again afterwards, so owner statements never run with a leftover
+ * auth.uid() (on Supabase the SQL editor and pg_cron have none). The id is a bind parameter.
+ */
 async function asApp(role, userId, sql, params) {
-  await db.exec(`select set_config('request.jwt.claim.sub', '${userId ?? ''}', false); set role ${role};`);
+  if (!['anon', 'authenticated', 'service_role'].includes(role)) throw new Error(`asApp: unknown role ${role}`);
+  await db.query(`select set_config('request.jwt.claim.sub', $1, false)`, [userId ?? '']);
+  await db.exec(`set role ${role}`);
   try {
     return (await db.query(sql, params)).rows;
   } finally {
-    await db.exec('reset role');
+    await db.exec(`reset role; select set_config('request.jwt.claim.sub', '', false)`);
   }
 }
 
-/** Passes when `fn` throws, i.e. the database refused. */
-async function refuses(name, fn) {
+/**
+ * Passes when `fn` is refused for exactly this reason (D14-09): `expected` is the whole error
+ * message (our own codes such as 'not_allowed', or Postgres's 'permission denied for table x',
+ * 'new row violates row-level security policy for table "x"'), or a RegExp for it. A refusal for
+ * another reason fails, so a check cannot pass behind some other rule's error.
+ */
+async function refusesWith(name, expected, fn) {
   try {
     await fn();
     check(name, false, 'was allowed');
   } catch (error) {
-    check(name, true, error.message);
+    const ok = expected instanceof RegExp ? expected.test(error.message) : error.message === expected;
+    check(name, ok, ok ? error.message : `refused for another reason: ${error.message}; expected ${expected}`);
   }
 }
 
@@ -239,9 +283,9 @@ const childDob = `${year - 10}-06-15`;
 
 const adult = await register(coordinator, { p_full_name: 'Adult Learner', p_dob: '1990-01-01', p_level: 1 });
 check('coordinator registers an adult', /^MS-\d{4}-\d{4}$/.test(adult.roll_no), adult.roll_no);
-await refuses('minor without a guardian is refused', () =>
+await refusesWith('minor without a guardian is refused', 'minor_needs_guardian', () =>
   register(coordinator, { p_full_name: 'Child One', p_dob: childDob }));
-await refuses('minor without an ID check is refused', () =>
+await refusesWith('minor without an ID check is refused', 'minor_needs_id_check', () =>
   register(coordinator, { p_full_name: 'Child One', p_dob: childDob,
     p_guardian_name: 'Parent One', p_guardian_phone: '9876543210' }));
 const child = await register(coordinator, {
@@ -252,38 +296,38 @@ const consents = await asOwner(`select scope from consents where student_id = '$
 const guardians = await asOwner(`select full_name from guardians where student_id = '${child.id}'`);
 check('minor saved with guardian and consents', guardians.length === 1 &&
   consents.map((c) => c.scope).join(',') === 'data,photo', consents.map((c) => c.scope).join(','));
-await refuses('a minor added without consent is refused at commit', () =>
+await refusesWith('a minor added without consent is refused at commit', 'minor_needs_consent', () =>
   asApp('authenticated', guru, `insert into students (full_name, dob) values ('Child Two', '${childDob}')`));
-await refuses('a student cannot register students', () =>
+await refusesWith('a student cannot register students', 'not_allowed', () =>
   register(arjun, { p_full_name: 'Someone', p_dob: '1990-01-01' }));
-await refuses('anon cannot run register_student', () =>
+await refusesWith('anon cannot run register_student', 'permission denied for function register_student', () =>
   asApp('anon', null, `select register_student(p_full_name => 'X', p_dob => null, p_phone => null,
     p_email => null, p_area => null, p_pincode => null, p_level => 1::smallint, p_mentor => null)`));
 await signUp('new.face@example.com', true);
-await refuses('registering without a date of birth is refused', () =>
+await refusesWith('registering without a date of birth is refused', 'dob_required', () =>
   register(coordinator, { p_full_name: 'No Birthday' }));
 const linked = await register(coordinator,
   { p_full_name: 'New Face', p_dob: '1995-05-05', p_email: 'New.Face@example.com' });
 check('registering with a signed-up email links the login', linked.linked === true);
 
 // ---------------------------------------------------------------- profile guard
-await refuses('student cannot change their own role', () =>
+await refusesWith('student cannot change their own role', 'not_own_role', () =>
   asApp('authenticated', arjun, `update profiles set role = 'guru' where id = '${arjun}'`));
 const [language] = await asApp('authenticated', arjun,
   `update profiles set language = 'te' where id = '${arjun}' returning language`);
 check('student can change their own language', language?.language === 'te');
 
 // ---------------------------------------------------------------- who may run functions
-await refuses('anon cannot run close_open_visits', () => asApp('anon', null, 'select close_open_visits()'));
-await refuses('signed-in user cannot run close_open_visits', () =>
+await refusesWith('anon cannot run close_open_visits', 'permission denied for function close_open_visits', () => asApp('anon', null, 'select close_open_visits()'));
+await refusesWith('signed-in user cannot run close_open_visits', 'permission denied for function close_open_visits', () =>
   asApp('authenticated', arjun, 'select close_open_visits()'));
-await refuses('signed-in user cannot run refresh_student_statuses', () =>
+await refusesWith('signed-in user cannot run refresh_student_statuses', 'permission denied for function refresh_student_statuses', () =>
   asApp('authenticated', arjun, 'select refresh_student_statuses()'));
-await refuses('signed-in user cannot run link_login_to_student', () =>
+await refusesWith('signed-in user cannot run link_login_to_student', 'permission denied for function link_login_to_student', () =>
   asApp('authenticated', arjun, `select link_login_to_student('${arjun}', 'divya.m@example.com')`));
-await refuses('anon cannot run toggle_visit', () =>
+await refusesWith('anon cannot run toggle_visit', 'permission denied for function toggle_visit', () =>
   asApp('anon', null, `select toggle_visit('${registered.id}', 'manual')`));
-await refuses('student cannot run toggle_visit', () =>
+await refusesWith('student cannot run toggle_visit', 'not allowed', () =>
   asApp('authenticated', arjun, `select toggle_visit('${registered.id}', 'manual')`));
 const [visit] = await asApp('authenticated', coordinator,
   `select toggle_visit($1, 'manual') as result`, [registered.id]);
@@ -300,10 +344,10 @@ check('tapping "in" for a student already in changes nothing', (await mark(regis
 check('tapping "out" checks the student out', (await mark(registered.id, 'out')) === 'out');
 check('tapping "out" again changes nothing', (await mark(registered.id, 'out')) === 'already_out');
 check('tapping "in" checks the student in', (await mark(registered.id, 'in')) === 'in');
-await refuses('mark_visit refuses an action other than in / out', () => mark(registered.id, 'sideways'));
-await refuses('student cannot run mark_visit', () =>
+await refusesWith('mark_visit refuses an action other than in / out', 'bad_action', () => mark(registered.id, 'sideways'));
+await refusesWith('student cannot run mark_visit', 'not_allowed', () =>
   asApp('authenticated', arjun, `select mark_visit('${registered.id}', 'in')`));
-await refuses('anon cannot run mark_visit', () =>
+await refusesWith('anon cannot run mark_visit', 'permission denied for function mark_visit', () =>
   asApp('anon', null, `select mark_visit('${registered.id}', 'in')`));
 
 const [{ qr_token: qrToken }] = await asOwner(`select qr_token from students where id = '${registered.id}'`);
@@ -324,9 +368,9 @@ await mark(registered.id, 'in');
 await mark(adult.id, 'in');
 await asOwner(`insert into visits (student_id, check_in, method)
   values ('${child.id}', ((today_ist() - 3) + time '16:00') at time zone 'Asia/Kolkata', 'manual')`);
-await refuses('student cannot run check_out_all', () =>
+await refusesWith('student cannot run check_out_all', 'not_allowed', () =>
   asApp('authenticated', arjun, 'select check_out_all()'));
-await refuses('anon cannot run check_out_all', () => asApp('anon', null, 'select check_out_all()'));
+await refusesWith('anon cannot run check_out_all', 'permission denied for function check_out_all', () => asApp('anon', null, 'select check_out_all()'));
 const [closedAll] = await asApp('authenticated', coordinator, 'select check_out_all() as n');
 const stillOpen = await asOwner('select id from visits where check_out is null');
 check('check_out_all closes every open visit', closedAll.n === 3 && stillOpen.length === 0, `closed ${closedAll.n}`);
@@ -342,8 +386,8 @@ check('coordinator sees every student in student_overview', overviewForStaff.len
 const overviewForStudent = await asApp('authenticated', arjun, 'select full_name from student_overview');
 check('student sees only their own row in student_overview',
   overviewForStudent.length === 1 && overviewForStudent[0].full_name === 'Arjun Rao');
-await refuses('anon cannot read student_overview', () => asApp('anon', null, 'select id from student_overview'));
-await refuses('student_overview cannot be written to', () =>
+await refusesWith('anon cannot read student_overview', 'permission denied for view student_overview', () => asApp('anon', null, 'select id from student_overview'));
+await refusesWith('student_overview cannot be written to', 'cannot update view "student_overview"', () =>
   asApp('authenticated', guru, `update student_overview set full_name = 'X'`));
 
 /** The student_overview row of a seeded student, read as the coordinator. */
@@ -364,15 +408,6 @@ await mark(adult.id, 'out');
 check('... and false after checking out', (await overviewOf('Adult Learner')).here_now === false);
 
 // ---------------------------------------------------------------- follow-up calls (0005 log_call)
-/** Passes when `fn` is refused with exactly this error code (the first line of the message). */
-async function refusesWith(name, code, fn) {
-  try {
-    await fn();
-    check(name, false, 'was allowed');
-  } catch (error) {
-    check(name, error.message === code, error.message);
-  }
-}
 /** Calls log_call as `userId` with named arguments, as the app does; returns the call log id. */
 async function logCall(userId, fields) {
   const names = Object.keys(fields);
@@ -403,11 +438,11 @@ await refusesWith('log_call refuses an unknown student', 'student_not_found', ()
   logCall(coordinator, { p_student: '00000000-0000-4000-8000-000000000000', p_outcome: 'not_reachable', p_reason: null, p_comment: 'No answer' }));
 await refusesWith('a student cannot log a call', 'not_allowed', () =>
   logCall(arjun, { p_student: divya.id, p_outcome: 'not_reachable', p_reason: null, p_comment: 'No answer' }));
-await refuses('anon cannot run log_call', () =>
+await refusesWith('anon cannot run log_call', 'permission denied for function log_call', () =>
   asApp('anon', null, `select log_call('${divya.id}', 'not_reachable', null, 'No answer')`));
-await refuses('a call log cannot be written directly, only through log_call', () =>
+await refusesWith('a call log cannot be written directly, only through log_call', 'new row violates row-level security policy for table "call_logs"', () =>
   asApp('authenticated', coordinator, `insert into call_logs (student_id, outcome, comment) values ('${divya.id}', 'not_reachable', 'x')`));
-await refuses('status paused cannot be set by a plain edit', () =>
+await refusesWith('status paused cannot be set by a plain edit', 'status paused can only be set by logging a call', () =>
   asApp('authenticated', coordinator, `update students set status = 'paused' where id = '${divya.id}'`));
 
 await logCall(coordinator, { p_student: divya.id, p_outcome: 'paused', p_reason: 'studies', p_comment: 'Exams till next month', p_next_date: inAMonth });
@@ -472,7 +507,7 @@ await refusesWith('the date of a tick cannot be changed', 'progress_frozen', () 
 await refusesWith('who ticked cannot be changed', 'progress_frozen', () =>
   asApp('authenticated', guru, `update student_progress set ticked_by = $3
     where student_id = $1 and item_id = $2`, [registered.id, item1.id, guru]));
-await refuses('a student cannot tick their own syllabus', () =>
+await refusesWith('a student cannot tick their own syllabus', 'new row violates row-level security policy for table "student_progress"', () =>
   asApp('authenticated', late, `insert into student_progress (student_id, item_id) values ($1, $2)`,
     [registered.id, item2.id]));
 check('a student reads their own ticks',
@@ -522,7 +557,7 @@ await refusesWith('an announcement needs a title', 'title_required', () =>
   post(coordinator, { title: ' \n ', body: 'B', audience: 'all' }));
 await refusesWith('the text is at most 4000 characters', 'body_too_long', () =>
   post(coordinator, { title: 'T', body: 'a'.repeat(4001), audience: 'all' }));
-await refuses('a student cannot post an announcement', () =>
+await refusesWith('a student cannot post an announcement', 'new row violates row-level security policy for table "announcements"', () =>
   post(arjun, { title: 'T', body: 'B', audience: 'all' }));
 const toStaff = await post(coordinator, { title: 'Staff meeting', body: 'After class.', audience: 'staff', audience_level: 2 });
 check('a level given with another audience is dropped', toStaff.audience_level === null);
@@ -551,16 +586,16 @@ check('staff see every announcement, scheduled ones too',
 await asApp('authenticated', arjun, 'insert into announcement_reads (announcement_id) values ($1)', [toAll.id]);
 const [receipt] = await asOwner(`select profile_id, read_at from announcement_reads where announcement_id = ${toAll.id}`);
 check('opening an announcement saves a read receipt for the reader', receipt?.profile_id === arjun && receipt.read_at !== null);
-await refuses('a second receipt for the same announcement is refused (the app ignores it)', () =>
+await refusesWith('a second receipt for the same announcement is refused (the app ignores it)', 'duplicate key value violates unique constraint "announcement_reads_pkey"', () =>
   asApp('authenticated', arjun, 'insert into announcement_reads (announcement_id) values ($1)', [toAll.id]));
-await refuses('a receipt for an announcement not addressed to the student is refused', () =>
+await refusesWith('a receipt for an announcement not addressed to the student is refused', 'new row violates row-level security policy for table "announcement_reads"', () =>
   asApp('authenticated', arjun, 'insert into announcement_reads (announcement_id) values ($1)', [toLevel1.id]));
-await refuses('a receipt for a scheduled announcement is refused', () =>
+await refusesWith('a receipt for a scheduled announcement is refused', 'new row violates row-level security policy for table "announcement_reads"', () =>
   asApp('authenticated', arjun, 'insert into announcement_reads (announcement_id) values ($1)', [scheduled.id]));
-await refuses('a receipt cannot be written in someone else\'s name', () =>
+await refusesWith('a receipt cannot be written in someone else\'s name', 'permission denied for table announcement_reads', () =>
   asApp('authenticated', arjun, 'insert into announcement_reads (announcement_id, profile_id) values ($1, $2)',
     [toAll.id, meera]));
-await refuses('a receipt cannot be removed from the app', () =>
+await refusesWith('a receipt cannot be removed from the app', 'permission denied for table announcement_reads', () =>
   asApp('authenticated', arjun, 'delete from announcement_reads where announcement_id = $1', [toAll.id]));
 
 // Seen by N of M
@@ -587,7 +622,7 @@ check('the not-seen list names who has not opened it', notSeen.includes('Meera I
 check('a student sees only their own row in announcement_audience',
   (await asApp('authenticated', arjun, 'select profile_id from announcement_audience'))
     .every((r) => r.profile_id === arjun));
-await refuses('anon cannot read announcement_seen', () => asApp('anon', null, 'select * from announcement_seen'));
+await refusesWith('anon cannot read announcement_seen', 'permission denied for view announcement_seen', () => asApp('anon', null, 'select * from announcement_seen'));
 
 // Editing and deleting
 const unpinnedByOther = await asApp('authenticated', coordinator2,
@@ -626,7 +661,7 @@ check('a student gets the name of every Guru and coordinator', namesForStudent.l
 check('... and nothing but id and name', namesForStudent.every((r) => Object.keys(r).join(',') === 'id,full_name'),
   Object.keys(namesForStudent[0] ?? {}).join(','));
 check('a pending login gets no staff names', (await asApp('authenticated', pendingLogin, 'select * from staff_names()')).length === 0);
-await refuses('anon cannot run staff_names', () => asApp('anon', null, 'select * from staff_names()'));
+await refusesWith('anon cannot run staff_names', 'permission denied for function staff_names', () => asApp('anon', null, 'select * from staff_names()'));
 
 // Editing
 /** The edit-related columns of one announcement, read as the owner. */
@@ -668,11 +703,11 @@ const festivalTeam = await makeGroup(coordinator, '  Rath Yatra team  ', '   ');
 check('a coordinator creates a group, name trimmed, empty purpose saved as none',
   festivalTeam.name === 'Rath Yatra team' && festivalTeam.purpose === null, JSON.stringify(festivalTeam));
 check('... recorded as made by them, not the one the app sent', festivalTeam.created_by === coordinator);
-await refuses('a group name is unique whatever the capitals', () => makeGroup(coordinator, 'rath yatra TEAM'));
+await refusesWith('a group name is unique whatever the capitals', 'duplicate key value violates unique constraint "groups_name_lower_key"', () => makeGroup(coordinator, 'rath yatra TEAM'));
 await refusesWith('a group needs a name', 'group_name_required', () => makeGroup(coordinator, '  '));
 await refusesWith('a group name is at most 60 characters', 'group_name_too_long', () => makeGroup(coordinator, 'g'.repeat(61)));
 await refusesWith('a purpose is at most 200 characters', 'group_purpose_too_long', () => makeGroup(coordinator, 'Long', 'p'.repeat(201)));
-await refuses('a student cannot create a group', () => makeGroup(arjun, 'Students only'));
+await refusesWith('a student cannot create a group', 'new row violates row-level security policy for table "groups"', () => makeGroup(arjun, 'Students only'));
 await asApp('authenticated', coordinator, 'insert into group_members (group_id, profile_id) values ($1, $2), ($1, $3)',
   [festivalTeam.id, arjun, coordinator2]);
 const [summary] = await asApp('authenticated', coordinator, 'select members from group_summary where id = $1', [festivalTeam.id]);
@@ -701,9 +736,9 @@ check('a student replies to an announcement addressed to them, trimmed', arjunRe
 await reply(meera, kirtan, 'Can I borrow a pair?');
 await refusesWith('an empty reply is refused', 'reply_required', () => reply(arjun, kirtan, ' \n '));
 await refusesWith('a reply is at most 1000 characters', 'reply_too_long', () => reply(arjun, kirtan, 'r'.repeat(1001)));
-await refuses('a reply to an announcement not addressed to the student is refused', () => reply(arjun, toLevel1.id, 'Hi'));
-await refuses('a pending login cannot reply', () => reply(pendingLogin, kirtan, 'Hi'));
-await refuses('a reply cannot be written in someone else\'s name', () =>
+await refusesWith('a reply to an announcement not addressed to the student is refused', 'new row violates row-level security policy for table "announcement_replies"', () => reply(arjun, toLevel1.id, 'Hi'));
+await refusesWith('a pending login cannot reply', 'new row violates row-level security policy for table "announcement_replies"', () => reply(pendingLogin, kirtan, 'Hi'));
+await refusesWith('a reply cannot be written in someone else\'s name', 'permission denied for table announcement_replies', () =>
   asApp('authenticated', arjun, 'insert into announcement_replies (announcement_id, profile_id, body) values ($1, $2, $3)',
     [kirtan, meera, 'Fake']));
 /** Bodies of the replies to `announcementId` that `userId` can read, sorted. */
@@ -728,7 +763,7 @@ check('announcement_seen counts the replies the reader may see', authorCount ===
   `author ${authorCount}, other ${otherCount}`);
 const [{ reloptions }] = await asOwner(`select reloptions from pg_class where relname = 'announcement_seen'`);
 check('announcement_seen still reads as the person asking', String(reloptions).includes('security_invoker=true'), String(reloptions));
-await refuses('a reply cannot be changed', () =>
+await refusesWith('a reply cannot be changed', 'permission denied for table announcement_replies', () =>
   asApp('authenticated', arjun, `update announcement_replies set body = 'Changed' where id = $1`, [arjunReply.id]));
 check('the writer cannot delete a reply', (await asApp('authenticated', arjun,
   'delete from announcement_replies where id = $1 returning id', [arjunReply.id])).length === 0);
@@ -779,12 +814,12 @@ check('... syllabus progress counts the current level only',
   `${arjunHere.syllabus_done} of ${arjunHere.syllabus_total}`);
 check('student_home is empty for a login without a student record',
   (await homeOf('student_home', coordinator)) === null && (await homeOf('student_home', pendingLogin)) === null);
-await refuses('anon cannot run student_home', () => asApp('anon', null, 'select student_home()'));
+await refusesWith('anon cannot run student_home', 'permission denied for function student_home', () => asApp('anon', null, 'select student_home()'));
 
 // C1 coordinator dashboard
 await refusesWith('a student cannot open the coordinator dashboard', 'not_allowed', () => homeOf('coordinator_dashboard', arjun));
 await refusesWith('a pending login cannot open it', 'not_allowed', () => homeOf('coordinator_dashboard', pendingLogin));
-await refuses('anon cannot run coordinator_dashboard', () => asApp('anon', null, 'select coordinator_dashboard()'));
+await refusesWith('anon cannot run coordinator_dashboard', 'permission denied for function coordinator_dashboard', () => asApp('anon', null, 'select coordinator_dashboard()'));
 await mark(adult.id, 'in');
 const [counts] = await asOwner(`select
   (select count(*)::int from visits where check_out is null) as here,
@@ -816,7 +851,7 @@ check('the Guru can open the coordinator dashboard too', typeof (await homeOf('c
 // G1 Guru dashboard
 await refusesWith('a coordinator cannot open the Guru dashboard', 'not_allowed', () => homeOf('guru_dashboard', coordinator));
 await refusesWith('a student cannot open the Guru dashboard', 'not_allowed', () => homeOf('guru_dashboard', arjun));
-await refuses('anon cannot run guru_dashboard', () => asApp('anon', null, 'select guru_dashboard()'));
+await refusesWith('anon cannot run guru_dashboard', 'permission denied for function guru_dashboard', () => asApp('anon', null, 'select guru_dashboard()'));
 const [{ id: bhaskarId }] = await asOwner(`select id from students where full_name = 'Bhaskar Murthy'`);
 await asOwner(`insert into follow_up_tasks (student_id, assignee_id, kind, due_on, escalated) values
   ('${karthikId}', '${coordinator2}', 'call', today_ist() - 2, false),
@@ -883,9 +918,9 @@ const postWithFiles = async (userId, attachments, extra = {}) => (await asApp('a
 const photo = await filePath(coordinator);
 await upload(coordinator, photo, 204800);
 check('a coordinator uploads a photo into their own folder', await canOpen(coordinator, photo));
-await refuses('... but not into someone else\'s folder', async () => upload(coordinator, await filePath(guru)));
-await refuses('a student cannot upload a file', async () => upload(arjun, await filePath(arjun)));
-await refuses('a file needs a proper name (random id and ending)', () => upload(coordinator, `${coordinator}/photo.exe`));
+await refusesWith('... but not into someone else\'s folder', 'new row violates row-level security policy for table "objects"', async () => upload(coordinator, await filePath(guru)));
+await refusesWith('a student cannot upload a file', 'new row violates row-level security policy for table "objects"', async () => upload(arjun, await filePath(arjun)));
+await refusesWith('a file needs a proper name (random id and ending)', 'new row violates row-level security policy for table "objects"', () => upload(coordinator, `${coordinator}/photo.exe`));
 check('another coordinator cannot open a file not yet posted', !(await canOpen(coordinator2, photo)));
 check('... nor a student', !(await canOpen(arjun, photo)));
 
@@ -966,10 +1001,10 @@ check('a student saves their phone\'s push token',
 await refusesWith('a token that is not an Expo push token is refused', 'bad_token', () => registerToken(arjun, 'hello'));
 await refusesWith('an unknown platform is refused', 'bad_platform', () => registerToken(arjun, token(9), 'windows'));
 await refusesWith('a pending login cannot save a token', 'not_allowed', () => registerToken(pendingLogin, token(9)));
-await refuses('anon cannot save a token', () => asApp('anon', null, 'select register_push_token($1, $2)', [token(9), 'android']));
+await refusesWith('anon cannot save a token', 'permission denied for function register_push_token', () => asApp('anon', null, 'select register_push_token($1, $2)', [token(9), 'android']));
 check('a person sees only their own tokens', (await asApp('authenticated', arjun, 'select token from push_tokens'))
   .every((r) => r.token === token(1)));
-await refuses('a token cannot be written straight into the table', () =>
+await refusesWith('a token cannot be written straight into the table', 'permission denied for table push_tokens', () =>
   asApp('authenticated', arjun, 'insert into push_tokens (token, profile_id, platform) values ($1, $2, $3)', [token(9), arjun, 'android']));
 await registerToken(late, token(5));
 await registerToken(meera, token(5));
@@ -988,7 +1023,7 @@ const [{ id: pushed }] = await asApp('authenticated', coordinator,
   ['p'.repeat(300)]);
 check('an app user cannot mark a new announcement as notified',
   (await asOwner(`select notified_at from announcements where id = ${pushed}`))[0].notified_at === null);
-await refuses('an app user cannot run claim_due_push', () => asApp('authenticated', coordinator, 'select * from claim_due_push()'));
+await refusesWith('an app user cannot run claim_due_push', 'permission denied for function claim_due_push', () => asApp('authenticated', coordinator, 'select * from claim_due_push()'));
 check('send_due_push does nothing while push is not set up (no pg_net here)',
   (await asOwner('select send_due_push() as r'))[0].r === 'not_set_up');
 const claimed = await claim();
@@ -1066,8 +1101,8 @@ const postAll = async (title) => (await asApp('authenticated', coordinator,
 const deliveredFor = (id) => delivered.filter((d) => d.startsWith(`${id}:`)).map((d) => d.slice(String(id).length + 1));
 const queueOf = (id) => asOwner(`select token, sent_at, failed, tries from push_queue where announcement_id = ${id} order by token`);
 const makeDue = () => asOwner('update push_queue set next_try_at = now() where sent_at is null and failed is null');
-await refuses('an app user cannot claim the push queue (0031)', () => asApp('authenticated', guru, 'select * from claim_push_queue()'));
-await refuses('... nor read it', () => asApp('authenticated', guru, 'select * from push_queue'));
+await refusesWith('an app user cannot claim the push queue (0031)', 'permission denied for function claim_push_queue', () => asApp('authenticated', guru, 'select * from claim_push_queue()'));
+await refusesWith('... nor read it', 'permission denied for table push_queue', () => asApp('authenticated', guru, 'select * from push_queue'));
 
 // D2-01: one foreign token and one stale phone in the audience.
 await registerToken(meera, FOREIGN);
@@ -1196,7 +1231,7 @@ const arjunStudent = await studentIdOf(arjun);
 const meeraStudent = await studentIdOf(meera);
 const lateStudent = await studentIdOf(late);
 
-await refuses('a coordinator cannot create an assessment', () => createAssessment(coordinator));
+await refusesWith('a coordinator cannot create an assessment', 'new row violates row-level security policy for table "assessments"', () => createAssessment(coordinator));
 await refusesWith('an assessment needs a title', 'title_required', () => createAssessment(guru, { title: '  ' }));
 await refusesWith('an assessment needs a rubric', 'rubric_required', () => createAssessment(guru, { rubric: [] }));
 await refusesWith('a rubric line has a top score of 1 to 10', 'rubric_invalid', () =>
@@ -1207,8 +1242,8 @@ const guide = await filePath(guru, 'pdf');
 const demo = await filePath(guru, 'mp3');
 await aUpload(guru, guide);
 await aUpload(guru, demo, 900000);
-await refuses('a coordinator cannot upload assessment files (only voice notes, 0020)', async () => aUpload(coordinator, await filePath(coordinator, 'pdf')));
-await refuses('a file needs a known ending', async () => aUpload(guru, await filePath(guru, 'exe')));
+await refusesWith('a coordinator cannot upload assessment files (only voice notes, 0020)', 'new row violates row-level security policy for table "objects"', async () => aUpload(coordinator, await filePath(coordinator, 'pdf')));
+await refusesWith('a file needs a known ending', 'new row violates row-level security policy for table "objects"', async () => aUpload(guru, await filePath(guru, 'exe')));
 const draft = await createAssessment(guru, {
   media: [{ path: guide, name: ' Ekatala.pdf ', kind: 'pdf', size: 1 }, { path: demo, name: 'Demo.mp3', kind: 'audio', size: 1 }],
   link: 'https://youtu.be/example',
@@ -1244,7 +1279,7 @@ check('... and queues a notification for each', queued === 2, String(queued));
 check('the app cannot read the push queue', (await asApp('authenticated', guru, 'select id from push_outbox').catch(() => [])).length === 0);
 await refusesWith('after a release the rubric stays as it is', 'assessment_released', () =>
   asApp('authenticated', guru, `update assessments set rubric = '[{"criterion":"New","max":3}]' where id = $1`, [draft.id]));
-await refuses('a released assessment cannot be deleted', () =>
+await refusesWith('a released assessment cannot be deleted', 'update or delete on table "assessments" violates RESTRICT setting of foreign key constraint "assessment_releases_assessment_id_fkey" on table "assessment_releases"', () =>
   asApp('authenticated', guru, 'delete from assessments where id = $1', [draft.id]));
 
 const myAssignment = async (userId) => (await asApp('authenticated', userId, 'select id, status, release_id from assessment_assignments'));
@@ -1271,8 +1306,8 @@ check('the summary counts them', sum1.assigned === 2 && sum1.seen === 1 && sum1.
 const take1 = await filePath(arjun, 'm4a');
 await aUpload(arjun, take1, 3000000);
 check('a student uploads a recording into their own folder', await aCanOpen(arjun, take1));
-await refuses('... but not a photo', async () => aUpload(arjun, await filePath(arjun, 'jpg')));
-await refuses('a student with nothing to send cannot upload', async () => aUpload(late, await filePath(late, 'mp3')));
+await refusesWith('... but not a photo', 'new row violates row-level security policy for table "objects"', async () => aUpload(arjun, await filePath(arjun, 'jpg')));
+await refusesWith('a student with nothing to send cannot upload', 'new row violates row-level security policy for table "objects"', async () => aUpload(late, await filePath(late, 'mp3')));
 check('another student cannot open it', !(await aCanOpen(meera, take1)));
 const submit = (userId, assignment, file, link = null, note = null) => asApp('authenticated', userId,
   'select submit_assessment($1, $2::jsonb, $3, $4) as id', [assignment, file ? JSON.stringify(file) : null, link, note])
@@ -1335,7 +1370,7 @@ check('claim_push_outbox returns the phones to notify, with the screen to open',
   && outbox.every((r) => r.token && /^\/(student|staff)\/assessments\//.test(r.url)), String(outbox.length));
 check('... and a second run sends nothing', (await asApp('service_role', null, 'select * from claim_push_outbox()')).length === 0);
 check('... nothing due now', (await asOwner('select send_due_push() as r'))[0].r === 'nothing_due');
-await refuses('an app user cannot claim the push queue', () => asApp('authenticated', guru, 'select * from claim_push_outbox()'));
+await refusesWith('an app user cannot claim the push queue', 'permission denied for function claim_push_outbox', () => asApp('authenticated', guru, 'select * from claim_push_outbox()'));
 
 // Level-up and keeping files
 const levelUp = await createAssessment(guru, { title: 'Level-up: Intermediate', level: 2, levelUp: true, sent: true });
@@ -1356,7 +1391,7 @@ const [{ ok: assessmentFnsCallable }] = await asOwner(`select has_function_privi
   or has_function_privilege('authenticated', 'queue_student_push(uuid, text, text, text, date, text)', 'execute')
   or has_function_privilege('authenticated', 'call_notify_function(jsonb)', 'execute') as ok`);
 check('app roles cannot run the assessment job functions', assessmentFnsCallable === false);
-await refuses('the app cannot write assignments directly', () => asApp('authenticated', coordinator,
+await refusesWith('the app cannot write assignments directly', 'permission denied for table assessment_assignments', () => asApp('authenticated', coordinator,
   'insert into assessment_assignments (release_id, assessment_id, student_id) values ($1, $2, $3)',
   [released.release_id, draft.id, lateStudent]));
 
@@ -1368,11 +1403,11 @@ const beginnerBefore = await levelItems(1);
 check('the Guru adds a syllabus item at the end of its level, trimmed',
   newItem.sort === beginnerBefore[beginnerBefore.length - 1].sort && newItem.title === 'Tirakita' && newItem.description === null,
   JSON.stringify(newItem));
-await refuses('a coordinator cannot add a syllabus item', () =>
+await refusesWith('a coordinator cannot add a syllabus item', 'new row violates row-level security policy for table "syllabus_items"', () =>
   asApp('authenticated', coordinator, `insert into syllabus_items (level_id, title) values (1, 'Mine')`));
-await refuses('an empty title is refused', () =>
+await refusesWith('an empty title is refused', 'title_required', () =>
   asApp('authenticated', guru, `update syllabus_items set title = '  ' where id = $1`, [newItem.id]));
-await refuses('a title over 120 characters is refused', () =>
+await refusesWith('a title over 120 characters is refused', 'title_too_long', () =>
   asApp('authenticated', guru, `update syllabus_items set title = repeat('a', 121) where id = $1`, [newItem.id]));
 const audited = await asOwner(`select action from audit_log where table_name = 'syllabus_items' and row_id = '${newItem.id}'`);
 check('syllabus item changes go to the audit log', audited.length === 1 && audited[0].action === 'INSERT');
@@ -1386,7 +1421,7 @@ check('the Guru moves an item up one place', moved === true
   && beginnerAfter.find((i) => i.id === prev.id).sort === newItem.sort);
 const [{ first }] = await asApp('authenticated', guru, `select move_syllabus_item($1, true) as first`, [beginnerAfter[0].id]);
 check('... and the first item cannot move further up', first === false);
-await refuses('a coordinator cannot reorder the syllabus', () =>
+await refusesWith('a coordinator cannot reorder the syllabus', 'not_allowed', () =>
   asApp('authenticated', coordinator, `select move_syllabus_item($1, false)`, [newItem.id]));
 
 // A ticked item survives: its title can change, it cannot be deleted or moved to another level.
@@ -1396,17 +1431,17 @@ check('editing a ticked item keeps the tick', (await asOwner(
   `select 1 from student_progress where student_id = '${registered.id}' and item_id = ${newItem.id}`)).length === 1);
 const itemCounts = await asApp('authenticated', coordinator, 'select item_id, ticks from syllabus_item_counts() where item_id = $1', [newItem.id]);
 check('the editor counts the ticks of an item', itemCounts.length === 1 && itemCounts[0].ticks === 1, JSON.stringify(itemCounts));
-await refuses('a ticked item cannot be deleted', () =>
+await refusesWith('a ticked item cannot be deleted', 'item_has_ticks', () =>
   asApp('authenticated', guru, `delete from syllabus_items where id = $1`, [newItem.id]));
-await refuses('... not even from the dashboard (the ticks would go with it)', () =>
+await refusesWith('... not even from the dashboard (the ticks would go with it)', 'item_has_ticks', () =>
   asOwner(`delete from syllabus_items where id = ${newItem.id}`));
-await refuses('a ticked item cannot move to another level', () =>
+await refusesWith('a ticked item cannot move to another level', 'item_has_ticks', () =>
   asApp('authenticated', guru, `update syllabus_items set level_id = 2 where id = $1`, [newItem.id]));
 await asApp('authenticated', guru, `update syllabus_items set retired_at = now() where id = $1`, [newItem.id]);
 check('the Guru retires a ticked item and the tick stays', (await asOwner(
   `select 1 from student_progress p join syllabus_items i on i.id = p.item_id
     where p.student_id = '${registered.id}' and i.id = ${newItem.id} and i.retired_at is not null`)).length === 1);
-await refuses('a retired item cannot be ticked', () =>
+await refusesWith('a retired item cannot be ticked', 'item_retired', () =>
   asApp('authenticated', coordinator, `insert into student_progress (student_id, item_id) values ($1, $2)`, [adult.id, newItem.id]));
 const [{ moveRetired }] = await asApp('authenticated', guru, `select move_syllabus_item($1, true) as "moveRetired"`, [beginnerAfter[beginnerAfter.length - 1].id]);
 check('moving skips retired items', moveRetired === true);
@@ -1435,9 +1470,9 @@ const addMaterial = async (userId, fields) => (await asApp('authenticated', user
 const video = await addMaterial(guru, { kind: 'youtube', url: ' https://youtu.be/dQw4w9WgXcQ ', item: item1.id, level: 3 });
 check('the Guru adds a YouTube lesson to an item; approved, level taken from the item',
   video.approved_by === guru && video.level_id === 1 && video.url === 'https://youtu.be/dQw4w9WgXcQ', JSON.stringify(video));
-await refuses('a link that is not a YouTube video is refused', () =>
+await refusesWith('a link that is not a YouTube video is refused', 'youtube_link_invalid', () =>
   addMaterial(guru, { kind: 'youtube', url: 'https://example.com/watch?v=dQw4w9WgXcQ', level: 1 }));
-await refuses('audio is not offered yet', () => addMaterial(guru, { kind: 'audio', level: 1 }));
+await refusesWith('audio is not offered yet', 'material_kind_not_offered', () => addMaterial(guru, { kind: 'audio', level: 1 }));
 const uploadMaterial = async (userId, path, size = 4096) => asApp('authenticated', userId,
   `insert into storage.objects (bucket_id, name, owner, metadata) values ('material-files', $1, auth.uid(), $2)`,
   [path, JSON.stringify({ size, mimetype: 'application/pdf' })]);
@@ -1445,13 +1480,13 @@ const canOpenMaterial = async (userId, path) => (await asApp('authenticated', us
   `select 1 from storage.objects where bucket_id = 'material-files' and name = $1`, [path])).length === 1;
 const notation = `${guru}/${await newId()}.pdf`;
 await uploadMaterial(guru, notation, 900000);
-await refuses('a student cannot upload a material file (coordinators may since 0023, C18)', async () =>
+await refusesWith('a student cannot upload a material file (coordinators may since 0023, C18)', 'new row violates row-level security policy for table "objects"', async () =>
   uploadMaterial(late, `${late}/${await newId()}.pdf`));
 const pdf = await addMaterial(guru, { kind: 'pdf', path: notation, name: ' Kaherva.pdf ', size: 1, level: 3 });
 check('the Guru adds a PDF; its size comes from Storage', Number(pdf.file_size) === 900000 && pdf.file_name === 'Kaherva.pdf');
-await refuses('a material cannot list a file that is not in Storage', async () =>
+await refusesWith('a material cannot list a file that is not in Storage', 'material_file_missing', async () =>
   addMaterial(guru, { kind: 'pdf', path: `${guru}/${await newId()}.pdf`, name: 'x.pdf', size: 1, level: 1 }));
-await refuses('the file of a material cannot be swapped', async () => asApp('authenticated', guru,
+await refusesWith('the file of a material cannot be swapped', 'material_frozen', async () => asApp('authenticated', guru,
   `update materials set storage_path = $2 where id = $1`, [pdf.id, `${guru}/${await newId()}.pdf`]));
 const [arjunLevelRow] = await asOwner(`select level_id from students where profile_id = '${arjun}'`);
 const [lateLevelRow] = await asOwner(`select level_id from students where profile_id = '${late}'`);
@@ -1461,10 +1496,10 @@ check('a student below the level cannot see the material or open its file', late
   ? !(await canOpenMaterial(late, notation)) && (await asApp('authenticated', late, `select id from materials where id = $1`, [pdf.id])).length === 0
   : true, `late level ${lateLevelRow.level_id}`);
 check('a student sees the lesson of level 1', (await asApp('authenticated', late, `select id from materials where id = $1`, [video.id])).length === 1);
-await refuses('a student cannot add a material', () => addMaterial(late, { kind: 'youtube', url: 'https://youtu.be/dQw4w9WgXcQ', level: 1 }));
+await refusesWith('a student cannot add a material', 'new row violates row-level security policy for table "materials"', () => addMaterial(late, { kind: 'youtube', url: 'https://youtu.be/dQw4w9WgXcQ', level: 1 }));
 const [bareItem] = await asApp('authenticated', guru, `insert into syllabus_items (level_id, title) values (2, 'With a video') returning id`);
 const unTickedVideo = await addMaterial(guru, { kind: 'youtube', url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=30s', item: bareItem.id });
-await refuses('an unticked item with materials cannot be deleted', () => asApp('authenticated', guru,
+await refusesWith('an unticked item with materials cannot be deleted', 'item_has_materials', () => asApp('authenticated', guru,
   `delete from syllabus_items where id = $1`, [bareItem.id]));
 await asApp('authenticated', guru, `delete from materials where id = $1`, [unTickedVideo.id]);
 await asApp('authenticated', guru, `delete from syllabus_items where id = $1`, [bareItem.id]);
@@ -1479,8 +1514,8 @@ await asApp('authenticated', late, `update profiles set full_name = '  Late Join
 const [lateProfile] = await asOwner(`select full_name, phone from profiles where id = '${late}'`);
 check('a student changes their own name and phone, trimmed',
   lateProfile.full_name === 'Late Joiner' && lateProfile.phone === '+91 98765 43210', JSON.stringify(lateProfile));
-await refuses('an empty name is refused', () => asApp('authenticated', late, `update profiles set full_name = ' ' where id = auth.uid()`));
-await refuses('a phone with letters is refused', () => asApp('authenticated', late, `update profiles set phone = 'call me' where id = auth.uid()`));
+await refusesWith('an empty name is refused', 'name_required', () => asApp('authenticated', late, `update profiles set full_name = ' ' where id = auth.uid()`));
+await refusesWith('a phone with letters is refused', 'phone_invalid', () => asApp('authenticated', late, `update profiles set phone = 'call me' where id = auth.uid()`));
 check('a student cannot change someone else\'s profile', (await asApp('authenticated', late,
   `update profiles set full_name = 'X' where id = $1 returning id`, [arjun])).length === 0);
 
@@ -1494,28 +1529,28 @@ check('a coordinator cannot give a role (nothing changes)', (await asApp('authen
   `update profiles set role = 'coordinator' where id = $1 returning id`, [helper])).length === 0 && (await roleOf(helper)) === 'pending');
 await asApp('authenticated', guru, `update profiles set role = 'coordinator' where id = $1`, [helper]);
 check('the Guru makes a signed-up person a coordinator', (await roleOf(helper)) === 'coordinator');
-await refuses('the app cannot turn a coordinator into a student', () =>
+await refusesWith('the app cannot turn a coordinator into a student', 'role_change_not_allowed', () =>
   asApp('authenticated', guru, `update profiles set role = 'student' where id = $1`, [helper]));
-await refuses('the app cannot give the Guru role', () =>
+await refusesWith('the app cannot give the Guru role', 'guru_role_dashboard_only', () =>
   asApp('authenticated', guru, `update profiles set role = 'guru' where id = $1`, [pendingLogin]));
-await refuses('the Guru cannot switch themselves off', () =>
+await refusesWith('the Guru cannot switch themselves off', 'not_own_role', () =>
   asApp('authenticated', guru, `update profiles set active = false where id = $1`, [guru]));
-await refuses('a pending login becomes a student only with a student record', () =>
+await refusesWith('a pending login becomes a student only with a student record', 'student_needs_record', () =>
   asApp('authenticated', guru, `update profiles set role = 'student' where id = $1`, [pendingLogin]));
 const walkIn = await signUp('walk.in@example.com', true);
-await refuses('a coordinator cannot link a login to a student', () =>
+await refusesWith('a coordinator cannot link a login to a student', 'not_allowed', () =>
   asApp('authenticated', coordinator, 'select link_student_login($1, $2)', [walkIn, adult.id]));
 await asApp('authenticated', guru, 'select link_student_login($1, $2)', [walkIn, adult.id]);
 check('the Guru links a pending login to a student record', (await roleOf(walkIn)) === 'student'
   && (await asOwner(`select profile_id from students where id = '${adult.id}'`))[0].profile_id === walkIn);
-await refuses('a student record with a login cannot be linked again', () =>
+await refusesWith('a student record with a login cannot be linked again', 'student_already_linked', () =>
   asApp('authenticated', guru, 'select link_student_login($1, $2)', [pendingLogin, adult.id]));
-await refuses('only a pending login can be linked', () =>
+await refusesWith('only a pending login can be linked', 'profile_not_pending', () =>
   asApp('authenticated', guru, 'select link_student_login($1, $2)', [helper, registered.id]));
 await asApp('authenticated', guru, `update profiles set duty_hours = '  Mon, Thu 16:00-19:00 ' where id = $1`, [helper]);
 check('the Guru writes duty hours, trimmed',
   (await asOwner(`select duty_hours from profiles where id = '${helper}'`))[0].duty_hours === 'Mon, Thu 16:00-19:00');
-await refuses('a coordinator cannot write their own duty hours', () =>
+await refusesWith('a coordinator cannot write their own duty hours', 'not_allowed', () =>
   asApp('authenticated', helper, `update profiles set duty_hours = 'Always' where id = auth.uid()`));
 
 // Mentees and call tasks
@@ -1525,26 +1560,26 @@ const [{ n: movedCount }] = await asApp('authenticated', guru, 'select reassign_
 check('the Guru moves two students to another mentor', movedCount === 2 && (await mentorOf(adult.id)) === helper && (await mentorOf(registered.id)) === helper);
 const adultTask = await asOwner(`select assignee_id from follow_up_tasks where student_id = '${adult.id}' and done_at is null`);
 check('a call task given to nobody goes to the new mentor', adultTask.length > 0 && adultTask.every((t) => t.assignee_id === helper), JSON.stringify(adultTask));
-await refuses('a coordinator cannot move mentees in one step', () =>
+await refusesWith('a coordinator cannot move mentees in one step', 'not_allowed', () =>
   asApp('authenticated', coordinator, 'select reassign_mentees($1, $2)', [[adult.id], coordinator]));
-await refuses('a pending login cannot become a mentor', () =>
+await refusesWith('a pending login cannot become a mentor', 'mentor_not_staff', () =>
   asApp('authenticated', guru, 'select reassign_mentees($1, $2)', [[adult.id], pendingLogin]));
-await refuses('... not even when a coordinator edits the student', () =>
+await refusesWith('... not even when a coordinator edits the student', 'mentor_not_staff', () =>
   asApp('authenticated', coordinator, `update students set mentor_id = $2 where id = $1`, [adult.id, pendingLogin]));
-await refuses('a coordinator who still mentors students cannot be switched off', () =>
+await refusesWith('a coordinator who still mentors students cannot be switched off', 'has_mentees', () =>
   asApp('authenticated', guru, `update profiles set active = false where id = $1`, [helper]));
 await asApp('authenticated', guru, 'select reassign_mentees($1, $2)', [[adult.id, registered.id], coordinator2]);
 check('... and the task follows the mentor again', (await asOwner(
   `select assignee_id from follow_up_tasks where student_id = '${adult.id}' and done_at is null`)).every((t) => t.assignee_id === coordinator2));
 await asApp('authenticated', guru, `update profiles set active = false where id = $1`, [helper]);
-await refuses('a switched-off coordinator loses the staff screens', () =>
+await refusesWith('a switched-off coordinator loses the staff screens', 'not_allowed', () =>
   asApp('authenticated', helper, 'select coordinator_dashboard()'));
 await asApp('authenticated', guru, `update profiles set active = true where id = $1`, [helper]);
 check('the Guru switches a coordinator on again', (await asOwner(`select active from profiles where id = '${helper}'`))[0].active === true);
 
 // ---------------------------------------------------------------- Guru admin: import (0014, G3)
 const importRows = (rows) => asApp('authenticated', guru, 'select import_students($1) as r', [JSON.stringify(rows)]);
-await refuses('a coordinator cannot import students', () =>
+await refusesWith('a coordinator cannot import students', 'not_allowed', () =>
   asApp('authenticated', coordinator, 'select import_students($1)', [JSON.stringify([{ line: 2, full_name: 'X', dob: '1990-01-01' }])]));
 const [{ r: imported }] = await importRows([
   { line: 2, full_name: '  Kavya   Reddy ', dob: '1995-03-12', phone: '98480 22222', area: 'Abids', pincode: '500001', level_id: 2, joined_on: '2024-05-01' },
@@ -1570,7 +1605,7 @@ const [kavyaOverview] = await asOwner(`select days_since_visit from student_over
 check('an old joining date does not make an imported student Irregular at once', kavyaOverview.days_since_visit === 0, JSON.stringify(kavyaOverview));
 await asOwner('select refresh_student_statuses()');
 check('... not for the daily job either', (await asOwner(`select status from students where id = '${byLine.get(2).id}'`))[0].status === 'new');
-await refuses('more than 500 rows in one import are refused', () =>
+await refusesWith('more than 500 rows in one import are refused', 'too_many_rows', () =>
   importRows(Array.from({ length: 501 }, (_, i) => ({ line: i + 2, full_name: `P${i}`, dob: '1990-01-01' }))));
 
 // ---------------------------------------------------------------- Guru admin: settings (0014, G10)
@@ -1580,23 +1615,23 @@ const [{ n: savedCount }] = await asApp('authenticated', guru, 'select save_sett
 const [{ ws, expected }] = await asOwner(`select week_start_ist()::text as ws, (today_ist() - 6)::text as expected`);
 check('the Guru saves settings; "this week" can be the last 7 days', savedCount === 2 && (await settingOf('irregular_days')) === 10 && ws === expected,
   `${savedCount} ${ws} ${expected}`);
-await refuses('a coordinator cannot save settings', () =>
+await refusesWith('a coordinator cannot save settings', 'not_allowed', () =>
   asApp('authenticated', coordinator, 'select save_settings($1)', [JSON.stringify({ irregular_days: 20 })]));
 check('... nor change one directly (nothing changes)', (await asApp('authenticated', coordinator,
   `update settings set value = '20' where key = 'irregular_days' returning key`)).length === 0);
-await refuses('a setting out of range is refused', () =>
+await refusesWith('a setting out of range is refused', 'setting_invalid', () =>
   asApp('authenticated', guru, 'select save_settings($1)', [JSON.stringify({ irregular_days: 1 })]));
-await refuses('Irregular must come before Inactive, all or nothing', () =>
+await refusesWith('Irregular must come before Inactive, all or nothing', 'irregular_after_inactive', () =>
   asApp('authenticated', guru, 'select save_settings($1)', [JSON.stringify({ week_starts: 'monday', irregular_days: 40 })]));
 check('... so nothing of that save stays', (await settingOf('week_starts')) === 'rolling7' && (await settingOf('irregular_days')) === 10);
-await refuses('an unknown setting is refused', () =>
+await refusesWith('an unknown setting is refused', 'setting_unknown', () =>
   asApp('authenticated', guru, 'select save_settings($1)', [JSON.stringify({ colour: 'blue' })]));
-await refuses('the app cannot delete a setting', () =>
+await refusesWith('the app cannot delete a setting', 'setting_required', () =>
   asApp('authenticated', guru, `delete from settings where key = 'retry_days'`));
 await asApp('authenticated', guru, 'select save_settings($1)', [JSON.stringify({ irregular_days: 14, week_starts: 'monday' })]);
 check('settings changes go to the audit log by key', (await asOwner(
   `select count(*)::int as n from audit_log where table_name = 'settings' and row_id = 'week_starts'`))[0].n === 2);
-await refuses('a centre cannot close before it opens', () =>
+await refusesWith('a centre cannot close before it opens', 'window_invalid', () =>
   asApp('authenticated', guru, `update centres set opens_at = '21:00', closes_at = '20:00' where id = 1`));
 await asApp('authenticated', guru, `update centres set opens_at = '15:00', closes_at = '20:30' where id = 1`);
 check('the Guru changes the open window, and it is logged', (await asOwner(
@@ -1654,11 +1689,11 @@ check('marking someone else\'s notice changes nothing', meeraNotice !== undefine
   && (await asApp('authenticated', arjun, 'select mark_notifications_read($1) as n', [[meeraNotice.id]]))[0].n === 0);
 check('a person reads only their own notices', (await noticesOf(arjun)).length > 0
   && (await asApp('authenticated', arjun, `select count(*)::int as n from notifications where profile_id <> auth.uid()`))[0].n === 0);
-await refuses('the app cannot write a notice', () => asApp('authenticated', guru,
+await refusesWith('the app cannot write a notice', 'permission denied for table notifications', () => asApp('authenticated', guru,
   `insert into notifications (profile_id, kind, title, url) values ($1, 'notice', 'Fake', '/student')`, [arjun]));
-await refuses('... nor change one directly', () => asApp('authenticated', arjun, 'update notifications set read_at = now()'));
-await refuses('a login without a role cannot mark notices', () => asApp('authenticated', pendingLogin, 'select mark_notifications_read(null)'));
-await refuses('anon cannot count notices', () => asApp('anon', null, 'select inbox_unread_count()'));
+await refusesWith('... nor change one directly', 'permission denied for table notifications', () => asApp('authenticated', arjun, 'update notifications set read_at = now()'));
+await refusesWith('a login without a role cannot mark notices', 'not_allowed', () => asApp('authenticated', pendingLogin, 'select mark_notifications_read(null)'));
+await refusesWith('anon cannot count notices', 'permission denied for function inbox_unread_count', () => asApp('anon', null, 'select inbox_unread_count()'));
 await asApp('authenticated', coordinator, 'delete from announcements where id = $1', [inboxNews.id]);
 check('deleting an announcement takes its notices away',
   (await asOwner(`select count(*)::int as n from notifications where announcement_id = ${inboxNews.id}`))[0].n === 0);
@@ -1694,8 +1729,8 @@ check('the Guru\'s report counts the class as the Guru home does',
   && JSON.stringify(everyone.by_status) === JSON.stringify(guruBoard.by_status), `${everyone.in_class} vs ${guruBoard.in_class}`);
 check('the Guru can narrow the report to one coordinator\'s mentees',
   (await report(guru, monthAgo, todayText, coordinator2)).rows.length === myReport.rows.length);
-await refuses('a coordinator cannot read another coordinator\'s report', () => report(coordinator2, monthAgo, todayText, coordinator));
-await refuses('a student has no reports', () => report(arjun, monthAgo, todayText));
+await refusesWith('a coordinator cannot read another coordinator\'s report', 'not_allowed', () => report(coordinator2, monthAgo, todayText, coordinator));
+await refusesWith('a student has no reports', 'not_allowed', () => report(arjun, monthAgo, todayText));
 await refusesWith('a range that ends before it starts is refused', 'range_invalid', () => report(guru, todayText, monthAgo));
 await refusesWith('a range longer than a year is refused', 'range_too_long', () => report(guru, '2024-01-01', todayText));
 
@@ -1704,7 +1739,7 @@ const [koti] = await asApp('authenticated', guru, `insert into centres (name, ad
   values ('  Koti   Centre ', ' Near the bus stand ', 17.385044123, 78.486671987, 200) returning id, name, address, lat, lng`);
 check('the Guru adds a centre with its point, cleaned up', koti.name === 'Koti Centre' && koti.address === 'Near the bus stand'
   && koti.lat === 17.385044 && koti.lng === 78.486672, JSON.stringify(koti));
-await refuses('a coordinator cannot add a centre', () =>
+await refusesWith('a coordinator cannot add a centre', 'new row violates row-level security policy for table "centres"', () =>
   asApp('authenticated', coordinator, `insert into centres (name) values ('Secunderabad')`));
 await refusesWith('a second centre with the same name is refused', 'centre_name_taken', () =>
   asApp('authenticated', guru, `insert into centres (name) values ('ABIDS')`));
@@ -1776,9 +1811,9 @@ await refusesWith('one open nomination per student', 'already_nominated', () => 
 check('a student sees no nominations or answers', (await asApp('authenticated', meera, 'select id from promotion_nominations')).length === 0
   && (await asApp('authenticated', meera, 'select rating from promotion_feedback')).length === 0);
 check('another coordinator sees the nomination', (await asApp('authenticated', coordinator2, 'select id from promotion_nominations')).length >= 1);
-await refuses('the app cannot write a nomination directly', () => asApp('authenticated', coordinator,
+await refusesWith('the app cannot write a nomination directly', 'permission denied for table promotion_nominations', () => asApp('authenticated', coordinator,
   `insert into promotion_nominations (student_id, from_level, to_level, reason) values ($1, 2, 3, 'x')`, [meeraStudent]));
-await refuses('... nor an answer', () => asApp('authenticated', coordinator2,
+await refusesWith('... nor an answer', 'permission denied for table promotion_feedback', () => asApp('authenticated', coordinator2,
   `insert into promotion_feedback (nomination_id, coordinator_id, rating, comment) values ($1, auth.uid(), 'ready', 'x')`, [nom1]));
 await refusesWith('a coordinator cannot change a student\'s level', 'level_guru_only', () =>
   asApp('authenticated', coordinator, 'update students set level_id = 3 where id = $1', [meeraStudent]));
@@ -1862,12 +1897,12 @@ const taalsSeen = async (userId) => asApp('authenticated', userId, 'select id, n
 const seededTaals = await taalsSeen(arjun);
 check('three placeholder taals are seeded and a student reads them', seededTaals.length === 3
   && seededTaals.every((tl) => tl.placeholder) && seededTaals.map((tl) => tl.beats).join() === '8,6,16', JSON.stringify(seededTaals));
-await refuses('anon reads no taals', () => asApp('anon', null, 'select id from taals'));
+await refusesWith('anon reads no taals', 'permission denied for table taals', () => asApp('anon', null, 'select id from taals'));
 const addTaal = (userId, name, bols, divisions, marks) => asApp('authenticated', userId,
   'insert into taals (name, bols, divisions, marks) values ($1, $2::text[], $3::smallint[], $4::text[]) returning id, beats, bols',
   [name, bols, divisions, marks]).then((r) => r[0]);
-await refuses('a coordinator cannot add a taal', () => addTaal(coordinator, 'Mine', ['tā', 'ka'], [2], ['X']));
-await refuses('a student cannot change a taal', async () => {
+await refusesWith('a coordinator cannot add a taal', 'new row violates row-level security policy for table "taals"', () => addTaal(coordinator, 'Mine', ['tā', 'ka'], [2], ['X']));
+await refusesWith('a student cannot change a taal', 'no row changed (row-level security)', async () => {
   const rows = await asApp('authenticated', arjun, `update taals set name = 'Hacked' where id = $1 returning id`, [seededTaals[0].id]);
   if (rows.length === 0) throw new Error('no row changed (row-level security)');
 });
@@ -1906,7 +1941,7 @@ check('the timer logs 25 minutes today (its own day, whatever the app sends)', t
 await logPractice(arjun, 40, 'manual', yesterday, null, null, '  Kirtan with my brother ');
 await refusesWith('at most 12 hours on one day', 'day_full', () => logPractice(arjun, 240, 'manual', yesterday)
   .then(() => logPractice(arjun, 240, 'manual', yesterday)).then(() => logPractice(arjun, 240, 'manual', yesterday)));
-await refuses('the app cannot write practice_logs directly', () => asApp('authenticated', arjun,
+await refusesWith('the app cannot write practice_logs directly', 'permission denied for table practice_logs', () => asApp('authenticated', arjun,
   `insert into practice_logs (student_id, practised_on, minutes, source) values ($1, current_date, 5, 'manual')`, [arjunStudent]));
 check('a student sees only their own practice', (await asApp('authenticated', meera, 'select id from practice_logs')).length === 0
   && (await asApp('authenticated', arjun, 'select id from practice_logs')).length >= 3);
@@ -1955,7 +1990,7 @@ check('a student sees a new assessment notice in their own inbox, unread',
   && (await asApp('authenticated', meera, 'select inbox_unread_count() as n'))[0].n === meeraBefore + 1, JSON.stringify(meeraNotices));
 check('another student does not see it', (await asApp('authenticated', arjun,
   `select id from notifications where title = 'Inbox check'`)).length === 0);
-await refuses('the app cannot write inbox rows itself', () => asApp('authenticated', meera,
+await refusesWith('the app cannot write inbox rows itself', 'permission denied for table notifications', () => asApp('authenticated', meera,
   `insert into notifications (profile_id, kind, title, url) values (auth.uid(), 'assessment', 'x', '/student/assessments/1')`));
 check('app roles cannot run the outbox trigger function', (await asOwner(`select
   has_function_privilege('authenticated', 'inbox_on_push_outbox()', 'execute')
@@ -1976,7 +2011,7 @@ await refusesWith('a video link must point to a video file', 'video_link_invalid
 await refusesWith('... over https', 'video_link_invalid', () => addVideo(guru, 'http://cdn.example.org/a.mp4', 1));
 await refusesWith('a YouTube lesson has no panes (its player may not be zoomed)', 'panes_invalid', () =>
   addVideo(guru, 'https://youtu.be/dQw4w9WgXcQ', 2, 'youtube'));
-await refuses('at most 4 panes', () => addVideo(guru, 'https://cdn.example.org/a.mp4', 5));
+await refusesWith('at most 4 panes', 'panes_invalid', () => addVideo(guru, 'https://cdn.example.org/a.mp4', 5));
 check('a student of the level sees the video file', (await asApp('authenticated', late, 'select panes from materials where id = $1',
   [fileVideo.id]))[0]?.panes === 3);
 await asApp('authenticated', guru, 'update materials set panes = 2 where id = $1', [fileVideo.id]);
@@ -1994,8 +2029,8 @@ const webVoice = await filePath(coordinator2, 'webm');
 await aUpload(coordinator2, webVoice, 1000);
 check('... also a browser recording (.webm)', await aCanOpen(coordinator2, webVoice));
 check('... and deletes an unused one', await aRemove(coordinator2, webVoice));
-await refuses('a coordinator still cannot upload a PDF', async () => aUpload(coordinator, await filePath(coordinator, 'pdf')));
-await refuses('... nor into someone else\'s folder', async () => aUpload(coordinator, await filePath(coordinator2, 'm4a')));
+await refusesWith('a coordinator still cannot upload a PDF', 'new row violates row-level security policy for table "objects"', async () => aUpload(coordinator, await filePath(coordinator, 'pdf')));
+await refusesWith('... nor into someone else\'s folder', 'new row violates row-level security policy for table "objects"', async () => aUpload(coordinator, await filePath(coordinator2, 'm4a')));
 check('another student cannot open the voice note before it is on a review', !(await aCanOpen(arjun, voice)));
 const reviewVoice = (userId, submission, scores, comment, outcome, voiceNote) => asApp('authenticated', userId,
   'select review_submission($1, $2::int[], $3, $4, false, $5::jsonb)',
@@ -2030,7 +2065,7 @@ check('3 sample slokas and 2 sample themes are seeded, marked sample', samples.l
   `${samples.length} slokas, ${sampleThemes} themes, ${sampleLinks} links`);
 check('a student reads the published slokas', (await igSlokas(arjun)).length === 3);
 check('a login waiting for a role reads none', (await igSlokas(pendingLogin)).length === 0);
-await refuses('anon cannot read themes at all', () => asApp('anon', null, 'select id from ig_themes'));
+await refusesWith('anon cannot read themes at all', 'permission denied for table ig_themes', () => asApp('anon', null, 'select id from ig_themes'));
 const dayOf = async (userId, day) => (await asApp('authenticated', userId, 'select ig_sloka_of_day($1::date) as id', [day]))[0].id;
 const [{ d: igToday }] = await asOwner('select today_ist()::text as d');
 const todays = await dayOf(arjun, null);
@@ -2043,8 +2078,8 @@ const newSloka = (userId, fields = {}) => asApp('authenticated', userId,
    values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) returning *`,
   [fields.ref ?? ' BG   9.14 ', fields.dev ?? 'सततं कीर्तयन्तो माम्', fields.iast ?? 'satataṁ kīrtayanto mām', fields.en === undefined ? 'Test translation.' : fields.en,
    fields.te ?? null, fields.translator ?? null, fields.own ?? false, fields.published ?? false, fields.audio ?? null, fields.audioName ?? null]).then((r) => r[0]);
-await refuses('a coordinator who is not an editor cannot add a sloka', () => newSloka(coordinator));
-await refuses('a student cannot add a sloka', () => newSloka(arjun));
+await refusesWith('a coordinator who is not an editor cannot add a sloka', 'new row violates row-level security policy for table "ig_slokas"', () => newSloka(coordinator));
+await refusesWith('a student cannot add a sloka', 'new row violates row-level security policy for table "ig_slokas"', () => newSloka(arjun));
 await refusesWith('a coordinator cannot make themselves an Ishtagoshti editor', 'not_allowed', () =>
   asApp('authenticated', coordinator, 'update profiles set ig_editor = true where id = auth.uid()'));
 await refusesWith('only a coordinator is marked as an editor', 'ig_editor_coordinator_only', () =>
@@ -2082,7 +2117,7 @@ check('a student does not see a draft sloka in a theme', (await asApp('authentic
 await refusesWith('a theme needs a title', 'theme_title_invalid', () => asApp('authenticated', guru, `insert into ig_themes (title) values ('  ')`));
 
 const pin = (userId, day, slokaId) => asApp('authenticated', userId, 'insert into ig_daily_pins (day, sloka_id) values ($1, $2)', [day, slokaId]);
-await refuses('a student cannot pin the sloka of the day', () => pin(arjun, igToday, draftSloka.id));
+await refusesWith('a student cannot pin the sloka of the day', 'new row violates row-level security policy for table "ig_daily_pins"', () => pin(arjun, igToday, draftSloka.id));
 await refusesWith('only a published sloka can be pinned', 'pin_not_published', () => pin(guru, igToday, hiddenSloka.id));
 await refusesWith('a pin is for today or later', 'pin_day_invalid', () => pin(guru, '2020-01-01', draftSloka.id));
 await pin(coordinator, igToday, draftSloka.id);
@@ -2093,16 +2128,16 @@ await note(arjun, draftSloka.id, 'Learn the second line first.');
 check('a student\'s note is private: not even the Guru reads it', (await asApp('authenticated', arjun, 'select body from ig_notes')).length === 1
   && (await asApp('authenticated', meera, 'select body from ig_notes')).length === 0
   && (await asApp('authenticated', guru, 'select body from ig_notes')).length === 0);
-await refuses('no note on a sloka the student cannot see', () => note(arjun, hiddenSloka.id, 'x'));
-await refuses('no note for someone else', () => asApp('authenticated', meera,
+await refusesWith('no note on a sloka the student cannot see', 'new row violates row-level security policy for table "ig_notes"', () => note(arjun, hiddenSloka.id, 'x'));
+await refusesWith('no note for someone else', 'new row violates row-level security policy for table "ig_notes"', () => asApp('authenticated', meera,
   'insert into ig_notes (profile_id, sloka_id, body) values ($1, $2, $3)', [arjun, samples[1].id, 'x']));
 await asApp('authenticated', arjun, 'insert into ig_memorised (sloka_id) values ($1)', [samples[0].id]);
 check('a student ticks "memorised"; staff see it, another student does not',
   (await asApp('authenticated', coordinator2, 'select 1 from ig_memorised where profile_id = $1', [arjun])).length === 1
   && (await asApp('authenticated', meera, 'select 1 from ig_memorised')).length === 0);
-await refuses('a tick is for today, not back-dated', () => asApp('authenticated', meera,
+await refusesWith('a tick is for today, not back-dated', 'new row violates row-level security policy for table "ig_memorised"', () => asApp('authenticated', meera,
   `insert into ig_memorised (sloka_id, memorised_on) values ($1, today_ist() - 5)`, [samples[0].id]));
-await refuses('no tick on a draft', () => asApp('authenticated', meera, 'insert into ig_memorised (sloka_id) values ($1)', [hiddenSloka.id]));
+await refusesWith('no tick on a draft', 'new row violates row-level security policy for table "ig_memorised"', () => asApp('authenticated', meera, 'insert into ig_memorised (sloka_id) values ($1)', [hiddenSloka.id]));
 
 const igUpload = async (userId, path, size = 300000) => asApp('authenticated', userId,
   `insert into storage.objects (bucket_id, name, owner, metadata) values ('ishtagoshti-audio', $1, auth.uid(), $2)`, [path, JSON.stringify({ size })]);
@@ -2110,9 +2145,9 @@ const igCanOpen = async (userId, path) => (await asApp('authenticated', userId,
   `select 1 from storage.objects where bucket_id = 'ishtagoshti-audio' and name = $1`, [path])).length === 1;
 const recitation = await filePath(coordinator, 'm4a');
 await igUpload(coordinator, recitation);
-await refuses('a student cannot upload a recitation', async () => igUpload(arjun, await filePath(arjun, 'm4a')));
-await refuses('a coordinator who is not an editor cannot either', async () => igUpload(coordinator2, await filePath(coordinator2, 'mp3')));
-await refuses('a recitation is audio', async () => igUpload(coordinator, await filePath(coordinator, 'pdf')));
+await refusesWith('a student cannot upload a recitation', 'new row violates row-level security policy for table "objects"', async () => igUpload(arjun, await filePath(arjun, 'm4a')));
+await refusesWith('a coordinator who is not an editor cannot either', 'new row violates row-level security policy for table "objects"', async () => igUpload(coordinator2, await filePath(coordinator2, 'mp3')));
+await refusesWith('a recitation is audio', 'new row violates row-level security policy for table "objects"', async () => igUpload(coordinator, await filePath(coordinator, 'pdf')));
 check('a student cannot open a recitation not on a published sloka', !(await igCanOpen(arjun, recitation)));
 await refusesWith('a recitation must be in Storage', 'audio_missing', async () => asApp('authenticated', coordinator,
   'update ig_slokas set audio_path = $2, audio_name = $3 where id = $1', [draftSloka.id, await filePath(coordinator, 'm4a'), 'Recitation.m4a']));
@@ -2190,17 +2225,17 @@ await refusesWith('... nor its distance', 'location_locked', () =>
 const corrected = await asApp('authenticated', coordinator,
   `update visits set check_in = check_in - interval '1 minute' where id = ${lastVisitId} returning id`);
 check('... but may still correct the times of the visit', corrected.length === 1);
-await refuses('a student cannot change a location result', () =>
+await refusesWith('a student cannot change a location result', 'no row changed (row-level security)', () =>
   asApp('authenticated', late, `update visits set location_check = null where id = ${lastVisitId} returning id`).then((rows) => {
     if (rows.length === 0) throw new Error('no row changed (row-level security)');
   }));
-await refuses('a student cannot run visit_location_result', () =>
+await refusesWith('a student cannot run visit_location_result', 'permission denied for function visit_location_result', () =>
   asApp('authenticated', arjun, `select * from visit_location_result('{"status":"refused"}', 1::smallint)`));
-await refuses('anon cannot run visit_location_result', () =>
+await refusesWith('anon cannot run visit_location_result', 'permission denied for function visit_location_result', () =>
   asApp('anon', null, `select * from visit_location_result('{"status":"refused"}', 1::smallint)`));
-await refuses('a student cannot mark with a location', () =>
+await refusesWith('a student cannot mark with a location', 'not_allowed', () =>
   asApp('authenticated', arjun, `select mark_visit('${registered.id}', 'in', null, '{"status":"refused"}')`));
-await refuses('anon cannot scan with a location', () =>
+await refusesWith('anon cannot scan with a location', 'permission denied for function scan_qr', () =>
   asApp('anon', null, `select scan_qr('${qrToken}', null, '{"status":"refused"}')`));
 const [{ ok: oneEach }] = await asOwner(`select (select count(*) from pg_proc where proname in ('toggle_visit', 'scan_qr', 'mark_visit')) = 3
   and not has_function_privilege('anon', 'mark_visit(uuid, text, text, jsonb)', 'execute')
@@ -2240,7 +2275,7 @@ check('notices of events and polls have Telugu and Hindi lines', (await asOwner(
 const [{ lv: evLevelA }] = await asOwner(`select level_id as lv from students where id = '${arjunStudent}'`);
 const [{ lv: evLevelM }] = await asOwner(`select level_id as lv from students where id = '${meeraStudent}'`);
 
-await refuses('a student cannot create an event', () => addEvent(arjun));
+await refusesWith('a student cannot create an event', 'new row violates row-level security policy for table "events"', () => addEvent(arjun));
 await refusesWith('an event needs a title', 'title_required', () => addEvent(coordinator, { title: '  ' }));
 await refusesWith('... a centre or a place', 'place_required', () => addEvent(coordinator, { centre: null }));
 await refusesWith('... a start in the future', 'starts_past', () => addEvent(coordinator, { starts: inHours(-1) }));
@@ -2280,18 +2315,18 @@ check('a student changes their answer; counts and their own answer come back', a
   && arjunCounts.not_going === 1 && arjunCounts.maybe === 0 && arjunCounts.my_response === 'going' && arjunCounts.addressed >= 3,
   JSON.stringify(arjunCounts));
 check('a student sees only their own answer row', (await asApp('authenticated', meera, 'select profile_id from event_rsvps')).every((r) => r.profile_id === meera));
-await refuses('a student cannot list who answered', () => asApp('authenticated', arjun, 'select * from event_people_list($1)', [festival.id]));
+await refusesWith('a student cannot list who answered', 'not_allowed', () => asApp('authenticated', arjun, 'select * from event_people_list($1)', [festival.id]));
 const people = await asApp('authenticated', coordinator2, 'select * from event_people_list($1)', [festival.id]);
 check('staff see everyone it is for with their answer', people.find((p) => p.profile_id === arjun)?.response === 'going'
   && people.find((p) => p.profile_id === meera)?.response === 'not_going' && people.some((p) => p.response === null), String(people.length));
 check('counts of an event not for them are not given to a student', (await asApp('authenticated', meera,
   'select * from event_counts($1::bigint[])', [[levelEvent.id]])).length === 0);
-await refuses('the app cannot write answers directly', () => asApp('authenticated', arjun,
+await refusesWith('the app cannot write answers directly', 'permission denied for table event_rsvps', () => asApp('authenticated', arjun,
   `insert into event_rsvps (event_id, profile_id, response) values ($1, auth.uid(), 'going')`, [festival.id]));
 
 await refusesWith('the audience stays once people answered', 'audience_locked', () => asApp('authenticated', coordinator,
   `update events set audience = 'staff' where id = $1`, [festival.id]));
-await refuses('another coordinator cannot edit the event', async () => {
+await refusesWith('another coordinator cannot edit the event', 'no row changed', async () => {
   const rows = await asApp('authenticated', coordinator2, `update events set title = 'x' where id = $1 returning id`, [festival.id]);
   if (rows.length === 0) throw new Error('no row changed');
 });
@@ -2306,7 +2341,7 @@ await refusesWith('an event somebody answered is not deleted', 'event_has_answer
 // Performers and attendance.
 const setPerformers = (userId, eventId, list) => asApp('authenticated', userId,
   'select set_event_performers($1, $2::jsonb) as r', [eventId, JSON.stringify(list)]);
-await refuses('a student cannot pick performers', () => setPerformers(arjun, festival.id, []));
+await refusesWith('a student cannot pick performers', 'not_allowed', () => setPerformers(arjun, festival.id, []));
 await refusesWith('a part is 1 to 60 characters', 'part_invalid', () => setPerformers(coordinator, festival.id, [{ student_id: arjunStudent, part: ' ' }]));
 await refusesWith('... and a student once', 'student_invalid', () => setPerformers(coordinator, festival.id,
   [{ student_id: arjunStudent, part: 'Mridanga' }, { student_id: arjunStudent, part: 'Kartal' }]));
@@ -2366,7 +2401,7 @@ const addPoll = async (userId, fields = {}) => (await asApp('authenticated', use
    values ($1, $2::text[], $3, $4, $5, $6, $7, $8) returning *`,
   [fields.question ?? 'Which day suits the practice?', fields.options ?? ['Saturday', 'Sunday'], fields.anonymous ?? false,
    fields.resultsWhen ?? 'after_vote', fields.closes ?? inHours(72), fields.audience ?? 'all', fields.level ?? null, fields.group ?? null]))[0];
-await refuses('a student cannot create a poll', () => addPoll(arjun));
+await refusesWith('a student cannot create a poll', 'new row violates row-level security policy for table "polls"', () => addPoll(arjun));
 await refusesWith('a poll has 2 to 6 answers', 'options_invalid', () => addPoll(coordinator, { options: ['Only one'] }));
 await refusesWith('... all different', 'options_invalid', () => addPoll(coordinator, { options: ['Sunday', ' sunday '] }));
 await refusesWith('... at most 6', 'options_invalid', () => addPoll(coordinator, { options: ['1', '2', '3', '4', '5', '6', '7'] }));
@@ -2386,11 +2421,11 @@ await vote(meera, poll.id, 1);
 const after = await stateOf(arjun, poll.id);
 check('a student changes their vote and then sees the results', after.my_choice === 1 && JSON.stringify(after.results) === '[0,2,0]'
   && after.voted === 2, JSON.stringify(after));
-await refuses('votes are never readable from the app', () => asApp('authenticated', coordinator, 'select * from poll_votes'));
+await refusesWith('votes are never readable from the app', 'permission denied for table poll_votes', () => asApp('authenticated', coordinator, 'select * from poll_votes'));
 const voters = await asApp('authenticated', coordinator2, 'select * from poll_voters($1)', [poll.id]);
 check('staff see who voted what in a poll that is not anonymous', voters.find((v) => v.profile_id === arjun)?.choice === 1
   && voters.some((v) => v.voted_at === null), String(voters.length));
-await refuses('a student cannot list the voters', () => asApp('authenticated', arjun, 'select * from poll_voters($1)', [poll.id]));
+await refusesWith('a student cannot list the voters', 'not_allowed', () => asApp('authenticated', arjun, 'select * from poll_voters($1)', [poll.id]));
 await refusesWith('the answers stay once people voted', 'poll_has_votes', () => asApp('authenticated', coordinator,
   `update polls set options = array['A', 'B'] where id = $1`, [poll.id]));
 await refusesWith('... and anonymous cannot be switched', 'poll_has_votes', () => asApp('authenticated', coordinator,
@@ -2439,8 +2474,8 @@ const [{ ok: eventFnsOpen }] = await asOwner(`select has_function_privilege('ano
   or has_function_privilege('authenticated', 'events_polls_daily()', 'execute')
   or has_function_privilege('authenticated', 'event_notify()', 'execute') as ok`);
 check('anon runs no event or poll function; the queue and the daily job are not callable', eventFnsOpen === false);
-await refuses('anon cannot read events', () => asApp('anon', null, 'select id from events'));
-await refuses('anon cannot read polls', () => asApp('anon', null, 'select id from polls'));
+await refusesWith('anon cannot read events', 'permission denied for table events', () => asApp('anon', null, 'select id from events'));
+await refusesWith('anon cannot read polls', 'permission denied for table polls', () => asApp('anon', null, 'select id from polls'));
 for (const { id, language } of evLanguages) await asOwner(`update profiles set language = '${language}' where id = '${id}'`);
 
 
@@ -2457,7 +2492,7 @@ await asApp('authenticated', coordinator, `update materials set suggest_reason =
 check('a coordinator cannot edit a suggestion (Guru-only updates)', (await asOwner(`select suggest_reason from materials where id = ${suggestion.id}`))[0].suggest_reason === null);
 await refusesWith('the Guru cannot approve by a plain update', 'suggestion_frozen', () => asApp('authenticated', guru,
   'update materials set approved_by = auth.uid() where id = $1', [suggestion.id]));
-await refuses('a coordinator cannot decide a suggestion', () => asApp('authenticated', coordinator2,
+await refusesWith('a coordinator cannot decide a suggestion', 'not_allowed', () => asApp('authenticated', coordinator2,
   'select decide_material_suggestion($1, true)', [suggestion.id]));
 await refusesWith('declining needs a reason', 'reason_required', () => asApp('authenticated', guru,
   `select decide_material_suggestion($1, false, '  ')`, [suggestion.id]));
@@ -2475,8 +2510,8 @@ check('the coordinator cannot delete an approved material', (await asApp('authen
 const suggestedPdf = `${coordinator}/${await newId()}.pdf`;
 await uploadMaterial(coordinator, suggestedPdf, 5000);
 check('a coordinator uploads a PDF for a suggestion into their own folder', await canOpenMaterial(coordinator, suggestedPdf));
-await refuses('... not into someone else\'s folder', async () => uploadMaterial(coordinator, `${coordinator2}/${await newId()}.pdf`));
-await refuses('a student cannot upload a material file', async () => uploadMaterial(late, `${late}/${await newId()}.pdf`));
+await refusesWith('... not into someone else\'s folder', 'new row violates row-level security policy for table "objects"', async () => uploadMaterial(coordinator, `${coordinator2}/${await newId()}.pdf`));
+await refusesWith('a student cannot upload a material file', 'new row violates row-level security policy for table "objects"', async () => uploadMaterial(late, `${late}/${await newId()}.pdf`));
 const [pdfSuggestion] = await asApp('authenticated', coordinator,
   `insert into materials (title, kind, storage_path, file_name, file_size, level_id, suggest_reason)
    values ('Notation', 'pdf', $1, 'Notation.pdf', 1, 2, '  Clear notation for the 8 beats.  ') returning *`, [suggestedPdf]);
@@ -2507,14 +2542,14 @@ const addItem = async (userId, label, kind = 'fibreglass', condition = 'good', n
 const khol = await addItem(guru, '  Balaram blue 3 ');
 check('the Guru adds an instrument, trimmed, with its first check', khol.label === 'Balaram blue 3' && (await asOwner(
   `select kind from inventory_checks where item_id = ${khol.id}`)).map((r) => r.kind).join() === 'added');
-await refuses('a coordinator cannot add an item', () => addItem(coordinator, 'Mine'));
-await refuses('the same name twice at a centre is refused', () => addItem(guru, 'balaram BLUE 3'));
-await refuses('a kind outside the list is refused', () => addItem(guru, 'Mridangam', 'mridangam'));
+await refusesWith('a coordinator cannot add an item', 'new row violates row-level security policy for table "inventory_items"', () => addItem(coordinator, 'Mine'));
+await refusesWith('the same name twice at a centre is refused', 'duplicate key value violates unique constraint "inventory_items_label_idx"', () => addItem(guru, 'balaram BLUE 3'));
+await refusesWith('a kind outside the list is refused', 'new row for relation "inventory_items" violates check constraint "inventory_items_kind_check"', () => addItem(guru, 'Mridangam', 'mridangam'));
 await refusesWith('the condition is not changed directly', 'condition_frozen', () => asApp('authenticated', guru,
   `update inventory_items set condition = 'damaged' where id = $1`, [khol.id]));
 const issue = (userId, item, student, profile, condition, note = null, due = null) => asApp('authenticated', userId,
   'select issue_inventory_item($1, $2, $3, $4, $5, $6) as id', [item, student, profile, condition, note, due]);
-await refuses('a student cannot lend an item', () => issue(late, khol.id, lateStudent, null, 'good'));
+await refusesWith('a student cannot lend an item', 'not_allowed', () => issue(late, khol.id, lateStudent, null, 'good'));
 await refusesWith('a borrower is needed (one)', 'borrower_required', () => issue(coordinator, khol.id, lateStudent, coordinator2, 'good'));
 await refusesWith('a damaged item cannot go out', 'item_not_lendable', () => issue(coordinator, khol.id, lateStudent, null, 'damaged', 'Cracked'));
 await refusesWith('needs care needs a note', 'note_required', () => issue(coordinator, khol.id, lateStudent, null, 'needs_care', ' '));
@@ -2528,7 +2563,7 @@ check('the student sees the item they hold and their loan', (await asApp('authen
 check('another student sees neither', (await asApp('authenticated', arjun, 'select id from inventory_items')).length === 0
   && (await asApp('authenticated', arjun, 'select id from inventory_loans')).length === 0);
 check('a student cannot read the condition history', (await asApp('authenticated', late, 'select id from inventory_checks')).length === 0);
-await refuses('the app cannot write a loan itself', () => asApp('authenticated', coordinator,
+await refusesWith('the app cannot write a loan itself', 'new row violates row-level security policy for table "inventory_loans"', () => asApp('authenticated', coordinator,
   `insert into inventory_loans (item_id, student_id, issued_by, condition_out) values ($1, $2, auth.uid(), 'good')`, [khol.id, lateStudent]));
 await refusesWith('an item on loan cannot be retired', 'item_out', () => asApp('authenticated', guru,
   'update inventory_items set retired_at = now() where id = $1', [khol.id]));
@@ -2548,7 +2583,7 @@ const [{ id: staffLoan }] = await issue(coordinator, khol.id, null, coordinator2
 check('a coordinator can borrow an item and sees their loan', (await asApp('authenticated', coordinator2,
   'select id from inventory_loans where returned_at is null')).some((r) => Number(r.id) === staffLoan));
 await asApp('authenticated', coordinator, `select return_inventory_item($1, 'good')`, [staffLoan]);
-await refuses('an item with loans cannot be deleted', () => asApp('authenticated', guru, 'delete from inventory_items where id = $1', [khol.id]));
+await refusesWith('an item with loans cannot be deleted', 'update or delete on table "inventory_items" violates foreign key constraint "inventory_loans_item_id_fkey" on table "inventory_loans"', () => asApp('authenticated', guru, 'delete from inventory_items where id = $1', [khol.id]));
 await asApp('authenticated', guru, 'update inventory_items set retired_at = now() where id = $1', [khol.id]);
 await refusesWith('a retired item cannot be lent', 'item_retired', () => issue(coordinator, khol.id, lateStudent, null, 'good'));
 const typo = await addItem(guru, 'Kartal pair 1', 'kartals');
@@ -2559,7 +2594,7 @@ check('item changes go to the audit log', (await asOwner(`select count(*)::int a
 const dutyDay = (await asOwner('select (today_ist() + 1)::text as d'))[0].d;
 const saveShift = (userId, id, date, from, to, duty, people, weeks = 1) => asApp('authenticated', userId,
   'select save_duty_shift($1, 1::smallint, $2::date, $3::time, $4::time, $5, $6::uuid[], $7) as ids', [id, date, from, to, duty, people, weeks]);
-await refuses('a coordinator cannot plan a shift', () => saveShift(coordinator, null, dutyDay, '14:30', '17:00', null, [coordinator]));
+await refusesWith('a coordinator cannot plan a shift', 'not_allowed', () => saveShift(coordinator, null, dutyDay, '14:30', '17:00', null, [coordinator]));
 await refusesWith('a shift is inside the open hours', 'outside_hours', () => saveShift(guru, null, dutyDay, '13:00', '17:00', null, [coordinator]));
 await refusesWith('... ends after it starts', 'time_invalid', () => saveShift(guru, null, dutyDay, '17:00', '16:00', null, [coordinator]));
 await refusesWith('... not in the past', 'date_past', () => saveShift(guru, null, '2020-01-01', '14:30', '17:00', null, [coordinator]));
@@ -2571,7 +2606,7 @@ check('the Guru plans a shift with two coordinators, repeated for 3 weeks', shif
 check('coordinators see the roster; a student does not', (await asApp('authenticated', coordinator, 'select id from duty_shifts')).length >= 3
   && (await asApp('authenticated', late, 'select id from duty_shifts')).length === 0
   && (await asApp('authenticated', late, 'select shift_id from duty_assignments')).length === 0);
-await refuses('a coordinator cannot change the roster', () => asApp('authenticated', coordinator,
+await refusesWith('a coordinator cannot change the roster', 'new row violates row-level security policy for table "duty_assignments"', () => asApp('authenticated', coordinator,
   `insert into duty_assignments (shift_id, profile_id) values ($1, auth.uid())`, [shiftIds[1]]).then((r) => r));
 check('... not even deleting', (await asApp('authenticated', coordinator, 'delete from duty_shifts where id = $1 returning id', [shiftIds[2]])).length === 0);
 // pg_cron runs with nobody signed in.
@@ -2594,7 +2629,7 @@ check('app roles cannot run the team-tools helpers', (await asOwner(`select
 
 // ---------------------------------------------------------------- class fund (0026)
 // coordinator2 becomes the treasurer; coordinator is a coordinator who only reads; late is a student.
-await refuses('a coordinator cannot make themselves treasurer', () => asApp('authenticated', coordinator,
+await refusesWith('a coordinator cannot make themselves treasurer', 'only the Guru can change role, treasurer or active', () => asApp('authenticated', coordinator,
   'update profiles set is_treasurer = true where id = auth.uid()'));
 await refusesWith('only a coordinator can be a treasurer', 'treasurer_coordinator_only', () => asApp('authenticated', guru,
   'update profiles set is_treasurer = true where id = $1', [late]));
@@ -2624,23 +2659,23 @@ check('the categories are seeded; staff read them, a student does not', (await a
   'select id from fund_categories')).length === 8 && (await asApp('authenticated', late, 'select id from fund_categories')).length === 0);
 const [{ id: melaCat }] = await asApp('authenticated', guru, `insert into fund_categories (direction, name, code) values ('expense', '  Kirtan mela ', 'x') returning id, name, code`);
 check('the Guru adds a category, trimmed, without a code', (await asOwner(`select name, code from fund_categories where id = ${melaCat}`))[0].code === null);
-await refuses('a coordinator cannot add a category', () => asApp('authenticated', coordinator2,
+await refusesWith('a coordinator cannot add a category', 'new row violates row-level security policy for table "fund_categories"', () => asApp('authenticated', coordinator2,
   `insert into fund_categories (direction, name) values ('income', 'Mine')`));
 await refusesWith('a category keeps its kind', 'category_frozen', () => asApp('authenticated', guru,
   `update fund_categories set direction = 'income' where id = $1`, [melaCat]));
-await refuses('a category is not deleted', () => asApp('authenticated', guru, 'delete from fund_categories where id = $1', [melaCat]));
+await refusesWith('a category is not deleted', 'permission denied for table fund_categories', () => asApp('authenticated', guru, 'delete from fund_categories where id = $1', [melaCat]));
 
 const income = await record(coordinator2, 'income', donation, 1000000, { party: ' Sri Rama das ', reference: 'Temple receipt 1043' });
 check('the treasurer records a donation; it counts at once', (await entryOf(income)).status === 'approved' && (await balanceAs(guru)) === 1000000);
-await refuses('a coordinator who is not treasurer cannot record', () => record(coordinator, 'income', donation, 100));
-await refuses('a student cannot record', () => record(late, 'income', donation, 100));
+await refusesWith('a coordinator who is not treasurer cannot record', 'not_allowed', () => record(coordinator, 'income', donation, 100));
+await refusesWith('a student cannot record', 'not_allowed', () => record(late, 'income', donation, 100));
 await refusesWith('the category must be of the same kind', 'category_invalid', () => record(coordinator2, 'income', repair, 100));
 await refusesWith('an amount is at least one paisa', 'amount_invalid', () => record(coordinator2, 'income', donation, 0));
 await refusesWith('a date is not in the future', 'date_future', () => record(coordinator2, 'income', donation, 100, { date: '2099-01-01' }));
 await refusesWith('an expense over Rs 500 needs a bill', 'bill_required', () => record(coordinator2, 'expense', repair, 50001));
 const small = await record(coordinator2, 'expense', prasadam, 50000, { note: 'Sunday prasadam' });
 check('an expense of Rs 500 needs no bill and counts at once', (await entryOf(small)).status === 'approved' && (await balanceAs(coordinator)) === 950000);
-await refuses('a coordinator who is not treasurer cannot upload a bill', () => uploadBill(coordinator));
+await refusesWith('a coordinator who is not treasurer cannot upload a bill', 'new row violates row-level security policy for table "objects"', () => uploadBill(coordinator));
 const bill1 = await uploadBill(coordinator2);
 await refusesWith('a bill from someone else\'s folder is refused', 'bill_not_yours', () => record(guru, 'expense', repair, 150000, { bill: bill1 }));
 await refusesWith('a bill must be in Storage', 'bill_missing', () => record(coordinator2, 'expense', repair, 150000, { bill: `${coordinator2}/${'0'.repeat(8)}-0000-0000-0000-${'0'.repeat(12)}.jpg` }));
@@ -2660,7 +2695,7 @@ check('... the Guru is told', (await fundOutboxFor(guru, big)).some((r) => r.tit
   && /^An entry by .* needs your approval\.$/.test(r.body)));
 await refusesWith('the maker cannot approve their own entry', 'own_entry', () => asApp('authenticated', coordinator2,
   'select decide_fund_entry($1, true)', [big]));
-await refuses('a coordinator who is not treasurer cannot approve', () => asApp('authenticated', coordinator, 'select decide_fund_entry($1, true)', [big]));
+await refusesWith('a coordinator who is not treasurer cannot approve', 'not_allowed', () => asApp('authenticated', coordinator, 'select decide_fund_entry($1, true)', [big]));
 await asApp('authenticated', guru, 'select decide_fund_entry($1, true)', [big]);
 check('the Guru approves it; now it counts', (await entryOf(big)).status === 'approved' && (await entryOf(big)).decided_by === guru
   && (await balanceAs(guru)) === 550000);
@@ -2685,14 +2720,14 @@ await asApp('authenticated', coordinator2, 'select withdraw_fund_entry($1, $2)',
 check('the maker withdraws their own waiting entry', (await entryOf(typoEntry)).status === 'withdrawn');
 
 // Never deleted, never changed: reversed
-await refuses('the app cannot write the ledger directly, not even the Guru', () => asApp('authenticated', guru,
+await refusesWith('the app cannot write the ledger directly, not even the Guru', 'permission denied for table fund_entries', () => asApp('authenticated', guru,
   `insert into fund_entries (direction, category_id, on_date, amount_paise, status, created_by) values ('income', $1, current_date, 100, 'approved', auth.uid())`, [donation]));
 check('... nor change or delete it', (await asApp('authenticated', guru, 'update fund_entries set amount_paise = 1 where id = $1 returning id', [income]).catch(() => [])).length === 0
   && (await asApp('authenticated', guru, 'delete from fund_entries where id = $1 returning id', [income]).catch(() => [])).length === 0);
 await refusesWith('an entry is never deleted, not even in the dashboard', 'fund_entry_kept', () => asOwner(`delete from fund_entries where id = ${income}`));
 await refusesWith('... nor changed', 'fund_entry_frozen', () => asOwner(`update fund_entries set amount_paise = 1 where id = ${income}`));
 await refusesWith('a reversal needs a reason', 'reason_required', () => asApp('authenticated', coordinator2, 'select reverse_fund_entry($1, $2)', [repairEntry, ' ']));
-await refuses('a coordinator who is not treasurer cannot reverse', () => asApp('authenticated', coordinator, 'select reverse_fund_entry($1, $2)', [repairEntry, 'x']));
+await refusesWith('a coordinator who is not treasurer cannot reverse', 'not_allowed', () => asApp('authenticated', coordinator, 'select reverse_fund_entry($1, $2)', [repairEntry, 'x']));
 const [{ id: reversal }] = await asApp('authenticated', coordinator2, 'select reverse_fund_entry($1, $2) as id', [repairEntry, 'Drum maker refunded']);
 check('a small entry is reversed by a negative counter-entry that counts at once', (await asOwner(
   `select amount_paise::int as a, status, direction from fund_entries where id = ${reversal}`))[0].a === -150000 && (await balanceAs(guru)) === 400000);
@@ -2713,7 +2748,7 @@ check('a student sees no entry and a balance of 0', (await asApp('authenticated'
   && (await balanceAs(late)) === 0);
 check('anon sees no entry or category', (await asApp('anon', null, 'select id from fund_entries').catch(() => [])).length === 0
   && (await asApp('anon', null, 'select id from fund_categories').catch(() => [])).length === 0);
-await refuses('anon cannot run the fund functions', () => asApp('anon', null, 'select fund_balance()'));
+await refusesWith('anon cannot run the fund functions', 'permission denied for function fund_balance', () => asApp('anon', null, 'select fund_balance()'));
 check('fund changes go to the audit log', (await asOwner(`select count(*)::int as n from audit_log where table_name = 'fund_entries'`))[0].n >= 14);
 
 // The limits are settings (G10)
@@ -2733,7 +2768,7 @@ check('app roles cannot run the fund helpers', (await asOwner(`select
   or has_table_privilege('authenticated', 'fund_entries', 'insert')
   or has_table_privilege('anon', 'fund_categories', 'select') as ok`))[0].ok === false);
 await asApp('authenticated', guru, 'update profiles set is_treasurer = false where id = $1', [coordinator2]);
-await refuses('a former treasurer can no longer record', () => record(coordinator2, 'income', donation, 100));
+await refusesWith('a former treasurer can no longer record', 'not_allowed', () => record(coordinator2, 'income', donation, 100));
 
 // ---------------------------------------------------------------- security round (0025)
 // D1a-08: switched-off logins, a login without a profile, and the door tablet (kiosk).
@@ -2776,7 +2811,7 @@ check('... reads no student, guardian, consent or call', (await asApp('authentic
   && (await asApp('authenticated', kiosk, 'select id from guardians')).length === 0
   && (await asApp('authenticated', kiosk, 'select id from consents')).length === 0
   && (await asApp('authenticated', kiosk, 'select id from call_logs')).length === 0);
-await refuses('... and cannot register a student', () => register(kiosk, { p_full_name: 'Kiosk Kid', p_dob: '1990-01-01' }));
+await refusesWith('... and cannot register a student', 'not_allowed', () => register(kiosk, { p_full_name: 'Kiosk Kid', p_dob: '1990-01-01' }));
 
 // D1a-04: profile_id, qr_token and created_by are frozen for app users; links go through the functions.
 const stranger = await signUp('stranger.sec@example.com', true);
@@ -2800,7 +2835,7 @@ const laterLogin = await signUp('sec.later@example.com', true);
 await asApp('authenticated', coordinator, `update students set email = 'sec.later@example.com' where id = $1`, [unlinked.id]);
 check('saving an email on a record without a login still links a waiting login (0002)',
   (await linkOf('sec.later@example.com')) === laterLogin && (await roleOf(laterLogin)) === 'student');
-await refuses('a coordinator cannot unlink a login', () => asApp('authenticated', coordinator, 'select unlink_student_login($1)', [unlinked.id]));
+await refusesWith('a coordinator cannot unlink a login', 'not_allowed', () => asApp('authenticated', coordinator, 'select unlink_student_login($1)', [unlinked.id]));
 await asApp('authenticated', guru, 'select unlink_student_login($1)', [unlinked.id]);
 check('the Guru unlinks a login; it goes back to waiting', (await linkOf('sec.later@example.com')) === null && (await roleOf(laterLogin)) === 'pending');
 await asApp('authenticated', guru, 'select link_student_login($1, $2)', [laterLogin, unlinked.id]);
@@ -2870,7 +2905,7 @@ check('a registered minor\'s consent records the signed-form tick', (await asOwn
 await registerToken(minorLogin, 'ExponentPushToken[secminor]');
 await logCall(coordinator, { p_student: minor.id, p_outcome: 'not_reachable', p_reason: null, p_comment: 'Mother says Sec Minor Child is unwell' });
 await asApp('authenticated', coordinator, `select toggle_visit($1, 'manual')`, [minor.id]);
-await refuses('a coordinator cannot record a withdrawal', () => asApp('authenticated', coordinator, 'select withdraw_consent($1)', [minor.id]));
+await refusesWith('a coordinator cannot record a withdrawal', 'not_allowed', () => asApp('authenticated', coordinator, 'select withdraw_consent($1)', [minor.id]));
 const [{ r: withdrawn }] = await asApp('authenticated', guru, 'select withdraw_consent($1, $2) as r', [minor.id, 'mother, by phone']);
 check('the Guru records the withdrawal: consents revoked, login off', withdrawn.consents_revoked === 1 && withdrawn.login_switched_off === true
   && (await asOwner(`select active from profiles where id = '${minorLogin}'`))[0].active === false, JSON.stringify(withdrawn));
@@ -2889,7 +2924,7 @@ check('... nor read her record', (await asApp('authenticated', minorLogin, 'sele
 await refusesWith('a withdrawal is recorded once', 'already_withdrawn', () => asApp('authenticated', guru, 'select withdraw_consent($1)', [minor.id]));
 
 // D4-03: erasure. Afterwards nothing in any table, nor in audit_log, holds the child's data.
-await refuses('a coordinator cannot erase a student', () => asApp('authenticated', coordinator, `select erase_student($1, 'x')`, [minor.id]));
+await refusesWith('a coordinator cannot erase a student', 'not_allowed', () => asApp('authenticated', coordinator, `select erase_student($1, 'x')`, [minor.id]));
 await refusesWith('an erasure needs a reason', 'reason_required', () => asApp('authenticated', guru, `select erase_student($1, ' ')`, [minor.id]));
 const [{ qr_token: minorQr }] = await asOwner(`select qr_token from students where id = '${minor.id}'`);
 const [{ r: erased }] = await asApp('authenticated', guru, `select erase_student($1, 'parent asked', 'REQ-1') as r`, [minor.id]);
@@ -2995,7 +3030,7 @@ const unconfirmedPub = await signUp('pub.unconfirmed@example.com', false);
 await refusesWith('a login whose email is not confirmed cannot join', 'email_not_confirmed', () =>
   igJoin(unconfirmedPub, { year: 1990 }));
 await refusesWith('a student does not join (already reads as a student)', 'not_pending', () => igJoin(arjun, { year: 1990 }));
-await refuses('anon cannot join', () => asApp('anon', null, `select ig_join(1990, 'x')`));
+await refusesWith('anon cannot join', 'permission denied for function ig_join', () => asApp('anon', null, `select ig_join(1990, 'x')`));
 const pubAdult = await signUp('pub.adult@example.com', true);
 check('before joining, a public login reads no sloka and its state is none',
   (await igSlokas(pubAdult)).length === 0 && (await igState(pubAdult)).state === 'none');
@@ -3020,9 +3055,9 @@ check('a coordinator sees neither the subscriber\'s profile nor their ticks; the
   && (await asApp('authenticated', guru, 'select 1 from ig_memorised where profile_id = $1', [pubAdult])).length === 1);
 check('... while coordinators still see students\' ticks and profiles', (await asApp('authenticated', coordinator,
   'select 1 from profiles where id = $1', [arjun])).length === 1);
-await refuses('a subscriber cannot write its subscription row directly', () => asApp('authenticated', pubAdult,
+await refusesWith('a subscriber cannot write its subscription row directly', 'permission denied for table ig_subscribers', () => asApp('authenticated', pubAdult,
   `update ig_subscribers set blocked_at = null, minor = false where profile_id = auth.uid() returning 1`).then((r) => { if (r.length === 0) throw new Error('0 rows'); }));
-await refuses('a subscriber cannot make itself a student', () =>
+await refusesWith('a subscriber cannot make itself a student', 'not_own_role', () =>
   asApp('authenticated', pubAdult, `update profiles set role = 'student' where id = auth.uid()`));
 
 // A minor: parent's details, a code by email, nothing opens before it.
@@ -3035,7 +3070,7 @@ const minorState = await igJoin(pubMinor, { year: thisYear - 14, parent: '  Laks
 check('a minor joins as awaiting_parent and reads nothing yet', minorState.state === 'awaiting_parent'
   && minorState.parent_email === 'parent.of.minor@example.com' && minorState.parent_name === 'Lakshmi Devi'
   && (await igSlokas(pubMinor)).length === 0 && (await dayOf(pubMinor, null)) === null, JSON.stringify(minorState));
-await refuses('a minor waiting for the parent cannot write a note', () => note(pubMinor, pubSloka, 'x'));
+await refusesWith('a minor waiting for the parent cannot write a note', 'new row violates row-level security policy for table "ig_notes"', () => note(pubMinor, pubSloka, 'x'));
 await refusesWith('a minor cannot skip the parent by changing the year of birth', 'age_change_not_allowed', () =>
   igJoin(pubMinor, { year: 1990 }));
 const turning18 = await signUp('pub.turning18@example.com', true);
@@ -3064,7 +3099,7 @@ check('... to the parent\'s email only, through Brevo, with a 6-digit code', mai
   && mailedCode !== undefined, JSON.stringify(mail?.body?.to));
 check('... stored only as a hash the minor cannot read', !(await asOwner('select code_hash from ig_parent_codes'))
   .some((r) => r.code_hash.includes(mailedCode)) && (await igState(pubMinor)).code_sent_at !== null);
-await refuses('the minor cannot read the code table', () => asApp('authenticated', pubMinor, 'select * from ig_parent_codes'));
+await refusesWith('the minor cannot read the code table', 'permission denied for table ig_parent_codes', () => asApp('authenticated', pubMinor, 'select * from ig_parent_codes'));
 await refusesWith('a second code within a minute is refused', 'code_too_soon', () => sendCode(pubMinor));
 const confirm = async (userId, code) => (await asApp('authenticated', userId, 'select ig_confirm_parent($1) as r', [code]))[0].r;
 const wrongCode = mailedCode === '000000' ? '111111' : '000000';
@@ -3091,7 +3126,7 @@ await db.exec('drop schema net cascade; drop schema vault cascade;');
 // I15: the Guru's list, block / unblock, joins per week.
 await refusesWith('a coordinator cannot see the subscriber list', 'not_allowed', () => asApp('authenticated', coordinator, 'select * from ig_subscriber_list()'));
 await refusesWith('... nor block', 'not_allowed', () => asApp('authenticated', coordinator, 'select ig_block_subscriber($1, true)', [pubAdult]));
-await refuses('a subscriber cannot block itself or others', () => asApp('authenticated', pubMinor, 'select ig_block_subscriber($1, true)', [pubAdult]));
+await refusesWith('a subscriber cannot block itself or others', 'not_allowed', () => asApp('authenticated', pubMinor, 'select ig_block_subscriber($1, true)', [pubAdult]));
 const igList = await asApp('authenticated', guru, 'select * from ig_subscriber_list()');
 const adultRow = igList.find((r) => r.profile_id === pubAdult);
 check('the Guru lists the subscribers with their details and activity', igList.length === 4 && adultRow?.email === 'pub.adult@example.com'
@@ -3103,7 +3138,7 @@ await refusesWith('a block reason has at most 200 characters', 'reason_too_long'
 await asApp('authenticated', guru, 'select ig_block_subscriber($1, true, $2)', [pubAdult, 'Test block']);
 check('a blocked subscriber reads nothing; the state says blocked without the reason',
   (await igSlokas(pubAdult)).length === 0 && (await igState(pubAdult)).state === 'blocked' && !('block_reason' in (await igState(pubAdult))));
-await refuses('... and cannot write a note', () => note(pubAdult, samples[2].id, 'x'));
+await refusesWith('... and cannot write a note', 'new row violates row-level security policy for table "ig_notes"', () => note(pubAdult, samples[2].id, 'x'));
 await refusesWith('... nor join again', 'blocked', () => igJoin(pubAdult, { year: 1990 }));
 await asApp('authenticated', pubAdult, 'select ig_leave()');
 const [leftBlocked] = await asOwner(`select birth_year, phone, blocked_at from ig_subscribers where profile_id = '${pubAdult}'`);
@@ -3315,12 +3350,12 @@ check('a login taken off its record (dashboard) goes back to waiting, its phones
   && (await asOwner(`select count(*)::int as n from push_tokens where profile_id = '${relinkedLogin}'`))[0].n === 0);
 
 // D1b-05 (+D12a-12, D14-13): a posted file cannot be swapped by delete + upload under the same name.
-await refuses('0028: a file deleted while an announcement lists it cannot be uploaded again', () => upload(guru, guruExtra));
+await refusesWith('0028: a file deleted while an announcement lists it cannot be uploaded again', 'new row violates row-level security policy for table "objects"', () => upload(guru, guruExtra));
 const swap = await filePath(coordinator);
 await upload(coordinator, swap);
 const swapPost = await postWithFiles(coordinator, [entry(swap, 'Poster.jpg')]);
 check('... the uploader may still delete a posted file', await removeFile(coordinator, swap));
-await refuses('... but not put different content under its name', () => upload(coordinator, swap, 999));
+await refusesWith('... but not put different content under its name', 'new row violates row-level security policy for table "objects"', () => upload(coordinator, swap, 999));
 for (const [who, id] of [['the uploader', coordinator], ['another coordinator', coordinator2], ['the Guru', guru]]) {
   check(`${who} cannot replace a posted file in place (0 rows)`, (await asApp('authenticated', id,
     `update storage.objects set metadata = '{"size": 1}' where bucket_id = 'announcement-files' and name = $1 returning name`, [photo])).length === 0);
@@ -3553,7 +3588,7 @@ await refusesWith('0033: an unknown zone is refused', 'time_zone_invalid', () =>
   asOwner(`update centres set time_zone = 'Mars/Olympus_Mons' where id = 1`));
 await refusesWith('0033: a country is two capital letters', 'country_invalid', () =>
   asOwner(`update centres set country_code = 'usa' where id = 1`));
-await refuses('0033: a coordinator cannot change a centre\'s zone', async () => {
+await refusesWith('0033: a coordinator cannot change a centre\'s zone', 'no row changed (row-level security)', async () => {
   const rows = await asApp('authenticated', coordinator, `update centres set time_zone = 'Europe/London' where id = 1 returning id`);
   if (rows.length === 0) throw new Error('no row changed (row-level security)');
 });
@@ -3625,7 +3660,7 @@ const [usd] = await asOwner(`insert into fund_entries (direction, category_id, o
 const [{ id: usdReversal }] = await asApp('authenticated', guru, 'select reverse_fund_entry($1, $2) as id', [usd.id, 'Typed in the wrong fund']);
 check('0033: a reversal takes the currency of the entry it undoes', (await asOwner(
   `select currency from fund_entries where id = ${usdReversal}`))[0].currency === 'USD');
-await refuses('0033: a currency is an ISO 4217 code', () => asOwner(`insert into fund_entries
+await refusesWith('0033: a currency is an ISO 4217 code', 'new row for relation "fund_entries" violates check constraint "fund_entries_currency_check"', () => asOwner(`insert into fund_entries
   (direction, category_id, on_date, amount_paise, status, created_by, currency)
   values ('income', (select id from fund_categories where direction = 'income' order by id limit 1), current_date, 500, 'approved', '${guru}', 'rupees')`));
 check('0033: the helpers with a person\'s id are not callable by app roles', (await asOwner(`select
@@ -3638,18 +3673,348 @@ check('0033: the helpers with a person\'s id are not callable by app roles', (aw
 await asOwner(`delete from visits where student_id in ('${nyStudent}', '${nyStudent2}')`);
 await asOwner(`delete from students where id in ('${nyStudent}', '${nyStudent2}')`);
 
+// ================================================================ test net (audit brief 12)
+// Checks that walk the whole schema, so a new table, view, policy or function is covered without
+// writing a new check for it. Each names the audit finding it closes. Kept in one block, apart
+// from the per-migration sections above.
+
+{ // one block scope, so its names cannot clash with the sections above
+  /**
+   * Runs `sql` as an app user inside a transaction that is always rolled back, so nothing it does is
+   * kept (the rollback also undoes the role and the sign-in). Returns { rows } with the number of
+   * rows the statement returned, or { error } with the refusal message.
+   */
+  async function tryAs(role, userId, sql, params) {
+    await db.exec('begin');
+    try {
+      await db.query(`select set_config('request.jwt.claim.sub', $1, false)`, [userId ?? '']);
+      await db.exec(`set role ${role}`);
+      return { rows: (await db.query(sql, params)).rows.length };
+    } catch (error) {
+      return { error: error.message };
+    } finally {
+      await db.exec('rollback');
+    }
+  }
+  /**
+   * How many rows a write got past the policies: the rows it changed, or 1 when only a foreign key
+   * stopped it (the policy let it through; another table's rows happened to hang on it).
+   */
+  const passedPolicy = (r) => r.rows ?? (/violates (foreign key constraint|RESTRICT setting)/.test(r.error) ? 1 : 0);
+  /** Rows of `sql` that `userId` (signed in) can see; a refused read counts as none. */
+  const rowsAs = async (userId, sql) => (await tryAs('authenticated', userId, sql)).rows ?? 0;
+  const tn = { student: arjun, studentId: await studentIdOf(arjun), pending: stranger, coordinator, guru };
+  check('test net: the people it uses still have their roles', (await roleOf(tn.student)) === 'student'
+    && (await roleOf(tn.pending)) === 'pending' && (await roleOf(tn.coordinator)) === 'coordinator' && (await roleOf(tn.guru)) === 'guru');
+  { // tryAs leaves nothing behind
+    await tryAs('authenticated', tn.coordinator, 'select 1/0');
+    const [s] = await asOwner(`select current_user as u, coalesce(current_setting('request.jwt.claim.sub', true), '') as sub`);
+    check('test net: a rolled-back try leaves the owner signed out', s.sub === '' && s.u !== 'authenticated', JSON.stringify(s));
+  }
+
+  // D14-01: parents' contact data, consent records and the audit log stay with staff (guardians,
+  // consents) or the Guru (audit_log).
+  for (const rel of ['guardians', 'consents', 'audit_log']) {
+    const [{ n: total }] = await asOwner(`select count(*)::int as n from ${rel}`);
+    const seen = {};
+    for (const who of ['student', 'pending', 'coordinator', 'guru']) seen[who] = await rowsAs(tn[who], `select 1 from ${rel}`);
+    check(`D14-01: a student and a pending login read no ${rel} row`, total > 0 && seen.student === 0 && seen.pending === 0,
+      `${total} rows; ${JSON.stringify(seen)}`);
+    if (rel === 'audit_log') {
+      check('D14-01: a coordinator reads no audit_log row; the Guru reads them all', seen.coordinator === 0 && seen.guru === total,
+        `${total} rows; ${JSON.stringify(seen)}`);
+    } else {
+      check(`D14-01: staff read every ${rel} row (the rule the others are kept out by)`, seen.coordinator === total && seen.guru === total,
+        `${total} rows; ${JSON.stringify(seen)}`);
+    }
+  }
+
+  // D14-03 / D12a-18: the function sweep. anon may run no function of ours, signed-in people only
+  // the ones on this list. A new function that the app calls goes on the list in the same change
+  // (and is revoked from anon); an internal one is revoked from authenticated too (CONTRIBUTING.md).
+  const ANON_MAY_RUN = [];
+  const SIGNED_IN_MAY_RUN = [
+    'announcement_file_deletable(text)', 'announcement_file_path_ok(text)', 'announcement_file_readable(text)',
+    'announcement_file_uploadable(text)', 'assessment_clean_file(jsonb,text[],boolean)', 'assessment_clean_link(text)',
+    'assessment_file_deletable(text)', 'assessment_file_kind(text)', 'assessment_file_readable(text)',
+    'assessment_file_uploadable(text)', 'audience_profiles(text,smallint,bigint,uuid)',
+    'check_inventory_item(bigint,text,text)', 'check_out_all(smallint)', 'class_report(date,date,uuid)',
+    'clean_audience(text,smallint,bigint)', 'coordinator_dashboard()', 'decide_fund_entry(bigint,boolean,text)',
+    'decide_material_suggestion(bigint,boolean,text)', 'decide_promotion(bigint,text,text,date)',
+    'delete_practice(bigint)', 'erase_student(uuid,text,text)', 'event_counts(bigint[])', 'event_people_list(bigint)',
+    'event_student_list(bigint,boolean)', 'event_visible_to(bigint,uuid)', 'fund_balance()',
+    'fund_bill_deletable(text)', 'fund_bill_readable(text)', 'fund_bill_uploadable(text)',
+    'give_promotion_feedback(bigint,text,text)', 'guru_dashboard()', 'has_class_role()', 'ig_audio_path_ok(text)',
+    'ig_audio_readable(text)', 'ig_audio_uploadable(text)', 'ig_block_subscriber(uuid,boolean,text)',
+    'ig_confirm_parent(text)', 'ig_join(integer,text,boolean,text,text,text,text)', 'ig_leave()', 'ig_my_state()',
+    'ig_reader()', 'ig_send_parent_code()', 'ig_sloka_of_day(date)', 'ig_subscriber_list()',
+    'ig_subscriber_weeks(integer)', 'import_students(jsonb)', 'inbox_unread_count()', 'is_fund_keeper()', 'is_guru()',
+    'is_ig_editor()', 'is_minor(students)', 'is_public_subscriber(uuid)', 'is_staff()', 'is_treasurer()',
+    'issue_inventory_item(bigint,uuid,uuid,text,text,date)', 'link_student_login(uuid,uuid)',
+    'log_call(uuid,call_outcome,text,text,date)',
+    'log_practice(integer,text,date,timestamp with time zone,bigint,text)', 'mark_assessment_seen(bigint)',
+    'mark_event_attendance(bigint,uuid[])', 'mark_notifications_read(bigint[])', 'mark_visit(uuid,text,text,jsonb)',
+    'material_file_deletable(text)', 'material_file_readable(text)', 'material_file_uploadable(text)',
+    'move_syllabus_item(bigint,boolean)', 'my_role()', 'my_student_id()', 'next_level(smallint)',
+    'nominate_for_promotion(uuid,text,uuid[])', 'poll_is_closed(timestamp with time zone,timestamp with time zone)',
+    'poll_state(bigint[])', 'poll_voters(bigint)', 'practice_weeks(uuid,integer)', 'promotion_criteria(uuid)',
+    'promotion_home()', 'promotion_ready_students()', 'reassign_mentees(uuid[],uuid)',
+    'record_fund_entry(text,smallint,date,bigint,text,text,text,text,text)', 'register_push_token(text,text)',
+    'register_student(text,date,text,text,text,text,smallint,uuid,text,text,text,text,text,boolean,boolean,uuid)',
+    'release_assessment(bigint,uuid[],date,text)', 'remind_assessment(bigint[])', 'remind_event(bigint)',
+    'remind_poll(bigint)', 'return_inventory_item(bigint,text,text)', 'reverse_fund_entry(bigint,text)',
+    'review_submission(bigint,integer[],text,text,boolean,jsonb)', 'rsvp_event(bigint,text)',
+    'save_duty_shift(bigint,smallint,date,time without time zone,time without time zone,text,uuid[],integer)',
+    'save_settings(jsonb)', 'scan_qr(uuid,text,jsonb)', 'set_event_performers(bigint,jsonb)',
+    'set_theme_slokas(bigint,bigint[])', 'setting_int(text)', 'staff_name_taken(uuid,text)', 'staff_names()',
+    'student_home()', 'submit_assessment(bigint,jsonb,text,text)', 'syllabus_item_counts()', 'today_ist()',
+    'toggle_visit(uuid,visit_method,text,jsonb)', 'unlink_student_login(uuid)', 'video_link_ok(text)',
+    'vote_poll(bigint,integer)', 'week_start_ist()', 'withdraw_consent(uuid,text)', 'withdraw_fund_entry(bigint,text)',
+    'withdraw_nomination(bigint)', 'youtube_link_ok(text)',
+    // 0033: a centre's own time zone and formats
+    'centre_today(integer)', 'centre_tz(integer)', 'local_day(timestamp with time zone,integer)', 'my_centre_locale()', 'my_time_zone()',
+  ];
+  const runnableBy = async (role) => (await asOwner(`select p.oid::regprocedure::text as f from pg_proc p
+    where p.pronamespace = 'public'::regnamespace
+      and not exists (select 1 from pg_depend d where d.classid = 'pg_proc'::regclass and d.objid = p.oid and d.deptype = 'e')
+      and has_function_privilege('${role}', p.oid, 'execute') order by 1`)).map((r) => r.f);
+  const diffList = (got, allowed) => {
+    const extra = got.filter((f) => !allowed.includes(f));
+    const missing = allowed.filter((f) => !got.includes(f));
+    return { ok: extra.length === 0 && missing.length === 0, detail: `open but not on the list: ${extra.join(' ') || '-'}; on the list but closed or gone: ${missing.join(' ') || '-'}` };
+  };
+  const anonRuns = diffList(await runnableBy('anon'), ANON_MAY_RUN);
+  check('D14-03: anon may run exactly the functions on its allow-list (none), trigger functions included', anonRuns.ok, anonRuns.detail);
+  // 0001's trigger functions were never revoked from authenticated. Harmless: Postgres refuses to
+  // call a trigger function directly (checked below). A later migration may revoke them; then
+  // delete this list.
+  const OLD_TRIGGER_FUNCTIONS = ['assign_roll_no()', 'audit_row()', 'guard_profile_update()', 'guard_student_update()',
+    'handle_user_confirmed()', 'link_student_email()'];
+  const signedInRuns = diffList(await runnableBy('authenticated'), [...SIGNED_IN_MAY_RUN, ...OLD_TRIGGER_FUNCTIONS]);
+  check('D14-03: signed-in people may run exactly the functions on the allow-list, trigger functions included', signedInRuns.ok, signedInRuns.detail);
+  const directTrigger = await tryAs('authenticated', tn.student, 'select audit_row()');
+  check('D14-03: ... and a trigger function cannot be called directly', directTrigger.error === 'trigger functions can only be called as triggers',
+    directTrigger.error ?? 'was allowed');
+  const definerNoPath = await asOwner(`select p.oid::regprocedure::text as f from pg_proc p
+    where p.pronamespace = 'public'::regnamespace and p.prosecdef
+      and not exists (select 1 from unnest(coalesce(p.proconfig, '{}')) c where c like 'search_path=%')`);
+  check('D14-03: every security definer function fixes its search_path', definerNoPath.length === 0, definerNoPath.map((r) => r.f).join(' '));
+  const noRls = await asOwner(`select relname from pg_class where relnamespace = 'public'::regnamespace
+    and relkind in ('r', 'p') and not relrowsecurity order by 1`);
+  check('D14-03: every public table has row-level security on', noRls.length === 0, noRls.map((r) => r.relname).join(' '));
+  const definerViews = await asOwner(`select relname from pg_class where relnamespace = 'public'::regnamespace and relkind = 'v'
+    and not coalesce('security_invoker=true' = any (reloptions), false) order by 1`);
+  check('D14-03: every public view runs with the reader\'s rights (security_invoker)', definerViews.length === 0,
+    definerViews.map((r) => r.relname).join(' '));
+  { // D12a-18: the role helpers the policies stand on, for a switched-off coordinator (active = false).
+    const helpers = `select my_role()::text as role, is_staff() as staff, is_guru() as guru, has_class_role() as cls`;
+    const offId = await signUp('switched.off.tn@example.com', true);
+    await asApp('authenticated', tn.guru, `update profiles set role = 'coordinator' where id = $1`, [offId]);
+    const on = (await asApp('authenticated', offId, helpers))[0];
+    await asApp('authenticated', tn.guru, `update profiles set active = false where id = $1`, [offId]);
+    const off = (await asApp('authenticated', offId, helpers))[0];
+    check('D12a-18: (control) an active coordinator is staff', on.role === 'coordinator' && on.staff === true && on.guru === false, JSON.stringify(on));
+    check('D12a-18: switched off, my_role() is null and every helper says no', off.role === null && off.staff === false
+      && off.guru === false && off.cls === false, JSON.stringify(off));
+    check('D12a-18: ... so the switched-off login reads no student and no settings',
+      (await rowsAs(offId, 'select 1 from students')) === 0 && (await rowsAs(offId, 'select 1 from settings')) === 0);
+  }
+
+  // D14-06: student-side isolation. For every table and view with a student_id or profile_id column,
+  // a student sees only their own rows and changes none of anybody else's. A table or view whose
+  // other people's rows a student may see on purpose is listed here with the reason.
+  const STUDENT_MAY_SEE_OTHERS = {}; // none today: replies are private, rosters and votes are staff-only
+  // Rows of other people in the two tables the earlier sections leave without any.
+  await asOwner(`insert into practice_logs (student_id, practised_on, minutes, source) values ('${child.id}', today_ist(), 20, 'manual')`);
+  await asOwner(`insert into announcement_reads (announcement_id, profile_id)
+    select id, '${tn.coordinator}' from announcements order by id limit 1 on conflict do nothing`);
+  const linkedCols = await asOwner(`select c.table_name as rel, c.column_name as col, t.table_type as kind
+    from information_schema.columns c join information_schema.tables t on t.table_schema = c.table_schema and t.table_name = c.table_name
+    where c.table_schema = 'public' and c.column_name in ('student_id', 'profile_id') order by 1, 2`);
+  const others = (col) => (col === 'student_id' ? `student_id is distinct from '${tn.studentId}'` : `profile_id is distinct from '${tn.student}'`);
+  const leaks = [];
+  const writes = [];
+  const withOthers = [];
+  for (const { rel, col, kind } of linkedCols) {
+    const [{ n }] = await asOwner(`select count(*)::int as n from public.${rel} where ${others(col)}`);
+    if (n > 0) withOthers.push(rel);
+    if (!STUDENT_MAY_SEE_OTHERS[`${rel}.${col}`]) {
+      const seen = await rowsAs(tn.student, `select 1 from public.${rel} where ${others(col)}`);
+      if (seen > 0) leaks.push(`${rel}.${col}:${seen}/${n}`);
+    }
+    if (kind !== 'BASE TABLE') continue;
+    for (const sql of [`update public.${rel} set ${col} = ${col} where ${others(col)} returning 1`,
+      `delete from public.${rel} where ${others(col)} returning 1`]) {
+      const r = await tryAs('authenticated', tn.student, sql);
+      if (passedPolicy(r) > 0) writes.push(`${sql.split(' ')[0]} ${rel}.${col}:${passedPolicy(r)}`);
+    }
+  }
+  check(`D14-06: a student sees no one else's row in the ${linkedCols.length} student-linked columns`, leaks.length === 0, leaks.join(' '));
+  check('D14-06: ... and can change or delete none of them', writes.length === 0, writes.join(' '));
+  const mustHaveOthers = ['visits', 'follow_up_tasks', 'status_history', 'announcement_reads', 'group_members', 'call_logs',
+    'guardians', 'consents', 'student_progress', 'practice_logs', 'assessment_assignments', 'notifications'];
+  const noOthers = mustHaveOthers.filter((rel) => !withOthers.includes(rel));
+  check('D14-06: (control) other students\' rows exist in the tables the loop must hide', noOthers.length === 0, `empty: ${noOthers.join(' ')}`);
+
+  // D14-07: write-side policies. The sweep tries a no-op UPDATE and a DELETE on every table as each
+  // role, in a transaction that is rolled back, and counts the rows the database let through.
+  const baseTables = (await asOwner(`select c.relname as rel,
+      (select a.attname from pg_attribute a where a.attrelid = c.oid and a.attnum > 0 and not a.attisdropped
+         and a.attidentity = '' and a.attgenerated = '' order by a.attnum limit 1) as col,
+      exists (select 1 from pg_attribute a where a.attrelid = c.oid and a.attname = 'profile_id') as has_profile,
+      exists (select 1 from pg_attribute a where a.attrelid = c.oid and a.attname = 'student_id') as has_student
+    from pg_class c where c.relnamespace = 'public'::regnamespace and c.relkind in ('r', 'p') order by 1`));
+  /** The rows `userId` could UPDATE (no-op) and DELETE in each table, leaving out their own rows. */
+  async function writableBy(userId, onlyTables = null) {
+    const hits = [];
+    for (const { rel, col, has_profile: hasProfile } of baseTables) {
+      if (onlyTables && !onlyTables.includes(rel)) continue;
+      const notOwn = rel === 'profiles' ? `id <> '${userId}'` : hasProfile ? `profile_id is distinct from '${userId}'` : 'true';
+      for (const sql of [`update public.${rel} set ${col} = ${col} where ${notOwn} returning 1`, `delete from public.${rel} where ${notOwn} returning 1`]) {
+        const r = await tryAs('authenticated', userId, sql);
+        if (passedPolicy(r) > 0) hits.push(`${sql.split(' ')[0]} ${rel}:${passedPolicy(r)}`);
+      }
+    }
+    return hits;
+  }
+  const pendingWrites = await writableBy(tn.pending);
+  check(`D14-07: a pending login changes or deletes no row in any of the ${baseTables.length} tables (own profile aside)`,
+    pendingWrites.length === 0, pendingWrites.join(' '));
+  const studentWrites = await writableBy(tn.student);
+  check('D14-07: a student changes or deletes no row in any table (own profile, tokens and Ishtagoshti rows aside)',
+    studentWrites.length === 0, studentWrites.join(' '));
+  // Tables whose every write policy asks for the Guru (or an Ishtagoshti editor); profiles: only
+  // your own, or the Guru. A coordinator changes nothing in them.
+  const GURU_ONLY = ['settings', 'syllabus_items', 'level_history', 'levels', 'centres', 'taals', 'inventory_items', 'fund_categories',
+    'duty_shifts', 'duty_assignments', 'assessments', 'audit_log', 'profiles', 'status_history', 'call_logs', 'fund_entries',
+    'poll_votes', 'event_rsvps', 'promotion_nominations', 'promotion_feedback', 'push_queue', 'push_outbox'];
+  const coordinatorWrites = await writableBy(tn.coordinator, GURU_ONLY);
+  check('D14-07: a coordinator changes or deletes nothing in the Guru-only tables (settings, syllabus, levels, roster, ...)',
+    coordinatorWrites.length === 0, coordinatorWrites.join(' '));
+  const coordDeletes = [];
+  for (const rel of ['students', 'consents', 'announcement_replies', 'materials']) {
+    const r = await tryAs('authenticated', tn.coordinator, `delete from public.${rel} where ${rel === 'materials' ? `uploaded_by is distinct from '${tn.coordinator}'` : 'true'} returning 1`);
+    if (passedPolicy(r) > 0) coordDeletes.push(`${rel}:${passedPolicy(r)}`);
+  }
+  check('D14-07: a coordinator deletes no student, consent, reply or approved material (Guru only)', coordDeletes.length === 0, coordDeletes.join(' '));
+  // The positive side: the role a policy is written for can still write (a no-op update, rolled back).
+  const positive = [];
+  for (const [who, rels] of [['guru', ['settings', 'syllabus_items', 'levels', 'centres', 'taals', 'fund_categories', 'students', 'profiles', 'materials']],
+    ['coordinator', ['students', 'guardians', 'consents', 'follow_up_tasks', 'student_progress', 'visits', 'groups', 'group_members']]]) {
+    for (const rel of rels) {
+      const { col } = baseTables.find((t) => t.rel === rel);
+      const r = await tryAs('authenticated', tn[who], `update public.${rel} set ${col} = ${col} returning 1`);
+      if (!(r.rows > 0)) positive.push(`${who} ${rel}: ${r.error ?? '0 rows'}`);
+    }
+  }
+  check('D14-07: (control) the Guru and staff can still write where their policies allow', positive.length === 0, positive.join(' | '));
+  // Inserts are not swept (every table needs its own columns): the ones the audit named, by hand.
+  const childId = child.id;
+  for (const [name, who, sql, msg] of [
+    ['a student cannot write their own level history', 'student', `insert into level_history (student_id, from_level, to_level) values ('${tn.studentId}', 1, 2)`, 'new row violates row-level security policy for table "level_history"'],
+    ['a coordinator cannot write level history either (Guru only)', 'coordinator', `insert into level_history (student_id, from_level, to_level) values ('${tn.studentId}', 1, 2)`, 'new row violates row-level security policy for table "level_history"'],
+    ['a coordinator cannot add a level (Guru only)', 'coordinator', `insert into levels (id, name, sort) values (9, 'TN Probe', 9)`, 'new row violates row-level security policy for table "levels"'],
+    ['a student cannot add a guardian', 'student', `insert into guardians (student_id, full_name) values ('${childId}', 'Not A Parent')`, 'new row violates row-level security policy for table "guardians"'],
+    ['a student cannot add a consent', 'student', `insert into consents (student_id, scope, signed_form) values ('${tn.studentId}', 'photo', true)`, 'new row violates row-level security policy for table "consents"'],
+    ['a student cannot give themselves a follow-up task', 'student', `insert into follow_up_tasks (student_id, kind, due_on) values ('${tn.studentId}', 'call', today_ist())`, 'new row violates row-level security policy for table "follow_up_tasks"'],
+    ['a pending login cannot add a student', 'pending', `insert into students (full_name, dob) values ('Pending Adds', '1990-01-01')`, 'new row violates row-level security policy for table "students"'],
+  ]) {
+    const r = await tryAs('authenticated', tn[who], sql);
+    check(`D14-07: ${name}`, r.error === msg, r.error ?? `was allowed (${r.rows})`);
+  }
+
+  // D14-08: the roll number is frozen, a status change leaves one history row, an edit one audit row
+  // naming who made it.
+  const tnStudent = await r10Student('TN Trigger Probe');
+  await refusesWith('D14-08: a coordinator cannot change a roll number', 'roll_no is frozen once issued', () =>
+    asApp('authenticated', tn.coordinator, `update students set roll_no = 'MS-2026-9999' where id = $1`, [tnStudent]));
+  await refusesWith('D14-08: ... nor can the dashboard', 'roll_no is frozen once issued', () =>
+    asOwner(`update students set roll_no = 'MS-2026-9999' where id = '${tnStudent}'`));
+  const auditCount = async (table, rowId) => (await asOwner(`select count(*)::int as n from audit_log
+    where table_name = '${table}' and row_id = '${rowId}' and action = 'UPDATE' and changed_by = '${tn.coordinator}'`))[0].n;
+  await asApp('authenticated', tn.coordinator, `update students set status = 'active' where id = $1`, [tnStudent]);
+  const tnHistory = await asOwner(`select from_status::text as f, to_status::text as t, changed_by from status_history where student_id = '${tnStudent}'`);
+  check('D14-08: new -> active writes one status_history row naming the coordinator', tnHistory.length === 1
+    && tnHistory[0].f === 'new' && tnHistory[0].t === 'active' && tnHistory[0].changed_by === tn.coordinator, JSON.stringify(tnHistory));
+  check('D14-08: ... and one audit_log row for the student, by the coordinator', (await auditCount('students', tnStudent)) === 1);
+  await asApp('authenticated', tn.coordinator, `update students set area = 'Koti' where id = $1`, [tnStudent]);
+  check('D14-08: an edit with no status change adds an audit row and no history row', (await auditCount('students', tnStudent)) === 2
+    && (await asOwner(`select count(*)::int as n from status_history where student_id = '${tnStudent}'`))[0].n === 1);
+  await asApp('authenticated', tn.coordinator, `update profiles set language = 'hi' where id = $1`, [tn.coordinator]);
+  check('D14-08: a profile edit is audited with who made it', (await auditCount('profiles', tn.coordinator)) >= 1);
+  const tnCall = await logCall(tn.coordinator, { p_student: tnStudent, p_outcome: 'not_reachable', p_reason: null, p_comment: 'Test net call' });
+  const [{ n: callAudit }] = await asOwner(`select count(*)::int as n from audit_log where table_name = 'call_logs'
+    and row_id = '${tnCall}' and action = 'INSERT' and changed_by = '${tn.coordinator}'`);
+  check('D14-08: a logged call is audited with who logged it', callAudit === 1, String(callAudit));
+  await asOwner(`delete from students where id = '${tnStudent}'`);
+
+  // D14-05: the two daily jobs on fixed cases (replaces the old "daily jobs run" check, which could
+  // not fail). irregular_days = 14 and inactive_days = 30 (seed); the D5-01 / D5-16 checks above
+  // cover the ended pause and the escalation.
+  const tnVisitAgo = (id, days) => asOwner(`insert into visits (student_id, check_in, check_out, method)
+    values ('${id}', ((today_ist() - ${days}) + time '17:00') at time zone 'Asia/Kolkata',
+            ((today_ist() - ${days}) + time '18:00') at time zone 'Asia/Kolkata', 'manual')`);
+  const tnCases = {};
+  for (const [name, status, days] of [['13', 'active', 13], ['14', 'active', 14], ['29', 'irregular', 29], ['30', 'irregular', 30]]) {
+    tnCases[name] = await r10Student(`TN Daily ${name}`, { status: `'${status}'` });
+    await tnVisitAgo(tnCases[name], days);
+  }
+  await asOwner(`insert into follow_up_tasks (student_id, assignee_id, kind, due_on) values ('${tnCases['30']}', '${tn.coordinator}', 'call', today_ist())`);
+  tnCases.open = await r10Student('TN Daily Open Visit', { status: `'active'` });
+  tnCases.late = await r10Student('TN Daily Late Visit', { status: `'active'` });
+  const [tnOpen] = await asOwner(`insert into visits (student_id, check_in, method, centre_id)
+    values ('${tnCases.open}', ((today_ist() - 1) + time '16:00') at time zone 'Asia/Kolkata', 'manual', 1) returning id`);
+  const [tnLate] = await asOwner(`insert into visits (student_id, check_in, method, centre_id)
+    values ('${tnCases.late}', ((today_ist() - 2) + time '20:30') at time zone 'Asia/Kolkata', 'manual', 1) returning id`);
+  await asOwner('select refresh_student_statuses()');
+  await asOwner('select close_open_visits()');
+  const tnStatus = async (k) => (await statusOf(tnCases[k])).status;
+  check('D14-05: last visit 13 days ago stays Active', (await tnStatus('13')) === 'active', await tnStatus('13'));
+  check('D14-05: 14 days ago turns Irregular', (await tnStatus('14')) === 'irregular', await tnStatus('14'));
+  const tnTasks14 = await openTasksOf(tnCases['14']);
+  check('D14-05: ... with one call task for the mentor, due after call_due_days', tnTasks14.length === 1 && tnTasks14[0].kind === 'call'
+    && tnTasks14[0].assignee_id === tn.coordinator && tnTasks14[0].due_on === (await asOwner(
+      `select (today_ist() + setting_int('call_due_days'))::text as d`))[0].d, JSON.stringify(tnTasks14));
+  check('D14-05: Active at 13 days gets no task', (await openTasksOf(tnCases['13'])).length === 0);
+  check('D14-05: Irregular, 29 days ago stays Irregular', (await tnStatus('29')) === 'irregular', await tnStatus('29'));
+  check('D14-05: 30 days ago turns Inactive', (await tnStatus('30')) === 'inactive', await tnStatus('30'));
+  check('D14-05: ... and its due task is escalated to the Guru', (await openTasksOf(tnCases['30']))[0]?.escalated === true);
+  const tnClosed = (await asOwner(`select v.id,
+      v.check_out = ((v.check_in at time zone 'Asia/Kolkata')::date + c.closes_at) at time zone 'Asia/Kolkata' as at_closing,
+      v.check_out = v.check_in + interval '1 minute' as one_minute
+    from visits v join centres c on c.id = v.centre_id where v.id in ('${tnOpen.id}', '${tnLate.id}')`));
+  const tnVisit = (id) => tnClosed.find((r) => r.id === id) ?? {};
+  check('D14-05: a visit left open yesterday is closed at the centre\'s closing time', tnVisit(tnOpen.id).at_closing === true, JSON.stringify(tnClosed));
+  check('D14-05: a check-in after closing time is closed one minute later', tnVisit(tnLate.id).one_minute === true, JSON.stringify(tnClosed));
+  check('D14-05: no visit is left open after the night job', (await asOwner(`select count(*)::int as n from visits v join centres c on c.id = v.centre_id
+    where v.check_out is null and v.check_in < (today_ist() + time '00:00') at time zone 'Asia/Kolkata'`))[0].n === 0);
+  await asOwner(`delete from students where id in (${Object.values(tnCases).map((id) => `'${id}'`).join(', ')})`);
+
+  // D14-12: pg_cron is imitated, so a scheduled command is never run here. At least every job must
+  // have a five-field schedule and call a function that exists (EXPLAIN plans it without running it).
+  const cronJobs = await asOwner('select jobname, schedule, command from cron.job order by jobname');
+  const badJobs = [];
+  for (const { jobname, schedule, command } of cronJobs) {
+    if (!/^(\S+\s+){4}\S+$/.test(schedule)) badJobs.push(`${jobname}: schedule '${schedule}'`);
+    try { await asOwner(`explain ${command}`); } catch (e) { badJobs.push(`${jobname}: ${e.message}`); }
+  }
+  check(`D14-12: the ${cronJobs.length} pg_cron jobs have a valid schedule and call existing functions`, cronJobs.length >= 7 && badJobs.length === 0,
+    badJobs.join(' | ') || cronJobs.map((j) => j.jobname).join(' '));
+}
+// ================================================================ end of test net (audit brief 12)
+
 // ---------------------------------------------------------------- row-level security
 const seen =await asApp('authenticated', arjun, 'select full_name from students');
 check('student sees only their own student record', seen.length === 1 && seen[0].full_name === 'Arjun Rao');
 check('student sees only their own profile',
   (await asApp('authenticated', arjun, 'select id from profiles')).length === 1);
 // 0025: anon has no table rights at all, so it is refused before row-level security is asked.
-await refuses('anon cannot read students', () => asApp('anon', null, 'select id from students'));
+await refusesWith('anon cannot read students', 'permission denied for table students', () => asApp('anon', null, 'select id from students'));
 
-// ---------------------------------------------------------------- daily jobs
-await asOwner('select refresh_student_statuses()');
-await asOwner('select close_open_visits()');
-check('daily jobs run as the owner (pg_cron)', true);
-
-console.log(failures ? `\n${failures} check(s) FAILED` : '\nAll checks passed');
+const ran = passes + failures;
+if (ran !== EXPECTED_CHECKS) {
+  console.log(`\nFAIL  ${ran} checks ran, ${EXPECTED_CHECKS} expected: a block was skipped or checks were added (set EXPECTED_CHECKS)`);
+  failures++;
+}
+console.log(failures ? `\n${failures} check(s) FAILED (${passes}/${ran} passed)` : `\nAll ${passes}/${EXPECTED_CHECKS} checks passed`);
 process.exit(failures ? 1 : 0);

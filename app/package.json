@@ -65,7 +65,11 @@
     "export:web": "node ./scripts/export-web.mjs",
     "update:preview": "node ./scripts/publish-update.mjs preview",
     "update:production": "node ./scripts/publish-update.mjs production",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/*.test.mjs"
+  },
+  "engines": {
+    "node": "^22.18.0 || ^24.3.0 || >=25.0.0"
   },
   "private": true
 }

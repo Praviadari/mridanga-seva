@@ -1,0 +1,50 @@
+# Dependabot opens pull requests for outdated or vulnerable packages (audit D11-16). CI checks each
+# one; a maintainer reviews and merges by hand. Never auto-merge: an app package can change the
+# APK fingerprint (docs/OPERATIONS.md "Dependabot"). Expo packages are updated with
+# `npx expo install --fix` for an SDK upgrade, so their major versions are left to that.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /app
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      app-minor-and-patch:
+        update-types: [minor, patch]
+    ignore:
+      - dependency-name: "expo*"
+        update-types: [version-update:semver-major]
+      - dependency-name: "react-native*"
+        update-types: [version-update:semver-major, version-update:semver-minor]
+      - dependency-name: "react"
+        update-types: [version-update:semver-major, version-update:semver-minor]
+      - dependency-name: "react-dom"
+        update-types: [version-update:semver-major, version-update:semver-minor]
+
+  - package-ecosystem: npm
+    directory: /supabase/tests
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      db-tests-minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /website
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      website-minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        update-types: [minor, patch]

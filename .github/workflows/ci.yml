@@ -1,0 +1,82 @@
+# Checks every pull request and every push to main (audit brief 12, docs/OPERATIONS.md "CI").
+# Needs no secrets: the database tests run on an in-memory Postgres (PGlite), the app checks
+# read only the code. Actions are pinned by commit SHA (the tag in the comment); Dependabot
+# proposes updates monthly (.github/dependabot.yml).
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Read the code, nothing more: no job writes to the repository, issues or packages.
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  app:
+    name: App (lint, typed routes + tsc, unit tests)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - name: Lint
+        run: npx expo lint --no-cache
+      # FS4-05: without .expo/types/router.d.ts a fresh clone's tsc passes route typos.
+      - name: Typed routes
+        run: node scripts/typed-routes.mjs
+      - name: Type check
+        run: npx tsc --noEmit
+      - name: Unit tests
+        run: npm test
+
+  database:
+    name: Database (migrations, seed, access rules, push)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: supabase/tests
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: supabase/tests/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm test
+
+  website:
+    name: Website (build and check)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: website
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+      # The website has no dependencies (website/package.json), so there is nothing to install.
+      - run: npm test

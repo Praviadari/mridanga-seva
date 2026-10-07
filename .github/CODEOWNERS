@@ -1,0 +1,11 @@
+# Every change needs the maintainer's review (audit D11-16). Release files, the database and CI
+# are listed on their own so a later second maintainer can be added for them alone.
+* @Praviadari
+
+/app/app.json @Praviadari
+/app/eas.json @Praviadari
+/app/package.json @Praviadari
+/app/package-lock.json @Praviadari
+/app/scripts/ @Praviadari
+/supabase/ @Praviadari
+/.github/ @Praviadari
