@@ -326,7 +326,7 @@ i[lang='sa-Latn'] {
 /* ---- night bands (hero, closing call) ---- */
 .night {
   background: radial-gradient(60rem 30rem at 78% 35%, rgba(242, 163, 58, 0.2), transparent 60%),
-    radial-gradient(40rem 24rem at 10% 100%, rgba(120, 90, 220, 0.16), transparent 60%),
+    radial-gradient(40rem 24rem at 8% 20%, rgba(120, 90, 220, 0.14), transparent 60%),
     linear-gradient(180deg, var(--night) 0%, var(--night-deep) 100%);
   color: var(--on-night);
 }
