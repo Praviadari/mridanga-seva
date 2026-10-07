@@ -179,6 +179,10 @@ The code is in `app/src/i18n/index.ts`, `app/src/components/language-picker.tsx`
   "financial year" ఆర్థిక సంవత్సరం / वित्त वर्ष, the categories (విరాళం, ప్రాయోజకత్వం … / दान, प्रायोजन …).
   Amounts are shown as ₹ with Indian grouping in every language.
 
+The privacy texts of 0034 (`signUp.privacyNotice`, `signUp.under18`, `register.privacyNotice*`,
+`auditLog.views.*`, `auditLog.read*`) and the breach message templates in docs/OPERATIONS.md
+"Personal data breach" are drafts in Telugu and Hindi too, for the same review (#147, #150).
+
 - **Security round** (0025, [DECISIONS.md #72-#77](DECISIONS.md)): three new keys, drafts for the review:
   `common.studentWithdrawn` (shown when a coordinator marks or calls a student whose consent was
   withdrawn), `auditLog.tables.consents` and `auditLog.tables.guardians` (G11 filter). Words to check:

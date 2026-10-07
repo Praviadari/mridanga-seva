@@ -37,6 +37,7 @@ in number order:
 | `0031_push_fixes.sql` | Push fixes (audit brief 11): the per-phone queue `push_queue` with `claim_push_queue` / `finish_push` (one bad token no longer stops a batch; a failed or stopped send is retried, never sent twice), `push_status`, and the job calls only an https Supabase address with a 32+ character secret ([DECISIONS.md #112-#115](DECISIONS.md)). See "Push queue (0031)". Needs the Edge Function redeployed |
 | `0032_auth_fixes.sql` | Sign-in leftovers: a new profile takes the language sent with the sign-up (D8-01); `students.request_id` + `register_student(..., p_request_id)`: a registration saved twice stores the student once (D6-08) ([DECISIONS.md #125, #126](DECISIONS.md)). See "Sign-in leftovers (0032)" |
 | `0033_time_zones.sql` | International basics: `centres.time_zone` (IANA, default Asia/Kolkata) and `centres.country_code` (ISO 3166, default IN); `today_ist()` = today at the caller's centre; attendance days, closing, home screens, reports, event and duty reminders in the right centre's zone; `close_open_visits` hourly; notices dated in each person's zone; `fund_entries.currency` (ISO 4217, default INR) ([DECISIONS.md #132-#136](DECISIONS.md)). See "Time zones and currency (0033)" |
+| `0034_access_log.sql` | Reads of parents' contacts, consents and call notes, and audit-log pages, go through logging functions into `access_log` (the Guru reads it; purged after 400 days); coordinators lose the direct reads; `consents.notice_version` ([DECISIONS.md #146-#151](DECISIONS.md)) |
 
 The Phase 2 files were renumbered when they merged into main (#55). TEST ran some under their
 branch numbers (0012, 0014_promotion, 0016_practice, 0017_media, 0021_events_polls), so it skips
@@ -67,6 +68,7 @@ consent), sample visits, groups and an announcement. Never run it on the live pr
 | Inventory (Phase 2) | `inventory_items`, `inventory_loans`, `inventory_checks` | Temple instruments and other items, who holds each, every condition seen (C19). See "Team tools (Phase 2)" |
 | Duty roster (Phase 2) | `duty_shifts`, `duty_assignments` | Shifts per date and centre with the people on each (C20). Suggestions (C18) live in `materials` |
 | Ishtagoshti (Phase 2) | `ig_slokas`, `ig_themes`, `ig_theme_slokas`, `ig_daily_pins`, `ig_notes`, `ig_memorised` | Sloka study (I1-I3, I11, I12): the temple's own translations, themes, the sloka of the day, private notes, memorised ticks. Recitations in the Storage bucket `ishtagoshti-audio`. See "Ishtagoshti (Phase 2)" |
+| Access log | `access_log` | Who read a student's guardians, consents or call notes, or a page of the audit log, and when (0034; G11 "Reads of private details") |
 | Audit | `audit_log` | Who changed a student, profile, call log, level, syllabus item or tick, material, announcement, setting, centre, sloka or Ishtagoshti theme, corrected or deleted a visit (0030), or deleted a reply, and when (read on G11) |
 
 ## Student status
@@ -578,8 +580,9 @@ time. Centre changes are logged too.
 
 `audit_log` (0001) gets one row per change: `table_name`, `row_id`, `action` (`INSERT`, `UPDATE`,
 `DELETE`), `changed_by` (the login; empty for the dashboard and the daily jobs), `changed_at`,
-`old_row`, `new_row` (the whole row as JSON). Only the Guru reads it (policy `guru_read`); nothing
-in the app writes it except the security definer triggers. Screen G11 reads it 50 rows at a time,
+`old_row`, `new_row` (the whole row as JSON). Only the Guru reads it; nothing
+in the app writes it except the security definer triggers. Since 0034 nobody reads the table directly:
+G11 calls `get_audit_log`, which writes each page read to `access_log`. Screen G11 reads it 50 rows at a time,
 newest first, filtered by table, person, action and time; 0014 adds indexes for these filters.
 0025 audits `consents` and `guardians` too. After an erasure (`erase_student`) the rows about the
 person keep table, action, time and who, with `old_row` and `new_row` emptied.
@@ -1114,6 +1117,31 @@ recipient). Errors: `time_zone_invalid`, `country_invalid`.
 
 Tests: section "time zones and currency (0033)" in `supabase/tests/smoke-test.mjs`.
 
+## Access log (0034)
+
+[DECISIONS.md #146](DECISIONS.md) (audit D4-06, D4-09 in part). Run after 0033, on the same day as the
+app update that reads through the functions (OPERATIONS.md "Releasing a change: database first",
+the 0034 exception).
+
+| Object | What |
+|---|---|
+| `access_log` | `id`, `at`, `actor_id` (the login that read; null = SQL editor or a job), `function_name`, `student_id` (null for audit-log pages and after the student is deleted), `row_count`. RLS: the Guru reads (`guru_read`); no client may insert, update or delete (no rights) |
+| `get_guardians(p_student)` | Active staff (`is_staff()`). A student's guardians (id, full_name, phone, email, relation); one access_log row |
+| `get_consents(p_student)` | Active staff. The consents, newest first (with `signed_form`, `notice_version`); one access_log row |
+| `get_call_notes(p_student, p_limit)` | Active staff. The calls with notes, newest first; `p_limit` = the newest n (null = all); one access_log row |
+| `get_audit_log(p_table, p_person, p_action, p_since, p_before, p_limit)` | The Guru. One page of `audit_log` (G11 filters; 1-200 rows, default 50); one access_log row |
+| `call_outcomes(p_from, p_to)` | Outcomes only (no notes) of calls in a period, for `class_report` (which runs as the caller); staff, others get no rows; not logged |
+| `log_access`, `purge_access_log()`, trigger `students_forget_access` | Internal: write a row; nightly delete of rows older than 400 days (job `mridanga-access-log-purge`); blank a deleted student's id |
+| `consents.notice_version` | The privacy notice's version the parent was shown (`website/site.config.mjs` privacyNotice.version), sent as `register_student(p_notice_version)`; NULL before 0034. Frozen by `guard_consent`. Error `notice_version_invalid` |
+
+Policies changed: `guardians` = Guru reads, edits, deletes; staff insert (register_student). `consents`
+and `call_logs` = Guru reads (consents: staff insert, guard_consent-checked update, Guru delete as
+before). `audit_log` has no read policy. `register_student` makes the guardian's id itself (no
+`returning`, which would need SELECT). Errors from the reading functions: `not_allowed` (42501),
+`student_required`.
+
+Tests: section "access log (0034)" in `supabase/tests/smoke-test.mjs`.
+
 ## Linking a login to a student
 
 A student record can exist without a login (many students never install the app). When a person
@@ -1159,6 +1187,8 @@ switched-off login is refused like a stranger.
 | `mark_visit(student, action, device)` | Guru, coordinator | Checks the student in (`action = 'in'`) or out (`'out'`), or returns `already_in` / `already_out` and changes nothing. See "Attendance" |
 | `check_out_all(centre)` | Guru, coordinator | Closes every open visit, at one centre or all (`null`, the default). Returns how many |
 | `log_call(student, outcome, reason, comment, next_date)` | Guru, coordinator | Records a follow-up call and applies its outcome (pause, leave, new call task, retry). See "Follow-up calls" |
+| `get_guardians(student)`, `get_consents(student)`, `get_call_notes(student, limit)` | Guru, coordinator | A student's guardians, consents or call notes; each call writes one `access_log` row. See "Access log (0034)" |
+| `get_audit_log(table, person, action, since, before, limit)` | Guru | One page of the audit log (G11); writes one `access_log` row |
 | `register_student(...)` | Guru, coordinator | Saves a new student, and for a minor the guardian and consent, in one step. Returns the id, roll number and whether an existing login was linked. See "Registering a student" |
 | `staff_names()` | Guru, coordinator, student (others get nothing) | Id and name of every Guru and coordinator, active or not, for "posted by". Security definer. See "Announcements" |
 | `student_home()` | Anyone signed in (a student gets their own numbers) | The student home's numbers. See "Home screens" |
@@ -1225,6 +1255,7 @@ and the helpers `my_role`, `is_guru`, `is_staff`,
 | `mridanga-close-visits` | Every hour at :30 (since 0033; was 15:30 UTC = 21:00 IST) | `close_open_visits()` — closes visits left open at their centre's closing time, once that centre has been closed an hour (21:00 IST for Abids) |
 | `mridanga-push` | Every minute | `send_due_push()` — calls the Edge Function `notify-announcements` when a published announcement waits for its push notification; does nothing while push is not set up (0011); since 0016 also when an assessment or promotion notification of the last day waits in `push_outbox`; since 0031 also when a `push_queue` row waits for its next try |
 | `mridanga-inbox-cleanup` | 01:00 UTC = 06:30 IST | `inbox_cleanup()` — deletes inbox notices older than a year (0015) |
+| `mridanga-access-log-purge` | 01:45 UTC = 07:15 IST | `purge_access_log()` — deletes access-log rows older than 400 days (0034) |
 | `mridanga-assessments` | 03:30 UTC = 09:00 IST | `assessment_daily()` — reminders for assessments due today or tomorrow that are not sent yet; asks the Edge Function (`{"cleanup": true}`) to delete recordings 30 days past their review (0016); level-up ones 30 days after the promotion decision (0017) |
 | `mridanga-duty` | 12:30 UTC = 18:00 IST | `duty_daily()` — reminds everyone on tomorrow's duty shifts, once (0023) |
 | `mridanga-events-polls` | 03:30 UTC = 09:00 IST | `events_polls_daily()` — reminds those going or maybe of an event tomorrow, and those who have not voted on a poll closing within 24 hours; each once (0022) |
@@ -1235,10 +1266,11 @@ and the helpers `my_role`, `is_guru`, `is_staff`,
 |---|---|---|---|
 | Own student record, visits, progress, level history | Read (while the login is an active student) | Read / write | Read / write |
 | Other students | — | Read / write | Read / write / delete |
-| Guardians | — | Read / write (a minor keeps one) | Read / write (a minor keeps one) |
-| Consents | — | Read; add (verified by themselves, now) | Read; add; revoke or delete (a minor keeps a current one, unless withdrawn) |
+| Guardians | — | Read through `get_guardians` (logged); add when registering (0034) | Read (through `get_guardians` in the app, logged) / write (a minor keeps one) |
+| Consents | — | Read through `get_consents` (logged); add (verified by themselves, now) | Read (in the app through `get_consents`, logged); add; revoke or delete (a minor keeps a current one, unless withdrawn) |
 | Erasure tombstones (`erasures`) | — | — | Read |
-| Call logs, follow-up tasks, status history | — | Read / write | Read / write |
+| Call logs | — | Read through `get_call_notes` (logged); write through `log_call` | Read (in the app through `get_call_notes`, logged); write through `log_call` |
+| Follow-up tasks, status history | — | Read / write | Read / write |
 | Materials | Approved ones up to own level (needs a student record) | All; suggest (C18); take back or remove own suggestion | All; add, edit, delete; add or decline suggestions |
 | Material files (Storage) | Those on materials they can read | All on materials, and own uploads; upload for a suggestion (10 a day) | All; upload; delete any |
 | Own name and phone | Read / write (not a staff member's name) | Read / write (same) | Read / write (same) |
@@ -1254,7 +1286,8 @@ and the helpers `my_role`, `is_guru`, `is_staff`,
 | Staff names (`staff_names`) | Guru and coordinators' names only | Same | Same |
 | Settings, levels, syllabus, centres | Read | Read | Read / write (settings through `save_settings`, checked) |
 | Roles, switching a login off, duty hours of others | — | — | Write (not their own role; Guru role only in the dashboard) |
-| Audit log | — | — | Read |
+| Audit log | — | — | Read through `get_audit_log` (each page logged) |
+| Access log (`access_log`) | — | — | Read |
 | Assessments (Phase 2) | Those given to them, with the release notes and files | Sent ones; create none | All, drafts too; create, send, delete unreleased |
 | Assessment assignments, submissions, tracker | Own; submit through `submit_assessment` | All; release, remind, review through the functions | Same as coordinator |
 | Assessment files (Storage) | Files of their assessments and their own recordings; upload audio or video while one is open (10 a day) | All on sent assessments and all recordings | All; upload; delete any |

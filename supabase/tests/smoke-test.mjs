@@ -16,6 +16,8 @@
 // every table, a student-isolation loop over every student-linked table and view, write sweeps per
 // role, the roll-number / status-history / audit triggers, the two daily jobs on fixed cases and
 // the pg_cron job list.
+// 0034 adds the access log: guardians, consents, call notes and audit-log pages read through logging
+// functions, coordinators without direct reads, the privacy-notice version on consents, the purge.
 //
 // Run before pasting a migration into the live Supabase project, and on every pull request (CI):
 //   cd supabase/tests && npm ci && npm test        (Node 22.18 or newer, see package.json engines)
@@ -113,7 +115,7 @@ process.on('uncaughtException', (error) => {
 // D14-10: every check is counted, and the run fails when fewer (or more) checks ran than expected,
 // so a block skipped by a renamed migration or a commented-out section cannot pass unseen.
 // Adding or removing checks? Run the suite and set this to the new total it prints.
-const EXPECTED_CHECKS = 1133;
+const EXPECTED_CHECKS = 1182;
 let failures = 0;
 let passes = 0;
 
@@ -470,8 +472,9 @@ const [again] = await asOwner(`select kind, due_on::text, escalated from follow_
 const [{ d: dayAfter }] = await asOwner(`select (date '${inAMonth}' + 1)::text as d`);
 check('a "returning" call sets a new call for the day after the date', again?.kind === 'call' && again.due_on === dayAfter
   && again.escalated === false, JSON.stringify(again));
+// Since 0034 the timeline is read through get_call_notes (logged), not from the table.
 const [{ n: callCount }] = await asApp('authenticated', coordinator,
-  `select count(*)::int as n from call_logs where student_id = '${suresh.id}'`);
+  `select count(*)::int as n from get_call_notes('${suresh.id}')`);
 check('coordinator reads the call-log timeline', callCount === 4, String(callCount));
 check('student cannot read call logs',
   (await asApp('authenticated', arjun, 'select id from call_logs')).length === 0);
@@ -1639,7 +1642,8 @@ check('the Guru changes the open window, and it is logged', (await asOwner(
 await asApp('authenticated', guru, `update centres set opens_at = '14:30', closes_at = '20:00' where id = 1`);
 
 // ---------------------------------------------------------------- Guru admin: audit log (0014, G11)
-check('the Guru reads the audit log', (await asApp('authenticated', guru, 'select id from audit_log limit 5')).length === 5);
+// Since 0034 through get_audit_log (each page read is logged), not from the table.
+check('the Guru reads the audit log', (await asApp('authenticated', guru, 'select id from get_audit_log(p_limit => 5)')).length === 5);
 check('coordinators and students read none of it', (await asApp('authenticated', coordinator, 'select id from audit_log')).length === 0
   && (await asApp('authenticated', late, 'select id from audit_log')).length === 0);
 check('app roles cannot run the admin trigger functions', (await asOwner(`select
@@ -2854,16 +2858,23 @@ check('a deleted record\'s login goes back to waiting', (await roleOf(gonerLogin
 const consentCount = async (studentId) => (await asOwner(`select count(*)::int as n from consents where student_id = '${studentId}'`))[0].n;
 check('a coordinator cannot delete a minor\'s consent (0 rows)', (await asApp('authenticated', coordinator,
   'delete from consents where student_id = $1 returning id', [child.id])).length === 0 && (await consentCount(child.id)) === 2);
-await refusesWith('... nor revoke it', 'not_allowed', () =>
-  asApp('authenticated', coordinator, `update consents set revoked_at = now() where student_id = $1 and scope = 'data'`, [child.id]));
-await refusesWith('... nor turn it into a photo consent', 'consent_locked', () =>
-  asApp('authenticated', coordinator, `update consents set scope = 'photo' where student_id = $1 and scope = 'data'`, [child.id]));
+// Since 0034 a coordinator cannot even see a consent row, so an update finds nothing; the field
+// locks are then checked with the Guru, who still reads the table.
+check('... nor revoke it (0034: finds no row)', (await asApp('authenticated', coordinator,
+  `update consents set revoked_at = now() where student_id = $1 and scope = 'data' returning id`, [child.id])).length === 0
+  && (await asOwner(`select count(*)::int as n from consents where student_id = '${child.id}' and revoked_at is null`))[0].n === 2);
+await refusesWith('... nor may the Guru turn it into a photo consent', 'consent_locked', () =>
+  asApp('authenticated', guru, `update consents set scope = 'photo' where student_id = $1 and scope = 'data'`, [child.id]));
 await refusesWith('... nor move it to another student', 'consent_locked', () =>
-  asApp('authenticated', coordinator, 'update consents set student_id = $2 where student_id = $1', [child.id, secAdult.id]));
+  asApp('authenticated', guru, 'update consents set student_id = $2 where student_id = $1', [child.id, secAdult.id]));
 await refusesWith('... nor rewrite who verified it and when', 'consent_locked', () =>
-  asApp('authenticated', coordinator, `update consents set verified_by = $2, given_at = now() - interval '1 year' where student_id = $1`, [child.id, guru]));
-const [forged] = await asApp('authenticated', coordinator, `insert into consents (student_id, scope, verified_by, given_at, method, otp_verified_at, signed_form)
-  values ($1, 'data', $2, '2020-01-01', 'written', now(), true) returning verified_by, given_at, otp_verified_at`, [child.id, guru]);
+  asApp('authenticated', guru, `update consents set verified_by = $2, given_at = now() - interval '1 year' where student_id = $1`, [child.id, guru]));
+await refusesWith('... nor change the privacy-notice version it was given under (0034)', 'consent_locked', () =>
+  asApp('authenticated', guru, `update consents set notice_version = '9.9' where student_id = $1`, [child.id]));
+const forgedId = await newId();
+await asApp('authenticated', coordinator, `insert into consents (id, student_id, scope, verified_by, given_at, method, otp_verified_at, signed_form)
+  values ($3, $1, 'data', $2, '2020-01-01', 'written', now(), true)`, [child.id, guru, forgedId]);
+const [forged] = await asOwner(`select verified_by, given_at, otp_verified_at from consents where id = '${forgedId}'`);
 check('a new consent is verified by whoever saves it, now (not back-dated, not "by the Guru")', forged.verified_by === coordinator
   && Date.now() - new Date(forged.given_at).getTime() < 600000 && forged.otp_verified_at === null, JSON.stringify(forged));
 await refusesWith('a written consent needs the signed-form tick', 'written_consent_required', () =>
@@ -2879,7 +2890,7 @@ check('... but may revoke one of two, which then stays revoked', (await asOwner(
 await refusesWith('a revoked consent cannot be brought back', 'consent_locked', () =>
   asApp('authenticated', guru, `update consents set revoked_at = null where student_id = $1 and revoked_at is not null`, [child.id]));
 await refusesWith('a minor cannot lose her last guardian (checked at commit)', 'minor_needs_guardian', () =>
-  asApp('authenticated', coordinator, 'update guardians set student_id = $2 where student_id = $1', [child.id, secAdult.id]));
+  asApp('authenticated', guru, 'update guardians set student_id = $2 where student_id = $1', [child.id, secAdult.id]));
 check('consent and guardian changes are in the audit log', (await asOwner(`select count(*)::int as n from audit_log
   where table_name in ('consents', 'guardians') and (old_row ->> 'student_id' = '${child.id}' or new_row ->> 'student_id' = '${child.id}')`))[0].n >= 5);
 await refusesWith('a minor is not registered without the signed-form tick', 'written_consent_required', () =>
@@ -3002,7 +3013,8 @@ for (const { relname } of await asOwner(`select relname from pg_class
 check('grant sweep: a pending login reads nothing but its own profile and the open lists', pendingReads.length === 0, pendingReads.join(' '));
 const internal = ['link_login_to_student(uuid,text)', 'refresh_student_statuses()', 'close_open_visits()', 'claim_due_push()',
   'release_push_claim(bigint[])', 'send_due_push()', 'privacy_caller_ok()', 'visit_location_result(jsonb,smallint)',
-  'claim_push_queue()', 'finish_push(uuid,bigint[],bigint[],jsonb,jsonb)', 'call_notify_function(jsonb)'];
+  'claim_push_queue()', 'finish_push(uuid,bigint[],bigint[],jsonb,jsonb)', 'call_notify_function(jsonb)',
+  'log_access(text,uuid,integer)', 'purge_access_log()'];
 const openInternal = [];
 for (const f of internal) {
   if ((await asOwner(`select has_function_privilege('authenticated', '${f}', 'execute') as ok`))[0].ok) openInternal.push(f);
@@ -3010,8 +3022,9 @@ for (const f of internal) {
 check('grant sweep: internal functions are closed to signed-in people', openInternal.length === 0, openInternal.join(' '));
 check('... while the app functions stay open to them', (await asOwner(`select bool_and(has_function_privilege('authenticated', f, 'execute')) as ok
   from unnest(array['erase_student(uuid,text,text)', 'withdraw_consent(uuid,text)', 'unlink_student_login(uuid)', 'scan_qr(uuid,text,jsonb)',
-    'toggle_visit(uuid,visit_method,text,jsonb)', 'register_student(text,date,text,text,text,text,smallint,uuid,text,text,text,text,text,boolean,boolean,uuid)',
-    'is_staff()', 'my_role()']) f`))[0].ok === true);
+    'toggle_visit(uuid,visit_method,text,jsonb)', 'register_student(text,date,text,text,text,text,smallint,uuid,text,text,text,text,text,boolean,boolean,uuid,text)',
+    'is_staff()', 'my_role()', 'get_guardians(uuid)', 'get_consents(uuid)', 'get_call_notes(uuid,integer)',
+    'get_audit_log(text,uuid,text,timestamptz,bigint,integer)']) f`))[0].ok === true);
 
 
 // ---------------------------------------------------------------- Ishtagoshti public sign-up (0027, Phase 2)
@@ -3382,9 +3395,9 @@ await refusesWith('... and one with a phone but no guardian name', 'minor_needs_
   register(coordinator, { p_full_name: 'Sec2 Child', p_dob: childDob, p_guardian_name: ' ', p_guardian_phone: '9000012345',
     p_guardian_relation: 'father', p_id_type_checked: 'aadhaar', p_written_consent: true }));
 await refusesWith('a minor\'s only guardian phone cannot be cleared later (checked at commit)', 'minor_needs_guardian', () =>
-  asApp('authenticated', coordinator, 'update guardians set phone = null where student_id = $1', [child.id]));
+  asApp('authenticated', guru, 'update guardians set phone = null where student_id = $1', [child.id]));
 await asApp('authenticated', coordinator, `insert into guardians (student_id, full_name, phone, relation) values ($1, 'Second Parent', '9000054321', 'father')`, [child.id]);
-await asApp('authenticated', coordinator, `update guardians set phone = null where student_id = $1 and full_name = 'Parent One'`, [child.id]);
+await asApp('authenticated', guru, `update guardians set phone = null where student_id = $1 and full_name = 'Parent One'`, [child.id]);
 check('... but may be, when another guardian has a phone', (await asOwner(
   `select count(*)::int as n from guardians where student_id = '${child.id}' and phone is not null`))[0].n === 1);
 const [grownUp] = await asApp('authenticated', coordinator, 'update students set dob = $2 where id = $1 returning dob::text as d', [child.id, eighteen]);
@@ -3568,7 +3581,7 @@ await refusesWith('D6-08: a coordinator cannot change a student\'s request id', 
 check('D6-08: the request id trigger function is not callable by app roles', (await asOwner(`select
   not has_function_privilege('authenticated', 'guard_student_request_id()', 'execute')
   and not has_function_privilege('anon', 'guard_student_request_id()', 'execute')
-  and not has_function_privilege('anon', 'register_student(text, date, text, text, text, text, smallint, uuid, text, text, text, text, text, boolean, boolean, uuid)', 'execute') as ok`))[0].ok === true);
+  and not has_function_privilege('anon', 'register_student(text, date, text, text, text, text, smallint, uuid, text, text, text, text, text, boolean, boolean, uuid, text)', 'execute') as ok`))[0].ok === true);
 // Clean up so the counts in the checks below stay as they were.
 await asOwner(`delete from students where id in ('${d608First.id}', '${d608Other.id}', '${d608Plain.id}')`);
 
@@ -3673,6 +3686,113 @@ check('0033: the helpers with a person\'s id are not callable by app roles', (aw
 await asOwner(`delete from visits where student_id in ('${nyStudent}', '${nyStudent2}')`);
 await asOwner(`delete from students where id in ('${nyStudent}', '${nyStudent2}')`);
 
+// ---------------------------------------------------------------- access log (0034)
+// D4-06, D4-09 (part): reads of guardians, consents and call notes go through logging functions;
+// coordinators lose the direct SELECT; the log is the Guru's, written by the functions only.
+const alMinor = await register(coordinator, { p_full_name: 'Access Log Child', p_dob: childDob, p_mentor: coordinator,
+  p_guardian_name: 'Access Parent', p_guardian_phone: '9000077777', p_guardian_relation: 'mother', p_id_type_checked: 'aadhaar',
+  p_photo_consent: true, p_written_consent: true, p_notice_version: '0.1-draft' });
+check('D4-05: register_student stores the privacy-notice version on each consent', (await asOwner(
+  `select notice_version from consents where student_id = '${alMinor.id}'`)).map((r) => r.notice_version).join() === '0.1-draft,0.1-draft');
+const alOld = await register(coordinator, { p_full_name: 'Access Old App Child', p_dob: childDob, p_guardian_name: 'Old App Parent',
+  p_guardian_phone: '9000077778', p_guardian_relation: 'father', p_id_type_checked: 'aadhaar', p_written_consent: true });
+check('... an app that sends none leaves it empty (NULL)', (await asOwner(
+  `select notice_version from consents where student_id = '${alOld.id}'`)).every((r) => r.notice_version === null));
+await refusesWith('... a malformed version is refused', 'notice_version_invalid', () => register(coordinator, {
+  p_full_name: 'Access Bad', p_dob: '1990-01-01', p_notice_version: 'v1; drop table' }));
+await refusesWith('... and frozen once saved, even for the Guru', 'consent_locked', () =>
+  asApp('authenticated', guru, `update consents set notice_version = '0.2' where student_id = $1`, [alMinor.id]));
+await logCall(coordinator, { p_student: alMinor.id, p_outcome: 'not_reachable', p_reason: null, p_comment: 'Access log call note' });
+const logRows = async () => (await asOwner('select count(*)::int as n from access_log'))[0].n;
+const lastLog = async () => (await asOwner('select actor_id, function_name, student_id, row_count from access_log order by id desc limit 1'))[0];
+for (const [fn, expected] of [['get_guardians', 1], ['get_consents', 2], ['get_call_notes', 1]]) {
+  const before = await logRows();
+  const rows = await asApp('authenticated', coordinator, `select * from ${fn}($1)`, [alMinor.id]);
+  const entry = await lastLog();
+  check(`D4-06: a coordinator's ${fn} returns the rows and writes exactly one access_log row`, rows.length === expected
+    && (await logRows()) === before + 1 && entry.actor_id === coordinator && entry.function_name === fn
+    && entry.student_id === alMinor.id && entry.row_count === expected, `${rows.length} ${JSON.stringify(entry)}`);
+}
+check('... get_guardians gives the phone, get_consents the notice version, get_call_notes the note',
+  (await asApp('authenticated', coordinator, 'select phone from get_guardians($1)', [alMinor.id]))[0]?.phone === '9000077777'
+  && (await asApp('authenticated', coordinator, 'select notice_version from get_consents($1)', [alMinor.id]))[0]?.notice_version === '0.1-draft'
+  && (await asApp('authenticated', coordinator, 'select comment from get_call_notes($1, 1)', [alMinor.id]))[0]?.comment === 'Access log call note');
+check('... the Guru\'s reads through the functions are logged too', await (async () => {
+  const before = await logRows();
+  await asApp('authenticated', guru, 'select * from get_guardians($1)', [alMinor.id]);
+  return (await logRows()) === before + 1 && (await lastLog()).actor_id === guru;
+})());
+check('D4-09: a coordinator reads no guardian, consent or call log straight from the tables',
+  (await asApp('authenticated', coordinator, 'select id from guardians')).length === 0
+  && (await asApp('authenticated', coordinator, 'select id from consents')).length === 0
+  && (await asApp('authenticated', coordinator, 'select id from call_logs')).length === 0);
+check('... nor through student_overview or any view (no view names these tables)', (await asOwner(`select count(*)::int as n
+  from pg_views where schemaname = 'public' and definition ~* '\\m(guardians|consents|call_logs|access_log)\\M'`))[0].n === 0);
+check('... while the Guru still does (dashboard work, revoking a consent)',
+  (await asApp('authenticated', guru, 'select id from guardians where student_id = $1', [alMinor.id])).length === 1);
+const alPending = await signUp('access.pending@example.com', true);
+const alBefore = await logRows();
+for (const [who, id] of [['a student', arjun], ['a pending login', alPending], ['a switched-off coordinator', offCoord], ['the door tablet', kiosk]]) {
+  for (const fn of ['get_guardians', 'get_consents', 'get_call_notes']) {
+    await refusesWith(`D4-06: ${who} cannot run ${fn}`, 'not_allowed', () =>
+      asApp('authenticated', id, `select * from ${fn}($1)`, [alMinor.id]));
+  }
+}
+check('... and a refused call writes no access_log row', (await logRows()) === alBefore);
+await refusesWith('a staff call without a student is refused', 'student_required', () =>
+  asApp('authenticated', coordinator, 'select * from get_guardians(null)'));
+await refusesWith('anon cannot run get_guardians (no right)', 'permission denied for function get_guardians', () =>
+  asApp('anon', null, 'select * from get_guardians($1)', [alMinor.id]));
+check('class_report still counts a coordinator\'s calls (outcomes through call_outcomes)', await (async () => {
+  const [{ r }] = await asApp('authenticated', coordinator, 'select class_report(today_ist() - 1, today_ist()) as r');
+  const [{ n }] = await asOwner(`select count(*)::int as n from call_logs c join students s on s.id = c.student_id
+    where s.mentor_id = '${coordinator}' and c.called_at >= now() - interval '3 days'`);
+  return r.calls_done === n && n >= 1;
+})());
+check('... and call_outcomes gives a student nothing', (await asApp('authenticated', arjun,
+  `select * from call_outcomes(now() - interval '1 year', now() + interval '1 day')`)).length === 0);
+// The log itself: the Guru reads it; nobody writes or deletes it from the app.
+check('access_log: the Guru reads it, a coordinator and a student read none of it',
+  (await asApp('authenticated', guru, 'select id from access_log')).length > 0
+  && (await asApp('authenticated', coordinator, 'select id from access_log')).length === 0
+  && (await asApp('authenticated', arjun, 'select id from access_log')).length === 0);
+for (const [who, id] of [['a coordinator', coordinator], ['the Guru', guru]]) {
+  await refusesWith(`... ${who} cannot insert into it`, 'permission denied for table access_log', () => asApp('authenticated', id,
+    `insert into access_log (actor_id, function_name, student_id) values ($1, 'forged', $1)`, [id]));
+  await refusesWith(`... nor update it`, 'permission denied for table access_log', () => asApp('authenticated', id, `update access_log set function_name = 'x' where id > 0`));
+  await refusesWith(`... nor delete from it`, 'permission denied for table access_log', () => asApp('authenticated', id, 'delete from access_log where id > 0'));
+}
+await refusesWith('... nor run log_access', 'permission denied for function log_access', () => asApp('authenticated', coordinator, `select log_access('forged', null, 0)`));
+await refusesWith('... nor the purge', 'permission denied for function purge_access_log', () => asApp('authenticated', guru, 'select purge_access_log()'));
+// G11: audit-log pages are read through get_audit_log and logged.
+await refusesWith('a coordinator cannot run get_audit_log', 'not_allowed', () => asApp('authenticated', coordinator, 'select * from get_audit_log()'));
+check('the Guru\'s audit-log page is logged, filters work', await (async () => {
+  const before = await logRows();
+  const page = await asApp('authenticated', guru, `select table_name, action from get_audit_log(p_table => 'consents', p_action => 'INSERT', p_limit => 3)`);
+  const entry = await lastLog();
+  return page.length === 3 && page.every((r) => r.table_name === 'consents' && r.action === 'INSERT')
+    && (await logRows()) === before + 1 && entry.function_name === 'get_audit_log' && entry.row_count === 3 && entry.student_id === null;
+})());
+check('... and the table itself is closed to the Guru\'s direct reads', (await asApp('authenticated', guru, 'select id from audit_log')).length === 0);
+// The purge keeps 400 days.
+await asOwner(`insert into access_log (at, function_name) values (now() - interval '401 days', 'purge-old'), (now() - interval '399 days', 'purge-kept')`);
+const keptBefore = await logRows();
+const [{ n: purged }] = await asOwner('select purge_access_log() as n');
+check('the nightly purge removes only rows older than 400 days', purged === 1 && (await logRows()) === keptBefore - 1
+  && (await asOwner(`select function_name from access_log where function_name like 'purge-%'`)).map((r) => r.function_name).join() === 'purge-kept');
+// Erasure leaves no student id in the log; the rows (who, when, what) stay.
+const alRowsBefore = (await asOwner(`select count(*)::int as n from access_log where student_id = '${alMinor.id}'`))[0].n;
+const alTotal = await logRows();
+await asApp('authenticated', guru, `select erase_student($1, 'parent asked', 'REQ-AL') as r`, [alMinor.id]);
+check('erasure blanks the student\'s id in access_log and keeps the rows', alRowsBefore >= 4
+  && (await asOwner(`select count(*)::int as n from access_log where student_id = '${alMinor.id}'`))[0].n === 0
+  && (await logRows()) === alTotal, `${alRowsBefore}`);
+check('the app sends the website\'s privacy-notice version (one value in both places)', await (async () => {
+  const site = readFileSync(new URL('../website/site.config.mjs', supabaseDir), 'utf8').match(/privacyNotice:\s*\{\s*version:\s*'([^']+)'/)?.[1];
+  const app = readFileSync(new URL('../app/src/lib/privacy-notice.ts', supabaseDir), 'utf8').match(/PRIVACY_NOTICE_VERSION = '([^']+)'/)?.[1];
+  return !!site && site === app;
+})());
+
 // ================================================================ test net (audit brief 12)
 // Checks that walk the whole schema, so a new table, view, policy or function is covered without
 // writing a new check for it. Each names the audit finding it closes. Kept in one block, apart
@@ -3712,19 +3832,21 @@ await asOwner(`delete from students where id in ('${nyStudent}', '${nyStudent2}'
     check('test net: a rolled-back try leaves the owner signed out', s.sub === '' && s.u !== 'authenticated', JSON.stringify(s));
   }
 
-  // D14-01: parents' contact data, consent records and the audit log stay with staff (guardians,
-  // consents) or the Guru (audit_log).
-  for (const rel of ['guardians', 'consents', 'audit_log']) {
+  // D14-01: parents' contact data, consent records, call notes and the logs. Since 0034 (D4-06) a
+  // coordinator reads none of them straight from the table (only through the logging functions);
+  // the Guru reads guardians, consents, call_logs and access_log, and the audit log only through
+  // get_audit_log.
+  for (const rel of ['guardians', 'consents', 'call_logs', 'audit_log', 'access_log']) {
     const [{ n: total }] = await asOwner(`select count(*)::int as n from ${rel}`);
     const seen = {};
     for (const who of ['student', 'pending', 'coordinator', 'guru']) seen[who] = await rowsAs(tn[who], `select 1 from ${rel}`);
     check(`D14-01: a student and a pending login read no ${rel} row`, total > 0 && seen.student === 0 && seen.pending === 0,
       `${total} rows; ${JSON.stringify(seen)}`);
     if (rel === 'audit_log') {
-      check('D14-01: a coordinator reads no audit_log row; the Guru reads them all', seen.coordinator === 0 && seen.guru === total,
+      check('D14-01: nobody reads audit_log straight from the table, the Guru neither (0034: get_audit_log)', seen.coordinator === 0 && seen.guru === 0,
         `${total} rows; ${JSON.stringify(seen)}`);
     } else {
-      check(`D14-01: staff read every ${rel} row (the rule the others are kept out by)`, seen.coordinator === total && seen.guru === total,
+      check(`D14-01: a coordinator reads no ${rel} row from the table; the Guru reads them all (0034)`, seen.coordinator === 0 && seen.guru === total,
         `${total} rows; ${JSON.stringify(seen)}`);
     }
   }
@@ -3760,7 +3882,7 @@ await asOwner(`delete from students where id in ('${nyStudent}', '${nyStudent2}'
     'poll_state(bigint[])', 'poll_voters(bigint)', 'practice_weeks(uuid,integer)', 'promotion_criteria(uuid)',
     'promotion_home()', 'promotion_ready_students()', 'reassign_mentees(uuid[],uuid)',
     'record_fund_entry(text,smallint,date,bigint,text,text,text,text,text)', 'register_push_token(text,text)',
-    'register_student(text,date,text,text,text,text,smallint,uuid,text,text,text,text,text,boolean,boolean,uuid)',
+    'register_student(text,date,text,text,text,text,smallint,uuid,text,text,text,text,text,boolean,boolean,uuid,text)',
     'release_assessment(bigint,uuid[],date,text)', 'remind_assessment(bigint[])', 'remind_event(bigint)',
     'remind_poll(bigint)', 'return_inventory_item(bigint,text,text)', 'reverse_fund_entry(bigint,text)',
     'review_submission(bigint,integer[],text,text,boolean,jsonb)', 'rsvp_event(bigint,text)',
@@ -3773,6 +3895,9 @@ await asOwner(`delete from students where id in ('${nyStudent}', '${nyStudent2}'
     'withdraw_nomination(bigint)', 'youtube_link_ok(text)',
     // 0033: a centre's own time zone and formats
     'centre_today(integer)', 'centre_tz(integer)', 'local_day(timestamp with time zone,integer)', 'my_centre_locale()', 'my_time_zone()',
+    // 0034: logged reads of parents' details, consents, call notes and the audit log
+    'call_outcomes(timestamp with time zone,timestamp with time zone)', 'get_audit_log(text,uuid,text,timestamp with time zone,bigint,integer)',
+    'get_call_notes(uuid,integer)', 'get_consents(uuid)', 'get_guardians(uuid)',
   ];
   const runnableBy = async (role) => (await asOwner(`select p.oid::regprocedure::text as f from pg_proc p
     where p.pronamespace = 'public'::regnamespace
@@ -3887,7 +4012,8 @@ await asOwner(`delete from students where id in ('${nyStudent}', '${nyStudent2}'
   // your own, or the Guru. A coordinator changes nothing in them.
   const GURU_ONLY = ['settings', 'syllabus_items', 'level_history', 'levels', 'centres', 'taals', 'inventory_items', 'fund_categories',
     'duty_shifts', 'duty_assignments', 'assessments', 'audit_log', 'profiles', 'status_history', 'call_logs', 'fund_entries',
-    'poll_votes', 'event_rsvps', 'promotion_nominations', 'promotion_feedback', 'push_queue', 'push_outbox'];
+    'poll_votes', 'event_rsvps', 'promotion_nominations', 'promotion_feedback', 'push_queue', 'push_outbox',
+    'guardians', 'access_log']; // 0034: a coordinator adds a guardian, the Guru edits; nobody writes access_log
   const coordinatorWrites = await writableBy(tn.coordinator, GURU_ONLY);
   check('D14-07: a coordinator changes or deletes nothing in the Guru-only tables (settings, syllabus, levels, roster, ...)',
     coordinatorWrites.length === 0, coordinatorWrites.join(' '));
@@ -3899,8 +4025,9 @@ await asOwner(`delete from students where id in ('${nyStudent}', '${nyStudent2}'
   check('D14-07: a coordinator deletes no student, consent, reply or approved material (Guru only)', coordDeletes.length === 0, coordDeletes.join(' '));
   // The positive side: the role a policy is written for can still write (a no-op update, rolled back).
   const positive = [];
-  for (const [who, rels] of [['guru', ['settings', 'syllabus_items', 'levels', 'centres', 'taals', 'fund_categories', 'students', 'profiles', 'materials']],
-    ['coordinator', ['students', 'guardians', 'consents', 'follow_up_tasks', 'student_progress', 'visits', 'groups', 'group_members']]]) {
+  for (const [who, rels] of [['guru', ['settings', 'syllabus_items', 'levels', 'centres', 'taals', 'fund_categories', 'students', 'profiles', 'materials',
+    'guardians', 'consents']], // 0034: guardians and consents moved from coordinator to Guru (no coordinator SELECT)
+    ['coordinator', ['students', 'follow_up_tasks', 'student_progress', 'visits', 'groups', 'group_members']]]) {
     for (const rel of rels) {
       const { col } = baseTables.find((t) => t.rel === rel);
       const r = await tryAs('authenticated', tn[who], `update public.${rel} set ${col} = ${col} returning 1`);

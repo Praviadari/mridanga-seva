@@ -7,6 +7,7 @@ import * as Crypto from 'expo-crypto';
 import type { ParseKeys } from 'i18next';
 
 import { ageOn, isMinorOn, parseDayMonthYear, todayLocal } from '@/lib/dates';
+import { PRIVACY_NOTICE_VERSION } from '@/lib/privacy-notice';
 import { supabase } from '@/lib/supabase';
 
 import { isNetworkError } from './errors';
@@ -176,8 +177,16 @@ export async function registerStudent(
     // "The parent signed the paper form": required by the database for a minor (0025).
     p_written_consent: minor ? form.writtenConsent : null,
   };
-  let { data, error } = await supabase.rpc('register_student', { ...args, p_request_id: form.requestId });
-  // PGRST202: the database has no register_student with p_request_id yet (before 0032).
+  // The privacy notice the parent was shown is kept on the consent (0034). PGRST202: the database
+  // has no register_student with that parameter yet; try without it, then without p_request_id
+  // (before 0032).
+  let { data, error } = await supabase.rpc('register_student', {
+    ...args,
+    p_request_id: form.requestId,
+    p_notice_version: minor ? PRIVACY_NOTICE_VERSION : null,
+  });
+  if (error?.code === 'PGRST202')
+    ({ data, error } = await supabase.rpc('register_student', { ...args, p_request_id: form.requestId }));
   if (error?.code === 'PGRST202') ({ data, error } = await supabase.rpc('register_student', args));
   if (error) return { errorKey: registerErrorKey(error.message, error.code) };
   const result = data as { id: string; roll_no: string; linked: boolean; repeated?: boolean };

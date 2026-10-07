@@ -45,7 +45,9 @@
     "submit": "Create account",
     "haveAccount": "Already have an account? Sign in",
     "checkEmailTitle": "Check your email",
-    "checkEmail": "We sent a link to {{email}}. Open it to confirm your account, then sign in."
+    "checkEmail": "We sent a link to {{email}}. Open it to confirm your account, then sign in.",
+    "privacyNotice": "Privacy notice",
+    "under18": "Under 18? Ask at the class desk."
   },
   "forgotPassword": {
     "title": "Reset your password",
@@ -324,7 +326,9 @@
       "minorNeedsConsent": "A student under 18 needs the parent's details, the ID check and the signed consent form.",
       "notAllowed": "Only coordinators and the facilitator can register students.",
       "fixFields": "Please correct the fields marked in red."
-    }
+    },
+    "privacyNotice": "Privacy notice for parents",
+    "privacyNoticeHint": "Show it to the parent before they sign the consent form."
   },
   "statuses": {
     "new": "New",
@@ -1242,7 +1246,26 @@
       "ig_themes": "Ishtagoshti theme",
       "consents": "Consent",
       "guardians": "Parent or guardian"
-    }
+    },
+    "show": "Show",
+    "views": {
+      "changes": "Changes",
+      "reads": "Reads of private details"
+    },
+    "readsIntro": "Who opened a parent's contact details, consent records or call notes, or this log, newest first. Kept for a year.",
+    "readsEmpty": "No reads match.",
+    "readsFailed": "Could not load the reads.",
+    "readBy": "Read by",
+    "readFunctions": {
+      "get_guardians": "Parent or guardian details",
+      "get_consents": "Consent records",
+      "get_call_notes": "Call notes",
+      "get_audit_log": "Audit log page"
+    },
+    "readErased": "Deleted record",
+    "readLine_one": "{{who}} · {{when}} · {{count}} row",
+    "readLine_other": "{{who}} · {{when}} · {{count}} rows",
+    "olderReads": "Show older reads"
   },
   "inbox": {
     "title": "Notifications",

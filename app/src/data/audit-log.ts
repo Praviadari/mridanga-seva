@@ -5,7 +5,11 @@
 // them (policy guru_read, 0001). Read 50 at a time, newest first, filtered in the database.
 // 0025 adds consents and guardians. After an erasure (erase_student) a row keeps its table, action,
 // time and who, but both value copies are empty: such a row shows no subject and no changes.
+// 0034: pages are read through get_audit_log, which writes each page read to the access log; the
+// access log itself (who read parents' details, consents, call notes or this log) is the second
+// view of G11, read straight from access_log (the Guru only).
 
+import { readLogged } from '@/lib/logged-read';
 import { supabase } from '@/lib/supabase';
 
 /** Tables whose changes are logged, in the order the filter offers them. */
@@ -52,17 +56,31 @@ export const AUDIT_PAGE = 50;
 
 /** Loads one page of the log, newest first, after `beforeId` (null = from the newest). Null = could not load. */
 export async function fetchAuditPage(filters: AuditFilters, beforeId: number | null): Promise<AuditEntry[] | null> {
-  let query = supabase
-    .from('audit_log')
-    .select('id, table_name, row_id, action, changed_by, changed_at, old_row, new_row')
-    .order('id', { ascending: false })
-    .limit(AUDIT_PAGE);
-  if (beforeId !== null) query = query.lt('id', beforeId);
-  if (filters.table !== 'all') query = query.eq('table_name', filters.table);
-  if (filters.person !== 'all') query = query.eq('changed_by', filters.person);
-  if (filters.action !== 'all') query = query.eq('action', filters.action);
-  if (filters.days > 0) query = query.gte('changed_at', new Date(Date.now() - filters.days * 86400000).toISOString());
-  const { data, error } = await query;
+  const since = filters.days > 0 ? new Date(Date.now() - filters.days * 86400000).toISOString() : null;
+  const tableRead = () => {
+    let query = supabase
+      .from('audit_log')
+      .select('id, table_name, row_id, action, changed_by, changed_at, old_row, new_row')
+      .order('id', { ascending: false })
+      .limit(AUDIT_PAGE);
+    if (beforeId !== null) query = query.lt('id', beforeId);
+    if (filters.table !== 'all') query = query.eq('table_name', filters.table);
+    if (filters.person !== 'all') query = query.eq('changed_by', filters.person);
+    if (filters.action !== 'all') query = query.eq('action', filters.action);
+    if (since) query = query.gte('changed_at', since);
+    return query;
+  };
+  const { data, error } = await readLogged(
+    supabase.rpc('get_audit_log', {
+      p_table: filters.table === 'all' ? null : filters.table,
+      p_person: filters.person === 'all' ? null : filters.person,
+      p_action: filters.action === 'all' ? null : filters.action,
+      p_since: since,
+      p_before: beforeId,
+      p_limit: AUDIT_PAGE,
+    }),
+    tableRead,
+  );
   if (error) return null;
   return (
     data as {
@@ -84,6 +102,47 @@ export async function fetchAuditPage(filters: AuditFilters, beforeId: number | n
     changedAt: r.changed_at,
     oldRow: r.old_row,
     newRow: r.new_row,
+  }));
+}
+
+/** What a logged read was of: the function that wrote the access_log row (0034). */
+export type ReadKind = 'get_guardians' | 'get_consents' | 'get_call_notes' | 'get_audit_log';
+
+/** One access_log row: who read what, about which student, how many rows. */
+export type AccessEntry = {
+  id: number;
+  at: string;
+  actorId: string | null;
+  kind: ReadKind;
+  /** Null for audit-log pages, and after the student was deleted or erased. */
+  studentId: string | null;
+  rowCount: number;
+};
+
+/** Loads one page of the access log, newest first, after `beforeId`. Null = could not load. */
+export async function fetchAccessPage(
+  filters: Pick<AuditFilters, 'person' | 'days'>,
+  beforeId: number | null,
+): Promise<AccessEntry[] | null> {
+  let query = supabase
+    .from('access_log')
+    .select('id, at, actor_id, function_name, student_id, row_count')
+    .order('id', { ascending: false })
+    .limit(AUDIT_PAGE);
+  if (beforeId !== null) query = query.lt('id', beforeId);
+  if (filters.person !== 'all') query = query.eq('actor_id', filters.person);
+  if (filters.days > 0) query = query.gte('at', new Date(Date.now() - filters.days * 86400000).toISOString());
+  const { data, error } = await query;
+  if (error) return null;
+  return (
+    data as { id: number; at: string; actor_id: string | null; function_name: ReadKind; student_id: string | null; row_count: number }[]
+  ).map((r) => ({
+    id: r.id,
+    at: r.at,
+    actorId: r.actor_id,
+    kind: r.function_name,
+    studentId: r.student_id,
+    rowCount: r.row_count,
   }));
 }
 

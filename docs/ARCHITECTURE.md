@@ -138,7 +138,9 @@ app/
     lib/               The Supabase client, on-device storage, the class's time zone and country
                        (class-locale.ts, from my_centre_locale; India until known), date helpers in
                        that zone (dates.ts), money as text (money.ts), search text without accents
-                       (search-text.ts; docs/I18N.md), the
+                       (search-text.ts; docs/I18N.md), the website's privacy-notice address and
+                       version (privacy-notice.ts, #150), reads that go through the logging
+                       functions with a fallback before 0034 (logged-read.ts, #146), the
                        Excel/CSV reader of the student import (sheet-reader.ts, with fflate), push
                        notifications and app updates (push.ts and app-update.ts on Android; the
                        .web.ts copies do nothing), the report's CSV (csv.ts; save-csv.ts saves it to a

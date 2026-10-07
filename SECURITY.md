@@ -10,6 +10,12 @@ choose **Report a vulnerability**. Please do **not** open a public issue for a s
 
 Include what you found, how to reproduce it, and what data could be exposed.
 
+**No GitHub account, or it is about personal data?** Write to **privacy@mridangaseva.com**: a parent
+or student who thinks their data was seen by someone who should not see it, a lost or stolen phone
+with the app signed in, a list of students sent to the wrong person. The same address takes
+requests to see, correct or delete data and complaints (the privacy notice on mridangaseva.com).
+Code problems still go through GitHub's private reporting above.
+
 ## What counts
 
 - A way to read or change data that row-level security should block (for example a student seeing

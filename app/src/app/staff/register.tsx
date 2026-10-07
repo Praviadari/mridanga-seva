@@ -17,6 +17,7 @@ import { Button } from '@/components/button';
 import { Checkbox } from '@/components/checkbox';
 import { ChoiceGroup } from '@/components/choice-group';
 import { Notice } from '@/components/notice';
+import { PrivacyNoticeLink } from '@/components/privacy-notice-link';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { TextField } from '@/components/text-field';
@@ -265,6 +266,10 @@ export default function RegisterStudentScreen() {
           />
           <AppText variant="small" tone="muted">
             {t('register.idCheckedHint')}
+          </AppText>
+          <PrivacyNoticeLink label={t('register.privacyNotice')} />
+          <AppText variant="small" tone="muted">
+            {t('register.privacyNoticeHint')}
           </AppText>
           <Checkbox
             label={t('register.photoConsent')}

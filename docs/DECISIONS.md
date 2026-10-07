@@ -2783,6 +2783,128 @@ none, and nothing in development can reach real children's records.
 Scripts or notes that say `--env .env.test` or `app/.env` are out of date. Closes FS4-01, D10-07,
 D11-08.
 
+## 146. Reads of parents' contacts, consents and call notes go through logging functions — 7 Oct 2026
+
+**Context.** Audit D4-06 (with D10-13): nothing recorded who read a child's guardian phone, consent
+or call notes, so a leak could be neither noticed nor scoped; DPDP Rules 2025 Rule 6 asks for access
+logs kept a year. Every coordinator could read every row straight from the tables (D4-09).
+
+**Decision.** Migration 0034 adds `access_log` (at, actor_id, function_name, student_id,
+row_count) and the security-definer functions `get_guardians(p_student)`, `get_consents(p_student)`,
+`get_call_notes(p_student, p_limit)` (active staff, `is_staff()`) and `get_audit_log(...)` (the
+Guru): each writes one access_log row, then returns the rows. Coordinators lose the direct SELECT on
+guardians, consents and call_logs (guardians: they still add one through register_student; edits and
+deletes become the Guru's); the Guru keeps it. audit_log has no direct SELECT any more: G11 pages
+go through get_audit_log. The table is insert-only from the functions (no client right to write),
+readable by the Guru, purged nightly after 400 days (`mridanga-access-log-purge`, 01:45 UTC). A
+deleted or erased student's id is blanked in it (trigger on students). What read those tables as the
+caller is kept working: register_student makes the guardian's id itself instead of `returning`, and
+class_report counts call outcomes through `call_outcomes()` (outcomes only, no notes, not logged).
+The app reads through the functions and falls back to the old table read only on PGRST202 (the
+function does not exist yet).
+
+**Why.** The functions are the one door, so each read leaves a trace whatever app or tool a login
+uses. The Guru keeps direct reads because revoking a consent and correcting a guardian are done on
+the table (guard_consent decides) and the Guru is the controller's own operator; the Guru's reads in
+the app are logged anyway.
+
+**Consequences.** An exception to #121 ("Releasing a change: database first"): an app from before
+the update shows no parent, consent or call history to coordinators, and an empty G11 to the Guru,
+until the update arrives; 0034 on live and the update go out the same day. Not logged: the Guru's
+direct table reads, the SQL editor and the secret key (the Supabase logs cover those, for 1 day on
+the Free plan), and reads of other student fields (name, dob, phone). G11 has a second view, "Reads
+of private details". Closes the logging part of D4-06; partly closes D4-09.
+
+## 147. A personal data breach follows Rule 7, run by the maintainer with the Guru as deputy — 7 Oct 2026
+
+**Context.** Audit D4-06, D10-13: the incident runbooks covered keys, the Expo account and phones,
+but nobody would have told parents or the Data Protection Board.
+
+**Decision.** docs/OPERATIONS.md "Incidents" opens with "Personal data breach": Praveen decides and
+acts, the Guru if Praveen cannot be reached within 2 hours ([[TEAM]] to confirm); stop it; save the
+Supabase logs at once (Free plan: 1 day, checked on supabase.com/pricing 7 Oct 2026); scope it with
+access_log (#146); tell each affected parent or adult student without delay (template in en, te, hi;
+te/hi drafts for review); a first report to the Board without delay; the detailed report within 72
+hours; an incident log kept privately, never in the repository. The key, Expo and phone runbooks sit
+under the same heading.
+
+**Why.** The Rule's clock starts when we know, so the steps, the people and the words must be ready
+before the first pilot day, not written during an incident.
+
+**Consequences.** [[TEAM]]: the Board's reporting channel, the two contacts' phones, and whether
+CERT-In's 6-hour rule applies. A monthly look at the access log ("Reviewing the access log"). Closes
+D10-13 and the runbook part of D4-06.
+
+## 148. Requests from parents have an owner, a log and a 30-day answer (90 at most) — 7 Oct 2026
+
+**Context.** Audit D4-02: parents had no channel for access, correction, erasure, withdrawal or a
+complaint, no owner and no clock.
+
+**Decision.** docs/OPERATIONS.md "Requests from parents": privacy@mridangaseva.com, the desk or a
+phone call; owner Praveen, deputy the Guru ([[TEAM]] to confirm); acknowledge within 3 working days,
+answer within 30 days and never after 90 (Rule 14); identity checked against the contact on record;
+a private request log; withdrawal and erasure use withdraw_consent and erase_student. SECURITY.md
+names privacy@ for personal-data problems (GitHub private reporting stays for code).
+
+**Why.** 30 days is easy for a class of this size and leaves room under the legal 90; publishing one
+number in the notice is a promise the team can keep.
+
+**Consequences.** The privacy notice (website) must state the same owner and periods. A "my data"
+screen in the app stays a later idea. Closes the process part of D4-02.
+
+## 149. The processor register lives in OPERATIONS — 7 Oct 2026
+
+**Context.** Audit D4-12: the services that see personal data, and where they are, were not recorded.
+
+**Decision.** docs/OPERATIONS.md "Who processes the data": Supabase (Mumbai region, USA company),
+Expo (build, update, push), Google FCM, Brevo (planned), Cloudflare Pages, Zoho Mail, YouTube, GitHub
+(no personal data), each with the data it sees; jsDelivr is gone since #143. The terms (DPA) and
+regions to confirm are [[TEAM]] cells.
+
+**Why.** The notice must name them, and a breach or a request needs to know where data sits.
+
+**Consequences.** A new service is added to the table and the notice in the same change. Closes the
+register part of D4-12; the transfer decision itself stays with the team.
+
+## 150. The app links the website's privacy notice and records its version on a consent — 7 Oct 2026
+
+**Context.** Audit D4-01, D4-05, D4-08: the draft notice (website, #131) was not linked from the app,
+and a consent did not say which notice the parent saw.
+
+**Decision.** `app/src/lib/privacy-notice.ts` holds the one website origin (the pages.dev preview
+until mridangaseva.com is attached, brief 8) and `PRIVACY_NOTICE_VERSION`, equal to
+`privacyNotice.version` in website/site.config.mjs (the smoke test fails when they differ). Sign-up
+(A1) shows "Under 18? Ask at the class desk." and a "Privacy notice" link; registration (C2) shows
+"Privacy notice for parents" in the parent's part. The link opens /privacy/, /te/privacy/ or
+/hi/privacy/ by the app's language. register_student takes `p_notice_version` and stores it on each
+consent (`consents.notice_version`, frozen by guard_consent; NULL before 0034); the app falls back
+without it on PGRST202, then without p_request_id (#126).
+
+**Why.** One constant means brief 8 changes the address once; the version on the consent is the
+proof of what the parent was told.
+
+**Consequences.** Raising the notice's version means changing both files and publishing an update.
+The age line is a sign, not a check (D4-08 stays a team decision). An adult's self sign-up does not
+store the version yet (no consent row); see #151.
+
+## 151. Open choices left for the team after the access log — 7 Oct 2026
+
+**Context.** Brief 6b was built on is_staff() because D4-09 (who may see parents' details) is a
+team decision.
+
+**Decision.** Not built, recorded: (1) D4-09 mentor-plus-Guru: only a student's mentor and the
+Guru (with a cover rule) pass get_guardians / get_consents / get_call_notes; the change is one
+condition in each function, no app change; (2) close the Guru's direct reads too, with Guru-only
+functions for revoking a consent and editing a guardian, so every read is logged; (3) store the
+notice version at an adult's self sign-up (a profiles column filled from the sign-up metadata, as
+the language is, #124); (4) log reads of the student list and record (name, dob, phone) as well.
+
+**Why.** Each changes who can do their work at the desk or adds weight to every screen; the team
+should choose after the pilot shows the need.
+
+**Consequences.** Until then any active coordinator can still read any child's parent details, but
+every such read is now in access_log.
+
 ## 152. A preview update asks "Type yes" like a production one; no flag skips it — 7 Oct 2026
 
 **Context.** `publish-update.mjs` asked for confirmation only on `production`. A preview update

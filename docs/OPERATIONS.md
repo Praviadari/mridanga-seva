@@ -25,6 +25,31 @@ organisation that owns the app; Firebase: an Owner in **Project settings → Use
 permissions**), check that it can sign in, then remove the personal account. The sites, the app's
 project id and its signing keystore stay the same, so nothing needs rebuilding.
 
+### Who processes the data (processors)
+
+Every service below receives some personal data from the app or the website. Parents are told
+about them in the privacy notice (website, `privacy.html`); this table is the team's register
+([DECISIONS.md #149](DECISIONS.md)). Checked against the code on 7 Oct 2026. **[[TEAM]]:** for each
+row, find and file the provider's data processing terms (DPA) and confirm the region, then fill
+the last column. India has not yet listed any country to which transfers are restricted (DPDP Act
+s.16), so a processor abroad is allowed, but it must be recorded and named in the notice.
+
+| Service | What it does for us | Personal data it sees | Where | Terms filed |
+|---|---|---|---|---|
+| Supabase | Database, logins, files, scheduled jobs, Edge Functions | Everything the app stores: students (minors too), parents' contacts, consents, attendance, call notes, logins, photos and recordings | Project region South Asia (Mumbai), per "Setting up a new environment" step 1; the company is in the USA and its support can reach the project. **[[TEAM]]:** check the LIVE project's region in Project Settings | [[TEAM]] |
+| Expo (EAS Build, EAS Update, push service) | Builds the Android app, sends app updates, passes push notifications on to Google | App code (no data); for each notification: the phone's push token, the title and text (an announcement title, an event, a reply; may hold a name) | USA (provider's own regions) | [[TEAM]] |
+| Google Firebase Cloud Messaging | Delivers push notifications to Android phones | Same as Expo's push service: token, title, text | Google's regions | [[TEAM]] |
+| Brevo (**planned**: live sign-up mail, audit brief 8; parent codes once its key is set) | Sends sign-up confirmations, password resets and Ishtagoshti parent codes | Email address, the person's name in the mail, the mail's text | EU (France) | [[TEAM]] |
+| Cloudflare (Pages) | Serves the web version of the app and the public website | Visitors' IP addresses and request details in its logs; the app's data goes from the browser straight to Supabase, not through Cloudflare | Worldwide edge | [[TEAM]] |
+| Zoho Mail | The team's mail: privacy@ and info@ | Whatever parents write to us: requests, complaints, their contact details | **[[TEAM]]:** the account's data centre (zoho.in = India, zoho.com = USA) | [[TEAM]] |
+| YouTube (Google) | Lesson videos shown in the app | The viewer's IP address and device, and YouTube's own cookies on the web; the app sends it no names | Google's regions | YouTube's terms |
+| GitHub | Source code (public) | None: no personal data is kept in the repository | USA | — |
+
+jsDelivr is no longer one: since brief 13 the web QR reader is served from our own site ([DECISIONS.md #143](DECISIONS.md)).
+
+Change this table (and tell the website owner, so the notice follows) whenever a service is added,
+removed or starts seeing different data.
+
 ## Setting up a new environment
 
 1. **Create a Supabase project** (free plan) inside the "Mridanga Seva" organisation. Region: South
@@ -200,6 +225,59 @@ request first.
    retention rule says (to be agreed).
 6. The tombstone (roll number, date, who, reason, reference) stays in `erasures`:
    `select * from erasures order by erased_at desc;` This is the proof that the request was met.
+
+## Requests from parents
+
+A parent (for a child) or an adult student may ask what we keep about them, have it corrected or
+deleted, withdraw consent, or complain ([DECISIONS.md #148](DECISIONS.md); DPDP Act ss.11-13, Rules
+2025 Rule 14). They may ask at the desk, by phone, or by mail to **privacy@mridangaseva.com**.
+
+**Owner:** Praveen (the maintainer) handles every request; if he is away for more than three days,
+the Guru. **[[TEAM]]:** confirm the owner and the deputy, and name them in the privacy notice as the
+contact.
+
+**Time limits (publish the same ones in the notice):** acknowledge within **3 working days**;
+answer within **30 days** of the request, and never later than **90 days** (Rule 14). If an
+answer will take longer than 30 days, tell the person why and when, before the 30 days end.
+
+**Check who asks before giving or changing anything.** The parent of a minor: the guardian's phone
+or email on the record (call back on that number; do not trust a new number in the request). An
+adult student: their own signed-in app login or the email on their record. Never send a child's
+details to an address that is not on the record.
+
+**The request log.** Keep it in the team's private folder (a spreadsheet), **never in this
+repository**. One row per request:
+
+| Column | What goes in |
+|---|---|
+| Ref | `RQ-2026-01`, then `RQ-2026-02` ... (erasures keep their `ER-` reference too) |
+| Received | Date, and how (desk, phone, privacy@) |
+| From | Parent of `<roll number>` / adult student `<roll number>` (no other personal details here) |
+| Kind | Access, correction, erasure, withdrawal, grievance, other |
+| Identity checked | How (call-back to the phone on record, signed-in login ...) |
+| Acknowledged | Date |
+| Answered | Date, and what was done |
+| Within 30 / 90 days | Yes / no, and why not |
+
+**What to do for each kind:**
+
+- **Access** ("what do you keep about my child?"): in the live project's SQL editor, find the
+  student (`select id, roll_no, full_name from students where roll_no = '...';`) and send the person
+  the student record, the guardians and consents, the attendance count, levels and syllabus ticks,
+  and the call notes about them. Send it only to the checked contact; a PDF or the mail text, not a
+  shared link.
+- **Correction:** the Guru corrects the record in the live project's SQL editor (Table Editor
+  or `update students set phone = '...' where id = '...';`, `update guardians set phone = '...'
+  where id = '...';`); the change is kept in `audit_log`. A consent is never edited: revoke it and
+  record a new one ("Consent withdrawal" → "If the parent consents again").
+- **Withdrawal of consent:** "Consent withdrawal" above (`withdraw_consent`).
+- **Erasure:** "Erasure request" above (`erase_student`).
+- **Grievance** (a complaint about how we handled their data): the owner answers it in writing
+  within the same limits. If the person is not satisfied, tell them they may complain to the Data
+  Protection Board of India, as the notice says.
+
+Log the answer even when the request is refused (say why: for example, the person could not be
+identified).
 
 ## Publishing the web version
 
@@ -596,6 +674,15 @@ a function's parameters, in the same release: phones run the old app until the u
 phones on an older APK never get it. Remove the old thing in a later release, once no app in use
 calls it. Then a bad app update can always be rolled back ("Rolling back") without touching the
 database.
+
+**The one planned exception: 0034, the access log ([DECISIONS.md #146](DECISIONS.md)).** It closes
+coordinators' direct reads of guardians, consents and call notes, and everyone's direct reads of
+the audit log, on purpose. An app from before the update then shows a student with **no parent,
+no consent and no call history**, the call screen with no parent's number, and G11 empty, until
+the update arrives (the app itself is not broken: it asks again on the next screen visit). So run
+0034 on live and publish the update **the same day**, one after the other (steps 3-5 without a
+pause), at a time with no class. The update also works on a database without 0034 (it falls back
+to the old reads), so publishing it first is safe; rolling it back after 0034 is not.
 
 A change with no migration skips steps 1, 3 and 4. A migration with no app change still runs
 steps 1-4.
@@ -1072,10 +1159,11 @@ long holidays, open the app once a week, or restore the project from the dashboa
 
 ## Scheduled jobs: health check
 
-The database runs seven jobs on its own (times in UTC; IST is 5:30 later): `mridanga-status-refresh`
-(00:30, student statuses and follow-up calls), `mridanga-close-visits` (15:30, checks out open
-visits), `mridanga-assessments` and `mridanga-events-polls` (03:30), `mridanga-inbox-cleanup`
-(01:00), `mridanga-duty` (12:30) and `mridanga-push` (every minute). If one fails, nothing tells
+The database runs eight jobs on its own (times in UTC; IST is 5:30 later): `mridanga-status-refresh`
+(00:30, student statuses and follow-up calls), `mridanga-close-visits` (every hour at :30,
+checks out visits an hour after their centre closes), `mridanga-assessments` and `mridanga-events-polls` (03:30), `mridanga-inbox-cleanup`
+(01:00), `mridanga-access-log-purge` (01:45, deletes access-log rows older than 400 days),
+`mridanga-duty` (12:30) and `mridanga-push` (every minute). If one fails, nothing tells
 anyone: students stop changing status and no calls are created. **Every Monday, with the backup**,
 run in the live project's SQL editor:
 
@@ -1090,16 +1178,129 @@ select j.jobname, j.schedule, j.active,
 select last_job_at, last_job_result from push_status;
 ```
 
-Healthy: seven rows, all `active`; each daily job's `last_success` within the last day and
+Healthy: eight rows, all `active`; each daily job's `last_success` within the last day and
 `mridanga-push` within minutes; `failed_2_days` 0. Otherwise `last_error` says why (for example a
 setting changed in the dashboard to a wrong value); fix the cause and the job recovers on its next
 run. The push job always counts as succeeded, even when push is not set up: its own result is
 `last_job_result` (`not_set_up` = "Push notifications", step 13). A missing row means the job was
 removed: create it again with its `cron.schedule` line from `supabase/migrations/` (search for the
 job's name). A project that has not run every migration has fewer jobs (0001 makes the first two,
-0011 the push job, 0015, 0016, 0022 and 0023 one each).
+0011 the push job, 0015, 0016, 0022, 0023 and 0034 one each).
 
-## If a key leaks
+## Incidents
+
+Everything that may have exposed personal data, or put the app in someone else's hands. Start with
+**"Personal data breach"** whenever data may have been seen, copied, changed or lost by anyone who
+should not have it; the runbooks after it fix the cause for a key, the Expo account or a phone.
+They run side by side: lock the door (the cause) and tell the people (the breach) at the same time.
+
+### Personal data breach
+
+Follows the DPDP Rules 2025, Rule 7 ([DECISIONS.md #147](DECISIONS.md)). The duty applies to us from
+13 May 2027; we follow it from the first pilot day.
+
+**Who decides it is a breach, and who acts.** Praveen (the maintainer) decides and runs the steps;
+if he cannot be reached within 2 hours, the Guru. Either may start the steps alone; when in doubt,
+treat it as a breach. **[[TEAM]]:** confirm these two people and add phone numbers in the team's
+private contact sheet.
+
+**Examples:** a coordinator's phone or login used by someone else; a leaked secret key or database
+password; a hostile app update; a backup file or an exported list sent to the wrong person; a
+staff member reading many children's records with no class reason (seen in the access log).
+
+**Steps, in this order. Write the time of each in the incident log.**
+
+1. **Stop it.** Do the cause's own runbook at once: "If a key leaks", "If the Expo account is
+   compromised" or "If a staff phone is lost" below; a person misusing their access: switch their
+   login off in G2.
+2. **Save the logs before they are gone (within hours).** The **Free plan keeps API and database
+   logs for 1 day only** (supabase.com/pricing, checked 7 Oct 2026; Pro 7 days). In the live project:
+   **Logs** → the API (gateway) log, the Auth log and the Postgres log → set the time range from
+   before the suspected start → **Download logs** (CSV, at most 1,000 rows per download: repeat with
+   shorter time ranges until the whole period is saved). Also save the app's own logs, which the
+   project keeps for a year:
+   ```sql
+   -- run in the SQL editor; Download CSV each result
+   select * from access_log where at >= '<start, e.g. 2026-11-20 00:00+05:30>' order by id;
+   select * from audit_log where changed_at >= '<start>' order by id;
+   ```
+   Keep the files in the team's private folder for the incident (never in this repository).
+3. **Find out who read what** (scope). `access_log` records each read of parents' contacts,
+   consents and call notes, and each audit-log page, made in the app (0034):
+   ```sql
+   -- reads per login in the period
+   select a.actor_id, p.full_name, a.function_name, count(*) as reads,
+          count(distinct a.student_id) as students, min(a.at) as first, max(a.at) as last
+     from access_log a left join profiles p on p.id = a.actor_id
+    where a.at between '<start>' and '<end>'
+    group by 1, 2, 3 order by reads desc;
+   -- the students one login read about
+   select distinct s.roll_no, s.full_name, s.dob
+     from access_log a join students s on s.id = a.student_id
+    where a.actor_id = '<user id>' and a.at between '<start>' and '<end>';
+   ```
+   Not in `access_log`: reads of student names, dates of birth, phones and attendance (other
+   screens), anything read with the secret key or in the SQL editor, and the Guru's reads straight
+   from the tables. For those, the Supabase logs of step 2 are the evidence. If a secret key, the
+   database password or a hostile update was involved, assume **every** record was exposed.
+4. **Tell each affected parent or adult student, without delay** (in practice within 24 hours of
+   knowing, not waiting for the full picture). One message each, in their language, by the phone
+   or email on the record; use the template below. A child's message goes to the parent. If more
+   than about 200 people are affected, the Guru also announces it in the app and at the class.
+5. **First report to the Data Protection Board, without delay** (the same day as step 4): what
+   happened, how big, when, where, and the likely impact, as far as known. Send it through the
+   Board's online channel. **[[TEAM]]:** look up the Board's current reporting channel now and write
+   it here, so nobody searches for it during an incident.
+6. **Detailed report to the Board within 72 hours** of becoming aware (or the longer time the Board
+   allows): the updated description; the facts, circumstances and reasons that led to the breach;
+   what was done and is planned to reduce the risk; what is known about who did it; what was
+   changed so it does not happen again; and a report of the messages sent to the affected people
+   (how many, when, how).
+7. **Afterwards:** fix the cause properly (new keys, a new APK, a changed rule), write a short
+   DECISIONS.md entry if a rule changes, and close the incident in the log. **[[TEAM]] / legal:**
+   check whether CERT-In's 6-hour reporting of cyber incidents (Directions of 28 Apr 2022) applies
+   to the class.
+
+**The incident log.** Private folder, never this repository. One row per incident: Ref
+(`IN-2026-01`), when it started (best guess) and when we knew, who found it, what happened, data
+and people affected (count, roll numbers in a separate private file), logs saved (files), parents
+told (date, how many), Board first report (date), Board 72-hour report (date), cause, fix, closed
+(date).
+
+**Message to an affected parent or adult student.** The Telugu and Hindi texts are **drafts for a
+native speaker's review** before the pilot. Fill in the brackets; keep it short and plain.
+
+> **English.** Mridanga Seva class: a problem with your data. On [date] we found that [what
+> happened, e.g. "someone used a volunteer's lost phone to open student records"]. It happened
+> between [start] and [end]. The data involved: [e.g. your child's name, date of birth and your
+> phone number]. What this could mean for you: [e.g. calls or messages from people pretending to be
+> the class]. What we have done: [e.g. switched that login off, changed the keys]. What you can do:
+> [e.g. do not share codes or money with callers who say they are from the class; tell us about any
+> such call]. We are sorry. Questions: privacy@mridangaseva.com or [phone].
+
+> **తెలుగు (draft).** మృదంగ సేవ తరగతి: మీ వివరాలకు సంబంధించిన ఒక సమస్య. [తేదీ]న మేము గమనించాం:
+> [ఏం జరిగింది]. ఇది [మొదలు] నుంచి [ముగింపు] మధ్య జరిగింది. ప్రభావితమైన వివరాలు: [ఉదా. మీ బిడ్డ పేరు,
+> పుట్టిన తేదీ, మీ ఫోన్ నంబరు]. మీకు జరగగల ప్రమాదం: [ఉదా. తరగతి పేరుతో మోసపూరిత కాల్స్]. మేము
+> చేసినది: [ఉదా. ఆ లాగిన్‌ను ఆపేశాం, కీలు మార్చాం]. మీరు చేయగలిగినది: [ఉదా. తరగతి పేరుతో అడిగే
+> వారికి కోడ్‌లు లేదా డబ్బు ఇవ్వకండి; అలాంటి కాల్ వస్తే మాకు చెప్పండి]. క్షమించండి. ప్రశ్నలకు:
+> privacy@mridangaseva.com లేదా [ఫోన్].
+
+> **हिन्दी (draft).** मृदंग सेवा कक्षा: आपकी जानकारी से जुड़ी एक समस्या। [तारीख] को हमें पता चला कि
+> [क्या हुआ]। यह [शुरुआत] से [अंत] के बीच हुआ। प्रभावित जानकारी: [जैसे आपके बच्चे का नाम, जन्मतिथि
+> और आपका फ़ोन नंबर]। आपके लिए इसका संभावित असर: [जैसे कक्षा के नाम से धोखे वाले कॉल]। हमने क्या
+> किया: [जैसे वह लॉगिन बंद किया, कुंजियाँ बदलीं]। आप क्या कर सकते हैं: [जैसे कक्षा के नाम से माँगने
+> वालों को कोड या पैसे न दें; ऐसा कॉल आए तो हमें बताएँ]। हमें खेद है। सवाल: privacy@mridangaseva.com
+> या [फ़ोन]।
+
+### Reviewing the access log
+
+Once a month (with the first Monday backup), the Guru opens **G11 Audit log → Reads of private
+details**, or Praveen runs the first query of step 3 above for the last 30 days. Look for a login
+that read far more students than it works with, reads at night, or reads by a login that left. Ask
+the person first; if the answer does not explain it, it is a possible breach: start at step 1.
+Rows older than 400 days are deleted every night (job `mridanga-access-log-purge`).
+
+### If a key leaks
 
 First find out which key it is and which project (test or live); do the steps for that project
 ([DECISIONS.md #123](DECISIONS.md)). A leaked secret that ever reached git stays in its history:
@@ -1116,7 +1317,7 @@ rotating it is the fix, not deleting the file.
 | **Expo access token** or the Expo login | Publishing app updates to every phone | "If the Expo account is compromised" below |
 | **Android keystore** | Signing an APK that installs over the app | Cannot be changed for APKs shared by link. Tell users to install only from the team's link; move to the Play Store's app signing when the app goes there |
 
-### When the app's Supabase URL or key changes
+#### When the app's Supabase URL or key changes
 
 After a new publishable key (or a new project after a restore), every copy of the app must get the
 new value before the old one stops working. Make the new key first, do all of this, check, and only
@@ -1140,7 +1341,7 @@ then delete the old key.
    that surface still has the old value.
 6. Then delete the old key in Supabase, and sign in once more on each to be sure.
 
-## If the Expo account is compromised
+### If the Expo account is compromised
 
 Whoever controls the Expo account can publish an update that runs on every phone with the
 signed-in person's rights (updates are not signed, [DECISIONS.md #35](DECISIONS.md)). Act at once,
@@ -1166,7 +1367,7 @@ from a computer that is not suspected:
    their login; what they hold ends within an hour) and look through `audit_log` for the time since
    the compromise.
 
-## If a staff phone is lost
+### If a staff phone is lost
 
 A Guru's or coordinator's phone holds a signed-in app that can open student records, including
 minors'. The person tells the Guru at once (the maintainer, if it is the Guru's phone).

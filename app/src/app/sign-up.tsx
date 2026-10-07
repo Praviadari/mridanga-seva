@@ -1,6 +1,7 @@
 // A1 Create an account: name, email and password. A new login has no access until the
 // database links it to a student record with the same email, or the Guru gives it a role
-// (docs/DATABASE.md "Linking a login to a student").
+// (docs/DATABASE.md "Linking a login to a student"). The privacy notice is linked from here, with a
+// line for children: under 18, sign-up happens at the class desk (docs/DECISIONS.md #150).
 
 import { router } from 'expo-router';
 import { useRef, useState } from 'react';
@@ -13,10 +14,12 @@ import {
   signUp,
   type MessageKey,
 } from '@/auth/auth-actions';
+import { AppText } from '@/components/app-text';
 import { BrandHeader } from '@/components/brand';
 import { Button } from '@/components/button';
 import { LanguagePicker } from '@/components/language-picker';
 import { Notice } from '@/components/notice';
+import { PrivacyNoticeLink } from '@/components/privacy-notice-link';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { TextField } from '@/components/text-field';
@@ -128,7 +131,11 @@ export default function SignUpScreen() {
           onSubmitEditing={submit}
         />
 
+        <AppText variant="small" tone="muted">
+          {t('signUp.under18')}
+        </AppText>
         <Button label={t('signUp.submit')} onPress={submit} loading={busy} />
+        <PrivacyNoticeLink label={t('signUp.privacyNotice')} />
       </Section>
       <Button
         variant="link"

@@ -1,5 +1,7 @@
 // G11 Audit log, the Guru only, read-only: who changed what, and when, newest first; filters by
 // record type, person, kind of change and period; a row opens to show the values before and after.
+// A second view lists the reads of private details (the access log, 0034): who opened a parent's
+// contact details, consent records or call notes, or a page of this log, and when.
 // 50 rows at a time with "Show older". Data: src/data/audit-log.ts.
 
 import { Stack, useFocusEffect } from 'expo-router';
@@ -22,10 +24,12 @@ import {
   AUDIT_PAGE,
   AUDITED_TABLES,
   changesOf,
+  fetchAccessPage,
   fetchAuditNames,
   fetchAuditPage,
   NO_AUDIT_FILTERS,
   subjectOf,
+  type AccessEntry,
   type AuditEntry,
   type AuditFilters,
   type AuditNames,
@@ -34,27 +38,38 @@ import { fetchStaff, type StaffMember } from '@/data/student-overview';
 import { formatDateTime } from '@/lib/dates';
 import { cardLook, spacing, useTheme } from '@/theme/use-theme';
 
-type Loaded = { entries: AuditEntry[]; names: AuditNames; staff: StaffMember[]; more: boolean };
+/** Changes (audit_log) or reads of private details (access_log). */
+type LogView = 'changes' | 'reads';
+type Loaded = { entries: AuditEntry[]; reads: AccessEntry[]; names: AuditNames; staff: StaffMember[]; more: boolean };
 
-/** The audit log with filters. */
+/** The audit log with filters, and the access log. */
 export default function AuditLogScreen() {
   const { t } = useTranslation();
   const { profile } = useAuth();
   const { colors } = useTheme();
   // undefined = loading, null = could not load.
   const [loaded, setLoaded] = useState<Loaded | null | undefined>(undefined);
+  const [view, setView] = useState<LogView>('changes');
   const [filters, setFilters] = useState<AuditFilters>(NO_AUDIT_FILTERS);
   const [open, setOpen] = useState<Set<number>>(new Set());
   const [loadingMore, setLoadingMore] = useState(false);
 
-  const load = useCallback(async (f: AuditFilters) => {
-    const [entries, names, staff] = await Promise.all([fetchAuditPage(f, null), fetchAuditNames(), fetchStaff()]);
-    setLoaded(entries && names && staff ? { entries, names, staff, more: entries.length === AUDIT_PAGE } : null);
+  const load = useCallback(async (f: AuditFilters, v: LogView) => {
+    const [entries, reads, names, staff] = await Promise.all([
+      v === 'changes' ? fetchAuditPage(f, null) : [],
+      v === 'reads' ? fetchAccessPage(f, null) : [],
+      fetchAuditNames(),
+      fetchStaff(),
+    ]);
+    const page = v === 'changes' ? entries : reads;
+    setLoaded(
+      entries && reads && names && staff ? { entries, reads, names, staff, more: (page?.length ?? 0) === AUDIT_PAGE } : null,
+    );
   }, []);
 
   useFocusEffect(
     useCallback(() => {
-      void load(filters);
+      void load(filters, view);
       // Only on coming into view; a filter change loads by itself (change() below).
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [load]),
@@ -62,19 +77,25 @@ export default function AuditLogScreen() {
 
   if (profile?.role !== 'guru') return <GuruOnly title={t('auditLog.title')} />;
 
-  function change(next: Partial<AuditFilters>) {
+  function change(next: Partial<AuditFilters>, nextView: LogView = view) {
     const merged = { ...filters, ...next };
     setFilters(merged);
+    setView(nextView);
     setLoaded(undefined);
-    void load(merged);
+    void load(merged, nextView);
   }
 
   async function more() {
     if (!loaded) return;
     setLoadingMore(true);
-    const older = await fetchAuditPage(filters, loaded.entries[loaded.entries.length - 1]?.id ?? null);
+    if (view === 'changes') {
+      const older = await fetchAuditPage(filters, loaded.entries[loaded.entries.length - 1]?.id ?? null);
+      if (older) setLoaded({ ...loaded, entries: [...loaded.entries, ...older], more: older.length === AUDIT_PAGE });
+    } else {
+      const older = await fetchAccessPage(filters, loaded.reads[loaded.reads.length - 1]?.id ?? null);
+      if (older) setLoaded({ ...loaded, reads: [...loaded.reads, ...older], more: older.length === AUDIT_PAGE });
+    }
     setLoadingMore(false);
-    if (older) setLoaded({ ...loaded, entries: [...loaded.entries, ...older], more: older.length === AUDIT_PAGE });
   }
 
   const tableChoices: Choice<string>[] = [
@@ -85,28 +106,44 @@ export default function AuditLogScreen() {
     { value: 'all', label: t('auditLog.anyone') },
     ...(loaded?.staff ?? []).map((s) => ({ value: s.id, label: s.fullName })),
   ];
-  const who = (entry: AuditEntry, names: AuditNames) =>
-    entry.changedBy === null ? t('auditLog.system') : names.people.get(entry.changedBy) || t('home.guru.noName');
+  const nameOf = (id: string | null, names: AuditNames) =>
+    id === null ? t('auditLog.system') : names.people.get(id) || t('home.guru.noName');
+  const reading = view === 'reads';
+  const rows = loaded ? (reading ? loaded.reads.length : loaded.entries.length) : 0;
 
   return (
-    <Screen underHeader wide onRefresh={() => load(filters)}>
+    <Screen underHeader wide onRefresh={() => load(filters, view)}>
       <Stack.Screen options={{ title: t('auditLog.title') }} />
-      <AppText tone="muted">{t('auditLog.intro')}</AppText>
+      <ChoiceGroup<LogView>
+        chips
+        label={t('auditLog.show')}
+        choices={[
+          { value: 'changes', label: t('auditLog.views.changes') },
+          { value: 'reads', label: t('auditLog.views.reads') },
+        ]}
+        value={view}
+        onChange={(v) => change({}, v)}
+      />
+      <AppText tone="muted">{t(reading ? 'auditLog.readsIntro' : 'auditLog.intro')}</AppText>
       <Section icon="filter" title={t('students.filters.title')}>
-        <ChoiceGroup chips label={t('auditLog.what')} choices={tableChoices} value={filters.table} onChange={(table) => change({ table: table as AuditFilters['table'] })} />
-        <ChoiceGroup chips label={t('auditLog.who')} choices={personChoices} value={filters.person} onChange={(person) => change({ person })} />
-        <ChoiceGroup
-          chips
-          label={t('auditLog.kind')}
-          choices={[
-            { value: 'all', label: t('students.filters.all') },
-            { value: 'INSERT', label: t('auditLog.actions.INSERT') },
-            { value: 'UPDATE', label: t('auditLog.actions.UPDATE') },
-            { value: 'DELETE', label: t('auditLog.actions.DELETE') },
-          ]}
-          value={filters.action}
-          onChange={(action) => change({ action: action as AuditFilters['action'] })}
-        />
+        {reading ? null : (
+          <ChoiceGroup chips label={t('auditLog.what')} choices={tableChoices} value={filters.table} onChange={(table) => change({ table: table as AuditFilters['table'] })} />
+        )}
+        <ChoiceGroup chips label={t(reading ? 'auditLog.readBy' : 'auditLog.who')} choices={personChoices} value={filters.person} onChange={(person) => change({ person })} />
+        {reading ? null : (
+          <ChoiceGroup
+            chips
+            label={t('auditLog.kind')}
+            choices={[
+              { value: 'all', label: t('students.filters.all') },
+              { value: 'INSERT', label: t('auditLog.actions.INSERT') },
+              { value: 'UPDATE', label: t('auditLog.actions.UPDATE') },
+              { value: 'DELETE', label: t('auditLog.actions.DELETE') },
+            ]}
+            value={filters.action}
+            onChange={(action) => change({ action: action as AuditFilters['action'] })}
+          />
+        )}
         <ChoiceGroup<number>
           chips
           label={t('auditLog.when')}
@@ -124,15 +161,31 @@ export default function AuditLogScreen() {
       {loaded === undefined ? <LoadingCards /> : null}
       {loaded === null ? (
         <>
-          <Notice tone="error" title={t('auditLog.loadFailed')}>
+          <Notice tone="error" title={t(reading ? 'auditLog.readsFailed' : 'auditLog.loadFailed')}>
             {t('common.networkError')}
           </Notice>
-          <Button icon="refresh" label={t('common.tryAgain')} onPress={() => void load(filters)} />
+          <Button icon="refresh" label={t('common.tryAgain')} onPress={() => void load(filters, view)} />
         </>
       ) : null}
-      {loaded && loaded.entries.length === 0 ? <EmptyState icon="search" title={t('auditLog.empty')} /> : null}
+      {loaded && rows === 0 ? <EmptyState icon="search" title={t(reading ? 'auditLog.readsEmpty' : 'auditLog.empty')} /> : null}
 
-      {loaded
+      {loaded && reading
+        ? loaded.reads.map((read) => (
+            <View key={read.id} style={[cardLook(colors), styles.entry]}>
+              <AppText variant="label">{t(`auditLog.readFunctions.${read.kind}`, { defaultValue: read.kind })}</AppText>
+              {read.kind === 'get_audit_log' ? null : (
+                <AppText variant="small">
+                  {read.studentId === null ? t('auditLog.readErased') : (loaded.names.students.get(read.studentId) ?? read.studentId)}
+                </AppText>
+              )}
+              <AppText variant="small" tone="muted">
+                {t('auditLog.readLine', { who: nameOf(read.actorId, loaded.names), when: formatDateTime(read.at), count: read.rowCount })}
+              </AppText>
+            </View>
+          ))
+        : null}
+
+      {loaded && !reading
         ? loaded.entries.map((entry) => {
             const expanded = open.has(entry.id);
             const changes = expanded ? changesOf(entry, loaded.names) : [];
@@ -157,7 +210,7 @@ export default function AuditLogScreen() {
                     </AppText>
                     <AppText variant="small">{subjectOf(entry, loaded.names) || entry.rowId}</AppText>
                     <AppText variant="small" tone="muted">
-                      {t('auditLog.byLine', { who: who(entry, loaded.names), when: formatDateTime(entry.changedAt) })}
+                      {t('auditLog.byLine', { who: nameOf(entry.changedBy, loaded.names), when: formatDateTime(entry.changedAt) })}
                     </AppText>
                   </View>
                   <Icon name={expanded ? 'up' : 'down'} size={18} color={colors.textMuted} />
@@ -184,7 +237,12 @@ export default function AuditLogScreen() {
           })
         : null}
       {loaded?.more ? (
-        <Button variant="secondary" label={t('auditLog.older')} loading={loadingMore} onPress={() => void more()} />
+        <Button
+          variant="secondary"
+          label={t(reading ? 'auditLog.olderReads' : 'auditLog.older')}
+          loading={loadingMore}
+          onPress={() => void more()}
+        />
       ) : null}
     </Screen>
   );

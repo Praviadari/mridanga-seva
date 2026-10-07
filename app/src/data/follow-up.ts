@@ -9,6 +9,7 @@
 import type { ParseKeys } from 'i18next';
 
 import { parseDayMonthYear, todayLocal } from '@/lib/dates';
+import { readLogged } from '@/lib/logged-read';
 import { supabase } from '@/lib/supabase';
 
 import { isNetworkError } from './errors';
@@ -198,14 +199,18 @@ export async function fetchCallContext(studentId: string): Promise<CallContext |
       .eq('id', studentId)
       .maybeSingle(),
     supabase.from('students').select('phone').eq('id', studentId).maybeSingle(),
-    supabase.from('guardians').select('full_name, phone, relation').eq('student_id', studentId),
+    readLogged(supabase.rpc('get_guardians', { p_student: studentId }), () =>
+      supabase.from('guardians').select('full_name, phone, relation').eq('student_id', studentId),
+    ),
     supabase.from('settings').select('value').eq('key', 'call_reasons').maybeSingle(),
-    supabase
-      .from('call_logs')
-      .select('called_at, outcome, comment')
-      .eq('student_id', studentId)
-      .order('called_at', { ascending: false })
-      .limit(LAST_CALLS),
+    readLogged(supabase.rpc('get_call_notes', { p_student: studentId, p_limit: LAST_CALLS }), () =>
+      supabase
+        .from('call_logs')
+        .select('called_at, outcome, comment')
+        .eq('student_id', studentId)
+        .order('called_at', { ascending: false })
+        .limit(LAST_CALLS),
+    ),
   ]);
   if (overview.error || record.error || guardians.error || reasons.error || calls.error) return null;
   if (!overview.data || !record.data) return 'not_found';

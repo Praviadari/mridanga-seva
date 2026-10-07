@@ -1,10 +1,11 @@
 // One student's full record for staff (screen C8 Student profile): details, recent visits,
 // syllabus progress in their level, follow-up calls, open call tasks, level history, and for a
-// minor the parent and consent. Staff only: guardians, consents and call logs are closed to
-// students by row-level security (docs/DATABASE.md "Who can see what"), so a student-facing
-// screen must never reuse this.
+// minor the parent and consent. Staff only: guardians, consents and call notes are read through
+// get_guardians, get_consents and get_call_notes, which refuse everyone else and write each read to
+// the access log (0034, docs/DATABASE.md "Access log"), so a student-facing screen must never reuse this.
 
 import { isMinorOn, todayLocal } from '@/lib/dates';
+import { readLogged } from '@/lib/logged-read';
 import { supabase } from '@/lib/supabase';
 
 import type { CallOutcome } from './follow-up';
@@ -123,11 +124,13 @@ export async function fetchStudentProfile(studentId: string): Promise<StudentPro
         .eq('student_id', studentId)
         .gte('check_in', since),
       supabase.from('student_progress').select('item_id, done_on, remark').eq('student_id', studentId),
-      supabase
-        .from('call_logs')
-        .select('id, called_at, outcome, reason, comment, next_date, coordinator_id')
-        .eq('student_id', studentId)
-        .order('called_at', { ascending: false }),
+      readLogged(supabase.rpc('get_call_notes', { p_student: studentId }), () =>
+        supabase
+          .from('call_logs')
+          .select('id, called_at, outcome, reason, comment, next_date, coordinator_id')
+          .eq('student_id', studentId)
+          .order('called_at', { ascending: false }),
+      ),
       supabase
         .from('follow_up_tasks')
         .select('id, kind, due_on, attempt, escalated, assignee_id')
@@ -139,12 +142,16 @@ export async function fetchStudentProfile(studentId: string): Promise<StudentPro
         .select('id, from_level, to_level, changed_on, approved_by')
         .eq('student_id', studentId)
         .order('changed_on', { ascending: false }),
-      supabase.from('guardians').select('id, full_name, phone, email, relation').eq('student_id', studentId),
-      supabase
-        .from('consents')
-        .select('id, scope, method, id_type_checked, given_at, revoked_at')
-        .eq('student_id', studentId)
-        .order('given_at', { ascending: false }),
+      readLogged(supabase.rpc('get_guardians', { p_student: studentId }), () =>
+        supabase.from('guardians').select('id, full_name, phone, email, relation').eq('student_id', studentId),
+      ),
+      readLogged(supabase.rpc('get_consents', { p_student: studentId }), () =>
+        supabase
+          .from('consents')
+          .select('id, scope, method, id_type_checked, given_at, revoked_at')
+          .eq('student_id', studentId)
+          .order('given_at', { ascending: false }),
+      ),
     ]);
   const failed = [overview, record, visits, total, recent, progress, calls, tasks, levels, guardians, consents].some(
     (result) => result.error,
