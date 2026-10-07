@@ -50,6 +50,7 @@ flowchart LR
 | Email | Sends sign-up confirmation and password-reset emails | Brevo free plan, plugged into Supabase as SMTP |
 | Videos | Lesson videos stay on YouTube; the app only stores links | YouTube |
 | Web hosting | Serves the web version that iPhone users add to their home screen | Cloudflare Pages, uploaded from `app/dist` (OPERATIONS.md) |
+| Public website | mridangaseva.com: what the seva is, classes, how to join, get the app, privacy notice, contact; English, Telugu, Hindi. Plain HTML, no JavaScript, no cookies (see "The public website" below) | `website/`, Cloudflare Pages project `mridangaseva-site` |
 | Android builds | Builds the APK that Android users install from a link | EAS Build, `app/eas.json` (OPERATIONS.md) |
 | Android updates | Sends new screens and text to installed APKs without a reinstall; the home screens offer Restart once one is downloaded | EAS Update, channels `preview` and `production`, published with `npm run update:preview` / `update:production` (`app/scripts/publish-update.mjs`, OPERATIONS.md "Updating the Android app") |
 
@@ -527,6 +528,30 @@ Not on main yet ([DECISIONS.md #80](DECISIONS.md)). No native change.
   (10 MB). A bill on an entry cannot be deleted.
 - **Notices** go through `push_outbox` like the team tools; the Edge Function accepts
   `/staff/fund/<id>` once redeployed (the inbox works without).
+## The public website (`website/`)
+
+A separate static site for the root of the domain, apart from the app ([DECISIONS.md
+#128-#131](DECISIONS.md)). It shares nothing with `app/` except the colour palette (copied from
+`app/src/theme/colors.ts`), so building or changing it never touches the app's fingerprint.
+
+| Address | Serves |
+|---|---|
+| `mridangaseva.com` | this website (Cloudflare Pages project `mridangaseva-site`; until go-live only its `*.pages.dev` address) |
+| `app.mridangaseva.com` | the app's web version (project `mridanga-seva`), attached at go-live (audit brief 8) |
+
+| Path | What it is |
+|---|---|
+| `website/site.config.mjs` | Facts and switches: domain, dates (pilot, launch), mail aliases, app links, `draft`, privacy notice version |
+| `website/content/<lang>/strings.json` | One language: `meta` (BCP 47 code, native name, direction, order) and the menu, footer and page titles |
+| `website/content/<lang>/*.html` | That language's page texts as HTML fragments. `{{href:join}}`, `{{email:info}}`, `{{pilotDates}}` … are filled from the config; `[[TEAM: …]]` marks an unsettled fact |
+| `website/src/build.mjs` | Puts each text into the layout and writes `website/dist/` (pages, hashed CSS, sitemap, robots) |
+| `website/src/check.mjs` | Checks the build: links and #fragments, lang/hreflang/canonical, one h1, no inline style or script, string and file parity between languages, headers, security.txt expiry |
+| `website/src/serve.mjs` | Local preview that behaves like Cloudflare Pages (folder addresses, nearest 404.html, `_headers`) |
+| `website/static/` | Copied as is: `_headers` (CSP and security headers), `favicon.svg`, `.well-known/security.txt` |
+
+English is at `/`, other languages at `/<code>/` with the same slugs (`/classes/`, `/join/`,
+`/get-the-app/`, `/privacy/`, `/contact/`); each language has its own `404.html`.
+
 ## Phases
 
 | Phase | Adds | Target |

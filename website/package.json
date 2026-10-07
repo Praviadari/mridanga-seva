@@ -1,0 +1,19 @@
+{
+  "name": "mridanga-seva-website",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Public website for mridangaseva.com: static HTML, no JavaScript, no cookies.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "node src/build.mjs",
+    "build:release": "node src/build.mjs --release",
+    "check": "node src/check.mjs",
+    "check:external": "node src/check.mjs --external",
+    "serve": "node src/serve.mjs",
+    "test": "node src/build.mjs && node src/check.mjs"
+  }
+}

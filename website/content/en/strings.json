@@ -1,0 +1,64 @@
+{
+  "meta": {
+    "bcp47": "en",
+    "ogLocale": "en_IN",
+    "dateLocale": "en-IN",
+    "name": "English",
+    "nativeName": "English",
+    "dir": "ltr",
+    "order": 1,
+    "status": "draft for team review"
+  },
+  "site": {
+    "name": "Mridanga Seva",
+    "description": "A volunteer-run class in Hyderabad that teaches the mṛdaṅga (khol), the two-headed drum of kīrtana, as seva."
+  },
+  "ui": {
+    "skip": "Skip to main content",
+    "mainNav": "Main",
+    "language": "Language",
+    "draftNote": "Draft for team review. Text marked “To confirm” is not settled yet.",
+    "todo": "To confirm",
+    "noCookies": "This website sets no cookies and does not track you.",
+    "source": "Source code",
+    "updated": "Updated"
+  },
+  "nav": {
+    "home": "Home",
+    "classes": "Classes",
+    "join": "How to join",
+    "app": "Get the app",
+    "privacy": "Privacy",
+    "contact": "Contact"
+  },
+  "pages": {
+    "home": {
+      "title": "Learn the mṛdaṅga as seva",
+      "description": "Mridanga Seva teaches the mṛdaṅga (khol), the two-headed drum of kīrtana, in Abids, Hyderabad. Learn how the class works and how to join."
+    },
+    "classes": {
+      "title": "Classes",
+      "description": "How the Mridanga Seva class runs: an open window you come to when it suits you, three levels, coordinators who teach and a facilitator who assesses."
+    },
+    "join": {
+      "title": "How to join",
+      "description": "Joining the Mridanga Seva class in a few steps: come to the class, register at the desk, sign in to the app and start at the Beginner level."
+    },
+    "app": {
+      "title": "Get the app",
+      "description": "The Mridanga Seva app for students and coordinators: Android app now, web version for iPhone and computers coming soon."
+    },
+    "privacy": {
+      "title": "Privacy notice",
+      "description": "How Mridanga Seva handles personal data in its class and app, under India's DPDP Act 2023 and the EU GDPR. This website sets no cookies."
+    },
+    "contact": {
+      "title": "Contact",
+      "description": "Write to Mridanga Seva: info@mridangaseva.com for questions about the class, privacy@mridangaseva.com for questions about your data."
+    },
+    "notFound": {
+      "title": "Page not found",
+      "description": "This page does not exist."
+    }
+  }
+}

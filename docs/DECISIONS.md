@@ -2337,3 +2337,107 @@ is another person's: `request_id_used`. App users cannot change `request_id` (tr
 dashboard have no request id. An app without 0032 on its database gets PGRST202 for the new argument
 and calls again without it, so the OTA can ship before the migration. #127 was reserved for this round
 and is left unused.
+
+## 128. The public website is plain HTML built by a small script in `website/` — 7 Oct 2026
+
+**Context.** mridangaseva.com is bought (Zoho, 7 Oct 2026). The root of the domain becomes a public
+website that tells people about the class and sends them to the app; the app's web version moves
+to `app.mridangaseva.com` at go-live (audit brief 8). The site must meet international standards
+(accessibility, languages, privacy, security) because the seva is expanding abroad, and it must
+not touch the app or its native fingerprint.
+
+**Decision.** The site lives in its own top-level folder `website/` with its own `package.json`
+and **no dependencies**. `website/src/build.mjs` (Node only) puts each language's page texts
+(`website/content/<lang>/*.html`) into one layout and writes plain HTML, one CSS file with a
+content hash in its name, `sitemap.xml` and `robots.txt` to `website/dist/`. The pages ship **no
+JavaScript**. Facts that change (dates, links, mail aliases, the draft switch) are in
+`website/site.config.mjs`. `npm run check` tests links, languages, page structure and headers;
+`npm test` builds and checks. It is hosted as a separate Cloudflare Pages project,
+`mridangaseva-site`, uploaded by hand like the app's sites (#23).
+
+**Why.** Astro was the other candidate (good i18n routing, also ships no JS). Seven pages in three
+languages do not need a framework: a short script has nothing to upgrade, no supply chain and
+no build cache, and a volunteer can read it. With no JavaScript there is nothing to break, a
+strict CSP is easy, and the pages are fast on a slow phone.
+
+**Consequences.** Anything interactive (a form, a search) would need JavaScript and a CSP change;
+none is planned (contact is by email). If the site grows past ~20 pages or needs a blog, moving to
+Astro is straightforward: the content files are already HTML fragments per language.
+
+## 129. One folder per language; English at the root, other languages under /te/ and /hi/ — 7 Oct 2026
+
+**Context.** English, Telugu and Hindi now; Praveen will name more languages as the seva expands.
+
+**Decision.** Every folder in `website/content/` that holds a `strings.json` is a language: its
+`meta` gives the BCP 47 code, the Open Graph and date locales, the native name, the direction
+(`ltr`/`rtl`) and the menu order, and its seven `.html` files are the page texts. The default
+language (English) is served at `/`, every other one at `/<code>/` with the same page slugs. Each
+page has `<html lang dir>`, a canonical URL, `hreflang` alternates for every language plus
+`x-default` (English), and the sitemap lists the same alternates. The language switcher is a
+visible list of links in each language's own name and script, each marked with `lang` and
+`hreflang`, linking to the same page in that language; no flags. Dates are formatted at build
+time with `Intl` in the page's locale inside `<time datetime="YYYY-MM-DD">`. Fonts are the
+system's (Segoe UI / Nirmala UI on Windows, Roboto / Noto on Android, San Francisco / Kohinoor on
+Apple), which carry IAST diacritics (mṛdaṅga), Telugu and Devanagari; nothing is loaded from
+Google Fonts or any other host. Unsettled facts are written `[[TEAM: ...]]` in the texts and shown
+as a marked "To confirm" note; while `draft` is on, every page says it is a draft and carries
+`noindex`.
+
+**Why.** One folder per language is the smallest unit a translator can own. English at the root
+plus prefixed languages keeps today's links short and gives each language a stable, crawlable
+address. System fonts render all three scripts with no download and no third-party request.
+
+**Consequences.** A new language = copy `content/en` to `content/<code>`, translate, set `meta`;
+`npm run check` fails until every file and string key exists. In Telugu the class's drum is
+written "మృదంగ (ఖోల్)", not "మృదంగం", which Telugu readers take for the Carnatic drum. The te
+and hi texts are drafts for native-speaker review. A right-to-left language would need the CSS
+checked (it uses left/right in a few places).
+
+## 130. The website sets no cookies and loads nothing from elsewhere; strict headers — 7 Oct 2026
+
+**Context.** A public site for a class with children must not track visitors, and should score A+
+on Mozilla Observatory (audit brief 13 asked for a CSP on the app's site; this does the same for
+the new site).
+
+**Decision.** No cookies, analytics, trackers, embeds or forms, so no cookie banner. Cloudflare
+Pages serves `website/static/_headers`: `Content-Security-Policy: default-src 'none'; style-src
+'self'; img-src 'self'; connect-src 'self'; manifest-src 'self'; base-uri 'none'; form-action
+'none'; frame-ancestors 'none'; upgrade-insecure-requests`, HSTS (2 years, includeSubDomains, no
+preload yet), `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy:
+strict-origin-when-cross-origin`, a Permissions-Policy that switches every powerful feature off,
+COOP and CORP `same-origin`; the hashed CSS is cached for a year. `/.well-known/security.txt`
+(RFC 9116) points to GitHub private reporting and privacy@. `connect-src 'self'` is there only
+because Lighthouse reads `/robots.txt` from inside the page and called it invalid under
+`default-src 'none'`.
+
+**Consequences.** Cloudflare features that inject scripts (Email Address Obfuscation, Web
+Analytics, Rocket Loader) would be blocked by the CSP and must stay off for the zone. HSTS with
+includeSubDomains will also apply to `app.mridangaseva.com` and every other subdomain once the
+domain is attached, so each must serve HTTPS (Cloudflare and Zoho do). Add `preload` only after
+the domain has run on HTTPS for a while. security.txt expires on 1 Oct 2027; `npm run check` warns
+a month before.
+
+## 131. One privacy notice for the website and the app, written for DPDP and GDPR — 7 Oct 2026
+
+**Context.** Audit brief 6 asked for a reviewed privacy notice before the first parent signs. The
+seva may take students abroad, so the EU/UK GDPR matters as well as India's DPDP Act 2023 and its
+2025 Rules.
+
+**Decision.** The notice is a page of the website (`/privacy/`, `/te/privacy/`, `/hi/privacy/`) and
+covers the website and the app: the data fiduciary/controller; what the app keeps (from
+DATABASE.md); purposes and legal bases (DPDP s.6 consent and s.8 duties; GDPR Art. 6(1)(a), (c),
+(f)); children (under 18, verifiable written parental consent, no tracking or targeted ads); who
+sees what; the processors and where they are (Supabase, Expo, Firebase Cloud Messaging, Brevo,
+Cloudflare, Zoho Mail, YouTube); transfers abroad; retention; security and breach notice; rights
+(including DPDP nomination; GDPR restriction, objection, portability); complaints (Data Protection
+Board of India; EU/UK authority); contact privacy@mridangaseva.com; version and ISO date. Items
+waiting on team decisions are marked in the text: D4-07 retention (the audit's proposed periods,
+shown as a proposal), D4-09 who sees parents' contacts, D4-12 processors abroad, D4-08 age check
+at sign-up, plus the controller's legal name and address, the grievance officer, the reply period
+and a legal review.
+
+**Consequences.** The app's sign-up screens can link to `https://mridangaseva.com/privacy/` once
+the domain is attached (brief 6's app part: a notice link, and the notice version on each
+consent). When a team decision lands, edit the three language files, raise
+`privacyNotice.version` and `date` in `site.config.mjs`, rebuild and upload. The notice must have
+no "To confirm" left before the draft switch is turned off.

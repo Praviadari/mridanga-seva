@@ -1,0 +1,22 @@
+<!-- Get the app. Links come from site.config.mjs (app.apkUrl, app.webUrl, app.webLive, app.playStoreUrl). -->
+<h1>Get the app</h1>
+<p class="lead">The Mridanga Seva app is for the students and coordinators of the class. It shows your visits, your progress through the syllabus, announcements, lessons and practice tools such as a metronome.</p>
+
+<h2>Android phones</h2>
+<div class="card">
+  <p>Install the Android app from its download page on expo.dev, the service that builds it. The page shows a QR code and an <strong>Install</strong> button.</p>
+  <p><a class="button" href="{{apkUrl}}">Download for Android</a></p>
+  <p class="muted">The app is not in the Google Play Store yet, so Android asks you once to allow installing apps from your browser. The app then updates itself.</p>
+  <!--if:noPlayStore--><p class="muted">A Google Play Store listing will follow.</p><!--endif-->
+</div>
+
+<h2>iPhone, iPad and computers</h2>
+<div class="card">
+  <!--if:webSoon--><p><strong>Coming soon.</strong> The web version will open at <span class="nowrap">app.mridangaseva.com</span> in any browser. On an iPhone, you can add it to your home screen from Safari (Share, then Add to Home Screen) and use it like an installed app.</p><!--endif-->
+  <!--if:webLive--><p>Open the web version in any browser. On an iPhone, add it to your home screen from Safari (Share, then Add to Home Screen) and use it like an installed app.</p>
+  <p><a class="button" href="{{appWebUrl}}">Open the web app</a></p><!--endif-->
+</div>
+
+<h2>Signing in</h2>
+<p>Sign up with the email address you gave at the desk (see <a href="{{href:join}}">How to join</a>). The app is in English, Telugu and Hindi; it follows your phone's language, and you can change it in the app.</p>
+<p>The app does not show ads and does not track you. See the <a href="{{href:privacy}}">privacy notice</a> for what it keeps.</p>

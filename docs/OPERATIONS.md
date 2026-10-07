@@ -11,7 +11,8 @@ will rely on it.
 | Brevo | Sending sign-up and password-reset emails | Free (300 emails a day) | Team email account |
 | Expo | Building the Android app (EAS Build) and updating it on the phones (EAS Update); its push service passes notifications on | Free (15 Android builds a month; updates for 1,000 people a month, 100 GiB of downloads) | Team email account |
 | Firebase (Google) | Delivers push notifications to Android phones (Cloud Messaging) | Free | Team email account |
-| Cloudflare | Hosting the web version (Cloudflare Pages) | Free | Team email account |
+| Cloudflare | Hosting the web version and the public website (Cloudflare Pages) | Free | Team email account |
+| Zoho | The domain mridangaseva.com (registrar) and the team's mail (info@, privacy@ aliases) | Zoho Mail free plan | Team Zoho account |
 | GitHub | Source code | Free, public repository | Maintainer |
 | YouTube | Lesson videos | Free | Team or channel owner |
 
@@ -286,6 +287,70 @@ Tell users two things:
 - The home-screen app keeps its own login, apart from Safari: sign in once inside it.
 - Links in emails (confirm the email, reset the password) open in Safari, not in the home-screen
   app. Confirm or set the new password there, then go back to the home-screen app and sign in.
+
+## The public website
+
+The website for `mridangaseva.com` is in `website/` ([DECISIONS.md #128-#131](DECISIONS.md),
+ARCHITECTURE.md "The public website"). It needs only Node 20 or newer; there is nothing to install.
+
+**Change a text or a fact.**
+
+- A sentence on a page: edit `website/content/<lang>/<page>.html` in **every** language folder
+  (en, te, hi). Keep `{{…}}` values and `[[TEAM: …]]` markers as they are unless the fact is
+  settled; then replace the marker with the real text in all languages.
+- Dates, links, mail addresses, the APK link, "web app is live": `website/site.config.mjs`.
+- The privacy notice: edit the three `privacy.html` files and raise `privacyNotice.version` and
+  `date` in the config.
+- A new language: copy `website/content/en` to `website/content/<code>` (BCP 47, e.g. `ta`, `bn`,
+  `fr`), translate the seven `.html` files and `strings.json`, and set its `meta` (`bcp47`,
+  `ogLocale`, `dateLocale`, `name`, `nativeName`, `dir`, `order`). Nothing else changes.
+
+**Build and check** (from `website/`):
+
+```bash
+npm test
+```
+
+That builds `website/dist/` and checks it; it must end in `OK`. `npm run check:external` also asks
+every outside link (the APK page, GitHub) for an answer. To look at it: `npm run serve` and open
+`http://localhost:4321/` (the same headers as Cloudflare, except HSTS).
+
+**First upload** (once, in the team's Cloudflare account; same wrong turns as for the app, see
+"Publishing the web version"):
+
+1. **Workers & Pages → Create application → "Looking to deploy Pages? Get started" → Drag and drop
+   your files**. Not a Worker, not "Connect to Git".
+2. Project name **`mridangaseva-site`**. The address is `https://mridangaseva-site.pages.dev`
+   (Cloudflare adds letters if the name is taken; use the address it shows).
+3. Drag in the **`website/dist`** folder (copy it to the Desktop first if the file chooser cannot
+   reach the hidden `.claude` folder) and click **Deploy site**. The upload lists about 27 files,
+   including `_headers` and `.well-known/security.txt`.
+4. Do **not** add a custom domain yet: the domain is attached at go-live, together with
+   `app.mridangaseva.com` for the app (audit brief 8).
+
+**Each new release:** `npm test`, then in Cloudflare open `mridangaseva-site` → **Create
+deployment** → drag in `website/dist`. Or from `website/`:
+`npx wrangler pages deploy dist --project-name mridangaseva-site`.
+
+**Check after an upload:** open the `pages.dev` address; the response headers (browser
+developer tools → Network → the page → Headers) show `content-security-policy` and
+`strict-transport-security`; `/.well-known/security.txt` and `/sitemap.xml` open; a made-up
+address like `/te/nothing` shows the Telugu "page not found". Score it at
+`https://developer.mozilla.org/en-US/observatory` (aim A+) and `https://pagespeed.web.dev/`.
+
+**Going live (with brief 8):**
+
+1. Settle every `[[TEAM: …]]` marker (`npm run check` lists how many are left per file), get the
+   te/hi texts reviewed by native speakers and the privacy notice by a legal adviser.
+2. In `site.config.mjs`: `draft: false`; swap `app.apkUrl` for the **production** APK (brief 9; the
+   link today is the pilot build that talks to the TEST project); `app.webLive: true` once
+   `app.mridangaseva.com` works.
+3. Build, upload, then attach the domain: `mridangaseva-site` → **Custom domains** → add
+   `mridangaseva.com` (and `www.mridangaseva.com`, redirected to the root with a Redirect Rule).
+   The DNS must already be on Cloudflare; Zoho's MX, SPF and DKIM records stay as they are.
+4. In the zone, keep **Email Address Obfuscation** (Scrape Shield), **Web Analytics** and **Rocket
+   Loader** off: they inject scripts the CSP blocks, and obfuscation would break the mailto links.
+5. Renew `.well-known/security.txt` (`Expires`) before 1 Oct 2027.
 
 ## Building the Android app
 

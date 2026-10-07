@@ -1,0 +1,108 @@
+<!-- Privacy notice, written for India's Digital Personal Data Protection Act 2023 (DPDP) with the
+     DPDP Rules 2025, and the EU/UK GDPR. Draft: needs team decisions D4-07 (retention), D4-09 (who sees
+     contacts), D4-12 (processors abroad), D4-08 (age check at sign-up) and a legal review before go-live.
+     Data list from docs/DATABASE.md; location check from DECISIONS #70; processors from docs/OPERATIONS.md. -->
+<h1>Privacy notice</h1>
+<p class="lead">This notice explains what personal data Mridanga Seva keeps about students, parents, guardians and volunteers, why, who else handles it, and what you can ask of us.</p>
+<p class="muted">Version {{noticeVersion}}, dated {{noticeDate}}. It covers this website and the Mridanga Seva app. [[TEAM: legal review before the class opens]]</p>
+
+<h2 id="summary">In short</h2>
+<ul>
+  <li>This website sets no cookies, has no analytics and no trackers, and has no forms.</li>
+  <li>The app keeps only what the class needs to teach you and keep children safe. We never sell data and never show ads.</li>
+  <li>For a student under 18, a parent or guardian gives consent in writing.</li>
+  <li>You can ask to see, correct or delete your data, or withdraw your consent, by writing to {{email:privacy}}.</li>
+</ul>
+
+<h2 id="who">Who is responsible</h2>
+<p>The data fiduciary (under the GDPR, the “controller”) is Mridanga Seva, a volunteer team in Hyderabad, India. [[TEAM: the legal name and postal address of the person or body responsible for the data]]</p>
+<p>Privacy contact and grievance officer: {{email:privacy}}. [[TEAM: the name or role of the person who answers privacy requests]]</p>
+
+<h2 id="website">This website</h2>
+<p>This website only shows information. It sets no cookies, uses no analytics or advertising tools, loads nothing from other websites, and has no forms. That is why it shows no cookie banner.</p>
+<p>The website is hosted by Cloudflare. To deliver pages and protect the site from attacks, Cloudflare processes your IP address and browser details for a short time, under its own privacy policy. We do not receive or keep these logs.</p>
+<p>If you write to us by email, we keep your message and address to answer you (see <a href="#retention">How long we keep data</a>).</p>
+
+<h2 id="data">What the app keeps</h2>
+<table>
+  <caption>Personal data in the app</caption>
+  <thead><tr><th scope="col">About</th><th scope="col">What</th></tr></thead>
+  <tbody>
+    <tr><th scope="row">Students</th><td>Name, date of birth, roll number, phone or email, area or PIN code (not the full address), level, a photo only if consent was given, the app language.</td></tr>
+    <tr><th scope="row">Parents and guardians of students under 18</th><td>Name, relation to the student, phone number, and the consent record: date, who checked it, and which kind of ID document was looked at. The ID number itself is never stored.</td></tr>
+    <tr><th scope="row">Learning</th><td>Visits (check-in and check-out times), syllabus items learnt, assessments and answers you send, practice minutes, level changes.</td></tr>
+    <tr><th scope="row">Follow-up</th><td>When a student stops coming, a coordinator may call; the date, the reason given and a short note are kept.</td></tr>
+    <tr><th scope="row">Messages</th><td>Announcements you have read, your replies, and the notification token of your phone so it can receive notices.</td></tr>
+    <tr><th scope="row">Volunteers</th><td>Name, email, role, duty hours, and a log of the changes they make to student records.</td></tr>
+  </tbody>
+</table>
+<p><strong>Location:</strong> when a coordinator checks a student in, the app checks once whether the coordinator's phone is at the class. Only the result (at the class, away, or not known) and the distance are kept, never the position itself, and nothing is tracked in the background.</p>
+
+<h2 id="purposes">Why we use it, and on what basis</h2>
+<ul>
+  <li><strong>Running the class</strong>: registering students, recording visits and progress, assessments, follow-up calls and announcements. Basis: your consent, or for a child the consent of a parent or guardian (DPDP Act section 6; GDPR Article 6(1)(a)).</li>
+  <li><strong>Keeping children safe</strong>: knowing who is responsible for a child and how to reach them. Basis: the parent's or guardian's consent.</li>
+  <li><strong>Security and accountability</strong>: logs of who changed what, so that misuse can be found and fixed. Basis: our legal duties to protect personal data (DPDP Act section 8; GDPR Article 6(1)(c) and our legitimate interest under Article 6(1)(f)).</li>
+</ul>
+<p>We do not use personal data for advertising, profiling or selling, and we do not make decisions about people by automated means.</p>
+
+<h2 id="children">Children</h2>
+<p>Under Indian law a child is anyone under 18. A child is registered only together with the verifiable consent of a parent or lawful guardian: the parent or guardian fills in and signs a written consent form at the desk, and a coordinator checks an ID document. A photo of a child is kept only if the parent agreed to it separately.</p>
+<p>We do not track or monitor the behaviour of children and never direct advertising at them. Children should not create an app login on their own; a parent can ask the coordinators. [[TEAM: decision D4-08, how the app checks age at sign-up]]</p>
+<p>At 18, a student is asked to give their own consent. [[TEAM: confirm]]</p>
+
+<h2 id="access">Who can see it</h2>
+<ul>
+  <li>A student sees their own record, progress and visits.</li>
+  <li>Coordinators see the students' details they need to teach and follow up. [[TEAM: decision D4-09, whether all coordinators or only a student's mentor and the facilitator see parents' phone numbers and consent records]]</li>
+  <li>The facilitator sees everything in the class and the log of changes.</li>
+</ul>
+
+<h2 id="processors">Services that handle data for us</h2>
+<p>We use these services to run the app and the website. Each handles data only on our instructions and under its own data protection terms.</p>
+<table>
+  <caption>Data processors</caption>
+  <thead><tr><th scope="col">Service</th><th scope="col">What it does</th><th scope="col">Where</th></tr></thead>
+  <tbody>
+    <tr><td>Supabase</td><td>Database, logins and stored files of the app</td><td>Mumbai, India [[TEAM: confirm the region of the live project]]</td></tr>
+    <tr><td>Expo (650 Industries)</td><td>App updates; passes notifications to phones</td><td>USA</td></tr>
+    <tr><td>Google Firebase Cloud Messaging</td><td>Delivers notifications to Android phones</td><td>Worldwide</td></tr>
+    <tr><td>Brevo</td><td>Sends sign-up and password-reset emails</td><td>European Union</td></tr>
+    <tr><td>Cloudflare</td><td>Hosts this website and the web version of the app</td><td>Worldwide network</td></tr>
+    <tr><td>Zoho Mail</td><td>The team's email, including {{email:info}} and {{email:privacy}}</td><td>[[TEAM: confirm the Zoho data centre]]</td></tr>
+    <tr><td>YouTube (Google)</td><td>Plays lesson videos inside the app; YouTube may set its own cookies when a video plays</td><td>Worldwide</td></tr>
+  </tbody>
+</table>
+<p id="abroad">Some of these services may handle data outside India. Indian law allows this except to countries the Government of India restricts; for people in the European Union or the United Kingdom, such transfers rely on the services' standard contractual clauses or an adequacy decision. [[TEAM: decision D4-12, the final list of services and transfers]]</p>
+
+<h2 id="retention">How long we keep data</h2>
+<p>[[TEAM: decision D4-07; the periods below are a proposal, not yet agreed]]</p>
+<ul>
+  <li>Students who have left: erased two years after leaving; only the roll number and the dates are kept so that numbers are never reused.</li>
+  <li>App logins that were never linked to a student: deleted after 30 days.</li>
+  <li>Logs of changes and of access to sensitive data: at least one year, as the DPDP Rules require, at most two years.</li>
+  <li>Notification tokens of phones no longer used: deleted after 90 days.</li>
+  <li>Emails to the team: [[TEAM: how long]].</li>
+</ul>
+<p>When you withdraw consent or ask for erasure, we stop using your data and erase it, keeping only what the law requires us to keep.</p>
+
+<h2 id="security">How we protect it</h2>
+<p>Data travels encrypted (HTTPS). Database rules decide, row by row, who may read or change what. Changes to student records are logged. Backups are encrypted. If a breach happens, we tell the people affected and the Data Protection Board of India without delay, as the law requires.</p>
+
+<h2 id="rights">Your rights</h2>
+<p>You, or a parent or guardian for a child, can ask us to:</p>
+<ul>
+  <li>tell you what data we keep about you, and with whom it was shared;</li>
+  <li>correct, complete or update it;</li>
+  <li>erase it;</li>
+  <li>withdraw your consent, as easily as you gave it (what was done before stays lawful);</li>
+  <li>name another person to act for you if you die or cannot act yourself (DPDP Act section 14).</li>
+</ul>
+<p>If the GDPR applies to you, you also have the rights to restrict or object to processing and to receive your data in a portable format.</p>
+<p>Write to {{email:privacy}}, or speak to a coordinator at the desk. We may ask you to confirm who you are. We reply within 30 days. [[TEAM: confirm the reply period]]</p>
+
+<h2 id="complaints">Complaints</h2>
+<p>Please write to us first, so we can put things right. If you are not satisfied with our answer, you can complain to the Data Protection Board of India. If you live in the European Union or the United Kingdom, you can also complain to your local data protection authority.</p>
+
+<h2 id="changes">Changes to this notice</h2>
+<p>When this notice changes in a way that matters, we change its version and date above and tell app users in an announcement. Translations are provided for convenience; [[TEAM: whether the English text prevails if a translation differs]]</p>

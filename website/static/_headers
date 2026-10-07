@@ -1,0 +1,24 @@
+# Cloudflare Pages response headers for the public website (DECISIONS #130).
+# The site ships no JavaScript and loads nothing from other hosts, so the CSP allows only this
+# site's own CSS, images and icons. JSON-LD (<script type="application/ld+json">) is data, not code,
+# and needs no script-src. connect-src 'self' only lets crawlers and audit tools that read
+# /robots.txt from inside the page (Lighthouse does) reach it; the site itself makes no requests.
+# If Cloudflare's "Email Address Obfuscation" or "Web Analytics" is ever switched on for the zone,
+# it injects a script this CSP blocks: keep both off (docs/OPERATIONS.md "The public website").
+
+/*
+  Content-Security-Policy: default-src 'none'; style-src 'self'; img-src 'self'; connect-src 'self'; manifest-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; upgrade-insecure-requests
+  Strict-Transport-Security: max-age=63072000; includeSubDomains
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: accelerometer=(), autoplay=(), camera=(), display-capture=(), encrypted-media=(), fullscreen=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), midi=(), payment=(), picture-in-picture=(), publickey-credentials-get=(), screen-wake-lock=(), sync-xhr=(), usb=(), xr-spatial-tracking=()
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Resource-Policy: same-origin
+  X-Permitted-Cross-Domain-Policies: none
+
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/.well-known/security.txt
+  Content-Type: text/plain; charset=utf-8
