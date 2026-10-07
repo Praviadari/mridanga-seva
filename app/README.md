@@ -8,7 +8,7 @@ The Expo (React Native + TypeScript) app: Android, iOS and the web version from 
    Supabase project's URL and **publishable (anon)** key. Never the `service_role` key.
 2. Install and start:
    ```bash
-   npm install
+   npm ci
    npx expo start
    ```
    Press `w` for the web version, or scan the QR code with Expo Go on an Android phone.
@@ -21,8 +21,8 @@ explicit live build ([../docs/DECISIONS.md #145](../docs/DECISIONS.md)). None of
 | File | Project | Read by |
 |---|---|---|
 | `.env.development` | TEST | `npx expo start` (Expo loads it by itself in development) |
-| `.env.test` | TEST | `npm run export:web -- --site test`, anon-key probes of TEST, `eas env:push --environment preview` |
-| `.env.live` | LIVE | only `npm run export:web -- --site live` and `eas env:push --environment production` |
+| `.env.test` | TEST | `npm run export:web -- --site test`, anon-key probes of TEST, `npx eas-cli env:push --environment preview` |
+| `.env.live` | LIVE | only `npm run export:web -- --site live` and `npx eas-cli env:push --environment production` |
 
 Keep **no plain `.env`**: Expo loads `.env` in every mode, so a live `.env` would put the class's
 real data behind `npx expo start`. The export scripts set `EXPO_NO_DOTENV=1`, so Expo loads no file
@@ -42,6 +42,14 @@ other security headers, filled in for that site from `public/_headers`), the QR 
 (`zxing/<version>/zxing_reader.wasm`, checked against its published SHA-256) and `version.txt`
 (site, commit, time). The same build id shows under **Sign out** on the web. Upload and the header
 check: [../docs/OPERATIONS.md](../docs/OPERATIONS.md) "Publishing the web version".
+
+## Updates and EAS
+
+`npm run update:preview -- --message "..."` (testers' APKs) and `npm run update:production` (the
+class) publish an update for the Android app; both stop at *Type yes*, and `--check-only` runs every
+check without publishing. EAS CLI is pinned in `package.json` (devDependencies): after `npm ci`,
+`npx eas-cli …` runs that exact version; never add `@latest` ([../docs/DECISIONS.md #153](../docs/DECISIONS.md)).
+Details: [../docs/OPERATIONS.md](../docs/OPERATIONS.md) "Updating the Android app".
 
 ## Before you commit
 

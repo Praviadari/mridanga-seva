@@ -231,8 +231,11 @@ to `app/dist/`. Always use this command, not a bare `npx expo export`, because
 - moves the images Expo puts under `assets/node_modules` (such as the back arrow) to
   `assets/vendor` — Cloudflare Pages never uploads a folder named `node_modules`, so those images
   would be missing;
-- stops if the export holds the Supabase secret key, names the other project, or does not hold
-  exactly the URL and key of the site's file, so a test site can never talk to the live project;
+- stops if the export holds a secret (the Supabase secret key and the other shapes in
+  [#155](DECISIONS.md)), names the other project, or does not hold exactly the URL and key of the
+  site's file, so a test site can never talk to the live project. The file is read with Expo's own
+  `.env` rules (quotes, `export`, `#` comments; [#154](DECISIONS.md)), so the check sees the same
+  values Expo would;
 - copies the QR reader into `dist/zxing/<version>/` after checking its SHA-256 ([#143](DECISIONS.md));
 - writes `dist/_headers` from `app/public/_headers`: the Content-Security-Policy with this site's
   Supabase address, HSTS, `nosniff`, Referrer-Policy and Permissions-Policy ([#142](DECISIONS.md));
@@ -404,24 +407,34 @@ The app belongs to the Expo project `@mridanga-seva/mridanga-seva`, in the Expo 
 `mridanga-seva` (set up 30 Sep 2026). `app.json` names it: `"owner"` and `extra.eas.projectId`.
 The id is not a secret.
 
-**Once, on a new computer** (from `app/`): `npx eas-cli@latest login`. It opens the browser to
-sign in to Expo.
+**EAS CLI is pinned** ([DECISIONS.md #153](DECISIONS.md)): `app/package.json` holds an exact
+version (`"eas-cli": "24.11.0"` in devDependencies), so every computer runs the same, checked
+copy. Run `npm ci` in `app/` first; then `npx eas-cli …` runs that copy and `npx eas-cli
+--version` prints 24.11.0. If npx asks *Need to install the following packages*, answer no and
+run `npm ci`: it is about to download whatever version is newest. Never add `@latest`.
+**Upgrading** it is a change like any other: `npm install --save-dev --save-exact eas-cli@<version>`
+in `app/` (a version at least a week old, after reading its release notes), check
+`npm run update:preview -- --check-only --message x`, commit `package.json` and
+`package-lock.json`, and change the version in this paragraph.
+
+**Once, on a new computer** (from `app/`, after `npm ci`): `npx eas-cli login`. It opens the
+browser to sign in to Expo.
 
 **Once, and again whenever a project's Supabase URL or key changes** (from `app/`):
 
 ```bash
-npx eas-cli@latest env:push --environment preview --path .env.test
-npx eas-cli@latest env:push --environment production --path .env.live
+npx eas-cli env:push --environment preview --path .env.test
+npx eas-cli env:push --environment production --path .env.live
 ```
 
 `env:push` copies each project's Supabase URL and publishable key to EAS. The build servers
 never see `app/.env.live` or `app/.env.test` (they are not in git), so without this step the APK would
 say *App not set up*. If it asks for a visibility, choose plain text: these values are inside
-every copy of the app anyway. `npx eas-cli@latest env:list --environment preview` shows what EAS
+every copy of the app anyway. `npx eas-cli env:list --environment preview` shows what EAS
 has.
 
 **Only for a new Expo project** (a new organisation, for example): put `"owner":
-"<organisation>"` in `app.json`, run `npx eas-cli@latest init --account <organisation>` and commit
+"<organisation>"` in `app.json`, run `npx eas-cli init --account <organisation>` and commit
 the change. `init` writes the project id into `app.json`, but also copies settings from the
 plugins into it (an `android.permissions` list, an empty `extra.router`): remove those two, keep
 `extra.eas.projectId`.
@@ -429,7 +442,7 @@ plugins into it (an `android.permissions` list, an empty `extra.router`): remove
 **Each build** (`preview` for the test project, `production` for the live one):
 
 ```bash
-npx eas-cli@latest build -p android --profile preview
+npx eas-cli build -p android --profile preview
 ```
 
 - Build from a clean, committed `main`: the APK's fingerprint (see "Updating the Android app")
@@ -446,8 +459,11 @@ npx eas-cli@latest build -p android --profile preview
   phone hotspot. Never switch certificate checks off (`NODE_TLS_REJECT_UNAUTHORIZED`).
 - The **first** build asks to generate an Android keystore: answer yes. Expo keeps it. Every
   later APK must be signed with the same keystore, or phones refuse the update. Download a backup
-  once (`npx eas-cli@latest credentials -p android`) and keep it with the team's passwords —
-  never in this repository or a chat.
+  once (`npx eas-cli credentials -p android`) and keep it with the team's passwords —
+  never in this repository or a chat. `.gitignore` refuses `*.jks`, `*.keystore`,
+  `credentials.json`, private keys and `.npmrc` anywhere in the repository
+  ([DECISIONS.md #155](DECISIONS.md)), so a stray copy is not committed by `git add -A`; still
+  download it outside the repository folder.
 - Free builds wait in a low-priority queue, sometimes for a while, and may run for at most
   45 minutes. The free plan allows 15 Android builds a month, so build for a release, not for every change.
 - When it finishes, the build's page on expo.dev has an **Install** link and a QR code. Share that link.
@@ -504,19 +520,24 @@ npm run update:preview -- --message "Clearer follow-up card"
 ```
 
 That is for the test app (testers, volunteers). For the live app used by the class, after the
-change has been checked on preview, use `npm run update:production -- --message "..."`; it asks
-you to type `yes`. The script (`app/scripts/publish-update.mjs`):
+change has been checked on preview, use `npm run update:production -- --message "..."`. Both
+ask you to type `yes` before anything is published, and anything else (or no answer, or Ctrl+C)
+publishes nothing ([DECISIONS.md #152](DECISIONS.md)); there is no flag to skip the question.
+The script (`app/scripts/publish-update.mjs`):
 
 1. stops if the network cannot upload to EAS (an office network that inspects secure
    connections), or if no finished APK on that channel has the app's current fingerprint;
 2. takes the Supabase URL and key from the EAS environment of the same name — never from
    the `app/.env*` files, and with `EXPO_NO_DOTENV=1` so Expo loads none of them either — and checks the URL is that channel's project (`preview` = test
-   `fhuqyk…`, `production` = live `qeozvv…`);
+   `fhuqyk…`, `production` = live `qeozvv…`), that both have the right shape (a publishable key),
+   and deletes the temporary file it pulled them into, whatever happens;
 3. builds the Android bundle into `app/dist-update/` and checks it holds that project's URL and
-   key, not the other project's address, and no secret key;
-4. publishes it with `eas update`.
+   key, not the other project's address, and no secret (a Supabase secret or service_role key,
+   personal access token, private key, Postgres address with a password, Google, GitHub, Slack or
+   AWS key; [DECISIONS.md #155](DECISIONS.md));
+4. asks you to type `yes`, then publishes it with `eas update` (the pinned EAS CLI).
 
-Add `--check-only` to run steps 1-3 without publishing. Never run `eas update` by hand: it
+Add `--check-only` to run steps 1-3 without publishing; it stops before the question. Never run `eas update` by hand: it
 would bundle whatever settings it finds, and an update made with the live settings would send
 testers into the class's real data. The message may not contain `"`, `%`, `$`, backticks or
 backslashes. Uploading needs a network that does not inspect secure connections (see "Each
@@ -530,7 +551,7 @@ it. It carries every native package Phase 2 needs: expo-audio (with expo-asset),
 expo-screen-orientation, expo-haptics, and the image picker's microphone text. Steps, from a
 hotspot (the office network breaks uploads):
 
-1. In `app/`: `npx eas-cli@latest build -p android --profile preview`; check the build page shows
+1. In `app/`: `npx eas-cli build -p android --profile preview`; check the build page shows
    fingerprint 185e839f (or what `npx expo-updates runtimeversion:resolve --platform android`
    prints on main then).
 2. Install it over the old app on a test phone, sign in, and check: the metronome sounds at 30, 80
@@ -540,12 +561,12 @@ hotspot (the office network breaks uploads):
    with a media notice); the practice timer logs; Android asks for the microphone only when
    recording and for location only "while using the app"; notices in the inbox open their screens.
 3. Then share the APK link with the volunteers as for f9a084aa.
-**Rolling back** a bad update (from `app/`): `npx eas-cli@latest update:rollback` and follow the
+**Rolling back** a bad update (from `app/`): `npx eas-cli update:rollback` and follow the
 questions: choose the channel's branch (`preview` or `production`), then either an earlier
 update or *the embedded update* (what came inside the APK). Phones get the rollback the same
 way they get an update. A fix published later replaces it.
 
-**What exists on EAS:** `npx eas-cli@latest update:list --all` (updates), `channel:list`
+**What exists on EAS:** `npx eas-cli update:list --all` (updates), `channel:list`
 (channels and the branch each one serves). The free plan covers 1,000 people a month who
 download updates; the class is about 200.
 
@@ -727,7 +748,7 @@ Function gets the Supabase service-role key from Supabase by itself; nobody copi
 
 5. Upload the service-account key:
    ```bash
-   npx eas-cli@latest credentials -p android
+   npx eas-cli credentials -p android
    ```
    Choose a build profile (either; the key belongs to the package name) → **Google Service
    Account** → **Manage your Google Service Account Key for Push Notifications (FCM V1)** →
@@ -788,7 +809,7 @@ new one answers `500 {"error":"claim_failed"}` and nothing is lost). From the re
 The secret `EXPO_PROJECT` is optional (default `@mridanga-seva/mridanga-seva`, the app's Expo project).
 **Then a new APK**, built after steps 3 and 5 (see "Building the Android app"):
 
-11. `npx eas-cli@latest build -p android --profile preview` (test project) or `--profile
+11. `npx eas-cli build -p android --profile preview` (test project) or `--profile
     production` (live). Install it over the old one, sign in, and allow notifications when
     Android asks.
 
@@ -1103,9 +1124,9 @@ then delete the old key.
 
 1. **`.env` files:** `app/.env.live` (live), or `app/.env.test` and `app/.env.development` (test),
    on every computer that builds or publishes. Never commit them.
-2. **EAS environment** (from `app/`): `npx eas-cli@latest env:push --environment production --path .env.live`
+2. **EAS environment** (from `app/`): `npx eas-cli env:push --environment production --path .env.live`
    for live, `--environment preview --path .env.test` for test; check with
-   `npx eas-cli@latest env:list --environment production`.
+   `npx eas-cli env:list --environment production`.
 3. **App updates, per channel:** `npm run update:production -- --message "New key"` (live) and/or
    `npm run update:preview -- --message "New key"` (test). The script reads the key from EAS (step 2)
    and checks it. Phones on an APK whose fingerprint no longer matches main get no update: build a
@@ -1129,11 +1150,11 @@ from a computer that is not suspected:
    settings → **Sessions**: revoke all others; **Access tokens**: delete every token (the
    organisation `mridanga-seva` has its own token list too); **Members** of `mridanga-seva`: remove
    anyone unknown.
-2. **See what was published:** from `app/`, `npx eas-cli@latest update:list --branch production`
-   and `--branch preview`, `npx eas-cli@latest channel:list` (each channel must point to the branch of
-   the same name), `npx eas-cli@latest build:list`. Any update or build nobody on the team made is
+2. **See what was published:** from `app/`, `npx eas-cli update:list --branch production`
+   and `--branch preview`, `npx eas-cli channel:list` (each channel must point to the branch of
+   the same name), `npx eas-cli build:list`. Any update or build nobody on the team made is
    hostile.
-3. **Roll back** each affected channel: `npx eas-cli@latest update:rollback` → the branch → the
+3. **Roll back** each affected channel: `npx eas-cli update:rollback` → the branch → the
    last update the team made, or *the embedded update* ("Rolling back"). Then publish a fresh update
    from a clean `main` (`npm run update:production`), so phones land on known code.
 4. **Rotate what Expo held:** the `EXPO_ACCESS_TOKEN` function secret, if one is set (new token,

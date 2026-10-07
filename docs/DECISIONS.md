@@ -2679,3 +2679,102 @@ none, and nothing in development can reach real children's records.
 **Consequences.** Worktrees get `.env.development` and `.env.test` (TEST) and never `.env.live`.
 Scripts or notes that say `--env .env.test` or `app/.env` are out of date. Closes FS4-01, D10-07,
 D11-08.
+
+## 152. A preview update asks "Type yes" like a production one; no flag skips it — 7 Oct 2026
+
+**Context.** `publish-update.mjs` asked for confirmation only on `production`. A preview update
+went out straight after the checks, and two went out by accident (audit D10-18 / D11-03). Testers
+then got builds nobody meant to ship, and the update history could no longer be trusted for a
+rollback.
+
+**Decision.** Both channels stop after every check and ask *Type yes* (preview names the TEST app
+on the testers' phones, production the LIVE app). Anything else, the end of the input (no
+keyboard, as when a tool runs the command) or Ctrl+C publishes nothing and exits with code 1.
+`--check-only` still stops before the question and before any upload. There is no `--yes` flag.
+
+**Why.** The accidents came from running the publish command where a check was meant; a flag
+that skips the question would be typed by the same habit. Nothing publishes unattended: CI only
+checks, and a publish happens after Praveen says "publish". Whoever really has to answer from a
+script can pipe the word in (`echo yes | npm run update:preview -- …`), which is as deliberate as
+typing it.
+
+**Consequences.** A chat that publishes for Praveen gets *not published* when its terminal has no
+keyboard: run the command in Praveen's terminal, or pipe `yes` after his go. Closes D10-18, D11-03.
+
+## 153. EAS CLI is an exact devDependency (24.11.0) and always runs from node_modules — 7 Oct 2026
+
+**Context.** Every release command ran `npx eas-cli@latest`: whatever version was newest that
+minute, with the Expo login that can publish to the class's phones (audit D11-02). The lockfile
+had no eas-cli at all.
+
+**Decision.** `app/package.json` devDependencies `"eas-cli": "24.11.0"` (exact, no `^`/`~`),
+installed with npm so `package-lock.json` pins it and its whole tree. `publish-update.mjs` runs
+`node_modules/eas-cli/bin/run` with Node, no shell and no npx. Docs and messages say
+`npx eas-cli …`, which after `npm ci` runs the local copy (checked: `npx --no-install eas-cli
+--version` = 24.11.0). 24.11.0 is what `@latest` gave for every run since its release on 5 Oct
+2026; eas.json asks for `>= 24.0.0`, which it meets.
+
+**Why.** A pinned, locked CLI changes only when someone upgrades it on purpose and the lockfile
+records exactly what ran. Running the file with Node avoids the Windows `npx.cmd` shell, so the
+update message no longer passes through one. `eas.json` "cli.version" is left as it is: eas.json
+counts in the app's fingerprint ("Updating the Android app"), so tightening it would have needed a
+new APK; the exact pin in package.json does the job.
+
+**Consequences.** Fingerprint unchanged (185e839f): devDependencies without native code do not
+count. `npm ci` in `app/` adds about 370 packages (only on developer computers and CI). Upgrading
+= `npm install --save-dev --save-exact eas-cli@<version>` (a version at least a week old, release
+notes read), `update:preview -- --check-only`, commit both files and the version in OPERATIONS.
+If npx ever offers to *install* eas-cli, `npm ci` was not run: answer no. Dependabot PRs for
+eas-cli are reviewed like any upgrade. Closes D11-02.
+
+## 154. Release scripts read .env files with Expo's own parser and check the settings' shape — 7 Oct 2026
+
+**Context.** The scripts read EXPO_PUBLIC_SUPABASE_URL and _KEY with a regex of their own: an
+inline comment stayed in the value, a quoted value with a comment kept its quotes. The same wrong
+value was then handed to Expo and found again in the bundle, so a site or update that could not
+reach Supabase passed every check (audit D11-07).
+
+**Decision.** `app/scripts/lib/env-file.mjs` parses with `parseEnv` of `@expo/env`, resolved from
+the `expo` package (the copy `expo export` uses: Node's `util.parseEnv` rules for quotes, `export`,
+`#` comments and CRLF, then `${VAR}` expansion, Expo's blocked names dropped).
+`bundle-checks.mjs` `supabaseSettingsFrom` uses it, so `publish-update.mjs` and `export-web.mjs`
+both read files the way Expo does. A new `settingsProblem` checks the shape: URL
+`https://<20-character ref>.supabase.co`, key `sb_publishable_…` or a JWT with role anon;
+`publish-update.mjs` refuses an EAS environment that fails it.
+
+**Why.** Using Expo's parser rather than imitating it means the rules cannot drift apart when Expo
+changes them. The shape check catches what a correct parser cannot: a value that was typed wrong.
+
+**Consequences.** `export-web.mjs` (brief 13's file, not changed here) gets the parser through
+`supabaseSettingsFrom` already; it can also call `settingsProblem` before its export. Tests:
+`app/tests/release-scripts.test.mjs`. Closes D11-07.
+
+## 155. Wider secret scan of bundles; signing material ignored by git; temp env file always deleted — 7 Oct 2026
+
+**Context.** The bundle check knew only the Supabase secret key (and in Hermes bytecode only its
+JWT form). `.gitignore` let `credentials.json`, a keystore at the root, private keys and `.npmrc`
+be committed. The env file pulled from EAS was not deleted if reading it threw (audit D11-06,
+D11-10, D11-19).
+
+**Decision.**
+- `bundle-checks.mjs` `secretIn` (and `holdsSecretKey` on top of it) also finds: JWTs with role
+  `supabase_admin`, Supabase personal access tokens (`sbp_`), PEM private keys, Postgres addresses
+  with a password, Google API keys (`AIza`), GitHub tokens (`ghp_`… and `github_pat_`), Slack
+  tokens and webhooks, AWS access keys, and `EXPO_TOKEN` / `SUPABASE_ACCESS_TOKEN` /
+  `SERVICE_ROLE_KEY` / `SUPABASE_DB_PASSWORD` followed by a value. In bytecode, where the app's own
+  `'sb_secret_'` literal runs into the next string, a secret key is assumed when `sb_secret_`
+  appears more than once or is followed by 31+ key characters that include a digit.
+- Root `.gitignore`: `credentials.json`, `*.jks`, `*.keystore`, `*.p8`, `*.p12`, `*.pem`, `*.key`,
+  `.npmrc` anywhere, and `/.claude/` (local tool settings and worktrees; `app/.claude/settings.json`
+  stays tracked). Nothing tracked matched before the change.
+- `publish-update.mjs` deletes the pulled env file in `finally`, on any exit and on Ctrl+C.
+
+**Why.** Each shape has a fixed prefix, so the current bundles give no false hits (TEST web export
+and TEST Android bytecode checked 7 Oct 2026), while a pasted token of any of these kinds stops the
+release. A token without a shape (an Expo access token, a bare password) cannot be found this way;
+it must never be put in an `EXPO_PUBLIC_` variable.
+
+**Consequences.** A fake secret planted in a copy of each export is caught (sb_secret_, sbp_, AIza,
+PEM in web JS; sb_secret_ in Hermes bytecode). If a library ever adds its own `'sb_secret_'`
+literal, the bytecode check stops publish-update with a clear message: look at the match before
+changing the rule. Closes D11-06, D11-10, D11-19.

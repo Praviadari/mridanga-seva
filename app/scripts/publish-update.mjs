@@ -13,29 +13,31 @@
 //    never get this update, and a new APK is needed instead (OPERATIONS.md lists what counts).
 // 1. Pulls the channel's settings from the EAS environment of the same name (`eas env:pull`):
 //    the values the APKs on that channel were built with. They go to a temporary file, deleted
-//    straight after.
-// 2. Checks that the URL names the project this channel belongs to (PROJECTS), and that the key
-//    is not the secret one.
+//    straight after, also when reading it fails or the script is stopped with Ctrl+C. The file is
+//    read with Expo's own .env rules (scripts/lib/env-file.mjs).
+// 2. Checks that the URL names the project this channel belongs to (PROJECTS), that both
+//    settings have the right shape, and that the key is not the secret one.
 // 3. Exports the Android bundle into dist-update/ with `expo export --clear` and those values in
 //    the environment. Values already in the environment win over .env files, and --clear stops
 //    Metro's cache from keeping older ones (the same trap as scripts/export-web.mjs).
 // 4. Checks the bundle: it holds this channel's URL and key, not the other project's address,
-//    and no secret key.
-// 5. For production, asks once more. Then publishes with
-//    `eas update --skip-bundler --channel <channel> --environment <channel>`.
+//    and no secret (scripts/bundle-checks.mjs lists the shapes).
+// 5. Asks once more, for preview as for production: type yes (docs/DECISIONS.md #152). Then
+//    publishes with `eas update --skip-bundler --channel <channel> --environment <channel>`.
 //
-// Needs the Expo login on this computer (`npx eas-cli@latest login`). Exits with code 1 and
-// publishes nothing if any check fails.
+// EAS CLI is the copy pinned in package.json (devDependencies), never a download of the newest
+// one (docs/DECISIONS.md #153). Needs the Expo login on this computer (`npx eas-cli login`).
+// Exits with code 1 and publishes nothing if any check fails or the answer is not yes.
 
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, rmSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
-import { extname, join } from 'node:path';
+import { dirname, extname, join } from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import { connect } from 'node:tls';
 
-import { holdsSecretKey, listFiles, SETTING_NAMES, supabaseSettingsFrom } from './bundle-checks.mjs';
+import { listFiles, secretIn, SETTING_NAMES, settingsProblem, supabaseSettingsFrom } from './bundle-checks.mjs';
 
 const OUT = 'dist-update';
 
@@ -65,19 +67,30 @@ function argValue(args, ...names) {
 }
 
 /**
- * Runs EAS CLI with `args`. npx is a .cmd file on Windows, which Node starts only through a
- * shell, so every argument must be safe to pass through one (see the message check below).
- * Returns true if it succeeded. With `capture`, returns its standard output instead (null if
- * it failed); messages on standard error still show.
+ * Runs the pinned EAS CLI (node_modules/eas-cli) with `args`, with this Node and no shell, so the
+ * arguments arrive as they are. Returns true if it succeeded. With `capture`, returns its standard
+ * output instead (null if it failed); messages on standard error still show.
  */
 function eas(args, { capture = false } = {}) {
-  const run = spawnSync(['npx', 'eas-cli@latest', ...args].join(' '), {
+  const run = spawnSync(process.execPath, [easCli, ...args], {
     stdio: capture ? ['inherit', 'pipe', 'inherit'] : 'inherit',
-    shell: true,
     encoding: 'utf8',
   });
   if (capture) return run.status === 0 ? run.stdout : null;
   return run.status === 0;
+}
+
+/**
+ * Asks `question` and returns true only if the answer is yes. No answer (no keyboard attached,
+ * end of input, Ctrl+C) counts as no.
+ */
+async function confirmed(question) {
+  const prompt = createInterface({ input: process.stdin, output: process.stdout });
+  const closed = new Promise((resolve) => prompt.once('close', () => resolve('')));
+  prompt.once('SIGINT', () => prompt.close());
+  const answer = await Promise.race([prompt.question(question).catch(() => ''), closed]);
+  prompt.close();
+  return answer.trim().toLowerCase() === 'yes';
 }
 
 /** The first JSON value in `text` (EAS CLI and expo-updates may print lines before it), or null. */
@@ -97,13 +110,17 @@ const channel = args[0];
 if (!(channel in PROJECTS)) fail('first argument must be preview or production.');
 const message = argValue(args, '--message', '-m');
 if (!message) fail('say what changed: --message "Clearer follow-up card".');
-// The message passes through a shell: no quotes, %, $, backticks, backslashes or line breaks.
+// One plain line, as it shows in `eas update:list`: no quotes, %, $, backticks, backslashes or
+// line breaks (once needed because the message went through a shell; kept so the rule stays the same).
 if (!/^[^"%$`\\\r\n]{1,200}$/.test(message)) {
   fail('the message may not contain " % $ ` \\ or line breaks, and at most 200 characters.');
 }
 const project = PROJECTS[channel];
 const otherProject = Object.values(PROJECTS).find((ref) => ref !== project);
 const require = createRequire(import.meta.url);
+/** The pinned EAS CLI's entry point (package.json devDependencies "eas-cli"). */
+const easCli = join(dirname(require.resolve('eas-cli/package.json')), 'bin', 'run');
+if (!existsSync(easCli)) fail('EAS CLI is not installed in app/node_modules. Run npm ci in app/ first.');
 
 // ---------------------------------------------------------------- network
 // EAS keeps uploads on Google's storage. A network that inspects secure connections (the office
@@ -143,23 +160,39 @@ const builds = jsonIn(
     { capture: true },
   ) ?? '',
 );
-if (!Array.isArray(builds)) fail('could not list the builds on EAS (logged in? npx eas-cli@latest whoami).');
+if (!Array.isArray(builds)) fail('could not list the builds on EAS (logged in? npx eas-cli whoami).');
 if (builds.length === 0) {
   fail(
     `no finished ${channel} APK has fingerprint ${runtimeVersion}. Something native changed since ` +
       `the last APK, so no phone would get this update. Build a new APK instead: ` +
-      `npx eas-cli@latest build -p android --profile ${channel} (OPERATIONS.md "Updating the Android app").`,
+      `npx eas-cli build -p android --profile ${channel} (OPERATIONS.md "Updating the Android app").`,
   );
 }
 console.log(`publish-update: fingerprint ${runtimeVersion} matches APK build ${builds[0].id}.`);
 
 // ---------------------------------------------------------------- 1 and 2. settings from EAS
+// The pulled file is deleted whatever happens: in `finally`, on any exit, and on Ctrl+C (Node
+// runs the handler once EAS CLI has stopped). Only public values belong in these environments,
+// but a secret added there later must not be left behind in the temp folder (audit D11-19).
 const envFile = join(tmpdir(), `mridanga-seva-${channel}-${process.pid}.env`);
-const pulled = eas(['env:pull', '--environment', channel, '--path', `"${envFile}"`, '--non-interactive']);
-const pulledText = pulled && existsSync(envFile) ? readFileSync(envFile, 'utf8') : null;
-rmSync(envFile, { force: true });
+const removeEnvFile = () => rmSync(envFile, { force: true });
+const stopped = () => {
+  removeEnvFile();
+  process.exit(130);
+};
+process.once('exit', removeEnvFile);
+process.once('SIGINT', stopped);
+let pulledText = null;
+try {
+  if (eas(['env:pull', '--environment', channel, '--path', envFile, '--non-interactive']) && existsSync(envFile)) {
+    pulledText = readFileSync(envFile, 'utf8');
+  }
+} finally {
+  removeEnvFile();
+  process.off('SIGINT', stopped);
+}
 if (pulledText === null) {
-  fail(`could not read the "${channel}" environment from EAS (logged in? npx eas-cli@latest whoami).`);
+  fail(`could not read the "${channel}" environment from EAS (logged in? npx eas-cli whoami).`);
 }
 const settings = supabaseSettingsFrom(pulledText);
 for (const name of SETTING_NAMES) {
@@ -168,11 +201,14 @@ for (const name of SETTING_NAMES) {
 if (!settings.EXPO_PUBLIC_SUPABASE_URL.includes(project)) {
   fail(`the "${channel}" environment on EAS points to ${settings.EXPO_PUBLIC_SUPABASE_URL}, not project ${project}. Fix it with env:push first.`);
 }
-// Checked here as well as in the bundle, because inside Hermes bytecode only the JWT form of a
-// secret key can be recognised (scripts/bundle-checks.mjs).
-if (holdsSecretKey(settings.EXPO_PUBLIC_SUPABASE_KEY)) {
-  fail(`the "${channel}" environment on EAS holds a secret key. Push the publishable key (OPERATIONS.md "If a key leaks").`);
+// Checked here as well as in the bundle, because inside Hermes bytecode a secret key is harder to
+// recognise (scripts/bundle-checks.mjs).
+const secretSetting = secretIn(settings.EXPO_PUBLIC_SUPABASE_KEY);
+if (secretSetting) {
+  fail(`the "${channel}" environment on EAS holds ${secretSetting}. Push the publishable key (OPERATIONS.md "If a key leaks").`);
 }
+const problem = settingsProblem(settings);
+if (problem) fail(`the "${channel}" environment on EAS: ${problem}. Fix it with env:push first.`);
 console.log(`publish-update: ${channel} → ${settings.EXPO_PUBLIC_SUPABASE_URL}`);
 
 // ---------------------------------------------------------------- 3. export
@@ -193,9 +229,8 @@ for (const file of listFiles(OUT)) {
   if (!BUNDLE_FILES.has(extname(file))) continue;
   // latin1 keeps every byte, so the ASCII settings are found inside Hermes bytecode too.
   const text = readFileSync(file, 'latin1');
-  if (holdsSecretKey(text, { bytecode: extname(file) === '.hbc' })) {
-    fail(`${file} contains a Supabase secret key. Nothing was published.`);
-  }
+  const secret = secretIn(text, { bytecode: extname(file) === '.hbc' });
+  if (secret) fail(`${file} contains ${secret}. Nothing was published.`);
   if (text.includes(otherProject)) fail(`${file} names the other project (${otherProject}). Nothing was published.`);
   for (const name of SETTING_NAMES) {
     if (text.includes(settings[name])) found.add(name);
@@ -204,19 +239,20 @@ for (const file of listFiles(OUT)) {
 for (const name of SETTING_NAMES) {
   if (!found.has(name)) fail(`${name} of the "${channel}" environment is not in the bundle. Nothing was published.`);
 }
-console.log(`publish-update: bundle checked: ${project} only, no secret key.`);
+console.log(`publish-update: bundle checked: ${project} only, no secret.`);
 if (checkOnly) {
   console.log('publish-update: --check-only, so nothing was published.');
   process.exit(0);
 }
 
 // ---------------------------------------------------------------- 5. publish
-if (channel === 'production') {
-  const prompt = createInterface({ input: process.stdin, output: process.stdout });
-  const answer = await prompt.question('Publish to the LIVE app used by the class? Type yes: ');
-  prompt.close();
-  if (answer.trim().toLowerCase() !== 'yes') fail('not published.');
-}
+// Both channels ask (docs/DECISIONS.md #152): two preview updates went out by accident when
+// only production asked. There is no flag to skip the question; nothing is published without it.
+const question =
+  channel === 'production'
+    ? 'Publish to the LIVE app used by the class? Type yes: '
+    : 'Publish to the TEST app on the testers\' phones (preview)? Type yes: ';
+if (!(await confirmed(question))) fail('not published.');
 const published = eas([
   'update',
   '--skip-bundler',
@@ -224,7 +260,7 @@ const published = eas([
   '--platform', 'android',
   '--channel', channel,
   '--environment', channel,
-  '--message', `"${message}"`,
+  '--message', message,
   '--non-interactive',
 ]);
 if (!published) fail('eas update failed (see above).');

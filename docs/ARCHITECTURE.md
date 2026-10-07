@@ -84,7 +84,9 @@ app/
                        (test site) and .env.live (live site only) beside it (not in git; app/README.md)
   public/_headers      CSP and security headers of the web version, a template export-web fills in
   scripts/             Helper scripts: the web export, publishing an Android update (both check
-                       the bundle holds the right Supabase project), the placeholder icon generator
+                       the bundle holds the right Supabase project and no secret: bundle-checks.mjs),
+                       lib/env-file.mjs (reads .env files with Expo's parser), the placeholder icon generator
+  tests/               node:test checks of the scripts (release-scripts.test.mjs)
   src/
     app/               Screens. Every file is a screen (Expo Router); _layout.tsx files arrange them
       student/         The student's screens; (tabs)/ holds Home, My QR and Announcements; one
