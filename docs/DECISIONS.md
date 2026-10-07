@@ -3057,6 +3057,10 @@ script fits the web Content-Security-Policy (brief 13: inline styles allowed, no
 
 **Consequences.** The print window must be at 100 % (Actual size), margins None, no headers or footers; the page says
 so. Another label pack = change `SHEET` and note it here.
+Calibration 07-10-2026 on Praveen's printer (test sheet scanned, \\cea-server\prop-scan\20261007202348.pdf, measured
+against the blank-sheet scan): the 170 mm box measures 169.9 mm (scale right); row pitch 46.69 mm vs the labels' 46.70,
+column pitch 66.0 vs 66.2; outlines within about 1 mm of the labels (0.8 mm low, 0.7 mm left, within the scan-placement
+error). No nudge; the QR keeps about 3.7 mm and the text 3 mm from the label edge.
 
 ## 159. One scanner path for labels: /i/<token> and the in-app scanners — 7 Oct 2026
 

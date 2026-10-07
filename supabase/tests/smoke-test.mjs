@@ -115,7 +115,7 @@ process.on('uncaughtException', (error) => {
 // D14-10: every check is counted, and the run fails when fewer (or more) checks ran than expected,
 // so a block skipped by a renamed migration or a commented-out section cannot pass unseen.
 // Adding or removing checks? Run the suite and set this to the new total it prints.
-const EXPECTED_CHECKS = 1182;
+const EXPECTED_CHECKS = 1220; // 0035 asset labels: +38
 let failures = 0;
 let passes = 0;
 
@@ -3898,6 +3898,9 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
     // 0034: logged reads of parents' details, consents, call notes and the audit log
     'call_outcomes(timestamp with time zone,timestamp with time zone)', 'get_audit_log(text,uuid,text,timestamp with time zone,bigint,integer)',
     'get_call_notes(uuid,integer)', 'get_consents(uuid)', 'get_guardians(uuid)',
+    // 0035: asset labels and stocktake (staff only inside; DECISIONS #161)
+    'finish_stocktake(bigint,text)', 'mark_labels_printed(bigint[])', 'resolve_asset(text)', 'start_stocktake(smallint)',
+    'stocktake_see(bigint,text,bigint)',
   ];
   const runnableBy = async (role) => (await asOwner(`select p.oid::regprocedure::text as f from pg_proc p
     where p.pronamespace = 'public'::regnamespace
@@ -4158,7 +4161,7 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   check('0035: a kind correction keeps the printed code', (await asOwner(`select code from inventory_items where id = ${harmonium.id}`))[0].code === 'HARM-001');
   await refusesWith('0035: a category is at most 40 characters', 'category_too_long', () => asApp('authenticated', guru,
     `update inventory_items set category = repeat('a', 41) where id = $1`, [harmonium.id]));
-  await refuses('0035: a kind outside the list is still refused', () => add('Tanpura', 'tanpura'));
+  await refusesWith('0035: a kind outside the list is still refused', /violates check constraint "inventory_items_kind_check"/, () => add('Tanpura', 'tanpura'));
   const nyBook = await add('Gita 1', 'book', nyCentre.id);
   check('0035: codes count per centre', nyBook.code === 'BOOK-001');
 
@@ -4169,12 +4172,12 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   const other = await resolve(nyStaff, speaker.asset_token);
   check('0035: another centre\'s coordinator is refused with the centre named', other.result === 'other_centre' && !('id' in other), JSON.stringify(other));
   check('0035: the Guru resolves every centre', (await resolve(guru, nyBook.asset_token)).result === 'ok');
-  await refuses('0035: a student cannot resolve a token', () => resolve(late, speaker.asset_token));
-  await refuses('0035: anon cannot resolve a token', () => asApp('anon', null, 'select resolve_asset($1)', [speaker.asset_token]));
-  await refuses('0035: anon cannot read items by token', () => asApp('anon', null, 'select id from inventory_items where asset_token = $1', [speaker.asset_token]));
+  await refusesWith('0035: a student cannot resolve a token', 'not_allowed', () => resolve(late, speaker.asset_token));
+  await refusesWith('0035: anon cannot resolve a token', 'permission denied for function resolve_asset', () => asApp('anon', null, 'select resolve_asset($1)', [speaker.asset_token]));
+  await refusesWith('0035: anon cannot read items by token', 'permission denied for table inventory_items', () => asApp('anon', null, 'select id from inventory_items where asset_token = $1', [speaker.asset_token]));
   check('0035: a student does not find an item by its token', (await asApp('authenticated', arjun,
     'select id from inventory_items where asset_token = $1', [speaker.asset_token])).length === 0);
-  await refuses('0035: nobody in the app reads the code counters', () => asApp('authenticated', guru, 'select * from inventory_code_counters'));
+  await refusesWith('0035: nobody in the app reads the code counters', 'permission denied for table inventory_code_counters', () => asApp('authenticated', guru, 'select * from inventory_code_counters'));
 
   check('0035: staff mark labels printed, only their centre\'s', (await asApp('authenticated', coordinator,
     'select mark_labels_printed($1::bigint[]) as n', [[speaker.id, nyBook.id]]))[0].n === 1
@@ -4186,8 +4189,8 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   await asOwner(`update inventory_items set centre_id = 1 where id = ${speaker2.id}`);
 
   // Stocktake at centre 1: seen by scan and tap, one lent out, the rest missing.
-  await refuses('0035: a student cannot start a count', () => asApp('authenticated', late, 'select start_stocktake(1::smallint)'));
-  await refuses('0035: a coordinator cannot count another centre', () => asApp('authenticated', nyStaff, 'select start_stocktake(1::smallint)'));
+  await refusesWith('0035: a student cannot start a count', 'not_allowed', () => asApp('authenticated', late, 'select start_stocktake(1::smallint)'));
+  await refusesWith('0035: a coordinator cannot count another centre', 'not_allowed', () => asApp('authenticated', nyStaff, 'select start_stocktake(1::smallint)'));
   const [{ id: st }] = await asApp('authenticated', coordinator, 'select start_stocktake(1::smallint) as id');
   check('0035: a second person joins the open count', Number((await asApp('authenticated', guru, 'select start_stocktake(1::smallint) as id'))[0].id) === Number(st));
   const see = (userId, token, item = null) => asApp('authenticated', userId, 'select stocktake_see($1, $2, $3) as r', [st, token, item]).then((rows) => rows[0].r);
@@ -4196,8 +4199,8 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   check('0035: a tap marks one seen too', (await see(coordinator, null, harmonium.id)).result === 'seen');
   check('0035: another centre\'s item is not counted', (await see(coordinator, nyBook.asset_token)).result === 'other_centre');
   check('0035: an unknown label is not counted', (await see(coordinator, 'zzzzzzzzzzzzzzzzzzzzzz')).result === 'unknown');
-  await refuses('0035: a coordinator of another centre cannot mark in this count', () => see(nyStaff, speaker2.asset_token));
-  await refuses('0035: the app cannot write a count itself', () => asApp('authenticated', coordinator,
+  await refusesWith('0035: a coordinator of another centre cannot mark in this count', 'not_allowed', () => see(nyStaff, speaker2.asset_token));
+  await refusesWith('0035: the app cannot write a count itself', 'permission denied for table inventory_stocktake_items', () => asApp('authenticated', coordinator,
     `insert into inventory_stocktake_items (stocktake_id, item_id, how, seen_by) values ($1, $2, 'tap', auth.uid())`, [st, drum.id]));
   const [{ id: drumLoan }] = await asApp('authenticated', coordinator, 'select issue_inventory_item($1, $2, null, $3) as id', [drum.id, lateStudent, 'good']);
   const [expected] = await asOwner(`select count(*)::int as n, count(*) filter (where exists (select 1 from inventory_loans l
