@@ -5,7 +5,7 @@
 // one request and the phone never downloads every student and visit (docs/DECISIONS.md #31).
 // Read-only: nothing in this file writes.
 //
-// Words used here mean the same as in the migration: "this week" = Monday to today in India;
+// Words used here mean the same as in the migration: "this week" = Monday to today at the class;
 // "new joiner" = joined in the last settings.new_joiner_weeks weeks and not Left; "in class" =
 // not Left; "overdue" = an open follow-up task past its date.
 
@@ -27,11 +27,11 @@ export type StudentHome = {
   joinedOn: string;
   /** ISO timestamp of the last check-in, or null if the student has never come. */
   lastVisitAt: string | null;
-  /** Whole days (India time) since the last visit, or since joining when there is none. */
+  /** Whole days (the class's time) since the last visit, or since joining when there is none. */
   daysSinceVisit: number;
   /** Checked in right now. */
   hereNow: boolean;
-  /** Check-ins since Monday, India time. */
+  /** Check-ins since Monday, class time. */
   visitsThisWeek: number;
   /** Ticked items of the student's current level, and how many items that level has. */
   syllabusDone: number;
@@ -97,7 +97,7 @@ export type NewJoiner = {
 export type CoordinatorDashboard = {
   /** Open visits now, as on "Who is here now" (C6). */
   hereNow: number;
-  /** Check-ins since midnight in India, as on "Mark attendance" (C5). */
+  /** Check-ins since midnight at the class, as on "Mark attendance" (C5). */
   visitsToday: number;
   /**
    * My students with a follow-up call due today or earlier, or already handed to the Guru: the

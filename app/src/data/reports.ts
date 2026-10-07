@@ -8,7 +8,7 @@
 import type { ParseKeys, TFunction } from 'i18next';
 
 import { levelName, statusName } from '@/i18n/labels';
-import { formatDayMonthYear, todayInIndia } from '@/lib/dates';
+import { formatDate, todayLocal } from '@/lib/dates';
 import { supabase } from '@/lib/supabase';
 import type { StudentStatus } from './student-overview';
 
@@ -83,9 +83,9 @@ export type ClassReport = {
 /** The ranges offered as chips; "custom" shows two date fields. */
 export type RangeChoice = 'thisMonth' | 'lastMonth' | 'last4Weeks' | 'last3Months' | 'custom';
 
-/** First and last day ('YYYY-MM-DD', India) of a range choice. */
+/** First and last day ('YYYY-MM-DD', at the class) of a range choice. */
 export function rangeOf(choice: Exclude<RangeChoice, 'custom'>): { from: string; to: string } {
-  const today = todayInIndia();
+  const today = todayLocal();
   const [y, m] = today.split('-').map(Number);
   const day = (year: number, month: number, d: number) => {
     const at = new Date(Date.UTC(year, month - 1, d));
@@ -222,7 +222,7 @@ export function reportFileName(report: ClassReport): string {
  * headings in the app's language (Excel reads them as they are). Dates as day-month-year.
  */
 export function reportCsvRows(report: ClassReport, t: TFunction): (string | number | null)[][] {
-  const date = (iso: string | null) => (iso ? formatDayMonthYear(iso) : '');
+  const date = (iso: string | null) => (iso ? formatDate(iso) : '');
   return [
     [t('reports.csv.range'), date(report.from), date(report.to)],
     [t('reports.csv.totals'), t('reports.visits'), report.visits, t('reports.visitors'), report.visitors, t('reports.hours'), report.hours, t('attendanceLocation.csvColumn'), report.visitsFlagged],

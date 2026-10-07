@@ -34,7 +34,7 @@ import {
   type IgLanguage,
   type SlokaPage,
 } from '@/data/ishtagoshti';
-import { formatDayMonthYear, parseDayMonthYear, todayInIndia } from '@/lib/dates';
+import { formatDate, formatTypedDate, parseDayMonthYear, todayLocal } from '@/lib/dates';
 
 /** I3 for students or staff. */
 export function IshtagoshtiSloka({ area }: { area: IgArea }) {
@@ -49,7 +49,7 @@ export function IshtagoshtiSloka({ area }: { area: IgArea }) {
   /** A signed link to the recitation, for the path it was made for. */
   const [audioLink, setAudioLink] = useState<{ path: string; uri: string | null } | null>(null);
   const [note, setNote] = useState('');
-  const [pinDay, setPinDay] = useState(formatDayMonthYear(todayInIndia()));
+  const [pinDay, setPinDay] = useState(formatTypedDate(todayLocal()));
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ tone: 'success' | 'error'; text: string } | null>(null);
 
@@ -116,7 +116,7 @@ export function IshtagoshtiSloka({ area }: { area: IgArea }) {
       setMessage({ tone: 'error', text: t('ishtagoshti.pinDateInvalid') });
       return;
     }
-    void run(() => pinSloka(sloka.id, day), t('ishtagoshti.pinned', { day: formatDayMonthYear(day) }));
+    void run(() => pinSloka(sloka.id, day), t('ishtagoshti.pinned', { day: formatDate(day) }));
   };
 
   return (
@@ -211,7 +211,7 @@ export function IshtagoshtiSloka({ area }: { area: IgArea }) {
                 <ListRow
                   key={day}
                   leading="today"
-                  title={formatDayMonthYear(day)}
+                  title={formatDate(day)}
                   action={{
                     label: t('ishtagoshti.unpin'),
                     variant: 'secondary',

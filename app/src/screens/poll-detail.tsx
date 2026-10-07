@@ -33,7 +33,7 @@ import {
   type PollVoter,
 } from '@/data/polls';
 import { audienceName } from '@/i18n/labels';
-import { formatDateTimeInIndia } from '@/lib/dates';
+import { formatDateTime } from '@/lib/dates';
 
 type Loaded = { item: PollItem; groupName: string | null; authorName: string | null; voters: PollVoter[] | null };
 
@@ -144,8 +144,8 @@ export function PollDetailScreen({ id, area }: { id: number; area: 'student' | '
           {
             icon: 'time',
             text: closed
-              ? t('polls.closedOn', { date: formatDateTimeInIndia(p.closedAt ?? p.closesAt) })
-              : t('polls.closes', { date: formatDateTimeInIndia(p.closesAt) }),
+              ? t('polls.closedOn', { date: formatDateTime(p.closedAt ?? p.closesAt) })
+              : t('polls.closes', { date: formatDateTime(p.closesAt) }),
           },
           { icon: 'groups', text: audienceName(t, p, { groupName, authorName, byMe: p.createdBy === myId }) },
           ...(authorName ? [{ icon: 'person' as const, text: t('events.detail.createdBy', { name: authorName }) }] : []),
@@ -222,7 +222,7 @@ export function PollDetailScreen({ id, area }: { id: number; area: 'student' | '
                   highlighted
                   details={[
                     ...(v.rollNo ? [v.rollNo] : []),
-                    v.choice !== null ? t('polls.chose', { answer: p.options[v.choice] ?? '' }) : t('polls.votedAt', { date: formatDateTimeInIndia(v.votedAt ?? '') }),
+                    v.choice !== null ? t('polls.chose', { answer: p.options[v.choice] ?? '' }) : t('polls.votedAt', { date: formatDateTime(v.votedAt ?? '') }),
                   ]}
                 />
               ))

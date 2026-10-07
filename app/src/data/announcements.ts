@@ -14,14 +14,7 @@
 
 import type { ParseKeys } from 'i18next';
 
-import {
-  dateInIndia,
-  formatDayMonthYear,
-  momentInIndia,
-  parseDayMonthYear,
-  parseTimeOfDay,
-  timeInIndia,
-} from '@/lib/dates';
+import { formatTypedDate, localDate, localMoment, localTime, parseDayMonthYear, parseTimeOfDay } from '@/lib/dates';
 import { supabase } from '@/lib/supabase';
 
 import {
@@ -330,7 +323,7 @@ export type AnnouncementForm = {
   when: 'now' | 'later';
   /** As typed, day-month-year, e.g. '04-10-2026'. */
   date: string;
-  /** As typed, 24-hour India time, e.g. '18:30'. */
+  /** As typed, 24-hour class time, e.g. '18:30'. */
   time: string;
   /** Photos and PDFs: saved ones and ones picked on this device, uploaded when saving. */
   files: FormFile[];
@@ -352,7 +345,7 @@ export const EMPTY_ANNOUNCEMENT_FORM: AnnouncementForm = {
 
 /**
  * The edit form filled in from a saved announcement. A scheduled one keeps its date and time
- * (India time) under "Later"; for a published one the time cannot change, so "when" is unused.
+ * (the class's time) under "Later"; for a published one the time cannot change, so "when" is unused.
  */
 export function formFromAnnouncement(announcement: Announcement): AnnouncementForm {
   const scheduled = isScheduled(announcement);
@@ -364,8 +357,8 @@ export function formFromAnnouncement(announcement: Announcement): AnnouncementFo
     groupId: announcement.audienceGroup,
     pinned: announcement.pinned,
     when: scheduled ? 'later' : 'now',
-    date: scheduled ? formatDayMonthYear(dateInIndia(announcement.publishAt)) : '',
-    time: scheduled ? timeInIndia(announcement.publishAt) : '',
+    date: scheduled ? formatTypedDate(localDate(announcement.publishAt)) : '',
+    time: scheduled ? localTime(announcement.publishAt) : '',
     files: formFilesOf(announcement.attachments),
   };
 }
@@ -397,7 +390,7 @@ export function checkAnnouncementForm(form: AnnouncementForm, now: number, check
     else if (!date) errors.date = 'announcements.errors.dateInvalid';
     if (!form.time.trim()) errors.time = 'announcements.errors.timeRequired';
     else if (!time) errors.time = 'announcements.errors.timeInvalid';
-    if (date && time && Date.parse(momentInIndia(date, time)) <= now) errors.time = 'announcements.errors.timePast';
+    if (date && time && Date.parse(localMoment(date, time)) <= now) errors.time = 'announcements.errors.timePast';
   }
   return errors;
 }
@@ -407,7 +400,7 @@ function publishAtOf(form: AnnouncementForm): string | null {
   if (form.when === 'now') return null;
   const date = parseDayMonthYear(form.date);
   const time = parseTimeOfDay(form.time);
-  return date && time ? momentInIndia(date, time) : null;
+  return date && time ? localMoment(date, time) : null;
 }
 
 /** The columns the form writes, apart from the publish time. */

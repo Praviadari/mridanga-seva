@@ -33,7 +33,7 @@ import {
   type PreviewRow,
 } from '@/data/student-import';
 import { levelName } from '@/i18n/labels';
-import { formatDayMonthYear } from '@/lib/dates';
+import { formatDate } from '@/lib/dates';
 import { goBackOr } from '@/lib/go-back';
 import type { SheetRows } from '@/lib/sheet-reader';
 import { spacing, useTheme } from '@/theme/use-theme';
@@ -107,7 +107,7 @@ export default function ImportScreen() {
     [
       t('importStudents.line', { line: row.line }),
       row.values.fullName || '—',
-      row.values.dob ? formatDayMonthYear(row.values.dob) : null,
+      row.values.dob ? formatDate(row.values.dob) : null,
       row.values.phone || null,
       row.values.levelId ? levelName(t, row.values.levelId) : null,
     ]

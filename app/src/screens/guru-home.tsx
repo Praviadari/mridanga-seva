@@ -30,7 +30,7 @@ import { StatGrid, StatTile } from '@/components/stat-tile';
 import { UpdateNotice } from '@/components/update-notice';
 import { fetchGuruDashboard, type GuruDashboard } from '@/data/home';
 import { levelName, statusName } from '@/i18n/labels';
-import { formatDayMonthYear } from '@/lib/dates';
+import { formatDate } from '@/lib/dates';
 
 /** Guru home screen, shown by the staff Home tab (app/staff/(tabs)/index.tsx). */
 export function GuruHome() {
@@ -92,8 +92,8 @@ export function GuruHome() {
           </StatGrid>
           <AppText variant="small" tone="muted">
             {board.weekStarts === 'rolling7'
-              ? t('weekMeaning.guruRolling', { date: formatDayMonthYear(board.weekStart) })
-              : t('home.guru.weekFrom', { date: formatDayMonthYear(board.weekStart) })}
+              ? t('weekMeaning.guruRolling', { date: formatDate(board.weekStart) })
+              : t('home.guru.weekFrom', { date: formatDate(board.weekStart) })}
           </AppText>
 
           {/* Phase 2 (docs/DECISIONS.md #53): the level-up queue, G7. */}

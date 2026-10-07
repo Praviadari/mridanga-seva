@@ -9,15 +9,7 @@
 
 import type { ParseKeys } from 'i18next';
 
-import {
-  dateInIndia,
-  formatDayMonthYear,
-  momentInIndia,
-  parseDayMonthYear,
-  parseTimeOfDay,
-  timeInIndia,
-  todayInIndia,
-} from '@/lib/dates';
+import { formatDate, formatTypedDate, localDate, localMoment, localTime, parseDayMonthYear, parseTimeOfDay, todayLocal } from '@/lib/dates';
 import { supabase } from '@/lib/supabase';
 
 import type { Audience } from './announcements';
@@ -125,9 +117,9 @@ export function hasStarted(event: Pick<ClassEvent, 'startsAt'>, now = Date.now()
   return Date.parse(event.startsAt) <= now;
 }
 
-/** True from the event's day (India) on: attendance can be ticked. */
+/** True from the event's day (at the class) on: attendance can be ticked. */
 export function isEventDay(event: Pick<ClassEvent, 'startsAt'>): boolean {
-  return dateInIndia(event.startsAt) <= todayInIndia();
+  return localDate(event.startsAt) <= todayLocal();
 }
 
 /** True while staff may press Remind again (12 hours after the last one, as the database). */
@@ -177,12 +169,12 @@ export function placeText(event: Pick<ClassEvent, 'centreId' | 'place'>, names: 
   return [centre, event.place].filter(Boolean).join(' · ');
 }
 
-/** "04-10-2026 18:30 – 20:00", "04-10-2026 18:30 – 05-10-2026 09:00" or "04-10-2026 18:30" (India time). */
+/** "04-10-2026 18:30 – 20:00", "04-10-2026 18:30 – 05-10-2026 09:00" or "04-10-2026 18:30" (the class's time). */
 export function whenText(event: Pick<ClassEvent, 'startsAt' | 'endsAt'>): string {
-  const start = `${formatDayMonthYear(dateInIndia(event.startsAt))} ${timeInIndia(event.startsAt)}`;
+  const start = `${formatDate(localDate(event.startsAt))} ${localTime(event.startsAt)}`;
   if (!event.endsAt) return start;
-  const sameDay = dateInIndia(event.endsAt) === dateInIndia(event.startsAt);
-  const end = sameDay ? timeInIndia(event.endsAt) : `${formatDayMonthYear(dateInIndia(event.endsAt))} ${timeInIndia(event.endsAt)}`;
+  const sameDay = localDate(event.endsAt) === localDate(event.startsAt);
+  const end = sameDay ? localTime(event.endsAt) : `${formatDate(localDate(event.endsAt))} ${localTime(event.endsAt)}`;
   return `${start} – ${end}`;
 }
 
@@ -364,7 +356,7 @@ export async function deleteEvent(id: number): Promise<{ errorKey?: MessageKey }
 
 // ---------------------------------------------------------------- the form (C16 create / edit)
 
-/** The fields of the event form, as typed. Dates day-month-year, times 24-hour, India. */
+/** The fields of the event form, as typed. Dates day-month-year, times 24-hour, at the class. */
 export type EventForm = {
   title: string;
   description: string;
@@ -391,9 +383,9 @@ export function formFromEvent(e: ClassEvent): EventForm {
   return {
     title: e.title,
     description: e.description,
-    date: formatDayMonthYear(dateInIndia(e.startsAt)),
-    time: timeInIndia(e.startsAt),
-    endTime: e.endsAt && dateInIndia(e.endsAt) === dateInIndia(e.startsAt) ? timeInIndia(e.endsAt) : '',
+    date: formatTypedDate(localDate(e.startsAt)),
+    time: localTime(e.startsAt),
+    endTime: e.endsAt && localDate(e.endsAt) === localDate(e.startsAt) ? localTime(e.endsAt) : '',
     centreId: e.centreId,
     place: e.place ?? '',
     audience: e.audience,
@@ -416,7 +408,7 @@ export function checkEventForm(form: EventForm, now = Date.now(), savedStart?: s
   if (!date) errors.date = 'events.form.dateInvalid';
   if (!time) errors.time = 'events.form.timeInvalid';
   if (date && time) {
-    const start = Date.parse(momentInIndia(date, time));
+    const start = Date.parse(localMoment(date, time));
     const unchanged = savedStart !== undefined && start === Date.parse(savedStart);
     if (start <= now && !unchanged) errors.date = 'events.errors.starts_past';
     else if (start > now + 365 * 86400_000) errors.date = 'events.errors.starts_too_far';
@@ -442,8 +434,8 @@ function rowOf(form: EventForm, keepEnd: string | null) {
   return {
     title: form.title.trim(),
     description: form.description.trim(),
-    starts_at: momentInIndia(date, time),
-    ends_at: end ? momentInIndia(date, end) : keepEnd,
+    starts_at: localMoment(date, time),
+    ends_at: end ? localMoment(date, end) : keepEnd,
     centre_id: form.centreId,
     place: form.place.trim() || null,
     audience: form.audience,
@@ -461,7 +453,7 @@ export async function createEvent(form: EventForm): Promise<{ id?: number; error
 /** Saves changes; a new time or place is told to everyone it is for. */
 export async function updateEvent(original: ClassEvent, form: EventForm): Promise<{ errorKey?: MessageKey }> {
   const keepEnd =
-    original.endsAt && dateInIndia(original.endsAt) !== dateInIndia(original.startsAt) && !form.endTime.trim()
+    original.endsAt && localDate(original.endsAt) !== localDate(original.startsAt) && !form.endTime.trim()
       ? original.endsAt
       : null;
   const row = rowOf(form, keepEnd);

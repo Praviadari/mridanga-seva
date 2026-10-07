@@ -19,7 +19,7 @@ import {
   type Rating,
 } from '@/data/promotion';
 import { levelName } from '@/i18n/labels';
-import { formatDayMonthYear } from '@/lib/dates';
+import { formatDate } from '@/lib/dates';
 import { spacing, useTheme } from '@/theme/use-theme';
 
 import { AppText } from './app-text';
@@ -61,11 +61,11 @@ export function nominationDetails(t: TFunction, item: NominationItem): string[] 
   ];
   if (item.status === 'open') {
     lines.push(t('promotion.nominatedLine', {
-      date: formatDayMonthYear(item.nominatedAt.slice(0, 10)),
+      date: formatDate(item.nominatedAt.slice(0, 10)),
       name: item.nominatedByName ?? t('promotion.someone'),
     }));
   } else if (item.decidedAt) {
-    lines.push(`${nominationStatusName(t, item.status)} · ${formatDayMonthYear(item.decidedAt.slice(0, 10))}`);
+    lines.push(`${nominationStatusName(t, item.status)} · ${formatDate(item.decidedAt.slice(0, 10))}`);
   }
   return lines;
 }
@@ -166,7 +166,7 @@ export function PromotionPanel({ studentId }: { studentId: string }) {
             </>
           ) : criteria.renominateAfter ? (
             <Notice tone="info">
-              {t('promotion.panel.notYetUntil', { date: formatDayMonthYear(criteria.renominateAfter) })}
+              {t('promotion.panel.notYetUntil', { date: formatDate(criteria.renominateAfter) })}
             </Notice>
           ) : (
             <Button

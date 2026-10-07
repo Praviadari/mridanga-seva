@@ -22,7 +22,7 @@ import { Section } from '@/components/section';
 import { TextField } from '@/components/text-field';
 import { fetchCentres, type Centre } from '@/data/centres';
 import { deleteShift, DUTY_MAX, fetchDutyPeople, fetchShift, MAX_WEEKS, saveShift } from '@/data/duty';
-import { formatDayMonthYear, parseDayMonthYear, parseTimeOfDay, todayInIndia } from '@/lib/dates';
+import { formatTypedDate, parseDayMonthYear, parseTimeOfDay, todayLocal } from '@/lib/dates';
 import { goBackOr } from '@/lib/go-back';
 import { spacing } from '@/theme/use-theme';
 
@@ -70,7 +70,7 @@ export default function ShiftScreen() {
       setLoaded({ centres: active, people: staff });
       if (shift) {
         setCentreId(shift.centreId);
-        setDate(formatDayMonthYear(shift.onDate));
+        setDate(formatTypedDate(shift.onDate));
         setFrom(shift.startsAt);
         setTo(shift.endsAt);
         setDuty(shift.duty ?? '');
@@ -79,7 +79,7 @@ export default function ShiftScreen() {
         setCentreId(active[0].id);
         setFrom(active[0].opensAt.slice(0, 5));
         setTo(active[0].closesAt.slice(0, 5));
-        setDate(formatDayMonthYear(todayInIndia()));
+        setDate(formatTypedDate(todayLocal()));
       }
     }
     void load();

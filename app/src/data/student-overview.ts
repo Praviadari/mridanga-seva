@@ -3,6 +3,7 @@
 // filters. Reads the student_overview view (supabase/migrations/0005_students_follow_up.sql),
 // which works out the last visit in the database; row-level security still applies to it.
 
+import { searchFold } from '@/lib/search-text';
 import { supabase } from '@/lib/supabase';
 
 /** A student's status, as in the student_status type of the database (docs/DATABASE.md). */
@@ -25,7 +26,7 @@ export type StudentSummary = {
   /** ISO timestamp of the last check-in, or null if the student has never come. */
   lastVisitAt: string | null;
   /**
-   * Whole days (India time) since the last visit, or since joining when there is none. Counted
+   * Whole days (the class's time) since the last visit, or since joining when there is none. Counted
    * the same way as the daily job that moves students to Irregular and Inactive.
    */
   daysSinceVisit: number;
@@ -128,9 +129,9 @@ export const ABSENT_DAY_CHOICES = [0, 7, 14, 30] as const;
 /** No filter set: every student. */
 export const NO_FILTERS: StudentFilters = { search: '', levelId: 'all', status: 'all', mentor: 'all', absentDays: 0 };
 
-/** Lower case, single spaces, no spaces at the ends: what the search compares. */
+/** Lower case, no Latin accents, single spaces, no spaces at the ends: what the search compares. */
 function normalise(text: string): string {
-  return text.toLowerCase().replace(/\s+/g, ' ').trim();
+  return searchFold(text);
 }
 
 /**

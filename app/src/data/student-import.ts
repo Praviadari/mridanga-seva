@@ -11,7 +11,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import { File } from 'expo-file-system';
 import { Platform } from 'react-native';
 
-import { ageOn, parseDayMonthYear, todayInIndia } from '@/lib/dates';
+import { ageOn, parseDayMonthYear, todayLocal } from '@/lib/dates';
 import { MAX_SHEET_BYTES, readSheet, type SheetError, type SheetRows } from '@/lib/sheet-reader';
 import { supabase } from '@/lib/supabase';
 
@@ -168,7 +168,7 @@ export async function fetchExistingStudents(): Promise<ExistingStudents | null> 
 
 /**
  * Checks every data row (all rows after the heading row) with the column match. `today` is
- * 'YYYY-MM-DD' in India. The database checks the same again; it also refuses a duplicate that
+ * 'YYYY-MM-DD' at the class. The database checks the same again; it also refuses a duplicate that
  * appears while the import runs.
  */
 export function checkRows(rows: SheetRows, columns: ColumnMap, existing: ExistingStudents, today: string): PreviewRow[] {
@@ -321,5 +321,5 @@ export async function importRows(rows: readonly PreviewRow[]): Promise<{ results
   return { results };
 }
 
-/** Today in India, for checkRows. */
-export const importToday = todayInIndia;
+/** Today at the class, for checkRows. */
+export const importToday = todayLocal;

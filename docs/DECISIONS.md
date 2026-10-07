@@ -2460,3 +2460,124 @@ the domain is attached (brief 6's app part: a notice link, and the notice versio
 consent). When a team decision lands, edit the three language files, raise
 `privacyNotice.version` and `date` in `site.config.mjs`, rebuild and upload. The notice must have
 no "To confirm" left before the draft switch is turned off.
+
+## 132. Each centre has its own time zone and country; "today" is the caller's centre's — 7 Oct 2026
+
+**Context.** The seva is expanding to centres in other countries and time zones (Praveen, 7 Oct
+2026: "we require international standards as we are expanding"). Every "today", "this week" and
+time of day was India time, written as `'Asia/Kolkata'` into about 15 SQL functions and views and as +05:30 into
+the app. A class in New York would have had its 23:30 check-ins counted on the next day, its
+visits closed at 21:00 IST (11:30 in New York, before the class), and its notices dated in India.
+The I18N audit (docs/I18N.md) lists every place.
+
+**Decision.** `centres.time_zone` (IANA name, default `Asia/Kolkata`, checked against Postgres's
+zone list; no abbreviations such as IST, no fixed offsets) and `centres.country_code` (ISO 3166-1
+alpha-2, default `IN`), migration 0033. Per centre, not per batch: the class has no batches
+(NOTES 28 Sep 2026: drop-in window), and students (`home_centre_id`), visits, events and duty
+shifts already carry a centre. A person's centre is their student record's home centre, else
+`profiles.centre_id`. `today_ist()` keeps its name (dozens of functions call it) but now means
+today at the caller's centre; pg_cron and the dashboard (no login) get the first centre's zone.
+The functions that wrote the zone themselves now use the right centre: the attendance day of a
+visit is its centre's (`local_day`), a student's "days since the last visit" and the daily status
+job use the home centre's today, check-out and closing use the visit's centre, the home screens and
+reports use the caller's midnight and Monday, event reminders and duty reminders use the event's
+or shift's centre. Storage stays ISO 8601: `timestamptz` in UTC, `date` as YYYY-MM-DD.
+
+**Why.** Keeping the name `today_ist` avoids redefining dozens of functions in one migration (risk for
+no gain); a comment says what it means now. A time zone on the centre is the smallest place that
+is always known for a visit, a student and a staff member.
+
+**Consequences.** With one centre in India every answer is the same as before (smoke test). A new
+centre abroad is one row: `insert into centres (name, time_zone, country_code) values ('Queens',
+'America/New_York', 'US')` (the G9 screen has no field for it yet). Students still get centre 1 as
+home centre until the centre picker exists. Not changed (low risk, documented in docs/I18N.md):
+`promotion_criteria` counts visit days in India time, and `assessment_daily` reminders use the
+first centre's date (one day early at most for a centre far west of India).
+
+## 133. Visits left open are closed every hour, an hour after the centre closes — 7 Oct 2026
+
+**Context.** `close_open_visits` ran once a day at 21:00 IST. For a centre west of India that is
+during its class, and it would have closed today's visits at a closing time still in the future.
+
+**Decision.** The job `mridanga-close-visits` runs at half past every hour and closes only the
+visits whose centre's closing time (on the day the visit began, in the centre's zone) was at
+least an hour ago; each ends at that closing time, as before.
+
+**Why.** One rule for every zone. For Abids (closes 20:00) the first run that qualifies is 21:00
+IST, exactly as before.
+
+**Consequences.** pg_cron replaces the job of the same name when 0033 runs. If a centre's closing
+time is changed to later than 20:00, its visits close an hour after that time, not at 21:00.
+
+## 134. Dates: India keeps day-month-year; elsewhere the month is a word; typing stays day-month-year — 7 Oct 2026
+
+**Context.** The app wrote every date by hand as DD-MM-YYYY and every time as 24-hour HH:MM, and the
+database's notices did the same. In the US, 04-10-2026 reads as April 10. Typed dates are read as
+day-month-year, and about 25 hints in three languages say so.
+
+**Decision.** `formatDate` keeps DD-MM-YYYY for a centre in India (unchanged). For any other
+country it uses `Intl.DateTimeFormat` with the app's language and the centre's country and the
+month as a word ("Oct 4, 2026" in the US, "4 Oct 2026" in the UK), so no order can be misread. A
+typed date stays day-month-year in every country, and ISO 8601 (2026-10-04) is now accepted too;
+form fields are filled with `formatTypedDate` (always day-month-year). Notices written by the
+database use DD-MM-YYYY in India and ISO 8601 elsewhere (`local_stamp`). Times stay 24-hour.
+`lib/class-locale.ts` gets the zone and country from `my_centre_locale()` after sign-in and keeps
+the last known on the device; an app on a database without 0033, or before sign-in, uses India.
+
+**Why.** Nothing changes for the Hyderabad class, and nothing that is shown abroad can be misread.
+Changing the typed order per country would mean rewriting every date hint in every language;
+the proper fix is a date picker (a native package, so the next APK; see docs/I18N.md proposals).
+
+**Consequences.** Intl on Android (Hermes) is used only for a centre outside India, always with a
+fallback (India's offset, or ISO text). 12-hour time for the US waits for the same picker decision.
+
+## 135. Every fund amount has an ISO 4217 currency; one fund, one currency for now — 7 Oct 2026
+
+**Context.** The fund (#80) keeps whole paise with no currency, and the app writes them as ₹ with
+Indian grouping. A centre abroad would count dollars.
+
+**Decision.** `fund_entries.currency` (three capital letters, default `INR`); `amount_paise` holds
+the minor units of that currency. A reversal copies the currency of the entry it undoes (trigger
+`fund_entries_currency`). `record_fund_entry` does not take a currency yet, so every entry is INR
+until the team decides how money is kept abroad (one fund per country, or per centre). The app's
+`lib/money.ts` `formatMoney(minor, currency)` writes INR as before (₹, lakh grouping, in every
+language) and any other currency through `Intl.NumberFormat`.
+
+**Why.** Recording the currency now costs nothing and makes old rows unambiguous later; mixing
+currencies in one balance would be wrong, so it is not offered yet.
+
+**Consequences.** `fund_balance()` still sums one currency. The column `amount_paise` keeps its name
+(renaming would break the current app). The settings `fund_approval_rupees` / `fund_bill_rupees`
+are rupees.
+
+## 136. Counts use plural keys; search ignores accents — 7 Oct 2026
+
+**Context.** Five texts wrote "student(s)" and nine more would read "1 students" or "1 days"; a new language may have more plural
+forms (Arabic six, Russian three). Search compared plain lower case, so "krsna" did not find
+"Kṛṣṇa".
+
+**Decision.** Texts with a `{{count}}` that names a thing have `_one` / `_other` keys (i18next,
+CLDR plural rules; Telugu and Hindi keep their draft text in both until the native-speaker review).
+`lib/search-text.ts` `searchFold` (NFD, Latin combining marks U+0300-U+036F removed, lower case) is
+used by every name search; Telugu and Devanagari vowel signs are not touched.
+
+**Why.** i18next picks the right form for any language from `count`; a translator only adds the
+forms their language needs. Without `Intl.PluralRules` (older Hermes) i18next falls back to one /
+other, which is right for en, te and hi.
+
+**Consequences.** A new text with a count of things gets `_one` and `_other` from the start
+(docs/TRANSLATIONS.md).
+
+## 137. Proposals that wait for a team decision before expansion — 7 Oct 2026
+
+**Context.** Some international changes are not technical choices: age of consent per country,
+phone numbers, addresses, new languages, a fund abroad, typed dates.
+
+**Decision.** Not built. Each is written up in docs/I18N.md "Proposals for the team" with a
+recommendation; this number is kept for the decision record when the team answers.
+
+**Why.** They change consent, money or what families are asked, which the team decides.
+
+**Consequences.** Until then a centre outside India can run attendance, follow-up, events and
+reports (#132-#136), but registration still asks for an Indian-style phone and pincode and treats
+under 18 as a minor.

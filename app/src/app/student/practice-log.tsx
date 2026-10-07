@@ -21,11 +21,11 @@ import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { TextField } from '@/components/text-field';
 import { deletePractice, fetchMyPracticeLog, fetchTaals, logPractice, type PracticeLog } from '@/data/practice';
-import { formatDayMonthYear, todayInIndia } from '@/lib/dates';
+import { formatDate, todayLocal } from '@/lib/dates';
 
-/** 'YYYY-MM-DD' of the day `back` days before today in India. */
+/** 'YYYY-MM-DD' of the day `back` days before today at the class. */
 function dayBefore(back: number): string {
-  const [y, m, d] = todayInIndia().split('-').map(Number);
+  const [y, m, d] = todayLocal().split('-').map(Number);
   return new Date(Date.UTC(y, m - 1, d - back)).toISOString().slice(0, 10);
 }
 
@@ -127,7 +127,7 @@ export default function PracticeLogScreen() {
           onChange={setDay}
           choices={Array.from({ length: 7 }, (_, back) => ({
             value: back,
-            label: back === 0 ? t('practiceLog.today') : back === 1 ? t('practiceLog.yesterday') : formatDayMonthYear(dayBefore(back)),
+            label: back === 0 ? t('practiceLog.today') : back === 1 ? t('practiceLog.yesterday') : formatDate(dayBefore(back)),
           }))}
         />
         <TextField
@@ -149,7 +149,7 @@ export default function PracticeLogScreen() {
           <ListRow
             key={entry.id}
             leading={entry.source === 'timer' ? 'time' : 'edit'}
-            title={`${practiceTime(t, entry.minutes)} · ${formatDayMonthYear(entry.practisedOn)}`}
+            title={`${practiceTime(t, entry.minutes)} · ${formatDate(entry.practisedOn)}`}
             details={[
               t(entry.source === 'timer' ? 'practiceLog.fromTimer' : 'practiceLog.typedIn'),
               ...(entry.taalId !== null && taalNames.has(entry.taalId) ? [taalNames.get(entry.taalId) as string] : []),

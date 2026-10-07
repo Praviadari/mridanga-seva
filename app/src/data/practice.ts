@@ -180,7 +180,7 @@ export async function deleteTaal(id: number): Promise<MessageKey | null> {
 /** One practice entry (table practice_logs). */
 export type PracticeEntry = {
   id: number;
-  /** 'YYYY-MM-DD', India. */
+  /** 'YYYY-MM-DD', at the class. */
   practisedOn: string;
   minutes: number;
   source: 'timer' | 'manual';
@@ -188,7 +188,7 @@ export type PracticeEntry = {
   note: string | null;
 };
 
-/** Minutes of one week (from Monday, India), newest week first. */
+/** Minutes of one week (from Monday, at the class), newest week first. */
 export type PracticeWeek = { weekStart: string; minutes: number; entries: number };
 
 const PRACTICE_CODES = [

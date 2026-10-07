@@ -28,7 +28,7 @@ import { MarkAttendanceButton, StaffShortcuts } from '@/components/staff-shortcu
 import { StatGrid, StatTile } from '@/components/stat-tile';
 import { UpdateNotice } from '@/components/update-notice';
 import { fetchCoordinatorDashboard, type CoordinatorDashboard } from '@/data/home';
-import { formatDayMonthYear } from '@/lib/dates';
+import { formatDate } from '@/lib/dates';
 
 /** Coordinator home screen, shown by the staff Home tab (app/staff/(tabs)/index.tsx). */
 export function CoordinatorHome() {
@@ -112,7 +112,7 @@ export function CoordinatorHome() {
                 chips={{ levelId: j.levelId }}
                 details={[
                   j.rollNo,
-                  t('home.staff.joinedVisits', { date: formatDayMonthYear(j.joinedOn), count: j.visits }),
+                  t('home.staff.joinedVisits', { date: formatDate(j.joinedOn), count: j.visits }),
                 ]}
                 onPress={() => router.push({ pathname: '/staff/students/[id]', params: { id: j.id } })}
               />

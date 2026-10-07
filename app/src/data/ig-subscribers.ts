@@ -163,7 +163,7 @@ type SubscriberRow = {
   notes: number;
 };
 
-/** Joins in one week (Monday, India time). */
+/** Joins in one week (Monday, class time). */
 export type WeekJoins = { weekStart: string; joins: number };
 
 /** I15: the list (newest first) and the joins of the last 12 weeks; null when it could not load. */

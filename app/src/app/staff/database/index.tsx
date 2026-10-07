@@ -30,7 +30,7 @@ import {
 } from '@/data/student-database';
 import { fetchStaff, STUDENT_STATUSES, type StaffMember } from '@/data/student-overview';
 import { levelName, statusName } from '@/i18n/labels';
-import { formatDayMonthYear } from '@/lib/dates';
+import { formatDate } from '@/lib/dates';
 import { spacing, useTheme, useWide } from '@/theme/use-theme';
 
 /** Rows drawn at first; "Show more" adds this many again, so a long list stays quick. */
@@ -186,7 +186,7 @@ export default function StudentDatabaseScreen() {
               {cell(mentorText(row), 1.4)}
               {cell(row.area ?? '', 1.2)}
               {cell(row.phone ?? '', 1.3)}
-              {cell(formatDayMonthYear(row.joinedOn), 1.1)}
+              {cell(formatDate(row.joinedOn), 1.1)}
               {cell(row.hasLogin ? t('database.yes') : '', 0.6)}
             </Pressable>
           ))}

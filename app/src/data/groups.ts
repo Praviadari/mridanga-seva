@@ -10,6 +10,7 @@
 import type { ParseKeys } from 'i18next';
 
 import type { AppRole } from '@/auth/types';
+import { searchFold } from '@/lib/search-text';
 import { supabase } from '@/lib/supabase';
 
 import { isNetworkError } from './errors';
@@ -180,9 +181,9 @@ export async function fetchGroup(id: number): Promise<GroupDetail | 'not_found' 
  * search matches nobody, so the screen does not list the whole class at once.
  */
 export function matchesPersonSearch(person: GroupPerson, search: string): boolean {
-  const query = search.toLowerCase().replace(/\s+/g, ' ').trim();
+  const query = searchFold(search);
   if (!query) return false;
-  return person.fullName.toLowerCase().includes(query) || (person.rollNo ?? '').toLowerCase().includes(query);
+  return searchFold(person.fullName).includes(query) || (person.rollNo ?? '').toLowerCase().includes(query);
 }
 
 /** Adds a person to a group. Adding someone who is already in it changes nothing. */

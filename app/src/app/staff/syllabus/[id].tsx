@@ -34,7 +34,7 @@ import {
   type TickOutcome,
 } from '@/data/syllabus';
 import { levelName } from '@/i18n/labels';
-import { formatDayMonthYear } from '@/lib/dates';
+import { formatDate } from '@/lib/dates';
 
 /** What the screen loaded: the syllabus and the staff names for "ticked by". */
 type Loaded = { syllabus: StudentSyllabus; staffNames: Map<string, string> };
@@ -191,7 +191,7 @@ export default function SyllabusTickOffScreen() {
             done={!!item.doneOn}
             doneLine={
               item.doneOn
-                ? t('syllabus.tickedOn', { date: formatDayMonthYear(item.doneOn), name: tickedBy(item) })
+                ? t('syllabus.tickedOn', { date: formatDate(item.doneOn), name: tickedBy(item) })
                 : undefined
             }
             remark={item.remark ? t('syllabus.remarkLine', { remark: item.remark }) : null}

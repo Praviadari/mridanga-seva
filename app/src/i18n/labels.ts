@@ -8,7 +8,7 @@ import type { TFunction } from 'i18next';
 import type { Announcement } from '@/data/announcements';
 import { isKnownCallReason, type CallOutcome } from '@/data/follow-up';
 import type { StudentStatus, StudentSummary } from '@/data/student-overview';
-import { dateInIndia, formatDayMonthYear } from '@/lib/dates';
+import { localDate, formatDate } from '@/lib/dates';
 
 /**
  * The level's name in the app's language. The three levels (Beginner, Intermediate, Advanced)
@@ -55,11 +55,11 @@ export function lastVisitText(
   student: Pick<StudentSummary, 'lastVisitAt' | 'daysSinceVisit' | 'joinedOn' | 'hereNow'>,
 ): string {
   if (student.hereNow) return t('students.hereNow');
-  if (!student.lastVisitAt) return t('students.neverVisited', { date: formatDayMonthYear(student.joinedOn) });
+  if (!student.lastVisitAt) return t('students.neverVisited', { date: formatDate(student.joinedOn) });
   if (student.daysSinceVisit === 0) return t('students.lastVisitToday');
   if (student.daysSinceVisit === 1) return t('students.lastVisitYesterday');
   return t('students.lastVisit', {
-    date: formatDayMonthYear(dateInIndia(student.lastVisitAt)),
+    date: formatDate(localDate(student.lastVisitAt)),
     days: student.daysSinceVisit,
   });
 }

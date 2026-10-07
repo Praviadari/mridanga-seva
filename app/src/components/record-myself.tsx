@@ -14,7 +14,7 @@ import { Platform, StyleSheet, View } from 'react-native';
 
 import { useAuth } from '@/auth/auth-provider';
 import { fetchMyAssessments, OPEN_STATUSES, type MyAssessmentItem } from '@/data/assessments';
-import { formatDateTimeInIndia, formatDayMonthYear } from '@/lib/dates';
+import { formatDateTime, formatDate } from '@/lib/dates';
 import {
   deleteMyRecording,
   keepMyRecording,
@@ -187,7 +187,7 @@ function RecordingRow({
   return (
     <View style={[styles.row, { borderColor: colors.border }]}>
       <AppText variant="label">
-        {t('recordMyself.recordedAt', { date: formatDateTimeInIndia(recording.recordedAt), time: durationText(recording.durationMs) })}
+        {t('recordMyself.recordedAt', { date: formatDateTime(recording.recordedAt), time: durationText(recording.durationMs) })}
       </AppText>
       <AppText variant="small" tone="muted">
         {settingText}
@@ -234,7 +234,7 @@ function RecordingRow({
               key={a.assignmentId}
               variant="link"
               icon="assessment"
-              label={t('recordMyself.assessmentChoice', { title: a.title, date: formatDayMonthYear(a.dueOn) })}
+              label={t('recordMyself.assessmentChoice', { title: a.title, date: formatDate(a.dueOn) })}
               onPress={() => router.push({ pathname: '/student/assessments/[id]', params: { id: String(a.assignmentId), take: recording.id } })}
             />
           ))}

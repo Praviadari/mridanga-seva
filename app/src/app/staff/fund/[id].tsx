@@ -47,7 +47,7 @@ import {
   type FundBook,
 } from '@/data/fund';
 import { fileSizeText } from '@/i18n/labels';
-import { formatDateTimeInIndia, formatDayMonthYear, parseDayMonthYear, todayInIndia } from '@/lib/dates';
+import { formatDate, formatDateTime, formatTypedDate, parseDayMonthYear, todayLocal } from '@/lib/dates';
 import { spacing } from '@/theme/use-theme';
 
 type Mode = 'decline' | 'withdraw' | 'reverse' | null;
@@ -62,7 +62,7 @@ export default function FundEntryScreen() {
   const [form, setForm] = useState<EntryForm>({
     direction: 'income',
     categoryId: null,
-    date: formatDayMonthYear(todayInIndia()),
+    date: formatTypedDate(todayLocal()),
     amount: '',
     party: '',
     reference: '',
@@ -139,7 +139,7 @@ export default function FundEntryScreen() {
     }
 
     async function save() {
-      const today = todayInIndia();
+      const today = todayLocal();
       const isoDate = parseDayMonthYear(form.date);
       const problems = checkEntryForm(form, isoDate, today, book?.billLimitPaise ?? 0);
       setErrors(problems);
@@ -276,16 +276,16 @@ export default function FundEntryScreen() {
         <DetailGrid
           details={[
             { label: t('fund.csv.status'), value: t(`fund.statuses.${entry.status}`) },
-            { label: t('fund.csv.date'), value: formatDayMonthYear(entry.onDate) },
+            { label: t('fund.csv.date'), value: formatDate(entry.onDate) },
             { label: entry.direction === 'income' ? t('fund.fromLabel') : t('fund.toLabel'), value: entry.party ?? '-' },
             { label: t('fund.referenceLabel'), value: entry.reference ?? '-' },
             { label: t('fund.noteLabel'), value: entry.note ?? '-' },
-            { label: t('fund.recordedBy'), value: `${entry.createdByName} · ${formatDateTimeInIndia(entry.createdAt)}` },
+            { label: t('fund.recordedBy'), value: `${entry.createdByName} · ${formatDateTime(entry.createdAt)}` },
             ...(entry.decidedAt
               ? [
                   {
                     label: t('fund.decidedBy'),
-                    value: [entry.decidedByName, formatDateTimeInIndia(entry.decidedAt), entry.decisionNote].filter(Boolean).join(' · '),
+                    value: [entry.decidedByName, formatDateTime(entry.decidedAt), entry.decisionNote].filter(Boolean).join(' · '),
                   },
                 ]
               : []),

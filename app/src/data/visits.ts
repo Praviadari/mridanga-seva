@@ -6,7 +6,7 @@
 
 import { supabase } from '@/lib/supabase';
 
-import { dateInIndia, todayInIndia } from '@/lib/dates';
+import { localDate, localMoment, todayLocal } from '@/lib/dates';
 
 import type { LocationCheck } from './attendance';
 
@@ -20,7 +20,7 @@ export type HistoryVisit = {
   distanceM: number | null;
 };
 
-/** The visits of one month in India, newest first. */
+/** The visits of one month at the class, newest first. */
 export type VisitMonth = {
   /** 'YYYY-MM'. */
   month: string;
@@ -39,9 +39,9 @@ export type VisitHistory = {
 /** How many months the screen loads at first, and adds each time "Show earlier months" is tapped. */
 export const MONTHS_PER_PAGE = 3;
 
-/** 'YYYY-MM' of the month `back` months before this month in India. */
+/** 'YYYY-MM' of the month `back` months before this month at the class. */
 function monthBefore(back: number): string {
-  const [year, month] = todayInIndia().split('-').map(Number);
+  const [year, month] = todayLocal().split('-').map(Number);
   const index = year * 12 + (month - 1) - back;
   return `${Math.floor(index / 12)}-${String((index % 12) + 1).padStart(2, '0')}`;
 }
@@ -51,7 +51,7 @@ function monthBefore(back: number): string {
  * without a visit are left out. null = could not be loaded (usually no internet).
  */
 export async function fetchVisitHistory(studentId: string, months: number): Promise<VisitHistory | null> {
-  const since = `${monthBefore(months - 1)}-01T00:00:00+05:30`;
+  const since = localMoment(`${monthBefore(months - 1)}-01`, '00:00');
   const [visits, earlier] = await Promise.all([
     supabase
       .from('visits')
@@ -71,7 +71,7 @@ export async function fetchVisitHistory(studentId: string, months: number): Prom
     location_check: LocationCheck;
     location_distance_m: number | null;
   }[]) {
-    const month = dateInIndia(row.check_in).slice(0, 7);
+    const month = localDate(row.check_in).slice(0, 7);
     const entry = byMonth.get(month) ?? { month, visits: [], minutes: 0 };
     entry.visits.push({
       id: row.id,

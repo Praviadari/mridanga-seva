@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
 import { fetchMyStudentId, fetchPracticeWeeks, type PracticeWeek } from '@/data/practice';
-import { formatDayMonthYear } from '@/lib/dates';
+import { formatDate } from '@/lib/dates';
 import { radius, spacing, useTheme } from '@/theme/use-theme';
 
 import { AppText } from './app-text';
@@ -40,16 +40,16 @@ export function WeeklyPractice({ weeks }: WeeklyPracticeProps) {
     <View style={styles.wrap}>
       <View>
         <AppText variant="title">{practiceTime(t, thisWeek.minutes)}</AppText>
-        <AppText tone="muted">{t('practice.thisWeek', { date: formatDayMonthYear(thisWeek.weekStart) })}</AppText>
+        <AppText tone="muted">{t('practice.thisWeek', { date: formatDate(thisWeek.weekStart) })}</AppText>
       </View>
       {earlier.map((week) => (
         <View
           key={week.weekStart}
           style={styles.row}
           accessible
-          accessibilityLabel={`${t('practice.weekOf', { date: formatDayMonthYear(week.weekStart) })}: ${practiceTime(t, week.minutes)}`}>
+          accessibilityLabel={`${t('practice.weekOf', { date: formatDate(week.weekStart) })}: ${practiceTime(t, week.minutes)}`}>
           <AppText variant="small" tone="muted" style={styles.label}>
-            {t('practice.weekOf', { date: formatDayMonthYear(week.weekStart) })}
+            {t('practice.weekOf', { date: formatDate(week.weekStart) })}
           </AppText>
           <View style={[styles.track, { backgroundColor: colors.skeleton }]}>
             <View style={[styles.bar, { width: `${(week.minutes / most) * 100}%`, backgroundColor: colors.primary }]} />

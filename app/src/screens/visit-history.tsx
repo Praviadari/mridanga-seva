@@ -22,7 +22,7 @@ import { Section } from '@/components/section';
 import { fetchVisitHistory, MONTHS_PER_PAGE, type VisitHistory } from '@/data/visits';
 import { formatDuration, monthName } from '@/i18n/labels';
 import { locationFlagText } from '@/i18n/location-flag';
-import { dateInIndia, formatDayMonthYear, timeInIndia } from '@/lib/dates';
+import { localDate, formatDate, localTime } from '@/lib/dates';
 import { spacing, useTheme } from '@/theme/use-theme';
 
 /** Props for VisitHistoryScreen. */
@@ -102,9 +102,9 @@ export function VisitHistoryScreen({ studentId, subtitle }: VisitHistoryScreenPr
                 return (
                 <View key={visit.id} style={styles.visit}>
                 <AppText>
-                  {`${formatDayMonthYear(dateInIndia(visit.checkIn))} · ${timeInIndia(visit.checkIn)}`}
+                  {`${formatDate(localDate(visit.checkIn))} · ${localTime(visit.checkIn)}`}
                   {visit.checkOut
-                    ? `–${timeInIndia(visit.checkOut)} · ${formatDuration(
+                    ? `–${localTime(visit.checkOut)} · ${formatDuration(
                         t,
                         (Date.parse(visit.checkOut) - Date.parse(visit.checkIn)) / 60_000,
                       )}`

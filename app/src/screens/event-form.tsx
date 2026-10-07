@@ -1,4 +1,4 @@
-// C16 New event / Edit event, for coordinators and the Guru: title, day and time (India), an end
+// C16 New event / Edit event, for coordinators and the Guru: title, day and time (at the class), an end
 // time on the same day, a centre and/or a place, who it is for, and a description. Saving tells
 // everyone it is for (a new event; on an edit only a new time or place). Routes:
 // staff/events/new.tsx and staff/events/edit/[id].tsx. Data: src/data/events.ts (migration 0022).

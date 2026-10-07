@@ -1,6 +1,8 @@
 // The text of "Add to calendar" (S11), the same on the phone and in the browser: an iCalendar
 // (.ics, RFC 5545) file and a Google Calendar link. Sharing the file: ./calendar-file.ts / .web.ts.
 
+import { classLocale } from './class-locale';
+
 /** What the calendar needs about an event. Times are ISO timestamps. */
 export type CalendarEvent = {
   id: number;
@@ -76,7 +78,7 @@ export function googleCalendarLink(event: CalendarEvent): string {
     ['dates', `${utcStamp(event.startsAt)}/${utcStamp(endOf(event))}`],
     ['details', event.description],
     ['location', event.location],
-    ['ctz', 'Asia/Kolkata'],
+    ['ctz', classLocale().timeZone],
   ]
     .filter(([, value]) => value)
     .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)

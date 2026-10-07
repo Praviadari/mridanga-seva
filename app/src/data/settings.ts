@@ -1,7 +1,7 @@
 // Class settings (screen G10, the Guru only), and the one setting other screens read here: what
 // "this week" means. Only settings the database really uses are offered (docs/DECISIONS.md #47):
-//   centres.opens_at / closes_at   the open window; at 21:00 IST visits still open are closed at
-//                                  the closing time (close_open_visits)
+//   centres.opens_at / closes_at   the open window; an hour after closing (centre's time) visits still
+//                                  open are closed at the closing time (close_open_visits, 0033)
 //   week_starts                    "this week" from Monday, or the last 7 days (week_start_ist)
 //   irregular_days, inactive_days  days without a visit before Irregular / Inactive (daily job)
 //   call_due_days, retry_days,     when a call is due, when to try again, tries before the Guru

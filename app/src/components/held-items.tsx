@@ -8,7 +8,7 @@ import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { fetchHeldItems, type HeldItem } from '@/data/inventory';
-import { dateInIndia, formatDayMonthYear, todayInIndia } from '@/lib/dates';
+import { localDate, formatDate, todayLocal } from '@/lib/dates';
 
 import { ListRow } from './list-row';
 import { Section } from './section';
@@ -42,7 +42,7 @@ export function HeldItemsPanel({ by, openable }: HeldItemsPanelProps) {
   );
 
   if (!items || items.length === 0) return null;
-  const today = todayInIndia();
+  const today = todayLocal();
   return (
     // "Bring them back to a coordinator" is for the student's own view, not for staff.
     <Section icon="instruments" title={t('inventory.heldTitle')} description={by === 'mine' ? t('inventory.heldHint') : undefined}>
@@ -55,9 +55,9 @@ export function HeldItemsPanel({ by, openable }: HeldItemsPanelProps) {
           details={[
             [
               t(`inventory.kinds.${item.kind}`),
-              t('inventory.sinceLine', { date: formatDayMonthYear(dateInIndia(item.issuedAt)) }),
+              t('inventory.sinceLine', { date: formatDate(localDate(item.issuedAt)) }),
               ...(item.dueOn
-                ? [t(item.dueOn < today ? 'inventory.overdueLine' : 'inventory.dueLine', { date: formatDayMonthYear(item.dueOn) })]
+                ? [t(item.dueOn < today ? 'inventory.overdueLine' : 'inventory.dueLine', { date: formatDate(item.dueOn) })]
                 : []),
             ].join(' · '),
           ]}

@@ -12,7 +12,7 @@
 
 import type { ParseKeys } from 'i18next';
 
-import { formatDayMonthYear, parseDayMonthYear, todayInIndia } from '@/lib/dates';
+import { formatTypedDate, parseDayMonthYear, todayLocal } from '@/lib/dates';
 import { supabase } from '@/lib/supabase';
 
 import {
@@ -253,7 +253,7 @@ function toTrackerRow(row: TrackerDbRow): TrackerRow {
 }
 
 /** True when the due date has passed and the student has not sent it yet. */
-export function isOverdue(row: Pick<TrackerRow, 'dueOn' | 'status'>, today = todayInIndia()): boolean {
+export function isOverdue(row: Pick<TrackerRow, 'dueOn' | 'status'>, today = todayLocal()): boolean {
   return row.dueOn < today && OPEN_STATUSES.includes(row.status);
 }
 
@@ -530,7 +530,7 @@ export function checkReleaseForm(studentIds: string[], due: string, notes: strin
   const dueOn = parseDayMonthYear(due);
   if (!due.trim()) errors.due = 'assessments.errors.due_required';
   else if (!dueOn) errors.due = 'assessments.release.dueInvalid';
-  else if (dueOn < todayInIndia()) errors.due = 'assessments.errors.due_past';
+  else if (dueOn < todayLocal()) errors.due = 'assessments.errors.due_past';
   if (notes.trim().length > NOTES_MAX) errors.notes = 'assessments.errors.notes_too_long';
   return errors;
 }
@@ -556,9 +556,9 @@ export async function releaseAssessment(
 
 /** A due date for the form: today plus `days`, written day-month-year. */
 export function dueInDays(days: number): string {
-  const [y, m, d] = todayInIndia().split('-').map(Number);
+  const [y, m, d] = todayLocal().split('-').map(Number);
   const date = new Date(Date.UTC(y, m - 1, d + days));
-  return formatDayMonthYear(date.toISOString().slice(0, 10));
+  return formatTypedDate(date.toISOString().slice(0, 10));
 }
 
 // ---------------------------------------------------------------- C13: remind

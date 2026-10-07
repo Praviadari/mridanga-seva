@@ -6,7 +6,7 @@
 import * as Crypto from 'expo-crypto';
 import type { ParseKeys } from 'i18next';
 
-import { ageOn, isMinorOn, parseDayMonthYear, todayInIndia } from '@/lib/dates';
+import { ageOn, isMinorOn, parseDayMonthYear, todayLocal } from '@/lib/dates';
 import { supabase } from '@/lib/supabase';
 
 import { isNetworkError } from './errors';
@@ -99,7 +99,7 @@ function isValidEmail(email: string): boolean {
 export function ageFromForm(dob: string): { age: number; minor: boolean } | null {
   const iso = parseDayMonthYear(dob);
   if (!iso) return null;
-  const today = todayInIndia();
+  const today = todayLocal();
   return { age: ageOn(iso, today), minor: isMinorOn(iso, today) };
 }
 
@@ -110,7 +110,7 @@ export function ageFromForm(dob: string): { age: number; minor: boolean } | null
 export function checkStudentDetails(form: RegistrationForm): RegistrationErrors {
   const errors: RegistrationErrors = {};
   if (!form.fullName.trim()) errors.fullName = 'register.errors.nameRequired';
-  const today = todayInIndia();
+  const today = todayLocal();
   const iso = parseDayMonthYear(form.dob);
   // Not a real date, in the future, or an obvious typing slip (over 100 years old).
   if (!iso || iso > today || ageOn(iso, today) > 100) errors.dob = 'register.errors.dobInvalid';

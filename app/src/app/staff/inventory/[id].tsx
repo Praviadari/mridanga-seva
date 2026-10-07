@@ -44,7 +44,7 @@ import {
   type ItemForm,
   type ItemFormErrors,
 } from '@/data/inventory';
-import { dateInIndia, formatDateTimeInIndia, formatDayMonthYear, parseDayMonthYear, todayInIndia } from '@/lib/dates';
+import { localDate, formatDateTime, formatDate, parseDayMonthYear, todayLocal } from '@/lib/dates';
 import { goBackOr } from '@/lib/go-back';
 import { spacing } from '@/theme/use-theme';
 
@@ -190,7 +190,7 @@ export default function InventoryItemScreen() {
         setMessage({ tone: 'error', text: t('inventory.errors.due_invalid') });
         return;
       }
-      if (dueOn < todayInIndia()) {
+      if (dueOn < todayLocal()) {
         setMessage({ tone: 'error', text: t('inventory.errors.due_past') });
         return;
       }
@@ -232,16 +232,16 @@ export default function InventoryItemScreen() {
             {item.conditionNote ? ` · ${item.conditionNote}` : ''}
           </AppText>
           <AppText variant="small" tone="muted">
-            {t('inventory.conditionSince', { date: formatDateTimeInIndia(item.conditionAt) })}
+            {t('inventory.conditionSince', { date: formatDateTime(item.conditionAt) })}
           </AppText>
           {item.notes ? <AppText variant="small">{item.notes}</AppText> : null}
-          {item.retiredAt ? <Notice tone="info">{t('inventory.retiredNotice', { date: formatDayMonthYear(dateInIndia(item.retiredAt)) })}</Notice> : null}
+          {item.retiredAt ? <Notice tone="info">{t('inventory.retiredNotice', { date: formatDate(localDate(item.retiredAt)) })}</Notice> : null}
           {item.holder ? (
             <Notice tone="info" title={t('inventory.withTitle', { name: item.holder.name })}>
               {[
                 item.holder.rollNo,
-                t('inventory.sinceLine', { date: formatDayMonthYear(dateInIndia(item.holder.issuedAt)) }),
-                item.holder.dueOn ? t('inventory.dueLine', { date: formatDayMonthYear(item.holder.dueOn) }) : null,
+                t('inventory.sinceLine', { date: formatDate(localDate(item.holder.issuedAt)) }),
+                item.holder.dueOn ? t('inventory.dueLine', { date: formatDate(item.holder.dueOn) }) : null,
                 item.holder.issueNote,
               ]
                 .filter(Boolean)
@@ -407,7 +407,7 @@ export default function InventoryItemScreen() {
                 {t(`inventory.historyKinds.${h.kind}`, { name: h.borrower ?? '' })} · {t(`inventory.conditions.${h.condition}`)}
               </AppText>
               <AppText variant="small" tone="muted">
-                {[formatDateTimeInIndia(h.at), h.by].filter(Boolean).join(' · ')}
+                {[formatDateTime(h.at), h.by].filter(Boolean).join(' · ')}
               </AppText>
               {h.note ? <AppText variant="small">{h.note}</AppText> : null}
             </View>

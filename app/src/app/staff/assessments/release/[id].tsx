@@ -30,6 +30,7 @@ import {
   type ReleaseOptions,
 } from '@/data/assessments';
 import { levelName } from '@/i18n/labels';
+import { searchFold } from '@/lib/search-text';
 import { spacing } from '@/theme/use-theme';
 
 /** Which level's students the list shows; 0 = all levels. */
@@ -66,11 +67,11 @@ export default function ReleaseAssessmentScreen() {
   const candidates = useMemo(() => (loaded ? loaded.students.filter((s) => !s.alreadyHas) : []), [loaded]);
   const already = loaded ? loaded.students.length - candidates.length : 0;
   const shown = useMemo(() => {
-    const words = search.trim().toLowerCase();
+    const words = searchFold(search);
     return candidates.filter(
       (s) =>
         (levelShown === 0 || s.levelId === levelShown) &&
-        (!words || s.fullName.toLowerCase().includes(words) || s.rollNo.toLowerCase().includes(words)),
+        (!words || searchFold(s.fullName).includes(words) || s.rollNo.toLowerCase().includes(words)),
     );
   }, [candidates, levelShown, search]);
 

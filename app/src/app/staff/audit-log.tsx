@@ -31,7 +31,7 @@ import {
   type AuditNames,
 } from '@/data/audit-log';
 import { fetchStaff, type StaffMember } from '@/data/student-overview';
-import { formatDateTimeInIndia } from '@/lib/dates';
+import { formatDateTime } from '@/lib/dates';
 import { cardLook, spacing, useTheme } from '@/theme/use-theme';
 
 type Loaded = { entries: AuditEntry[]; names: AuditNames; staff: StaffMember[]; more: boolean };
@@ -157,7 +157,7 @@ export default function AuditLogScreen() {
                     </AppText>
                     <AppText variant="small">{subjectOf(entry, loaded.names) || entry.rowId}</AppText>
                     <AppText variant="small" tone="muted">
-                      {t('auditLog.byLine', { who: who(entry, loaded.names), when: formatDateTimeInIndia(entry.changedAt) })}
+                      {t('auditLog.byLine', { who: who(entry, loaded.names), when: formatDateTime(entry.changedAt) })}
                     </AppText>
                   </View>
                   <Icon name={expanded ? 'up' : 'down'} size={18} color={colors.textMuted} />

@@ -27,7 +27,7 @@ import {
 } from '@/data/attendance';
 import { formatDuration } from '@/i18n/labels';
 import { locationFlagText } from '@/i18n/location-flag';
-import { dateInIndia, formatDayMonthYear, timeInIndia, todayInIndia } from '@/lib/dates';
+import { localDate, formatDate, localTime, todayLocal } from '@/lib/dates';
 
 /** List of open visits, one check-out button each, and "Check out all" with a confirm step. */
 export default function HereNowScreen() {
@@ -79,10 +79,10 @@ export default function HereNowScreen() {
 
   /** "Since 16:05 · 1 h 10 min", or the date too when the visit was left open on an earlier day. */
   function sinceText(visit: OpenVisit, loadedAt: number): string {
-    const day = dateInIndia(visit.checkIn);
-    const time = timeInIndia(visit.checkIn);
-    if (day !== todayInIndia()) {
-      return t('hereNow.sinceEarlierDay', { date: formatDayMonthYear(day), time });
+    const day = localDate(visit.checkIn);
+    const time = localTime(visit.checkIn);
+    if (day !== todayLocal()) {
+      return t('hereNow.sinceEarlierDay', { date: formatDate(day), time });
     }
     const minutes = (loadedAt - Date.parse(visit.checkIn)) / 60_000;
     return t('hereNow.since', { time, duration: formatDuration(t, minutes) });

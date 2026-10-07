@@ -33,7 +33,7 @@ import {
   type TrackerRow,
 } from '@/data/assessments';
 import { levelName } from '@/i18n/labels';
-import { formatDateTimeInIndia, formatDayMonthYear } from '@/lib/dates';
+import { formatDateTime, formatDate } from '@/lib/dates';
 import { spacing } from '@/theme/use-theme';
 
 /** Which students the tracker shows. */
@@ -154,7 +154,7 @@ export default function StaffAssessmentScreen() {
         <AppText variant="small" tone="muted">
           {[
             ...(authorName ? [t('assessments.detail.setBy', { name: authorName })] : []),
-            a.sentAt ? t('assessments.sentOn', { date: formatDateTimeInIndia(a.sentAt) }) : t('assessments.detail.draftNote'),
+            a.sentAt ? t('assessments.sentOn', { date: formatDateTime(a.sentAt) }) : t('assessments.detail.draftNote'),
           ].join(' · ')}
         </AppText>
       </Section>
@@ -186,7 +186,7 @@ export default function StaffAssessmentScreen() {
             <View key={r.id} style={styles.release}>
               <AppText variant="label">
                 {t('assessments.detail.releaseLine', {
-                  due: formatDayMonthYear(r.dueOn),
+                  due: formatDate(r.dueOn),
                   name: r.releasedByName ?? t('assessments.detail.someone'),
                 })}
               </AppText>
@@ -232,10 +232,10 @@ export default function StaffAssessmentScreen() {
                     : []),
                   ...(row.sendLevelUp ? [t('assessments.review.sentToGuru')] : []),
                 ].join(' · '),
-                [row.rollNo, t('assessments.dueOn', { date: formatDayMonthYear(row.dueOn) })].join(' · '),
+                [row.rollNo, t('assessments.dueOn', { date: formatDate(row.dueOn) })].join(' · '),
                 ...(row.hasLogin ? [] : [t('assessments.tracker.noLogin')]),
                 ...(row.lastRemindedAt
-                  ? [t('assessments.tracker.reminded', { date: formatDateTimeInIndia(row.lastRemindedAt) })]
+                  ? [t('assessments.tracker.reminded', { date: formatDateTime(row.lastRemindedAt) })]
                   : []),
               ]}
               onPress={() =>

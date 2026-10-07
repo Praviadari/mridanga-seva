@@ -131,7 +131,10 @@ app/
     i18n/              Interface text in English, Telugu and Hindi (docs/TRANSLATIONS.md), and
                        labels.ts, which words levels, file sizes and lengths of time the same on
                        every screen
-    lib/               The Supabase client, on-device storage, date helpers (India time), the
+    lib/               The Supabase client, on-device storage, the class's time zone and country
+                       (class-locale.ts, from my_centre_locale; India until known), date helpers in
+                       that zone (dates.ts), money as text (money.ts), search text without accents
+                       (search-text.ts; docs/I18N.md), the
                        Excel/CSV reader of the student import (sheet-reader.ts, with fflate), push
                        notifications and app updates (push.ts and app-update.ts on Android; the
                        .web.ts copies do nothing), the report's CSV (csv.ts; save-csv.ts saves it to a
@@ -271,7 +274,8 @@ read or write the person is not allowed, whatever the app shows.
    A fix is reused for 2 minutes, and C5 warms it up on opening, so a queue is not slowed down.
 5. *Who is here now* (C6) lists open visits. At closing time the coordinator taps *Check out all*
    (`check_out_all`). Staff may correct only a visit's times, and each correction is audited (0030).
-6. At 21:00 IST a daily job closes any visit still open, at the centre's closing time.
+6. An hourly job closes any visit still open an hour after its centre closed, at the centre's
+   closing time (21:00 IST for Abids; every centre in its own time zone since 0033, docs/I18N.md).
 
 The camera also works in the web version (on `https` only). Browsers without built-in QR reading,
 such as Safari on iPhone, use a reader that expo-camera downloads from a public CDN; see
@@ -523,7 +527,8 @@ Not on main yet ([DECISIONS.md #80](DECISIONS.md)). No native change.
   sums per category and month need no special case; the running balance is computed in the app
   from all entries in date order (`data/fund.ts`, a class fund stays small).
 - **Money is integers.** Whole paise in the database (`bigint`); the app parses rupees as typed
-  without floating point and shows them with Indian grouping (₹1,25,000.50).
+  without floating point and shows them with Indian grouping (₹1,25,000.50). Since 0033 each entry
+  has an ISO 4217 `currency` (INR for now; `lib/money.ts` writes other currencies with Intl).
 - **Bills** use the announcement-files upload code with their own private bucket `fund-bills`
   (10 MB). A bill on an entry cannot be deleted.
 - **Notices** go through `push_outbox` like the team tools; the Edge Function accepts

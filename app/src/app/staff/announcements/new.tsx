@@ -1,6 +1,6 @@
 // C15 New announcement, for coordinators and the Guru: title, message, up to 3 photos or PDFs, who
 // it is for (all students, one level, my mentees, staff only, a group), pin to the top, and
-// publish now or at a later date and time (India time). Posting uploads the files, saves the
+// publish now or at a later date and time (the class's time). Posting uploads the files, saves the
 // announcement and opens it (./[id].tsx), where "seen by" fills up as people open it.
 // The fields are shared with the edit screen (src/components/announcement-form.tsx).
 // Data: src/data/announcements.ts; the database checks everything again (migrations 0007, 0008, 0010).

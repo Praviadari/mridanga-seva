@@ -26,7 +26,7 @@ import {
   type QueueEntry,
 } from '@/data/follow-up';
 import { lastVisitText } from '@/i18n/labels';
-import { formatDayMonthYear } from '@/lib/dates';
+import { formatDate } from '@/lib/dates';
 
 /** The queue in groups, with a "mine / everyone" switch and a refresh button. */
 export default function FollowUpScreen() {
@@ -65,7 +65,7 @@ export default function FollowUpScreen() {
     if (!task) return t('followUp.noTask');
     const mentorId = entry.student.mentorId;
     return [
-      t('followUp.due', { date: formatDayMonthYear(task.dueOn) }),
+      t('followUp.due', { date: formatDate(task.dueOn) }),
       task.attempt > 1 ? t('followUp.attempt', { number: task.attempt }) : null,
       task.assigneeId
         ? t('followUp.assignee', { name: staffNames.get(task.assigneeId) || t('profile.unknownPerson') })

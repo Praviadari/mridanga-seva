@@ -9,7 +9,8 @@
 // swapped, and the consent edges (dob edits across the 18-year line, a minor's guardian phone). Round 10
 // (0030) adds the follow-up rules (pause end, retry count, settings fallbacks and order), the status
 // side doors, frozen visit fields and the 30-second rescan; each check names its audit finding ID.
-// 0032 adds the sign-up language (D8-01) and one student per registration request (D6-08).
+// 0032 adds the sign-up language (D8-01) and one student per registration request (D6-08). 0033 adds a
+// time zone per centre (a New York centre's days around midnight) and the currency of fund entries.
 //
 // Run before pasting a migration into the live Supabase project:
 //   cd supabase/tests && npm install && npm test
@@ -3188,7 +3189,7 @@ const fns = await asOwner(`select p.oid::regprocedure::text as sig, p.proname as
   where n.nspname = 'public' and p.prorettype <> 'trigger'::regtype and p.prokind = 'f'
     and has_function_privilege('authenticated', p.oid, 'execute') order by 1`);
 const skip = new Set(['ig_leave', 'ig_send_parent_code', 'ig_confirm_parent', 'ig_join']); // tested above
-const mayAnswer = new Set(['my_role', 'today_ist', 'is_staff', 'is_guru', 'ig_reader', 'is_ig_editor', 'ig_my_state',
+const mayAnswer = new Set(['my_role', 'today_ist', 'my_time_zone', 'centre_tz', 'my_centre_locale', 'is_staff', 'is_guru', 'ig_reader', 'is_ig_editor', 'ig_my_state',
   'ig_sloka_of_day', 'ig_audio_path_ok', 'ig_audio_readable', 'is_public_subscriber', 'has_class_role',
   'gen_random_uuid', // pgcrypto's, in public only here (Supabase keeps it in extensions)
   'practice_weeks', // empty weeks with 0 minutes for a null student
@@ -3535,6 +3536,107 @@ check('D6-08: the request id trigger function is not callable by app roles', (aw
   and not has_function_privilege('anon', 'register_student(text, date, text, text, text, text, smallint, uuid, text, text, text, text, text, boolean, boolean, uuid)', 'execute') as ok`))[0].ok === true);
 // Clean up so the counts in the checks below stay as they were.
 await asOwner(`delete from students where id in ('${d608First.id}', '${d608Other.id}', '${d608Plain.id}')`);
+
+// ---------------------------------------------------------------- time zones and currency (0033)
+// Every centre so far is Abids: nothing may change for it. A second centre in New York must count
+// its own days: 23:59 there is still the same day, though India is already in the next one.
+check('0033: existing centres default to Asia/Kolkata and IN', (await asOwner(
+  `select bool_and(time_zone = 'Asia/Kolkata' and country_code = 'IN') as ok from centres`))[0].ok === true);
+check('0033: existing fund entries are in INR', (await asOwner(
+  `select coalesce(bool_and(currency = 'INR'), true) as ok from fund_entries`))[0].ok === true);
+check('0033: today_ist() is still the date in India for an Abids coordinator and for pg_cron', (await asApp('authenticated', coordinator,
+  `select today_ist() = (now() at time zone 'Asia/Kolkata')::date as ok`))[0].ok === true
+  && (await asOwner(`select today_ist() = (now() at time zone 'Asia/Kolkata')::date as ok`))[0].ok === true);
+await refusesWith('0033: an abbreviation is not a time zone', 'time_zone_invalid', () =>
+  asOwner(`update centres set time_zone = 'IST' where id = 1`));
+await refusesWith('0033: an unknown zone is refused', 'time_zone_invalid', () =>
+  asOwner(`update centres set time_zone = 'Mars/Olympus_Mons' where id = 1`));
+await refusesWith('0033: a country is two capital letters', 'country_invalid', () =>
+  asOwner(`update centres set country_code = 'usa' where id = 1`));
+await refuses('0033: a coordinator cannot change a centre\'s zone', async () => {
+  const rows = await asApp('authenticated', coordinator, `update centres set time_zone = 'Europe/London' where id = 1 returning id`);
+  if (rows.length === 0) throw new Error('no row changed (row-level security)');
+});
+const [nyCentre] = await asOwner(`insert into centres (name, time_zone, country_code, opens_at, closes_at)
+  values ('Queens', 'America/New_York', 'US', '14:30', '23:59') returning id`);
+const nyStaff = await signUp('ny.coordinator@example.com', true);
+await asOwner(`update profiles set role = 'coordinator', centre_id = ${nyCentre.id}, full_name = 'NY Coordinator' where id = '${nyStaff}'`);
+check('0033: my_centre_locale tells the app its zone and country', JSON.stringify((await asApp('authenticated', nyStaff,
+  'select my_centre_locale() as l'))[0].l) === JSON.stringify({ time_zone: 'America/New_York', country_code: 'US' }));
+check('0033: today_ist() for a New York coordinator is the date in New York', (await asApp('authenticated', nyStaff,
+  `select today_ist() = (now() at time zone 'America/New_York')::date and my_time_zone() = 'America/New_York' as ok`))[0].ok === true);
+const days = (await asOwner(`select
+    local_day(timestamptz '2026-03-11 03:59+00', ${nyCentre.id}) as ny_before,
+    local_day(timestamptz '2026-03-11 04:01+00', ${nyCentre.id}) as ny_after,
+    local_day(timestamptz '2026-03-11 03:59+00', 1) as in_before,
+    local_day(timestamptz '2026-03-10 18:29+00', 1) as in_late,
+    local_day(timestamptz '2026-03-10 18:31+00', 1) as in_next`))[0];
+const iso = (d) => (d instanceof Date ? d.toISOString().slice(0, 10) : String(d));
+check('0033: around New York midnight (EDT) the attendance day is New York\'s',
+  iso(days.ny_before) === '2026-03-10' && iso(days.ny_after) === '2026-03-11' && iso(days.in_before) === '2026-03-11', JSON.stringify(days));
+check('0033: around India midnight (18:30 UTC) Abids keeps its day as before',
+  iso(days.in_late) === '2026-03-10' && iso(days.in_next) === '2026-03-11', JSON.stringify(days));
+
+// A New York student with a check-in at 23:30 New York time on 10 March 2026 (03:30 UTC on the 11th).
+const nyStudent = (await register(nyStaff, { p_full_name: 'Queens Student', p_dob: '1990-02-02' })).id;
+await asOwner(`update students set home_centre_id = ${nyCentre.id} where id = '${nyStudent}'`);
+await asOwner(`insert into visits (student_id, centre_id, check_in, check_out, method)
+  values ('${nyStudent}', ${nyCentre.id}, timestamp '2026-03-10 23:30' at time zone 'America/New_York',
+          timestamp '2026-03-10 23:55' at time zone 'America/New_York', 'manual')`);
+const reportDay = async (day) => (await asApp('authenticated', guru, `select r from jsonb_array_elements(
+  (class_report('${day}', '${day}'))->'rows') r where r->>'id' = '${nyStudent}'`))[0]?.r;
+const onTenth = await reportDay('2026-03-10');
+const onEleventh = await reportDay('2026-03-11');
+check('0033: the report counts the 23:30 New York visit on 10 March, not 11 March',
+  onTenth?.visits === 1 && onEleventh?.visits === 0 && onTenth?.last_visit_on === '2026-03-10',
+  JSON.stringify({ tenth: onTenth?.visits, eleventh: onEleventh?.visits, last: onTenth?.last_visit_on }));
+check('0033: days since the visit count from New York\'s today', (await asOwner(`select days_since_visit =
+  (now() at time zone 'America/New_York')::date - date '2026-03-10' as ok from student_overview where id = '${nyStudent}'`))[0].ok === true);
+
+// Closing: a visit left open two days ago ends at that day's closing time in New York; a visit begun
+// now is not closed before the centre has been closed an hour (closes 23:59 here).
+const nyStudent2 = (await register(nyStaff, { p_full_name: 'Queens Student Two', p_dob: '1991-03-03' })).id;
+await asOwner(`insert into visits (student_id, centre_id, check_in, method) values
+  ('${nyStudent}', ${nyCentre.id}, ((now() at time zone 'America/New_York')::date - 2 + time '15:00') at time zone 'America/New_York', 'manual'),
+  ('${nyStudent2}', ${nyCentre.id}, now() - interval '1 minute', 'manual')`);
+await asOwner('select close_open_visits()');
+const closed = await asOwner(`select student_id, check_out is not null as closed,
+    check_out = ((now() at time zone 'America/New_York')::date - 2 + time '23:59') at time zone 'America/New_York' as at_closing
+  from visits where student_id in ('${nyStudent}', '${nyStudent2}') and check_in > now() - interval '3 days'`);
+check('0033: a New York visit left open ends at New York\'s closing time of its day',
+  closed.find((r) => r.student_id === nyStudent)?.at_closing === true, JSON.stringify(closed));
+check('0033: ... and a visit begun now stays open', closed.find((r) => r.student_id === nyStudent2)?.closed === false);
+
+// Notices: India keeps day-month-year; New York gets ISO 8601, each in their own zone. pg_cron has
+// no login (asApp leaves the last one set, so clear it): the first centre's zone.
+await asOwner(`select set_config('request.jwt.claim.sub', '', false)`);
+const lines = (await asOwner(`select
+    event_push_line('event_new', 'en', timestamptz '2026-03-11 03:30+00', null, '${nyStaff}') as ny,
+    event_push_line('event_new', 'en', timestamptz '2026-03-11 03:30+00', null, '${coordinator}') as hyd,
+    event_push_line('event_remind', 'en', timestamptz '2026-03-11 03:30+00') as cron`))[0];
+check('0033: an event notice is written in each person\'s zone and date style',
+  lines.ny === 'New event: 2026-03-10 23:30. Will you come?' && lines.hyd === 'New event: 11-03-2026 09:00. Will you come?'
+  && lines.cron === 'Reminder: tomorrow at 09:00.', JSON.stringify(lines));
+
+// Fund: a reversal keeps the currency of the entry it undoes.
+const [usd] = await asOwner(`insert into fund_entries (direction, category_id, on_date, amount_paise, status, created_by, currency)
+  values ('income', (select id from fund_categories where direction = 'income' order by id limit 1), current_date, 500, 'approved',
+          '${guru}', 'USD') returning id`);
+const [{ id: usdReversal }] = await asApp('authenticated', guru, 'select reverse_fund_entry($1, $2) as id', [usd.id, 'Typed in the wrong fund']);
+check('0033: a reversal takes the currency of the entry it undoes', (await asOwner(
+  `select currency from fund_entries where id = ${usdReversal}`))[0].currency === 'USD');
+await refuses('0033: a currency is an ISO 4217 code', () => asOwner(`insert into fund_entries
+  (direction, category_id, on_date, amount_paise, status, created_by, currency)
+  values ('income', (select id from fund_categories where direction = 'income' order by id limit 1), current_date, 500, 'approved', '${guru}', 'rupees')`));
+check('0033: the helpers with a person\'s id are not callable by app roles', (await asOwner(`select
+  not has_function_privilege('authenticated', 'person_centre(uuid)', 'execute')
+  and not has_function_privilege('authenticated', 'local_stamp(timestamptz,uuid,text)', 'execute')
+  and not has_function_privilege('authenticated', 'event_push_line(text,text,timestamptz,text,uuid)', 'execute')
+  and not has_function_privilege('anon', 'today_ist()', 'execute')
+  and has_function_privilege('authenticated', 'centre_today(integer)', 'execute') as ok`))[0].ok === true);
+// Clean up so the counts below stay as they were.
+await asOwner(`delete from visits where student_id in ('${nyStudent}', '${nyStudent2}')`);
+await asOwner(`delete from students where id in ('${nyStudent}', '${nyStudent2}')`);
 
 // ---------------------------------------------------------------- row-level security
 const seen =await asApp('authenticated', arjun, 'select full_name from students');

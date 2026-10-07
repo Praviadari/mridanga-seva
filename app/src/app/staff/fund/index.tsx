@@ -39,7 +39,7 @@ import {
   type Period,
 } from '@/data/fund';
 import { toCsv } from '@/lib/csv';
-import { formatDayMonthYear, todayInIndia } from '@/lib/dates';
+import { formatDate, todayLocal } from '@/lib/dates';
 import { CSV_WAYS, downloadCsv, saveCsvToFolder, shareCsv, type CsvResult } from '@/lib/save-csv';
 import { spacing, useWide } from '@/theme/use-theme';
 
@@ -83,7 +83,7 @@ export default function FundScreen() {
     );
   }
 
-  const today = todayInIndia();
+  const today = todayLocal();
   const from = periodStart(period, today);
   const inPeriod = book.entries.filter((e) => from === null || e.onDate >= from);
   const shown = inPeriod.filter((e) =>
@@ -104,7 +104,7 @@ export default function FundScreen() {
 
   async function exportCsv(way: 'download' | 'folder' | 'share') {
     if (!book) return;
-    const text = toCsv(fundCsvRows(book, inPeriod, t, formatDayMonthYear));
+    const text = toCsv(fundCsvRows(book, inPeriod, t, formatDate));
     const name = fundFileName(from, today);
     const result: CsvResult =
       way === 'folder' ? await saveCsvToFolder(name, text) : way === 'share' ? await shareCsv(name, text) : await downloadCsv(name, text);
@@ -136,7 +136,7 @@ export default function FundScreen() {
               leading={e.direction}
               highlighted
               title={`${amountText(e)} · ${categoryName(t, category.get(e.categoryId))}`}
-              details={[[formatDayMonthYear(e.onDate), kindLine(e), e.createdByName].join(' · '), e.note ?? ''].filter(Boolean)}
+              details={[[formatDate(e.onDate), kindLine(e), e.createdByName].join(' · '), e.note ?? ''].filter(Boolean)}
               onPress={() => open(e.id)}
             />
           ))}
@@ -185,7 +185,7 @@ export default function FundScreen() {
             key: String(e.id),
             onPress: () => open(e.id),
             cells: [
-              formatDayMonthYear(e.onDate),
+              formatDate(e.onDate),
               `${categoryName(t, category.get(e.categoryId))}${e.reversesId ? ` (${t('fund.reversal')})` : ''}`,
               e.party ?? '',
               statusText(e) || t('fund.statuses.approved'),
@@ -203,7 +203,7 @@ export default function FundScreen() {
               highlighted={e.status === 'waiting'}
               title={`${amountText(e)} · ${categoryName(t, category.get(e.categoryId))}`}
               details={[
-                [formatDayMonthYear(e.onDate), kindLine(e), statusText(e)].filter(Boolean).join(' · '),
+                [formatDate(e.onDate), kindLine(e), statusText(e)].filter(Boolean).join(' · '),
                 ...(e.party ? [e.party] : []),
                 ...(e.balanceAfterPaise !== null ? [t('fund.balanceAfter', { amount: formatRupees(e.balanceAfterPaise) })] : []),
               ]}

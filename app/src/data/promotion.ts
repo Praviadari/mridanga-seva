@@ -10,7 +10,7 @@
 
 import type { ParseKeys } from 'i18next';
 
-import { formatDayMonthYear, parseDayMonthYear, todayInIndia } from '@/lib/dates';
+import { formatTypedDate, parseDayMonthYear, todayLocal } from '@/lib/dates';
 import { supabase } from '@/lib/supabase';
 
 import { parseMediaFile, type MediaFile } from './assessment-files';
@@ -394,7 +394,7 @@ export function checkDecision(decision: Decision, note: string, after: string): 
     const day = parseDayMonthYear(after);
     if (!after.trim()) errors.date = 'promotion.errors.date_required';
     else if (!day) errors.date = 'promotion.decide.dateInvalid';
-    else if (day <= todayInIndia()) errors.date = 'promotion.errors.date_past';
+    else if (day <= todayLocal()) errors.date = 'promotion.errors.date_past';
   }
   return errors;
 }
@@ -452,6 +452,6 @@ export async function nominate(studentId: string, reason: string, ask: string[])
 
 /** A date for the Not yet form: today plus `days`, written day-month-year. */
 export function dateInDays(days: number): string {
-  const [y, m, d] = todayInIndia().split('-').map(Number);
-  return formatDayMonthYear(new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10));
+  const [y, m, d] = todayLocal().split('-').map(Number);
+  return formatTypedDate(new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10));
 }

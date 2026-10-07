@@ -22,7 +22,7 @@ import { Section } from '@/components/section';
 import { Chip } from '@/components/status-chip';
 import { fetchSuggestions, removeSuggestion, type Suggestion } from '@/data/suggestions';
 import { levelName } from '@/i18n/labels';
-import { formatDateTimeInIndia } from '@/lib/dates';
+import { formatDateTime } from '@/lib/dates';
 import { spacing } from '@/theme/use-theme';
 
 /** The suggestions screen. */
@@ -69,7 +69,7 @@ export default function SuggestionsScreen() {
             tone={s.state === 'added' ? 'success' : s.state === 'declined' ? 'danger' : 'warning'}
           />
           <AppText variant="small" tone="muted">
-            {[isGuru ? s.suggestedBy : null, where, formatDateTimeInIndia(s.createdAt)].filter(Boolean).join(' · ')}
+            {[isGuru ? s.suggestedBy : null, where, formatDateTime(s.createdAt)].filter(Boolean).join(' · ')}
           </AppText>
         </View>
         {/* The chip above says where it stands, so the row does not add "waiting" of its own. */}

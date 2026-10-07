@@ -39,7 +39,7 @@ import {
 } from '@/data/assessments';
 import { recordingAsMedia } from '@/data/assessment-files';
 import { fileSizeText, levelName } from '@/i18n/labels';
-import { formatDateTimeInIndia, formatDayMonthYear } from '@/lib/dates';
+import { formatDateTime, formatDate } from '@/lib/dates';
 import { spacing } from '@/theme/use-theme';
 
 /** Longest voice note: 5 minutes. */
@@ -147,8 +147,8 @@ export default function ReviewScreen() {
       <AppText variant="subtitle">{a.title}</AppText>
       <AppText tone="muted">
         {[
-          t('assessments.dueOn', { date: formatDayMonthYear(release.dueOn) }),
-          ...(loaded.seenAt ? [t('assessments.review.seenAt', { date: formatDateTimeInIndia(loaded.seenAt) })] : []),
+          t('assessments.dueOn', { date: formatDate(release.dueOn) }),
+          ...(loaded.seenAt ? [t('assessments.review.seenAt', { date: formatDateTime(loaded.seenAt) })] : []),
         ].join(' · ')}
       </AppText>
 
@@ -167,7 +167,7 @@ export default function ReviewScreen() {
 
       {toReview ? (
         <>
-          <Section title={t('assessments.review.recording')} description={t('assessments.review.sentAt', { date: formatDateTimeInIndia(toReview.submittedAt) })}>
+          <Section title={t('assessments.review.recording')} description={t('assessments.review.sentAt', { date: formatDateTime(toReview.submittedAt) })}>
             <SubmissionFiles submission={toReview} />
             {toReview.note ? <AppText>{t('assessments.review.studentNote', { note: toReview.note })}</AppText> : null}
           </Section>
@@ -240,7 +240,7 @@ export default function ReviewScreen() {
         <Section title={t(toReview ? 'assessments.review.history' : 'assessments.review.allRecordings', { count: earlier.length })}>
           {earlier.map((s) => (
             <View key={s.id} style={styles.history}>
-              <AppText variant="label">{t('assessments.review.sentAt', { date: formatDateTimeInIndia(s.submittedAt) })}</AppText>
+              <AppText variant="label">{t('assessments.review.sentAt', { date: formatDateTime(s.submittedAt) })}</AppText>
               <SubmissionFiles submission={s} />
               {s.note ? <AppText tone="muted">{t('assessments.review.studentNote', { note: s.note })}</AppText> : null}
               {s.reviewedAt ? (
@@ -249,7 +249,7 @@ export default function ReviewScreen() {
                     {[
                       s.outcome === 'redo' ? t('assessments.status.redo') : t('assessments.status.reviewed'),
                       ...(s.reviewedByName ? [t('assessments.review.by', { name: s.reviewedByName })] : []),
-                      formatDateTimeInIndia(s.reviewedAt),
+                      formatDateTime(s.reviewedAt),
                     ].join(' · ')}
                   </AppText>
                   <ScoreLines rubric={a.rubric} scores={s.scores} total={s.score} max={s.scoreMax} />

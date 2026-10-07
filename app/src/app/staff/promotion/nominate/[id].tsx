@@ -21,7 +21,7 @@ import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { TextField } from '@/components/text-field';
 import { fetchNominateOptions, nominate, REASON_MAX, type NominateOptions } from '@/data/promotion';
-import { formatDayMonthYear } from '@/lib/dates';
+import { formatDate } from '@/lib/dates';
 
 /** The C22 form. */
 export default function NominateScreen() {
@@ -81,7 +81,7 @@ export default function NominateScreen() {
   if (criteria.nextLevelId === null) blocked = t('promotion.panel.topLevel');
   else if (openId !== null) blocked = t('promotion.panel.open');
   else if (criteria.renominateAfter) {
-    blocked = t('promotion.panel.notYetUntil', { date: formatDayMonthYear(criteria.renominateAfter) });
+    blocked = t('promotion.panel.notYetUntil', { date: formatDate(criteria.renominateAfter) });
   }
 
   function toggle(id: string, on: boolean) {

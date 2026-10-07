@@ -16,7 +16,7 @@ import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
 import { fetchMyAssessments, isOverdue, type MyAssessmentItem } from '@/data/assessments';
-import { formatDayMonthYear } from '@/lib/dates';
+import { formatDate } from '@/lib/dates';
 
 /** The student's list of assessments. */
 export default function MyAssessmentsScreen() {
@@ -67,7 +67,7 @@ export default function MyAssessmentsScreen() {
               ...(isOverdue(item) ? [t('assessments.late')] : []),
               ...(item.levelUp ? [t('assessments.levelUp')] : []),
             ].join(' · '),
-            [assessmentKindName(t, item.kind), t('assessments.dueOn', { date: formatDayMonthYear(item.dueOn) })].join(' · '),
+            [assessmentKindName(t, item.kind), t('assessments.dueOn', { date: formatDate(item.dueOn) })].join(' · '),
           ]}
           onPress={() => router.push({ pathname: '/student/assessments/[id]', params: { id: String(item.assignmentId) } })}
         />

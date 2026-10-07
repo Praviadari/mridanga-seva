@@ -33,7 +33,7 @@ import {
   type MarkOutcome,
 } from '@/data/attendance';
 import { locationForCheckIn, locationRefused, warmUpLocation } from '@/lib/attendance-location';
-import { dateInIndia, formatDayMonthYear, timeInIndia, todayInIndia } from '@/lib/dates';
+import { localDate, formatDate, localTime, todayLocal } from '@/lib/dates';
 
 /**
  * How long the same QR code is ignored after it was read, in milliseconds. The camera sees a
@@ -137,11 +137,11 @@ export default function MarkAttendanceScreen() {
 
   /** "Here since 16:05", or with the date for a visit left open on an earlier day. */
   function sinceText(checkIn: string): string {
-    const day = dateInIndia(checkIn);
-    const time = timeInIndia(checkIn);
-    return day === todayInIndia()
+    const day = localDate(checkIn);
+    const time = localTime(checkIn);
+    return day === todayLocal()
       ? t('attendance.hereSince', { time })
-      : t('hereNow.sinceEarlierDay', { date: formatDayMonthYear(day), time });
+      : t('hereNow.sinceEarlierDay', { date: formatDate(day), time });
   }
 
   const outcomeNotice = outcome ? (

@@ -19,7 +19,7 @@ import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
 import { fetchStaffAnnouncements, isScheduled, type StaffAnnouncementList } from '@/data/announcements';
 import { audienceName } from '@/i18n/labels';
-import { formatDateTimeInIndia } from '@/lib/dates';
+import { formatDateTime } from '@/lib/dates';
 
 /** The "New announcement" button and one card per announcement. */
 export default function StaffAnnouncementsScreen() {
@@ -70,7 +70,7 @@ export default function StaffAnnouncementsScreen() {
       {loaded?.announcements.map((a) => {
         const byMe = a.createdBy === myId;
         const authorName = a.createdBy ? loaded.staffNames.get(a.createdBy) : undefined;
-        const when = formatDateTimeInIndia(a.publishAt);
+        const when = formatDateTime(a.publishAt);
         const seen = a.seenCount;
         return (
           <AnnouncementCard
@@ -89,7 +89,7 @@ export default function StaffAnnouncementsScreen() {
               `${isScheduled(a) ? t('announcements.scheduledFor', { date: when }) : when}${
                 authorName ? ` · ${t('announcements.postedBy', { name: authorName })}` : ''
               }`,
-              ...(a.editedAt ? [t('announcements.edited', { date: formatDateTimeInIndia(a.editedAt) })] : []),
+              ...(a.editedAt ? [t('announcements.edited', { date: formatDateTime(a.editedAt) })] : []),
               ...(a.attachments.length > 0 ? [t('announcements.files.count', { number: a.attachments.length })] : []),
               ...(seen
                 ? [

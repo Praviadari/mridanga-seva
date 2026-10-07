@@ -9,7 +9,7 @@
 import type { ParseKeys } from 'i18next';
 import * as Crypto from 'expo-crypto';
 
-import { todayInIndia } from '@/lib/dates';
+import { todayLocal } from '@/lib/dates';
 import { supabase } from '@/lib/supabase';
 
 import { bodyOf, endingFor, pickRecordingFiles, recordingAsMedia, type PickedMedia } from './assessment-files';
@@ -200,7 +200,7 @@ export async function fetchIshtagoshtiHome(profileId: string): Promise<Ishtagosh
   };
 }
 
-/** A day a sloka is pinned as the sloka of the day ('YYYY-MM-DD', India). */
+/** A day a sloka is pinned as the sloka of the day ('YYYY-MM-DD', at the class). */
 export type Pin = { day: string; slokaId: number };
 
 /** What I3 shows about one sloka. */
@@ -233,7 +233,7 @@ export async function fetchSlokaPage(id: number, profileId: string): Promise<Slo
       .from('ig_daily_pins')
       .select('day')
       .eq('sloka_id', id)
-      .gte('day', todayInIndia())
+      .gte('day', todayLocal())
       .order('day');
     if (error) return null;
     pins = (data as { day: string }[]).map((p) => p.day);

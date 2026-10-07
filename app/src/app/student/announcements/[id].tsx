@@ -20,7 +20,7 @@ import { ReplyCard } from '@/components/reply-card';
 import { Screen } from '@/components/screen';
 import { fetchAnnouncement, markRead, sendReply, type MyAnnouncement } from '@/data/announcements';
 import { audienceName } from '@/i18n/labels';
-import { formatDateTimeInIndia } from '@/lib/dates';
+import { formatDateTime } from '@/lib/dates';
 
 /** The announcement's title, message, details and the reply box. */
 export default function MyAnnouncementScreen() {
@@ -92,11 +92,11 @@ export default function MyAnnouncementScreen() {
         pinned={a.pinned}
         attachments={a.attachments}
         facts={[
-          { icon: 'time', text: formatDateTimeInIndia(a.publishAt) },
+          { icon: 'time', text: formatDateTime(a.publishAt) },
           ...(authorName ? [{ icon: 'person' as const, text: t('announcements.postedBy', { name: authorName }) }] : []),
           { icon: 'groups', text: audienceName(t, a, { groupName }) },
           ...(a.editedAt
-            ? [{ icon: 'edit' as const, text: t('announcements.edited', { date: formatDateTimeInIndia(a.editedAt) }) }]
+            ? [{ icon: 'edit' as const, text: t('announcements.edited', { date: formatDateTime(a.editedAt) }) }]
             : []),
         ]}
       />
@@ -117,7 +117,7 @@ export default function MyAnnouncementScreen() {
             <ReplyCard
               key={r.id}
               body={r.body}
-              when={t('announcements.replies.sentAt', { date: formatDateTimeInIndia(r.createdAt) })}
+              when={t('announcements.replies.sentAt', { date: formatDateTime(r.createdAt) })}
             />
           ))}
         </>

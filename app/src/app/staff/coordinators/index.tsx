@@ -19,7 +19,7 @@ import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
 import { fetchCoordinatorsBoard, type CoordinatorsBoard, type Person } from '@/data/coordinators';
-import { formatDateTimeInIndia } from '@/lib/dates';
+import { formatDateTime } from '@/lib/dates';
 
 /** The coordinators list with the waiting people. */
 export default function CoordinatorsScreen() {
@@ -70,7 +70,7 @@ export default function CoordinatorsScreen() {
       key={person.id}
       leading="person"
       title={person.fullName || t('home.guru.noName')}
-      details={[person.email ?? '', t('coordinators.signedUp', { date: formatDateTimeInIndia(person.createdAt) })]}
+      details={[person.email ?? '', t('coordinators.signedUp', { date: formatDateTime(person.createdAt) })]}
       onPress={() => open(person)}
     />
   );

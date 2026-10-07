@@ -22,6 +22,7 @@ import { createContext, use, useEffect, useRef, useState, type PropsWithChildren
 import { AppState } from 'react-native';
 
 import { applyProfileLanguage, currentLanguage, hasUnsavedChoice, markLanguageSaved } from '@/i18n';
+import { loadClassLocale } from '@/lib/class-locale';
 import { setRefusedListener, storedLoginUserId, supabase, supabaseConfigProblem } from '@/lib/supabase';
 
 // Loaded at start for its effect: it reads an email link's error from the address (D6-12).
@@ -119,6 +120,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
     fetchProfile(userId).then((result) => {
       if (!cancelled) setProfileResult(withSavedFallback(result));
     });
+    // The centre's time zone and country for dates and amounts (docs/I18N.md); kept from the last
+    // start until it arrives, India before the first.
+    void loadClassLocale();
     return () => {
       cancelled = true;
     };

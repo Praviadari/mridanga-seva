@@ -4,7 +4,7 @@
 // students by row-level security (docs/DATABASE.md "Who can see what"), so a student-facing
 // screen must never reuse this.
 
-import { isMinorOn, todayInIndia } from '@/lib/dates';
+import { isMinorOn, todayLocal } from '@/lib/dates';
 import { supabase } from '@/lib/supabase';
 
 import type { CallOutcome } from './follow-up';
@@ -185,7 +185,7 @@ export async function fetchStudentProfile(studentId: string): Promise<StudentPro
       pincode: details.pincode,
       hasLogin: details.profile_id !== null,
     },
-    minor: details.dob !== null && isMinorOn(details.dob, todayInIndia()),
+    minor: details.dob !== null && isMinorOn(details.dob, todayLocal()),
     recentVisits: (visits.data as { id: number; check_in: string; check_out: string | null; method: string }[]).map(
       (v) => ({ id: v.id, checkIn: v.check_in, checkOut: v.check_out, method: v.method }),
     ),

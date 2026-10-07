@@ -14,7 +14,7 @@ import * as Updates from 'expo-updates';
 import { useEffect } from 'react';
 import { AppState } from 'react-native';
 
-import { formatDateTimeInIndia } from './dates';
+import { formatDateTime } from './dates';
 
 /** Least time between two checks when the app comes back to the front: 30 minutes. */
 const CHECK_EVERY_MS = 30 * 60 * 1000;
@@ -114,7 +114,7 @@ export function useAppUpdate(): AppUpdate {
 
 /** Which version this phone runs, for the line under the home screens. */
 export type RunningVersion =
-  /** The JavaScript that came inside the APK. `date`: when it was built, "DD-MM-YYYY HH:MM" in IST. */
+  /** The JavaScript that came inside the APK. `date`: when it was built, in the class's date style and time zone (formatDateTime). */
   | { kind: 'installed'; version: string; date: string }
   /** An update downloaded later. `id`: the first 8 characters of its EAS update id. */
   | { kind: 'update'; version: string; date: string; id: string };
@@ -126,7 +126,7 @@ export type RunningVersion =
 export function runningVersion(): RunningVersion | null {
   if (!canUpdate || !Updates.createdAt) return null;
   const version = Constants.expoConfig?.version ?? '?';
-  const date = formatDateTimeInIndia(Updates.createdAt.toISOString());
+  const date = formatDateTime(Updates.createdAt.toISOString());
   if (Updates.isEmbeddedLaunch || !Updates.updateId) return { kind: 'installed', version, date };
   return { kind: 'update', version, date, id: Updates.updateId.slice(0, 8) };
 }

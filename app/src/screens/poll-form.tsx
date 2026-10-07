@@ -1,5 +1,5 @@
 // C17 New poll / Edit poll, for coordinators and the Guru: the question, 2 to 6 answers (one choice
-// each), who it is for, the closing day and time (India), anonymous or not, and when the people
+// each), who it is for, the closing day and time (at the class), anonymous or not, and when the people
 // voting see the results (after they vote, or only after it closes). Saving a new poll tells
 // everyone it is for. After the first vote only the question's wording and the closing time can
 // change (the database refuses the rest; the form shows those fields fixed).
@@ -38,14 +38,14 @@ import {
   type PollFormErrors,
   type ResultsWhen,
 } from '@/data/polls';
-import { formatDayMonthYear, todayInIndia } from '@/lib/dates';
+import { formatTypedDate, todayLocal } from '@/lib/dates';
 
 type Loaded = { options: ComposeOptions; original: { poll: Poll; voted: boolean } | null };
 
-/** A closing day `days` from today (India), written day-month-year. */
+/** A closing day `days` from today (at the class), written day-month-year. */
 function inDays(days: number): string {
-  const [y, m, d] = todayInIndia().split('-').map(Number);
-  return formatDayMonthYear(new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10));
+  const [y, m, d] = todayLocal().split('-').map(Number);
+  return formatTypedDate(new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10));
 }
 
 /** The form. `pollId` = edit that poll; none = a new one. */

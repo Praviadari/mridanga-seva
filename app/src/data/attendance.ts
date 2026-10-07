@@ -14,7 +14,7 @@
 import type { ParseKeys } from 'i18next';
 
 import type { PhoneLocation } from '@/lib/attendance-location';
-import { startOfTodayInIndia } from '@/lib/dates';
+import { startOfTodayLocal } from '@/lib/dates';
 import { supabase } from '@/lib/supabase';
 
 import { isNetworkError } from './errors';
@@ -189,7 +189,7 @@ export type OpenVisit = {
 export type AttendanceToday = {
   /** Open visits, the earliest check-in first. */
   hereNow: OpenVisit[];
-  /** Check-ins since midnight in India, including students who have already left. */
+  /** Check-ins since midnight at the class, including students who have already left. */
   visitsToday: number;
   /**
    * When this was read (milliseconds since 1970, like Date.now()). Screens work out "here for
@@ -221,7 +221,7 @@ export async function fetchAttendanceToday(): Promise<AttendanceToday | null> {
     supabase
       .from('visits')
       .select('id', { count: 'exact', head: true })
-      .gte('check_in', startOfTodayInIndia()),
+      .gte('check_in', startOfTodayLocal()),
   ]);
   if (open.error || today.error) return null;
   const rows = open.data as unknown as OpenVisitRow[];

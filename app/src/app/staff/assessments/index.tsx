@@ -20,7 +20,7 @@ import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
 import { fetchStaffAssessments, type StaffAssessmentItem } from '@/data/assessments';
 import { levelName } from '@/i18n/labels';
-import { formatDateTimeInIndia } from '@/lib/dates';
+import { formatDateTime } from '@/lib/dates';
 
 /** The list of assessments. */
 export default function StaffAssessmentsScreen() {
@@ -76,7 +76,7 @@ export default function StaffAssessmentsScreen() {
             details={[
               [levelName(t, a.levelId), assessmentKindName(t, a.kind), ...(a.levelUp ? [t('assessments.levelUp')] : [])].join(' · '),
               a.sentAt
-                ? t('assessments.sentOn', { date: formatDateTimeInIndia(a.sentAt) })
+                ? t('assessments.sentOn', { date: formatDateTime(a.sentAt) })
                 : t('assessments.draft'),
               counts.total > 0
                 ? [

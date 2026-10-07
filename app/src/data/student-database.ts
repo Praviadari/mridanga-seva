@@ -3,6 +3,7 @@
 // filtered by level, status, mentor and area on the device. C7 stays the everyday list; G3 is for
 // checking and cleaning the records, and is where the Excel import starts (student-import.ts).
 
+import { searchFold } from '@/lib/search-text';
 import { supabase } from '@/lib/supabase';
 
 import type { StudentStatus } from './student-overview';
@@ -92,11 +93,11 @@ export function areasOf(rows: readonly DatabaseRow[]): { key: string; label: str
 
 /** The rows that pass every filter. The search matches name, roll number, phone or email. */
 export function filterDatabase(rows: readonly DatabaseRow[], f: DatabaseFilters): DatabaseRow[] {
-  const query = f.search.trim().toLowerCase();
+  const query = searchFold(f.search);
   return rows.filter((r) => {
     if (
       query &&
-      !r.fullName.toLowerCase().includes(query) &&
+      !searchFold(r.fullName).includes(query) &&
       !r.rollNo.toLowerCase().includes(query) &&
       !(r.phone ?? '').includes(query) &&
       !(r.email ?? '').toLowerCase().includes(query)

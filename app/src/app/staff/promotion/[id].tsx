@@ -40,7 +40,7 @@ import {
   type Rating,
 } from '@/data/promotion';
 import { levelName } from '@/i18n/labels';
-import { formatDateTimeInIndia, formatDayMonthYear } from '@/lib/dates';
+import { formatDateTime, formatDate } from '@/lib/dates';
 import { spacing } from '@/theme/use-theme';
 
 /** Days ahead the Not yet date starts at. */
@@ -181,7 +181,7 @@ export default function NominationScreen() {
         <AppText>{item.reason}</AppText>
         <AppText variant="small" tone="muted">
           {t('promotion.nominatedLine', {
-            date: formatDateTimeInIndia(item.nominatedAt),
+            date: formatDateTime(item.nominatedAt),
             name: item.nominatedByName ?? t('promotion.someone'),
           })}
         </AppText>
@@ -203,7 +203,7 @@ export default function NominationScreen() {
           {[
             t('promotion.detail.decidedBy', {
               name: item.decidedByName ?? t('promotion.someone'),
-              date: item.decidedAt ? formatDateTimeInIndia(item.decidedAt) : '',
+              date: item.decidedAt ? formatDateTime(item.decidedAt) : '',
             }),
             ...(item.guidance ? [item.guidance] : []),
           ].join('\n')}
@@ -213,17 +213,17 @@ export default function NominationScreen() {
         <Notice tone="info" title={t('promotion.detail.notYetTitle')}>
           {[
             item.guidance ?? '',
-            item.renominateAfter ? t('promotion.panel.notYetUntil', { date: formatDayMonthYear(item.renominateAfter) }) : '',
+            item.renominateAfter ? t('promotion.panel.notYetUntil', { date: formatDate(item.renominateAfter) }) : '',
             t('promotion.detail.decidedBy', {
               name: item.decidedByName ?? t('promotion.someone'),
-              date: item.decidedAt ? formatDateTimeInIndia(item.decidedAt) : '',
+              date: item.decidedAt ? formatDateTime(item.decidedAt) : '',
             }),
           ].filter(Boolean).join('\n')}
         </Notice>
       ) : null}
       {item.status === 'withdrawn' ? <Notice tone="info">{t('promotion.detail.withdrawn')}</Notice> : null}
       {isOpen && item.moreAskedAt ? (
-        <Notice tone="info" title={t('promotion.detail.moreAsked', { date: formatDateTimeInIndia(item.moreAskedAt) })}>
+        <Notice tone="info" title={t('promotion.detail.moreAsked', { date: formatDateTime(item.moreAskedAt) })}>
           {item.moreNote ?? ''}
         </Notice>
       ) : null}
@@ -275,7 +275,7 @@ export default function NominationScreen() {
             </View>
             <AppText>{a.comment}</AppText>
             <AppText variant="small" tone="muted">
-              {formatDateTimeInIndia(a.updatedAt)}
+              {formatDateTime(a.updatedAt)}
             </AppText>
           </View>
         ))}

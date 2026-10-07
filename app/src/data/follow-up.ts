@@ -8,7 +8,7 @@
 
 import type { ParseKeys } from 'i18next';
 
-import { parseDayMonthYear, todayInIndia } from '@/lib/dates';
+import { parseDayMonthYear, todayLocal } from '@/lib/dates';
 import { supabase } from '@/lib/supabase';
 
 import { isNetworkError } from './errors';
@@ -160,7 +160,7 @@ export async function fetchFollowUpQueue(): Promise<FollowUpQueue | null> {
     escalated: t.escalated,
     assigneeId: t.assignee_id,
   }));
-  return { entries: buildQueue(students, openTasks, todayInIndia()), staff };
+  return { entries: buildQueue(students, openTasks, todayLocal()), staff };
 }
 
 // ---------------------------------------------------------------- C11 logging a call
@@ -259,7 +259,7 @@ export const EMPTY_CALL_FORM: CallForm = { outcome: null, reason: null, nextDate
 export type CallFormErrors = Partial<Record<keyof CallForm, MessageKey>>;
 
 /**
- * Checks the call form before it is sent. `today` is 'YYYY-MM-DD' in India. The database checks
+ * Checks the call form before it is sent. `today` is 'YYYY-MM-DD' at the class. The database checks
  * the same things again (log_call in migration 0005).
  */
 export function checkCallForm(form: CallForm, today: string): CallFormErrors {

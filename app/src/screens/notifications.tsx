@@ -24,7 +24,7 @@ import {
   NOTICES_PER_PAGE,
   type Notice,
 } from '@/data/notifications';
-import { formatDateTimeInIndia } from '@/lib/dates';
+import { formatDateTime } from '@/lib/dates';
 
 type Loaded = { notices: Notice[]; hasOlder: boolean };
 
@@ -107,7 +107,7 @@ export function NotificationsScreen() {
               body={notice.body}
               pinned={false}
               unread={notice.readAt === null}
-              details={[formatDateTimeInIndia(notice.visibleAt)]}
+              details={[formatDateTime(notice.visibleAt)]}
               onPress={() => void open(notice)}
             />
           ))}

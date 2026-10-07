@@ -33,7 +33,7 @@ import {
 } from '@/data/follow-up';
 import { RELATIONS } from '@/data/students';
 import { callReasonName, lastVisitText, outcomeName } from '@/i18n/labels';
-import { dateInIndia, formatDayMonthYear, parseDayMonthYear, todayInIndia } from '@/lib/dates';
+import { localDate, formatDate, parseDayMonthYear, todayLocal } from '@/lib/dates';
 import { goBackOr } from '@/lib/go-back';
 
 /** A phone number to dial: whose it is (already translated) and the number. */
@@ -94,7 +94,7 @@ export default function CallLogScreen() {
   const openProfile = () => router.push({ pathname: '/staff/students/[id]', params: { id: studentId } });
 
   if (saved?.outcome) {
-    const date = outcomeNeedsDate(saved.outcome) ? formatDayMonthYear(parseDayMonthYear(saved.nextDate) ?? '') : '';
+    const date = outcomeNeedsDate(saved.outcome) ? formatDate(parseDayMonthYear(saved.nextDate) ?? '') : '';
     return (
       <Screen underHeader centred>
         {header}
@@ -114,7 +114,7 @@ export default function CallLogScreen() {
   };
 
   async function save() {
-    const found = checkCallForm(form, todayInIndia());
+    const found = checkCallForm(form, todayLocal());
     setErrors(found);
     if (Object.keys(found).length > 0) return;
     if (form.outcome === 'discontinued' && !confirmingLeft) {
@@ -172,7 +172,7 @@ export default function CallLogScreen() {
         <Section icon="calls" title={t('callLog.lastCalls')}>
           {context.lastCalls.map((call) => (
             <AppText key={call.calledAt} tone="muted">
-              {`${formatDayMonthYear(dateInIndia(call.calledAt))} · ${outcomeName(t, call.outcome)} · ${call.comment}`}
+              {`${formatDate(localDate(call.calledAt))} · ${outcomeName(t, call.outcome)} · ${call.comment}`}
             </AppText>
           ))}
         </Section>

@@ -34,7 +34,7 @@ import {
   outcomeName,
 } from '@/i18n/labels';
 import { locationForCheckIn } from '@/lib/attendance-location';
-import { ageOn, dateInIndia, formatDayMonthYear, timeInIndia, todayInIndia } from '@/lib/dates';
+import { ageOn, localDate, formatDate, localTime, todayLocal } from '@/lib/dates';
 
 /** What the screen loaded: the profile and the staff names it mentions. */
 type Loaded = { profile: StudentProfile; staffNames: Map<string, string> };
@@ -86,7 +86,7 @@ export default function StudentProfileScreen() {
   const { student } = profile;
   const nameOf = (profileId: string | null) =>
     (profileId && staffNames.get(profileId)) || t('profile.unknownPerson');
-  const today = todayInIndia();
+  const today = todayLocal();
 
   async function toggleAttendance() {
     setMarking(true);
@@ -118,7 +118,7 @@ export default function StudentProfileScreen() {
         details={[student.rollNo]}
       />
       {student.status === 'paused' && student.pausedUntil ? (
-        <AppText>{t('profile.pausedUntil', { date: formatDayMonthYear(student.pausedUntil) })}</AppText>
+        <AppText>{t('profile.pausedUntil', { date: formatDate(student.pausedUntil) })}</AppText>
       ) : null}
       <AppText tone={student.hereNow ? 'success' : 'default'}>{lastVisitText(t, student)}</AppText>
 
@@ -140,11 +140,11 @@ export default function StudentProfileScreen() {
       <Section icon="person" title={t('profile.detailsSection')}>
         <DetailGrid
           details={[
-            { label: t('profile.joined'), value: formatDayMonthYear(student.joinedOn) },
+            { label: t('profile.joined'), value: formatDate(student.joinedOn) },
             {
               label: t('register.dob'),
               value: student.dob
-                ? `${formatDayMonthYear(student.dob)} · ${t('register.age', { age: ageOn(student.dob, today) })}`
+                ? `${formatDate(student.dob)} · ${t('register.age', { age: ageOn(student.dob, today) })}`
                 : t('profile.notGiven'),
             },
             { label: t('register.phone'), value: student.phone ?? t('profile.notGiven') },
@@ -175,11 +175,11 @@ export default function StudentProfileScreen() {
               {t('profile.consentLine', {
                 scope: t(`consentScopes.${c.scope}`),
                 method: t(`consentMethods.${c.method}`),
-                date: formatDayMonthYear(dateInIndia(c.givenAt)),
+                date: formatDate(localDate(c.givenAt)),
               })}
               {c.idTypeChecked ? ` · ${t('profile.idSeen', { idType: idTypeName(c.idTypeChecked) })}` : ''}
               {c.revokedAt
-                ? ` · ${t('profile.consentWithdrawn', { date: formatDayMonthYear(dateInIndia(c.revokedAt)) })}`
+                ? ` · ${t('profile.consentWithdrawn', { date: formatDate(localDate(c.revokedAt)) })}`
                 : ''}
             </AppText>
           ))}
@@ -190,7 +190,7 @@ export default function StudentProfileScreen() {
         {profile.openTasks.map((task) => (
           <Notice key={task.id} tone={task.escalated ? 'error' : 'info'}>
             {[
-              t('followUp.due', { date: formatDayMonthYear(task.dueOn) }),
+              t('followUp.due', { date: formatDate(task.dueOn) }),
               task.attempt > 1 ? t('followUp.attempt', { number: task.attempt }) : null,
               task.escalated ? t('followUp.escalated') : null,
               task.assigneeId
@@ -205,12 +205,12 @@ export default function StudentProfileScreen() {
         {profile.calls.map((call) => (
           <AppText key={call.id}>
             <AppText variant="label">
-              {`${formatDayMonthYear(dateInIndia(call.calledAt))} ${timeInIndia(call.calledAt)} · ${outcomeName(t, call.outcome)}`}
+              {`${formatDate(localDate(call.calledAt))} ${localTime(call.calledAt)} · ${outcomeName(t, call.outcome)}`}
             </AppText>
             {call.reason ? ` · ${callReasonName(t, call.reason)}` : ''}
             {call.nextDate
               ? ` · ${t(call.outcome === 'paused' ? 'profile.callUntil' : 'profile.callExpected', {
-                  date: formatDayMonthYear(call.nextDate),
+                  date: formatDate(call.nextDate),
                 })}`
               : ''}
             {`\n${call.comment}\n`}
@@ -228,9 +228,9 @@ export default function StudentProfileScreen() {
         {profile.recentVisits.length === 0 ? <AppText tone="muted">{t('profile.noVisits')}</AppText> : null}
         {profile.recentVisits.map((visit) => (
           <AppText key={visit.id}>
-            {`${formatDayMonthYear(dateInIndia(visit.checkIn))} · ${timeInIndia(visit.checkIn)}`}
+            {`${formatDate(localDate(visit.checkIn))} · ${localTime(visit.checkIn)}`}
             {visit.checkOut
-              ? `–${timeInIndia(visit.checkOut)} · ${formatDuration(t, (Date.parse(visit.checkOut) - Date.parse(visit.checkIn)) / 60_000)}`
+              ? `–${localTime(visit.checkOut)} · ${formatDuration(t, (Date.parse(visit.checkOut) - Date.parse(visit.checkIn)) / 60_000)}`
               : ` · ${t('profile.stillHere')}`}
           </AppText>
         ))}
@@ -257,7 +257,7 @@ export default function StudentProfileScreen() {
         {profile.progress.map((item) => (
           <AppText key={item.id} tone={item.doneOn ? 'default' : 'muted'}>
             {`${item.doneOn ? '✓' : '○'} ${item.sort}. ${item.title}`}
-            {item.doneOn ? ` · ${formatDayMonthYear(item.doneOn)}` : ''}
+            {item.doneOn ? ` · ${formatDate(item.doneOn)}` : ''}
             {item.remark ? ` · ${item.remark}` : ''}
           </AppText>
         ))}
@@ -273,7 +273,7 @@ export default function StudentProfileScreen() {
         {profile.levelHistory.length === 0 ? <AppText tone="muted">{t('profile.noLevelChanges')}</AppText> : null}
         {profile.levelHistory.map((change) => (
           <AppText key={change.id}>
-            {`${formatDayMonthYear(change.changedOn)} · `}
+            {`${formatDate(change.changedOn)} · `}
             {change.fromLevel
               ? t('profile.levelChange', { from: levelName(t, change.fromLevel), to: levelName(t, change.toLevel) })
               : levelName(t, change.toLevel)}

@@ -39,7 +39,8 @@ import {
   type Person,
 } from '@/data/coordinators';
 import { levelName, statusName } from '@/i18n/labels';
-import { formatDateTimeInIndia } from '@/lib/dates';
+import { formatDateTime } from '@/lib/dates';
+import { searchFold } from '@/lib/search-text';
 
 type Loaded = { person: Person; board: CoordinatorsBoard };
 /** What the page is asking to confirm. */
@@ -78,10 +79,10 @@ export default function PersonScreen() {
   );
   const unlinked = useMemo(() => {
     if (!loaded || loaded === 'not_found') return [];
-    const query = search.trim().toLowerCase();
+    const query = searchFold(search);
     if (query.length < 2) return [];
     return loaded.board.students
-      .filter((s) => !s.hasLogin && (s.fullName.toLowerCase().includes(query) || s.rollNo.toLowerCase().includes(query)))
+      .filter((s) => !s.hasLogin && (searchFold(s.fullName).includes(query) || s.rollNo.toLowerCase().includes(query)))
       .slice(0, 8);
   }, [loaded, search]);
 
@@ -175,7 +176,7 @@ export default function PersonScreen() {
         details={[
           { label: t('coordinators.email'), value: person.email ?? '—' },
           { label: t('coordinators.phone'), value: person.phone ?? '—' },
-          { label: t('coordinators.signedUpLabel'), value: formatDateTimeInIndia(person.createdAt) },
+          { label: t('coordinators.signedUpLabel'), value: formatDateTime(person.createdAt) },
         ]}
       />
 

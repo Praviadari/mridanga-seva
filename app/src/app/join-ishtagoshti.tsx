@@ -31,7 +31,7 @@ import {
   sendParentCode,
   type MySubscription,
 } from '@/data/ig-subscribers';
-import { todayInIndia } from '@/lib/dates';
+import { todayLocal } from '@/lib/dates';
 
 type Field = 'year' | 'phone' | 'terms' | 'parentName' | 'parentEmail' | 'parentConsent';
 
@@ -102,7 +102,7 @@ export default function JoinIshtagoshtiScreen() {
 /** The details: year of birth, phone, terms; under 18 also the parent. */
 function JoinForm({ mine, onJoined }: { mine: MySubscription; onJoined: (state: MySubscription) => Promise<void> }) {
   const { t } = useTranslation();
-  const thisYear = Number(todayInIndia().slice(0, 4));
+  const thisYear = Number(todayLocal().slice(0, 4));
   const [year, setYear] = useState(mine.birthYear ? String(mine.birthYear) : '');
   const [turned18, setTurned18] = useState(false);
   const [phone, setPhone] = useState(mine.phone ?? '');

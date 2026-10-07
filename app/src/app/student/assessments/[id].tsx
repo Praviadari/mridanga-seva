@@ -45,7 +45,7 @@ import {
   type SubmitFormErrors,
 } from '@/data/assessments';
 import { fileSizeText } from '@/i18n/labels';
-import { formatDateTimeInIndia, formatDayMonthYear } from '@/lib/dates';
+import { formatDateTime, formatDate } from '@/lib/dates';
 import { listMyRecordings } from '@/lib/my-recordings';
 import { takeOf } from '@/lib/recording';
 import { radius, spacing, useTheme } from '@/theme/use-theme';
@@ -172,7 +172,7 @@ export default function MyAssessmentScreen() {
     <Screen underHeader onRefresh={load}>
       {header}
       <AssignmentChips status={status} dueOn={release.dueOn} />
-      <Section title={a.title} description={t('assessments.dueOn', { date: formatDayMonthYear(release.dueOn) })}>
+      <Section title={a.title} description={t('assessments.dueOn', { date: formatDate(release.dueOn) })}>
         {a.instructions ? <AppText>{a.instructions}</AppText> : null}
         <MediaList files={a.media} link={a.mediaLink} />
         {release.notes ? (
@@ -261,7 +261,7 @@ export default function MyAssessmentScreen() {
         <Section title={t('assessments.submit.mine', { count: submissions.length })}>
           {submissions.map((s) => (
             <View key={s.id} style={styles.history}>
-              <AppText variant="label">{t('assessments.review.sentAt', { date: formatDateTimeInIndia(s.submittedAt) })}</AppText>
+              <AppText variant="label">{t('assessments.review.sentAt', { date: formatDateTime(s.submittedAt) })}</AppText>
               <MediaList
                 files={s.file && !s.fileRemovedAt ? [s.file] : []}
                 link={s.link}

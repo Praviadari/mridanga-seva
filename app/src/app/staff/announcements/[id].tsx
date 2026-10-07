@@ -36,7 +36,7 @@ import {
   type StaffAnnouncementDetail,
 } from '@/data/announcements';
 import { audienceName } from '@/i18n/labels';
-import { formatDateTimeInIndia } from '@/lib/dates';
+import { formatDateTime } from '@/lib/dates';
 
 /** The announcement, its seen list, and the author's actions. */
 export default function StaffAnnouncementScreen() {
@@ -115,7 +115,7 @@ export default function StaffAnnouncementScreen() {
   // The database decides in the end (row-level security); this only hides buttons that would fail.
   const canChange = byMe || isGuru;
   const scheduled = isScheduled(a);
-  const when = formatDateTimeInIndia(a.publishAt);
+  const when = formatDateTime(a.publishAt);
   const notSeen = audience.filter((m) => !m.readAt);
   const seen = audience.filter((m) => m.readAt);
   const personLine = (m: (typeof audience)[number]) => (m.rollNo ? [m.rollNo] : []);
@@ -195,7 +195,7 @@ export default function StaffAnnouncementScreen() {
           ...(authorName ? [{ icon: 'person' as const, text: t('announcements.postedBy', { name: authorName }) }] : []),
           { icon: 'groups', text: audienceName(t, a, { groupName, authorName, byMe }) },
           ...(a.editedAt
-            ? [{ icon: 'edit' as const, text: t('announcements.edited', { date: formatDateTimeInIndia(a.editedAt) }) }]
+            ? [{ icon: 'edit' as const, text: t('announcements.edited', { date: formatDateTime(a.editedAt) }) }]
             : []),
         ]}
       />
@@ -245,7 +245,7 @@ export default function StaffAnnouncementScreen() {
                 highlighted
                 details={[
                   ...personLine(m),
-                  t('announcements.detail.seenAt', { date: formatDateTimeInIndia(m.readAt ?? '') }),
+                  t('announcements.detail.seenAt', { date: formatDateTime(m.readAt ?? '') }),
                 ]}
               />
             ))}
@@ -265,7 +265,7 @@ export default function StaffAnnouncementScreen() {
               key={r.id}
               writer={writerOf(r)}
               body={r.body}
-              when={formatDateTimeInIndia(r.createdAt)}
+              when={formatDateTime(r.createdAt)}
               actions={replyActions(r)}
             />
           ))}
@@ -292,7 +292,7 @@ export default function StaffAnnouncementScreen() {
             <ReplyCard
               key={r.id}
               body={r.body}
-              when={t('announcements.replies.sentAt', { date: formatDateTimeInIndia(r.createdAt) })}
+              when={t('announcements.replies.sentAt', { date: formatDateTime(r.createdAt) })}
             />
           ))}
         </>

@@ -19,7 +19,7 @@ import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { fetchEvents, placeText, whenText, type EventItem, type EventList } from '@/data/events';
 import { fetchPolls, type PollItem, type PollList } from '@/data/polls';
-import { formatDateTimeInIndia } from '@/lib/dates';
+import { formatDateTime } from '@/lib/dates';
 
 type Tab = 'events' | 'polls';
 
@@ -77,7 +77,7 @@ export function EventsHomeScreen({ area }: { area: 'student' | 'staff' }) {
 
   const pollRow = ({ poll: p, state }: PollItem) => {
     const details = [
-      state.closed ? t('polls.closedOn', { date: formatDateTimeInIndia(p.closedAt ?? p.closesAt) }) : t('polls.closes', { date: formatDateTimeInIndia(p.closesAt) }),
+      state.closed ? t('polls.closedOn', { date: formatDateTime(p.closedAt ?? p.closesAt) }) : t('polls.closes', { date: formatDateTime(p.closesAt) }),
     ];
     if (isStaff) details.push(t('polls.votedCount', { voted: state.voted, addressed: state.addressed }));
     if (state.myChoice !== null) details.push(t('polls.myVote', { answer: p.options[state.myChoice] ?? '' }));

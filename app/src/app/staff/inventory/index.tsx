@@ -18,7 +18,7 @@ import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
 import { fetchInventory, type InventoryItem } from '@/data/inventory';
-import { formatDayMonthYear, todayInIndia, dateInIndia } from '@/lib/dates';
+import { formatDate, todayLocal, localDate } from '@/lib/dates';
 
 type Filter = 'all' | 'store' | 'out' | 'attention' | 'retired';
 
@@ -55,7 +55,7 @@ export default function InventoryScreen() {
     }, [load]),
   );
 
-  const today = todayInIndia();
+  const today = todayLocal();
   const shown = items?.filter((item) => matches(item, filter)) ?? [];
   const count = (f: Filter) => items?.filter((item) => matches(item, f)).length ?? 0;
 
@@ -103,10 +103,10 @@ export default function InventoryScreen() {
                   ? [
                       t('inventory.withLine', {
                         name: item.holder.name,
-                        date: formatDayMonthYear(dateInIndia(item.holder.issuedAt)),
+                        date: formatDate(localDate(item.holder.issuedAt)),
                       }) +
                         (item.holder.dueOn
-                          ? ` · ${t(overdue ? 'inventory.overdueLine' : 'inventory.dueLine', { date: formatDayMonthYear(item.holder.dueOn) })}`
+                          ? ` · ${t(overdue ? 'inventory.overdueLine' : 'inventory.dueLine', { date: formatDate(item.holder.dueOn) })}`
                           : ''),
                     ]
                   : item.retiredAt

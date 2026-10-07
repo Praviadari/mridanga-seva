@@ -42,6 +42,13 @@ themselves ([DECISIONS.md #12](DECISIONS.md)).
   permission prompt uses app.json's text (English), not these files.
 - The helpers in `app/src/i18n/labels.ts` (`levelName`, `statusName`, `callReasonName`,
   `lastVisitText`, `audienceName` ...) turn codes into words, so every screen words them the same way.
+- **Counts of things use plural keys** (#136): `coordinators.moved_one` ("1 student moved ...") and
+  `coordinators.moved_other` ("3 students moved ..."); the screen calls `t('coordinators.moved',
+  { count })` and i18next picks the form for the language. A language with more forms (Russian:
+  `_one`, `_few`, `_many`; Arabic six) adds its own keys in its file; Telugu and Hindi need only
+  `_one` and `_other`. A count used only as a figure after a colon ("Unread: 3") needs no plural key.
+- Dates, times and amounts are never written into a text by hand: the app formats them for the
+  centre's country (`formatDate`, `formatMoney`, docs/I18N.md) and passes them as `{{date}}`.
 - Language names in the language picker are always written in their own script (English,
   తెలుగు, हिन्दी), so people can find their language whatever the app shows now.
 
@@ -205,5 +212,13 @@ The code is in `app/src/i18n/index.ts`, `app/src/components/language-picker.tsx`
   `register.alreadySaved` (a registration saved twice). Words to check: "expired" గడువు ముగిసింది / समय खत्म,
   "confirm (an account)" నిర్ధారణ / पक्का करना (as in `signUp.checkEmail`), "saved" సేవ్ / सेव. Checked for
   mixed Telugu-Devanagari words on 6 Oct 2026.
+- **International basics** ([DECISIONS.md #132-#136](DECISIONS.md), [I18N.md](I18N.md)): fourteen keys
+  became plural pairs, `syllabusEditor.ticksKept`, `syllabusEditor.retireAskBody`, `coordinators.moved`,
+  `coordinators.handOverFirst`, `importStudents.fileLine`, `importStudents.askTitle`, `reports.levelLabel`,
+  `reports.levelLine`, `centres.studentsLine`, `centres.offHint`, `assessments.release.inDays`,
+  `assessments.release.already`, `promotion.nominate.askHint`, `promotion.decide.needsAnswers`, each with
+  `_one` and `_other`. Telugu and Hindi keep their earlier draft in both: the reviewer writes a singular
+  where the language needs one. `announcements.compose.timeHint` and `visitHistory.intro` now say "the
+  centre's time" instead of "India time": కేంద్రం సమయం / केंद्र का समय (drafts).
 - Telugu and Devanagari letters are taller than Latin ones. The app's line heights allow for this;
   if a translated label looks cut off, report it with a screenshot.

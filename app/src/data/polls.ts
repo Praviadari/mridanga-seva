@@ -9,7 +9,7 @@
 
 import type { ParseKeys } from 'i18next';
 
-import { dateInIndia, formatDayMonthYear, momentInIndia, parseDayMonthYear, parseTimeOfDay, timeInIndia } from '@/lib/dates';
+import { formatTypedDate, localDate, localMoment, localTime, parseDayMonthYear, parseTimeOfDay } from '@/lib/dates';
 import { supabase } from '@/lib/supabase';
 
 import type { Audience } from './announcements';
@@ -244,7 +244,7 @@ export type PollForm = {
   options: string[];
   anonymous: boolean;
   resultsWhen: ResultsWhen;
-  /** Closing day and time, India. */
+  /** Closing day and time, at the class. */
   date: string;
   time: string;
   audience: Audience | null;
@@ -260,15 +260,15 @@ export const EMPTY_POLL_FORM: PollForm = {
   levelId: null, groupId: null,
 };
 
-/** The edit form filled from a saved poll; the closing time is shown as day and time in India. */
+/** The edit form filled from a saved poll; the closing time is shown as day and time at the class. */
 export function formFromPoll(p: Poll): PollForm {
   return {
     question: p.question,
     options: [...p.options],
     anonymous: p.anonymous,
     resultsWhen: p.resultsWhen,
-    date: formatDayMonthYear(dateInIndia(p.closesAt)),
-    time: timeInIndia(p.closesAt),
+    date: formatTypedDate(localDate(p.closesAt)),
+    time: localTime(p.closesAt),
     audience: p.audience,
     levelId: p.audienceLevel,
     groupId: p.audienceGroup,
@@ -296,7 +296,7 @@ export function checkPollForm(form: PollForm, now = Date.now()): PollFormErrors 
   if (!date) errors.date = 'events.form.dateInvalid';
   if (!time) errors.time = 'events.form.timeInvalid';
   if (date && time) {
-    const closes = Date.parse(momentInIndia(date, time));
+    const closes = Date.parse(localMoment(date, time));
     if (closes <= now) errors.date = 'polls.errors.closes_past';
     else if (closes > now + 365 * 86400_000) errors.date = 'polls.errors.closes_too_far';
   }
@@ -312,7 +312,7 @@ function rowOf(form: PollForm) {
     options: form.options.map((o) => o.trim()),
     anonymous: form.anonymous,
     results_when: form.resultsWhen,
-    closes_at: momentInIndia(parseDayMonthYear(form.date) as string, parseTimeOfDay(form.time) as string),
+    closes_at: localMoment(parseDayMonthYear(form.date) as string, parseTimeOfDay(form.time) as string),
     audience: form.audience,
     audience_level: form.audience === 'level' ? form.levelId : null,
     audience_group: form.audience === 'group' ? form.groupId : null,

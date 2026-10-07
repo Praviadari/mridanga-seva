@@ -33,7 +33,7 @@ import { fetchNextEvent, placeText, whenText, type EventItem, type EventNames } 
 import { fetchStudentHome, type StudentHome } from '@/data/home';
 import { fetchPollsToVote } from '@/data/polls';
 import { audienceName, authorLine, lastVisitText, levelName } from '@/i18n/labels';
-import { formatDateTimeInIndia } from '@/lib/dates';
+import { formatDateTime } from '@/lib/dates';
 
 /** How many announcements the home shows; the rest are one tap away on S10. */
 const LATEST_COUNT = 3;
@@ -190,7 +190,7 @@ export default function StudentHomeScreen() {
               pinned={a.pinned}
               unread={!a.readByMe}
               details={[
-                `${formatDateTimeInIndia(a.publishAt)} · ${audienceName(t, a, {
+                `${formatDateTime(a.publishAt)} · ${audienceName(t, a, {
                   groupName: a.audienceGroup !== null ? news.groupNames.get(a.audienceGroup) : null,
                 })}`,
                 ...authorLine(t, a.createdBy ? news.staffNames.get(a.createdBy) : undefined),

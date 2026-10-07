@@ -37,7 +37,7 @@ import { fetchStaff, type StaffMember } from '@/data/student-overview';
 import { levelName, monthName, outcomeName, statusName } from '@/i18n/labels';
 import { FLAG_REASONS, type FlagReason } from '@/i18n/location-flag';
 import { toCsv } from '@/lib/csv';
-import { formatDayMonthYear, parseDayMonthYear } from '@/lib/dates';
+import { formatDate, parseDayMonthYear } from '@/lib/dates';
 import { CSV_WAYS, downloadCsv, saveCsvToFolder, shareCsv, type CsvResult } from '@/lib/save-csv';
 import { useWide } from '@/theme/use-theme';
 
@@ -168,7 +168,7 @@ export default function ReportsScreen() {
           <ChoiceGroup chips label={t('reports.whose')} choices={mentorChoices} value={mentor} onChange={setMentor} />
         ) : null}
         <AppText variant="small" tone="muted" role="status">
-          {t('reports.rangeLine', { from: formatDayMonthYear(range.from), to: formatDayMonthYear(range.to) })}
+          {t('reports.rangeLine', { from: formatDate(range.from), to: formatDate(range.to) })}
         </AppText>
       </Section>
 
@@ -208,7 +208,7 @@ export default function ReportsScreen() {
             icon="visits"
             title={t('reports.weeksTitle')}
             description={report.weekStarts === 'rolling7' ? t('reports.weeksRolling') : t('reports.weeksMonday')}>
-            {periodRows(report.byWeek, (p) => t('reports.weekOf', { date: formatDayMonthYear(p.start) }))}
+            {periodRows(report.byWeek, (p) => t('reports.weekOf', { date: formatDate(p.start) }))}
           </Section>
 
           <Section icon="visits" title={t('reports.monthsTitle')}>
@@ -296,7 +296,7 @@ export default function ReportsScreen() {
                     ...(isGuru ? [s.mentorName ?? t('database.none')] : []),
                     String(s.visits),
                     String(s.hours),
-                    s.lastVisitOn ? formatDayMonthYear(s.lastVisitOn) : t('reports.never'),
+                    s.lastVisitOn ? formatDate(s.lastVisitOn) : t('reports.never'),
                     String(s.calls),
                     `${s.syllabusDone}/${s.syllabusTotal}`,
                     String(s.flagged),
@@ -313,7 +313,7 @@ export default function ReportsScreen() {
                   details={[
                     t('reports.studentLine', { visits: s.visits, hours: s.hours, calls: s.calls }),
                     t('reports.studentLine2', {
-                      last: s.lastVisitOn ? formatDayMonthYear(s.lastVisitOn) : t('reports.never'),
+                      last: s.lastVisitOn ? formatDate(s.lastVisitOn) : t('reports.never'),
                       done: s.syllabusDone,
                       total: s.syllabusTotal,
                     }),

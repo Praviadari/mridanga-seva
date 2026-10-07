@@ -26,7 +26,7 @@ import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { fetchMyProgress, type MyProgress } from '@/data/syllabus';
 import { levelName } from '@/i18n/labels';
-import { formatDayMonthYear } from '@/lib/dates';
+import { formatDate } from '@/lib/dates';
 import { spacing } from '@/theme/use-theme';
 
 /** The student's level with its progress bar and one row per syllabus item. */
@@ -116,7 +116,7 @@ export default function MyProgressScreen() {
               title={item.retired ? item.title : `${inUse.indexOf(item) + 1}. ${item.title}`}
               details={[
                 ...(item.description ? [item.description] : []),
-                item.doneOn ? t('progress.doneOn', { date: formatDayMonthYear(item.doneOn) }) : t('progress.notYet'),
+                item.doneOn ? t('progress.doneOn', { date: formatDate(item.doneOn) }) : t('progress.notYet'),
                 ...(item.retired ? [t('progress.retired')] : []),
               ]}
             />

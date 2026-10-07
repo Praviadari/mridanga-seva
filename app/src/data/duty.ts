@@ -6,7 +6,7 @@
 
 import type { ParseKeys, TFunction } from 'i18next';
 
-import { formatDayMonthYear, todayInIndia } from '@/lib/dates';
+import { formatDate, todayLocal } from '@/lib/dates';
 import { supabase } from '@/lib/supabase';
 
 import { isNetworkError } from './errors';
@@ -19,7 +19,7 @@ export const MAX_WEEKS = 12;
 /** "Sat 10-10-2026": the weekday in the app's language and the date (YYYY-MM-DD in). */
 export function dayText(t: TFunction, isoDate: string): string {
   const weekday = new Date(`${isoDate}T00:00:00Z`).getUTCDay();
-  return `${t(`duty.weekdays.${weekday}` as 'duty.weekdays.0')} ${formatDayMonthYear(isoDate)}`;
+  return `${t(`duty.weekdays.${weekday}` as 'duty.weekdays.0')} ${formatDate(isoDate)}`;
 }
 
 /** One shift. Times are 'HH:MM'. */
@@ -66,7 +66,7 @@ function toShift(row: Row): Shift {
 
 /** Shifts from today for `days` days, by date and time. null = could not be loaded. */
 export async function fetchRoster(days = 28): Promise<Shift[] | null> {
-  const from = todayInIndia();
+  const from = todayLocal();
   const to = new Date(Date.parse(`${from}T00:00:00Z`) + days * 24 * 3600 * 1000).toISOString().slice(0, 10);
   const { data, error } = await supabase
     .from('duty_shifts')

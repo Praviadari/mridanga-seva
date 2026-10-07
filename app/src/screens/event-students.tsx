@@ -3,7 +3,7 @@
 // student ("Show all students").
 // - Performers: each with a part (Mridanga, Kartal, Lead singer, Harmonium or typed); saving
 //   tells new performers and changed parts (push + inbox). Until the event is over.
-// - Attendance: tick who came, from the event's day on (India).
+// - Attendance: tick who came, from the event's day on (at the event's centre).
 // Routes: staff/events/performers/[id].tsx, staff/events/attendance/[id].tsx. Data: src/data/events.ts.
 
 import { router, Stack, useFocusEffect } from 'expo-router';
@@ -31,6 +31,7 @@ import {
   type EventStudent,
 } from '@/data/events';
 import { levelName } from '@/i18n/labels';
+import { searchFold } from '@/lib/search-text';
 
 /** The parts offered as chips; any other can be typed. */
 const PARTS = ['mridanga', 'kartal', 'leadSinger', 'harmonium'] as const;
@@ -66,8 +67,8 @@ export function EventStudentsScreen({ id, mode }: { id: number; mode: 'performer
   );
 
   const shown = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return (students ?? []).filter((s) => !q || s.fullName.toLowerCase().includes(q) || s.rollNo.toLowerCase().includes(q));
+    const q = searchFold(search);
+    return (students ?? []).filter((s) => !q || searchFold(s.fullName).includes(q) || s.rollNo.toLowerCase().includes(q));
   }, [students, search]);
 
   const title = mode === 'performers' ? t('events.performers.title') : t('events.attendance.title');

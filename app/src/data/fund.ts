@@ -10,6 +10,7 @@
 import type { ParseKeys, TFunction } from 'i18next';
 import * as WebBrowser from 'expo-web-browser';
 
+import { formatMoney } from '@/lib/money';
 import { supabase } from '@/lib/supabase';
 
 import { pickPdfs, pickPhotos, removeFiles, signedLinks, uploadFiles, type PickedFile, type PickResult } from './announcement-files';
@@ -200,16 +201,13 @@ export function categoryName(t: TFunction, category: FundCategory | undefined): 
 
 // ---------------------------------------------------------------- money as text
 
-/** Paise as rupees with Indian grouping: 125050 → "₹1,250.50", 200000 → "₹2,000". `signed` adds + or -. */
+/**
+ * Paise as rupees with Indian grouping: 125050 → "₹1,250.50", 200000 → "₹2,000". `signed` adds + or -.
+ * Every fund entry is in INR for now (fund_entries.currency, 0033): one fund, one currency until the
+ * team decides how a fund abroad works (docs/I18N.md).
+ */
 export function formatRupees(paise: number, signed = false): string {
-  const abs = Math.abs(Math.round(paise));
-  const digits = String(Math.floor(abs / 100));
-  const last3 = digits.slice(-3);
-  const rest = digits.slice(0, -3);
-  const grouped = rest ? `${rest.replace(/\B(?=(\d{2})+(?!\d))/g, ',')},${last3}` : last3;
-  const fraction = abs % 100 ? `.${String(abs % 100).padStart(2, '0')}` : '';
-  const sign = paise < 0 ? '-' : signed && paise > 0 ? '+' : '';
-  return `${sign}₹${grouped}${fraction}`;
+  return formatMoney(paise, 'INR', signed);
 }
 
 /** Rupees as typed ("1,250.50", "₹ 2000") → whole paise, or null when it is not an amount of 0.01 to 1 crore. */

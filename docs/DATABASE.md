@@ -36,6 +36,7 @@ in number order:
 | `0030_round10_rules.sql` | Round 10 (audit brief 15): an ended pause gets a call task and restarts the Inactive clock; no duplicate tasks, only due tasks escalate; retry count starts again after a visit; settings fall back to defaults and keep Irregular before Inactive at commit; no insert straight into Paused/Left, `paused_until` only through a call; visits: only times correctable, audited; 30-second QR rescan rule (#107-#110). See "Round 10 rules (0030)" |
 | `0031_push_fixes.sql` | Push fixes (audit brief 11): the per-phone queue `push_queue` with `claim_push_queue` / `finish_push` (one bad token no longer stops a batch; a failed or stopped send is retried, never sent twice), `push_status`, and the job calls only an https Supabase address with a 32+ character secret ([DECISIONS.md #112-#115](DECISIONS.md)). See "Push queue (0031)". Needs the Edge Function redeployed |
 | `0032_auth_fixes.sql` | Sign-in leftovers: a new profile takes the language sent with the sign-up (D8-01); `students.request_id` + `register_student(..., p_request_id)`: a registration saved twice stores the student once (D6-08) ([DECISIONS.md #125, #126](DECISIONS.md)). See "Sign-in leftovers (0032)" |
+| `0033_time_zones.sql` | International basics: `centres.time_zone` (IANA, default Asia/Kolkata) and `centres.country_code` (ISO 3166, default IN); `today_ist()` = today at the caller's centre; attendance days, closing, home screens, reports, event and duty reminders in the right centre's zone; `close_open_visits` hourly; notices dated in each person's zone; `fund_entries.currency` (ISO 4217, default INR) ([DECISIONS.md #132-#136](DECISIONS.md)). See "Time zones and currency (0033)" |
 
 The Phase 2 files were renumbered when they merged into main (#55). TEST ran some under their
 branch numbers (0012, 0014_promotion, 0016_practice, 0017_media, 0021_events_polls), so it skips
@@ -166,7 +167,7 @@ visits from the app, all in database functions so that the rules sit in one plac
 
 Any check-in makes the student *Active* again and closes their open follow-up tasks (inside
 `toggle_visit`, which `mark_visit` calls). `mark_visit` locks the student's row while it works, so
-two phones marking the same student at once are handled one after the other. At 21:00 IST the
+two phones marking the same student at once are handled one after the other. Every hour (since 0033; 21:00 IST before) the
 nightly job `close_open_visits` closes anything still open, at the centre's closing time.
 
 The QR code on a student's phone holds the text `MS1:` followed by their `qr_token` in capitals
@@ -488,7 +489,7 @@ Words these functions use, the same on every screen:
 
 | Word | Meaning |
 |---|---|
-| This week | Monday to today, India time, or the last 7 days when `settings.week_starts` = `rolling7` (0014, G10): `week_start_ist()` |
+| This week | Monday to today at the caller's centre (India for Abids), or the last 7 days when `settings.week_starts` = `rolling7` (0014, G10): `week_start_ist()` |
 | New joiner | `joined_on` within the last `settings.new_joiner_weeks` weeks (4), and not *Left* |
 | In class | Status is not *Left* |
 | Calls due for my students (C1) | Students with an open follow-up task due today or earlier, or escalated, that is assigned to me or whose mentor I am: the *needs the Guru* and *call due* groups of C10 for "My students" |
@@ -655,7 +656,8 @@ the app never deletes a centre (visits, people and students point to it). The wi
 by `centres_guard` (0014). Only the Guru writes (policy `guru_write`, 0001); every change is in
 the audit log. **The phones do not check the area yet:** that needs `expo-location`, a native
 package, in the next planned APK. New students still get centre 1 (Abids) as home centre; a
-picker comes when a second centre opens.
+picker comes when a second centre opens. Since 0033 each centre also has a `time_zone` (IANA) and a
+`country_code` (ISO 3166), set in the SQL editor for now; see "Time zones and currency (0033)".
 ## Assessments (Phase 2)
 
 Migration 0016 (0012 on the branch `phase2-assessments` and on TEST; renumbered at the Phase 2
@@ -967,7 +969,8 @@ reads; students and anon nothing.
 
 Notices (`fund_push_line`, `queue_fund_push`) go through `push_outbox` to `/staff/fund/<id>`: "needs your
 approval" to the approvers, "approved" / "Not approved: reason" to the maker. Smoke tests: section
-"class fund (0026)".
+"class fund (0026)". Since 0033 every entry has a `currency` (ISO 4217, default `INR`; every entry
+is INR until the team decides how a fund abroad works, [I18N.md](I18N.md) P5).
 
 ## Withdrawal and erasure (0025)
 
@@ -1085,6 +1088,32 @@ added. Tests: the checks named D5-01, D5-16, D5-02, D5-03, D1b-04, D12a-04, D1a-
 
 Tests: the checks named D8-01 and D6-08 in `supabase/tests/smoke-test.mjs`.
 
+## Time zones and currency (0033)
+
+[DECISIONS.md #132-#136](DECISIONS.md), [I18N.md](I18N.md). Run after 0032. Additive: with one
+centre in India every answer is the same as before.
+
+| Object | What |
+|---|---|
+| `centres.time_zone` | IANA name, default `Asia/Kolkata`. Trigger `centres_locale_guard`: a zone Postgres knows, written Area/City (`time_zone_invalid`; no `IST`, no fixed offsets) |
+| `centres.country_code` | ISO 3166-1 alpha-2, default `IN` (`country_invalid`). Date style of notices; the app's region for formats |
+| `centre_tz(centre)`, `centre_country(centre)` | The centre's zone / country; unknown or null = the first centre's |
+| `person_centre(profile)` | A login's centre: its student record's home centre, else `profiles.centre_id` (internal) |
+| `my_time_zone()`, `my_centre_locale()` | The signed-in person's zone; `{time_zone, country_code}` for the app (`lib/class-locale.ts`). No login (pg_cron, dashboard) = the first centre |
+| `centre_today(centre)`, `local_day(moment, centre)` | Today at a centre; the day a moment falls on there (the attendance day of a check-in) |
+| `local_stamp(moment, profile, part)` | A moment for a notice in that person's zone: `DD-MM-YYYY HH24:MI` in India, ISO `YYYY-MM-DD HH24:MI` elsewhere (internal) |
+| `today_ist()` | Name kept; now today at the caller's centre |
+| `fund_entries.currency` | ISO 4217, default `INR`; `amount_paise` = minor units of it. Trigger `fund_entries_currency`: a reversal takes the reversed entry's currency |
+
+Redefined with the right zone: `student_overview` (home centre), `refresh_student_statuses` (home
+centre), `close_open_visits` (visit's centre; hourly), `check_out_all` (visit's centre), the three
+home screens and `class_report` (caller's midnight and range; a visit counts on its centre's day),
+`mark_event_attendance`, `events_polls_daily` (event's centre), `duty_daily` (shift's centre),
+`ig_subscriber_weeks`, `queue_people_push` / `event_push_line` (a 5-argument version with the
+recipient). Errors: `time_zone_invalid`, `country_invalid`.
+
+Tests: section "time zones and currency (0033)" in `supabase/tests/smoke-test.mjs`.
+
 ## Linking a login to a student
 
 A student record can exist without a login (many students never install the app). When a person
@@ -1137,7 +1166,7 @@ switched-off login is refused like a stranger.
 | `guru_dashboard()` | Guru | The Guru dashboard's numbers. See "Home screens" |
 | `move_syllabus_item(item, up)` | Guru | Moves a syllabus item one place up or down among the items in use. See "Syllabus editor" |
 | `syllabus_item_counts()` | Guru, coordinator | Ticks and materials per syllabus item. See "Syllabus editor" |
-| `week_start_ist()` | Anyone signed in | First day of "this week" in India (Monday, or 6 days ago with `week_starts` = `rolling7`); used by the functions above |
+| `week_start_ist()` | Anyone signed in | First day of "this week" at the caller's centre (Monday, or 6 days ago with `week_starts` = `rolling7`); used by the functions above |
 | `link_student_login(profile, student)` | Guru | Links a pending login to a student record without a login; the person becomes that student. Security definer. See "Coordinators and roles" |
 | `reassign_mentees(students, to)` | Guru | Moves the students to another mentor (an active coordinator or the Guru); returns how many. See "Coordinators and roles" |
 | `unlink_student_login(student)` | Guru | Takes the login off a student record; the login goes back to `pending`. Security definer. See "Linking a login to a student" |
@@ -1193,7 +1222,7 @@ and the helpers `my_role`, `is_guru`, `is_staff`,
 | Job | Runs | Does |
 |---|---|---|
 | `mridanga-status-refresh` | 00:30 UTC = 06:00 IST | `refresh_student_statuses()` — ends expired pauses, moves quiet students on, creates call tasks, flags overdue ones |
-| `mridanga-close-visits` | 15:30 UTC = 21:00 IST | `close_open_visits()` — closes visits left open, at the centre's closing time |
+| `mridanga-close-visits` | Every hour at :30 (since 0033; was 15:30 UTC = 21:00 IST) | `close_open_visits()` — closes visits left open at their centre's closing time, once that centre has been closed an hour (21:00 IST for Abids) |
 | `mridanga-push` | Every minute | `send_due_push()` — calls the Edge Function `notify-announcements` when a published announcement waits for its push notification; does nothing while push is not set up (0011); since 0016 also when an assessment or promotion notification of the last day waits in `push_outbox`; since 0031 also when a `push_queue` row waits for its next try |
 | `mridanga-inbox-cleanup` | 01:00 UTC = 06:30 IST | `inbox_cleanup()` — deletes inbox notices older than a year (0015) |
 | `mridanga-assessments` | 03:30 UTC = 09:00 IST | `assessment_daily()` — reminders for assessments due today or tomorrow that are not sent yet; asks the Edge Function (`{"cleanup": true}`) to delete recordings 30 days past their review (0016); level-up ones 30 days after the promotion decision (0017) |

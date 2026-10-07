@@ -24,7 +24,7 @@ import { Section } from '@/components/section';
 import { StatGrid, StatTile } from '@/components/stat-tile';
 import { TextField } from '@/components/text-field';
 import { fetchSubscribers, setSubscriberBlocked, type Subscriber, type WeekJoins } from '@/data/ig-subscribers';
-import { formatDayMonthYear, todayInIndia } from '@/lib/dates';
+import { formatDate, todayLocal } from '@/lib/dates';
 
 type Filter = 'all' | 'reading' | 'parent' | 'blocked';
 
@@ -62,7 +62,7 @@ export default function IshtagoshtiSubscribersScreen() {
   const shown = list.filter((s) => filter === 'all' || stateOf(s) === filter);
   const thisWeek = data?.weeks.at(-1)?.joins ?? 0;
   const most = Math.max(1, ...(data?.weeks.map((w) => w.joins) ?? [1]));
-  const thisYear = Number(todayInIndia().slice(0, 4));
+  const thisYear = Number(todayLocal().slice(0, 4));
 
   return (
     <Screen underHeader wide onRefresh={load}>
@@ -91,7 +91,7 @@ export default function IshtagoshtiSubscribersScreen() {
                 done={w.joins}
                 total={most}
                 label={t('igSubscribers.weeksTitle')}
-                valueText={`${t('igSubscribers.weekOf', { date: formatDayMonthYear(w.weekStart) })}: ${w.joins}`}
+                valueText={`${t('igSubscribers.weekOf', { date: formatDate(w.weekStart) })}: ${w.joins}`}
                 showComplete={false}
               />
             ))}
@@ -121,7 +121,7 @@ export default function IshtagoshtiSubscribersScreen() {
                 details={[
                   s.email ?? '',
                   t(`igSubscribers.state_${stateOf(s)}`),
-                  t('igSubscribers.joinedOn', { date: formatDayMonthYear(s.joinedAt.slice(0, 10)) }),
+                  t('igSubscribers.joinedOn', { date: formatDate(s.joinedAt.slice(0, 10)) }),
                 ].filter(Boolean)}
                 warning={stateOf(s) === 'blocked' ? t('igSubscribers.blocked') : undefined}
                 onPress={() => setOpen(s.profileId)}
@@ -166,7 +166,7 @@ function SubscriberCard({
     s.email ? t('igSubscribers.email', { email: s.email }) : '',
     s.birthYear ? t('igSubscribers.born', { year: s.birthYear, age: thisYear - s.birthYear }) : '',
     s.phone ? t('igSubscribers.phone', { phone: s.phone }) : t('igSubscribers.noPhone'),
-    t('igSubscribers.joinedOn', { date: formatDayMonthYear(s.joinedAt.slice(0, 10)) }),
+    t('igSubscribers.joinedOn', { date: formatDate(s.joinedAt.slice(0, 10)) }),
     s.minor
       ? s.parentName
         ? t(s.parentConfirmedAt ? 'igSubscribers.parentConfirmed' : 'igSubscribers.parentWaiting', {
@@ -178,7 +178,7 @@ function SubscriberCard({
       : t('igSubscribers.adult'),
     t('igSubscribers.activity', { memorised: s.memorised, notes: s.notes }),
     s.inClass ? t('igSubscribers.state_inClass') : '',
-    s.blockedAt ? t('igSubscribers.blockedOn', { date: formatDayMonthYear(s.blockedAt.slice(0, 10)), reason: s.blockReason ?? '—' }) : '',
+    s.blockedAt ? t('igSubscribers.blockedOn', { date: formatDate(s.blockedAt.slice(0, 10)), reason: s.blockReason ?? '—' }) : '',
   ].filter(Boolean);
 
   return (

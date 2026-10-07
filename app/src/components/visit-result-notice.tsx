@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next';
 import type { VisitResult } from '@/data/attendance';
 import { formatDuration } from '@/i18n/labels';
 import { locationFlagText } from '@/i18n/location-flag';
-import { timeInIndia } from '@/lib/dates';
+import { localTime } from '@/lib/dates';
 
 import { Notice } from './notice';
 
@@ -38,8 +38,8 @@ export function VisitResultNotice({ result }: VisitResultNoticeProps) {
       return (
         <Notice tone={flag ? 'info' : 'success'} title={title} announced>
           {flag
-            ? `${t('attendance.checkedIn', { time: timeInIndia(result.at) })} ${flag}`
-            : t('attendance.checkedIn', { time: timeInIndia(result.at) })}
+            ? `${t('attendance.checkedIn', { time: localTime(result.at) })} ${flag}`
+            : t('attendance.checkedIn', { time: localTime(result.at) })}
         </Notice>
       );
     }
@@ -47,7 +47,7 @@ export function VisitResultNotice({ result }: VisitResultNoticeProps) {
       return (
         <Notice tone="success" title={title}>
           {t('attendance.checkedOut', {
-            time: timeInIndia(result.at),
+            time: localTime(result.at),
             duration: formatDuration(t, result.minutes),
           })}
         </Notice>
