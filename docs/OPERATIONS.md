@@ -941,7 +941,14 @@ the logins), and compare the row counts with the dump's.
 
 | Date | Project | Tables | Rows in dump | Rows after restore | Same per table | Drift ALL hash before / after | By |
 |---|---|---|---|---|---|---|---|
-| *(pending: Praveen runs it, the numbers go here)* | test | | | | | | |
+| *(pending)* | test | 57 | | | | | |
+
+**Not done yet (7 Oct 2026).** The test project before the drill: PostgreSQL 17.6, 57 tables, 708
+rows (20 students), 9 logins. The drill could not run on the maintainer's office PC: installing
+needs admin rights, and its security software deletes the PostgreSQL programs of the no-install
+zip as soon as they are unpacked. The backups need the same tools, so the backup computer must be
+one where they run (a PC the owner controls, or the tools installed by IT). Do the drill there
+before the pilot and fill in the row.
 
 ## Keeping the free project awake
 
