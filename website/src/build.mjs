@@ -10,6 +10,7 @@ import { createHash } from 'node:crypto';
 import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import config from '../site.config.mjs';
+import { art } from './art.mjs';
 import { contentDir, loadLanguages, notFound, outDir, pagePath, pages, root } from './site.mjs';
 
 const release = process.argv.includes('--release');
@@ -45,6 +46,10 @@ function fill(html, lang) {
         const page = pages.find((p) => p.id === arg);
         if (!page) throw new Error(`Unknown page in ${m}`);
         return pagePath(lang.code, page.slug);
+      }
+      if (key === 'art') {
+        if (!art[arg]) throw new Error(`Unknown art in ${m}`);
+        return art[arg](lang.strings.art);
       }
       if (key === 'email') {
         const address = config.emails[arg];
@@ -92,6 +97,24 @@ function organizationJsonLd(lang) {
   };
   // JSON-LD is data, not a script: CSP does not block it. '<' is escaped so it cannot close the tag.
   return `<script type="application/ld+json">${JSON.stringify(data).replace(/</g, '\\u003c')}</script>`;
+}
+
+/** Inner pages: the first <h1> and its lead paragraph become the page's hero band. */
+function pageBody(body) {
+  const m = body.trim().match(/^<h1>([\s\S]*?)<\/h1>\s*(<p class="lead">[\s\S]*?<\/p>)?/);
+  if (!m) return `<div class="wrap prose page-body">${body.trim()}</div>`;
+  const rest = body.trim().slice(m[0].length).trim();
+  return `<section class="page-hero">
+<div class="wrap">
+${art.ornament()}
+<h1>${m[1]}</h1>
+${m[2] ?? ''}
+</div>
+</section>
+${art.wave()}
+<div class="wrap prose page-body">
+${rest}
+</div>`;
 }
 
 function layout({ lang, page, body, cssHref }) {
@@ -155,9 +178,9 @@ function layout({ lang, page, body, cssHref }) {
 <meta name="description" content="${esc(meta.description)}">
 ${robots}${url ? `<link rel="canonical" href="${url}">\n` : ''}${alternates}
 <meta name="color-scheme" content="light dark">
-<meta name="theme-color" content="#9A4307">
+<meta name="theme-color" content="#1B1E4B">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="${cssHref}">
+${lang.code === 'en' ? '<link rel="preload" href="/fonts/cormorant-garamond-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin>\n' : ''}<link rel="stylesheet" href="${cssHref}">
 ${og}
 ${page.id === 'home' ? organizationJsonLd(lang) : ''}
 </head>
@@ -165,24 +188,33 @@ ${page.id === 'home' ? organizationJsonLd(lang) : ''}
 <a class="skip" href="#main">${esc(s.ui.skip)}</a>
 <header class="site-header">
 ${draftNote}<div class="wrap header-inner">
-<a class="brand" href="${pagePath(lang.code, '')}"><span class="brand-name">${esc(s.site.name)}</span> <span class="brand-tagline" lang="sa-Latn">Saṅkalpa · Sādhana · Seva</span></a>
+<a class="brand" href="${pagePath(lang.code, '')}">${art.emblem()}<span class="brand-text"><span class="brand-name">${esc(s.site.name)}</span><span class="brand-tagline" lang="sa-Latn">Saṅkalpa · Sādhana · Seva</span></span></a>
 <nav class="lang-nav" aria-label="${esc(langLabel)}"><span class="lang-label" aria-hidden="true">${esc(langLabel)}:</span><ul>${langNav}</ul></nav>
 <nav class="main-nav" aria-label="${esc(s.ui.mainNav)}"><ul>${mainNav}</ul></nav>
 </div>
 </header>
 <main id="main" tabindex="-1">
-<div class="wrap prose">
-${body.trim()}
-</div>
+${page.id === 'home' ? body.trim() : pageBody(body)}
 </main>
 <footer class="site-footer">
-<div class="wrap">
-<p>${s.ui.noCookies}</p>
+${art.ornament()}
+<div class="wrap footer-inner">
+<div class="footer-about">
+<p class="footer-name">${esc(s.site.name)}</p>
+<p>${esc(s.site.description)}</p>
+<p class="footer-mail"><a href="mailto:${config.emails.info}">${config.emails.info}</a></p>
+</div>
+<nav aria-label="${esc(s.ui.footerNav)}">
 <ul class="footer-links">
+${pages.filter((p) => !['privacy', 'contact'].includes(p.id)).map((p) => `<li><a href="${pagePath(lang.code, p.slug)}">${esc(s.nav[p.id])}</a></li>`).join('\n')}
 <li><a href="${pagePath(lang.code, 'privacy')}">${esc(s.nav.privacy)}</a></li>
 <li><a href="${pagePath(lang.code, 'contact')}">${esc(s.nav.contact)}</a></li>
 <li><a href="${esc(config.sourceUrl)}">${esc(s.ui.source)}</a></li>
 </ul>
+</nav>
+</div>
+<div class="wrap footer-base">
+<p>${s.ui.noCookies}</p>
 <p>${esc(s.ui.updated)} ${time(config.updated, lang)} · © <span>2026</span> Mridanga Seva</p>
 </div>
 </footer>

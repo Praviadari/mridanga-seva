@@ -2360,6 +2360,24 @@ languages do not need a framework: a short script has nothing to upgrade, no sup
 no build cache, and a volunteer can read it. With no JavaScript there is nothing to break, a
 strict CSP is easy, and the pages are fast on a slow phone.
 
+**Design (7 Oct 2026, Praveen asked for a world-class look).** Compared krishna.com (cream,
+saffron and maroon, italic serif headings, ornamental dividers, wave-edged bands, devotional
+paintings), artofkirtan.org (deep indigo bands, brass buttons, serif headings, photos with wavy
+edges; low-contrast text and a cookie wall) and mayapur.com (heavy, blank until scripts load). The
+site keeps their warmth and beats them on speed, contrast and privacy: night indigo (*śyāma*) bands
+with a marigold glow, temple-cream sections, Cormorant Garamond for headings (OFL, self-hosted in
+`website/static/fonts/`, 600 roman + italic, Latin + Latin Extended for IAST, ~22 KB a file,
+loaded only for the characters a page uses), the system sans for text and the system Indic fonts
+for Telugu and Hindi. All artwork is original inline SVG drawn by `website/src/art.mjs`: the clay
+khol with laced straps on a turning halo of petals, a labelled diagram of the heads (gajarā,
+kinār, maidān, syāhī; labels from the language's `strings.json`), lotus ornaments and waves.
+The home page has a hero, the three words of the motto (Saṅkalpa · Sādhana · Seva), the
+instrument, an eight-beat rhythm (kksongs lesson 6) whose strokes pulse in time, a short
+history timeline, the three levels and a closing band with the dates. Motion is CSS only and off
+under reduced motion. No photographs or paintings: none are owned or cleared yet; class photos
+can be added later with the people's consent. The emblem in the header is a placeholder until
+the team has a logo.
+
 **Consequences.** Anything interactive (a form, a search) would need JavaScript and a CSP change;
 none is planned (contact is by email). If the site grows past ~20 pages or needs a blog, moving to
 Astro is straightforward: the content files are already HTML fragments per language.
@@ -2376,7 +2394,7 @@ page has `<html lang dir>`, a canonical URL, `hreflang` alternates for every lan
 `x-default` (English), and the sitemap lists the same alternates. The language switcher is a
 visible list of links in each language's own name and script, each marked with `lang` and
 `hreflang`, linking to the same page in that language; no flags. Dates are formatted at build
-time with `Intl` in the page's locale inside `<time datetime="YYYY-MM-DD">`. Fonts are the
+time with `Intl` in the page's locale inside `<time datetime="YYYY-MM-DD">`. Text fonts are the
 system's (Segoe UI / Nirmala UI on Windows, Roboto / Noto on Android, San Francisco / Kohinoor on
 Apple), which carry IAST diacritics (mṛdaṅga), Telugu and Devanagari; nothing is loaded from
 Google Fonts or any other host. Unsettled facts are written `[[TEAM: ...]]` in the texts and shown
@@ -2401,11 +2419,12 @@ the new site).
 
 **Decision.** No cookies, analytics, trackers, embeds or forms, so no cookie banner. Cloudflare
 Pages serves `website/static/_headers`: `Content-Security-Policy: default-src 'none'; style-src
-'self'; img-src 'self'; connect-src 'self'; manifest-src 'self'; base-uri 'none'; form-action
-'none'; frame-ancestors 'none'; upgrade-insecure-requests`, HSTS (2 years, includeSubDomains, no
+'self'; img-src 'self'; font-src 'self'; connect-src 'self'; manifest-src 'self'; base-uri 'none';
+form-action 'none'; frame-ancestors 'none'; upgrade-insecure-requests`, HSTS (2 years, includeSubDomains, no
 preload yet), `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy:
 strict-origin-when-cross-origin`, a Permissions-Policy that switches every powerful feature off,
-COOP and CORP `same-origin`; the hashed CSS is cached for a year. `/.well-known/security.txt`
+COOP and CORP `same-origin`; the hashed CSS and the fonts are cached for a year (a changed font
+file must get a new name). `/.well-known/security.txt`
 (RFC 9116) points to GitHub private reporting and privacy@. `connect-src 'self'` is there only
 because Lighthouse reads `/robots.txt` from inside the page and called it invalid under
 `default-src 'none'`.

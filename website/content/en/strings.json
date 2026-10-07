@@ -21,7 +21,8 @@
     "todo": "To confirm",
     "noCookies": "This website sets no cookies and does not track you.",
     "source": "Source code",
-    "updated": "Updated"
+    "updated": "Updated",
+    "footerNav": "Site"
   },
   "nav": {
     "home": "Home",
@@ -60,5 +61,15 @@
       "title": "Page not found",
       "description": "This page does not exist."
     }
+  },
+  "art": {
+    "anatomyAlt": "Diagram of the mṛdaṅga: the large bass head (bāyāṅ) and the small head (dāyāṅ) face on, each with a braided rim (gajarā), an outer ring (kinār), a middle field (maidān) and a black centre (syāhī); below, the clay body (aṅga) from the side.",
+    "gajara": "Gajarā (rim)",
+    "kinar": "Kinār",
+    "maidan": "Maidān",
+    "syahi": "Syāhī",
+    "baya": "Bāyāṅ · bass head",
+    "daya": "Dāyāṅ · small head",
+    "anga": "Aṅga · clay body"
   }
 }

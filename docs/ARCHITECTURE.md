@@ -546,8 +546,10 @@ A separate static site for the root of the domain, apart from the app ([DECISION
 | `website/content/<lang>/*.html` | That language's page texts as HTML fragments. `{{href:join}}`, `{{email:info}}`, `{{pilotDates}}` … are filled from the config; `[[TEAM: …]]` marks an unsettled fact |
 | `website/src/build.mjs` | Puts each text into the layout and writes `website/dist/` (pages, hashed CSS, sitemap, robots) |
 | `website/src/check.mjs` | Checks the build: links and #fragments, lang/hreflang/canonical, one h1, no inline style or script, string and file parity between languages, headers, security.txt expiry |
+| `website/src/art.mjs` | The original artwork as inline SVG: the drum, the labelled diagram (labels from `strings.json` "art"), ornaments, waves, the header emblem; content files insert it with `{{art:drum}}` etc. |
+| `website/src/styles.css` | The design: night-indigo bands, temple-cream sections, marigold accents; colours as variables with a dark set |
 | `website/src/serve.mjs` | Local preview that behaves like Cloudflare Pages (folder addresses, nearest 404.html, `_headers`) |
-| `website/static/` | Copied as is: `_headers` (CSP and security headers), `favicon.svg`, `.well-known/security.txt` |
+| `website/static/` | Copied as is: `_headers` (CSP and security headers), `favicon.svg`, `.well-known/security.txt`, `fonts/` (Cormorant Garamond, OFL) |
 
 English is at `/`, other languages at `/<code>/` with the same slugs (`/classes/`, `/join/`,
 `/get-the-app/`, `/privacy/`, `/contact/`); each language has its own `404.html`.

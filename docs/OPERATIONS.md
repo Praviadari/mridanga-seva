@@ -323,8 +323,8 @@ every outside link (the APK page, GitHub) for an answer. To look at it: `npm run
 2. Project name **`mridangaseva-site`**. The address is `https://mridangaseva-site.pages.dev`
    (Cloudflare adds letters if the name is taken; use the address it shows).
 3. Drag in the **`website/dist`** folder (copy it to the Desktop first if the file chooser cannot
-   reach the hidden `.claude` folder) and click **Deploy site**. The upload lists about 27 files,
-   including `_headers` and `.well-known/security.txt`.
+   reach the hidden `.claude` folder) and click **Deploy site**. The upload lists about 32 files,
+   including `_headers`, `fonts/` and `.well-known/security.txt`.
 4. Do **not** add a custom domain yet: the domain is attached at go-live, together with
    `app.mridangaseva.com` for the app (audit brief 8).
 

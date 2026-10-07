@@ -1,25 +1,137 @@
 <!-- Home. Facts from NOTES.md "Research: the instrument" (sources: kksongs.org lessons, Wikipedia "Khol",
-     krishna.org). Neutral wording: no organisation's name or logo (team decision 28-09-2026). -->
-<h1>Learn the <i lang="sa-Latn">mṛdaṅga</i> as seva</h1>
-<p class="lead">Mridanga Seva is a volunteer-run class in Abids, Hyderabad, that teaches the <i lang="sa-Latn">mṛdaṅga</i>, the two-headed drum played in <i lang="sa-Latn">kīrtana</i>. Teaching and learning are offered as <i lang="sa-Latn">seva</i>, service.</p>
-<div class="actions">
-  <a class="button" href="{{href:join}}">How to join</a>
-  <a class="button secondary" href="{{href:classes}}">How the classes run</a>
-</div>
+     krishna.org). The eight-beat rhythm is kksongs lesson 6 (tā – – ka tā ghe ghe –). Neutral wording:
+     no organisation's name or logo (team decision 28-09-2026). Layout classes: website/src/styles.css. -->
+<section class="hero night" aria-labelledby="hero-title">
+  <div class="wrap hero-grid">
+    <div>
+      <p class="eyebrow">Abids · Hyderabad</p>
+      <h1 id="hero-title">Learn the <em lang="sa-Latn">mṛdaṅga</em> as seva</h1>
+      <p class="lead">A volunteer-run class that teaches the two-headed drum of <i lang="sa-Latn">kīrtana</i>, step by step, at your own pace. Teaching and learning are offered as <i lang="sa-Latn">seva</i>: service.</p>
+      <div class="actions">
+        <a class="button" href="{{href:join}}">How to join <span class="arrow" aria-hidden="true">→</span></a>
+        <a class="button secondary" href="{{href:classes}}">How the classes run</a>
+      </div>
+      <ul class="hero-facts">
+        <li>Pilot {{pilotDates}}</li>
+        <li>Open to all from {{launchDate}}</li>
+      </ul>
+    </div>
+    <div class="hero-art">{{art:drum}}</div>
+  </div>
+</section>
+<div class="wave-down">{{art:wave}}</div>
 
-<h2>What the seva is</h2>
-<p>Students come to the class when it suits them during the open hours, learn at their own pace and move up through three levels: Beginner, Intermediate and Advanced. Volunteer coordinators teach and keep track of each student's progress; the facilitator assesses each step up to a new level. Children are welcome with a parent's or guardian's consent.</p>
-<p>The class is starting with a pilot from {{pilotDates}}, and opens fully on {{launchDate}}.</p>
+<section class="section" aria-labelledby="seva-title">
+  <div class="wrap">
+    <div class="section-head">
+      {{art:ornament}}
+      <h2 id="seva-title">What the seva is</h2>
+      <p class="lead">Students come when it suits them during the open hours, learn at their own pace, and move up through three levels. Volunteer coordinators teach; the facilitator assesses each step up.</p>
+    </div>
+    <ul class="pillars">
+      <li class="pillar">
+        <p class="pillar-word" lang="sa-Latn">Saṅkalpa</p>
+        <h3>Resolve</h3>
+        <p>Come with a sincere wish to learn. There are no fixed batches: you choose when to come.</p>
+      </li>
+      <li class="pillar">
+        <p class="pillar-word" lang="sa-Latn">Sādhana</p>
+        <h3>Practice</h3>
+        <p>Learn the strokes and rhythms item by item, practise at home, and see your progress in the app.</p>
+      </li>
+      <li class="pillar">
+        <p class="pillar-word" lang="sa-Latn">Seva</p>
+        <h3>Service</h3>
+        <p>Play for <i lang="sa-Latn">kīrtana</i>, the singing of the holy names together, and help the next student learn.</p>
+      </li>
+    </ul>
+    <ul class="facts">
+      <li><strong>3 levels</strong> Beginner, Intermediate, Advanced</li>
+      <li><strong>Drop in</strong> come during the open hours, no batches</li>
+      <li><strong>Children welcome</strong> with a parent's or guardian's consent</li>
+    </ul>
+  </div>
+</section>
 
-<h2>The <i lang="sa-Latn">mṛdaṅga</i></h2>
-<p>The <i lang="sa-Latn">mṛdaṅga</i>, also called the <i>khol</i> in Bengal, is a long drum with two heads: a small, high-pitched head on the right (<i>dāyāṅ</i>) and a large bass head on the left (<i>bāyāṅ</i>). The name comes from Sanskrit <i lang="sa-Latn">mṛt</i>, “clay”, and <i lang="sa-Latn">aṅga</i>, “body”: the traditional drum has a clay body with skin heads laced on with leather straps. It accompanies <i lang="sa-Latn">kīrtana</i>, the singing of the holy names together.</p>
-<p>Each head has rings with their own names and sounds, from the braided rim to the black centre (<i>syāhī</i>). A student learns the strokes (<i>bols</i>) first, then the rhythms that carry a <i lang="sa-Latn">kīrtana</i>.</p>
-<p class="muted">The <i lang="sa-Latn">mṛdaṅga</i> taught here is not the South Indian <i>mridangam</i> of Carnatic music, which is a different drum with its own strokes and rhythms.</p>
+<section class="section tight" aria-labelledby="drum-title">
+  <div class="wrap two-col">
+    <div class="text-block">
+      <p class="eyebrow">The instrument</p>
+      <h2 id="drum-title">The <em lang="sa-Latn">mṛdaṅga</em></h2>
+      <p>Also called the <i>khol</i> in Bengal, the <i lang="sa-Latn">mṛdaṅga</i> is a long drum with two heads: a small, high-pitched head on the right (<i>dāyāṅ</i>) and a large bass head on the left (<i>bāyāṅ</i>). Its name joins Sanskrit <i lang="sa-Latn">mṛt</i>, “clay”, and <i lang="sa-Latn">aṅga</i>, “body”: the traditional drum has a clay body with skin heads laced on with leather straps.</p>
+      <p>Each head has rings with their own names and sounds, from the braided rim to the black centre (<i>syāhī</i>). A student learns the strokes (<i>bols</i>) first, then the rhythms that carry a <i lang="sa-Latn">kīrtana</i>.</p>
+      <p class="note">Not the South Indian <i>mridangam</i> of Carnatic music: that is a different drum with its own strokes and rhythms.</p>
+    </div>
+    <figure class="figure-card">
+      {{art:anatomy}}
+      <figcaption>The two heads, face on, and the body from the side.</figcaption>
+    </figure>
+  </div>
+</section>
 
-<h2>A short history</h2>
-<p>The clay <i lang="sa-Latn">mṛdaṅga</i> is closely tied to the <i lang="sa-Latn">saṅkīrtana</i> movement of Śrī Caitanya Mahāprabhu in Bengal in the 15th and 16th centuries, when singing the holy names together in the streets spread across the region. Since then it has been played in devotional singing across eastern India.</p>
-<p>Clay drums break easily and react to heat and damp. In the 1970s, drums with a fibreglass body and synthetic heads were developed so that the <i lang="sa-Latn">mṛdaṅga</i> could travel and be played outdoors, in rain and sun. Today both kinds are played: clay for its sound, fibreglass for its strength.</p>
+<section class="section tight" aria-labelledby="rhythm-title">
+  <div class="wrap">
+    <div class="rhythm">
+      <p class="eyebrow">A first rhythm</p>
+      <h2 id="rhythm-title">Eight beats</h2>
+      <p class="lead">An elementary <i lang="sa-Latn">kīrtana</i> rhythm, written in <i>bols</i>, the spoken names of the strokes.</p>
+      <ol class="beats">
+        <li class="stroke"><span lang="sa-Latn">tā</span><span class="n">1</span></li>
+        <li><span aria-hidden="true">–</span><span class="sr">rest</span><span class="n">2</span></li>
+        <li><span aria-hidden="true">–</span><span class="sr">rest</span><span class="n">3</span></li>
+        <li class="stroke"><span lang="sa-Latn">ka</span><span class="n">4</span></li>
+        <li class="stroke"><span lang="sa-Latn">tā</span><span class="n">5</span></li>
+        <li class="stroke"><span lang="sa-Latn">ghe</span><span class="n">6</span></li>
+        <li class="stroke"><span lang="sa-Latn">ghe</span><span class="n">7</span></li>
+        <li><span aria-hidden="true">–</span><span class="sr">rest</span><span class="n">8</span></li>
+      </ol>
+      <p class="legend"><i lang="sa-Latn">tā</i>: right hand on the small head. <i lang="sa-Latn">ka</i> (closed) and <i lang="sa-Latn">ghe</i> (open): left hand on the bass head. A dash is a rest.</p>
+    </div>
+  </div>
+</section>
 
-<h2>Where and when</h2>
-<p>The class meets in Abids, Hyderabad. [[TEAM: the address of the class, and whether to publish it]]</p>
-<p><a href="{{href:classes}}">How the classes run</a> · <a href="{{href:app}}">Get the app</a> · <a href="{{href:contact}}">Contact</a></p>
+<section class="section tight" aria-labelledby="history-title">
+  <div class="wrap">
+    <div class="section-head">
+      {{art:ornament}}
+      <h2 id="history-title">A short history</h2>
+    </div>
+    <ol class="timeline">
+      <li><span class="when">15th–16th century</span><p>The clay <i lang="sa-Latn">mṛdaṅga</i> is closely tied to the <i lang="sa-Latn">saṅkīrtana</i> movement of Śrī Caitanya Mahāprabhu in Bengal, when singing the holy names together in the streets spread across the region.</p></li>
+      <li><span class="when">1970s</span><p>Drums with a fibreglass body and synthetic heads are developed, so the <i lang="sa-Latn">mṛdaṅga</i> can travel and be played outdoors, in rain and sun.</p></li>
+      <li><span class="when">Today</span><p>Both kinds are played across eastern India and beyond: clay for its sound, fibreglass for its strength.</p></li>
+    </ol>
+  </div>
+</section>
+
+<section class="section tight" aria-labelledby="path-title">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">Your path</p>
+      <h2 id="path-title">Three levels, at your own pace</h2>
+    </div>
+    <ol class="path">
+      <li><h3>Beginner</h3><p>Holding and caring for the drum, the basic strokes of each hand, the first simple rhythms.</p></li>
+      <li><h3>Intermediate</h3><p>More rhythms, moving from one to another, playing steadily with singing.</p></li>
+      <li><h3>Advanced</h3><p>Longer rhythm cycles, variations, and leading the rhythm in a <i lang="sa-Latn">kīrtana</i>.</p></li>
+    </ol>
+    <p class="center muted">[[TEAM: the facilitator's syllabus for each level; the lines above are a general outline only]]</p>
+  </div>
+</section>
+
+<div class="wave-up">{{art:wave}}</div>
+<section class="closing night" aria-labelledby="closing-title">
+  <div class="wrap">
+    {{art:ornament}}
+    <h2 id="closing-title">Come and play</h2>
+    <p class="lead">The class meets in Abids, Hyderabad. [[TEAM: the address of the class, and whether to publish it]]</p>
+    <ul class="dates">
+      <li><span class="label">Pilot</span><span class="value">{{pilotDates}}</span></li>
+      <li><span class="label">Open to all</span><span class="value">{{launchDate}}</span></li>
+    </ul>
+    <div class="actions">
+      <a class="button" href="{{href:join}}">How to join <span class="arrow" aria-hidden="true">→</span></a>
+      <a class="button secondary" href="{{href:app}}">Get the app</a>
+    </div>
+  </div>
+</section>

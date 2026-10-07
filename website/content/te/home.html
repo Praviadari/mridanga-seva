@@ -1,25 +1,136 @@
-<!-- Telugu draft of en/home.html, for native-speaker review. "మృదంగ (ఖోల్)" is used on purpose: in
-     Telugu "మృదంగం" usually means the Carnatic drum, which this class does not teach. -->
-<h1>మృదంగను సేవగా నేర్చుకోండి</h1>
-<p class="lead">మృదంగ సేవ అనేది హైదరాబాద్‌లోని అబిడ్స్‌లో స్వచ్ఛంద సేవకులు నడిపే తరగతి. ఇక్కడ కీర్తనలో వాయించే రెండు ముఖాల డోలు అయిన మృదంగ (ఖోల్) నేర్పిస్తారు. నేర్పించడం, నేర్చుకోవడం రెండూ సేవగా చేస్తారు.</p>
-<div class="actions">
-  <a class="button" href="{{href:join}}">ఎలా చేరాలి</a>
-  <a class="button secondary" href="{{href:classes}}">తరగతులు ఎలా జరుగుతాయి</a>
-</div>
+<!-- Telugu draft of en/home.html, for native-speaker review. "మృదంగ (ఖోల్)" on purpose: in Telugu
+     "మృదంగం" usually means the Carnatic drum, which this class does not teach. Bols stay in IAST. -->
+<section class="hero night" aria-labelledby="hero-title">
+  <div class="wrap hero-grid">
+    <div>
+      <p class="eyebrow">అబిడ్స్ · హైదరాబాద్</p>
+      <h1 id="hero-title">మృదంగను సేవగా నేర్చుకోండి</h1>
+      <p class="lead">కీర్తనలో వాయించే రెండు ముఖాల డోలును దశలవారీగా, మీ వేగంతో నేర్పించే స్వచ్ఛంద తరగతి. నేర్పించడం, నేర్చుకోవడం రెండూ సేవగా చేస్తారు.</p>
+      <div class="actions">
+        <a class="button" href="{{href:join}}">ఎలా చేరాలి <span class="arrow" aria-hidden="true">→</span></a>
+        <a class="button secondary" href="{{href:classes}}">తరగతులు ఎలా జరుగుతాయి</a>
+      </div>
+      <ul class="hero-facts">
+        <li>పైలట్: {{pilotDates}}</li>
+        <li>అందరికీ: {{launchDate}} నుండి</li>
+      </ul>
+    </div>
+    <div class="hero-art">{{art:drum}}</div>
+  </div>
+</section>
+<div class="wave-down">{{art:wave}}</div>
 
-<h2>ఈ సేవ ఏమిటి</h2>
-<p>విద్యార్థులు తెరిచి ఉండే సమయంలో తమకు వీలైనప్పుడు తరగతికి వస్తారు, తమ వేగంతో నేర్చుకుంటారు, మూడు స్థాయిల్లో ముందుకు సాగుతారు: ప్రారంభ (Beginner), మధ్యమ (Intermediate), ఉన్నత (Advanced). స్వచ్ఛంద సమన్వయకర్తలు నేర్పిస్తారు, ప్రతి విద్యార్థి పురోగతిని గమనిస్తారు; కొత్త స్థాయికి వెళ్ళే ప్రతి అడుగును ఫెసిలిటేటర్ అంచనా వేస్తారు. తల్లిదండ్రులు లేదా సంరక్షకుల సమ్మతితో పిల్లలు కూడా చేరవచ్చు.</p>
-<p>తరగతి {{pilotDates}} వరకు పైలట్‌గా మొదలవుతుంది, {{launchDate}} నుండి అందరికీ తెరుచుకుంటుంది.</p>
+<section class="section" aria-labelledby="seva-title">
+  <div class="wrap">
+    <div class="section-head">
+      {{art:ornament}}
+      <h2 id="seva-title">ఈ సేవ ఏమిటి</h2>
+      <p class="lead">విద్యార్థులు తెరిచి ఉండే సమయంలో తమకు వీలైనప్పుడు వస్తారు, తమ వేగంతో నేర్చుకుంటారు, మూడు స్థాయిల్లో ముందుకు సాగుతారు. స్వచ్ఛంద సమన్వయకర్తలు నేర్పిస్తారు; ప్రతి కొత్త స్థాయిని ఫెసిలిటేటర్ అంచనా వేస్తారు.</p>
+    </div>
+    <ul class="pillars">
+      <li class="pillar">
+        <p class="pillar-word" lang="sa-Latn">Saṅkalpa</p>
+        <h3>సంకల్పం</h3>
+        <p>నేర్చుకోవాలనే నిజమైన కోరికతో రండి. నిర్ణీత బ్యాచ్‌లు లేవు: ఎప్పుడు రావాలో మీరే ఎంచుకుంటారు.</p>
+      </li>
+      <li class="pillar">
+        <p class="pillar-word" lang="sa-Latn">Sādhana</p>
+        <h3>సాధన</h3>
+        <p>దెబ్బలు, తాళాలు ఒక్కొక్కటిగా నేర్చుకోండి, ఇంట్లో సాధన చేయండి, యాప్‌లో మీ పురోగతి చూడండి.</p>
+      </li>
+      <li class="pillar">
+        <p class="pillar-word" lang="sa-Latn">Seva</p>
+        <h3>సేవ</h3>
+        <p>కీర్తనకు, అంటే అందరూ కలిసి భగవన్నామాలు పాడటానికి, వాయించండి; తర్వాతి విద్యార్థి నేర్చుకోవడానికి సహాయం చేయండి.</p>
+      </li>
+    </ul>
+    <ul class="facts">
+      <li><strong>3 స్థాయిలు</strong> ప్రారంభ, మధ్యమ, ఉన్నత</li>
+      <li><strong>వీలైనప్పుడు రండి</strong> తెరిచి ఉండే సమయంలో, బ్యాచ్‌లు లేవు</li>
+      <li><strong>పిల్లలకు స్వాగతం</strong> తల్లిదండ్రులు లేదా సంరక్షకుల సమ్మతితో</li>
+    </ul>
+  </div>
+</section>
 
-<h2>మృదంగ</h2>
-<p>మృదంగను బెంగాల్‌లో ఖోల్ అని కూడా అంటారు. ఇది రెండు ముఖాలు ఉన్న పొడవైన డోలు: కుడివైపు చిన్న, ఎత్తైన స్వరం ఇచ్చే ముఖం (దాయాఁ), ఎడమవైపు పెద్ద, గంభీరమైన స్వరం ఇచ్చే ముఖం (బాయాఁ). ఈ పేరు సంస్కృతంలోని <i lang="sa-Latn">mṛt</i> (మట్టి), <i lang="sa-Latn">aṅga</i> (శరీరం) నుండి వచ్చింది: సాంప్రదాయ డోలుకు మట్టి శరీరం, తోలు పట్టీలతో కట్టిన చర్మపు ముఖాలు ఉంటాయి. ఇది కీర్తనకు, అంటే అందరూ కలిసి భగవన్నామాలు పాడటానికి, తోడుగా వాయిస్తారు.</p>
-<p>ప్రతి ముఖంపై అల్లిన అంచు నుండి నల్లని మధ్యభాగం (స్యాహీ) వరకు, వేర్వేరు పేర్లు, వేర్వేరు శబ్దాలు ఉన్న వలయాలు ఉంటాయి. విద్యార్థి మొదట దెబ్బలు (బోల్స్) నేర్చుకుంటాడు, తర్వాత కీర్తనను నడిపించే తాళాలు నేర్చుకుంటాడు.</p>
-<p class="muted">ఇక్కడ నేర్పించే మృదంగ, కర్ణాటక సంగీతంలోని దక్షిణ భారత మృదంగం కాదు. అది తన సొంత దెబ్బలు, తాళాలు ఉన్న వేరే వాయిద్యం.</p>
+<section class="section tight" aria-labelledby="drum-title">
+  <div class="wrap two-col">
+    <div class="text-block">
+      <p class="eyebrow">వాయిద్యం</p>
+      <h2 id="drum-title">మృదంగ</h2>
+      <p>బెంగాల్‌లో ఖోల్ అని కూడా పిలిచే మృదంగ, రెండు ముఖాలు ఉన్న పొడవైన డోలు: కుడివైపు చిన్న, ఎత్తైన స్వరం ఇచ్చే ముఖం (దాయాఁ), ఎడమవైపు పెద్ద, గంభీరమైన స్వరం ఇచ్చే ముఖం (బాయాఁ). ఈ పేరు సంస్కృతంలోని <i lang="sa-Latn">mṛt</i> (మట్టి), <i lang="sa-Latn">aṅga</i> (శరీరం) నుండి వచ్చింది: సాంప్రదాయ డోలుకు మట్టి శరీరం, తోలు పట్టీలతో కట్టిన చర్మపు ముఖాలు ఉంటాయి.</p>
+      <p>ప్రతి ముఖంపై అల్లిన అంచు నుండి నల్లని మధ్యభాగం (స్యాహీ) వరకు వేర్వేరు పేర్లు, శబ్దాలు ఉన్న వలయాలు ఉంటాయి. విద్యార్థి మొదట దెబ్బలు (బోల్స్) నేర్చుకుంటాడు, తర్వాత కీర్తనను నడిపించే తాళాలు.</p>
+      <p class="note">ఇది కర్ణాటక సంగీతంలోని దక్షిణ భారత మృదంగం కాదు: అది తన సొంత దెబ్బలు, తాళాలు ఉన్న వేరే వాయిద్యం.</p>
+    </div>
+    <figure class="figure-card">
+      {{art:anatomy}}
+      <figcaption>రెండు ముఖాలు ఎదురుగా, శరీరం పక్క నుండి.</figcaption>
+    </figure>
+  </div>
+</section>
 
-<h2>సంక్షిప్త చరిత్ర</h2>
-<p>మట్టి మృదంగకు 15వ, 16వ శతాబ్దాలలో బెంగాల్‌లో శ్రీ చైతన్య మహాప్రభువుల సంకీర్తన ఉద్యమంతో దగ్గరి సంబంధం ఉంది. ఆ కాలంలో వీధుల్లో అందరూ కలిసి భగవన్నామాలు పాడటం ఆ ప్రాంతమంతా వ్యాపించింది. అప్పటి నుండి తూర్పు భారతదేశమంతటా భక్తి గానంలో దీనిని వాయిస్తున్నారు.</p>
-<p>మట్టి డోళ్ళు సులభంగా పగిలిపోతాయి, వేడికి, తేమకు ప్రభావితమవుతాయి. 1970లలో ఫైబర్‌గ్లాస్ శరీరం, సింథటిక్ ముఖాలతో డోళ్ళు తయారయ్యాయి, దాంతో మృదంగను ప్రయాణాలకు తీసుకెళ్ళి, ఎండలో, వానలో బయట కూడా వాయించడం సాధ్యమైంది. ఈ రోజు రెండు రకాలూ వాయిస్తారు: శబ్దం కోసం మట్టిది, బలం కోసం ఫైబర్‌గ్లాస్‌ది.</p>
+<section class="section tight" aria-labelledby="rhythm-title">
+  <div class="wrap">
+    <div class="rhythm">
+      <p class="eyebrow">మొదటి తాళం</p>
+      <h2 id="rhythm-title">ఎనిమిది మాత్రలు</h2>
+      <p class="lead">ప్రాథమిక కీర్తన తాళం, బోల్స్‌లో, అంటే దెబ్బల ఉచ్చరించే పేర్లలో రాసినది.</p>
+      <ol class="beats">
+        <li class="stroke"><span lang="sa-Latn">tā</span><span class="n">1</span></li>
+        <li><span aria-hidden="true">–</span><span class="sr">విరామం</span><span class="n">2</span></li>
+        <li><span aria-hidden="true">–</span><span class="sr">విరామం</span><span class="n">3</span></li>
+        <li class="stroke"><span lang="sa-Latn">ka</span><span class="n">4</span></li>
+        <li class="stroke"><span lang="sa-Latn">tā</span><span class="n">5</span></li>
+        <li class="stroke"><span lang="sa-Latn">ghe</span><span class="n">6</span></li>
+        <li class="stroke"><span lang="sa-Latn">ghe</span><span class="n">7</span></li>
+        <li><span aria-hidden="true">–</span><span class="sr">విరామం</span><span class="n">8</span></li>
+      </ol>
+      <p class="legend"><i lang="sa-Latn">tā</i>: చిన్న ముఖంపై కుడి చేయి. <i lang="sa-Latn">ka</i> (మూసిన), <i lang="sa-Latn">ghe</i> (తెరిచిన): బాస్ ముఖంపై ఎడమ చేయి. గీత అంటే విరామం.</p>
+    </div>
+  </div>
+</section>
 
-<h2>ఎక్కడ, ఎప్పుడు</h2>
-<p>తరగతి హైదరాబాద్‌లోని అబిడ్స్‌లో జరుగుతుంది. [[TEAM: తరగతి చిరునామా, దానిని ప్రచురించాలా వద్దా]]</p>
-<p><a href="{{href:classes}}">తరగతులు ఎలా జరుగుతాయి</a> · <a href="{{href:app}}">యాప్ పొందండి</a> · <a href="{{href:contact}}">సంప్రదించండి</a></p>
+<section class="section tight" aria-labelledby="history-title">
+  <div class="wrap">
+    <div class="section-head">
+      {{art:ornament}}
+      <h2 id="history-title">సంక్షిప్త చరిత్ర</h2>
+    </div>
+    <ol class="timeline">
+      <li><span class="when">15–16 శతాబ్దాలు</span><p>మట్టి మృదంగకు బెంగాల్‌లో శ్రీ చైతన్య మహాప్రభువుల సంకీర్తన ఉద్యమంతో దగ్గరి సంబంధం ఉంది. అప్పుడు వీధుల్లో అందరూ కలిసి భగవన్నామాలు పాడటం ఆ ప్రాంతమంతా వ్యాపించింది.</p></li>
+      <li><span class="when">1970లు</span><p>ఫైబర్‌గ్లాస్ శరీరం, సింథటిక్ ముఖాలతో డోళ్ళు తయారయ్యాయి, దాంతో మృదంగను ప్రయాణాలకు తీసుకెళ్ళి ఎండలో, వానలో బయట వాయించడం సాధ్యమైంది.</p></li>
+      <li><span class="when">ఈ రోజు</span><p>తూర్పు భారతదేశంలో, బయటా రెండు రకాలూ వాయిస్తారు: శబ్దం కోసం మట్టిది, బలం కోసం ఫైబర్‌గ్లాస్‌ది.</p></li>
+    </ol>
+  </div>
+</section>
+
+<section class="section tight" aria-labelledby="path-title">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">మీ మార్గం</p>
+      <h2 id="path-title">మూడు స్థాయిలు, మీ వేగంతో</h2>
+    </div>
+    <ol class="path">
+      <li><h3>ప్రారంభ</h3><p>డోలును పట్టుకోవడం, సంరక్షణ, ప్రతి చేతి ప్రాథమిక దెబ్బలు, మొదటి సరళమైన తాళాలు.</p></li>
+      <li><h3>మధ్యమ</h3><p>మరిన్ని తాళాలు, ఒకదాని నుండి మరొకదానికి మారడం, పాటతో స్థిరంగా వాయించడం.</p></li>
+      <li><h3>ఉన్నత</h3><p>పొడవైన తాళ చక్రాలు, వైవిధ్యాలు, కీర్తనలో తాళాన్ని నడిపించడం.</p></li>
+    </ol>
+    <p class="center muted">[[TEAM: ప్రతి స్థాయికి ఫెసిలిటేటర్ పాఠ్యాంశాలు; పైవి సాధారణ రూపురేఖ మాత్రమే]]</p>
+  </div>
+</section>
+
+<div class="wave-up">{{art:wave}}</div>
+<section class="closing night" aria-labelledby="closing-title">
+  <div class="wrap">
+    {{art:ornament}}
+    <h2 id="closing-title">రండి, వాయించండి</h2>
+    <p class="lead">తరగతి హైదరాబాద్‌లోని అబిడ్స్‌లో జరుగుతుంది. [[TEAM: తరగతి చిరునామా, దానిని ప్రచురించాలా వద్దా]]</p>
+    <ul class="dates">
+      <li><span class="label">పైలట్</span><span class="value">{{pilotDates}}</span></li>
+      <li><span class="label">అందరికీ</span><span class="value">{{launchDate}}</span></li>
+    </ul>
+    <div class="actions">
+      <a class="button" href="{{href:join}}">ఎలా చేరాలి <span class="arrow" aria-hidden="true">→</span></a>
+      <a class="button secondary" href="{{href:app}}">యాప్ పొందండి</a>
+    </div>
+  </div>
+</section>

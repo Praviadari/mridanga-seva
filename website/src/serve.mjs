@@ -28,6 +28,7 @@ const types = {
   '.xml': 'application/xml; charset=utf-8',
   '.txt': 'text/plain; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
+  '.woff2': 'font/woff2',
 };
 
 /** Parses Cloudflare's _headers: a path pattern line, then indented "Name: value" lines. */
