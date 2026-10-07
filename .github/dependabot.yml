@@ -13,15 +13,28 @@ updates:
     groups:
       app-minor-and-patch:
         update-types: [minor, patch]
+    # Expo SDK 57 pins these to exact versions; any bump (even a patch) changes the fingerprint and
+    # needs a new APK. They move only together, with `npx expo install --fix` at an SDK upgrade
+    # (lead decision 07-10-2026, after PR #5 bumped react and four native modules).
     ignore:
-      - dependency-name: "expo*"
-        update-types: [version-update:semver-major]
-      - dependency-name: "react-native*"
-        update-types: [version-update:semver-major, version-update:semver-minor]
+      - dependency-name: "expo"
+      - dependency-name: "expo-*"
+      - dependency-name: "@expo/*"
       - dependency-name: "react"
-        update-types: [version-update:semver-major, version-update:semver-minor]
       - dependency-name: "react-dom"
-        update-types: [version-update:semver-major, version-update:semver-minor]
+      - dependency-name: "react-native"
+      - dependency-name: "react-native-*"
+      - dependency-name: "@react-native/*"
+      - dependency-name: "@types/react"
+      # eas-cli is pinned on purpose (DECISIONS #153); raise it by hand.
+      - dependency-name: "eas-cli"
+      # The Expo SDK sets the TypeScript and ESLint majors it supports.
+      - dependency-name: "typescript"
+        update-types: [version-update:semver-major]
+      - dependency-name: "eslint"
+        update-types: [version-update:semver-major]
+      - dependency-name: "eslint-config-expo"
+        update-types: [version-update:semver-major]
 
   - package-ecosystem: npm
     directory: /supabase/tests

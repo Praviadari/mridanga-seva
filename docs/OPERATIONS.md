@@ -1419,8 +1419,13 @@ ones monthly; check the action's release notes before merging.
 
 `.github/dependabot.yml` opens pull requests for outdated or vulnerable packages: npm weekly on
 Monday for `app/`, `supabase/tests/` and `website/` (minor and patch updates grouped into one pull
-request per folder), GitHub Actions monthly. Expo and React Native majors are skipped: those move
-together in an SDK upgrade (`npx expo install --fix`), not one by one.
+request per folder), GitHub Actions monthly. In `app/`, every Expo-pinned package is skipped
+entirely (expo, expo-*, @expo/*, react, react-dom, react-native, react-native-*, @react-native/*,
+@types/react), as is the pinned eas-cli and the TypeScript/ESLint majors: Expo SDK 57 pins exact
+versions, so even a patch bump changes the fingerprint and needs a new APK. Those move together in
+an SDK upgrade (`npx expo install --fix`) with a new build. Their security alerts still show under
+the repository's Security tab; they are fixed at that upgrade, or by a lock-file-only
+`npm update <transitive package>` when the fingerprint stays the same (07-10-2026: shell-quote).
 
 Reviewing one (never auto-merge, never merge on a green CI alone):
 1. Read what changed (the pull request lists versions and release notes).
