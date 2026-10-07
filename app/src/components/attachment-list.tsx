@@ -78,7 +78,9 @@ export function AttachmentList({ attachments }: AttachmentListProps) {
                 ]}>
                 {url ? (
                   <Image
-                    source={{ uri: url }}
+                    // The signed link changes on every load; the path does not (each upload gets
+                    // a new random one), so the photo is downloaded once, not on every open (D9-06).
+                    source={{ uri: url, cacheKey: a.path }}
                     style={styles.photo}
                     contentFit={photos.length === 1 ? 'contain' : 'cover'}
                     transition={150}

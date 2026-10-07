@@ -928,6 +928,9 @@ The secret `EXPO_PROJECT` is optional (default `@mridanga-seva/mridanga-seva`, t
     token deleted), `OtherProject` (a token of another Expo app), `token_gone` (signed out first),
     `expired` (over a day), `gave_up` (5 tries), `bad_url`. Rows with neither `sent_at` nor `failed`
     wait for `next_try_at`. Rows are deleted after 3 days.
+    **Never edit `announcements.notified_at` by hand in the Table Editor** except to re-send a post on
+    purpose: emptying it makes the next run push the post again to every phone (if it was published
+    less than a day ago), and the dashboard's edit leaves no audit row (audit R2G3-04).
 
 **Switching it off:** `select cron.unschedule('mridanga-push');` in the SQL editor stops it. To
 switch on again, `select cron.schedule('mridanga-push', '* * * * *', 'select send_due_push()');`:

@@ -19,6 +19,10 @@
 // the pg_cron job list.
 // 0034 adds the access log: guardians, consents, call notes and audit-log pages read through logging
 // functions, coordinators without direct reads, the privacy-notice version on consents, the purge.
+// 0037 (audit backlog) adds: no policy calls a role helper per row (the (select ...) form, with the
+// rules still refusing), the faster student_overview and the lookup indexes, the closed rights
+// (trigger functions, TRUNCATE, definer search path, service_role), roll numbers, student value
+// checks and the small data rules, each named by its audit finding ID.
 //
 // Run before pasting a migration into the live Supabase project, and on every pull request (CI):
 //   cd supabase/tests && npm ci && npm test        (Node 22.18 or newer, see package.json engines)
@@ -116,7 +120,7 @@ process.on('uncaughtException', (error) => {
 // D14-10: every check is counted, and the run fails when fewer (or more) checks ran than expected,
 // so a block skipped by a renamed migration or a commented-out section cannot pass unseen.
 // Adding or removing checks? Run the suite and set this to the new total it prints.
-const EXPECTED_CHECKS = 1280; // 0035 asset labels: +38; 0036 account creation: +60
+const EXPECTED_CHECKS = 1327; // 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47
 let failures = 0;
 let passes = 0;
 
@@ -330,7 +334,7 @@ await refusesWith('signed-in user cannot run link_login_to_student', 'permission
   asApp('authenticated', arjun, `select link_login_to_student('${arjun}', 'divya.m@example.com')`));
 await refusesWith('anon cannot run toggle_visit', 'permission denied for function toggle_visit', () =>
   asApp('anon', null, `select toggle_visit('${registered.id}', 'manual')`));
-await refusesWith('student cannot run toggle_visit', 'not allowed', () =>
+await refusesWith('student cannot run toggle_visit', 'not_allowed', () =>
   asApp('authenticated', arjun, `select toggle_visit('${registered.id}', 'manual')`));
 const [visit] = await asApp('authenticated', coordinator,
   `select toggle_visit($1, 'manual') as result`, [registered.id]);
@@ -2784,10 +2788,10 @@ const secAdult = await register(coordinator, { p_full_name: 'Sec Round Adult', p
 const secLogin = await signUp('sec.adult@example.com', true);
 check('0025: a confirmed sign-up still links to its record by email', (await linkOf('sec.adult@example.com')) === secLogin);
 const [{ qr_token: secQr }] = await asOwner(`select qr_token from students where id = '${secAdult.id}'`);
-await refusesWith('a switched-off coordinator cannot run toggle_visit', 'not allowed', () =>
+await refusesWith('a switched-off coordinator cannot run toggle_visit', 'not_allowed', () =>
   asApp('authenticated', offCoord, `select toggle_visit($1, 'manual')`, [secAdult.id]));
-await refusesWith('... nor scan_qr', 'not allowed', () => asApp('authenticated', offCoord, 'select scan_qr($1)', [secQr]));
-await refusesWith('... not even with an unknown code (no probing)', 'not allowed', () =>
+await refusesWith('... nor scan_qr', 'not_allowed', () => asApp('authenticated', offCoord, 'select scan_qr($1)', [secQr]));
+await refusesWith('... not even with an unknown code (no probing)', 'not_allowed', () =>
   asApp('authenticated', offCoord, `select scan_qr('00000000-0000-4000-8000-000000000000')`));
 await refusesWith('... nor mark_visit', 'not_allowed', () => asApp('authenticated', offCoord, `select mark_visit($1, 'in')`, [secAdult.id]));
 await refusesWith('... nor log_call', 'not_allowed', () =>
@@ -2798,12 +2802,12 @@ check('... and reads no student, guardian or consent', (await asApp('authenticat
 await asApp('authenticated', guru, `update profiles set active = false where id = '${secLogin}'`);
 check('a switched-off student no longer reads their own record or QR token',
   (await asApp('authenticated', secLogin, 'select qr_token from students')).length === 0);
-await refusesWith('... and cannot check themselves in', 'not allowed', () => asApp('authenticated', secLogin, 'select scan_qr($1)', [secQr]));
+await refusesWith('... and cannot check themselves in', 'not_allowed', () => asApp('authenticated', secLogin, 'select scan_qr($1)', [secQr]));
 await asApp('authenticated', guru, `update profiles set active = true where id = '${secLogin}'`);
 check('switched on again, the student reads their record', (await asApp('authenticated', secLogin, 'select id from students')).length === 1);
 const noProfile = await signUp('no.profile@example.com', true);
 await asOwner(`delete from profiles where id = '${noProfile}'`);
-await refusesWith('a login without a profile cannot run toggle_visit', 'not allowed', () =>
+await refusesWith('a login without a profile cannot run toggle_visit', 'not_allowed', () =>
   asApp('authenticated', noProfile, `select toggle_visit($1, 'manual')`, [secAdult.id]));
 const kiosk = await signUp('door.tablet@example.com', true);
 await asOwner(`update profiles set role = 'kiosk' where id = '${kiosk}'`);
@@ -4136,17 +4140,12 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   };
   const anonRuns = diffList(await runnableBy('anon'), ANON_MAY_RUN);
   check('D14-03: anon may run exactly the functions on its allow-list (sign_up_choices only), trigger functions included', anonRuns.ok, anonRuns.detail);
-  // 0001's trigger functions were never revoked from authenticated. Harmless: Postgres refuses to
-  // call a trigger function directly (checked below). A later migration may revoke them; then
-  // delete this list.
-  const OLD_TRIGGER_FUNCTIONS = ['assign_roll_no()', 'audit_row()', 'guard_profile_update()', 'guard_student_update()',
-    'handle_user_confirmed()', 'link_student_email()'];
-  const signedInRuns = diffList(await runnableBy('authenticated'), [...SIGNED_IN_MAY_RUN, ...OLD_TRIGGER_FUNCTIONS]);
+  // 0037 closed 0001's six trigger functions (assign_roll_no, audit_row, ...) too: no exception left.
+  const signedInRuns = diffList(await runnableBy('authenticated'), SIGNED_IN_MAY_RUN);
   check('D14-03: signed-in people may run exactly the functions on the allow-list, trigger functions included', signedInRuns.ok, signedInRuns.detail);
   const directTrigger = await tryAs('authenticated', tn.student, 'select audit_row()');
-  check('D14-03: ... and a trigger function cannot be called directly', directTrigger.error === 'trigger functions can only be called as triggers',
-    directTrigger.error ?? 'was allowed');
-  const definerNoPath = await asOwner(`select p.oid::regprocedure::text as f from pg_proc p
+  check('D14-03: ... and a trigger function cannot be called directly (brief 12 leftover, 0037)', directTrigger.error === 'permission denied for function audit_row',
+    directTrigger.error ?? 'was allowed');  const definerNoPath = await asOwner(`select p.oid::regprocedure::text as f from pg_proc p
     where p.pronamespace = 'public'::regnamespace and p.prosecdef
       and not exists (select 1 from unnest(coalesce(p.proconfig, '{}')) c where c like 'search_path=%')`);
   check('D14-03: every security definer function fixes its search_path', definerNoPath.length === 0, definerNoPath.map((r) => r.f).join(' '));
@@ -4294,7 +4293,12 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   check('D14-08: an edit with no status change adds an audit row and no history row', (await auditCount('students', tnStudent)) === 2
     && (await asOwner(`select count(*)::int as n from status_history where student_id = '${tnStudent}'`))[0].n === 1);
   await asApp('authenticated', tn.coordinator, `update profiles set language = 'hi' where id = $1`, [tn.coordinator]);
-  check('D14-08: a profile edit is audited with who made it', (await auditCount('profiles', tn.coordinator)) >= 1);
+  check('D1a-13: a profile edit that only switches the language is not audited (0037)', (await auditCount('profiles', tn.coordinator)) === 0);
+  await asApp('authenticated', tn.coordinator, `update profiles set full_name = 'Coordinator Tn' where id = $1`, [tn.coordinator]);
+  check('D14-08: a profile edit is audited with who made it', (await auditCount('profiles', tn.coordinator)) === 1);
+  const [{ n: loginAudit }] = await asOwner(`select count(*)::int as n from audit_log where table_name = 'profiles'
+    and row_id = '${tn.coordinator}' and action = 'INSERT' and new_row ->> 'email' is not null`);
+  check('D1a-13: a new login is audited when it appears, with its email (0037)', loginAudit === 1, String(loginAudit));
   const tnCall = await logCall(tn.coordinator, { p_student: tnStudent, p_outcome: 'not_reachable', p_reason: null, p_comment: 'Test net call' });
   const [{ n: callAudit }] = await asOwner(`select count(*)::int as n from audit_log where table_name = 'call_logs'
     and row_id = '${tnCall}' and action = 'INSERT' and changed_by = '${tn.coordinator}'`);
@@ -4452,6 +4456,214 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
     and has_function_privilege('authenticated', 'finish_stocktake(bigint,text)', 'execute') as ok`))[0].ok === true);
   // Clean up so the counts below stay as they were.
   await asApp('authenticated', coordinator, `select return_inventory_item($1, 'good')`, [drumLoan]);
+}
+
+// ---------------------------------------------------------------- 0037 database and performance backlog
+{
+  // D9-01: every policy calls its helpers as (select f()), so they run once per statement.
+  const HELPERS = 'is_staff|is_guru|my_role|my_student_id|has_class_role|is_ig_editor|ig_reader|today_ist|is_treasurer|is_fund_keeper';
+  const bare = new RegExp(`(?<!SELECT )\\b(?:${HELPERS})\\(\\)|(?<!SELECT )auth\\.uid\\(\\)`);
+  const pols = await asOwner(`select schemaname || '.' || tablename || '.' || policyname as p, coalesce(qual, '') || ' ' || coalesce(with_check, '') as e
+    from pg_policies where schemaname in ('public', 'storage')`);
+  const unwrapped = pols.filter((r) => bare.test(r.e)).map((r) => r.p);
+  check('D9-01: no policy calls a role helper or auth.uid() per row (all wrapped as (select ...))', unwrapped.length === 0 && pols.length > 120,
+    `${pols.length} policies; unwrapped: ${unwrapped.join(' ') || '-'}`);
+  // The planner runs the wrapped helper once (an InitPlan) instead of once per row.
+  await db.exec(`select set_config('request.jwt.claim.sub', '${coordinator}', false); set role authenticated`);
+  const plan = (await db.query('explain (costs off) select id from students')).rows.map((r) => r['QUERY PLAN']).join('\n');
+  await db.exec(`reset role; select set_config('request.jwt.claim.sub', '', false)`);
+  check('D9-01: a staff read of students checks the role once per query (InitPlan, no per-row my_role)', /InitPlan/.test(plan) && !/Filter:.*\bis_staff\(\)/.test(plan), plan.replace(/\n/g, ' | '));
+  // The rules still hold after the rewrite (the whole suite above runs on the wrapped policies too).
+  await refusesWith('D9-01: a student still cannot post an announcement', 'new row violates row-level security policy for table "announcements"', () =>
+    asApp('authenticated', arjun, `insert into announcements (title, body, audience) values ('x', 'y', 'all')`));
+  check('D9-01: a student still reads only their own record and no call notes', (await asApp('authenticated', arjun, 'select id from students')).length === 1
+    && (await asApp('authenticated', arjun, 'select id from call_logs')).length === 0
+    && (await asApp('authenticated', arjun, 'select id from follow_up_tasks')).length === 0);
+
+  // D9-02: the faster student_overview gives the same answers as an aggregate over every visit.
+  const viewRows = await asApp('authenticated', coordinator, 'select id, last_visit_at, here_now from student_overview order by id');
+  const plain = await asOwner(`select s.id, lv.last_visit_at, lv.here_now from students s left join lateral (select max(v.check_in) as last_visit_at,
+    coalesce(bool_or(v.check_out is null), false) as here_now from visits v where v.student_id = s.id) lv on true order by s.id`); // 0033's way
+  check('D9-02: student_overview (index reads) matches the full aggregate for every student', viewRows.length === plain.length
+    && JSON.stringify(viewRows) === JSON.stringify(plain), `${viewRows.length} rows`);
+
+  // D9-07: the per-student lookups can use an index (shown with sequential scans switched off,
+  // as the seeded tables are too small for the planner to bother).
+  const want = ['call_logs_student_idx', 'consents_student_idx', 'guardians_student_idx', 'follow_up_tasks_student_idx',
+    'status_history_student_idx', 'level_history_student_idx', 'student_progress_item_idx', 'materials_item_idx',
+    'visits_check_in_idx', 'announcement_reads_profile_idx', 'group_members_profile_idx', 'notifications_announcement_idx'];
+  const have = (await asOwner(`select indexname from pg_indexes where schemaname = 'public'`)).map((r) => r.indexname);
+  check('D9-07: the 12 lookup indexes exist', want.every((i) => have.includes(i)), want.filter((i) => !have.includes(i)).join(' '));
+  await db.exec('set enable_seqscan = off');
+  const usesIndex = async (sql) => (await db.query(`explain (costs off) ${sql}`)).rows.map((r) => r['QUERY PLAN']).join(' ');
+  const [{ id: anyStudent }] = await asOwner('select id from students limit 1');
+  const callPlan = await usesIndex(`select * from call_logs where student_id = '${anyStudent}'`);
+  const visitPlan = await usesIndex(`select count(*) from visits where check_in >= now() - interval '1 day'`);
+  await db.exec('reset enable_seqscan');
+  check('D9-07: a student\'s calls and today\'s visits are read through an index', /call_logs_student_idx/.test(callPlan)
+    && /visits_check_in_idx/.test(visitPlan), `${callPlan} | ${visitPlan}`);
+
+  // D1a-11, D1a-10, D1b-10: rights.
+  const [{ n: strayRights }] = await asOwner(`select count(*)::int as n from pg_class c cross join (values ('anon'), ('authenticated')) r(role)
+    cross join (values ('truncate'), ('references'), ('trigger')) p(priv)
+    where c.relnamespace = 'public'::regnamespace and c.relkind in ('r', 'v', 'p') and has_table_privilege(r.role, c.oid, p.priv)`);
+  check('D1a-11: no app role may TRUNCATE, REFERENCE or put a TRIGGER on any table', strayRights === 0, String(strayRights));
+  await refusesWith('D1a-11: a signed-in person cannot empty the audit log with TRUNCATE', 'permission denied for table audit_log', () =>
+    asApp('authenticated', guru, 'truncate audit_log'));
+  const loosePath = await asOwner(`select p.oid::regprocedure::text as f from pg_proc p where p.pronamespace = 'public'::regnamespace and p.prosecdef
+      and not exists (select 1 from pg_depend d where d.classid = 'pg_proc'::regclass and d.objid = p.oid and d.deptype = 'e')
+      and not ('search_path=public, pg_temp' = any (coalesce(p.proconfig, '{}')))`);
+  check('D1a-10: every security definer function searches public, then pg_temp', loosePath.length === 0, loosePath.map((r) => r.f).join(' '));
+  check('D1b-10: service_role may not run the internal jobs, but still runs what the Edge Function calls', (await asOwner(`select
+    not has_function_privilege('service_role', 'refresh_student_statuses()', 'execute')
+    and not has_function_privilege('service_role', 'close_open_visits()', 'execute')
+    and not has_function_privilege('service_role', 'send_due_push()', 'execute')
+    and not has_function_privilege('service_role', 'link_login_to_student(uuid,text)', 'execute')
+    and has_function_privilege('service_role', 'claim_push_queue()', 'execute')
+    and has_function_privilege('service_role', 'finish_push(uuid,bigint[],bigint[],jsonb,jsonb)', 'execute')
+    and has_function_privilege('service_role', 'claim_expired_submission_files()', 'execute') as ok`))[0].ok === true);
+
+  // A fresh adult student for the checks below (the dashboard way: nobody signed in).
+  const [{ id: s37 }] = await asOwner(`insert into students (full_name, dob, joined_on) values ('Backlog Test 37', '1990-01-01', '2026-01-05') returning id`);
+
+  // Brief 12 leftover: toggle_visit says student_not_found like mark_visit.
+  await refusesWith('toggle_visit answers student_not_found in snake_case (0037)', 'student_not_found', () =>
+    asApp('authenticated', coordinator, `select toggle_visit(gen_random_uuid(), 'manual')`));
+
+  // D5-18: a visit left open from an earlier day is closed at that day's closing time; "In" checks in.
+  const [stale] = await asOwner(`insert into visits (student_id, centre_id, method, check_in)
+    select '${s37}', 1, 'manual', ((centre_today(1) - 1) + time '18:00') at time zone centre_tz(1) returning id`);
+  const markIn = (await asApp('authenticated', coordinator, `select mark_visit($1, 'in') as r`, [s37]))[0].r;
+  const [closed] = await asOwner(`select v.check_out = ((centre_today(1) - 1) + c.closes_at) at time zone c.time_zone as at_closing
+    from visits v join centres c on c.id = v.centre_id where v.id = ${stale.id}`);
+  const [{ n: openNow }] = await asOwner(`select count(*)::int as n from visits where student_id = '${s37}' and check_out is null
+    and local_day(check_in, 1) = centre_today(1)`);
+  check('D5-18: "In" with a visit open since yesterday checks the student in today', markIn.action === 'in' && openNow === 1, JSON.stringify(markIn));
+  check('D5-18: ... and the old visit is closed at yesterday\'s closing time, not now', closed.at_closing === true);
+  await asApp('authenticated', coordinator, `select mark_visit($1, 'out')`, [s37]);
+
+  // D5-07, FS1a-18: roll numbers.
+  const [given] = await asOwner(`insert into students (full_name, dob, joined_on, roll_no) values ('Import 37 A', '1990-01-01', '1999-06-01', 'MS-1999-0042') returning id, roll_no`);
+  const [next] = await asOwner(`insert into students (full_name, dob, joined_on) values ('Import 37 B', '1990-01-01', '1999-07-01') returning id, roll_no`);
+  check('FS1a-18: a roll number the owner gives (import, restore) is kept, and the next one follows it', given.roll_no === 'MS-1999-0042'
+    && next.roll_no === 'MS-1999-0043', `${given.roll_no} ${next.roll_no}`);
+  const [byApp] = await asApp('authenticated', coordinator, `insert into students (full_name, dob, joined_on, roll_no)
+    values ('App 37', '1990-01-01', '1999-08-01', 'MS-1999-0500') returning id, roll_no`);
+  check('FS1a-18: ... an app user\'s roll number is still made by the database', byApp.roll_no === 'MS-1999-0044', byApp.roll_no);
+  await asOwner(`insert into roll_counters (year, last) values (1998, 9999)`);
+  const [big] = await asOwner(`insert into students (full_name, dob, joined_on) values ('Import 37 C', '1990-01-01', '1998-03-01') returning id, roll_no`);
+  check('D5-07: the 10,000th number of a year is MS-1998-10000, not a duplicate MS-1998-1000', big.roll_no === 'MS-1998-10000', big.roll_no);
+  await asOwner(`delete from students where id in ('${given.id}', '${next.id}', '${byApp.id}', '${big.id}')`);
+  await asOwner(`delete from roll_counters where year in (1998, 1999)`);
+
+  // D1b-08, FS1a-17: impossible values are refused when written; plausible ones pass.
+  const setStudent = (col, value) => () => asApp('authenticated', coordinator, `update students set ${col} = $1 where id = $2`, [value, s37]);
+  await refusesWith('D1b-08: a joining date in 2099 is refused (it would make roll number MS-2099-...)', 'joined_on_invalid', setStudent('joined_on', '2099-01-01'));
+  await refusesWith('FS1a-17: a date of birth before 1900 is refused', 'dob_invalid', setStudent('dob', '1850-01-01'));
+  await refusesWith('FS1a-17: a date of birth in the future is refused', 'dob_invalid', setStudent('dob', '2999-01-01'));
+  await refusesWith('FS1a-17: an email without @ is refused', 'email_invalid', setStudent('email', 'not an email'));
+  await refusesWith('FS1a-17: a name over 120 characters is refused', 'name_too_long', setStudent('full_name', 'N'.repeat(121)));
+  await refusesWith('FS1a-17: a phone over 30 characters is refused', 'phone_invalid', setStudent('phone', '9'.repeat(31)));
+  await asApp('authenticated', coordinator, `update students set phone = '98480 12345', email = 'Backlog.37@Example.com', joined_on = '2026-01-06' where id = $1`, [s37]);
+  check('FS1a-17: ... plausible values still save', (await asOwner(`select phone = '98480 12345' as ok from students where id = '${s37}'`))[0].ok === true);
+
+  // D1b-09: a switched-off sign-up is not linked when its email is confirmed.
+  await asOwner(`insert into students (full_name, dob, email) values ('Linked 37', '1990-01-01', 'off.signup.37@example.com')`);
+  const offLogin = await signUp('off.signup.37@example.com', false);
+  await asApp('authenticated', guru, `update profiles set active = false where id = $1`, [offLogin]);
+  await asOwner(`update auth.users set email_confirmed_at = now() where id = '${offLogin}'`);
+  check('D1b-09: confirming a switched-off sign-up does not link it or make it a student', (await roleOf(offLogin)) === 'pending'
+    && (await linkOf('off.signup.37@example.com')) === null);
+
+  // D5-09: an app user cannot backdate a new post.
+  const [back] = await asApp('authenticated', coordinator, `insert into announcements (title, body, audience, publish_at)
+    values ('Backdated 37', 'x', 'all', now() - interval '3 days') returning id, publish_at >= now() - interval '1 minute' as fresh`);
+  check('D5-09: a post sent with a past time is published now (so it is pushed and listed first)', back.fresh === true);
+
+  // D5-10: a student whose login is switched off counts as "no login" in Seen by.
+  const noLogin = async () => (await asApp('authenticated', coordinator, 'select no_login from announcement_seen where announcement_id = $1', [back.id]))[0].no_login;
+  const before = await noLogin();
+  await asApp('authenticated', guru, `update profiles set active = false where id = $1`, [arjun]);
+  const offCount = await noLogin();
+  await asApp('authenticated', guru, `update profiles set active = true where id = $1`, [arjun]);
+  check('D5-10: switching a student\'s login off moves them to "no login" (told in class)', offCount === before + 1, `${before} -> ${offCount}`);
+  await asOwner(`delete from announcements where id = ${back.id}`);
+
+  // D5-13, FS1b-08, FR-10: groups.
+  const [{ id: g37 }] = await asApp('authenticated', coordinator, `insert into groups (name) values ('Sunday  Harinam 37') returning id`);
+  check('FS1b-08: runs of spaces in a group name become one', (await asOwner(`select name from groups where id = ${g37}`))[0].name === 'Sunday Harinam 37');
+  await refusesWith('FS1b-08: a look-alike name with a no-break space is the same group', /^duplicate key value violates unique constraint "groups_name(_lower)?_key"$/, () =>
+    asApp('authenticated', coordinator, `insert into groups (name) values ('Sunday Harinam 37')`));
+  const pending37 = await signUp('pending.group.37@example.com', true);
+  await refusesWith('D5-13: a pending login cannot be put in a group', 'member_not_allowed', () =>
+    asApp('authenticated', coordinator, 'insert into group_members (group_id, profile_id) values ($1, $2)', [g37, pending37]));
+  await asApp('authenticated', coordinator, 'insert into group_members (group_id, profile_id) values ($1, $2)', [g37, arjun]);
+  check('D5-13: ... a student with a record can', (await asOwner(`select count(*)::int as n from group_members where group_id = ${g37}`))[0].n === 1);
+  await asApp('authenticated', coordinator, 'update groups set active = false where id = $1', [g37]);
+  await refusesWith('D5-13: a new post cannot go to a switched-off group', 'group_inactive', () => asApp('authenticated', coordinator,
+    `insert into announcements (title, body, audience, audience_group) values ('To a closed group', 'x', 'group', $1)`, [g37]));
+  check('FR-10: a coordinator cannot delete a group (switch it off instead)', (await asApp('authenticated', coordinator,
+    'delete from groups where id = $1 returning id', [g37])).length === 0);
+  check('FR-10: ... the Guru still can', (await asApp('authenticated', guru, 'delete from groups where id = $1 returning id', [g37])).length === 1);
+
+  // FS1a-15: a null in call_reasons no longer lets any reason through.
+  await asOwner(`update settings set value = value || 'null'::jsonb where key = 'call_reasons'`);
+  await refusesWith('FS1a-15: with a null in call_reasons, a made-up reason is still refused', 'reason_unknown', () => asApp('authenticated', coordinator,
+    `select log_call($1, 'paused', 'made-up reason', 'test', current_date + 7)`, [s37]));
+  await asOwner(`update settings set value = (select jsonb_agg(e) from jsonb_array_elements(value) e where e <> 'null'::jsonb) where key = 'call_reasons'`);
+
+  // FS1b-05: attachment sizes.
+  const filePath = `${coordinator}/0b1e2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d.png`;
+  await refusesWith('FS1b-05: a size beyond any number is attachments_invalid (not a raw bigint error)', 'attachments_invalid', () => asApp('authenticated', coordinator,
+    `insert into announcements (title, body, audience, attachments) values ('Huge', 'x', 'all', $1::jsonb)`,
+    [JSON.stringify([{ path: filePath, name: 'p.png', kind: 'image', size: 1e30 }])]));
+  const [{ id: filePost }] = await asOwner(`insert into announcements (title, body, audience, created_by, attachments)
+    values ('With a file 37', 'x', 'all', '${coordinator}', '${JSON.stringify([{ path: filePath, name: 'p.png', kind: 'image', size: 4000000 }])}') returning id`);
+  await asApp('authenticated', coordinator, `update announcements set attachments = $1::jsonb where id = $2`,
+    [JSON.stringify([{ path: filePath, name: 'p.png', kind: 'image', size: 1 }]), filePost]);
+  check('FS1b-05: a kept file keeps its stored size (the app sent 1)', (await asOwner(`select attachments -> 0 ->> 'size' as s from announcements where id = ${filePost}`))[0].s === '4000000');
+  await asOwner(`delete from announcements where id = ${filePost}`);
+
+  // FS1b-07: a remark of tabs and newlines is no remark.
+  const [{ id: item1 }] = await asOwner(`select id from syllabus_items where level_id = 1 and retired_at is null order by sort limit 1`);
+  await asApp('authenticated', coordinator, `insert into student_progress (student_id, item_id, remark) values ($1, $2, E'\\n\\t\\n')`, [s37, item1]);
+  check('FS1b-07: a remark of only tabs and line breaks is stored as none', (await asOwner(`select remark from student_progress where student_id = '${s37}'`))[0].remark === null);
+  await asApp('authenticated', coordinator, 'delete from student_progress where student_id = $1 and item_id = $2', [s37, item1]);
+
+  // FS1b-09: "my calls due" counts like C10's Mine: by the most urgent open task.
+  const callsDue = async (id) => (await asApp('authenticated', id, 'select coordinator_dashboard() as d'))[0].d.my_calls_due;
+  const [cBefore, gBefore] = [await callsDue(coordinator), await callsDue(guru)];
+  await asOwner(`insert into follow_up_tasks (student_id, assignee_id, kind, due_on, escalated) values
+    ('${s37}', '${guru}', 'call', current_date - 2, true), ('${s37}', '${coordinator}', 'call', current_date - 1, false)`);
+  const [cAfter, gAfter] = [await callsDue(coordinator), await callsDue(guru)];
+  check('FS1b-09: a student whose most urgent task is the Guru\'s is not in the coordinator\'s "calls due"', cAfter === cBefore, `${cBefore} -> ${cAfter}`);
+  check('FS1b-09: ... but is in the Guru\'s', gAfter === gBefore + 1, `${gBefore} -> ${gAfter}`);
+  await asOwner(`delete from follow_up_tasks where student_id = '${s37}'`);
+
+  // FS1a-22: materials by the levels' order, not their ids.
+  const [{ id: lvl0 }] = await asOwner(`insert into levels (id, name, sort) select max(id) + 1, 'Foundation 37', 0 from levels returning id`);
+  const stuLogin = await signUp('level.order.37@example.com', true);
+  await asOwner(`insert into students (full_name, dob, email, level_id) values ('Level Order 37', '1990-01-01', 'level.order.37@example.com', ${lvl0})`);
+  const [{ id: m3 }] = await asOwner(`insert into materials (kind, title, body, level_id, approved_by) values ('note', 'Advanced note 37', 'x', 3, '${guru}') returning id`);
+  const [{ id: m0 }] = await asOwner(`insert into materials (kind, title, body, level_id, approved_by) values ('note', 'Foundation note 37', 'x', ${lvl0}, '${guru}') returning id`);
+  const visible = (await asApp('authenticated', stuLogin, 'select id from materials where id in ($1, $2)', [m3, m0])).map((r) => Number(r.id));
+  check('FS1a-22: a student of a level added later (higher id, first in order) does not see Advanced materials', visible.length === 1 && visible[0] === Number(m0), JSON.stringify(visible));
+  await asOwner(`delete from materials where id in (${m3}, ${m0})`);
+
+  // R2G2-02, R2G2-04: syllabus items and their materials.
+  const [{ id: it37 }] = await asApp('authenticated', guru, `insert into syllabus_items (level_id, title) values (1, 'Moving item 37') returning id`);
+  const [{ id: mat37 }] = await asOwner(`insert into materials (kind, title, body, item_id, approved_by) values ('note', 'Item note 37', 'x', ${it37}, '${guru}') returning id`);
+  await asApp('authenticated', guru, 'update syllabus_items set level_id = 2 where id = $1', [it37]);
+  check('R2G2-02: an item moved to another level takes its materials along', (await asOwner(`select level_id from materials where id = ${mat37}`))[0].level_id === 2);
+  await asApp('authenticated', guru, 'update syllabus_items set retired_at = now() where id = $1', [it37]);
+  await asApp('authenticated', guru, `update syllabus_items set retired_at = '1999-01-01' where id = $1`, [it37]);
+  check('R2G2-04: a retired item keeps its first retirement time', (await asOwner(`select retired_at > now() - interval '1 hour' as ok from syllabus_items where id = ${it37}`))[0].ok === true);
+  const [{ ok: insertStamp }] = await asApp('authenticated', guru, `insert into syllabus_items (level_id, title, retired_at) values (1, 'Born retired 37', '2001-01-01')
+    returning retired_at > now() - interval '1 hour' as ok`);
+  check('R2G2-04: an item added already retired gets the time of now, not a made-up date', insertStamp === true);
+  check('R2G2-04: a YouTube link with a line break is refused; a plain one passes', (await asOwner(`select
+    not youtube_link_ok(E'https://youtu.be/abcdefghijk?\\nx') and youtube_link_ok('https://youtu.be/abcdefghijk?t=3') as ok`))[0].ok === true);
+  await asOwner(`delete from materials where id = ${mat37}`);
 }
 
 // ---------------------------------------------------------------- row-level security

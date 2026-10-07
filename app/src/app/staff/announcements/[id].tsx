@@ -36,6 +36,7 @@ import {
   type StaffAnnouncementDetail,
 } from '@/data/announcements';
 import { audienceName } from '@/i18n/labels';
+import { withMyReceipt } from '@/lib/announcement-receipt';
 import { formatDateTime } from '@/lib/dates';
 
 /** The announcement, its seen list, and the author's actions. */
@@ -59,9 +60,10 @@ export default function StaffAnnouncementScreen() {
   const load = useCallback(async () => {
     let result = await fetchStaffAnnouncement(id, myId);
     // Opening it counts as reading it, e.g. for a "staff only" announcement. On the first
-    // opening, save the receipt and load again, so the reader is not listed as "not seen yet".
+    // opening, save the receipt and show it at once, so the reader is not listed as "not seen
+    // yet" (no second load, audit D9-09).
     if (result && result !== 'not_found' && !result.announcement.readByMe && (await markRead(id))) {
-      result = await fetchStaffAnnouncement(id, myId);
+      result = withMyReceipt(result, myId, new Date().toISOString());
     }
     setLoaded(result);
   }, [id, myId]);

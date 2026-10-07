@@ -40,6 +40,7 @@ in number order:
 | `0034_access_log.sql` | Reads of parents' contacts, consents and call notes, and audit-log pages, go through logging functions into `access_log` (the Guru reads it; purged after 400 days); coordinators lose the direct reads; `consents.notice_version` ([DECISIONS.md #146-#151](DECISIONS.md)) |
 | `0035_asset_labels.sql` | QR asset labels for every seva asset: new kinds + `category`; `asset_token` (unguessable, frozen) and a per-centre `code` (KHOL-007) on every item, backfilled; `resolve_asset`, `mark_labels_printed`; stocktake (`inventory_stocktakes`, `inventory_stocktake_items`, `start_stocktake`, `stocktake_see`, `finish_stocktake`) ([DECISIONS.md #156-#161](DECISIONS.md)). 0034 is the privacy brief's; 0035 does not depend on it. See "Asset labels and stocktake (0035)" |
 | `0036_account_creation.sql` | Account creation (team MoM 05-10-2026): option lists the Guru edits (`choice_options`), `centres.city`, `profiles.gender` + `referral_code`, `students.gender`, `person_details` (About you, the desk), the sign-up's date of birth, gender and centre, `sign_up_choices()` (the one function anon may run), same-gender coordinator auto-assignment, the report `heard_about_report` ([DECISIONS.md #162-#167](DECISIONS.md)). See "Account creation and About you (0036)". Numbers 0034 and 0035 belong to the privacy and asset-label branches |
+| `0037_db_backlog.sql` | Audit backlog, database + performance (dimensions 1, 5, 9): every policy calls its role helpers once per query (`(select is_staff())`), `student_overview` reads through the visits indexes, 12 lookup indexes; trigger functions and TRUNCATE closed to app roles, definer functions search `public, pg_temp`; `toggle_visit` / `scan_qr` say `not_allowed`; roll numbers past 9999 and owner-given ones; student value checks; group, announcement, call-reason, attachment, syllabus and audit fixes ([DECISIONS.md #168-#173](DECISIONS.md)). See "Backlog fixes (0037)" |
 
 The Phase 2 files were renumbered when they merged into main (#55). TEST ran some under their
 branch numbers (0012, 0014_promotion, 0016_practice, 0017_media, 0021_events_polls), so it skips
@@ -178,9 +179,10 @@ nightly job `close_open_visits` closes anything still open, at the centre's clos
 The QR code on a student's phone holds the text `MS1:` followed by their `qr_token` in capitals
 ([DECISIONS.md #17](DECISIONS.md)). The app removes the prefix and sends the token to `scan_qr`.
 
-Errors: `toggle_visit` and `scan_qr` (0001) raise `not allowed` and `student not found`, with
-spaces; `mark_visit` and `check_out_all` raise `not_allowed`, `bad_action` and
-`student_not_found`. The app (`app/src/data/attendance.ts`) understands both spellings.
+Errors: `not_allowed`, `bad_action` and `student_not_found`. Until 0037 `toggle_visit` and `scan_qr`
+said `not allowed` and `student not found` with spaces; the app (`app/src/data/attendance.ts`) understands both
+spellings, so builds of either age work. Since 0037 a visit left open from an earlier day (the hourly
+close job did not run) is closed at that day's closing time before the next tap, which then checks in.
 
 ### Location check at check-in (0024)
 
@@ -468,14 +470,15 @@ The trigger `groups_guard` (0008, [DECISIONS.md #28](DECISIONS.md)):
 |---|---|
 | Name trimmed, required, at most 60 characters | `group_name_required`, `group_name_too_long` |
 | Purpose trimmed, empty becomes none, at most 200 characters | `group_purpose_too_long` |
-| Names are unique whatever the capitals (index `groups_name_lower_key`) | 23505 |
+| Names are unique whatever the capitals (index `groups_name_lower_key`); runs of spaces, no-break and other wide spaces count as one space, invisible characters are dropped (0037) | 23505 |
 | `created_by` is the signed-in person and never changes | — |
 
 Only staff and the group's own members can see a group; a student needs the name of their own
 groups for "Group: Sunday Harinam". A group is **switched off** (`active = false`) instead of
 deleted: it is no longer offered when posting, old announcements keep it, and its members still
-see them. The app offers no delete; the database refuses to delete a group an announcement was
-sent to. The view `group_summary` (security invoker) gives each group with its number of members.
+see them. The app offers no delete; only the Guru may delete a group (0037, before any staff could), and the database refuses to delete a group an announcement was
+sent to. Only switched-on staff and students whose login has a record are put in a group (trigger
+`group_members_guard`, `member_not_allowed`), and a new post cannot go to a switched-off group (`group_inactive`) (0037). The view `group_summary` (security invoker) gives each group with its number of members.
 
 ## Home screens
 
@@ -1216,6 +1219,71 @@ per student. The new mentor gets an inbox notice (not when they made the change 
 
 Tests: section "account creation (0036)" in `supabase/tests/smoke-test.mjs`.
 
+## Backlog fixes (0037)
+
+[DECISIONS.md #168-#173](DECISIONS.md). Run after 0036. Nothing the published app sends is refused;
+no table or column is added.
+
+**Policies call their helpers once per query (#168).** Every policy writes `is_staff()`, `is_guru()`,
+`my_role()`, `my_student_id()`, `has_class_role()`, `is_ig_editor()`, `ig_reader()`, `today_ist()` and
+`auth.uid()` as `(select ...)`. Postgres then works the answer out once per statement (an "InitPlan")
+instead of once per row. On a test copy with 200 students and 150 visits each, the coordinator's
+student list fell from 644 ms and 32,711 `my_role()` calls to 35 ms and 20 calls; the "visits today"
+count from 548 ms to 8 ms. **A new policy must do the same**: the test net fails on a bare helper
+call. A helper that takes a column (`event_visible_to(id, ...)`, `is_public_subscriber(id)`, the
+Storage `*_readable(name)`) depends on the row and stays as it is.
+
+**Speed (#169).** `student_overview` takes the last visit from `visits_student_time` and "here now"
+from `visits_one_open` (same columns and answers). Indexes: `call_logs (student_id, called_at desc)`,
+`consents`, `guardians`, `follow_up_tasks`, `level_history (student_id)`, `status_history (student_id,
+changed_at desc)` (the daily job reads it for every student), `student_progress (item_id)`,
+`materials (item_id)`, `visits (check_in)` (visits today), `announcement_reads (profile_id)`,
+`group_members (profile_id)` (both in policy subqueries), `notifications (announcement_id)`.
+
+**Rights (#170).** The six 0001 trigger functions are closed to signed-in people (the test net's
+exception list is gone); anon and authenticated hold no TRUNCATE, REFERENCES or TRIGGER on any table
+(TRUNCATE skips row-level security), also for future tables; every security definer function runs
+with `search_path = public, pg_temp` (with `public` alone Postgres looks in the session's temporary
+schema first); `refresh_student_statuses`, `close_open_visits`, `send_due_push` and
+`link_login_to_student` are closed to `service_role` (pg_cron and the triggers run them as the
+owner). `claim_due_push` / `release_push_claim` keep `service_role` until LIVE's Edge Function is
+redeployed (brief 8).
+
+**Roll numbers and student fields (#171).**
+
+| Rule | Error |
+|---|---|
+| The 10,000th number of a year is `MS-YYYY-10000` (before: a duplicate `MS-YYYY-1000`) | — |
+| A roll number given by the owner (no signed-in user: dashboard, import, restore) in the `MS-YYYY-NNNN` form is kept, and that year's counter moves up to it; an app user's is still made by the database | — |
+| Trigger `students_check_values`, when the value is written or changed: `dob` 1900..today | `dob_invalid` |
+| `joined_on` 1900..tomorrow (the roll number's year comes from it) | `joined_on_invalid` |
+| `full_name` at most 120 characters | `name_too_long` |
+| `email` like `name@domain`, at most 254 | `email_invalid` |
+| `phone` at most 30 characters (formats differ by screen, so only the length) | `phone_invalid` |
+
+**Data rules (#172).**
+
+| Where | Rule now | Error |
+|---|---|---|
+| `link_login_to_student` | A switched-off waiting login is not linked on email confirmation | — |
+| `guard_announcement` | An app user's new post dated in the past is published now | — |
+| `guard_announcement` | A post (new, or moved to a group) goes only to a switched-on group | `group_inactive` |
+| `group_members_guard` | Members: switched-on Guru / coordinators, students whose login has a record | `member_not_allowed` |
+| `groups` policies | Staff insert and update; only the Guru deletes | 0 rows |
+| `announcement_seen.no_login` | Also counts a student whose login is switched off | — |
+| `toggle_visit`, `mark_visit` | A visit open from an earlier day is closed at that day's closing time; the tap checks in | — |
+| `log_call` | A null in `settings.call_reasons` no longer lets any reason through | `reason_unknown` |
+| `guard_announcement_attachments` | A file already on the post keeps its stored size; a size beyond 5 MB or any number | `attachments_invalid` |
+| `guard_student_progress` | A remark of only tabs and line breaks is none | — |
+| `coordinator_dashboard.my_calls_due` | Counts by each student's most urgent open task, like C10's Mine | — |
+| `materials` policy `visible` | Levels compared by `levels.sort`, not by id | — |
+| `syllabus_items_materials_follow` | An item moved to another level takes its materials along | — |
+| `guard_syllabus_item` | An app user cannot set or rewrite a retirement time (the database stamps it) | — |
+| `youtube_link_ok` | No spaces, line breaks or control characters | `youtube_link_invalid` |
+| `audit_profiles` | New logins are audited; a change of only the language is not | — |
+
+Tests: section "0037 database and performance backlog" in `supabase/tests/smoke-test.mjs`.
+
 ## Linking a login to a student
 
 A student record can exist without a login (many students never install the app). When a person
@@ -1228,6 +1296,9 @@ when **both** are true:
 Whichever happens last makes the link: confirming the email (trigger `on_auth_user_confirmed`),
 or a coordinator saving the email on the record (trigger `students_link_login`). Only `pending`
 logins are linked, so a coordinator who is also on a student record keeps the coordinator role.
+A login the Guru switched off is not linked (0037). Typing a waiting login's email on a record is
+therefore how a coordinator gives the `student` role; every other role change goes through the Guru.
+Server code holding the service key bypasses the role guard; only the Edge Function holds it.
 Linking before confirmation would let anyone claim a record by typing its email
 ([DECISIONS.md #13](DECISIONS.md)).
 

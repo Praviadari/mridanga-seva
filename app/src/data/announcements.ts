@@ -554,6 +554,45 @@ export async function fetchMyAnnouncements(myId: string): Promise<MyAnnouncement
   return { announcements, groupNames, staffNames };
 }
 
+/** The student home's news card: the newest few in full, and how many of the latest are unread. */
+export type MyLatestAnnouncements = MyAnnouncementList & {
+  /** Unread among the same latest LIST_LIMIT the S10 list shows. */
+  unread: number;
+};
+
+/**
+ * Loads only what the student home shows (audit D9-05): the newest `count` announcements in full,
+ * and the ids of the latest LIST_LIMIT for the unread count, instead of LIST_LIMIT full posts.
+ * Returns null when they could not be loaded.
+ */
+export async function fetchMyLatestAnnouncements(myId: string, count: number): Promise<MyLatestAnnouncements | null> {
+  const [latest, ids, reads, groupNames, staffNames] = await Promise.all([
+    supabase
+      .from('announcements')
+      .select(ANNOUNCEMENT_COLUMNS)
+      .order('pinned', { ascending: false })
+      .order('publish_at', { ascending: false })
+      .limit(count),
+    supabase
+      .from('announcements')
+      .select('id')
+      .order('pinned', { ascending: false })
+      .order('publish_at', { ascending: false })
+      .limit(LIST_LIMIT),
+    supabase.from('announcement_reads').select('announcement_id').eq('profile_id', myId),
+    fetchGroupNames(),
+    fetchStaffNames(),
+  ]);
+  if (latest.error || ids.error || reads.error || !groupNames || !staffNames) return null;
+  const readIds = new Set((reads.data as { announcement_id: number }[]).map((r) => r.announcement_id));
+  return {
+    announcements: (latest.data as AnnouncementRow[]).map((row) => toAnnouncement(row, readIds)),
+    unread: (ids.data as { id: number }[]).filter((r) => !readIds.has(r.id)).length,
+    groupNames,
+    staffNames,
+  };
+}
+
 /** One announcement as its reader sees it (S10). */
 export type MyAnnouncement = {
   announcement: Announcement;

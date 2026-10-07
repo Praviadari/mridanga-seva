@@ -28,7 +28,7 @@ import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { StatGrid, StatTile } from '@/components/stat-tile';
 import { UpdateNotice } from '@/components/update-notice';
-import { fetchMyAnnouncements, type MyAnnouncementList } from '@/data/announcements';
+import { fetchMyLatestAnnouncements, type MyLatestAnnouncements } from '@/data/announcements';
 import { fetchNextEvent, placeText, whenText, type EventItem, type EventNames } from '@/data/events';
 import { fetchStudentHome, type StudentHome } from '@/data/home';
 import { fetchPollsToVote } from '@/data/polls';
@@ -47,7 +47,7 @@ export default function StudentHomeScreen() {
   const name = profile?.full_name.trim();
   // undefined = loading, null = could not load.
   const [home, setHome] = useState<StudentHome | 'not_found' | null | undefined>(undefined);
-  const [news, setNews] = useState<MyAnnouncementList | null | undefined>(undefined);
+  const [news, setNews] = useState<MyLatestAnnouncements | null | undefined>(undefined);
   // Phase 2 slice 5: the next event and how many polls wait for a vote (null = none / not known).
   const [nextEvent, setNextEvent] = useState<{ item: EventItem; names: EventNames } | null>(null);
   const [pollsToVote, setPollsToVote] = useState(0);
@@ -57,7 +57,7 @@ export default function StudentHomeScreen() {
   const load = useCallback(async () => {
     const [loadedHome, loadedNews, loadedEvent, loadedPolls] = await Promise.all([
       fetchStudentHome(),
-      fetchMyAnnouncements(myId),
+      fetchMyLatestAnnouncements(myId, LATEST_COUNT),
       fetchNextEvent(),
       fetchPollsToVote(),
     ]);
@@ -73,7 +73,7 @@ export default function StudentHomeScreen() {
     }, [load]),
   );
 
-  const unread = news ? news.announcements.filter((a) => !a.readByMe).length : 0;
+  const unread = news ? news.unread : 0;
 
   // The ring of the student's screens (docs/DECISIONS.md #41, #44): the three tabs' subjects plus My
   // progress (S4), Assessments (S7, Phase 2), Practice (S5), My attendance (S9), My profile (A3) and

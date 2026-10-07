@@ -3247,3 +3247,119 @@ events where it matters; the lead advised skipping it.
 **Consequences.** Open with the team: gender options, blood group (if ever: optional, Guru-only, with
 a purpose), face scan (Phase 3), the final option lists, the wording of "region" (now country → city →
 centre).
+
+## 168. Row-level security asks "who are you" once per query — 7 Oct 2026
+
+**Context.** Audit D9-01: Postgres ran the helpers in a policy (`is_staff()`, `my_role()`, ...) once
+for every row it checked. One coordinator's student list at 200 students made 30,000+ `my_role()`
+calls; the cost grows with every year of visits and shares the free plan's CPU with the door check-in.
+
+**Decision.** Migration 0037 rewrites every policy that calls one (125 of the 139 in public and Storage) with each
+zero-argument helper and `auth.uid()` written as `(select ...)`, Supabase's own advice: the planner
+then works it out once per statement. Each new policy text is the old one as Postgres prints it with
+only those calls wrapped, so the rules are unchanged; the whole smoke test (1,280 checks of who may
+read and write what) passed on the rewritten policies before any new check was added. Helpers that
+take a column of the row stay as they are.
+
+**Why.** Measured on a seeded PGlite (200 students × 150 visits): the staff student list 644 → 35 ms,
+`my_role()` calls 32,711 → 20; the "visits today" count 548 → 8 ms.
+
+**Consequences.** A new policy must wrap its helpers too: the test net fails on a bare call. Policies
+are written in that style from 0037 on.
+
+## 169. Indexes for the lookups the app makes — 7 Oct 2026
+
+**Context.** Audit D9-02, D9-07: `student_overview` aggregated every visit of every student; the
+per-student tables (calls, consents, guardians, tasks, status and level history) had no index on
+`student_id`, and the "visits today" count had none on `check_in`.
+
+**Decision.** `student_overview` reads the newest check-in and "here now" through the two visits
+indexes (same columns, same answers; a test compares it with the full aggregate). Twelve indexes are
+added (DATABASE.md "Backlog fixes (0037)"), each for a lookup the app, the daily job, erasure or a
+policy subquery makes. Not every foreign key gets one: columns such as `created_by` / `decided_by`
+are never searched by.
+
+**Consequences.** Slightly slower writes on those tables (negligible at class size).
+
+## 170. Rights: nothing open that the app does not use — 7 Oct 2026
+
+**Context.** Audit D1a-10, D1a-11, D1b-10 and two brief-12 leftovers: the 0001 trigger functions
+were still callable by signed-in people; signed-in people held TRUNCATE (which skips row-level
+security), REFERENCES and TRIGGER on the 0001 tables; security definer functions searched `public`
+only, which lets a session's temporary table stand in for one of ours; service_role could run the
+daily jobs; `toggle_visit` / `scan_qr` said `not allowed` where every other function says `not_allowed`.
+
+**Decision.** 0037 revokes the six trigger functions and TRUNCATE / REFERENCES / TRIGGER from anon and
+authenticated (and their default privileges for future tables); sets `search_path = public, pg_temp`
+on every security definer function and on the four helpers that had none; closes
+`refresh_student_statuses`, `close_open_visits`, `send_due_push` and `link_login_to_student` to
+service_role (pg_cron and triggers run them as the owner; the Edge Function calls only the claim /
+finish functions); `toggle_visit` and `scan_qr` raise `not_allowed` and `student_not_found`. The app
+has mapped both spellings since its first attendance screen (29 Sep 2026), so every build in use
+shows the same message. `claim_due_push` / `release_push_claim` keep service_role until LIVE runs
+the 0031 Edge Function.
+
+**Consequences.** The test net checks the definer search path, the absence of the three table rights
+and the service_role list; its OLD_TRIGGER_FUNCTIONS exception is gone.
+
+## 171. Roll numbers past 9999, owner-given ones kept, impossible student values refused — 7 Oct 2026
+
+**Context.** Audit D5-07 (number 10,000 of a year collided), FS1a-18 (an import or restore lost its
+roll numbers, "frozen, never changed", #3), D1b-08 and FS1a-17 (a joining year of 2099 or a birth
+year of 1850 was stored; the roll number's year comes from `joined_on`).
+
+**Decision.** `assign_roll_no` pads to four digits only below 10,000; a number given by the owner (no
+signed-in user) in the `MS-YYYY-NNNN` form is kept and the year's counter moves up to it; app users
+still get the database's number. A new trigger `students_check_values` refuses, when written or
+changed, `dob` outside 1900..today, `joined_on` outside 1900..tomorrow, a name over 120 characters,
+an email that is not `x@y`, a phone over 30 characters. Phones are checked by length only: the
+register form, the import and the sign-up use different formats (E.164 rules come with the phone
+decision P2 of docs/I18N.md). Rows already stored are not checked.
+
+**Consequences.** A restore keeps every roll number. A bad import row is refused with a code the
+import screen shows as a generic error.
+
+## 172. Small data rules from the audit backlog — 7 Oct 2026
+
+**Context.** The Low/Info findings of audit dimensions 1 and 5 that needed no team choice.
+
+**Decision.** In 0037: a switched-off waiting login is not linked on email confirmation (D1b-09); an
+app user's new post dated in the past is published now (D5-09); posts go only to switched-on groups,
+and only switched-on staff and students with a record join groups (D5-13); only the Guru deletes a
+group, staff switch it off (FR-10, as #28 intended); "Seen by" counts a student with a switched-off
+login under "no login" (D5-10); a visit left open from an earlier day is closed at that day's closing
+time and the next tap checks in (D5-18); a null in `call_reasons` no longer disables the reason check
+(FS1a-15); a kept attachment keeps its stored size and an absurd size is `attachments_invalid`
+(FS1b-05); remarks of only tabs and line breaks are empty (FS1b-07); group names compare spaces as
+people read them (FS1b-08); "my calls due" counts like C10's Mine (FS1b-09); materials are shown by
+the levels' order (FS1a-22) and follow their item to a new level (R2G2-02); retirement times are
+the database's and YouTube links hold no spaces or line breaks (R2G2-04); new logins are audited
+and language-only profile changes are not (D1a-13).
+
+**Why.** Each closes a gap the app's screens never use, so nothing the published app sends is
+refused (0037 is safe for update 0126db5a on APK 0bfc5c14).
+
+**Consequences.** New error codes `group_inactive`, `member_not_allowed` (the app shows its generic
+message for both; neither can come from its screens).
+
+## 173. Backlog items not changed, and those waiting for the team — 7 Oct 2026
+
+**Context.** The rest of the database and performance backlog of audit brief 16.
+
+**Decision.** Already fixed on main, no change: D1b-11 (scan_qr checks the role first, 0025), D5-04
+and D5-08 (local days and the hourly close, 0033), D5-15 (items are retired, a ticked item cannot be
+deleted or moved, 0013/0017), FS1a-16 (nobody changes their own role or switches themselves off and
+the Guru role moves only in the dashboard, 0014, so the app cannot leave the class without a Guru),
+D9-03 (0031 claims the push queue 500 at a time). App side (JS only): D9-05 the student home loads
+the newest three posts and only the ids of the rest; D9-06 photos are cached by their path, not the
+signed link; D9-09 the staff detail shows the reader's own receipt without loading again. Left for
+an app-performance slice: D9-04 (lists past PostgREST's 1,000 rows; not reached at ~200 students),
+D9-08 (virtualised lists, a UI change); D9-11 (lazy web routes) needs an app.json change, which moves
+the fingerprint (next APK). Docs only: D1a-14 (DATABASE.md "Linking"), R2G3-04 (OPERATIONS.md).
+**Waiting for a team decision** (audit Part B §6): D5-12 (which statuses each call outcome may
+change, and a maximum pause, e.g. 90 days), FS1b-03 (tick only items up to the student's level and
+dates after joining), FLOW-03 (does a drop-in visit end an agreed pause?), FS1b-06 (cap replies per
+person per post, e.g. 5), FLOW-02 (a switched-off coordinator's scheduled posts: hold them for the
+Guru, or send them as now).
+
+**Consequences.** Each team answer is a small migration; none blocks the pilot.
