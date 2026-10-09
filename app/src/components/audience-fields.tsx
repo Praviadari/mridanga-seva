@@ -5,7 +5,7 @@
 import { useTranslation } from 'react-i18next';
 
 import type { Audience } from '@/data/announcements';
-import { levelName } from '@/i18n/labels';
+import { LEVEL_IDS, levelName } from '@/i18n/labels';
 
 import { AppText } from './app-text';
 import { ChoiceGroup } from './choice-group';
@@ -68,7 +68,7 @@ export function AudienceFields({
         <ChoiceGroup
           chips
           label={t('announcements.compose.level')}
-          choices={(locked && levelId ? [levelId] : [1, 2, 3]).map((id) => ({ value: id, label: levelName(t, id), icon: 'level' as const }))}
+          choices={(locked && levelId ? [levelId] : LEVEL_IDS).map((id) => ({ value: id, label: levelName(t, id), icon: 'level' as const }))}
           value={levelId}
           onChange={(id) => onChange({ levelId: id })}
           error={errors.levelId}

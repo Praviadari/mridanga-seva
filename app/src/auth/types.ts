@@ -1,6 +1,8 @@
 // Shapes of the login data the app works with. They mirror the `profiles` table and the
 // `app_role` type in supabase/migrations/0001_phase1.sql; change both together.
 
+import type { Language } from '@/i18n';
+
 /** A person's role, given by the database. See docs/ARCHITECTURE.md "Roles". */
 export type AppRole = 'pending' | 'guru' | 'coordinator' | 'student' | 'kiosk';
 
@@ -10,8 +12,8 @@ export type Profile = {
   role: AppRole;
   full_name: string;
   email: string | null;
-  /** 'en', 'te' or 'hi'. */
-  language: string;
+  /** 'en', 'te' or 'hi' (the CHECK on profiles.language). */
+  language: Language;
   /** False when the Guru has switched the account off. */
   active: boolean;
   /**

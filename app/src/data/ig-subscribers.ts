@@ -5,14 +5,10 @@
 // A subscriber's role stays 'pending'; ig_reader() lets it read slokas and themes and keep its own
 // notes and ticks, nothing else. The code never comes back to the app.
 
-import type { ParseKeys } from 'i18next';
-
 import type { IgState } from '@/auth/types';
 import { supabase } from '@/lib/supabase';
 
-import { isNetworkError } from './errors';
-
-type MessageKey = ParseKeys;
+import { isNetworkError, type MessageKey } from './errors';
 
 /**
  * The version of the consent and notice texts a person agrees to, stored with the subscription.

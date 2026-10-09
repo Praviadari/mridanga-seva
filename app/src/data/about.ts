@@ -5,15 +5,11 @@
 // Before 0036 is on the database the functions are missing (PGRST202): the screens then hide the
 // new parts, so a new app works with an old database.
 
-import type { ParseKeys } from 'i18next';
-
 import { formatPhone, isPhoneCountry, splitE164, toE164, type CountryCode } from '@/lib/phone';
 import { supabase } from '@/lib/supabase';
 
-import { isNetworkError } from './errors';
+import { isNetworkError, type MessageKey } from './errors';
 import { optionSetsFrom, OTHER, type Option, type OptionSets } from './options';
-
-type MessageKey = ParseKeys;
 
 /** The database has no such function yet (migration 0036 not run). */
 const MISSING = 'PGRST202';

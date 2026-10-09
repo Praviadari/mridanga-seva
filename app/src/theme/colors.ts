@@ -8,6 +8,9 @@
  */
 export const brand = '#B45309';
 
+/** Text and the spinner on `brand` (the splash), before the theme is known. */
+export const onBrand = '#FFFFFF';
+
 /** Names of the colours every screen may use. */
 export type Palette = {
   /** Screen background. */

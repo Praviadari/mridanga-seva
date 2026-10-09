@@ -32,8 +32,7 @@ import {
   type CallForm,
   type CallFormErrors,
 } from '@/data/follow-up';
-import { RELATIONS } from '@/data/students';
-import { callReasonName, lastVisitText, outcomeName } from '@/i18n/labels';
+import { callReasonName, lastVisitText, outcomeName, relationName } from '@/i18n/labels';
 import { localDate, formatDate, parseDayMonthYear, todayLocal } from '@/lib/dates';
 import { goBackOr } from '@/lib/go-back';
 
@@ -146,14 +145,10 @@ function CallLogScreenContent() {
     else setSaved(form);
   }
 
-  const relationName = (code: string | null) =>
-    code && (RELATIONS as readonly string[]).includes(code)
-      ? t(`relations.${code as (typeof RELATIONS)[number]}`)
-      : t('callLog.parent');
   const dials: Dial[] = [
     ...(context.phone ? [{ who: t('callLog.student'), phone: context.phone }] : []),
     ...context.guardians.flatMap((g) =>
-      g.phone ? [{ who: `${relationName(g.relation)} (${g.fullName})`, phone: g.phone }] : [],
+      g.phone ? [{ who: `${relationName(t, g.relation, t('callLog.parent'))} (${g.fullName})`, phone: g.phone }] : [],
     ),
   ];
 

@@ -5,14 +5,9 @@
 // changed here. A student's name on the roll (students.full_name, on the QR card) is the
 // coordinators' record and stays as registered.
 
-import type { ParseKeys } from 'i18next';
-
 import { supabase } from '@/lib/supabase';
 
-import { isNetworkError } from './errors';
-
-/** A translation key for a message. */
-type MessageKey = ParseKeys;
+import { isNetworkError, type MessageKey } from './errors';
 
 /** Longest name, as in the database. */
 export const NAME_MAX = 80;

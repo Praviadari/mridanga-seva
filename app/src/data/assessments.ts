@@ -10,8 +10,6 @@
 // everything, coordinators what was sent to them, a student only their own
 // (supabase/migrations/0016_assessments.sql, docs/DECISIONS.md #52).
 
-import type { ParseKeys } from 'i18next';
-
 import { formatTypedDate, parseDayMonthYear, todayLocal } from '@/lib/dates';
 import { supabase } from '@/lib/supabase';
 
@@ -24,11 +22,8 @@ import {
   type MediaFile,
   type PickedMedia,
 } from './assessment-files';
-import { isNetworkError } from './errors';
+import { isNetworkError, type MessageKey } from './errors';
 import { fetchStudentSummaries, type StudentSummary } from './student-overview';
-
-/** A translation key for a message. */
-type MessageKey = ParseKeys;
 
 /** Longest texts and sizes of the assessment forms (G6, C12, S7, C14); the database checks them too. */
 export const TITLE_MAX = 120;

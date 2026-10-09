@@ -33,7 +33,7 @@ import {
   type StudentFilters,
   type StudentSummary,
 } from '@/data/student-overview';
-import { lastVisitText, levelName, statusName } from '@/i18n/labels';
+import { lastVisitText, LEVEL_IDS, levelName, statusName } from '@/i18n/labels';
 import { spacing, useWide } from '@/theme/use-theme';
 
 /** What the screen loaded: the students and the staff, for mentor names. */
@@ -163,7 +163,7 @@ export default function StudentListScreen() {
             label={t('students.filters.level')}
             choices={[
               { value: 'all', label: t('students.filters.all') },
-              ...[1, 2, 3].map((id) => ({ value: String(id), label: levelName(t, id) })),
+              ...LEVEL_IDS.map((id) => ({ value: String(id), label: levelName(t, id) })),
             ]}
             value={String(filters.levelId)}
             onChange={(value) => update({ levelId: value === 'all' ? 'all' : Number(value) })}

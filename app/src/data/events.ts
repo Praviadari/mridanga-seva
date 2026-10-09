@@ -7,15 +7,11 @@
 // picks the events: staff see every event, a student those for them (and those they perform at).
 // Students get counts only (event_counts); names come from event_people_list, staff only.
 
-import type { ParseKeys } from 'i18next';
-
 import { formatDate, formatTypedDate, localDate, localMoment, localTime, parseDayMonthYear, parseTimeOfDay, todayLocal } from '@/lib/dates';
 import { supabase } from '@/lib/supabase';
 
 import type { Audience } from './announcements';
-import { isNetworkError } from './errors';
-
-type MessageKey = ParseKeys;
+import { isNetworkError, type MessageKey } from './errors';
 
 /** Longest texts of the event forms (C16); the database checks them too. */
 export const EVENT_TITLE_MAX = 120;

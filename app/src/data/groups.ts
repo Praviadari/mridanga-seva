@@ -7,16 +7,11 @@
 // (supabase/migrations/0008_announcement_follow_ups.sql, docs/DECISIONS.md #28). Groups are
 // switched off, never deleted, so old announcements keep their group.
 
-import type { ParseKeys } from 'i18next';
-
 import type { AppRole } from '@/auth/types';
 import { searchFold } from '@/lib/search-text';
 import { supabase } from '@/lib/supabase';
 
-import { isNetworkError } from './errors';
-
-/** A translation key for a message. */
-type MessageKey = ParseKeys;
+import { fallbackErrorKey, type MessageKey } from './errors';
 
 /** Longest group name the database accepts, in characters (same limit as the trigger in 0008). */
 export const GROUP_NAME_MAX_LENGTH = 60;
@@ -237,6 +232,5 @@ function groupErrorKey(message: string, code: string | undefined): MessageKey {
   if (code === '23505') return 'groups.errors.nameTaken';
   // 42501 = refused by row-level security: the person is not a coordinator or the Guru.
   if (code === '42501') return 'groups.errors.notAllowed';
-  if (isNetworkError(message)) return 'common.networkError';
-  return 'common.genericError';
+  return fallbackErrorKey(message);
 }

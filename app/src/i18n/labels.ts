@@ -1,5 +1,5 @@
 // Small helpers that turn values stored as numbers or codes into words in the app's language:
-// a level's name, a status, a call outcome or reason, when a student last came, who an
+// a level's name, a guardian's relation, an ID type, a status, a call outcome or reason, when a student last came, who an
 // announcement is for, a file's size, a length of time.
 // Used by several screens, so the wording is the same everywhere.
 
@@ -8,7 +8,15 @@ import type { TFunction } from 'i18next';
 import type { Announcement } from '@/data/announcements';
 import { isKnownCallReason, type CallOutcome } from '@/data/follow-up';
 import type { StudentStatus, StudentSummary } from '@/data/student-overview';
+import { ID_TYPES, RELATIONS, type IdType, type Relation } from '@/data/students';
 import { localDate, formatDate } from '@/lib/dates';
+
+/**
+ * The level ids, in order: the three levels of migration 0001, which do not change (Praveen's
+ * decision of 28-09-2026). Every level choice and filter offers these; adding a level means adding
+ * it here and in levelName.
+ */
+export const LEVEL_IDS = [1, 2, 3] as const;
 
 /**
  * The level's name in the app's language. The three levels (Beginner, Intermediate, Advanced)
@@ -26,6 +34,19 @@ export function levelName(t: TFunction, levelId: number, fallback?: string): str
     default:
       return fallback ?? String(levelId);
   }
+}
+
+/**
+ * A guardian's relation (mother, father, guardian) in the app's language. A code the app does not
+ * know, or none, shows `fallback`: the code itself unless the screen gives a word.
+ */
+export function relationName(t: TFunction, code: string | null, fallback: string = code ?? ''): string {
+  return code && (RELATIONS as readonly string[]).includes(code) ? t(`relations.${code as Relation}`) : fallback;
+}
+
+/** The kind of ID the coordinator checked (Aadhaar, PAN, ...) in the app's language; an unknown code as stored. */
+export function idTypeName(t: TFunction, code: string | null): string {
+  return code && (ID_TYPES as readonly string[]).includes(code) ? t(`idTypes.${code as IdType}`) : (code ?? '');
 }
 
 /** A student's status in the app's language: new, active, irregular, inactive, paused, left. */

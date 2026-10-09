@@ -439,7 +439,10 @@ the file once the change is saved. A file whose removal failed stays unused; OPE
 notifications has a row in `push_tokens` (its Expo push token, the login, `android` or `ios`).
 The Android app saves it after sign-in with `register_push_token` and deletes it at sign-out; a
 person sees and deletes only their own. A token belongs to the login last signed in on that
-phone, and a person has at most 5 phones.
+phone, and a person has at most 5 phones. The app does not turn the errors of `register_push_token` into
+messages (0011 lists them beside `src/lib/push.ts`, the caller): any refusal leaves the token unsaved,
+silently, and the next start tries again. The app asks only for the Guru, coordinators and students, the roles
+that `not_allowed` lets through.
 
 Every minute the job `mridanga-push` runs `send_due_push()`. When an announcement is published
 and `notified_at` is still empty, it calls the Edge Function `notify-announcements`

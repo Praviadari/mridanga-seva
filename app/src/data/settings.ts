@@ -16,14 +16,10 @@
 // Saved together by save_settings (migration 0014), which checks every value and keeps Irregular
 // before Inactive; every change goes to the audit log.
 
-import type { ParseKeys } from 'i18next';
-
 import { parseTimeOfDay } from '@/lib/dates';
 import { supabase } from '@/lib/supabase';
 
-import { isNetworkError } from './errors';
-
-type MessageKey = ParseKeys;
+import { fallbackErrorKey, type MessageKey } from './errors';
 
 /** What "this week" means on the home screens. */
 export type WeekStarts = 'monday' | 'rolling7';
@@ -178,6 +174,5 @@ function errorKeyOf(message: string): MessageKey {
     case 'setting_unknown':
       return 'settings.errors.range';
   }
-  if (isNetworkError(message)) return 'common.networkError';
-  return 'common.genericError';
+  return fallbackErrorKey(message);
 }

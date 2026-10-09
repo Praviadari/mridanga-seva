@@ -7,7 +7,6 @@
 // check everything again: size, type, who may upload, open and delete (migration
 // 0010_announcement_files.sql, docs/DECISIONS.md #32).
 
-import type { ParseKeys } from 'i18next';
 import * as Crypto from 'expo-crypto';
 import * as DocumentPicker from 'expo-document-picker';
 import { File } from 'expo-file-system';
@@ -17,10 +16,7 @@ import { Platform } from 'react-native';
 
 import { supabase } from '@/lib/supabase';
 
-import { isNetworkError } from './errors';
-
-/** A translation key for a message. */
-type MessageKey = ParseKeys;
+import { isNetworkError, type MessageKey } from './errors';
 
 /** The private Storage bucket (migration 0010). */
 export const FILES_BUCKET = 'announcement-files';

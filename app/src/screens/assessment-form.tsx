@@ -52,11 +52,9 @@ import {
   type AssessmentForm,
   type AssessmentFormErrors,
 } from '@/data/assessments';
-import { fileSizeText, levelName } from '@/i18n/labels';
+import { fileSizeText, LEVEL_IDS, levelName } from '@/i18n/labels';
 import { spacing, useTheme } from '@/theme/use-theme';
 
-/** The three levels (table levels in 0001). */
-const LEVELS = [1, 2, 3] as const;
 
 /** The icon of a file's kind. */
 const fileIcon = (kind: MediaKind) => (kind === 'audio' ? 'audio' : kind === 'video' ? 'videoFile' : 'file');
@@ -224,7 +222,7 @@ function FormBody({ header, editing }: { header: ReactNode; editing: Editing | n
             />
             <ChoiceGroup
               label={t('assessments.compose.level')}
-              choices={LEVELS.map((id) => ({ value: id, label: levelName(t, id) }))}
+              choices={LEVEL_IDS.map((id) => ({ value: id, label: levelName(t, id) }))}
               value={form.levelId}
               onChange={(levelId) => update({ levelId })}
               error={errors.level ? t(errors.level) : undefined}

@@ -8,21 +8,17 @@
 // database enforces this however a row is written (migration 0013_syllabus_materials.sql,
 // docs/DECISIONS.md #44); the screen offers only what is allowed.
 
-import type { ParseKeys } from 'i18next';
-
+import { LEVEL_IDS } from '@/i18n/labels';
 import { supabase } from '@/lib/supabase';
 
-import { isNetworkError } from './errors';
-
-/** A translation key for a message. */
-type MessageKey = ParseKeys;
+import { fallbackErrorKey, type MessageKey } from './errors';
 
 /** Longest title and description, as in the database. */
 export const ITEM_TITLE_MAX = 120;
 export const ITEM_DESCRIPTION_MAX = 1000;
 
-/** The levels, in order. Their names come from the translations (i18n/labels.ts levelName). */
-export const LEVEL_IDS = [1, 2, 3] as const;
+/** The levels, in order (i18n/labels.ts, with their names). */
+export { LEVEL_IDS };
 
 /** One syllabus item as the editor shows it. */
 export type EditorItem = {
@@ -158,6 +154,5 @@ function editorErrorKey(message: string, code: string | undefined): MessageKey {
   if (message === 'item_has_ticks') return 'syllabusEditor.errors.hasTicks';
   if (message === 'item_has_materials') return 'syllabusEditor.errors.hasMaterials';
   if (message === 'not_allowed' || code === '42501') return 'syllabusEditor.errors.notAllowed';
-  if (isNetworkError(message)) return 'common.networkError';
-  return 'common.genericError';
+  return fallbackErrorKey(message);
 }

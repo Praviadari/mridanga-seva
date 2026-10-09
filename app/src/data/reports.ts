@@ -12,7 +12,7 @@ import { formatDate, todayLocal } from '@/lib/dates';
 import { supabase } from '@/lib/supabase';
 import type { StudentStatus } from './student-overview';
 
-import { isNetworkError } from './errors';
+import { fallbackErrorKey } from './errors';
 
 /** One week's or month's visits. */
 export type VisitPeriod = { start: string; visits: number; visitors: number; hours: number };
@@ -271,6 +271,5 @@ function errorKeyOf(message: string): ParseKeys {
     case 'range_too_long':
       return 'reports.errors.tooLong';
   }
-  if (isNetworkError(message)) return 'common.networkError';
-  return 'common.genericError';
+  return fallbackErrorKey(message);
 }

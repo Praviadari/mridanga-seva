@@ -6,18 +6,13 @@
 // (supabase/migrations/0005_students_follow_up.sql). A logged call is the ONLY way a student
 // becomes Paused or Left (docs/DECISIONS.md #4), so this file never updates students.status.
 
-import type { ParseKeys } from 'i18next';
-
 import { addDays, parseDayMonthYear, todayLocal } from '@/lib/dates';
 import { readLogged } from '@/lib/logged-read';
 import { supabase } from '@/lib/supabase';
 
-import { isNetworkError } from './errors';
+import { fallbackErrorKey, type MessageKey } from './errors';
 import type { OpenTask } from './student-profile';
 import { fetchStaff, fetchStudentSummaries, type StaffMember, type StudentSummary } from './student-overview';
-
-/** A translation key for a message. */
-type MessageKey = ParseKeys;
 
 // ---------------------------------------------------------------- outcomes and reasons
 
@@ -331,6 +326,5 @@ function callErrorKey(message: string): MessageKey {
     case 'student_withdrawn': // consent withdrawn, the record is frozen (0025)
       return 'common.studentWithdrawn';
   }
-  if (isNetworkError(message)) return 'common.networkError';
-  return 'common.genericError';
+  return fallbackErrorKey(message);
 }

@@ -29,7 +29,7 @@ import {
   type DatabaseRow,
 } from '@/data/student-database';
 import { fetchStaff, STUDENT_STATUSES, type StaffMember } from '@/data/student-overview';
-import { levelName, statusName } from '@/i18n/labels';
+import { LEVEL_IDS, levelName, statusName } from '@/i18n/labels';
 import { formatDate } from '@/lib/dates';
 import { spacing, useTheme, useWide } from '@/theme/use-theme';
 
@@ -124,7 +124,7 @@ export default function StudentDatabaseScreen() {
           label={t('students.filters.level')}
           choices={[
             { value: 'all', label: t('students.filters.all') },
-            ...[1, 2, 3].map((id) => ({ value: String(id), label: levelName(t, id) })),
+            ...LEVEL_IDS.map((id) => ({ value: String(id), label: levelName(t, id) })),
           ]}
           value={String(filters.levelId)}
           onChange={(value) => update({ levelId: value === 'all' ? 'all' : Number(value) })}

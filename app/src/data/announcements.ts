@@ -12,8 +12,6 @@
 // before the announcement is saved, and removed from Storage when they are taken off it
 // (./announcement-files.ts, migration 0010, docs/DECISIONS.md #32).
 
-import type { ParseKeys } from 'i18next';
-
 import { formatTypedDate, localDate, localMoment, localTime, parseDayMonthYear, parseTimeOfDay } from '@/lib/dates';
 import { supabase } from '@/lib/supabase';
 
@@ -28,10 +26,7 @@ import {
   type Attachment,
   type FormFile,
 } from './announcement-files';
-import { isNetworkError } from './errors';
-
-/** A translation key for a message. */
-type MessageKey = ParseKeys;
+import { fallbackErrorKey, isNetworkError, type MessageKey } from './errors';
 
 /** Longest title the database accepts, in characters (same limit as the trigger in 0007). */
 export const TITLE_MAX_LENGTH = 120;
@@ -818,6 +813,5 @@ function announcementErrorKey(message: string, code: string | undefined): Messag
   if (code === '42501') return 'announcements.errors.notAllowed';
   // 23503 = the chosen group was deleted meanwhile.
   if (code === '23503') return 'announcements.errors.groupGone';
-  if (isNetworkError(message)) return 'common.networkError';
-  return 'common.genericError';
+  return fallbackErrorKey(message);
 }

@@ -9,7 +9,7 @@ import type { ParseKeys } from 'i18next';
 import { supabase } from '@/lib/supabase';
 
 import { removeFiles } from './announcement-files';
-import { isNetworkError } from './errors';
+import { fallbackErrorKey } from './errors';
 import { MATERIALS_BUCKET, type Material } from './materials';
 
 /** Longest reason for a suggestion, as in the database. */
@@ -155,6 +155,5 @@ export function suggestionErrorKey(message: string, code: string | undefined): P
   const known = KNOWN.find((k) => k === message);
   if (known) return `suggestions.errors.${known}`;
   if (code === '42501' || message === 'not_allowed') return 'suggestions.errors.not_allowed';
-  if (isNetworkError(message)) return 'common.networkError';
-  return 'common.genericError';
+  return fallbackErrorKey(message);
 }

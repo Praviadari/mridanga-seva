@@ -9,7 +9,7 @@ import type { ParseKeys } from 'i18next';
 
 import { supabase } from '@/lib/supabase';
 
-import { isNetworkError } from './errors';
+import { fallbackErrorKey } from './errors';
 
 /**
  * Kinds of item: clay khol, fibreglass (Balaram / Tilak), fibreglass body with skin heads, brass, as in
@@ -545,6 +545,5 @@ export function inventoryErrorKey(message: string, code: string | undefined): Pa
   if (known) return `inventory.errors.${known}`;
   if (code === '23505') return 'inventory.errors.label_taken';
   if (code === '42501' || message === 'not_allowed') return 'inventory.errors.not_allowed';
-  if (isNetworkError(message)) return 'common.networkError';
-  return 'common.genericError';
+  return fallbackErrorKey(message);
 }

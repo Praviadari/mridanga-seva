@@ -6,16 +6,13 @@
 // writer's alone; a tick is the person's own (staff may read them). The translation and purport are
 // the temple's own (never BBT text): a sloka is published only with that confirmed (own_text).
 
-import type { ParseKeys } from 'i18next';
 import * as Crypto from 'expo-crypto';
 
 import { todayLocal } from '@/lib/dates';
 import { supabase } from '@/lib/supabase';
 
 import { bodyOf, endingFor, pickRecordingFiles, recordingAsMedia, type PickedMedia } from './assessment-files';
-import { isNetworkError } from './errors';
-
-type MessageKey = ParseKeys;
+import { isNetworkError, type MessageKey } from './errors';
 
 /** The languages a translation and purport may be written in, in the order they are offered. */
 export const IG_LANGUAGES = ['en', 'te', 'hi'] as const;

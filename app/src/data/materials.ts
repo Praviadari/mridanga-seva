@@ -10,7 +10,6 @@
 // `visible` in 0001). Only the Guru adds, edits and removes materials; coordinators
 // suggest them (C18, data/suggestions.ts, migration 0023), and the lists here show approved ones.
 
-import type { ParseKeys } from 'i18next';
 import * as WebBrowser from 'expo-web-browser';
 import { Linking } from 'react-native';
 
@@ -27,10 +26,7 @@ import {
   type PickLimit,
   type PickResult,
 } from './announcement-files';
-import { isNetworkError } from './errors';
-
-/** A translation key for a message. */
-type MessageKey = ParseKeys;
+import { fallbackErrorKey, type MessageKey } from './errors';
 
 /** The private Storage bucket (migration 0013). */
 export const MATERIALS_BUCKET = 'material-files';
@@ -324,6 +320,5 @@ function materialErrorKey(message: string, code: string | undefined): MessageKey
   if (message === 'too_many_suggestions') return 'suggestions.errors.too_many_suggestions';
   if (code === '42501') return 'materials.errors.notAllowed';
   if (code === '23503') return 'materials.errors.gone';
-  if (isNetworkError(message)) return 'common.networkError';
-  return 'common.genericError';
+  return fallbackErrorKey(message);
 }

@@ -12,7 +12,7 @@ import {
   type AnnouncementForm,
   type AnnouncementFormErrors,
 } from '@/data/announcements';
-import { levelName } from '@/i18n/labels';
+import { LEVEL_IDS, levelName } from '@/i18n/labels';
 
 import { AppText } from './app-text';
 import { AttachmentPicker } from './attachment-picker';
@@ -116,7 +116,7 @@ export function AnnouncementFields({
           <ChoiceGroup
             chips
             label={t('announcements.compose.level')}
-            choices={[1, 2, 3].map((id) => ({ value: id, label: levelName(t, id), icon: 'level' as const }))}
+            choices={LEVEL_IDS.map((id) => ({ value: id, label: levelName(t, id), icon: 'level' as const }))}
             value={form.levelId}
             onChange={(levelId) => onChange({ levelId })}
             error={errors.levelId ? t(errors.levelId) : undefined}

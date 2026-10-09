@@ -7,14 +7,10 @@
 // The player must work offline, so the last taals loaded are kept on this device, and the seeded
 // placeholder taals are built in as a last resort (a phone that never reached the server).
 
-import type { ParseKeys } from 'i18next';
-
 import { readLocal, writeLocal } from '@/lib/local-storage';
 import { supabase } from '@/lib/supabase';
 
-import { isNetworkError } from './errors';
-
-type MessageKey = ParseKeys;
+import { isNetworkError, type MessageKey } from './errors';
 
 /** One taal (table taals). */
 export type Taal = {

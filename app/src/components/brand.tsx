@@ -6,7 +6,7 @@
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Image, StyleSheet, View } from 'react-native';
 
-import { brand } from '@/theme/colors';
+import { brand, onBrand } from '@/theme/colors';
 import { maxContentWidth, spacing, useTheme } from '@/theme/use-theme';
 
 import { AppText } from './app-text';
@@ -28,7 +28,7 @@ export function BrandSplash() {
       <AppText variant="title" style={styles.splashText}>
         {t('app.name')}
       </AppText>
-      <ActivityIndicator color="#FFFFFF" />
+      <ActivityIndicator color={onBrand} />
     </View>
   );
 }
@@ -83,7 +83,7 @@ const styles = StyleSheet.create({
     height: 200,
   },
   splashText: {
-    color: '#FFFFFF',
+    color: onBrand,
   },
   badge: {
     alignItems: 'center',

@@ -23,7 +23,7 @@ import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { TextField } from '@/components/text-field';
 import { deleteTaal, fetchTaal, saveTaal, type Taal } from '@/data/practice';
-import { levelName } from '@/i18n/labels';
+import { LEVEL_IDS, levelName } from '@/i18n/labels';
 
 const BEAT = /^(-|[^.\s-]{1,10}(\.[^.\s-]{1,10}){0,3})$/;
 
@@ -171,7 +171,7 @@ function TaalEditScreenContent() {
           label={t('taals.level')}
           value={levelId}
           onChange={(value) => isGuru && setLevelId(value)}
-          choices={[{ value: 0, label: t('practice.allLevels') }, ...[1, 2, 3].map((l) => ({ value: l, label: levelName(t, l) }))]}
+          choices={[{ value: 0, label: t('practice.allLevels') }, ...LEVEL_IDS.map((l) => ({ value: l, label: levelName(t, l) }))]}
         />
         <Checkbox label={t('taals.placeholder')} checked={placeholder} onChange={(v) => isGuru && setPlaceholder(v)} />
         <Checkbox label={t('taals.active')} checked={active} onChange={(v) => isGuru && setActive(v)} />

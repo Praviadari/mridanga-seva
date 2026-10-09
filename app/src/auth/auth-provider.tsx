@@ -22,7 +22,7 @@ import { createContext, use, useEffect, useRef, useState, type PropsWithChildren
 import { AppState } from 'react-native';
 
 import { isNetworkError } from '@/data/errors';
-import { applyProfileLanguage, currentLanguage, hasUnsavedChoice, markLanguageSaved } from '@/i18n';
+import { applyProfileLanguage, currentLanguage, hasUnsavedChoice, markLanguageSaved, type Language } from '@/i18n';
 import { loadClassLocale } from '@/lib/class-locale';
 import { setRefusedListener, storedLoginUserId, supabase, supabaseConfigProblem } from '@/lib/supabase';
 
@@ -280,7 +280,7 @@ function syncLanguageWithProfile(profile: Profile): void {
  * @param profile the signed-in person's profile; its `language` is updated in place.
  * @param language the language the app now shows.
  */
-export function saveProfileLanguage(profile: Profile, language: string): void {
+export function saveProfileLanguage(profile: Profile, language: Language): void {
   if (profile.language === language) {
     markLanguageSaved();
     return;

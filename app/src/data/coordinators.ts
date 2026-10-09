@@ -9,14 +9,10 @@
 // docs/DECISIONS.md #57): they may add and edit slokas and themes. And treasurers of the class fund
 // (profiles.is_treasurer, migration 0026, docs/DECISIONS.md #80): they record fund entries.
 
-import type { ParseKeys } from 'i18next';
-
 import { supabase } from '@/lib/supabase';
 
-import { isNetworkError } from './errors';
+import { fallbackErrorKey, type MessageKey } from './errors';
 import type { StudentStatus } from './student-overview';
-
-type MessageKey = ParseKeys;
 
 /** A login as G2 shows it. */
 export type Person = {
@@ -238,6 +234,5 @@ function errorKeyOf(message: string): MessageKey {
   const code = (KNOWN_ERRORS as readonly string[]).find((c) => message === c);
   if (code) return `coordinators.errors.${code as (typeof KNOWN_ERRORS)[number]}`;
   if (message.startsWith('only the Guru')) return 'coordinators.errors.not_allowed';
-  if (isNetworkError(message)) return 'common.networkError';
-  return 'common.genericError';
+  return fallbackErrorKey(message);
 }

@@ -36,7 +36,8 @@ export type StudentSummary = {
 
 type OverviewRow = {
   id: string;
-  roll_no: string;
+  /** Nullable in the view (0005), although the insert trigger always sets it (DECISIONS #3). */
+  roll_no: string | null;
   full_name: string;
   level_id: number;
   status: StudentStatus;
@@ -56,7 +57,7 @@ export const OVERVIEW_COLUMNS =
 export function toStudentSummary(row: OverviewRow): StudentSummary {
   return {
     id: row.id,
-    rollNo: row.roll_no,
+    rollNo: row.roll_no ?? '',
     fullName: row.full_name,
     levelId: row.level_id,
     status: row.status,

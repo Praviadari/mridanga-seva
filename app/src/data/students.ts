@@ -4,17 +4,12 @@
 // consent (docs/DATABASE.md "Registering a student").
 
 import * as Crypto from 'expo-crypto';
-import type { ParseKeys } from 'i18next';
-
 import { ageOn, isMinorOn, parseDayMonthYear, todayLocal } from '@/lib/dates';
 import { toE164 } from '@/lib/phone';
 import { PRIVACY_NOTICE_VERSION } from '@/lib/privacy-notice';
 import { supabase } from '@/lib/supabase';
 
-import { isNetworkError } from './errors';
-
-/** A translation key for a message. */
-type MessageKey = ParseKeys;
+import { fallbackErrorKey, type MessageKey } from './errors';
 
 /** Who the guardian is to the student. Stored as this code in guardians.relation. */
 export const RELATIONS = ['mother', 'father', 'guardian'] as const;
@@ -233,8 +228,7 @@ function registerErrorKey(message: string, code: string | undefined): MessageKey
       return 'register.errors.guardianEmailOnMinor';
   }
   if (code === '23514') return 'register.errors.pincodeInvalid'; // the pincode check in the table
-  if (isNetworkError(message)) return 'common.networkError';
-  return 'common.genericError';
+  return fallbackErrorKey(message);
 }
 
 /** A level to choose from. */

@@ -8,7 +8,6 @@
 // a file made with the phone's own recorder or camera, or record in the app (slice 4: expo-audio,
 // lib/recording.ts, next planned APK); recordingAsMedia turns such a take into a file to upload.
 
-import type { ParseKeys } from 'i18next';
 import * as Crypto from 'expo-crypto';
 import * as DocumentPicker from 'expo-document-picker';
 import { File } from 'expo-file-system';
@@ -18,10 +17,7 @@ import { Platform } from 'react-native';
 import { supabase } from '@/lib/supabase';
 
 import { pickPdfs, pickPhotos, type PickResult as PhotoPickResult } from './announcement-files';
-import { isNetworkError } from './errors';
-
-/** A translation key for a message. */
-type MessageKey = ParseKeys;
+import { isNetworkError, type MessageKey } from './errors';
 
 /** The private Storage bucket (migration 0016). */
 export const ASSESSMENT_BUCKET = 'assessment-files';

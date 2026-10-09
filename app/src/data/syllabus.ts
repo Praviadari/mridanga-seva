@@ -6,15 +6,10 @@
 // records who really ticked and refuses a date in the future; every change is kept in the audit
 // log (supabase/migrations/0006_syllabus_progress.sql, docs/DECISIONS.md #22).
 
-import type { ParseKeys } from 'i18next';
-
 import { supabase } from '@/lib/supabase';
 
-import { isNetworkError } from './errors';
+import { fallbackErrorKey, type MessageKey } from './errors';
 import { fetchMaterials, type Material } from './materials';
-
-/** A translation key for a message. */
-type MessageKey = ParseKeys;
 
 /** Longest remark the database accepts, in characters (same limit as the trigger in 0006). */
 export const REMARK_MAX_LENGTH = 500;
@@ -200,6 +195,5 @@ function syllabusErrorKey(message: string, code: string | undefined): MessageKey
   if (code === '42501') return 'syllabus.errors.notAllowed';
   // 23503 = the item or student was deleted meanwhile (for example the Guru edited the syllabus).
   if (code === '23503') return 'syllabus.errors.gone';
-  if (isNetworkError(message)) return 'common.networkError';
-  return 'common.genericError';
+  return fallbackErrorKey(message);
 }

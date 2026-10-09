@@ -11,8 +11,6 @@
 // visit is saved anyway and flagged when it is outside the centre's area, docs/DECISIONS.md #70);
 // see docs/DATABASE.md "Attendance".
 
-import type { ParseKeys } from 'i18next';
-
 import type { PhoneLocation } from '@/lib/attendance-location';
 import { startOfTodayLocal } from '@/lib/dates';
 import { cleanSearchText, studentSearchFilter } from '@/lib/student-search';
@@ -20,10 +18,7 @@ import { supabase } from '@/lib/supabase';
 
 import type { StudentStatus } from './student-overview';
 
-import { isNetworkError } from './errors';
-
-/** A translation key for a message. */
-type MessageKey = ParseKeys;
+import { fallbackErrorKey, type MessageKey } from './errors';
 
 // ---------------------------------------------------------------- the QR code
 
@@ -168,8 +163,7 @@ function attendanceErrorKey(message: string, code: string | undefined): MessageK
   }
   // Two phones checked in the same student at the same instant; one of them won.
   if (code === '23505') return 'attendance.errors.alreadyMarked';
-  if (isNetworkError(message)) return 'common.networkError';
-  return 'common.genericError';
+  return fallbackErrorKey(message);
 }
 
 // ---------------------------------------------------------------- who is here

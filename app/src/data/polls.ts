@@ -7,15 +7,11 @@
 // the results when they may see them, poll_voters() (staff) who has voted — and what, only in a
 // poll that is not anonymous.
 
-import type { ParseKeys } from 'i18next';
-
 import { formatTypedDate, localDate, localMoment, localTime, parseDayMonthYear, parseTimeOfDay } from '@/lib/dates';
 import { supabase } from '@/lib/supabase';
 
 import type { Audience } from './announcements';
-import { isNetworkError } from './errors';
-
-type MessageKey = ParseKeys;
+import { isNetworkError, type MessageKey } from './errors';
 
 /** Longest question and answer, and how many answers a poll has (C17); the database checks them too. */
 export const QUESTION_MAX = 200;

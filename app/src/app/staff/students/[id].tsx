@@ -27,13 +27,14 @@ import { VisitResultNotice } from '@/components/visit-result-notice';
 import { markVisit, type MarkOutcome } from '@/data/attendance';
 import { fetchStaff } from '@/data/student-overview';
 import { fetchStudentProfile, hasDataConsent, type StudentProfile } from '@/data/student-profile';
-import { ID_TYPES, RELATIONS } from '@/data/students';
 import {
   callReasonName,
   formatDuration,
+  idTypeName,
   lastVisitText,
   levelName,
   outcomeName,
+  relationName,
 } from '@/i18n/labels';
 import { locationForCheckIn } from '@/lib/attendance-location';
 import { ageOn, localDate, formatDate, localTime, todayLocal } from '@/lib/dates';
@@ -99,15 +100,6 @@ function StudentProfileScreenContent() {
     setMarking(false);
   }
 
-  const relationName = (code: string | null) =>
-    code && (RELATIONS as readonly string[]).includes(code)
-      ? t(`relations.${code as (typeof RELATIONS)[number]}`)
-      : (code ?? '');
-  const idTypeName = (code: string | null) =>
-    code && (ID_TYPES as readonly string[]).includes(code)
-      ? t(`idTypes.${code as (typeof ID_TYPES)[number]}`)
-      : (code ?? '');
-
   const doneCount = profile.progress.filter((item) => item.doneOn).length;
   const showGuardians = profile.minor || profile.guardians.length > 0;
 
@@ -172,7 +164,7 @@ function StudentProfileScreenContent() {
           {profile.guardians.map((g) => (
             <AppText key={g.id}>
               <AppText variant="label">{g.fullName}</AppText>
-              {[relationName(g.relation), g.phone, g.email].filter(Boolean).map((part) => ` · ${part}`).join('')}
+              {[relationName(t, g.relation), g.phone, g.email].filter(Boolean).map((part) => ` · ${part}`).join('')}
             </AppText>
           ))}
           {profile.consents.map((c) => (
@@ -182,7 +174,7 @@ function StudentProfileScreenContent() {
                 method: t(`consentMethods.${c.method}`),
                 date: formatDate(localDate(c.givenAt)),
               })}
-              {c.idTypeChecked ? ` · ${t('profile.idSeen', { idType: idTypeName(c.idTypeChecked) })}` : ''}
+              {c.idTypeChecked ? ` · ${t('profile.idSeen', { idType: idTypeName(t, c.idTypeChecked) })}` : ''}
               {c.revokedAt
                 ? ` · ${t('profile.consentWithdrawn', { date: formatDate(localDate(c.revokedAt)) })}`
                 : ''}

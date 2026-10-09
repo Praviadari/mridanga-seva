@@ -6,15 +6,10 @@
 // kept on this device, shown at once while the server is asked, and kept on screen with a note
 // when the server cannot be reached (docs/DECISIONS.md #21).
 
-import type { ParseKeys } from 'i18next';
-
 import { readLocal, removeLocal, writeLocal } from '@/lib/local-storage';
 import { supabase } from '@/lib/supabase';
 
-import { isNetworkError } from './errors';
-
-/** A translation key for a message. */
-type MessageKey = ParseKeys;
+import { isNetworkError, type MessageKey } from './errors';
 
 /** What the My QR card shows. */
 export type MyCard = {

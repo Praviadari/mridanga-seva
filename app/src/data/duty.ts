@@ -9,7 +9,7 @@ import type { ParseKeys, TFunction } from 'i18next';
 import { formatDate, todayLocal } from '@/lib/dates';
 import { supabase } from '@/lib/supabase';
 
-import { isNetworkError } from './errors';
+import { fallbackErrorKey } from './errors';
 
 /** Longest duty text, as in the database. */
 export const DUTY_MAX = 80;
@@ -153,6 +153,5 @@ export function dutyErrorKey(message: string, code: string | undefined): ParseKe
   const known = KNOWN.find((k) => k === message);
   if (known) return `duty.errors.${known}`;
   if (code === '42501' || message === 'not_allowed') return 'duty.errors.not_allowed';
-  if (isNetworkError(message)) return 'common.networkError';
-  return 'common.genericError';
+  return fallbackErrorKey(message);
 }

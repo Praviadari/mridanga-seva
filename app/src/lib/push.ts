@@ -111,7 +111,8 @@ function screenOf(response: NotificationsModule.NotificationResponse | null): st
 /**
  * Asks for permission (once; Android 13 and later show the question) and saves this phone's
  * push token for the signed-in person. Call after sign-in, for students and staff. Never throws
- * and never shows an error: without push the app works as before.
+ * and never shows an error: without push the app works as before. The error codes listed with
+ * register_push_token in 0011 are not translated: any refusal just leaves the token unsaved.
  */
 export async function registerForPush(): Promise<void> {
   const module = await notifications();

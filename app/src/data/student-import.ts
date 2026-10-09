@@ -6,7 +6,6 @@
 // (supabase/migrations/0014_guru_admin.sql), which checks them again and gives each saved row its
 // roll number. Adults only: under-18s need the parent's consent form (C2). docs/DECISIONS.md #46.
 
-import type { ParseKeys } from 'i18next';
 import * as DocumentPicker from 'expo-document-picker';
 import { File } from 'expo-file-system';
 import { Platform } from 'react-native';
@@ -15,9 +14,7 @@ import { ageOn, parseDayMonthYear, todayLocal } from '@/lib/dates';
 import { MAX_SHEET_BYTES, readSheet, type SheetError, type SheetRows } from '@/lib/sheet-reader';
 import { supabase } from '@/lib/supabase';
 
-import { isNetworkError } from './errors';
-
-type MessageKey = ParseKeys;
+import { isNetworkError, type MessageKey } from './errors';
 
 // ---------------------------------------------------------------- fields and columns
 

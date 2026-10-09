@@ -8,17 +8,12 @@
 // withdraw_nomination, promotion_ready_students, promotion_home; the list is the view
 // promotion_queue. Staff only (supabase/migrations/0017_promotion.sql, docs/DECISIONS.md #53).
 
-import type { ParseKeys } from 'i18next';
-
 import { formatTypedDate, parseDayMonthYear, todayLocal } from '@/lib/dates';
 import { supabase } from '@/lib/supabase';
 
 import { parseMediaFile, type MediaFile } from './assessment-files';
-import { isNetworkError } from './errors';
+import { isNetworkError, type MessageKey } from './errors';
 import { fetchStaff } from './student-overview';
-
-/** A translation key for a message. */
-type MessageKey = ParseKeys;
 
 /** Longest nomination reason, feedback comment and decision note (C22, C23, G7); the database checks them too. */
 export const REASON_MAX = 2000;

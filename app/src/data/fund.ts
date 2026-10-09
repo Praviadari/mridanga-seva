@@ -14,7 +14,7 @@ import { formatMoney } from '@/lib/money';
 import { supabase } from '@/lib/supabase';
 
 import { pickPdfs, pickPhotos, removeFiles, signedLinks, uploadFiles, type PickedFile, type PickResult } from './announcement-files';
-import { isNetworkError } from './errors';
+import { fallbackErrorKey } from './errors';
 
 /** The private Storage bucket of the bills (migration 0026). */
 export const BILLS_BUCKET = 'fund-bills';
@@ -465,6 +465,5 @@ export function fundErrorKey(message: string, code: string | undefined): ParseKe
   if (known) return `fund.errors.${known}`;
   if (code === '23505') return 'fund.errors.category_name_taken';
   if (code === '42501') return 'fund.errors.not_allowed';
-  if (isNetworkError(message)) return 'common.networkError';
-  return 'common.genericError';
+  return fallbackErrorKey(message);
 }

@@ -12,7 +12,7 @@ import { parseTimeOfDay } from '@/lib/dates';
 import { readPoint } from '@/lib/map-link';
 import { supabase } from '@/lib/supabase';
 
-import { isNetworkError } from './errors';
+import { fallbackErrorKey } from './errors';
 
 /** One centre as the list shows it. */
 export type Centre = {
@@ -178,6 +178,5 @@ function errorKeyOf(message: string): ParseKeys {
   }
   // Row-level security refuses a coordinator without an error code of its own.
   if (/row-level security|0 rows|JSON object requested/i.test(message)) return 'centres.errors.notAllowed';
-  if (isNetworkError(message)) return 'common.networkError';
-  return 'common.genericError';
+  return fallbackErrorKey(message);
 }
