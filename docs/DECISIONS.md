@@ -3374,3 +3374,49 @@ person per post, e.g. 5), FLOW-02 (a switched-off coordinator's scheduled posts:
 Guru, or send them as now).
 
 **Consequences.** Each team answer is a small migration; none blocks the pilot.
+
+## 212. Phase 3 reads a location only at a check-in or check-out, never tracks — 9 Oct 2026
+
+**Status: decided (lead chat 5, 9 Oct 2026, on the Guru's face-scan request); face-scan prep, branch
+`face-prep`. Nothing is built yet.**
+
+**Context.** The Guru wants face-scan attendance bounded by GPS like the railways' UTS app, so parents
+know when their children were at class. India's DPDP Act s.9(3) forbids "tracking or behavioural
+monitoring of children"; the Fourth Schedule exemption (Rule 12, Part A item 3, educational
+institutions) is uncertain for this class and is not relied on (docs/phase3/DPIA_DRAFT.md §4).
+
+**Decision.** In Phase 3, as already for staff check-ins (#55, #70), a phone's location is read only
+at the moment a person checks in or out, in the foreground; never in the background, on a timer or
+while the app is merely open. Only the result (inside/outside, distance in metres) is stored, never
+the position. No live location, location history or "where is my child" view is built. The APK keeps
+background location, the Android foreground service and iOS background location switched off.
+
+**Why.** It meets s.9(3) without the exemption, keeps the app out of Google Play's background-location
+review, and is all that an attendance record needs.
+
+**Consequences.** Self-scan geofencing (blocking outside the area) and parent notices are proposals in
+docs/phase3/ and need the Guru's answers (DECISIONS_FOR_GURU.md); any future location feature must fit
+this rule or come back as a new decision.
+
+## 213. Face scan only by its own opt-in; QR and coordinator check-in stay for everyone — 9 Oct 2026
+
+**Status: decided (restates #8, #167 and the lead's condition of 9 Oct 2026); face-scan prep, branch
+`face-prep`. Nothing is built yet.**
+
+**Context.** #8 and #167 keep faces behind their own consent (`consents.scope = 'face'`, since 0001).
+Audit D4-18 asked for a QR alternative for every student. A Swedish school was fined in 2019 for face
+attendance partly because pupils' consent was not free when no real alternative existed
+(docs/phase3/DPIA_DRAFT.md §5).
+
+**Decision.** Face recognition is used only for a student with a current, separate face consent (the
+parent's for a minor, verifiable as #16/#74), never bundled with the data or photo consent. QR (#17,
+#21) and coordinator check-in remain available to every student permanently; a student without face
+consent is not reminded, marked or treated differently anywhere. Withdrawing face consent deletes the
+face template and changes nothing else.
+
+**Why.** Consent is only free when saying no costs nothing (DPDP s.6(1)), and children's data needs the
+parent's verifiable consent (s.9(1), Rule 10).
+
+**Consequences.** Phase 3 keeps the QR scanner and My QR. The proposed details (who scans, minimum age,
+retention, the child's own refusal, the impact-assessment gate) are in docs/phase3/ for the Guru;
+DECISIONS #214-#215 stay unused until then.
