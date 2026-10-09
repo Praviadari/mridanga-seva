@@ -4,9 +4,11 @@ Each item has a **recommended default**; the Guru can accept it or choose otherw
 **15 Nov 2026** keep the 1 Mar - 25 Apr 2027 build on track. Details: FACE_ATTENDANCE_PLAN.md,
 MODEL_OPTIONS.md, DPIA_DRAFT.md, CONSENT_DRAFT.md.
 
-Already settled (DECISIONS #212, #213): location is read **only** at a check-in/out, in the
-foreground, and only "inside/outside + distance" is kept — never tracking; face is a **separate
-opt-in**, and QR / coordinator check-in stays for everyone for good.
+Already settled (DECISIONS #212 — Praveen, 09-10-2026 — and #213): **no live or continuous
+location tracking at all**; location is read **only** at the moment of check-in and check-out,
+against the class area, and only "inside/outside + distance" is kept; verifiable parental consent
+is taken; face is a **separate biometric opt-in**, and QR / coordinator check-in stays for everyone
+for good.
 
 1. **Go-ahead gate.** *Recommended:* face is switched on only after a lawyer has reviewed the DPIA
    and consent texts and the Guru signs off (closes audit D4-18). If the review comes late, ship

@@ -3377,17 +3377,19 @@ Guru, or send them as now).
 
 ## 212. Phase 3 reads a location only at a check-in or check-out, never tracks — 9 Oct 2026
 
-**Status: decided (lead chat 5, 9 Oct 2026, on the Guru's face-scan request); face-scan prep, branch
-`face-prep`. Nothing is built yet.**
+**Status: decided by Praveen 9 Oct 2026 (relayed by lead chat 5, on the Guru's face-scan request);
+face-scan prep, branch `face-prep`. Nothing is built yet.**
 
 **Context.** The Guru wants face-scan attendance bounded by GPS like the railways' UTS app, so parents
 know when their children were at class. India's DPDP Act s.9(3) forbids "tracking or behavioural
 monitoring of children"; the Fourth Schedule exemption (Rule 12, Part A item 3, educational
 institutions) is uncertain for this class and is not relied on (docs/phase3/DPIA_DRAFT.md §4).
 
-**Decision.** In Phase 3, as already for staff check-ins (#55, #70), a phone's location is read only
-at the moment a person checks in or out, in the foreground; never in the background, on a timer or
-while the app is merely open. Only the result (inside/outside, distance in metres) is stored, never
+**Decision.** No live or continuous location tracking at all. In Phase 3, as already for staff
+check-ins (#55, #70), a phone's location is read only at the moment a person checks in or out, in the
+foreground, and compared with the class's area (geofence); never in the background, on a timer or
+while the app is merely open. Verifiable parental consent is taken for minors, and face recognition
+is a separate biometric opt-in (#213). Only the result (inside/outside, distance in metres) is stored, never
 the position. No live location, location history or "where is my child" view is built. The APK keeps
 background location, the Android foreground service and iOS background location switched off.
 

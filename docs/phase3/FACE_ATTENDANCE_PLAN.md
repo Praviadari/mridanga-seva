@@ -1,7 +1,9 @@
 # Phase 3 — Face-scan attendance plan (DRAFT, 09-10-2026)
 
-**Status:** preparation only. Nothing here is built or decided, except DECISIONS #212-#213
-(location read only at a check-in/out, never tracked; face only by its own opt-in, QR always there).
+**Status:** preparation only. Nothing here is built or decided, except DECISIONS #212 (Praveen,
+09-10-2026: **no live or continuous location tracking at all** — GPS read only at the moment of
+check-in and check-out, against the class geofence; verifiable parental consent; face a separate
+biometric opt-in) and #213 (face only by its own opt-in, QR always there).
 Every other item is a proposal for the Guru and the team ([DECISIONS_FOR_GURU.md](DECISIONS_FOR_GURU.md)).
 Companion files: [MODEL_OPTIONS.md](MODEL_OPTIONS.md), [DPIA_DRAFT.md](DPIA_DRAFT.md),
 [CONSENT_DRAFT.md](CONSENT_DRAFT.md).
@@ -163,9 +165,9 @@ we want you *in* the centre).
 None is proof. The real control is the **face + liveness + a human in the loop** (mode A/B), and a
 fallback that is equally easy.
 
-### 3.5 Never tracking (DECISIONS #212)
+### 3.5 Never tracking (DECISIONS #212, decided by Praveen 09-10-2026)
 
-Location is read **only at a check-in or check-out action, in the foreground**, never in the
+No live or continuous location tracking at all. Location is read **only at a check-in or check-out action, in the foreground**, never in the
 background, never on a timer, never while the app is merely open; only the result is stored. No
 "where is my child now" map. This keeps Phase 3 outside DPDP s.9(3) "tracking or behavioural
 monitoring of children" without relying on the Fourth Schedule exemption (DPIA §4), and outside
