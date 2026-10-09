@@ -4,7 +4,12 @@ The Phase 1 screens and how far each one is (Phase 2 at the end). Screen numbers
 screen list the team approved; code comments use them. Phase 2 and 3 screens are added here when
 their building starts.
 
-Status: **Built** works end to end · **Placeholder** a simple stand-in exists · blank = not started.
+Status: **Built** the screen and its database part are on main and pass the type check, lint and the
+smoke test · **Placeholder** a simple stand-in exists · blank = not started. **Built does not mean
+tried end to end on a real project or phone:** the maintainers record each phone or browser check
+on the test project with its date in their notes (not in this repository). Before the pilot, treat
+a flow as proven only when such a check names it; flows such as minor registration with consent,
+forgot password, camera QR check-in and Check out all need one.
 
 Since 1 Oct 2026 each role has tabs ([DECISIONS.md #36](DECISIONS.md)): students Home (S1) · My QR (S3) ·
 Announcements (S10); the Guru and coordinators Home (G1 or C1) · Attendance (C5) · Students (C7) ·

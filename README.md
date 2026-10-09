@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 ![Status: Phase 1 in development](https://img.shields.io/badge/status-Phase%201%20in%20development-orange.svg)
-![Platforms: Android · iOS · Web](https://img.shields.io/badge/platforms-Android%20%C2%B7%20iOS%20%C2%B7%20Web-blue.svg)
+![Platforms: Android · Web (iPhone via the web)](https://img.shields.io/badge/platforms-Android%20%C2%B7%20Web%20(iPhone%20via%20the%20web)-blue.svg)
 
 > Open-source class management app for mridanga (khol) kirtan classes: drop-in attendance, levels,
 > coordinator follow-up, lessons, practice tools and announcements. Built with React Native (Expo)
@@ -40,7 +40,7 @@ Mridanga Seva puts class records, learning material and communication in one pla
 **Phase 2 — learning and community**
 - Assessments with coordinator review and a Guru-approved promotion workflow
 - Practice tools: metronome, taal player and an animated view of both drum heads
-- Events, polls, door-tablet check-in, inventory
+- Events, polls, inventory with QR asset labels; door-tablet check-in is planned (the `kiosk` role exists, no screen yet)
 - Ishtagoshti: thematic study of Sanskrit slokas, free and open to anyone
 - Transparent fund management for donations and sponsorships
 
@@ -48,7 +48,7 @@ Mridanga Seva puts class records, learning material and communication in one pla
 
 ## Tech stack
 
-- **App:** React Native with [Expo](https://expo.dev) (Expo Router, TypeScript) — Android, iOS and web from one code base
+- **App:** React Native with [Expo](https://expo.dev) (Expo Router, TypeScript) — an Android APK and a web version from one code base; there is no iOS app (`app.json` has no `ios` block), iPhone users add the web version to the home screen
 - **Backend:** [Supabase](https://supabase.com) — Postgres with row-level security, auth (email + password), storage
 - **Languages:** English, Telugu and Hindi
 

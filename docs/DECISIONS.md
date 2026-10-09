@@ -1,7 +1,9 @@
 # Decisions
 
 Every important decision, with the reason. Newest at the bottom. Never rewrite an entry: if a
-decision changes, mark the old one *Replaced by #N* and add a new entry.
+decision changes, mark the old one *Replaced by #N* and add a new entry. When only part of it
+changes, add a line *Replaced in part by #N: what no longer holds* under the old entry (a date or
+typo fix gets an *Erratum* line instead).
 
 Each entry: **Context** (the situation), **Decision**, **Why**, **Consequences** (what it means for
 the code and for maintainers).
@@ -176,7 +178,7 @@ search engines have nothing to index. One page avoids a class of build-time erro
 **Consequences.** The web host must send every address to `index.html` (a "rewrite" or "SPA
 fallback" setting; see OPERATIONS.md). For now a link to a particular screen opens the person's
 home screen instead, because screens stay closed until the login has been checked. *(That last
-point no longer holds: see #30.)*
+point: Replaced by #30.)*
 
 ## 16. A minor is registered together with the parent's consent, or not at all — 28 Sep 2026
 
@@ -241,7 +243,7 @@ student*, and the same code is ignored for 30 seconds, so a phone held up a mome
 not check its student straight out again. "Check out all" is on *Who is here now* (C6), where the
 coordinator sees exactly whom it affects.
 
-## 19. Reasons for a call are codes the app translates — 30 Sep 2026
+## 19. Reasons for a call are codes the app translates — 29 Sep 2026
 
 **Context.** When a coordinator logs a follow-up call, they pick why the student stopped coming
 from a list in `settings.call_reasons`. The first migration stored that list as English
@@ -263,7 +265,10 @@ already logged. A new reason should get a translation in `en.json`, `te.json` an
 a `KNOWN_CALL_REASONS` entry in `app/src/data/follow-up.ts`. The settings screen (G10) should
 offer codes, not free sentences.
 
-## 20. Views read the tables as the person asking — 30 Sep 2026
+*Erratum 9 Oct 2026: #19 and #20 were headed 30 Sep 2026; they were committed on 29 Sep 2026
+(b348fe7), before #21. Only the dates changed.*
+
+## 20. Views read the tables as the person asking — 29 Sep 2026
 
 **Context.** The student list and the follow-up queue need each student's last visit and the
 days since. Supabase's API does not allow `max()` in app queries by default, so the database
@@ -380,7 +385,7 @@ by Expo, with one backup outside the repository; losing it means nobody can upda
 app. The Supabase URL and key reach the build as EAS environment variables (`preview` and
 `production`), because `app/.env` and `app/.env.test` are not uploaded. Both profiles share the
 package name, so a phone has the test app or the live app, not both. Every app change needs a
-new APK until over-the-air updates (EAS Update) are chosen. *(Last point no longer holds: see #35.)*
+new APK until over-the-air updates (EAS Update) are chosen. *(Last point: Replaced by #35.)*
 
 ## 25. "Seen by N of M" counts only people who can open the announcement — 30 Sep 2026
 
@@ -416,6 +421,8 @@ mean seen. A newcomer's login should learn nothing about the class before the Gu
 the same migration, or the counts go wrong. A student who is *Left* but still has a login stays in
 M, because they can still read. Replies, images and files (C15, S10) and push notifications come
 later; groups are still made in the Supabase dashboard until a groups screen exists.
+*Replaced in part by #28 (groups screen), #29 (replies), #32 (photos and PDFs) and #33 (push
+notifications): the last two sentences no longer hold.*
 
 ## 26. Students see staff names through one narrow function — 30 Sep 2026
 
@@ -457,6 +464,8 @@ students may have read it. Setting `edited_at` in the database keeps the mark ho
 (`components/announcement-form.tsx`) and shows "When should students see it?" only while the
 announcement is scheduled. A student who read the first version is not told again until push
 notifications exist; the audit log keeps every earlier version.
+*Replaced in part by #33: push notifications exist, but an edit is not sent again, so the reader
+is still not told.*
 
 ## 28. Groups are managed in the app and seen only by staff and members — 30 Sep 2026
 
@@ -496,6 +505,8 @@ fair record for both sides.
 and a `replies` count on `announcement_seen` (counted with the reader's rights, so a coordinator
 sees the number of replies to their own announcements). A two-way thread, and telling the author
 about a new reply, come later (with push notifications).
+*Replaced in part by #33: push exists, and still nothing is sent for replies (checked 9 Oct 2026:
+no migration up to 0037 notifies on `announcement_replies`).*
 
 ## 30. A link to a screen survives the login check — 30 Sep 2026
 
@@ -518,7 +529,7 @@ another area is still refused (#15, `Stack.Protected`).
 **Consequences.** `src/app/index.tsx`, `src/auth/requested-path.ts`, `unstable_settings.anchor` in
 `src/app/student/_layout.tsx`. Push notifications can use `rememberRequestedPath()` for the
 announcement a tap should open. A staff screen opened from a link has no screen under it, so its
-header shows no Back arrow; the browser's Back still works. *(Last point no longer holds: since #36
+header shows no Back arrow; the browser's Back still works. *(Last point: Replaced by #36. Since #36
 the staff tabs are underneath too, and the anchor is the role's tabs.)*
 
 ## 31. Each home screen gets its numbers from one database function — 30 Sep 2026

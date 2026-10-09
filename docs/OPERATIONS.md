@@ -5,21 +5,22 @@ will rely on it.
 
 ## Accounts the system depends on
 
-| Service | Used for | Plan | Owner |
-|---|---|---|---|
-| Supabase | Database, login, storage (photos and PDFs), scheduled jobs, the Edge Function that sends push notifications | Free (1 GB of files, 500,000 Edge Function calls a month) | Team email account |
-| Brevo | Sending sign-up and password-reset emails | Free (300 emails a day) | Team email account |
-| Expo | Building the Android app (EAS Build) and updating it on the phones (EAS Update); its push service passes notifications on | Free (15 Android builds a month; updates for 1,000 people a month, 100 GiB of downloads) | Team email account |
-| Firebase (Google) | Delivers push notifications to Android phones (Cloud Messaging) | Free | Team email account |
-| Cloudflare | Hosting the web version and the public website (Cloudflare Pages) | Free | Team email account |
-| Zoho | The domain mridangaseva.com (registrar) and the team's mail (info@, privacy@ aliases) | Zoho Mail free plan | Team Zoho account |
-| GitHub | Source code | Free, public repository | Maintainer |
-| YouTube | Lesson videos | Free | Team or channel owner |
+| Service | Used for | Plan | Target owner | Holder today (9 Oct 2026) |
+|---|---|---|---|---|
+| Supabase | Database, login, storage (photos and PDFs), scheduled jobs, the Edge Function that sends push notifications | Free (1 GB of files, 500,000 Edge Function calls a month) | Team email account | Maintainer's personal login, organisation "Mridanga Seva" |
+| Brevo | Sending sign-up and password-reset emails | Free (300 emails a day) | Team email account | **Not set up yet** (audit brief 8) |
+| Expo | Building the Android app (EAS Build) and updating it on the phones (EAS Update); its push service passes notifications on | Free (15 Android builds a month; updates for 1,000 people a month, 100 GiB of downloads) | Team email account | Maintainer's personal account |
+| Firebase (Google) | Delivers push notifications to Android phones (Cloud Messaging) | Free | Team email account | Maintainer's personal account |
+| Cloudflare | Hosting the web version and the public website (Cloudflare Pages) | Free | Team email account | Maintainer's personal account |
+| Zoho | The domain mridangaseva.com (registrar) and the team's mail (info@, privacy@ aliases) | Zoho Mail free plan | Team Zoho account | **[[TEAM]]:** confirm |
+| GitHub | Source code | Free, public repository | Maintainer | Maintainer's personal account |
+| YouTube | Lesson videos | Free | Team or channel owner | **[[TEAM]]:** confirm |
 
 Keep the logins for these in one place the team controls, so the system never depends on one person.
 
-**For now (from 30 Sep 2026) Cloudflare, Expo and Firebase are on the maintainer's personal
-account**, because the team email does not exist yet. When it does, add it to each with full
+**For now (from 30 Sep 2026) Supabase, Cloudflare, Expo and Firebase are on the maintainer's
+personal account, and Brevo does not exist yet**, because the team email does not exist yet. The
+"Target owner" column and the steps below that say "team email" describe where they should end up. When it does, add it to each with full
 rights (Cloudflare: a Super Administrator member of the account; Expo: an Owner of the
 organisation that owns the app; Firebase: an Owner in **Project settings → Users and
 permissions**), check that it can sign in, then remove the personal account. The sites, the app's
@@ -61,9 +62,11 @@ removed or starts seeing different data.
    2. In Supabase, open **SQL Editor → New query**, paste, and click **Run**. **Before pressing
       Run, check which project is open**: its name is at the top of the dashboard, and its
       reference is in the address bar. The live and test projects look the same.
-   3. You should see *Success. No rows returned.* For `0001` only, the editor instead shows a small
-      table with one column, `schedule`, holding the number 2 (the second daily job it created);
-      that also means it worked.
+   3. You should see *Success. No rows returned.* A file that creates a scheduled job with a
+      top-level `select cron.schedule(...)` line (0001:496-497, 0011:180, 0015:136, 0016:778,
+      0022:885, 0023:549, 0033:210, 0034:77) may instead show a small table with one column,
+      `schedule`, holding the job's number (2 for 0001, 3 for 0011 on a new project); that also
+      means it worked. Do not run such a file again because of it.
    4. If it fails on `pg_cron`: open **Database → Extensions**, switch on **pg_cron**, and run the
       same query again. A failed run changes nothing, so running it again is safe.
    5. Run every later migration the same way, in number order: `0002_login_linking.sql`, then
@@ -129,7 +132,8 @@ removed or starts seeing different data.
    npx supabase db push
    ```
    The project ref is the part before `.supabase.co` in the project URL. `supabase init` creates
-   `supabase/config.toml`; commit it.
+   `supabase/config.toml`; **do not commit it** (the repository keeps none, `git ls-files supabase`;
+   the Edge Function deploy in "Push notifications" step 10 needs none either).
 4. **Auth settings:**
    - **Authentication → Sign In / Providers → Email:** keep Email enabled. Set the minimum
      password length to **8** (the app asks for 8 too).
@@ -140,7 +144,8 @@ removed or starts seeing different data.
    - **Authentication → URL Configuration:** set **Site URL** to the address of the web version
      that talks to this project: `https://mridanga-seva.pages.dev` for the live project,
      `https://mridanga-seva-test.pages.dev` for the test one (see "Publishing the web version"). Under
-     **Redirect URLs** add that address and, for development, `http://localhost:8081`. Links in
+     **Redirect URLs** add that address. **Test project only:** also add `http://localhost:8081`
+     for development; the live project lists only the live site's address. Links in
      sign-up and password-reset emails open these addresses; the Android app uses the Site URL.
 5. **Email (SMTP):** in Brevo, verify the sender email and create an SMTP key. In Supabase, go to
    Authentication → SMTP settings and enter Brevo's host `smtp-relay.brevo.com`, port 587, login and key.
@@ -338,7 +343,7 @@ to `app/dist/`. Always use this command, not a bare `npx expo export`, because
 
 | Date | Site | Commit | Built (UTC) | By |
 |---|---|---|---|---|
-| | | | | |
+| 07-10-2026 | test | 90b7444 | 2026-10-07T09:48:09Z | Praveen |
 
 **First upload** (once per site, logged in to the team's Cloudflare account; the dashboard's
 wording may differ a little):
@@ -473,8 +478,8 @@ build:
 
 | Profile | Talks to | Used by |
 |---|---|---|
-| `preview` | the test Supabase project (settings from `app/.env.test`) | demos, testers, volunteers |
-| `production` | the live Supabase project (settings from `app/.env.live`) | the class, from the pilot on |
+| `preview` | the test Supabase project (settings from the EAS environment `preview`, copied from `app/.env.test` with `env:push` below; `eas.json` `"environment"`) | demos, testers, volunteers |
+| `production` | the live Supabase project (settings from the EAS environment `production`, copied from `app/.env.live` with `env:push`) | the class, from the pilot on |
 
 Both have the same package name, so a phone holds one or the other: installing one replaces the
 other, and the person signs in again. Each profile is also the **update channel** of the same

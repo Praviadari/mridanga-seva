@@ -1,6 +1,6 @@
 # Mridanga Seva — app
 
-The Expo (React Native + TypeScript) app: Android, iOS and the web version from one code base.
+The Expo (React Native + TypeScript) app: the Android APK and the web version from one code base. No iOS build is made (`app.json` has no `ios` block); iPhone users use the web version.
 
 ## Run it
 

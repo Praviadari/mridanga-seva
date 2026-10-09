@@ -62,7 +62,7 @@ flowchart LR
 | `coordinator` | Teachers who run the daily class | Register students, mark attendance, log follow-up calls, tick syllabus, post announcements |
 | `student` | Enrolled learners (a login linked to a student record) | See their own record, attendance, progress, materials and announcements; study Ishtagoshti slokas. A `student` login with no record counts as `pending` ([DECISIONS.md #96](DECISIONS.md)) |
 | `kiosk` | The door tablet (Phase 2) | Only check students in and out |
-| `pending` | Anyone who signed up but has no role yet | Nothing until the Guru gives a role; may join Ishtagoshti for free (below) |
+| `pending` | Anyone who signed up but has no role yet | Read and edit only their own profile (name, phone, About you) until the Guru gives a role; may join Ishtagoshti for free (below). See DATABASE.md "Who can see what" |
 
 A new login starts as `pending`. If its email matches a registered student, it is linked to that
 student and becomes `student` automatically, once the email is confirmed. Only the Guru can make
@@ -246,8 +246,14 @@ read or write the person is not allowed, whatever the app shows.
 - **Views read as the person asking.** Every view (`student_overview`, `announcement_audience`,
   `announcement_seen`, `announcement_reply_list`, `group_summary`) is created
   `with (security_invoker = true)`, so the row-level security of the tables under it still
-  applies ([DECISIONS.md #20](DECISIONS.md)). The one exception that shows more than the tables
-  allow is the function `staff_names()`: staff names only, for "posted by" ([DECISIONS.md #26](DECISIONS.md)).
+  applies ([DECISIONS.md #20](DECISIONS.md)). Functions that must reach past the caller's own rows
+  are **security definer** and check the caller inside; what they hand back is more than the
+  tables would show. Not only `staff_names()` (staff names, for "posted by",
+  [DECISIONS.md #26](DECISIONS.md)): `toggle_visit` / `scan_qr` return a student's name and roll
+  number, also to the door tablet that reads no student row (0001:378, 0001:413; replaced in 0024); the logged reads
+  `get_guardians`, `get_consents`, `get_call_notes`, `get_audit_log` (0034:83-142); and the action
+  functions under "Actions that change several things" below. The full list, from the SQL editor:
+  `select oid::regprocedure from pg_proc where pronamespace = 'public'::regnamespace and prosecdef order by 1;`
   The functions that count the home screens' numbers (`student_home`, `coordinator_dashboard`,
   `guru_dashboard`) are security invoker for the same reason ([DECISIONS.md #31](DECISIONS.md)).
 - **Files follow the same rules.** Storage has row-level security too: a photo or PDF on an

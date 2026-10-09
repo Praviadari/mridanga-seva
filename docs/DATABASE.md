@@ -7,7 +7,7 @@ in number order:
 |---|---|
 | `0001_phase1.sql` | All Phase 1 tables, rules, functions, daily jobs and row-level security |
 | `0002_login_linking.sql` | Links logins to students only after email confirmation; lets the dashboard set the first Guru; locks internal functions ([DECISIONS.md #13, #14](DECISIONS.md)) |
-| `0003_register_student.sql` | `register_student` saves a student with the parent's consent in one step; no minor can be kept without consent ([DECISIONS.md #16](DECISIONS.md)) |
+| `0003_register_student.sql` | `register_student` saves a student with the parent's consent in one step; a minor cannot be added, or given a new date of birth, without a current data consent (`students_minor_consent`, 0003:26-29) ([DECISIONS.md #16](DECISIONS.md)). Deleting or revoking that consent later is guarded only since 0025 (`consents_minor_recheck`, 0025:259; a withdrawal is the one exception, [#74, #75](DECISIONS.md)) |
 | `0004_attendance.sql` | `mark_visit` for tap-to-mark attendance and `check_out_all` for closing time ([DECISIONS.md #18](DECISIONS.md)) |
 | `0005_students_follow_up.sql` | View `student_overview` (last visit, days since); reasons for a call become codes; `log_call` checks its inputs and answers with error codes ([DECISIONS.md #19, #20](DECISIONS.md)) |
 | `0006_syllabus_progress.sql` | A syllabus tick records who really ticked it and cannot be dated in the future; every tick and untick is kept in `audit_log` ([DECISIONS.md #22](DECISIONS.md)) |
@@ -59,7 +59,7 @@ consent), sample visits, groups and an announcement. Never run it on the live pr
 |---|---|---|
 | Settings | `settings` | Day limits for follow-up, list of reasons for leaving, what "this week" means, promotion criteria for Phase 2. The facilitator changes them on G10 (see "Settings") |
 | Places | `centres` | One row per class location (Abids today) with address, GPS point, radius and opening hours (G9, see "Centres") |
-| People | `profiles` | One row per login: role, name, language, treasurer flag, duty hours (G2), Ishtagoshti editor flag (`ig_editor`, 0021) |
+| People | `profiles` | One row per login: role, name, **email, phone**, centre, language, `active`, sign-up time, treasurer flag (0001:51-62), duty hours (G2, 0014:25), Ishtagoshti editor flag (`ig_editor`, 0021:27), **gender** and referral code (0036:142-145). Personal data: staff read every profile except public subscribers' (0027:81-82) |
 | Students | `students`, `guardians`, `consents`, `roll_counters` | A student record can exist without a login |
 | Attendance | `visits` | One row per check-in; `check_out` empty while the student is still there |
 | Follow-up | `call_logs`, `follow_up_tasks`, `status_history` | Every call and every status change is kept |
@@ -96,7 +96,18 @@ stateDiagram-v2
   inactive --> active: visits again
   paused --> active: visits again
   left --> active: visits again (same roll number)
+  new --> paused: call logged "paused"
+  active --> paused: call logged "paused"
+  new --> left: call logged "discontinued"
+  active --> left: call logged "discontinued"
 ```
+
+`log_call` sets *Paused* or *Left* from **any** status, not only from Irregular or Inactive
+(0037:832 on, the `update students set status = 'paused'` / `'left'` lines). The diagram also leaves out
+staff edits: a coordinator or the Guru may set any status except *Paused* and *Left* by hand on the
+record (for example *Left* → *New* or *Left* → *Inactive*); only the move into *Paused* or *Left* is
+guarded (`guard_student_update`, 0001:147-152; insert guard `status_on_insert`, 0030:201-206). Every
+change is kept in `status_history`.
 
 The day limits (14, 30, and 3 days to make a call) are rows in `settings`, not fixed in code.
 
@@ -130,7 +141,10 @@ all or nothing:
 
 Separately, the constraint trigger `students_minor_consent` runs when each transaction ends and
 refuses a student under 18 who has no current `data` consent, however the row was written
-([DECISIONS.md #16](DECISIONS.md)). "Under 18" is decided by `is_minor()` on today's date in India.
+([DECISIONS.md #16](DECISIONS.md)). It fires only when a student is inserted or the date of birth
+changes (0003:26-29); a later delete or revoke of the consent is caught by the 0025 triggers below,
+and a withdrawn record is exempt (0028:254). "Under 18" is decided by `is_minor()` on `today_ist()`
+(0001:120-121), which since 0033 is today at the caller's centre.
 
 Codes stored in text columns (the app translates them):
 
@@ -214,7 +228,7 @@ number, name, level, status, pause date, mentor, joined) plus:
 | Column | Meaning |
 |---|---|
 | `last_visit_at` | Check-in time of the latest visit; empty if the student has never come |
-| `days_since_visit` | Whole days (India time) since that visit; with none, since joining or since the record was made, whichever is later (0014: an imported record with an old joining date is not Irregular at once); the same count the daily job uses for Irregular and Inactive, except that since 0030 the job counts Inactive from a pause's end when that is later |
+| `days_since_visit` | Whole days since that visit, counted in the student's home centre's time zone like the daily job (`local_day`, 0037:363-365 and 0033:170-176); with none, since joining or since the record was made, whichever is later (0014: an imported record with an old joining date is not Irregular at once); the same count the daily job uses for Irregular and Inactive, except that since 0030 the job counts Inactive from a pause's end when that is later |
 | `here_now` | True while the student has an open visit |
 
 The student list (C7), the profile (C8) and the follow-up queue (C10) read it. It exists because
@@ -375,7 +389,8 @@ nothing else. It answers students and staff; a `pending` login or the door table
 **Read receipts.** When a person opens an announcement, the app adds one `announcement_reads`
 row. The app may send only `announcement_id`: the database fills in who (the login) and when
 (now). A person can add a receipt only for an announcement they can see, only once, and cannot
-change or remove it. Receipts disappear only with their announcement.
+change or remove it. Receipts disappear with their announcement, or with the reader's login when
+that is deleted (for example by `erase_student`): both keys cascade (0001:302-303).
 
 **Seen by N of M.** Two views, both `with (security_invoker = true)` like `student_overview`:
 
@@ -412,7 +427,7 @@ Storage keeps one row per file in `storage.objects`; its row-level security deci
 | Open, or make a signed link | Anyone who may read an announcement that lists the file (the `audience` rule above); staff for files in their own folder; the Guru | `announcement_file_readable` |
 | Upload | Coordinators and the Guru, only into their own folder, only a proper file name | `announcement_file_uploadable` |
 | Delete | Coordinators and the Guru: their own uploads, any file for the Guru, and files on their own announcements | `announcement_file_deletable` |
-| Replace or move | Nobody (no update policy) | — |
+| Replace or move | Nobody (no update policy). Delete-and-upload-again under the same path was possible until 0028; since then a name any announcement lists cannot be uploaded again (0028:210, [#98](DECISIONS.md)). Deleting a listed file is still allowed by the row above: the announcement then lists a file that is gone, unedited | `announcement_file_uploadable` |
 
 **Deleting a row in SQL does not delete the file** in Storage; it only orphans it. So the app
 removes files through the Storage API: when an announcement is deleted it removes the files
@@ -435,7 +450,12 @@ in `announcement_audience`, never the author). An announcement published more th
 is marked but not sent. The function sends the notifications through Expo's push service,
 deletes tokens Expo no longer knows, and, if not one request reached Expo, calls
 `release_push_claim()` so the next minute tries again. Until push is set up (pg_net, the Vault
-secrets, the deployed function), `send_due_push()` returns `not_set_up` and nothing happens.
+secrets), `send_due_push()` returns `not_set_up` and nothing is called. It cannot tell whether the
+Edge Function is deployed or accepts the secret: pg_net sends the request and does not wait, so
+an undeployed or misconfigured function answers 401 or 404 every minute while the announcement
+stays unsent (seen on TEST 30 Sep 2026; 0011:154-177). `push_status.last_job_result = 'called'`
+(0031) says only that the request went out; check `net._http_response` as OPERATIONS.md "Push
+notifications" shows.
 Setting `notified_at` is not copied to the audit log. Scheduled announcements are sent at their
 publish time; an edit is not sent again. **Since 0031** the Edge Function no longer calls
 `claim_due_push` / `release_push_claim`: due announcements go into the per-phone queue, see
@@ -1319,9 +1339,13 @@ with the new email.
 
 ## Database functions (call these from the app)
 
-Supabase lets the app's roles (`anon`, `authenticated`) run any function unless told otherwise,
-so every function is revoked from them and granted only where needed
-([DECISIONS.md #14](DECISIONS.md)). Since 0025 anon holds no right at all in `public` (no table, sequence
+Supabase lets the app's roles (`anon`, `authenticated`) run any new function through PUBLIC
+unless told otherwise. So each migration revokes its functions from `public, anon`, grants
+`authenticated` only the ones the app calls, and revokes internal helpers and trigger functions
+from `authenticated` too ([DECISIONS.md #14](DECISIONS.md); 0025:506-526 did it for everything
+older, 0037:410-413 closed 0001's six trigger functions, 0037:424-425 took the daily jobs from
+`service_role`). The function sweep in
+`supabase/tests/smoke-test.mjs` (lines 4077-4143) checks both roles against an allow-list. Since 0025 anon holds no right at all in `public` (no table, sequence
 or function; [#77](DECISIONS.md); one exception since 0036: `sign_up_choices()`, [#163](DECISIONS.md)), and a role check never lets a NULL role through ([#72](DECISIONS.md)): a
 switched-off login is refused like a stranger.
 
@@ -1399,7 +1423,7 @@ and the helpers `my_role`, `is_guru`, `is_staff`,
 
 | Job | Runs | Does |
 |---|---|---|
-| `mridanga-status-refresh` | 00:30 UTC = 06:00 IST | `refresh_student_statuses()` — ends expired pauses, moves quiet students on, creates call tasks, flags overdue ones |
+| `mridanga-status-refresh` | 00:30 UTC = 06:00 IST | `refresh_student_statuses()` — ends expired pauses (with a call task), moves quiet students to Irregular (with a call task) or Inactive, and escalates the due open tasks of Inactive students (0033:147-192); escalation after too many failed calls is `log_call`'s, not the job's |
 | `mridanga-close-visits` | Every hour at :30 (since 0033; was 15:30 UTC = 21:00 IST) | `close_open_visits()` — closes visits left open at their centre's closing time, once that centre has been closed an hour (21:00 IST for Abids) |
 | `mridanga-push` | Every minute | `send_due_push()` — calls the Edge Function `notify-announcements` when a published announcement waits for its push notification; does nothing while push is not set up (0011); since 0016 also when an assessment or promotion notification of the last day waits in `push_outbox`; since 0031 also when a `push_queue` row waits for its next try |
 | `mridanga-inbox-cleanup` | 01:00 UTC = 06:30 IST | `inbox_cleanup()` — deletes inbox notices older than a year (0015) |
@@ -1412,7 +1436,8 @@ and the helpers `my_role`, `is_guru`, `is_staff`,
 
 | Data | Student | Coordinator | Guru |
 |---|---|---|---|
-| Own student record, visits, progress, level history | Read (while the login is an active student) | Read / write | Read / write |
+| Own student record, visits, progress | Read (while the login is an active student) | Read / write | Read / write |
+| Level history (`level_history`) | Own (read) | Read (0001:558-559) | Read / write (`guru_write`, 0001:560; 0037:254-256) |
 | Other students | — | Read / write | Read / write / delete |
 | Guardians | — | Read through `get_guardians` (logged); add when registering (0034) | Read (through `get_guardians` in the app, logged) / write (a minor keeps one) |
 | Consents | — | Read through `get_consents` (logged); add (verified by themselves, now) | Read (in the app through `get_consents`, logged); add; revoke or delete (a minor keeps a current one, unless withdrawn) |
@@ -1422,6 +1447,7 @@ and the helpers `my_role`, `is_guru`, `is_staff`,
 | Materials | Approved ones up to own level (needs a student record) | All; suggest (C18); take back or remove own suggestion | All; add, edit, delete; add or decline suggestions |
 | Material files (Storage) | Those on materials they can read | All on materials, and own uploads; upload for a suggestion (10 a day) | All; upload; delete any |
 | Own name and phone | Read / write (not a staff member's name) | Read / write (same) | Read / write (same) |
+| Other logins' profiles (name, role, email, phone, centre, gender) | — | Read, except public Ishtagoshti subscribers (0027:81-82, 0037:298-299) | Read all; write role, `active`, duty hours, gender (G2) |
 | Own email, sign-up time, centre | Read (email follows the sign-in email) | Read | Read (changed only in the dashboard) |
 | Announcements | Published ones addressed to them | All, can post; edit, pin or delete own | All, can post; edit, pin or delete any |
 | Read receipts | Own; can add | All (for "seen by"); add own | All; add own |
@@ -1457,7 +1483,10 @@ and the helpers `my_role`, `is_guru`, `is_staff`,
 
 A **public Ishtagoshti subscriber** (0027) reads only published slokas, themes, pins and their
 recitations, and its own profile, subscription row, notes and ticks. A login still waiting for a role
-(`pending`) reads nothing at all, and neither does a `student` login without a student record (0028).
+(`pending`) reads only its own profile (and writes its name, phone and About you), and so does a
+`student` login without a student record (0028); the grant sweep checks this table by table
+(`supabase/tests/smoke-test.mjs:3007-3020`). The door tablet (`kiosk`, Phase 2) reads no student
+row; it only runs `toggle_visit` / `scan_qr`, which answer with the student's name and roll number.
 
 ## Changing the database
 
