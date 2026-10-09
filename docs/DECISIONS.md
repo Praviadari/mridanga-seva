@@ -3583,6 +3583,117 @@ D3-13 (custom scheme carries no secret; App Links come with brief 9), D3-16 (Con
 wherever real emails exist, OPERATIONS step 4; LIVE is decision A), D2-12 (fixed by #114). D3-11's
 build-time guard needs an `eas-build-pre-install` script in package.json: brief 9.
 
+## 194. pg_cron's run history is kept for 7 days — 9 Oct 2026
+
+**Context.** pg_cron writes one row to `cron.job_run_details` per run, and nothing deleted them: the
+every-minute push job alone adds about 1,440 rows a day to the free plan's 500 MB (audit D2-08).
+
+**Decision.** 0040 schedules `mridanga-cron-history-purge` (02:15 UTC daily), deleting rows that
+ended more than 7 days ago, as Supabase advises for pg_cron.
+
+**Why.** The weekly health check (OPERATIONS "Scheduled jobs: health check") reads the last 2 days
+and each job's last success; 7 days cover it with room for a missed Monday.
+
+**Consequences.** Ten jobs instead of eight. Older failures are gone after a week: the health check
+is the record.
+
+## 195. Files no announcement lists are removed daily — 9 Oct 2026
+
+**Context.** An upload whose post was never saved, or a file the app failed to delete offline, stayed
+in the bucket for ever; a coordinator (or a stolen staff session) could fill the 1 GB with them
+(audit D1b-07). Audit Part B §6 proposed a daily clean-up job rather than a quota.
+
+**Decision.** 0040 adds `orphan_announcement_files()` (service role only): up to 100 files in
+`announcement-files`, over a day old, that no announcement lists, oldest first, and none at all while
+the announcements table is empty (a restore half done). The daily job `mridanga-orphan-files` (02:00
+UTC) asks the Edge Function to clean up when the list is not empty; the function deletes them
+through the Storage API, as it does for expired recordings (#52). No upload quota.
+
+**Why.** The bucket holds only announcement files (materials, bills, recordings and audio have their
+own buckets), and the app uploads just before saving the post, so a day-old unlisted file can never
+be shown. Storage files must go through the Storage API: a delete in SQL leaves the bytes.
+
+**Consequences.** Needs the function deployed again; until then nothing is removed (the manual query
+in OPERATIONS still works). A post saved more than a day after its upload would lose its file — the
+app never does that.
+
+## 196. A staff login that did work is anonymised in place — 9 Oct 2026
+
+**Context.** 13 columns record who did what (`created_by`, `marked_by` …) with no delete rule, so a
+staff login that did any work cannot be deleted; switching it off keeps name and email for ever
+(audit FS1a-14). Part B §6 proposed an anonymise-in-place procedure over `ON DELETE SET NULL`.
+
+**Decision.** 0040 adds `anonymise_staff(profile, reason, reference)`, run by the owner in the SQL
+editor only, for a switched-off coordinator or Guru login that is not the caller's: an idle login is
+deleted outright; otherwise the login's sign-in email becomes `<id>@former-staff.invalid` and its
+sign-up details go, the profile becomes "Former staff" without email, phone, duty hours, gender,
+referral code, treasurer or editor flags, the phones are forgotten, the profile's own audit rows
+and any row holding the old email are redacted, and a tombstone goes into `erasures`
+(`staff_profile`). Runbook: OPERATIONS "Staff who leave".
+
+**Why.** Records keep a "done by" that still resolves (reports, history, audit); `SET NULL` would
+lose who registered or marked what. The person's identifying data is gone.
+
+**Consequences.** Not yet tried against Supabase's own `auth.users` rights: if the owner may not
+change it, the result says `login_scrubbed: false` and the runbook deletes the login's identity in
+the dashboard. Audit rows about other records the person changed keep their values (they are about
+students, not about the staff member).
+
+## 197. Edge Function deploys: settings in the repository, an exact supabase-js — 9 Oct 2026
+
+**Context.** The push function needs the gateway's JWT check off, which lived only in the deploy
+flag `--no-verify-jwt`; a redeploy without it stops push with a 401 the runbook blamed on the push
+secret (audit D2-09). The function imported `npm:@supabase/supabase-js@2`, so each deploy took
+whatever 2.x was newest (D2-10).
+
+**Decision.** `supabase/config.toml` sets `verify_jwt = false` for `notify-announcements` (the CLI
+reads it on every deploy; the flag stays in the commands too). The import names an exact version,
+2.117.2 (the app's), and `app/tests/repo-guards.test.mjs` refuses a range. The runbook tells the
+gateway's 401 from the function's own `{"error":"not_allowed"}`. No `deno.lock`: `--use-api` builds
+on Supabase's side.
+
+**Consequences.** Upgrading supabase-js in the function is a deliberate edit and deploy.
+
+## 198. Build hooks and agent settings are guarded — 9 Oct 2026
+
+**Context.** The fingerprint ignores npm scripts (#35), but EAS Build runs npm's install hooks and
+its own `eas-build-*` hooks, so such a hook could change the APK unseen (audit D11-09). Tracked agent
+settings (`app/.claude/settings.json`) and `app/AGENTS.md` steer an AI agent in a maintainer's
+session, which holds publish rights (D11-20).
+
+**Decision.** The skip stays (removing it moves the fingerprint, a new APK). `app/tests/repo-guards.test.mjs`
+(run by CI) fails when `app/package.json` gets an install, prepare or `eas-build-*` script, and when a
+tracked `.claude` file is anything but a `settings.json` holding only `enabledPlugins`. CODEOWNERS
+names `app/.claude/` and `app/AGENTS.md`.
+
+**Consequences.** Adding such a hook, or agent hooks and permissions in git, needs this decision
+changed first. CODEOWNERS only enforces review once `main` has a ruleset (Praveen, GitHub settings).
+
+## 199. Operations trade-offs accepted — 9 Oct 2026
+
+**Context.** The rest of the operations and build backlog of audit brief 16 (dimensions 10, 11).
+
+**Decision.** Accepted and written down:
+- **LIVE project ref in the public repository** (D11-18): a Supabase project ref is in every copy of
+  the app and web site anyway; the scripts need it to refuse the wrong project. The protection is
+  row-level security, Confirm email and the publishable key, not a hidden address.
+- **Push endpoint without rate limiting** (D2-13): it refuses every call without the 64-character
+  secret before touching the database; the risk is the free plan's 500,000 calls a month. The
+  monthly usage check (OPERATIONS) watches it.
+- **npm audit** (D11-17): on 9 Oct 2026, 55 advisories (31 high), all in build tools (EAS CLI, Expo
+  CLI, Metro, config plugins) that run on the maintainer's computer or EAS, except query-string /
+  decode-uri-component in expo-router (a malformed address can slow only the phone that opens it).
+  Fixed by the Expo SDK upgrade with the production APK (brief 9); never `npm audit fix --force`.
+- **Free project pauses after 7 idle days** (D10-14, #6): a weekly check until the pilot, and the
+  restore steps in OPERATIONS; the jobs resume by themselves.
+- **No crash reporting** (D10-17): a monthly usage check now; a root error screen is app work for an
+  app chat; a crash reporter only after a privacy review (minors' data).
+- **APK install links expire** (D10-06): each release APK is kept with its SHA-256 in the team's
+  drive (OPERATIONS "Each build").
+
+**Consequences.** Revisit D11-18 and D2-13 if Supabase adds per-function rate limits or the class
+leaves the free plan.
+
 ## 200. Every web page has its own title — 9 Oct 2026
 
 **Context.** D7-03: Expo Router turns React Navigation's document title off, so every browser tab

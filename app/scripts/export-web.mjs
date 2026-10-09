@@ -33,7 +33,7 @@
 
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, extname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -201,9 +201,15 @@ if (/__[A-Z_]+__/.test(headers.replace(/^#.*$/gm, ''))) fail('public/_headers ha
 writeFileSync(join(DIST, '_headers'), headers);
 
 // ---------------------------------------------------------------- 7. build id
+// The entry bundle's name (a content hash) is what the site's index.html loads, so a look at the
+// live page's source ties it to this build and commit (audit SURF-09).
+const entryDir = join(DIST, '_expo', 'static', 'js', 'web');
+const entries = existsSync(entryDir) ? readdirSync(entryDir).filter((f) => /^entry-.*\.js$/.test(f)) : [];
+if (entries.length !== 1) fail(`expected one entry bundle in ${entryDir}, found ${entries.length}.`);
+const entry = entries[0];
 writeFileSync(
   join(DIST, 'version.txt'),
-  `site ${siteName}\ncommit ${commit}${changed ? ' (with uncommitted changes)' : ''}\nbuilt ${build.split(' ')[2]}\nproject ${site.project}\n`,
+  `site ${siteName}\ncommit ${commit}${changed ? ' (with uncommitted changes)' : ''}\nbuilt ${build.split(' ')[2]}\nproject ${site.project}\nentry ${entry}\n`,
 );
 
 // ---------------------------------------------------------------- 8. single-page fallback
@@ -214,5 +220,5 @@ console.log(`export-web: ${rewritten} asset paths moved to ${TO}; QR reader zxin
 if (changed) console.warn('export-web: the folder has uncommitted changes; commit first for a site people use.');
 console.log(
   `export-web: dist/ is ready for the ${siteName.toUpperCase()} site: Cloudflare Pages project "${site.host}", ` +
-    `Supabase ${site.project}, build ${build}.`,
+    `Supabase ${site.project}, build ${build}, ${entry}.`,
 );

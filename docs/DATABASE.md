@@ -42,6 +42,7 @@ in number order:
 | `0036_account_creation.sql` | Account creation (team MoM 05-10-2026): option lists the Guru edits (`choice_options`), `centres.city`, `profiles.gender` + `referral_code`, `students.gender`, `person_details` (About you, the desk), the sign-up's date of birth, gender and centre, `sign_up_choices()` (the one function anon may run), same-gender coordinator auto-assignment, the report `heard_about_report` ([DECISIONS.md #162-#167](DECISIONS.md)). See "Account creation and About you (0036)". Numbers 0034 and 0035 belong to the privacy and asset-label branches |
 | `0037_db_backlog.sql` | Audit backlog, database + performance (dimensions 1, 5, 9): every policy calls its role helpers once per query (`(select is_staff())`), `student_overview` reads through the visits indexes, 12 lookup indexes; trigger functions and TRUNCATE closed to app roles, definer functions search `public, pg_temp`; `toggle_visit` / `scan_qr` say `not_allowed`; roll numbers past 9999 and owner-given ones; student value checks; group, announcement, call-reason, attachment, syllabus and audit fixes ([DECISIONS.md #168-#173](DECISIONS.md)). See "Backlog fixes (0037)" |
 | `0039_security_backlog.sql` | Audit backlog, app security and privacy (dimensions 3, 4): the minor-consent refusal names the roll number, not the child (D4-17); push tokens of a person switched off or without a class role are deleted (D2-06); staff student search `search_students` by POST (ENT-08) ([DECISIONS.md #186-#192](DECISIONS.md)). See "Security backlog (0039)" |
+| `0040_ops_backlog.sql` | Audit backlog, operations (dimensions 10, 11): pg_cron's run history kept 7 days; announcement files no post lists removed daily (through the Edge Function); `anonymise_staff` for a staff login that cannot be deleted ([DECISIONS.md #194-#196](DECISIONS.md)). See "Operations backlog (0040)" |
 
 The Phase 2 files were renumbered when they merged into main (#55). TEST ran some under their
 branch numbers (0012, 0014_promotion, 0016_practice, 0017_media, 0021_events_polls), so it skips
@@ -1322,6 +1323,19 @@ Tests: section "0037 database and performance backlog" in `supabase/tests/smoke-
   number contains the whole text, by name; `%` and `_` are letters; fewer than 2 letters find
   nothing; 1-50 rows. Called by POST, so the letters stay out of request addresses. C5 Mark
   attendance and lending (without Left students) use it.
+
+## Operations backlog (0040)
+
+[DECISIONS.md #194-#196](DECISIONS.md). Run after 0039. Nothing changes for the app.
+
+| What | How | Who may run it |
+|---|---|---|
+| pg_cron's run history (#194) | Job `mridanga-cron-history-purge` deletes `cron.job_run_details` rows that ended over 7 days ago | pg_cron |
+| Files no announcement lists (#195) | `orphan_announcement_files()`: up to 100 files in `announcement-files`, over a day old, listed by no announcement, oldest first; nothing while `announcements` is empty. Job `mridanga-orphan-files` (`orphan_files_daily()`) asks the Edge Function to clean up when there are any; the function deletes them through the Storage API | The list: the Edge Function (service role); the job: pg_cron |
+| Staff who leave (#196) | `anonymise_staff(profile, reason, request_ref)` for a switched-off coordinator or Guru login, not the caller's: deletes an idle login; otherwise sign-in email `<id>@former-staff.invalid`, profile "Former staff" without email, phone, duty hours, gender, referral code or extra roles, phones forgotten, the profile's audit rows and rows holding its email redacted; tombstone in `erasures.staff_profile`. Returns `{login_deleted, login_scrubbed, audit_rows_redacted}`. Errors `not_allowed`, `reason_required`, `reason_too_long`, `profile_not_found`, `not_staff`, `not_yourself`, `switch_off_first` | The owner in the SQL editor only (OPERATIONS "Staff who leave") |
+
+Tests: section "0040 operations backlog" in `supabase/tests/smoke-test.mjs`.
+
 ## Linking a login to a student
 
 A student record can exist without a login (many students never install the app). When a person
@@ -1434,6 +1448,7 @@ and the triggers `guard_material_suggestion`, `notify_material_suggestion`, `gua
 `inventory_item_added`, `inventory_check_recorded`, `guard_duty_shift`, `guard_duty_assignment` (0023),
 the security-round triggers `guard_student_frozen`, `note_level_change`, `release_student_login`,
 `guard_consent`, `recheck_minor_consent`, `refuse_withdrawn` and the check `privacy_caller_ok` (0025),
+`orphan_files_daily` and the owner-only `anonymise_staff` (0040),
 and the helpers `my_role`, `is_guru`, `is_staff`,
 `setting_int`, `today_ist`.
 
@@ -1449,6 +1464,8 @@ and the helpers `my_role`, `is_guru`, `is_staff`,
 | `mridanga-assessments` | 03:30 UTC = 09:00 IST | `assessment_daily()` — reminders for assessments due today or tomorrow that are not sent yet; asks the Edge Function (`{"cleanup": true}`) to delete recordings 30 days past their review (0016); level-up ones 30 days after the promotion decision (0017) |
 | `mridanga-duty` | 12:30 UTC = 18:00 IST | `duty_daily()` — reminds everyone on tomorrow's duty shifts, once (0023) |
 | `mridanga-events-polls` | 03:30 UTC = 09:00 IST | `events_polls_daily()` — reminds those going or maybe of an event tomorrow, and those who have not voted on a poll closing within 24 hours; each once (0022) |
+| `mridanga-orphan-files` | 02:00 UTC = 07:30 IST | `orphan_files_daily()` — asks the Edge Function (`{"cleanup": true}`) to delete announcement files no announcement lists (0040) |
+| `mridanga-cron-history-purge` | 02:15 UTC = 07:45 IST | Deletes pg_cron's run details older than 7 days (0040) |
 
 ## Who can see what
 

@@ -9,14 +9,16 @@
 // sent, to try again later, or refused. One bad token no longer stops the others, and a row is
 // never sent twice by a retry. The sending itself is ./send.ts (tested in supabase/tests).
 //
-// When the daily job asks with {"cleanup": true}, it also deletes recordings 30 days past their
-// review (migration 0016).
+// When a daily job asks with {"cleanup": true}, it also deletes recordings 30 days past their
+// review (migration 0016) and announcement files no announcement lists (migration 0040).
 //
 // Runs with the service role, which bypasses row-level security; that key never leaves Supabase.
 // Logs counts and Expo error codes only, never tokens or texts.
 // Deploy and settings: docs/OPERATIONS.md "Push notifications". Why: docs/DECISIONS.md #33.
 
-import { createClient } from 'npm:@supabase/supabase-js@2';
+// An exact version (audit D2-10), the one app/package-lock.json has: a deploy never picks up an
+// unreviewed release. Change it on purpose, with the app's, and deploy again.
+import { createClient } from 'npm:@supabase/supabase-js@2.117.2';
 
 import { batches, pickServiceKey } from './messages.ts';
 import { EXPO_PROJECT, expoPost, runPush, type Rpc } from './send.ts';
@@ -77,6 +79,27 @@ async function removeExpiredFiles(db: ReturnType<typeof createClient>): Promise<
   return removed;
 }
 
+/**
+ * Deletes announcement files that no announcement lists, over a day old, at most 100 a day
+ * (migration 0040, docs/DECISIONS.md #195). A batch Storage refused stays for the next day; before
+ * 0040 runs the list does not exist and nothing is deleted. Returns how many were deleted.
+ */
+async function removeOrphanFiles(db: ReturnType<typeof createClient>): Promise<number> {
+  const { data, error } = await db.rpc('orphan_announcement_files');
+  if (error) {
+    console.error('orphan_announcement_files failed', error.message);
+    return 0;
+  }
+  const paths = (data ?? []) as string[];
+  let removed = 0;
+  for (const batch of batches(paths)) {
+    const result = await db.storage.from('announcement-files').remove(batch);
+    if (result.error) console.error('removing orphan files failed', result.error.message);
+    else removed += batch.length;
+  }
+  return removed;
+}
+
 Deno.serve(async (request) => {
   // Only the database job knows this secret (Vault mridanga_push_secret = function secret PUSH_SECRET).
   const secret = Deno.env.get('PUSH_SECRET');
@@ -88,9 +111,10 @@ Deno.serve(async (request) => {
   if (!url || !key) return reply(500, { error: 'not_configured' });
   const db = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
 
-  // The daily job asks for {"cleanup": true}: delete submitted assessment files past their keep time.
+  // A daily job asks for {"cleanup": true}: delete submitted assessment files past their keep time
+  // and announcement files no announcement lists.
   const requestBody = (await request.json().catch(() => ({}))) as { cleanup?: boolean };
-  const cleaned = requestBody.cleanup ? await removeExpiredFiles(db) : 0;
+  const cleaned = requestBody.cleanup ? (await removeExpiredFiles(db)) + (await removeOrphanFiles(db)) : 0;
 
   // An access token is needed only if "enhanced push security" is switched on for the Expo account.
   const accessToken = Deno.env.get('EXPO_ACCESS_TOKEN');

@@ -232,6 +232,30 @@ request first.
 6. The tombstone (roll number, date, who, reason, reference) stays in `erasures`:
    `select * from erasures order by erased_at desc;` This is the proof that the request was met.
 
+## Staff who leave
+
+A coordinator who stops: the Guru switches the login off in the app (G2); that is enough for a
+break. When they leave for good, or ask for their data to go ([DECISIONS.md #196](DECISIONS.md)),
+the maintainer anonymises the login in the Supabase SQL editor (since 0040). A login that did any
+work cannot simply be deleted: the records say who registered, marked or called.
+
+1. Check the login is switched off and holds nothing: hand their mentees to someone else (G2,
+   "Reassign"), and any instrument or fund role they had.
+2. Find it: `select id, full_name, email, role, active from profiles where email = '...';`
+3. Run, with a reason and a reference (e.g. `ST-2026-01`):
+   `select anonymise_staff('<id>', 'left the team', 'ST-2026-01');`
+4. It answers `{ login_deleted, login_scrubbed, audit_rows_redacted }`:
+   - `login_deleted: true`: the login did nothing and is gone. Done.
+   - `login_scrubbed: true`: the login stays only as a row with the email `<id>@former-staff.invalid`
+     (nobody can sign in with it), and the person shows as **Former staff** in the app's history.
+   - both `false`: the SQL editor may not change Supabase's login table. In **Authentication →
+     Users**, find the email from step 2 and use **Ban user** (or remove the email under the
+     user's details); the profile is anonymised anyway.
+5. The tombstone stays: `select erased_at, reason, request_ref from erasures where staff_profile is not null;`
+
+Errors: `switch_off_first` (step 1), `not_staff` (a student: "Erasure request"; a subscriber leaves
+in the app), `not_yourself`, `reason_required`.
+
 ## Requests from parents
 
 A parent (for a child) or an adult student may ask what we keep about them, have it corrected or
@@ -323,7 +347,8 @@ to `app/dist/`. Always use this command, not a bare `npx expo export`, because
 - copies the QR reader into `dist/zxing/<version>/` after checking its SHA-256 ([#143](DECISIONS.md));
 - writes `dist/_headers` from `app/public/_headers`: the Content-Security-Policy with this site's
   Supabase address, HSTS, `nosniff`, Referrer-Policy and Permissions-Policy ([#142](DECISIONS.md));
-- writes `dist/version.txt` (site, commit, build time, project). The same id shows under
+- writes `dist/version.txt` (site, commit, build time, project, and the entry bundle's file name,
+  `entry-<hash>.js`, which the site's page source loads: audit SURF-09). The same id shows under
   **Sign out** on the web version, e.g. "Web version test · 244e9f8 · 07-10-2026 15:00"
   ([#144](DECISIONS.md)). "+changes" after the commit means the folder had uncommitted changes:
   commit first for a site people use.
@@ -335,7 +360,9 @@ to `app/dist/`. Always use this command, not a bare `npx expo export`, because
    `permissions-policy: camera=(self), ...`, `strict-transport-security:` and
    `x-content-type-options: nosniff`. No CSP line means `_headers` was not in the upload: upload
    the whole `dist` folder again.
-2. `curl.exe -s https://mridanga-seva-test.pages.dev/version.txt` shows the site and commit just built.
+2. `curl.exe -s https://mridanga-seva-test.pages.dev/version.txt` shows the site and commit just built,
+   and `curl.exe -s https://mridanga-seva-test.pages.dev/ | Select-String entry-` names the same
+   `entry-<hash>.js` (else the browser or Cloudflare still serves an older upload).
 3. Open the site, sign in, press F12 → Console: no red "Content Security Policy" lines. Open
    Attendance → scan (the camera starts and reads a QR code) and, if there is one, a lesson video.
 4. Add a row to the upload log below.
@@ -550,7 +577,24 @@ npx eas-cli build -p android --profile preview
   download it outside the repository folder.
 - Free builds wait in a low-priority queue, sometimes for a while, and may run for at most
   45 minutes. The free plan allows 15 Android builds a month, so build for a release, not for every change.
-- When it finishes, the build's page on expo.dev has an **Install** link and a QR code. Share that link.
+- When it finishes, the build's page on expo.dev has an **Install** link and a QR code. That link
+  **stops working after about 14 days** (EAS keeps build files for a limited time; seen in the
+  build list on 1 Oct 2026), and new joiners keep needing the APK long after. So keep every APK
+  that is shared ([DECISIONS.md #199](DECISIONS.md)):
+  1. On the build page, **Download** the `.apk` (or from `npx eas-cli build:list --limit 1`, the
+     *Application Archive URL*).
+  2. Note its SHA-256: `Get-FileHash .\<file>.apk -Algorithm SHA256` (PowerShell).
+  3. Rename it `mridanga-seva-<profile>-<build id first 8>.apk` and put it in the team's shared
+     drive folder **Mridanga Seva APKs** (until the team email exists: the maintainer's drive),
+     shared as "anyone with the link can view". Share **that** link with volunteers, not the
+     expo.dev one; the folder's link stays the same, so the newest APK is always there.
+  4. Add a row to the APK log below. Never put an APK in this repository (`*.apk` is ignored).
+
+  **APK log** (newest first; profile, EAS build id, fingerprint, SHA-256):
+
+  | Date | Profile | Build | Fingerprint | SHA-256 (first 16) | By |
+  |---|---|---|---|---|---|
+  | | | | | | |
 
 **Keeping the APK small** ([DECISIONS.md #38](DECISIONS.md)). The `expo-build-properties` plugin
 in `app/app.json` builds the APK for phone processors only (`buildArchs`: `armeabi-v7a`, the old
@@ -594,7 +638,10 @@ the screens use, and JavaScript-only packages.
 
 Expo works this out itself: it computes a **fingerprint** (a hash) of all of these, and an update
 reaches only the APKs with the same fingerprint. `app/fingerprint.config.js` leaves out the npm
-scripts and `.gitignore`, which cannot change this app's native side. When unsure, just run the
+scripts and `.gitignore`. EAS Build does run npm's install hooks (`preinstall`, `postinstall`,
+`prepare`) and its own `eas-build-*` hooks; `app/package.json` has none, and `app/tests/repo-guards.test.mjs`
+fails if one is added, because the fingerprint would not see what it changes: such a hook means a
+new APK, decided first ([DECISIONS.md #198](DECISIONS.md)). When unsure, just run the
 publish command: it stops with *no finished … APK has fingerprint …* when a new APK is needed.
 
 **Publishing an update** (from `app/`, logged in to Expo, with the change committed to `main`):
@@ -649,6 +696,13 @@ hotspot (the office network breaks uploads):
 questions: choose the channel's branch (`preview` or `production`), then either an earlier
 update or *the embedded update* (what came inside the APK). Phones get the rollback the same
 way they get an update. A fix published later replaces it.
+**After a bad update, a phone needs two fresh starts** (audit FLOW-06): the first start after the
+rollback or fix downloads it in the background and still runs what it had; the second runs it. So
+tell staff (the door phone first) and testers: *close the app fully (swipe it away from recent
+apps) and open it again, twice*, or tap **Restart now** when the home screen offers it. Check the
+version line under Sign out shows the new update. If the app crashes before any screen shows,
+Expo itself goes back to the update that came with the APK on the next start; then the same two
+starts bring the fix.
 
 **What exists on EAS:** `npx eas-cli update:list --all` (updates), `channel:list`
 (channels and the branch each one serves). The free plan covers 1,000 people a month who
@@ -882,8 +936,10 @@ Function gets the Supabase service-role key from Supabase by itself; nobody copi
     npx supabase@latest functions list --project-ref <project-ref>
     ```
     `--no-verify-jwt` because the database job calls it without a login; the function checks
-    the push secret instead. `--use-api` builds it on Supabase's side, so Docker is not needed,
-    and no `supabase/config.toml` either (CLI 2.118). The list must show `notify-announcements`,
+    the push secret instead. `supabase/config.toml` says the same (`verify_jwt = false`), so a
+    deploy that forgets the flag keeps it off too ([DECISIONS.md #197](DECISIONS.md)); deploy from the
+    repository folder so the CLI finds it. `--use-api` builds it on Supabase's side, so Docker is
+    not needed (CLI 2.118). The list must show `notify-announcements`,
     status `ACTIVE`; an empty list means nothing was deployed. Called without the secret, the
     function answers `401 {"error":"not_allowed"}`; `404` means it is not deployed.
     Only if the Expo account has "enhanced push security" switched on, also add the secret
@@ -900,6 +956,11 @@ again, in either order: until both are done the old function keeps working (befo
 new one answers `500 {"error":"claim_failed"}` and nothing is lost). From the repository folder:
 `npx supabase@latest functions deploy notify-announcements --project-ref <project-ref> --no-verify-jwt --use-api`.
 The secret `EXPO_PROJECT` is optional (default `@mridanga-seva/mridanga-seva`, the app's Expo project).
+**Ops backlog (0040, audit brief 16, 9 Oct 2026):** run `0040_ops_backlog.sql` and deploy the function
+again, in either order (the same command). The new function also deletes announcement files no
+announcement lists ("Files no announcement uses"); before 0040 it logs
+`orphan_announcement_files failed` once a day and carries on. It now names supabase-js 2.117.2
+exactly: upgrading it is an edit in `index.ts` and a deploy, never automatic.
 **Then a new APK**, built after steps 3 and 5 (see "Building the Android app"):
 
 11. `npx eas-cli build -p android --profile preview` (test project) or `--profile
@@ -918,8 +979,12 @@ The secret `EXPO_PROJECT` is optional (default `@mridanga-seva/mridanga-seva`, t
     select title, publish_at, notified_at from announcements order by id desc limit 5;
     select platform, updated_at from push_tokens order by updated_at desc limit 5;
     ```
-    `status_code` 401 = the push secret in the Vault and the function's `PUSH_SECRET` differ
-    (compare their fingerprints, step 9); 404 = the function is not deployed. No row in `push_tokens` = the phone has no token: Expo Go, no
+    `status_code` 401: read `content`. `{"error":"not_allowed"}` is the function's own answer = the
+    push secret in the Vault and the function's `PUSH_SECRET` differ (compare their fingerprints,
+    step 9). Anything else, such as `{"code":401,"message":"Missing authorization header"}` or
+    `Invalid JWT`, comes from Supabase's gateway before the function runs = it was deployed with the
+    JWT check on: deploy again from the repository folder with step 10's command. 404 = the function
+    is not deployed. No row in `push_tokens` = the phone has no token: Expo Go, no
     permission, or steps 3 and 5 were missing when the APK was built. The function's own log is
     under **Edge Functions → notify-announcements → Logs** (for example `InvalidCredentials` =
     the key of step 5 is missing or wrong).
@@ -982,8 +1047,13 @@ on conflict (profile_id) do update set code_hash = excluded.code_hash, expires_a
 ## Files no announcement uses
 
 Photos and PDFs are removed from Storage by the app when an announcement or one of its files is
-deleted ([DECISIONS.md #32](DECISIONS.md)). If that failed (no internet at that moment), the file
-stays in the bucket, unused. Once in a while, list such files in the SQL editor:
+deleted ([DECISIONS.md #32](DECISIONS.md)). If that failed (no internet at that moment), or a post
+was never saved after its upload, the file stays in the bucket, unused. **Since 0040** (with the
+Edge Function deployed again, "Push notifications") the job `mridanga-orphan-files` removes them
+every morning, up to 100 a day, once they are a day old ([DECISIONS.md #195](DECISIONS.md)); it
+removes none while the announcements table is empty, so during a restore load the rows before the
+job's next run anyway. To see what is waiting (the job's list is
+`select * from orphan_announcement_files();`), or before 0040, in the SQL editor:
 
 ```sql
 select o.name, o.created_at, (o.metadata ->> 'size')::bigint as bytes
@@ -994,7 +1064,7 @@ select o.name, o.created_at, (o.metadata ->> 'size')::bigint as bytes
                     where a.attachments @> jsonb_build_array(jsonb_build_object('path', o.name)));
 ```
 
-Delete them in **Storage → announcement-files** (open the folder, tick the files, **Delete**).
+Before 0040, delete them by hand in **Storage → announcement-files** (open the folder, tick the files, **Delete**).
 **Never** `delete from storage.objects` in SQL: that forgets the file but leaves it taking space.
 How much of the free 1 GB is used: **Project Settings → Usage**, or
 `select sum((metadata ->> 'size')::bigint) / 1048576 as mb from storage.objects;`.
@@ -1163,16 +1233,44 @@ before the pilot and fill in the row.
 
 ## Keeping the free project awake
 
-A free Supabase project pauses after 7 days without activity. Daily class use keeps it awake. During
-long holidays, open the app once a week, or restore the project from the dashboard if it pauses.
+A free Supabase project pauses after 7 days without activity ([DECISIONS.md #6](DECISIONS.md)).
+Daily class use keeps it awake; until the pilot starts (and in long holidays) LIVE has no daily
+use, so **every Monday** the maintainer opens the live app or its dashboard (the backup and health
+check below do this anyway). Supabase emails the project's owner before pausing it.
+
+**If it has paused** (the app cannot sign in; the dashboard shows *Paused*): only a member of the
+Supabase organisation can restore it — today the maintainer alone (accounts table at the top), so
+add a second member when the team email exists. Dashboard → the project → **Restore project**;
+it takes a few minutes. Data, logins, files and settings come back as they were, and the scheduled
+jobs start again by themselves (the daily ones at their next time; students' statuses catch up at
+06:00 IST). Tell the class group once it answers again. A project paused for over 90 days can no
+longer be restored from the dashboard: then it is a restore from backup ("Backups").
+
+## Monthly usage check
+
+The free plans have limits, and nothing warns before one is reached (audit D2-13, D10-17;
+[DECISIONS.md #199](DECISIONS.md)). On the first Monday of each month, look at:
+
+- **Supabase → Project Settings → Usage** (each project): database size (500 MB), Storage (1 GB),
+  Edge Function calls (500,000 a month), egress. Edge Function calls well beyond about 45,000 a month
+  (the push job's minutes plus the daily jobs) mean someone is calling the push endpoint: it
+  refuses them, but they count. Look at **Edge Functions → notify-announcements → Logs**.
+- **expo.dev → the organisation → Usage**: update downloads (1,000 people a month) and builds.
+- **Cloudflare → Workers & Pages**: the two sites' requests.
+- The app has no crash reporting. Ask the coordinators whether anything failed on their phones, with
+  the version line under Sign out; a crash reporter needs a privacy review first (minors' data).
+
+Anything near its limit: tell the team before it stops; the paid plans are the fallback.
 
 ## Scheduled jobs: health check
 
-The database runs eight jobs on its own (times in UTC; IST is 5:30 later): `mridanga-status-refresh`
+The database runs ten jobs on its own (times in UTC; IST is 5:30 later): `mridanga-status-refresh`
 (00:30, student statuses and follow-up calls), `mridanga-close-visits` (every hour at :30,
 checks out visits an hour after their centre closes), `mridanga-assessments` and `mridanga-events-polls` (03:30), `mridanga-inbox-cleanup`
 (01:00), `mridanga-access-log-purge` (01:45, deletes access-log rows older than 400 days),
-`mridanga-duty` (12:30) and `mridanga-push` (every minute). If one fails, nothing tells
+`mridanga-duty` (12:30), `mridanga-orphan-files` (02:00, announcement files no post lists),
+`mridanga-cron-history-purge` (02:15, keeps a week of the run history this check reads) and
+`mridanga-push` (every minute). If one fails, nothing tells
 anyone: students stop changing status and no calls are created. **Every Monday, with the backup**,
 run in the live project's SQL editor:
 
@@ -1187,14 +1285,14 @@ select j.jobname, j.schedule, j.active,
 select last_job_at, last_job_result from push_status;
 ```
 
-Healthy: eight rows, all `active`; each daily job's `last_success` within the last day and
+Healthy: ten rows, all `active`; each daily job's `last_success` within the last day and
 `mridanga-push` within minutes; `failed_2_days` 0. Otherwise `last_error` says why (for example a
 setting changed in the dashboard to a wrong value); fix the cause and the job recovers on its next
 run. The push job always counts as succeeded, even when push is not set up: its own result is
 `last_job_result` (`not_set_up` = "Push notifications", step 13). A missing row means the job was
 removed: create it again with its `cron.schedule` line from `supabase/migrations/` (search for the
 job's name). A project that has not run every migration has fewer jobs (0001 makes the first two,
-0011 the push job, 0015, 0016, 0022, 0023 and 0034 one each).
+0011 the push job, 0015, 0016, 0022, 0023 and 0034 one each, 0040 two).
 
 ## Incidents
 
@@ -1446,6 +1544,15 @@ Reviewing one (never auto-merge, never merge on a green CI alone):
 4. Merge, or close with a comment why (Dependabot then skips that version).
 
 A security alert comes as a Dependabot pull request too; treat it first.
+
+**`npm audit` in `app/`** (triage of 9 Oct 2026, [DECISIONS.md #199](DECISIONS.md)): 55 advisories
+(1 low, 23 moderate, 31 high). All but one are in tools that run on the maintainer's computer or on
+EAS while building (eas-cli, the Expo CLI, Metro, config plugins: node-forge, tar, minimatch, braces,
+joi, yaml …); none of their code is in the app. The one in the app is query-string /
+decode-uri-component under expo-router: a malformed address slows only the phone that opens it.
+They are fixed by the Expo SDK upgrade that comes with the production APK (brief 9), then
+`npm audit` again. **Never** `npm audit fix --force` (it installs versions Expo does not support
+and moves the fingerprint). Re-run the triage after each SDK upgrade and write the date here.
 
 ## Handing over
 

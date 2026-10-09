@@ -9,3 +9,7 @@
 /app/scripts/ @Praviadari
 /supabase/ @Praviadari
 /.github/ @Praviadari
+# What an AI agent reads or runs in a maintainer's session (audit D11-20); app/tests/repo-guards
+# keeps tracked agent settings to enabledPlugins only.
+/app/.claude/ @Praviadari
+/app/AGENTS.md @Praviadari

@@ -82,6 +82,9 @@ const supabaseImitation = `
   -- pg_cron's job table, so the test net can check every scheduled command (D14-12); a job is
   -- never run here. Scheduling a name again replaces its job, as in pg_cron.
   create table cron.job (jobid bigint generated always as identity primary key, jobname text unique, schedule text, command text);
+  -- Its run history (0040 trims it; nothing writes to it here).
+  create table cron.job_run_details (runid bigint generated always as identity primary key, jobid bigint, status text,
+    return_message text, start_time timestamptz, end_time timestamptz);
   create function cron.schedule(name text, schedule text, command text) returns bigint language sql as $$
     insert into cron.job (jobname, schedule, command) values (name, schedule, command)
     on conflict (jobname) do update set schedule = excluded.schedule, command = excluded.command returning jobid $$;
@@ -120,7 +123,7 @@ process.on('uncaughtException', (error) => {
 // D14-10: every check is counted, and the run fails when fewer (or more) checks ran than expected,
 // so a block skipped by a renamed migration or a commented-out section cannot pass unseen.
 // Adding or removing checks? Run the suite and set this to the new total it prints.
-const EXPECTED_CHECKS = 1361; // 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15
+const EXPECTED_CHECKS = 1377; // 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16
 let failures = 0;
 let passes = 0;
 
@@ -4773,7 +4776,82 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   await refusesWith('ENT-08: a student cannot use the search', 'not_allowed', () => find39(arjun, 'rao'));
   await refusesWith('ENT-08: anon cannot run it', 'permission denied for function search_students', () =>
     asApp('anon', null, `select * from search_students('rao')`));
-}// ---------------------------------------------------------------- row-level security
+}
+
+// ---------------------------------------------------------------- 0040 operations backlog
+{
+  // D2-08: pg_cron's run history is trimmed daily to 7 days.
+  const [purge] = await asOwner(`select schedule, command from cron.job where jobname = 'mridanga-cron-history-purge'`);
+  await asOwner(`insert into cron.job_run_details (jobid, status, start_time, end_time) values
+    (1, 'succeeded', now() - interval '9 days', now() - interval '9 days'), (1, 'succeeded', now() - interval '1 day', now() - interval '1 day')`);
+  await asOwner(purge.command);
+  const left = await asOwner(`select end_time > now() - interval '2 days' as recent from cron.job_run_details`);
+  check('D2-08: a daily job deletes pg_cron run details older than 7 days', purge.schedule === '15 2 * * *' && left.length === 1 && left[0].recent === true,
+    JSON.stringify(left));
+  await asOwner('delete from cron.job_run_details');
+
+  // D1b-07: files in announcement-files that no announcement lists, over a day old.
+  const leaver = await signUp('leaver.40@example.com', true);
+  const path40 = async () => `${coordinator}/${await newId()}.jpg`;
+  const [oldOrphan, newOrphan, listed] = [await path40(), await path40(), await path40()];
+  await asOwner(`insert into storage.objects (bucket_id, name, created_at) values
+    ('announcement-files', '${oldOrphan}', now() - interval '2 days'), ('announcement-files', '${newOrphan}', now()),
+    ('announcement-files', '${listed}', now() - interval '2 days')`);
+  const [{ id: post40 }] = await asOwner(`insert into announcements (title, body, audience, created_by, attachments)
+    values ('Files 40', 'x', 'all', '${coordinator}', '${JSON.stringify([entry(listed)])}') returning id`);
+  const orphans = async () => (await asApp('service_role', null, 'select * from orphan_announcement_files() as name'))
+    .map((r) => r.name).filter((n) => [oldOrphan, newOrphan, listed].includes(n));
+  const found40 = await orphans();
+  check('D1b-07: an unlisted file over a day old is an orphan; a new one and a listed one are not',
+    found40.length === 1 && found40[0] === oldOrphan, JSON.stringify(found40));
+  await refusesWith('D1b-07: signed-in people cannot list orphan files', 'permission denied for function orphan_announcement_files',
+    () => asApp('authenticated', guru, 'select * from orphan_announcement_files()'));
+  await db.exec('begin');
+  await asOwner('delete from announcements');
+  const whileEmpty = await orphans();
+  await db.exec('rollback');
+  check('D1b-07: with no announcements at all (a half-done restore) nothing is an orphan', whileEmpty.length === 0, JSON.stringify(whileEmpty));
+  const [daily] = await asOwner(`select schedule from cron.job where jobname = 'mridanga-orphan-files'`);
+  await asOwner('select orphan_files_daily()');
+  check('D1b-07: the daily job is scheduled and runs', daily?.schedule === '0 2 * * *');
+  await asOwner(`delete from announcements where id = ${post40}`);
+  await asOwner(`delete from storage.objects where name in ('${oldOrphan}', '${newOrphan}', '${listed}')`);
+
+  // FS1a-14: a staff login that did work is anonymised in place; an idle one is deleted.
+  await asApp('authenticated', guru, `update profiles set role = 'coordinator', phone = '9000000040' where id = $1`, [leaver]);
+  const [{ id: made40 }] = await asOwner(`insert into students (full_name, dob, created_by) values ('Made By Leaver 40', '1990-01-01', '${leaver}') returning id`);
+  const anonymise = (id, reason = 'left the team') => asOwner(`select anonymise_staff('${id}', '${reason}', 'ST-40') as r`);
+  await refusesWith('FS1a-14: the Guru cannot anonymise in the app (SQL editor only)', 'permission denied for function anonymise_staff',
+    () => asApp('authenticated', guru, `select anonymise_staff($1, 'x')`, [leaver]));
+  await refusesWith('FS1a-14: a login still switched on is refused', 'switch_off_first', () => anonymise(leaver));
+  await asApp('authenticated', guru, 'update profiles set active = false where id = $1', [leaver]);
+  await refusesWith('FS1a-14: a reason is needed', 'reason_required', () => anonymise(leaver, ' '));
+  const pending40 = await signUp('pending.40@example.com', true);
+  await refusesWith('FS1a-14: a login that is not staff is refused', 'not_staff', () => anonymise(pending40));
+  const [{ r: anon40 }] = await anonymise(leaver);
+  check('FS1a-14: a login with work is kept, its sign-in email replaced',
+    anon40.login_deleted === false && anon40.login_scrubbed === true && anon40.audit_rows_redacted > 0, JSON.stringify(anon40));
+  const [p40] = await asOwner(`select full_name, email, phone, active from profiles where id = '${leaver}'`);
+  check('FS1a-14: ... the profile says Former staff, without email or phone',
+    p40.full_name === 'Former staff' && p40.email === null && p40.phone === null && p40.active === false, JSON.stringify(p40));
+  check('FS1a-14: ... auth.users no longer holds the email', (await asOwner(`select email from auth.users where id = '${leaver}'`))[0].email
+    === `${leaver}@former-staff.invalid`);
+  check('FS1a-14: ... the student it registered still says who did it', (await asOwner(`select created_by from students where id = '${made40}'`))[0].created_by === leaver);
+  const leftValues = await asOwner(`select count(*)::int as n from audit_log
+    where position('leaver.40@example.com' in coalesce(old_row::text, '') || coalesce(new_row::text, '')) > 0
+       or (table_name = 'profiles' and row_id = '${leaver}' and (old_row is not null or new_row is not null))`);
+  check('FS1a-14: ... no audit row keeps its old email or profile values', leftValues[0].n === 0, String(leftValues[0].n));
+  check('FS1a-14: ... a tombstone is written', (await asOwner(`select count(*)::int as n from erasures where staff_profile = '${leaver}' and request_ref = 'ST-40'`))[0].n === 1);
+  const idle40 = await signUp('idle.40@example.com', true);
+  await asApp('authenticated', guru, `update profiles set role = 'coordinator' where id = $1`, [idle40]);
+  await asApp('authenticated', guru, 'update profiles set active = false where id = $1', [idle40]);
+  const [{ r: gone40 }] = await anonymise(idle40);
+  check('FS1a-14: an idle staff login is simply deleted', gone40.login_deleted === true
+    && (await asOwner(`select count(*)::int as n from profiles where id = '${idle40}'`))[0].n === 0, JSON.stringify(gone40));
+  await asOwner(`delete from students where id = '${made40}'`);
+}
+
+// ---------------------------------------------------------------- row-level security
 const seen =await asApp('authenticated', arjun, 'select full_name from students');
 check('student sees only their own student record', seen.length === 1 && seen[0].full_name === 'Arjun Rao');
 check('student sees only their own profile',

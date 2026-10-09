@@ -1,0 +1,9 @@
+# Supabase CLI settings for this repository (audit D2-09, docs/DECISIONS.md #197). Only what a
+# deploy needs: the CLI reads this file on `supabase functions deploy`, so the push function keeps
+# its gateway JWT check off even when --no-verify-jwt is forgotten. The database job calls it with
+# the push secret, not a login (docs/OPERATIONS.md "Push notifications", step 10). Nothing here is
+# secret. project_id is a local name, not the project ref.
+project_id = "mridanga-seva"
+
+[functions.notify-announcements]
+verify_jwt = false
