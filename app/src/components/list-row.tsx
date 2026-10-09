@@ -24,8 +24,11 @@ export type ListRowProps = {
    * can be seen at a glance without reading.
    */
   highlighted?: boolean;
-  /** One button at the right end of the row. */
-  action?: Pick<ButtonProps, 'label' | 'onPress' | 'loading' | 'disabled' | 'variant'>;
+  /**
+   * One button at the right end of the row. Screen readers hear its label with the row's title,
+   * e.g. "Check in, Arjun Rao", so the many same buttons of a list can be told apart.
+   */
+  action?: Pick<ButtonProps, 'label' | 'onPress' | 'loading' | 'disabled' | 'variant' | 'accessibilityLabel'>;
   /**
    * Called when the row itself is tapped. Makes the whole row one button for screen readers, so
    * do not combine it with `action`: on phones a screen reader cannot reach a button inside it.
@@ -99,7 +102,7 @@ function RowContent({
           </View>
         ) : null}
       </View>
-      {action ? <Button {...action} /> : null}
+      {action ? <Button {...action} accessibilityLabel={action.accessibilityLabel ?? `${action.label}, ${title}`} /> : null}
     </>
   );
 }
@@ -125,7 +128,7 @@ export function Initials({ name, size = 40 }: { name: string; size?: number }) {
         styles.initials,
         { width: size, height: size, borderRadius: size / 2, backgroundColor: colors.primarySoft },
       ]}>
-      <AppText variant={size >= 56 ? 'subtitle' : 'label'} style={{ color: colors.onPrimarySoft }}>
+      <AppText variant={size >= 56 ? 'subtitle' : 'label'} maxFontSizeMultiplier={1.3} style={{ color: colors.onPrimarySoft }}>
         {letters}
       </AppText>
     </View>

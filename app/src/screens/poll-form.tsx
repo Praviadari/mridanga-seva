@@ -20,7 +20,7 @@ import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
-import { TextField } from '@/components/text-field';
+import { DATE_KEYBOARD, TextField } from '@/components/text-field';
 import { AUDIENCES, fetchComposeOptions, type ComposeOptions } from '@/data/announcements';
 import {
   checkPollForm,
@@ -183,7 +183,7 @@ export function PollFormScreen({ pollId }: { pollId?: number }) {
           value={form.date}
           onChangeText={(v) => update({ date: v })}
           error={errors.date ? t(errors.date) : undefined}
-          keyboardType="numbers-and-punctuation"
+          keyboardType={DATE_KEYBOARD}
           maxLength={10}
         />
         <TextField
@@ -193,7 +193,7 @@ export function PollFormScreen({ pollId }: { pollId?: number }) {
           onChangeText={(v) => update({ time: v })}
           error={errors.time ? t(errors.time) : undefined}
           keyboardType="numbers-and-punctuation"
-          maxLength={5}
+          maxLength={8}
         />
       </Section>
       <AudienceFields

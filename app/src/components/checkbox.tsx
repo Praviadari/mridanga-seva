@@ -2,9 +2,11 @@
 
 import { Pressable, StyleSheet, View } from 'react-native';
 
+import { spaceKeyProps } from '@/lib/space-key';
 import { spacing, useTheme } from '@/theme/use-theme';
 
 import { AppText } from './app-text';
+import { Icon } from './icon';
 
 /** Props for Checkbox. */
 export type CheckboxProps = {
@@ -16,7 +18,10 @@ export type CheckboxProps = {
   error?: string;
 };
 
-/** Tick box. Shows a ✓ in the brand colour when checked. */
+/**
+ * Tick box. Shows a tick in the brand colour when checked: an icon of fixed size, so a large text
+ * size cannot push it out of the box. Space ticks it on the web too.
+ */
 export function Checkbox({ label, checked, onChange, error }: CheckboxProps) {
   const { colors } = useTheme();
   return (
@@ -26,6 +31,7 @@ export function Checkbox({ label, checked, onChange, error }: CheckboxProps) {
         aria-checked={checked}
         accessibilityLabel={label}
         onPress={() => onChange(!checked)}
+        {...spaceKeyProps(() => onChange(!checked))}
         style={styles.row}>
         <View
           style={[
@@ -35,11 +41,7 @@ export function Checkbox({ label, checked, onChange, error }: CheckboxProps) {
               backgroundColor: checked ? colors.primary : colors.surface,
             },
           ]}>
-          {checked ? (
-            <AppText variant="label" style={{ color: colors.onPrimary }}>
-              ✓
-            </AppText>
-          ) : null}
+          {checked ? <Icon name="tick" size={20} color={colors.onPrimary} /> : null}
         </View>
         <AppText style={styles.label}>{label}</AppText>
       </Pressable>
@@ -60,7 +62,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: spacing.md,
-    minHeight: 44,
+    // 48 dp: Android's smallest comfortable touch target.
+    minHeight: 48,
   },
   box: {
     width: 28,

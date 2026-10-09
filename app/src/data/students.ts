@@ -5,6 +5,7 @@
 
 import * as Crypto from 'expo-crypto';
 import { ageOn, isMinorOn, parseDayMonthYear, todayLocal } from '@/lib/dates';
+import { asciiDigits } from '@/lib/digits';
 import { toE164 } from '@/lib/phone';
 import { PRIVACY_NOTICE_VERSION } from '@/lib/privacy-notice';
 import { supabase } from '@/lib/supabase';
@@ -77,7 +78,7 @@ export type RegistrationErrors = Partial<Record<keyof RegistrationForm, MessageK
 
 /** Removes spaces and dashes people type in phone numbers: '98765 43210' → '9876543210'. */
 export function cleanPhone(phone: string): string {
-  return phone.replace(/[\s-]/g, '');
+  return asciiDigits(phone).replace(/[\s-]/g, '');
 }
 
 /**

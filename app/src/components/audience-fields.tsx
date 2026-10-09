@@ -57,6 +57,7 @@ export function AudienceFields({
     <Section icon="groups" title={t('events.form.audience')}>
       <ChoiceGroup
         chips
+        accessibilityLabel={t('events.form.audience')}
         choices={shown.map((a) => ({ value: a, label: label(a), icon: AUDIENCE_ICONS[a] }))}
         value={audience}
         onChange={(a) => onChange({ audience: a })}

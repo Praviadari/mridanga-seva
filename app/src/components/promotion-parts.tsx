@@ -73,8 +73,10 @@ export function nominationDetails(t: TFunction, item: NominationItem): string[] 
 /** One criterion: a tick or a cross, and what it says. */
 function CriterionLine({ ok, text }: { ok: boolean; text: string }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
+  // Words, not ✓ / ✗: a screen reader reads the glyphs as "check mark" in English, or not at all.
   return (
-    <View style={styles.line} accessible accessibilityLabel={`${text}, ${ok ? '✓' : '✗'}`}>
+    <View style={styles.line} accessible accessibilityLabel={`${text}, ${ok ? t('promotion.criteria.met') : t('promotion.criteria.notMet')}`}>
       <Icon name={ok ? 'check' : 'alert'} color={ok ? colors.success : colors.danger} />
       <AppText style={styles.lineText}>{text}</AppText>
     </View>
@@ -97,7 +99,11 @@ export function CriteriaList({ criteria }: { criteria: Criteria }) {
       />
       <CriterionLine
         ok={criteria.visitsOk}
-        text={t('promotion.criteria.visits', { count: criteria.visits, needed: criteria.visitsNeeded, weeks: criteria.visitWeeks })}
+        text={t(criteria.visitWeeks === 1 ? 'promotion.criteria.visitsWeek' : 'promotion.criteria.visits', {
+          count: criteria.visits,
+          needed: criteria.visitsNeeded,
+          weeks: criteria.visitWeeks,
+        })}
       />
       {criteria.levelUpNeeded || lu ? (
         <CriterionLine

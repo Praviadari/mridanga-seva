@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
 import { saveProfileLanguage, useAuth } from '@/auth/auth-provider';
-import { chooseLanguage, currentLanguage, LANGUAGES, type Language } from '@/i18n';
+import { chooseLanguage, LANGUAGES, type Language } from '@/i18n';
 
 import { ChoiceGroup } from './choice-group';
 
@@ -15,8 +15,11 @@ import { ChoiceGroup } from './choice-group';
  * also saved to their profile at once, otherwise when they sign in (src/auth/auth-provider.tsx).
  */
 export function LanguagePicker() {
-  // Subscribing to translations re-renders the picker when the language changes.
-  useTranslation();
+  // Subscribing to translations re-renders the picker when the language changes. The choice shown
+  // is read from the hook's i18n.language, not currentLanguage(): the React Compiler kept the
+  // plain call's first answer, so the picker stayed on the start language (found 09-10-2026).
+  const { t, i18n } = useTranslation();
+  const shown = LANGUAGES.find(({ code }) => code === i18n.language)?.code ?? 'en';
   const { profile } = useAuth();
 
   function choose(language: Language) {
@@ -27,8 +30,10 @@ export function LanguagePicker() {
   return (
     <View style={styles.centre}>
       <ChoiceGroup<Language>
-        choices={LANGUAGES.map(({ code, nativeName }) => ({ value: code, label: nativeName }))}
-        value={currentLanguage()}
+        // No label on screen (the footer writes "Language" beside it); screen readers still hear it.
+        accessibilityLabel={t('common.language')}
+        choices={LANGUAGES.map(({ code, nativeName }) => ({ value: code, label: nativeName, lang: code }))}
+        value={shown}
         onChange={choose}
       />
     </View>

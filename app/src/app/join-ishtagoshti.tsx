@@ -11,7 +11,6 @@ import type { ParseKeys } from 'i18next';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { signOut } from '@/auth/auth-actions';
 import { useAuth } from '@/auth/auth-provider';
 import { AppText } from '@/components/app-text';
 import { BrandHeader } from '@/components/brand';
@@ -21,6 +20,7 @@ import { FormErrorSummary } from '@/components/form-error-summary';
 import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
+import { SignOutButton } from '@/components/sign-out-button';
 import { Section } from '@/components/section';
 import { TextField } from '@/components/text-field';
 import {
@@ -94,7 +94,7 @@ export default function JoinIshtagoshtiScreen() {
       <AppText tone="muted">{t('ishtagoshtiJoin.intro')}</AppText>
       {body}
       <Button variant="link" label={t('ishtagoshtiJoin.back')} onPress={back} />
-      <Button variant="link" label={t('common.signOut')} onPress={() => void signOut()} />
+      <SignOutButton variant="link" />
     </Screen>
   );
 }

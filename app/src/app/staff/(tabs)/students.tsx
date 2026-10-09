@@ -4,7 +4,7 @@
 // Data: student_overview (src/data/student-overview.ts). The whole list is loaded once and
 // filtered on the phone, so the search answers as the coordinator types.
 
-import { router, Stack, useFocusEffect } from 'expo-router';
+import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
@@ -46,7 +46,15 @@ export default function StudentListScreen() {
   const myId = profile?.id ?? null;
   // undefined = loading, null = could not load.
   const [loaded, setLoaded] = useState<Loaded | null | undefined>(undefined);
-  const [filters, setFilters] = useState<StudentFilters>(NO_FILTERS);
+  // The Guru's "In class" tile opens the list as ?status=notLeft, so it matches the number (FS2-06).
+  const { status: statusParam } = useLocalSearchParams<{ status?: string }>();
+  const [filters, setFilters] = useState<StudentFilters>(statusParam === 'notLeft' ? { ...NO_FILTERS, status: 'notLeft' } : NO_FILTERS);
+  // Opened again from the tile while the tab was open: apply the filter once more.
+  const [seenParam, setSeenParam] = useState(statusParam);
+  if (statusParam !== seenParam) {
+    setSeenParam(statusParam);
+    if (statusParam === 'notLeft') setFilters((current) => ({ ...current, status: 'notLeft' }));
+  }
   // Closed at first: on a phone the filters would push the list off the screen.
   const [showFilters, setShowFilters] = useState(false);
 
@@ -172,6 +180,7 @@ export default function StudentListScreen() {
             label={t('students.filters.status')}
             choices={[
               { value: 'all', label: t('students.filters.all') },
+              { value: 'notLeft', label: t('students.filters.notLeft') },
               ...STUDENT_STATUSES.map((status) => ({ value: status, label: statusName(t, status) })),
             ]}
             value={filters.status}

@@ -19,7 +19,7 @@ import { PersonHeader } from '@/components/person-header';
 import { RouteIdGuard } from '@/components/route-id-guard';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
-import { TextField } from '@/components/text-field';
+import { DATE_KEYBOARD, TextField } from '@/components/text-field';
 import {
   CALL_OUTCOMES,
   checkCallForm,
@@ -218,7 +218,7 @@ function CallLogScreenContent() {
             value={form.nextDate}
             onChangeText={(nextDate) => update({ nextDate })}
             error={errors.nextDate ? t(errors.nextDate) : undefined}
-            keyboardType="numbers-and-punctuation"
+            keyboardType={DATE_KEYBOARD}
             maxLength={10}
           />
         ) : null}

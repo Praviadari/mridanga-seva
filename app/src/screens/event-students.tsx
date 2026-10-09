@@ -6,7 +6,7 @@
 // - Attendance: tick who came, from the event's day on (at the event's centre).
 // Routes: staff/events/performers/[id].tsx, staff/events/attendance/[id].tsx. Data: src/data/events.ts.
 
-import { router, Stack, useFocusEffect } from 'expo-router';
+import { Stack, useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -31,6 +31,7 @@ import {
   type EventStudent,
 } from '@/data/events';
 import { levelName } from '@/i18n/labels';
+import { goBackOr } from '@/lib/go-back';
 import { searchFold } from '@/lib/search-text';
 
 /** The parts offered as chips; any other can be typed. */
@@ -198,7 +199,7 @@ export function EventStudentsScreen({ id, mode }: { id: number; mode: 'performer
 
       {message ? <Notice tone={message.tone}>{message.text}</Notice> : null}
       <Button label={t('events.performers.save')} loading={saving} onPress={() => void save()} />
-      <Button variant="link" label={t('events.performers.back')} onPress={() => router.back()} />
+      <Button variant="link" label={t('events.performers.back')} onPress={() => goBackOr({ pathname: '/staff/events/[id]', params: { id: String(id) } })} />
     </Screen>
   );
 }

@@ -4,18 +4,28 @@
 
 import { Pressable, StyleSheet, View } from 'react-native';
 
+import { spaceKeyProps } from '@/lib/space-key';
 import { radius, spacing, useTheme } from '@/theme/use-theme';
 
 import { AppText } from './app-text';
 import { Icon, type IconName } from './icon';
 
-/** One choice: the value stored, the label shown (already translated) and, for chips, an icon. */
-export type Choice<T> = { value: T; label: string; icon?: IconName };
+/**
+ * One choice: the value stored, the label shown (already translated) and, for chips, an icon.
+ * `lang` is the label's language when it differs from the app's, e.g. 'te' for తెలుగు in the
+ * language switch, so a web screen reader reads it with the right voice.
+ */
+export type Choice<T> = { value: T; label: string; icon?: IconName; lang?: string };
 
 /** Props for ChoiceGroup. */
 export type ChoiceGroupProps<T> = {
   /** Label above the buttons, already translated. Also read out by screen readers. */
   label?: string;
+  /**
+   * The group's name for screen readers when no label is shown above it, e.g. because a section
+   * title already says it. Every group needs one or the other.
+   */
+  accessibilityLabel?: string;
   choices: readonly Choice<T>[];
   /** The chosen value, or null for none yet. */
   value: T | null;
@@ -29,6 +39,7 @@ export type ChoiceGroupProps<T> = {
 /** Single-choice buttons that wrap onto more lines when there are many. */
 export function ChoiceGroup<T extends string | number>({
   label,
+  accessibilityLabel,
   choices,
   value,
   onChange,
@@ -39,7 +50,7 @@ export function ChoiceGroup<T extends string | number>({
   return (
     <View style={styles.wrapper}>
       {label ? <AppText variant="label">{label}</AppText> : null}
-      <View role="radiogroup" accessibilityLabel={label} style={styles.row}>
+      <View role="radiogroup" accessibilityLabel={label ?? accessibilityLabel} style={styles.row}>
         {choices.map((choice) => {
           const selected = choice.value === value;
           const textColour = selected ? colors.onPrimary : colors.text;
@@ -50,7 +61,10 @@ export function ChoiceGroup<T extends string | number>({
               // aria-checked (not accessibilityState) so the web version reports it too.
               aria-checked={selected}
               accessibilityLabel={choice.label}
+              // On the web the button's name is read in the page's language unless it has its own.
+              {...(choice.lang ? { lang: choice.lang } : {})}
               onPress={() => onChange(choice.value)}
+              {...spaceKeyProps(() => onChange(choice.value))}
               style={[
                 styles.option,
                 chips && styles.chip,
@@ -62,7 +76,7 @@ export function ChoiceGroup<T extends string | number>({
               {chips && choice.icon ? (
                 <Icon name={choice.icon} size={18} color={selected ? colors.onPrimary : colors.primary} />
               ) : null}
-              <AppText variant="label" style={{ color: textColour }}>
+              <AppText variant="label" lang={choice.lang} style={{ color: textColour }}>
                 {choice.label}
               </AppText>
             </Pressable>
@@ -88,7 +102,8 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   option: {
-    minHeight: 44,
+    // 48 dp: Android's smallest comfortable touch target.
+    minHeight: 48,
     minWidth: 88,
     paddingHorizontal: spacing.md,
     borderWidth: 1.5,

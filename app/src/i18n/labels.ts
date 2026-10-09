@@ -21,7 +21,8 @@ export const LEVEL_IDS = [1, 2, 3] as const;
 /**
  * The level's name in the app's language. The three levels (Beginner, Intermediate, Advanced)
  * are created by migration 0001 and do not change, so they are translated by id; a level added
- * later shows `fallback` (its name from the database), or the id when no name was loaded.
+ * later shows `fallback` (its name from the database), or "Level 4" when no name was loaded
+ * (before: a bare "4", audit FS4-08). The app's own pickers offer only the three.
  */
 export function levelName(t: TFunction, levelId: number, fallback?: string): string {
   switch (levelId) {
@@ -32,7 +33,7 @@ export function levelName(t: TFunction, levelId: number, fallback?: string): str
     case 3:
       return t('levels.3');
     default:
-      return fallback ?? String(levelId);
+      return fallback ?? t('levels.other', { number: levelId });
   }
 }
 
@@ -123,11 +124,14 @@ export function authorLine(t: TFunction, authorName: string | undefined): string
   return name ? [t('announcements.postedBy', { name })] : [];
 }
 
-/** A file's size given in bytes, e.g. 348160 → "340 KB", 1572864 → "1.5 MB". */
+/**
+ * A file's size given in bytes, e.g. 348160 → "340 KB", 1572864 → "1.5 MB". Rounded before
+ * choosing the unit, so 1048500 bytes reads "1.0 MB", not "1024 KB" (audit FS4-09).
+ */
 export function fileSizeText(t: TFunction, bytes: number): string {
-  const kb = bytes / 1024;
-  if (kb < 1024) return t('announcements.files.sizeKb', { size: Math.max(1, Math.round(kb)) });
-  return t('announcements.files.sizeMb', { size: (kb / 1024).toFixed(1) });
+  const kb = Math.max(1, Math.round(bytes / 1024));
+  if (kb < 1024) return t('announcements.files.sizeKb', { size: kb });
+  return t('announcements.files.sizeMb', { size: (bytes / 1024 / 1024).toFixed(1) });
 }
 
 /** A length of time given in whole minutes, e.g. 105 → "1 h 45 min", 40 → "40 min". */

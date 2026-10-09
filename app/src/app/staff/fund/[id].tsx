@@ -25,7 +25,7 @@ import { Notice } from '@/components/notice';
 import { RouteIdGuard } from '@/components/route-id-guard';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
-import { TextField } from '@/components/text-field';
+import { DATE_KEYBOARD, TextField } from '@/components/text-field';
 import {
   canDecide,
   categoryName,
@@ -189,7 +189,7 @@ function FundEntryScreenContent() {
             hint={t('fund.dateHint')}
             value={form.date}
             onChangeText={(date) => update({ date })}
-            keyboardType="numbers-and-punctuation"
+            keyboardType={DATE_KEYBOARD}
             maxLength={10}
             error={errors.date ? t(errors.date) : undefined}
           />

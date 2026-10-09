@@ -23,10 +23,11 @@ import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
-import { TextField } from '@/components/text-field';
+import { SIGNED_NUMBER_KEYBOARD, TextField } from '@/components/text-field';
 import { fetchInventory, fetchMyCentreId, markLabelsPrinted, type InventoryItem } from '@/data/inventory';
 import { assetLink, webAppOrigin } from '@/lib/asset-link';
 import { NUDGE_MAX, PER_SHEET, sheetHtml, sheetsNeeded, type LabelContent } from '@/lib/label-sheet';
+import { spaceKeyProps } from '@/lib/space-key';
 import { radius, spacing, useTheme } from '@/theme/use-theme';
 
 type Which = 'unprinted' | 'all';
@@ -234,7 +235,7 @@ export default function LabelsScreen() {
               label={t('labels.nudgeX')}
               value={nudge.x}
               onChangeText={(x) => setNudge((current) => ({ ...current, x }))}
-              keyboardType="numbers-and-punctuation"
+              keyboardType={SIGNED_NUMBER_KEYBOARD}
               error={nudgeX === null ? t('labels.nudgeInvalid', { max: NUDGE_MAX }) : undefined}
             />
           </View>
@@ -243,7 +244,7 @@ export default function LabelsScreen() {
               label={t('labels.nudgeY')}
               value={nudge.y}
               onChangeText={(y) => setNudge((current) => ({ ...current, y }))}
-              keyboardType="numbers-and-punctuation"
+              keyboardType={SIGNED_NUMBER_KEYBOARD}
               error={nudgeY === null ? t('labels.nudgeInvalid', { max: NUDGE_MAX }) : undefined}
             />
           </View>
@@ -288,6 +289,7 @@ function StartCell({ n, state, onPress }: { n: number; state: 'used' | 'start' |
       aria-checked={state === 'start'}
       accessibilityLabel={t('labels.position', { n })}
       onPress={onPress}
+      {...spaceKeyProps(onPress)}
       style={[
         styles.cell,
         {

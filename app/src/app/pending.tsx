@@ -7,13 +7,13 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { signOut } from '@/auth/auth-actions';
 import { useAuth } from '@/auth/auth-provider';
 import { AppText } from '@/components/app-text';
 import { BrandHeader } from '@/components/brand';
 import { Button } from '@/components/button';
 import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
+import { SignOutButton } from '@/components/sign-out-button';
 import { Section } from '@/components/section';
 import { useAboutPrompt } from '@/lib/about-prompt';
 
@@ -82,7 +82,7 @@ export default function PendingScreen() {
         </AppText>
       ) : null}
       <Button label={t('pending.checkAgain')} onPress={checkAgain} loading={checking} />
-      <Button variant="secondary" label={t('common.signOut')} onPress={() => void signOut()} />
+      <SignOutButton />
     </Screen>
   );
 }

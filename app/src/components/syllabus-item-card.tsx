@@ -5,6 +5,7 @@
 import type { PropsWithChildren } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
+import { spaceKeyProps } from '@/lib/space-key';
 import { cardLook, spacing, useTheme } from '@/theme/use-theme';
 
 import { AppText } from './app-text';
@@ -64,6 +65,9 @@ export function SyllabusItemCard({
           disabled={busy}
           hitSlop={spacing.xs}
           onPress={onToggle}
+          {...spaceKeyProps(() => {
+            if (!busy) onToggle();
+          })}
           style={[
             styles.box,
             {

@@ -158,7 +158,7 @@ function CentreScreenContent() {
           hint={t('settings.timeHint')}
           value={form.opensAt}
           onChangeText={(opensAt) => setForm({ ...form, opensAt })}
-          maxLength={5}
+          maxLength={8}
           error={errors.opensAt ? t(errors.opensAt) : undefined}
         />
         <TextField
@@ -166,7 +166,7 @@ function CentreScreenContent() {
           hint={t('settings.timeHint')}
           value={form.closesAt}
           onChangeText={(closesAt) => setForm({ ...form, closesAt })}
-          maxLength={5}
+          maxLength={8}
           error={errors.closesAt ? t(errors.closesAt) : undefined}
         />
       </Section>

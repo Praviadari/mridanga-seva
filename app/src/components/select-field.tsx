@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FlatList, Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
 
+import { spaceKeyProps } from '@/lib/space-key';
 import { cardRadius, maxContentWidth, radius, spacing, useTheme } from '@/theme/use-theme';
 
 import { AppText } from './app-text';
@@ -122,6 +123,10 @@ export function SelectField<T extends string | number>({
                       onChange(item.value);
                       setOpen(false);
                     }}
+                    {...spaceKeyProps(() => {
+                      onChange(item.value);
+                      setOpen(false);
+                    })}
                     style={[styles.row, selected && { backgroundColor: colors.primarySoft }]}>
                     <AppText style={[styles.value, selected && { color: colors.onPrimarySoft }]}>{item.label}</AppText>
                     {selected ? <Icon name="tick" size={18} color={colors.onPrimarySoft} /> : null}

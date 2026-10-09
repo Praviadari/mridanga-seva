@@ -24,7 +24,7 @@ import { Notice } from '@/components/notice';
 import { RouteIdGuard } from '@/components/route-id-guard';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
-import { TextField } from '@/components/text-field';
+import { DATE_KEYBOARD, TextField } from '@/components/text-field';
 import {
   CATEGORY_MAX,
   checkItem,
@@ -316,7 +316,7 @@ function InventoryItemScreenContent() {
             </>
           )}
           {conditionFields(LENDABLE)}
-          <TextField label={t('inventory.dueLabel')} hint={t('inventory.dueHint')} value={due} onChangeText={setDue} keyboardType="numbers-and-punctuation" />
+          <TextField label={t('inventory.dueLabel')} hint={t('inventory.dueHint')} value={due} onChangeText={setDue} keyboardType={DATE_KEYBOARD} />
           <View style={styles.row}>
             <Button icon="send" label={t('inventory.lendSave')} loading={busy} disabled={busy || !borrower} onPress={lend} />
             <Button variant="link" label={t('syllabusEditor.cancel')} onPress={() => setMode(null)} />

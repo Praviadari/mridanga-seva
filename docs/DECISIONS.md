@@ -3583,6 +3583,65 @@ D3-13 (custom scheme carries no secret; App Links come with brief 9), D3-16 (Con
 wherever real emails exist, OPERATIONS step 4; LIVE is decision A), D2-12 (fixed by #114). D3-11's
 build-time guard needs an `eas-build-pre-install` script in package.json: brief 9.
 
+## 200. Every web page has its own title — 9 Oct 2026
+
+**Context.** D7-03: Expo Router turns React Navigation's document title off, so every browser tab
+read "Mridanga Seva" (WCAG 2.4.2).
+
+**Decision.** Every navigator passes `screenLayout={documentTitleLayout}` (src/lib/document-title.tsx):
+the focused screen's `title` option and the app's name, "Attendance · Mridanga Seva", in the app's
+language. Navigators nest, so the deepest focused title wins. The root screens without a header
+(sign-in, sign-up, pending ...) get a `title` option only for this. Phones: nothing changes.
+
+## 201. Controls work by keyboard, are named, and are 48 dp — 9 Oct 2026
+
+**Decision.** On the web, Space ticks a tick box and picks a radio (src/lib/space-key.ts, D7-05;
+react-native-web presses only buttons on Space). Choice rows and tick-box rows are at least 48 dp
+(D7-18). A ChoiceGroup without a visible label takes an `accessibilityLabel` (D7-10, D8-12); the
+language names carry `lang`. A row's button says which row ("Check in, Arjun Rao", D7-11). A text
+field's hint or error is its `aria-describedby`, and an error sets `aria-invalid` (D7-13). Titles are
+h1, subtitles h2 (D7-09). The splash and the scanner frame are named (D7-21). Sign out shows a
+spinner and runs once (components/sign-out-button.tsx, D7-14). Not done: arrow keys inside a
+radio group (Tab and Space work).
+
+## 202. State is said in words, not only colour or glyph — 9 Oct 2026
+
+**Decision.** "Fields marked in red" becomes "the fields that show a message under them" (D7-08).
+The student profile's syllabus list says "ticked 05-10-2026" / "not ticked yet" (the ✓ and ○ are
+hidden from screen readers), the promotion criteria say "met" / "not met", the tick box draws an
+icon of fixed size, and a "—" stat tile is read as "no visit yet" (D8-13, D7-12). The connection
+error no longer claims the cause is the internet (D8-06; the loaders still return only null, so
+the real cause is not shown — that needs every loader changed).
+
+## 203. Typed dates, times and phones — 9 Oct 2026
+
+**Decision.** Digits typed with a Telugu, Hindi or other Indic keyboard are read as 0-9 in dates,
+times and phone numbers (src/lib/digits.ts, D8-16). A time may be typed as 12-hour with am / pm,
+"6:30 pm" = 18:30; the hints still show 24-hour time and add "(6:30 pm also works)" (D8-17); a bare
+"6:30" is still morning. Date fields open the phone pad on Android (`DATE_KEYBOARD`, D7-15);
+'numbers-and-punctuation' is iPhone-only. Time fields keep the full keyboard on Android (am / pm).
+
+## 204. A home tile opens the list its number counts — 9 Oct 2026
+
+**Decision.** FS2-06: C1 "My calls due" opens Follow-up with `?scope=mine`; G1 "In class" opens the
+student list with `?status=notLeft` (a new filter, everyone but Left); a row of G1's follow-up list
+opens Follow-up with `?assignee=<profile id>` (or `none`), which shows "Only the calls of: …" and a
+button back to everyone.
+
+## 205. Translation checks and wording fixes — 9 Oct 2026
+
+**Decision.** `npm test` (tests/i18n.test.mjs, D8-22) checks: Telugu and Hindi have exactly the
+English keys; every string has the same `{{placeholders}}` in all three; plural keys come as
+`_one` / `_other` pairs; every literal `t('…')` key exists; and the limits written into the texts
+(announcement title, body and reply, group name and purpose, syllabus remark, password) equal the
+constants the code checks (D8-14: a limit change now fails the test instead of staling three
+files). Counts use plural keys ("last week", "1 student … does not", D8-07). Telugu level names lose
+స్థాయి, which the templates already add (D8-08); the Telugu call button reads "కాల్ చేయండి — {{who}}"
+(D8-09); tempo is లయ / लय and a Hindi try is "कोशिश 2" (D8-10). An unknown level reads "Level 4"
+(FS4-08), a file just under 1 MB "1.0 MB" (FS4-09). Auth errors for an ended sign-in, an expired
+link, closed sign-ups and a switched-off account have their own messages (D8-04). Telugu and Hindi
+stay drafts for native review (docs/TRANSLATIONS.md).
+
 ## 212. Phase 3 reads a location only at a check-in or check-out, never tracks — 9 Oct 2026
 
 **Status: decided by Praveen 9 Oct 2026 (relayed by lead chat 5, on the Guru's face-scan request);

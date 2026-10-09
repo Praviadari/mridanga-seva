@@ -23,7 +23,14 @@ const drum = require('@/assets/images/splash-icon.png');
 export function BrandSplash() {
   const { t } = useTranslation();
   return (
-    <View style={[styles.splash, { backgroundColor: brand }]} accessibilityLabel={t('common.loading')}>
+    // accessible + role, or the label on a plain View is never read out; the whole splash is one
+    // "Loading" for screen readers.
+    <View
+      style={[styles.splash, { backgroundColor: brand }]}
+      accessible
+      role="progressbar"
+      aria-busy
+      accessibilityLabel={t('common.loading')}>
       <Image source={drum} style={styles.splashImage} resizeMode="contain" />
       <AppText variant="title" style={styles.splashText}>
         {t('app.name')}

@@ -16,7 +16,7 @@ import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
-import { TextField } from '@/components/text-field';
+import { DATE_KEYBOARD, TextField } from '@/components/text-field';
 import { AUDIENCES, fetchComposeOptions, type ComposeOptions } from '@/data/announcements';
 import {
   checkEventForm,
@@ -163,7 +163,7 @@ export function EventFormScreen({ eventId }: { eventId?: number }) {
           value={form.date}
           onChangeText={(v) => update({ date: v })}
           error={errors.date ? t(errors.date) : undefined}
-          keyboardType="numbers-and-punctuation"
+          keyboardType={DATE_KEYBOARD}
           maxLength={10}
         />
         <TextField
@@ -173,7 +173,7 @@ export function EventFormScreen({ eventId }: { eventId?: number }) {
           onChangeText={(v) => update({ time: v })}
           error={errors.time ? t(errors.time) : undefined}
           keyboardType="numbers-and-punctuation"
-          maxLength={5}
+          maxLength={8}
         />
         <TextField
           label={t('events.form.endTime')}
@@ -182,7 +182,7 @@ export function EventFormScreen({ eventId }: { eventId?: number }) {
           onChangeText={(v) => update({ endTime: v })}
           error={errors.endTime ? t(errors.endTime) : undefined}
           keyboardType="numbers-and-punctuation"
-          maxLength={5}
+          maxLength={8}
         />
       </Section>
       <Section icon="location" title={t('events.form.where')}>

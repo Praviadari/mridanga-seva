@@ -9,6 +9,8 @@ import {
   type CountryCode,
 } from 'libphonenumber-js/min';
 
+import { asciiDigits } from './digits';
+
 export type { CountryCode };
 
 /** Every country the phone metadata knows, as ISO 3166 codes ('IN', 'US' ...). */
@@ -27,9 +29,10 @@ export function callingCode(country: CountryCode): string {
 /**
  * The typed number in E.164, or null when it is not a real number. `typed` may already carry a +
  * and a country code (then `country` is ignored), or be the number as dialled in `country`.
+ * Digits of other scripts are read too (D8-16).
  */
 export function toE164(typed: string, country: CountryCode): string | null {
-  const text = typed.trim();
+  const text = asciiDigits(typed).trim();
   if (!text) return null;
   const parsed = parsePhoneNumberFromString(text, country);
   return parsed && parsed.isValid() ? parsed.number : null;

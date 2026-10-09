@@ -21,7 +21,7 @@ import { Checkbox } from './checkbox';
 import { ChoiceGroup } from './choice-group';
 import type { IconName } from './icon';
 import { Section } from './section';
-import { TextField } from './text-field';
+import { DATE_KEYBOARD, TextField } from './text-field';
 
 /** The icon on each audience chip. */
 const AUDIENCE_ICONS: Record<Audience, IconName> = {
@@ -100,6 +100,7 @@ export function AnnouncementFields({
       <Section icon="groups" title={t('announcements.compose.audience')}>
         <ChoiceGroup
           chips
+          accessibilityLabel={t('announcements.compose.audience')}
           choices={audiences.map((audience) => ({
             value: audience,
             label: audienceLabel(audience),
@@ -143,6 +144,7 @@ export function AnnouncementFields({
       {showWhen ? (
         <Section icon="time" title={t('announcements.compose.when')}>
           <ChoiceGroup
+            accessibilityLabel={t('announcements.compose.when')}
             choices={[
               { value: 'now', label: t('announcements.compose.now') },
               { value: 'later', label: t('announcements.compose.later') },
@@ -159,7 +161,7 @@ export function AnnouncementFields({
                 value={form.date}
                 onChangeText={(date) => onChange({ date })}
                 error={errors.date ? t(errors.date) : undefined}
-                keyboardType="numbers-and-punctuation"
+                keyboardType={DATE_KEYBOARD}
                 maxLength={10}
               />
               <TextField
@@ -169,7 +171,7 @@ export function AnnouncementFields({
                 onChangeText={(time) => onChange({ time })}
                 error={errors.time ? t(errors.time) : undefined}
                 keyboardType="numbers-and-punctuation"
-                maxLength={5}
+                maxLength={8}
               />
             </>
           ) : null}

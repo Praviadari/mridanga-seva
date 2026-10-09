@@ -20,7 +20,7 @@ import { Notice } from '@/components/notice';
 import { RouteIdGuard } from '@/components/route-id-guard';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
-import { TextField } from '@/components/text-field';
+import { DATE_KEYBOARD, TextField } from '@/components/text-field';
 import { fetchCentres, type Centre } from '@/data/centres';
 import { deleteShift, DUTY_MAX, fetchDutyPeople, fetchShift, MAX_WEEKS, saveShift } from '@/data/duty';
 import { formatTypedDate, parseDayMonthYear, parseTimeOfDay, todayLocal } from '@/lib/dates';
@@ -144,7 +144,7 @@ function ShiftScreenContent() {
             onChange={setCentreId}
           />
         ) : null}
-        <TextField label={t('duty.dateLabel')} hint={t('duty.dateHint')} value={date} onChangeText={setDate} keyboardType="numbers-and-punctuation" />
+        <TextField label={t('duty.dateLabel')} hint={t('duty.dateHint')} value={date} onChangeText={setDate} keyboardType={DATE_KEYBOARD} />
         <View style={styles.row}>
           <View style={styles.half}>
             <TextField label={t('duty.fromLabel')} value={from} onChangeText={setFrom} keyboardType="numbers-and-punctuation" />

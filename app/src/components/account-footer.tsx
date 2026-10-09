@@ -7,12 +7,12 @@ import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
-import { signOut } from '@/auth/auth-actions';
 import { useAuth } from '@/auth/auth-provider';
 import { cardLook, spacing, useTheme } from '@/theme/use-theme';
 
 import { AppText } from './app-text';
 import { Button } from './button';
+import { SignOutButton } from './sign-out-button';
 import { Icon } from './icon';
 import { LanguagePicker } from './language-picker';
 import { VersionLine } from './update-notice';
@@ -36,7 +36,7 @@ export function AccountFooter() {
         <LanguagePicker />
         <Button variant="link" icon="bell" label={t('inbox.title')} onPress={() => router.push(inboxPath)} />
         <Button variant="link" icon="profile" label={t('myProfile.title')} onPress={() => router.push(profilePath)} />
-        <Button variant="link" icon="signOut" label={t('common.signOut')} onPress={() => void signOut()} />
+        <SignOutButton variant="link" icon="signOut" />
       </View>
       <VersionLine />
     </>

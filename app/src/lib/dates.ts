@@ -6,6 +6,7 @@
 import { currentLanguage } from '@/i18n';
 
 import { classLocale } from './class-locale';
+import { asciiDigits } from './digits';
 
 // India is UTC + 5 h 30 min all year (no daylight saving), so for it shifting by this much and
 // reading the UTC fields gives the time without relying on the phone's time zone data — exactly as
@@ -158,10 +159,11 @@ export function formatTypedDate(isoDate: string): string {
 /**
  * Reads a typed date: day-month-year (15-06-2012, 15/06/2012 or 15.06.2012), which the hints ask
  * for in every language, or ISO 8601 year-month-day (2012-06-15), which nobody misreads.
- * Returns 'YYYY-MM-DD', or null if it is not a real date.
+ * Digits of other scripts are read too (asciiDigits). Returns 'YYYY-MM-DD', or null if it is not
+ * a real date.
  */
 export function parseDayMonthYear(text: string): string | null {
-  const trimmed = text.trim();
+  const trimmed = asciiDigits(text).trim();
   const iso = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(trimmed);
   const dmy = iso ? null : /^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/.exec(trimmed);
   if (!iso && !dmy) return null;
@@ -177,13 +179,21 @@ export function parseDayMonthYear(text: string): string | null {
 }
 
 /**
- * Reads a time of day typed as 24-hour hours and minutes: 18:30, 9:05 or 18.30.
- * Returns 'HH:MM', or null if it is not a real time.
+ * Reads a time of day typed as 24-hour hours and minutes: 18:30, 9:05 or 18.30; or as 12-hour time
+ * with am or pm: 6:30 pm, 6.30PM, 12:15 a.m. (audit D8-17: evening 6:30 was taken for 06:30 when
+ * people wrote it the usual way; the hints still show 24-hour time). Digits of other scripts are
+ * read too. Returns 'HH:MM', or null if it is not a real time.
  */
 export function parseTimeOfDay(text: string): string | null {
-  const match = /^(\d{1,2})[:.](\d{2})$/.exec(text.trim());
+  const match = /^(\d{1,2})[:.](\d{2})\s*(?:([ap])\.?\s*m\.?)?$/i.exec(asciiDigits(text).trim());
   if (!match) return null;
-  const [hours, minutes] = [Number(match[1]), Number(match[2])];
+  let hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  const half = match[3]?.toLowerCase();
+  if (half) {
+    if (hours < 1 || hours > 12) return null;
+    hours = (hours % 12) + (half === 'p' ? 12 : 0);
+  }
   if (hours > 23 || minutes > 59) return null;
   return `${String(hours).padStart(2, '0')}:${match[2]}`;
 }

@@ -1,8 +1,8 @@
 // A labelled text box with room for a hint and an error message. Used by every form.
 
-import { useState, type Ref } from 'react';
+import { useId, useState, type Ref } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
+import { Platform, Pressable, StyleSheet, TextInput, View, type KeyboardTypeOptions, type TextInputProps } from 'react-native';
 
 import { radius, spacing, typography, useTheme } from '@/theme/use-theme';
 
@@ -22,11 +22,25 @@ export type TextFieldProps = TextInputProps & {
   ref?: Ref<TextInput>;
 };
 
+/**
+ * Keyboard for a typed date (15-06-2012): digits with - / . at hand. 'numbers-and-punctuation' is
+ * iPhone-only, so Android showed the full letter keyboard (audit D7-15); its phone pad has the
+ * digits and those signs. Times keep 'numbers-and-punctuation': they may end in am or pm.
+ */
+export const DATE_KEYBOARD: KeyboardTypeOptions = Platform.OS === 'android' ? 'phone-pad' : 'numbers-and-punctuation';
+
+/** Keyboard for a number that may be negative or have a decimal point, e.g. -1.5 (mm). */
+export const SIGNED_NUMBER_KEYBOARD: KeyboardTypeOptions = Platform.OS === 'android' ? 'numeric' : 'numbers-and-punctuation';
+
 /** Labelled text input in the app's style. */
 export function TextField({ label, hint, error, secret, ref, style, ...inputProps }: TextFieldProps) {
   const { colors } = useTheme();
   const { t } = useTranslation();
   const [revealed, setRevealed] = useState(false);
+  // Ties the hint or error under the box to it: Android reads accessibilityHint, the web reads
+  // aria-describedby (react-native-web has no accessibilityHint).
+  const noteId = useId();
+  const note = error ?? hint;
 
   return (
     <View style={styles.wrapper}>
@@ -39,7 +53,9 @@ export function TextField({ label, hint, error, secret, ref, style, ...inputProp
         <TextInput
           ref={ref}
           accessibilityLabel={label}
-          accessibilityHint={error ?? hint}
+          accessibilityHint={note}
+          aria-describedby={note ? noteId : undefined}
+          aria-invalid={!!error}
           placeholderTextColor={colors.textMuted}
           secureTextEntry={secret && !revealed}
           style={[styles.input, typography.body, { color: colors.text }, style]}
@@ -59,11 +75,11 @@ export function TextField({ label, hint, error, secret, ref, style, ...inputProp
         ) : null}
       </View>
       {error ? (
-        <AppText variant="small" tone="danger" role="alert" accessibilityLiveRegion="polite">
+        <AppText nativeID={noteId} variant="small" tone="danger" role="alert" accessibilityLiveRegion="polite">
           {error}
         </AppText>
       ) : hint ? (
-        <AppText variant="small" tone="muted">
+        <AppText nativeID={noteId} variant="small" tone="muted">
           {hint}
         </AppText>
       ) : null}

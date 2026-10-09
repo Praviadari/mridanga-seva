@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next';
 import { useWindowDimensions } from 'react-native';
 
 import { tabIcon } from '@/components/icon';
+import { documentTitleLayout } from '@/lib/document-title';
 import { tabsScreenOptions, useTheme } from '@/theme/use-theme';
 
 /** Window width in pixels from which the tabs become a sidebar. */
@@ -25,7 +26,7 @@ export default function StaffTabsLayout() {
   const { width, fontScale } = useWindowDimensions();
 
   return (
-    <Tabs screenOptions={tabsScreenOptions(colors, width >= SIDEBAR_FROM, fontScale)}>
+    <Tabs screenLayout={documentTitleLayout} screenOptions={tabsScreenOptions(colors, width >= SIDEBAR_FROM, fontScale)}>
       {/* The home has its own saffron header band instead of a header bar. */}
       <Tabs.Screen
         name="index"

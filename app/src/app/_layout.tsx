@@ -17,10 +17,12 @@ import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { AuthProvider, useAuth } from '@/auth/auth-provider';
 import { SetupNeeded } from '@/components/setup-needed';
 import { useUpdateChecks } from '@/lib/app-update';
+import { documentTitleLayout } from '@/lib/document-title';
 import { registerForPush, usePushTaps } from '@/lib/push';
 import { supabaseConfigProblem } from '@/lib/supabase';
 import { useTheme } from '@/theme/use-theme';
@@ -68,12 +70,15 @@ export default function RootLayout() {
 function RootNavigator() {
   const { area } = useAuth();
   const { colors } = useTheme();
+  const { t } = useTranslation();
 
   return (
     <>
       <HideSplash when={area !== 'loading'} />
       <PushSetup />
+      {/* The titles here have no header bar: they name the web page (src/lib/document-title.tsx). */}
       <Stack
+        screenLayout={documentTitleLayout}
         screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}>
         {/* Always open: shows the splash while loading, then forwards to the area's first screen. */}
         <Stack.Screen name="index" />
@@ -81,21 +86,21 @@ function RootNavigator() {
         <Stack.Screen name="i/[token]" />
 
         <Stack.Protected guard={area === 'signedOut'}>
-          <Stack.Screen name="sign-in" />
-          <Stack.Screen name="sign-up" />
-          <Stack.Screen name="forgot-password" />
+          <Stack.Screen name="sign-in" options={{ title: t('signIn.title') }} />
+          <Stack.Screen name="sign-up" options={{ title: t('signUp.title') }} />
+          <Stack.Screen name="forgot-password" options={{ title: t('forgotPassword.title') }} />
         </Stack.Protected>
 
         <Stack.Protected guard={area === 'recovery'}>
-          <Stack.Screen name="reset-password" />
+          <Stack.Screen name="reset-password" options={{ title: t('resetPassword.title') }} />
         </Stack.Protected>
 
         <Stack.Protected guard={area === 'pending'}>
-          <Stack.Screen name="pending" />
+          <Stack.Screen name="pending" options={{ title: t('pending.title') }} />
           {/* I14: a login without a class role joins Ishtagoshti, or types the parent's code. */}
-          <Stack.Screen name="join-ishtagoshti" />
+          <Stack.Screen name="join-ishtagoshti" options={{ title: t('pending.igTitle') }} />
           {/* Step 2 of joining, while waiting for the desk (docs/DECISIONS.md #164). */}
-          <Stack.Screen name="about-you" />
+          <Stack.Screen name="about-you" options={{ title: t('about.title') }} />
         </Stack.Protected>
 
         {/* The staff home (G1 for the Guru, C1 for a coordinator) and the coordinator screens the

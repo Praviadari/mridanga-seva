@@ -802,6 +802,9 @@ function announcementErrorKey(message: string, code: string | undefined): Messag
       return 'announcements.errors.replyTooLong';
     case 'too_many_attachments':
       return 'announcements.files.tooMany';
+    case 'announcement_frozen':
+      // The author or creation time changed: the app never sends that (audit D8-21).
+      return 'announcements.errors.cannotChange';
     case 'attachments_invalid':
     case 'attachment_not_yours':
     case 'attachment_missing':

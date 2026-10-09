@@ -73,6 +73,9 @@ export function QrScanner({ onScan, paused }: QrScannerProps) {
 
   return (
     <View
+      // accessible + role, or the label on a plain View is never read out.
+      accessible
+      role="img"
       accessibilityLabel={t('scanner.label')}
       style={[styles.frame, { borderColor: colors.border, backgroundColor: colors.text }]}>
       <CameraView

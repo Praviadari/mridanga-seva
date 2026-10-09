@@ -20,7 +20,7 @@ import { Notice } from '@/components/notice';
 import { RouteIdGuard } from '@/components/route-id-guard';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
-import { TextField } from '@/components/text-field';
+import { DATE_KEYBOARD, TextField } from '@/components/text-field';
 import {
   checkReleaseForm,
   dueInDays,
@@ -143,7 +143,7 @@ function ReleaseAssessmentScreenContent() {
           hint={t('assessments.release.dueHint')}
           value={due}
           onChangeText={setDue}
-          keyboardType="numbers-and-punctuation"
+          keyboardType={DATE_KEYBOARD}
           error={errors.due ? t(errors.due) : undefined}
         />
         <View style={styles.row}>

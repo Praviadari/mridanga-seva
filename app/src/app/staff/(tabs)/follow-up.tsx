@@ -3,8 +3,10 @@
 // students with no call planned. Within a group, the longest away comes first. Tapping a
 // student opens the call screen (C11). Data: src/data/follow-up.ts; the rules that fill the
 // queue are the daily job and log_call in the database (docs/DATABASE.md "Student status").
+// The home tiles open it filtered to match their number (audit FS2-06): ?scope=mine for "My calls
+// due" (C1), ?assignee=<profile id> or ?assignee=none for one row of the Guru's follow-up list (G1).
 
-import { router, Stack, useFocusEffect } from 'expo-router';
+import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -36,7 +38,16 @@ export default function FollowUpScreen() {
   const myId = profile?.id ?? null;
   // undefined = loading, null = could not load.
   const [queue, setQueue] = useState<FollowUpQueue | null | undefined>(undefined);
-  const [scope, setScope] = useState<'everyone' | 'mine'>('everyone');
+  const params = useLocalSearchParams<{ scope?: string; assignee?: string }>();
+  const [scope, setScope] = useState<'everyone' | 'mine'>(params.scope === 'mine' ? 'mine' : 'everyone');
+  // Opened again from the tile while the tab was open: show "Mine" once more.
+  const [seenScope, setSeenScope] = useState(params.scope);
+  if (params.scope !== seenScope) {
+    setSeenScope(params.scope);
+    if (params.scope === 'mine') setScope('mine');
+  }
+  // One person's calls (or 'none': calls given to nobody), from the Guru's home.
+  const assignee = params.assignee || null;
 
   const beginLoad = useLatestLoad();
   const load = useCallback(async () => {
@@ -57,7 +68,10 @@ export default function FollowUpScreen() {
   // When "Mine" runs empty its switch disappears, so the list goes back to everyone: otherwise the
   // queue would look empty with no way back to the others' calls (audit D6-04).
   const shownScope = haveMine ? scope : 'everyone';
-  const entries = (queue?.entries ?? []).filter((entry) => shownScope === 'everyone' || isMine(entry, myId));
+  const entries = (queue?.entries ?? [])
+    .filter((entry) => shownScope === 'everyone' || isMine(entry, myId))
+    .filter((entry) => !assignee || (entry.task && (entry.task.assigneeId ?? 'none') === assignee));
+  const assigneeName = assignee === 'none' ? t('students.filters.noMentor') : assignee ? staffNames.get(assignee) || t('profile.unknownPerson') : null;
 
   /**
    * The task line: "Call due 01-10-2026 · try 2 · for Radha". A task given to nobody falls to the
@@ -109,6 +123,13 @@ export default function FollowUpScreen() {
           value={shownScope}
           onChange={setScope}
         />
+      ) : null}
+
+      {assigneeName ? (
+        <>
+          <Notice tone="info">{t('followUp.onlyOf', { name: assigneeName })}</Notice>
+          <Button variant="link" label={t('followUp.showEveryone')} onPress={() => router.setParams({ assignee: '' })} />
+        </>
       ) : null}
 
       {queue === undefined ? <LoadingCards /> : null}

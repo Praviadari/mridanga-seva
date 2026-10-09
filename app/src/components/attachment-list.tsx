@@ -143,7 +143,13 @@ export function AttachmentList({ attachments }: AttachmentListProps) {
                 {url ? t('announcements.files.pdfLine', { size: fileSizeText(t, a.size) }) : placeholder}
               </AppText>
             </View>
-            <Button variant="secondary" label={t('announcements.files.open')} disabled={!url} onPress={opener(a.path, url)} />
+            <Button
+              variant="secondary"
+              label={t('announcements.files.open')}
+              accessibilityLabel={`${t('announcements.files.open')}, ${a.name}`}
+              disabled={!url}
+              onPress={opener(a.path, url)}
+            />
           </View>
         );
       })}

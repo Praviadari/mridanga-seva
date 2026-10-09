@@ -87,7 +87,8 @@ export function AttachmentPicker({ files, onChange, error }: AttachmentPickerPro
               {preview ? (
                 <Image source={{ uri: preview }} style={styles.thumbImage} contentFit="cover" accessible={false} />
               ) : (
-                <AppText variant="small" tone="muted">
+                // A fixed 56 px box: the word may grow only a little with the phone's text size.
+                <AppText variant="small" tone="muted" maxFontSizeMultiplier={1.3} numberOfLines={1}>
                   {file.kind === 'pdf' ? t('announcements.files.pdfBadge') : t('announcements.files.photoBadge')}
                 </AppText>
               )}
@@ -103,6 +104,7 @@ export function AttachmentPicker({ files, onChange, error }: AttachmentPickerPro
             <Button
               variant="link"
               label={t('announcements.files.remove')}
+              accessibilityLabel={`${t('announcements.files.remove')}, ${file.name}`}
               onPress={() => remove(file.key)}
             />
           </View>

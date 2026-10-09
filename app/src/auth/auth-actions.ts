@@ -14,7 +14,7 @@ import type { ParseKeys } from 'i18next';
 import { Platform } from 'react-native';
 
 import { clearSavedCard } from '@/data/my-student';
-import { currentLanguage } from '@/i18n';
+import { currentLanguage, markLanguageSaved } from '@/i18n';
 import { unregisterPush } from '@/lib/push';
 import { forgetStoredLogin, storedLoginUserId, supabase } from '@/lib/supabase';
 
@@ -61,6 +61,23 @@ export function authErrorKey(error: unknown): MessageKey {
       case 'over_email_send_rate_limit':
       case 'over_request_rate_limit':
         return 'authErrors.rateLimited';
+      // Audit D8-04: these need a new sign-in, a new link or staff help, not another try.
+      case 'session_expired':
+      case 'session_not_found':
+      case 'refresh_token_not_found':
+      case 'refresh_token_already_used':
+      case 'reauthentication_needed':
+        return 'authErrors.sessionEnded';
+      case 'otp_expired':
+      case 'flow_state_expired':
+      case 'flow_state_not_found':
+      case 'bad_code_verifier':
+        return 'authErrors.linkExpired';
+      case 'signup_disabled':
+      case 'email_provider_disabled':
+        return 'authErrors.signupClosed';
+      case 'user_banned':
+        return 'authErrors.accountOff';
     }
   }
   // A plain network failure (no internet) reaches here as a TypeError from fetch.
@@ -177,11 +194,15 @@ export async function setNewPassword(password: string): Promise<AuthResult> {
  * saved login is deleted here and signOut runs again: with nothing saved it only clears the
  * client and tells the app (SIGNED_OUT), which forgets the saved profile (docs/DECISIONS.md #42).
  * The push token row stays on the server in that case; the phone's next sign-in replaces it.
+ *
+ * A language this person picked that did not reach their profile (saved without internet) is
+ * forgotten as unsaved: otherwise the next person to sign in on this phone got it on their profile.
  */
 export async function signOut(): Promise<void> {
   markOwnSignOut(true);
   try {
     clearSavedCard();
+    markLanguageSaved();
     // Before signing out: deleting the token needs the login.
     await unregisterPush();
     const { error } = await supabase.auth.signOut({ scope: 'local' });

@@ -252,9 +252,15 @@ function StudentProfileScreenContent() {
         description={t('profile.syllabusDone', { done: doneCount, total: profile.progress.length })}>
         {profile.progress.length === 0 ? <AppText tone="muted">{t('profile.noSyllabus')}</AppText> : null}
         {profile.progress.map((item) => (
+          // The tick or circle is for the eye; the words say it for screen readers and translators (D8-13).
           <AppText key={item.id} tone={item.doneOn ? 'default' : 'muted'}>
-            {`${item.doneOn ? '✓' : '○'} ${item.sort}. ${item.title}`}
-            {item.doneOn ? ` · ${formatDate(item.doneOn)}` : ''}
+            <AppText aria-hidden tone={item.doneOn ? 'default' : 'muted'}>
+              {item.doneOn ? '✓ ' : '○ '}
+            </AppText>
+            {`${item.sort}. ${item.title}`}
+            {item.doneOn
+              ? ` · ${t('profile.tickedOn', { date: formatDate(item.doneOn) })}`
+              : ` · ${t('profile.notTicked')}`}
             {item.remark ? ` · ${item.remark}` : ''}
           </AppText>
         ))}

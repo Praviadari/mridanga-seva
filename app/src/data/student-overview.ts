@@ -113,12 +113,13 @@ export async function fetchStaff(): Promise<StaffMember[] | null> {
 
 /**
  * The filters on the student list. 'all' (or 0 for `absentDays`) means "do not filter on this".
+ * `status` 'notLeft' is everyone still in the class (every status but Left), the Guru's "In class".
  * `mentor` is a profile id, 'mine' (the signed-in coordinator's mentees) or 'none' (no mentor yet).
  */
 export type StudentFilters = {
   search: string;
   levelId: number | 'all';
-  status: StudentStatus | 'all';
+  status: StudentStatus | 'all' | 'notLeft';
   mentor: string | 'all' | 'mine' | 'none';
   /** Only students not seen for at least this many days. */
   absentDays: number;
@@ -157,7 +158,9 @@ export function filterStudents(
   return students.filter((s) => {
     if (!matchesSearch(s, filters.search)) return false;
     if (filters.levelId !== 'all' && s.levelId !== filters.levelId) return false;
-    if (filters.status !== 'all' && s.status !== filters.status) return false;
+    if (filters.status === 'notLeft') {
+    if (s.status === 'left') return false;
+  } else if (filters.status !== 'all' && s.status !== filters.status) return false;
     if (filters.mentor === 'mine' && (myId === null || s.mentorId !== myId)) return false;
     if (filters.mentor === 'none' && s.mentorId !== null) return false;
     if (!['all', 'mine', 'none'].includes(filters.mentor) && s.mentorId !== filters.mentor) return false;

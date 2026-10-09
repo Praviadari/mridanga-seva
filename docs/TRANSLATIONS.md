@@ -72,7 +72,10 @@ The code is in `app/src/i18n/index.ts`, `app/src/components/language-picker.tsx`
 2. Add the same key to `te.json` and `hi.json`. If you cannot translate it, copy the English text
    and say so in the pull request, so a translator can pick it up.
 3. Use it in the screen with `t('group.key')`.
-4. Run `npx tsc --noEmit` in `app/`.
+4. Run `npx tsc --noEmit` and `npm test` in `app/`. The test (`tests/i18n.test.mjs`) fails when Telugu or
+   Hindi has a key English lacks, when a string's `{{placeholders}}` differ between the languages, when a
+   plural has only `_one` or only `_other`, or when a limit written into a text ("120 characters") no
+   longer matches the code ([DECISIONS.md #205](DECISIONS.md)).
 
 ## Style for translators
 
@@ -242,3 +245,21 @@ The privacy texts of 0034 (`signUp.privacyNotice`, `signUp.under18`, `register.p
   "service areas" సేవా విభాగాలు / सेवा क्षेत्र, "as on your Aadhaar" (`signUp.fullNameId`).
 - Telugu and Devanagari letters are taller than Latin ones. The app's line heights allow for this;
   if a translated label looks cut off, report it with a screenshot.
+
+- **A11y/i18n backlog** (branch `a11y-i18n`, [DECISIONS.md #200-#205](DECISIONS.md), 9 Oct 2026): new or changed lines,
+  drafts in Telugu and Hindi: `authErrors.sessionEnded`, `linkExpired`, `signupClosed`, `accountOff`; `levels.other`;
+  the Telugu `levels.1-3` without స్థాయి (the templates add it; `syllabus.allDone` and `progress.levelLessons` now
+  say it); `home.staff.newJoiners*` and `announcements.detail.noLoginNote` as `_one` / `_other`;
+  `promotion.criteria.visitsWeek`, `met`, `notMet`; `profile.tickedOn`, `notTicked`; `home.student.noVisitYet`;
+  `followUp.onlyOf`, `showEveryone`; `students.filters.notLeft`; the reworded `common.fixFieldsAbove`, every
+  `fixFields` and `common.networkError`; the am / pm addition to `announcements.compose.timeHint`; Telugu
+  `callLog.dial` ("కాల్ చేయండి — {{who}}"); tempo as లయ / लय in `syllabus.remarkHint`; Hindi `practice.metronomeIntro`
+  (मात्रा for a beat) and `followUp.attempt` ("कोशिश 2"). The audit's other points for the native speakers (D8-10,
+  not changed): Hindi "… के अनुसार" in `home.guru.followUps`, `byLevel`, `byStatus` reads "according to"; the
+  consent and legal lines `register.writtenConsent`, `register.photoConsent`, `announcements.files.consentHint`,
+  `profile.consentMissing`, `register.errors.minorNeedsConsent` must be exact in both languages; Telugu
+  `statuses.active` / `inactive` are verb phrases used as labels (also inside `followUp.escalatedHelp`); Telugu
+  `students.empty` "వెతుకుడు"; "box" (పెట్టె / डिब्बा) for a tick box in `syllabus.intro`; Telugu `myQr.howTo`
+  "మీ రాక, వెళ్ళడం"; Hindi `home.staff.joinedVisits` and "विज़िट"; Hindi `followUp.noTask`; Hindi "सेव करें" against
+  "सहेजें" (pick one); Telugu మళ్ళీ / మళ్లీ and క్లాసు / తరగతి (pick one each); Telugu `pending.title`
+  (subject "it", a person is meant); Hindi "घं" in `time.hoursMinutes`.

@@ -8,6 +8,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useTranslation } from 'react-i18next';
 
+import { documentTitleLayout } from '@/lib/document-title';
 import { headerBarOptions, useTheme } from '@/theme/use-theme';
 
 /** The tabs sit under any subscriber screen opened from a link, so Back leads to them. */
@@ -20,7 +21,7 @@ export default function SubscriberLayout() {
   return (
     <>
       <StatusBar style="light" />
-      <Stack screenOptions={headerBarOptions(colors)}>
+      <Stack screenLayout={documentTitleLayout} screenOptions={headerBarOptions(colors)}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false, title: t('ishtagoshti.title') }} />
       </Stack>
     </>

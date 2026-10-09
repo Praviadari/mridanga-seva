@@ -119,7 +119,7 @@ export default function SettingsScreen() {
               label={t('settings.opensAt')}
               value={form.opensAt}
               onChangeText={(opensAt) => setForm({ ...form, opensAt })}
-              maxLength={5}
+              maxLength={8}
               hint={t('settings.timeHint')}
               error={errors.opensAt ? t(errors.opensAt) : undefined}
             />
@@ -127,7 +127,7 @@ export default function SettingsScreen() {
               label={t('settings.closesAt')}
               value={form.closesAt}
               onChangeText={(closesAt) => setForm({ ...form, closesAt })}
-              maxLength={5}
+              maxLength={8}
               hint={t('settings.timeHint')}
               error={errors.closesAt ? t(errors.closesAt) : undefined}
             />

@@ -25,6 +25,11 @@ export type ButtonProps = {
   disabled?: boolean;
   /** Icon before the label, e.g. the QR shape on "My QR card". */
   icon?: IconName;
+  /**
+   * What screen readers say instead of the label, when the label alone does not tell which one,
+   * e.g. "Check in, Arjun Rao" for one of many "Check in" buttons. Default the label.
+   */
+  accessibilityLabel?: string;
 };
 
 /**
@@ -32,7 +37,16 @@ export type ButtonProps = {
  * While `loading` it shows a spinner instead of the label and ignores presses, so a slow
  * network cannot cause a double submit.
  */
-export function Button({ label, onPress, variant = 'primary', size = 'normal', loading, disabled, icon }: ButtonProps) {
+export function Button({
+  label,
+  onPress,
+  variant = 'primary',
+  size = 'normal',
+  loading,
+  disabled,
+  icon,
+  accessibilityLabel,
+}: ButtonProps) {
   const { colors } = useTheme();
   const inactive = disabled || loading;
   const textColour = variant === 'primary' ? colors.onPrimary : colors.primary;
@@ -40,7 +54,7 @@ export function Button({ label, onPress, variant = 'primary', size = 'normal', l
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={label}
+      accessibilityLabel={accessibilityLabel ?? label}
       // aria-* props (not accessibilityState) so the web version reports them too.
       aria-disabled={!!inactive}
       aria-busy={!!loading}

@@ -25,7 +25,7 @@ import { Notice } from '@/components/notice';
 import { PrivacyNoticeLink } from '@/components/privacy-notice-link';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
-import { TextField } from '@/components/text-field';
+import { DATE_KEYBOARD, TextField } from '@/components/text-field';
 import {
   aboutFormFrom,
   aboutPatch,
@@ -271,7 +271,7 @@ export default function RegisterStudentScreen() {
               : t('register.dobHint')
           }
           placeholder="15-06-2012"
-          keyboardType="numbers-and-punctuation"
+          keyboardType={DATE_KEYBOARD}
           maxLength={10}
         />
         <TextField

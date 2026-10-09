@@ -129,6 +129,7 @@ export default function StudentHomeScreen() {
               icon="time"
               // Never came: no number of days to show; the line below says "No visit yet".
               value={home.lastVisitAt ? String(home.daysSinceVisit) : '—'}
+              spokenValue={home.lastVisitAt ? undefined : t('home.student.noVisitYet')}
               label={t('home.student.daysSinceVisit')}
             />
           </StatGrid>

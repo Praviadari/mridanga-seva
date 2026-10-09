@@ -301,6 +301,7 @@ function FormBody({ header, editing }: { header: ReactNode; editing: Editing | n
             <Button
               variant="link"
               label={t('announcements.files.remove')}
+              accessibilityLabel={`${t('announcements.files.remove')}, ${file.name}`}
               onPress={() => update({ kept: form.kept.filter((f) => f.path !== file.path) })}
             />
           </View>
@@ -317,6 +318,7 @@ function FormBody({ header, editing }: { header: ReactNode; editing: Editing | n
             <Button
               variant="link"
               label={t('announcements.files.remove')}
+              accessibilityLabel={`${t('announcements.files.remove')}, ${file.name}`}
               onPress={() => update({ files: form.files.filter((f) => f.key !== file.key) })}
             />
           </View>

@@ -216,7 +216,7 @@ function StaffAnnouncementScreenContent() {
           <AppText tone="muted">{t('announcements.detail.nobodyAddressed')}</AppText>
         )}
         {seenCount.noLogin > 0 ? (
-          <AppText>{t('announcements.detail.noLoginNote', { number: seenCount.noLogin })}</AppText>
+          <AppText>{t('announcements.detail.noLoginNote', { count: seenCount.noLogin })}</AppText>
         ) : null}
 
         {seenCount.addressed > 0 && notSeen.length === 0 ? (

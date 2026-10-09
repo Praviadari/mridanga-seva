@@ -13,8 +13,8 @@
     "language": "Language",
     "genericError": "Something went wrong. Please try again.",
     "studentWithdrawn": "Consent for this student was withdrawn. Nothing new can be recorded for them; ask the Guru.",
-    "networkError": "Cannot reach the server. Check your internet connection.",
-    "fixFieldsAbove": "Some fields need a fix ({{count}}). The messages are in red above.",
+    "networkError": "Could not reach the server, or it did not answer. Check your internet connection and try again; if it keeps happening, tell a coordinator.",
+    "fixFieldsAbove": "Some fields need a fix ({{count}}). Each has its message under it, above.",
     "linkOpensInBrowser": "The link opens in your web browser. When you are done there, come back to this app and sign in."
   },
   "password": {
@@ -66,7 +66,7 @@
     "choose": "Please choose one.",
     "chooseCentre": "Choose the country and city of your centre.",
     "choicesFailed": "Could not load the centres.",
-    "fixFields": "Please correct the fields marked in red.",
+    "fixFields": "Please correct the fields that show a message under them.",
     "nextStep": "After you sign in, the app asks a few optional questions about you. Then come to the class desk: a coordinator checks your name against your ID and registers you.",
     "phoneRequired": "Enter your mobile number."
   },
@@ -99,7 +99,11 @@
     "userExists": "An account with this email already exists. Sign in instead.",
     "weakPassword": "This password is too easy to guess. Choose a stronger one.",
     "rateLimited": "Too many tries. Please wait a few minutes and try again.",
-    "samePassword": "The new password must be different from the old one."
+    "samePassword": "The new password must be different from the old one.",
+    "sessionEnded": "Your sign-in has ended. Please sign in again.",
+    "linkExpired": "This email link has expired or was already used. Ask for a new one.",
+    "signupClosed": "New accounts cannot be made just now. Please ask a coordinator.",
+    "accountOff": "This account is switched off. Please ask a coordinator."
   },
   "pending": {
     "title": "Waiting for access",
@@ -135,6 +139,7 @@
       "thisWeek": "This week",
       "visitsThisWeek": "Visits this week (from Monday)",
       "daysSinceVisit": "Days since your last visit",
+      "noVisitYet": "no visit yet",
       "myLevel": "My level: {{level}}",
       "unread": "New for you: {{count}}",
       "allAnnouncements": "All announcements"
@@ -144,10 +149,13 @@
       "hereNow": "Here now",
       "visitsToday": "Visits today",
       "myCallsDue": "Calls due for my students",
-      "newJoiners": "New joiners (last {{weeks}} weeks)",
-      "newJoinersTitle": "New joiners: first {{weeks}} weeks",
+      "newJoiners_one": "New joiners (last week)",
+      "newJoiners_other": "New joiners (last {{count}} weeks)",
+      "newJoinersTitle_one": "New joiners: first week",
+      "newJoinersTitle_other": "New joiners: first {{count}} weeks",
       "newJoinersHint": "Newest first. Tap a name to open the profile. Someone with no visits yet may need a call.",
-      "newJoinersEmpty": "Nobody new joined in the last {{weeks}} weeks.",
+      "newJoinersEmpty_one": "Nobody new joined in the last week.",
+      "newJoinersEmpty_other": "Nobody new joined in the last {{count}} weeks.",
       "joinedVisits": "Joined {{date}} · visits: {{count}}"
     },
     "guru": {
@@ -292,7 +300,8 @@
   "levels": {
     "1": "Beginner",
     "2": "Intermediate",
-    "3": "Advanced"
+    "3": "Advanced",
+    "other": "Level {{number}}"
   },
   "relations": {
     "mother": "Mother",
@@ -352,7 +361,7 @@
       "consentNeeded": "The signed consent form is needed before a student under 18 can be registered.",
       "minorNeedsConsent": "A student under 18 needs the parent's details, the ID check and the signed consent form.",
       "notAllowed": "Only coordinators and the facilitator can register students.",
-      "fixFields": "Please correct the fields marked in red.",
+      "fixFields": "Please correct the fields that show a message under them.",
       "minorByServer": "By the server's date this student is under 18. Fill in the parent's part below and save again.",
       "guardianEmailOnMinor": "This is a parent's email. A child's record keeps the child's own email, or none: a login with a parent's email would be linked as the child."
     },
@@ -427,6 +436,7 @@
     "filters": {
       "title": "Filters",
       "all": "All",
+      "notLeft": "Students in class (not left)",
       "level": "Level",
       "status": "Status",
       "mentor": "Mentor",
@@ -466,6 +476,8 @@
     "stillHere": "still here",
     "syllabusSection": "Syllabus: {{level}}",
     "syllabusDone": "{{done}} of {{total}} done",
+    "tickedOn": "ticked {{date}}",
+    "notTicked": "not ticked yet",
     "noSyllabus": "The syllabus for this level has not been added yet.",
     "levelSection": "Level history",
     "noLevelChanges": "No level changes yet.",
@@ -521,6 +533,8 @@
     "escalatedHelp": "Several calls with no answer, or no call made before the student became Inactive.",
     "due": "Call due {{date}}",
     "attempt": "try {{number}}",
+    "onlyOf": "Only the calls of: {{name}}",
+    "showEveryone": "Show everyone's calls",
     "escalated": "passed to the facilitator",
     "assignee": "for {{name}}",
     "unassigned": "not given to anyone yet",
@@ -529,7 +543,7 @@
   "callLog": {
     "title": "Log a call",
     "loadFailed": "Could not load this student.",
-    "student": "student",
+    "student": "Student",
     "parent": "Parent",
     "dial": "Call {{who}}: {{phone}}",
     "noPhone": "No phone number on the record.",
@@ -627,7 +641,7 @@
       "date": "Date",
       "dateHint": "Day-month-year, e.g. 04-10-2026",
       "time": "Time",
-      "timeHint": "24-hour, the centre's time, e.g. 18:30",
+      "timeHint": "24-hour, the centre's time, e.g. 18:30 (6:30 pm also works)",
       "laterHelp": "Students see it from then. Coordinators and the facilitator see it at once.",
       "noGroups": "There are no groups yet, so \"A group\" is not offered. Make one first.",
       "openGroups": "Open Groups",
@@ -643,7 +657,8 @@
       "seenLabel": "Seen by",
       "nobodyAddressed": "Nobody with the app is in this audience yet.",
       "scheduledNote": "Not published yet, so nobody has seen it.",
-      "noLoginNote": "{{number}} students in this audience do not use the app. Tell them in class.",
+      "noLoginNote_one": "{{count}} student in this audience does not use the app. Tell them in class.",
+      "noLoginNote_other": "{{count}} students in this audience do not use the app. Tell them in class.",
       "notSeenList": "Not seen yet ({{number}})",
       "seenList": "Seen ({{number}})",
       "showSeen": "Show who has seen it",
@@ -1723,6 +1738,9 @@
       "syllabusAll": "Syllabus of this level: {{done}} of {{total}} ticked (all needed)",
       "syllabusPart": "Syllabus of this level: {{done}} of {{total}} ticked ({{percent}}% needed)",
       "visits": "Visits in the last {{weeks}} weeks: {{count}} ({{needed}} needed)",
+      "visitsWeek": "Visits in the last week: {{count}} ({{needed}} needed)",
+      "met": "met",
+      "notMet": "not met",
       "levelUpFound": "Level-up assessment accepted: {{title}} ({{score}} of {{max}})",
       "levelUpMissing": "No accepted level-up assessment of this level yet"
     },
@@ -3207,7 +3225,7 @@
     "myCodeHint": "Give this code to people you bring to the class. When they sign up and type it, they get you as coordinator if you share their gender, and the class sees who brought them.",
     "myCodeSpoken": "Referral code {{code}}",
     "errors": {
-      "fixFields": "Please correct the fields marked in red.",
+      "fixFields": "Please correct the fields that show a message under them.",
       "phoneInvalid": "This is not a mobile number of that country.",
       "choose": "Please choose one.",
       "minorRelation": "Under 18, the contact is a parent or guardian.",

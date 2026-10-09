@@ -15,6 +15,7 @@ import { BrandHeader } from '@/components/brand';
 import { Button } from '@/components/button';
 import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
+import { SignOutButton } from '@/components/sign-out-button';
 import { Section } from '@/components/section';
 import { TextField } from '@/components/text-field';
 
@@ -93,7 +94,7 @@ export default function ResetPasswordScreen() {
         </AppText>
         <Button variant="secondary" label={t('resetPassword.saveAndSignOut')} onPress={() => void submit(true)} disabled={busy} />
       </Section>
-      <Button variant="link" label={t('resetPassword.cancel')} onPress={() => void signOut()} />
+      <SignOutButton variant="link" label={t('resetPassword.cancel')} />
     </Screen>
   );
 }

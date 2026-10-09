@@ -82,12 +82,12 @@ export function CoordinatorHome() {
               icon="calls"
               value={String(board.myCallsDue)}
               label={t('home.staff.myCallsDue')}
-              onPress={() => router.push('/staff/follow-up')}
+              onPress={() => router.push({ pathname: '/staff/follow-up', params: { scope: 'mine' } })}
             />
             <StatTile
               icon="newJoiner"
               value={String(board.newJoinerCount)}
-              label={t('home.staff.newJoiners', { weeks: board.newJoinerWeeks })}
+              label={t('home.staff.newJoiners', { count: board.newJoinerWeeks })}
             />
           </StatGrid>
 
@@ -96,12 +96,12 @@ export function CoordinatorHome() {
 
           <Section
             icon="newJoiner"
-            title={t('home.staff.newJoinersTitle', { weeks: board.newJoinerWeeks })}
+            title={t('home.staff.newJoinersTitle', { count: board.newJoinerWeeks })}
             description={t('home.staff.newJoinersHint')}>
             {board.newJoiners.length === 0 ? (
               <EmptyState
                 icon="newJoiner"
-                title={t('home.staff.newJoinersEmpty', { weeks: board.newJoinerWeeks })}
+                title={t('home.staff.newJoinersEmpty', { count: board.newJoinerWeeks })}
               />
             ) : null}
             {board.newJoiners.map((j) => (

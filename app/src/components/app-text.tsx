@@ -13,7 +13,11 @@ export type AppTextProps = TextProps & {
   tone?: 'default' | 'muted' | 'primary' | 'danger' | 'success';
 };
 
-/** Themed text. Titles get the 'header' accessibility role so screen readers can jump to them. */
+/**
+ * Themed text. Titles get the 'header' accessibility role so screen readers can jump to them; on
+ * the web a title is a level-1 heading and a subtitle level 2 (without a level every heading
+ * became an h1). Numbers use the 'number' variant, not a heading.
+ */
 export function AppText({ variant = 'body', tone = 'default', style, ...rest }: AppTextProps) {
   const { colors } = useTheme();
   const colour = {
@@ -26,6 +30,7 @@ export function AppText({ variant = 'body', tone = 'default', style, ...rest }: 
   return (
     <Text
       accessibilityRole={variant === 'title' || variant === 'subtitle' ? 'header' : undefined}
+      aria-level={variant === 'title' ? 1 : variant === 'subtitle' ? 2 : undefined}
       style={[typography[variant], { color: colour }, style]}
       {...rest}
     />

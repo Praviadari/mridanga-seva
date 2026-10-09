@@ -5,13 +5,13 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { signOut } from '@/auth/auth-actions';
 import { useAuth } from '@/auth/auth-provider';
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { LanguagePicker } from '@/components/language-picker';
 import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
+import { SignOutButton } from '@/components/sign-out-button';
 import { Section } from '@/components/section';
 import { leaveIshtagoshti } from '@/data/ig-subscribers';
 import type { ParseKeys } from 'i18next';
@@ -60,7 +60,7 @@ export default function SubscriberAccountScreen() {
         )}
       </Section>
 
-      <Button variant="secondary" icon="signOut" label={t('common.signOut')} onPress={() => void signOut()} />
+      <SignOutButton icon="signOut" />
     </Screen>
   );
 }

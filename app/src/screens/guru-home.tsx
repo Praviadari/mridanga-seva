@@ -76,12 +76,12 @@ export function GuruHome() {
               icon="students"
               value={String(board.inClass)}
               label={t('home.guru.inClass')}
-              onPress={() => router.push('/staff/students')}
+              onPress={() => router.push({ pathname: '/staff/students', params: { status: 'notLeft' } })}
             />
             <StatTile
               icon="newJoiner"
               value={String(board.newJoiners)}
-              label={t('home.staff.newJoiners', { weeks: board.newJoinerWeeks })}
+              label={t('home.staff.newJoiners', { count: board.newJoinerWeeks })}
             />
             <StatTile
               icon="calls"
@@ -138,7 +138,7 @@ export function GuruHome() {
                 // No assignee: the students had no mentor when their call task was made.
                 title={f.assigneeId === null ? t('students.filters.noMentor') : f.fullName || t('home.guru.noName')}
                 details={[t('home.guru.followUpLine', { overdue: f.overdue, escalated: f.escalated })]}
-                onPress={() => router.push('/staff/follow-up')}
+                onPress={() => router.push({ pathname: '/staff/follow-up', params: { assignee: f.assigneeId ?? 'none' } })}
               />
             ))}
           </Section>

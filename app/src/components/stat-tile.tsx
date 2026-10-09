@@ -14,6 +14,11 @@ import { Icon, IconBadge, type IconName } from './icon';
 export type StatTileProps = {
   /** The number (or a short value such as "—"), already formatted. */
   value: string;
+  /**
+   * What screen readers say for `value` when it is not a number, already translated, e.g. "no
+   * visit yet" for "—" (which they read as "dash" or skip). Default `value`.
+   */
+  spokenValue?: string;
   /** What the number counts, already translated, e.g. "Visits today". */
   label: string;
   /** Icon at the top of the tile. */
@@ -23,8 +28,9 @@ export type StatTileProps = {
 };
 
 /** One number on a home screen; a button when `onPress` is given. */
-export function StatTile({ value, label, icon, onPress }: StatTileProps) {
+export function StatTile({ value, spokenValue, label, icon, onPress }: StatTileProps) {
   const { colors } = useTheme();
+  const spoken = `${spokenValue ?? value}, ${label}`;
   const wide = useWide();
   // Two per row on a phone (a little under half each; the gap fills the rest), four from 720 px.
   const basis = { flexBasis: wide ? '23%' : '45%' } as const;
@@ -46,7 +52,7 @@ export function StatTile({ value, label, icon, onPress }: StatTileProps) {
       <Pressable
         accessibilityRole="button"
         // Screen readers hear "12, Here now" as one button.
-        accessibilityLabel={`${value}, ${label}`}
+        accessibilityLabel={spoken}
         onPress={onPress}
         style={({ pressed }) => [styles.tile, basis, cardLook(colors), pressed && styles.pressed]}>
         {content}
@@ -54,7 +60,7 @@ export function StatTile({ value, label, icon, onPress }: StatTileProps) {
     );
   }
   return (
-    <View accessible accessibilityLabel={`${value}, ${label}`} style={[styles.tile, basis, cardLook(colors)]}>
+    <View accessible accessibilityLabel={spoken} style={[styles.tile, basis, cardLook(colors)]}>
       {content}
     </View>
   );

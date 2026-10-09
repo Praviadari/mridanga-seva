@@ -10,7 +10,6 @@ import { router, Stack } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { signOut } from '@/auth/auth-actions';
 import { useAuth } from '@/auth/auth-provider';
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
@@ -20,6 +19,7 @@ import { LanguagePicker } from '@/components/language-picker';
 import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
+import { SignOutButton } from '@/components/sign-out-button';
 import { Section } from '@/components/section';
 import { TextField } from '@/components/text-field';
 import { fetchMyReferralCode } from '@/data/about';
@@ -170,7 +170,7 @@ export function MyProfileScreen() {
         <LanguagePicker />
       </Section>
 
-      <Button variant="secondary" icon="signOut" label={t('common.signOut')} onPress={() => void signOut()} />
+      <SignOutButton icon="signOut" />
     </Screen>
   );
 }
