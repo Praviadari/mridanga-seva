@@ -27,6 +27,7 @@ export default function ResetPasswordScreen() {
   const confirmRef = useRef<TextInput>(null);
 
   async function submit() {
+    if (busy) return; // Enter pressed again while the request runs (D6-17)
     const errors = {
       password:
         password.length < MIN_PASSWORD_LENGTH ? ('validation.passwordTooShort' as const) : undefined,

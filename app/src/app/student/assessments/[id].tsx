@@ -22,6 +22,7 @@ import { Button } from '@/components/button';
 import { Icon } from '@/components/icon';
 import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
+import { RouteIdGuard } from '@/components/route-id-guard';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { TextField } from '@/components/text-field';
@@ -54,7 +55,7 @@ import { radius, spacing, useTheme } from '@/theme/use-theme';
 const RECORD_SECONDS = 20 * 60;
 
 /** The assessment, the student's recordings with their reviews, and the send form. */
-export default function MyAssessmentScreen() {
+function MyAssessmentScreenContent() {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const { profile } = useAuth();
@@ -321,3 +322,12 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
 });
+
+/** Checks the address's id before the screen loads anything (D6-07). */
+export default function MyAssessmentScreen() {
+  return (
+    <RouteIdGuard kind="number">
+      <MyAssessmentScreenContent />
+    </RouteIdGuard>
+  );
+}

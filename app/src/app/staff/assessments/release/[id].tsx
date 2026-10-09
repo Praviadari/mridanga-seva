@@ -17,6 +17,7 @@ import { Checkbox } from '@/components/checkbox';
 import { ChoiceGroup } from '@/components/choice-group';
 import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
+import { RouteIdGuard } from '@/components/route-id-guard';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { TextField } from '@/components/text-field';
@@ -37,7 +38,7 @@ import { spacing } from '@/theme/use-theme';
 type LevelFilter = 0 | 1 | 2 | 3;
 
 /** The release form. */
-export default function ReleaseAssessmentScreen() {
+function ReleaseAssessmentScreenContent() {
   const { t } = useTranslation();
   const { id: idParam } = useLocalSearchParams<{ id: string }>();
   const id = Number(idParam);
@@ -207,3 +208,12 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
 });
+
+/** Checks the address's id before the screen loads anything (D6-07). */
+export default function ReleaseAssessmentScreen() {
+  return (
+    <RouteIdGuard kind="number">
+      <ReleaseAssessmentScreenContent />
+    </RouteIdGuard>
+  );
+}

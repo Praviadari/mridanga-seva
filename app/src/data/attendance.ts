@@ -15,7 +15,10 @@ import type { ParseKeys } from 'i18next';
 
 import type { PhoneLocation } from '@/lib/attendance-location';
 import { startOfTodayLocal } from '@/lib/dates';
+import { cleanSearchText, studentSearchFilter } from '@/lib/student-search';
 import { supabase } from '@/lib/supabase';
+
+import type { StudentStatus } from './student-overview';
 
 import { isNetworkError } from './errors';
 
@@ -249,8 +252,14 @@ export async function fetchAttendanceToday(): Promise<AttendanceToday | null> {
 
 // ---------------------------------------------------------------- finding a student
 
-/** A student found by the name search. */
-export type FoundStudent = { id: string; fullName: string; rollNo: string; levelId: number };
+/**
+ * A student found by the name search, with their status, so a Left or Paused student is not checked
+ * in by mistake for someone with the same name (FS2-05).
+ */
+export type FoundStudent = { id: string; fullName: string; rollNo: string; levelId: number; status: StudentStatus };
+
+/** The students found; more is true when there were more than SEARCH_LIMIT (FS2-05). */
+export type SearchResult = { students: FoundStudent[]; more: boolean };
 
 /** Shortest search text worth sending; one letter would match most of the class. */
 export const MIN_SEARCH_LENGTH = 2;
@@ -258,35 +267,32 @@ export const MIN_SEARCH_LENGTH = 2;
 /** Most students a search shows. The coordinator types more letters to narrow it down. */
 const SEARCH_LIMIT = 20;
 
-/**
- * The search text reduced to letters (any script, with their vowel signs), digits, spaces and
- * hyphens. Anything else could be read as part of the database query's own syntax.
- */
-export function cleanSearchText(text: string): string {
-  return text
-    .replace(/[^\p{L}\p{M}\p{N}\s-]/gu, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
 
 /**
- * Finds students whose name or roll number contains the text, in any status (a student who
- * left and comes back is checked in like anyone else). Returns null when the search failed.
+ * Finds students whose name holds every word of the text (in any order), or whose roll number
+ * contains it, in any status (a student who left and comes back is checked in like anyone else).
+ * Returns null when the search failed.
  */
-export async function searchStudents(text: string): Promise<FoundStudent[] | null> {
+export async function searchStudents(text: string): Promise<SearchResult | null> {
   const query = cleanSearchText(text);
-  if (query.length < MIN_SEARCH_LENGTH) return [];
+  if (query.length < MIN_SEARCH_LENGTH) return { students: [], more: false };
   const { data, error } = await supabase
     .from('students')
-    .select('id, full_name, roll_no, level_id')
-    .or(`full_name.ilike.*${query}*,roll_no.ilike.*${query}*`)
+    .select('id, full_name, roll_no, level_id, status')
+    .or(studentSearchFilter(query))
     .order('full_name')
-    .limit(SEARCH_LIMIT);
+    // One more than shown, to know whether there are more.
+    .limit(SEARCH_LIMIT + 1);
   if (error) return null;
-  return (data as { id: string; full_name: string; roll_no: string; level_id: number }[]).map((s) => ({
-    id: s.id,
-    fullName: s.full_name,
-    rollNo: s.roll_no,
-    levelId: s.level_id,
-  }));
+  const rows = data as { id: string; full_name: string; roll_no: string; level_id: number; status: StudentStatus }[];
+  return {
+    students: rows.slice(0, SEARCH_LIMIT).map((s) => ({
+      id: s.id,
+      fullName: s.full_name,
+      rollNo: s.roll_no,
+      levelId: s.level_id,
+      status: s.status,
+    })),
+    more: rows.length > SEARCH_LIMIT,
+  };
 }

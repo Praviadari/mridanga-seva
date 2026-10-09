@@ -60,6 +60,11 @@ import { levelName } from '@/i18n/labels';
 import { classLocale } from '@/lib/class-locale';
 import { formatDateTime, formatTypedDate } from '@/lib/dates';
 
+/** Longest name, area and email the form takes (FS2-09; the database's bounds are 120, 100, 254). */
+const NAME_MAX_LENGTH = 100;
+const AREA_MAX_LENGTH = 100;
+const EMAIL_MAX_LENGTH = 254;
+
 type Choices = { levels: LevelOption[]; mentors: MentorOption[] };
 /** The 0036 parts: option lists, staff who bring people, sign-ups waiting. Null before 0036 or when not loaded. */
 type Extras = { options: OptionSets; referrers: Referrer[]; waiting: WaitingSignUp[] };
@@ -78,6 +83,8 @@ export default function RegisterStudentScreen() {
   const [errors, setErrors] = useState<RegistrationErrors>({});
   const [formError, setFormError] = useState<MessageKey | null>(null);
   const [busy, setBusy] = useState(false);
+  // True when the database answered that this student is a minor although this phone's date says not (D6-13).
+  const [serverMinor, setServerMinor] = useState(false);
   const [saved, setSaved] = useState<{ registered: Registered; name: string; detailsFailed: boolean } | null>(null);
   const [extras, setExtras] = useState<Extras | null>(null);
   const [about, setAbout] = useState<AboutForm>(() => emptyAboutForm(classLocale().country));
@@ -111,7 +118,8 @@ export default function RegisterStudentScreen() {
   }
 
   const age = ageFromForm(form.dob);
-  const minor = age?.minor ?? false;
+  // The database's date decides in the end: when it answered "minor" the parent's part opens (D6-13).
+  const minor = (age?.minor ?? false) || serverMinor;
   // A minor's emergency contact is the parent of the guardian part (C3).
   const aboutParts: AboutPart[] = minor ? ['you', 'heard', 'occupation'] : ['you', 'emergency', 'heard', 'occupation'];
   const aboutContext = { minor, hasGuardian: minor, staff: true };
@@ -144,7 +152,7 @@ export default function RegisterStudentScreen() {
     }
     setFormError(null);
     setBusy(true);
-    const result = await registerStudent(form);
+    const result = await registerStudent(form, serverMinor);
     let detailsFailed = false;
     if (result.registered && extras && !result.registered.repeated) {
       // The details go after the record (#165: a gender set here gives the mentor). A failure here
@@ -155,11 +163,15 @@ export default function RegisterStudentScreen() {
     }
     setBusy(false);
     if (result.registered) setSaved({ registered: result.registered, name: form.fullName.trim(), detailsFailed });
-    else setFormError(result.errorKey ?? 'common.genericError');
+    else if (result.errorKey === 'register.errors.minorNeedsConsent' && !minor) {
+      setServerMinor(true);
+      setFormError('register.errors.minorByServer');
+    } else setFormError(result.errorKey ?? 'common.genericError');
   }
 
   function registerAnother() {
     setForm(emptyRegistration(defaultMentor));
+    setServerMinor(false);
     setAbout(emptyAboutForm(classLocale().country));
     setErrors({});
     setAboutErrors({});
@@ -238,6 +250,7 @@ export default function RegisterStudentScreen() {
           value={form.fullName}
           onChangeText={field('fullName')}
           error={errorFor('fullName')}
+          maxLength={NAME_MAX_LENGTH}
           autoComplete="off"
           autoCapitalize="words"
           hint={t('register.fullNameHint')}
@@ -245,7 +258,10 @@ export default function RegisterStudentScreen() {
         <TextField
           label={t('register.dob')}
           value={form.dob}
-          onChangeText={field('dob')}
+          onChangeText={(dob) => {
+            field('dob')(dob);
+            setServerMinor(false);
+          }}
           error={errorFor('dob')}
           // Once a real date is typed, the hint shows the age, so the coordinator sees at once
           // whether the parent's consent will be needed.
@@ -272,6 +288,7 @@ export default function RegisterStudentScreen() {
           value={form.email}
           onChangeText={field('email')}
           error={errorFor('email')}
+          maxLength={EMAIL_MAX_LENGTH}
           keyboardType="email-address"
           autoCapitalize="none"
           autoComplete="off"
@@ -281,6 +298,7 @@ export default function RegisterStudentScreen() {
           hint={t('register.areaHint')}
           value={form.area}
           onChangeText={field('area')}
+          maxLength={AREA_MAX_LENGTH}
           autoComplete="off"
         />
         <TextField
@@ -329,6 +347,7 @@ export default function RegisterStudentScreen() {
             value={form.guardianName}
             onChangeText={field('guardianName')}
             error={errorFor('guardianName')}
+            maxLength={NAME_MAX_LENGTH}
             autoComplete="off"
             autoCapitalize="words"
           />
@@ -345,6 +364,7 @@ export default function RegisterStudentScreen() {
             value={form.guardianEmail}
             onChangeText={field('guardianEmail')}
             error={errorFor('guardianEmail')}
+            maxLength={EMAIL_MAX_LENGTH}
             keyboardType="email-address"
             autoCapitalize="none"
             autoComplete="off"

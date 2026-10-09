@@ -11,7 +11,7 @@
 
 import Constants from 'expo-constants';
 import * as Updates from 'expo-updates';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { AppState } from 'react-native';
 
 import { formatDateTime } from './dates';
@@ -22,18 +22,30 @@ const CHECK_EVERY_MS = 30 * 60 * 1000;
 /** True when updates can work here: a release build with expo-updates switched on. */
 const canUpdate = Updates.isEnabled && !__DEV__;
 
-/** When the last check started. The check expo-updates makes at start-up counts as one. */
-let lastCheck = Date.now();
+/**
+ * When a check of ours last got an answer; 0 for none. Only a check that worked counts (FS3-09): a
+ * phone started offline would otherwise wait 30 minutes in front before it looked again.
+ */
+let lastCheck = 0;
+/** True while a check runs, so two returns to the front do not start two. */
+let checking = false;
 
-/** Looks for a newer update and downloads it; useUpdates() then reports it as pending. Never throws. */
-async function checkAndDownload(): Promise<void> {
-  if (!canUpdate || Date.now() - lastCheck < CHECK_EVERY_MS) return;
-  lastCheck = Date.now();
+/**
+ * Looks for a newer update and downloads it; useUpdates() then reports it as pending. Never throws.
+ * startupCheck: when expo-updates' own check at start-up got an answer (undefined when it did not).
+ */
+async function checkAndDownload(startupCheck: Date | undefined): Promise<void> {
+  const last = Math.max(lastCheck, startupCheck?.getTime() ?? 0);
+  if (!canUpdate || checking || Date.now() - last < CHECK_EVERY_MS) return;
+  checking = true;
   try {
     const result = await Updates.checkForUpdateAsync();
+    lastCheck = Date.now();
     if (result.isAvailable) await Updates.fetchUpdateAsync();
   } catch {
     // Offline, or Expo's server did not answer: the next return to the front tries again.
+  } finally {
+    checking = false;
   }
 }
 
@@ -42,9 +54,14 @@ async function checkAndDownload(): Promise<void> {
  * Used once, by the root layout.
  */
 export function useUpdateChecks(): void {
+  const { lastCheckForUpdateTimeSinceRestart } = Updates.useUpdates();
+  const startupCheck = useRef(lastCheckForUpdateTimeSinceRestart);
+  useEffect(() => {
+    startupCheck.current = lastCheckForUpdateTimeSinceRestart;
+  }, [lastCheckForUpdateTimeSinceRestart]);
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (state) => {
-      if (state === 'active') void checkAndDownload();
+      if (state === 'active') void checkAndDownload(startupCheck.current);
     });
     return () => subscription.remove();
   }, []);

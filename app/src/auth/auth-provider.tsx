@@ -21,6 +21,7 @@ import type { Session } from '@supabase/supabase-js';
 import { createContext, use, useEffect, useRef, useState, type PropsWithChildren } from 'react';
 import { AppState } from 'react-native';
 
+import { isNetworkError } from '@/data/errors';
 import { applyProfileLanguage, currentLanguage, hasUnsavedChoice, markLanguageSaved } from '@/i18n';
 import { loadClassLocale } from '@/lib/class-locale';
 import { setRefusedListener, storedLoginUserId, supabase, supabaseConfigProblem } from '@/lib/supabase';
@@ -28,6 +29,7 @@ import { setRefusedListener, storedLoginUserId, supabase, supabaseConfigProblem 
 // Loaded at start for its effect: it reads an email link's error from the address (D6-12).
 import './email-link';
 import { forgetSavedProfile, readSavedProfile, saveProfile } from './saved-profile';
+import { noteSignedOut } from './session-end';
 import type { Area, IgState, Profile } from './types';
 
 /** What useAuth() gives a screen. */
@@ -39,6 +41,11 @@ export type AuthState = {
   profile: Profile | null;
   /** True when signed in but the profile could not be fetched, usually no internet. */
   profileFailed: boolean;
+  /**
+   * Why there is no profile while signed in (D6-06): 'network' (no internet), 'server' (the server
+   * answered with an error), 'missing' (no profile row yet); null when there is a profile.
+   */
+  profileProblem: 'network' | 'server' | 'missing' | null;
   /** Fetches the profile again, e.g. after the Guru has given a role. Resolves when done. */
   refreshProfile: () => Promise<void>;
 };
@@ -46,7 +53,7 @@ export type AuthState = {
 const AuthContext = createContext<AuthState | null>(null);
 
 /** The profile fetched for one login; kept with the user id so a stale result is ignored. */
-type ProfileResult = { userId: string; profile: Profile | null; failed: boolean };
+type ProfileResult = { userId: string; profile: Profile | null; failed: boolean; network?: boolean };
 
 /** At most one re-check of the profile in this time, however many calls are refused at once. */
 const RECHECK_GAP_MS = 10_000;
@@ -100,7 +107,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
       if (event === 'PASSWORD_RECOVERY') setRecovering(true);
       if (event === 'USER_UPDATED' || event === 'SIGNED_OUT') setRecovering(false);
       // A remembered profile must never open someone's area after they signed out.
-      if (event === 'SIGNED_OUT') forgetSavedProfile();
+      if (event === 'SIGNED_OUT') {
+        forgetSavedProfile();
+        // The sign-in screen says so when the person did not sign out themselves (D6-20).
+        noteSignedOut();
+      }
       // "No session" at start while a login is still saved: the token could not be refreshed for
       // lack of internet. Any later event (TOKEN_REFRESHED once online, SIGNED_OUT) settles it.
       setOfflineUserId(event === 'INITIAL_SESSION' && !newSession ? storedLoginUserId() : null);
@@ -140,6 +151,13 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const offlineProfile = waitingOffline && saved?.id === offlineUserId ? saved : null;
   const profile = !sessionLoaded ? saved : waitingOffline ? offlineProfile : (current?.profile ?? null);
   const profileFailed = sessionLoaded && (waitingOffline ? !offlineProfile : (current?.failed ?? false));
+  const profileProblem = profile
+    ? null
+    : !profileFailed
+      ? 'missing'
+      : waitingOffline || current?.network
+        ? 'network'
+        : 'server';
 
   let area: Area;
   if (!sessionLoaded) area = saved ? areaForProfile(saved) : 'loading';
@@ -151,6 +169,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     session,
     profile,
     profileFailed,
+    profileProblem,
     refreshProfile: async () => {
       if (userId) setProfileResult(withSavedFallback(await fetchProfile(userId)));
       // Asking for the session makes Supabase try the refresh again; when it works, its
@@ -210,11 +229,13 @@ async function fetchProfile(userId: string): Promise<ProfileResult> {
     .select('id, role, full_name, email, language, active')
     .eq('id', userId)
     .maybeSingle<Profile>();
-  if (error) return { userId, profile: null, failed: true };
+  if (error) return { userId, profile: null, failed: true, network: isNetworkError(error.message) };
   if (data?.role === 'pending' && data.active) {
     // Before migration 0027 the function is missing: no state, and the pending screen offers no join.
     const state = await supabase.rpc('ig_my_state');
-    if (state.error && state.error.code !== 'PGRST202') return { userId, profile: null, failed: true };
+    if (state.error && state.error.code !== 'PGRST202') {
+      return { userId, profile: null, failed: true, network: isNetworkError(state.error.message) };
+    }
     if (!state.error) data.ig_state = ((state.data as { state?: IgState } | null)?.state ?? 'none') as IgState;
   }
   if (data) {

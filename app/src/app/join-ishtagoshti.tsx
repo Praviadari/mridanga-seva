@@ -120,6 +120,7 @@ function JoinForm({ mine, onJoined }: { mine: MySubscription; onJoined: (state: 
   const minor = group === 'minor' || (group === 'eighteen' && !turned18);
 
   async function submit() {
+    if (busy) return; // Enter pressed again while the request runs (D6-17)
     const found: Partial<Record<Field, ParseKeys>> = {};
     if (!yearNumber || yearNumber < thisYear - 120 || yearNumber > thisYear - 5) found.year = 'ishtagoshtiJoin.errors.birth_year_invalid';
     if (phone.trim() && !/^\+?[0-9][0-9 -]{5,18}[0-9]$/.test(phone.trim())) found.phone = 'ishtagoshtiJoin.errors.phone_invalid';
@@ -240,6 +241,7 @@ function ParentCode({ mine, onChanged, onEdit }: { mine: MySubscription; onChang
   }
 
   async function confirm() {
+    if (busy) return; // D6-17
     if (!/^\d{6}$/.test(code.trim())) {
       setMessage({ tone: 'error', key: 'ishtagoshtiJoin.codeFormat' });
       return;

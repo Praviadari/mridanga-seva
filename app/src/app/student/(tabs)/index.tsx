@@ -35,6 +35,7 @@ import { fetchPollsToVote } from '@/data/polls';
 import { audienceName, authorLine, lastVisitText, levelName } from '@/i18n/labels';
 import { useAboutPrompt } from '@/lib/about-prompt';
 import { formatDateTime } from '@/lib/dates';
+import { useLatestLoad } from '@/lib/latest-load';
 
 /** How many announcements the home shows; the rest are one tap away on S10. */
 const LATEST_COUNT = 3;
@@ -44,7 +45,6 @@ export default function StudentHomeScreen() {
   const { t } = useTranslation();
   const { profile } = useAuth();
   const myId = profile?.id ?? '';
-  const name = profile?.full_name.trim();
   // undefined = loading, null = could not load.
   const [home, setHome] = useState<StudentHome | 'not_found' | null | undefined>(undefined);
   const [news, setNews] = useState<MyLatestAnnouncements | null | undefined>(undefined);
@@ -53,19 +53,25 @@ export default function StudentHomeScreen() {
   const [pollsToVote, setPollsToVote] = useState(0);
   // About you (step 2 of joining, docs/DECISIONS.md #164): opens by itself once after the first sign-in.
   const aboutOpen = useAboutPrompt(profile?.id, '/student/about-you');
+  const beginLoad = useLatestLoad();
+  // The name on the student record, which staff keep correct, once loaded; until then the name
+  // typed at sign-up (FS2-10).
+  const name = (home && home !== 'not_found' ? home.fullName.trim() : '') || profile?.full_name.trim();
 
   const load = useCallback(async () => {
+    const isNewest = beginLoad();
     const [loadedHome, loadedNews, loadedEvent, loadedPolls] = await Promise.all([
       fetchStudentHome(),
       fetchMyLatestAnnouncements(myId, LATEST_COUNT),
       fetchNextEvent(),
       fetchPollsToVote(),
     ]);
+    if (!isNewest()) return; // an older load answering late (D6-19)
     setHome(loadedHome);
     setNews(loadedNews);
     setNextEvent(loadedEvent);
     setPollsToVote(loadedPolls);
-  }, [myId]);
+  }, [myId, beginLoad]);
 
   useFocusEffect(
     useCallback(() => {

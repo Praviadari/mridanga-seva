@@ -4,10 +4,20 @@
 
 import { useLocalSearchParams } from 'expo-router';
 
+import { RouteIdGuard } from '@/components/route-id-guard';
 import { VisitHistoryScreen } from '@/screens/visit-history';
 
 /** A student's visits by month. */
-export default function StudentVisitsScreen() {
+function StudentVisitsScreenContent() {
   const { id, name } = useLocalSearchParams<{ id: string; name?: string }>();
   return <VisitHistoryScreen studentId={id} subtitle={name} />;
+}
+
+/** Checks the address's id before the screen loads anything (D6-07). */
+export default function StudentVisitsScreen() {
+  return (
+    <RouteIdGuard kind="uuid">
+      <StudentVisitsScreenContent />
+    </RouteIdGuard>
+  );
 }

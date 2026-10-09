@@ -3375,6 +3375,116 @@ Guru, or send them as now).
 
 **Consequences.** Each team answer is a small migration; none blocks the pilot.
 
+## 178. Errors say what really happened: network, server, or no account yet — 9 Oct 2026
+
+**Context.** Audit brief 16, app correctness backlog (dimension 6). Only the Chrome and phone
+wording of a failed request counted as "no internet" (D6-05); every failed profile read said "Cannot
+reach the server" (D6-06); a browser that blocks site storage showed an empty page (D6-18).
+
+**Decision.** `isNetworkError` (data/errors.ts, used by every data file) also knows Safari's "Load
+failed" and Firefox's "NetworkError when attempting to fetch". The auth provider keeps why a profile
+is missing (`profileProblem`: network / server / missing) and the pending screen words each.
+The Supabase client gets a store that never throws (lib/local-storage.ts `deviceStorage`): with
+storage blocked the login lasts until the page closes instead of the app not starting.
+
+**Consequences.** No database change. Unit test: tests/app-correctness.test.mjs.
+
+## 179. A screen's address id is checked before anything loads — 9 Oct 2026
+
+**Context.** D6-07: an edited or cut-off link (/staff/announcements/abc) reached the database, was
+refused as bad input, and the screen said "no internet" with a Try again that could never work.
+
+**Decision.** Every `[id]` route is wrapped in `RouteIdGuard` (components/route-id-guard.tsx,
+lib/route-id.ts): a whole number from 1 up for the tables' ids, a UUID for students and logins,
+"new" where the screen opens an empty form. Anything else shows "page does not exist" with Go to
+home, as for an unknown address.
+
+**Consequences.** A new `[id]` screen should use the guard too.
+
+## 180. Attendance: a repeated scan changes nothing; the search finds by words and shows status — 9 Oct 2026
+
+**Context.** D6-09: a scan retried after a lost answer, or the same card on two phones, could check
+a student out and straight back in (0-minute visits). FS2-04: "K. Sri" found nobody. FS2-05: the
+search hid Left/Paused and silently stopped at 20.
+
+**Decision.** 0038's `toggle_visit` locks the student row (as `mark_visit` does), and a QR scan
+within 30 seconds of a check-out answers `already_out` (0030 did the same for a check-in). The C5
+search turns punctuation into spaces and looks for every word of the name in any order, or the
+whole text in the roll number (lib/student-search.ts); rows show a Left / Paused label (checking
+them in makes them Active); "Showing the first 20, type more" when there are more.
+
+**Consequences.** A real re-entry within 30 seconds of leaving needs a tap ("In") instead of a scan.
+
+## 181. Saving an announcement or group never undoes someone else's change or loses files — 9 Oct 2026
+
+**Context.** D6-10: a save whose answer was lost removed its own new files although the post had
+been saved. D6-15: an edit silently overwrote another staff member's change. FS3-03: the author
+removing the Guru's file from their post orphaned it (Storage allows that only while it is listed).
+D5-14: files removed before a save that then failed left dead entries.
+
+**Decision.** (data/announcements.ts) On a network error the app reads the row back: a post found
+(same author and title in 15 minutes, holding the first new file) counts as saved; otherwise it
+says "it is not known whether this was saved, check the list" and keeps the files. An edit reads
+the announcement again first and stops when it differs from the version the form was filled from
+("Load the latest version"). Someone else's dropped files are removed before the save, while still
+listed; my own after it. Entries whose file is gone are dropped on every save. Delete removes
+someone else's files first and my own after the row. Groups save with the old name and purpose as
+a condition and say when someone else changed them meanwhile.
+
+**Consequences.** Unused files can still be left when the network fails at the wrong moment;
+OPERATIONS.md "Files no announcement uses" covers them.
+
+## 182. Typed values get limits: dates ahead, text length, phone and PIN, the server's age — 9 Oct 2026
+
+**Context.** D6-14: a year typo paused a child until 2062 or hid a post for decades. FS2-09: call
+notes, names and the area had no length limit. D6-21: "0000000000" and PIN "012345" were accepted.
+D6-13: with the phone's clock a day off, a student turning 18 could not be registered.
+
+**Decision.** A pause or "coming back on" date at most a year ahead (app 365 days, 0038 trigger on
+call_logs 366, error `next_date_too_far`); an announcement scheduled at most 6 months ahead (app 182
+days, 0038 trigger 183 days, `publish_too_far`). Call note 1000, area 100, guardian name 120
+characters (0038 checks, NOT VALID: old rows untouched); the register form limits name and guardian
+name to 100, emails to 254. A phone without + is an Indian mobile (10 digits from 6-9, a leading 0
+allowed); with + it must be a real number (libphonenumber); a PIN never starts with 0 (also 0038).
+When the database answers "minor" the register form opens the parent's part and says why.
+
+**Consequences.** The year cap on a pause is a typo guard, not the team's policy: D5-12 (a maximum
+pause, e.g. 90 days) is still the team's to decide and would lower it.
+
+## 183. Small app behaviours from the backlog — 9 Oct 2026
+
+**Decision.** D6-16: the dialler and file opening say when they cannot open (number shown to dial by
+hand); a malformed app link opens the home screen. D6-17: Enter while a sign-in, sign-up, password or
+join request runs does nothing. D6-19: the student home and the follow-up queue show only their
+newest load (lib/latest-load.ts). D6-20: after a sign-out the person did not ask for, sign-in says
+"You were signed out" (auth/session-end.ts); drafts of long forms are not kept (left for later).
+FS2-07: "Open profile" on the call screen goes back to the profile when it opened the call screen.
+FS2-10: the student home greets with the record's name once loaded. FS4-03: announcement file links
+are fetched again after 50 minutes and when the app returns. FS4-07: words typed while a reply is
+sending stay in the box. FS3-09: a failed update check is tried again at the next return to the
+front, not 30 minutes later.
+
+## 184. A child's record never holds a parent's email — 9 Oct 2026
+
+**Context.** D1a-15: a login is linked to the student whose email it signs up with (0002). A
+parent's email on a child's record makes the parent's login act as the child (pushes, the child's
+data), and with siblings only the first child is linked.
+
+**Decision.** The audit's Phase 1 default, until the team decides on parent logins: 0038 refuses a
+minor's email that is any guardian's email (`guardian_email_on_minor`), checked on the student and
+on the guardian; the register form says so under the email. An adult student may share an email
+with a child's guardian (a parent learning too).
+
+**Consequences.** Parent logins, if wanted, need a guardian login model (team decision).
+
+## 185. Backlog items not changed — 9 Oct 2026
+
+**Decision.** FS4-04 (Restart does nothing when the reload fails): fixed on main (08e33e5, a 10 s
+wait and an error notice); the APK's embedded copy changes with the next APK (brief 9). FS1a-21
+(visits recorded at the home centre): the audit's default holds, home centre until a second centre
+exists. Not cited by the audit but the same pattern, left as they are: other screens' focus reloads
+(D6-19 fixed the two cited), and `openURL` without a catch on the lesson, centre map and label links.
+
 ## 212. Phase 3 reads a location only at a check-in or check-out, never tracks — 9 Oct 2026
 
 **Status: decided by Praveen 9 Oct 2026 (relayed by lead chat 5, on the Guru's face-scan request);

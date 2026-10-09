@@ -21,6 +21,7 @@ import { ChoiceGroup } from '@/components/choice-group';
 import { EmptyState } from '@/components/empty-state';
 import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
+import { RouteIdGuard } from '@/components/route-id-guard';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { TextField } from '@/components/text-field';
@@ -50,7 +51,7 @@ const WHOLE_LEVEL = 0;
 type Loaded = { levels: LevelSyllabus[]; material: Material | null; suggestion: Suggestion | null };
 
 /** The material form. */
-export default function MaterialScreen() {
+function MaterialScreenContent() {
   const { t } = useTranslation();
   const params = useLocalSearchParams<{ id: string; level?: string; item?: string }>();
   const isNew = params.id === 'new';
@@ -412,3 +413,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 });
+
+/** Checks the address's id before the screen loads anything (D6-07). */
+export default function MaterialScreen() {
+  return (
+    <RouteIdGuard kind="number" allowNew>
+      <MaterialScreenContent />
+    </RouteIdGuard>
+  );
+}

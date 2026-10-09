@@ -22,6 +22,7 @@ import { ChoiceGroup } from '@/components/choice-group';
 import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
 import { PersonHeader } from '@/components/person-header';
+import { RouteIdGuard } from '@/components/route-id-guard';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { TextField } from '@/components/text-field';
@@ -46,7 +47,7 @@ import { spacing } from '@/theme/use-theme';
 const VOICE_NOTE_SECONDS = 5 * 60;
 
 /** One student's work and the review form. */
-export default function ReviewScreen() {
+function ReviewScreenContent() {
   const { t } = useTranslation();
   const { profile } = useAuth();
   const { id: idParam } = useLocalSearchParams<{ id: string }>();
@@ -299,3 +300,12 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
 });
+
+/** Checks the address's id before the screen loads anything (D6-07). */
+export default function ReviewScreen() {
+  return (
+    <RouteIdGuard kind="number">
+      <ReviewScreenContent />
+    </RouteIdGuard>
+  );
+}

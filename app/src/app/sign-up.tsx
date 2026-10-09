@@ -100,6 +100,7 @@ export default function SignUpScreen() {
   const phoneCountry: CountryCode = phoneCountryPicked ?? (isPhoneCountry(centreCountry) ? centreCountry : 'IN');
 
   async function submit() {
+    if (busy) return; // Enter pressed again while the request runs (D6-17)
     const errors: Partial<Record<Field, MessageKey>> = {};
     if (!name.trim()) errors.name = 'validation.nameRequired';
     if (diksha.trim().length > 80) errors.diksha = 'about.errors.tooLong';

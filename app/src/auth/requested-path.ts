@@ -32,7 +32,14 @@ function pathOnly(address: string): string | null {
 function pathOfAppLink(url: string): string | null {
   const expoGo = /\/--\/(.*)$/.exec(url);
   if (expoGo) return pathOnly(expoGo[1]);
-  if (/^https?:\/\//.test(url)) return pathOnly(new URL(url).pathname);
+  if (/^https?:\/\//.test(url)) {
+    // A malformed address opens the home screen instead of failing unseen (D6-16).
+    try {
+      return pathOnly(new URL(url).pathname);
+    } catch {
+      return null;
+    }
+  }
   return pathOnly(url.replace(/^[a-z][a-z0-9+.-]*:\/\//i, ''));
 }
 

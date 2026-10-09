@@ -24,6 +24,7 @@ import { ListRow } from '@/components/list-row';
 import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
 import { PersonHeader } from '@/components/person-header';
+import { RouteIdGuard } from '@/components/route-id-guard';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { TextField } from '@/components/text-field';
@@ -51,7 +52,7 @@ type Loaded = { person: Person; board: CoordinatorsBoard };
 type Asking = 'coordinator' | 'off' | 'on' | { link: MenteeRow } | null;
 
 /** One person's page. */
-export default function PersonScreen() {
+function PersonScreenContent() {
   const { t, i18n } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [genders, setGenders] = useState<OptionRow[]>([]);
@@ -389,5 +390,14 @@ export default function PersonScreen() {
       ) : null}
       {person.role === 'guru' ? <AppText tone="muted">{t('coordinators.guruNote')}</AppText> : null}
     </Screen>
+  );
+}
+
+/** Checks the address's id before the screen loads anything (D6-07). */
+export default function PersonScreen() {
+  return (
+    <RouteIdGuard kind="uuid">
+      <PersonScreenContent />
+    </RouteIdGuard>
   );
 }

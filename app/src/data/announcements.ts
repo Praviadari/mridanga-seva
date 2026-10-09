@@ -21,6 +21,7 @@ import {
   formFilesOf,
   isPicked,
   MAX_FILES,
+  missingFiles,
   parseAttachments,
   removeFiles,
   uploadFiles,
@@ -295,16 +296,25 @@ export async function setPinned(id: number, pinned: boolean): Promise<ChangeOutc
  * Deletes an announcement for everyone, with its read receipts, replies and files. Only the author
  * or the Guru may; the audit log keeps a copy of the announcement (not of its files).
  */
-export async function deleteAnnouncement(announcement: Announcement): Promise<ChangeOutcome> {
-  // Files first, while the announcement still lists them: Storage lets the author remove a file
-  // the Guru added only while it is on their announcement (migration 0010). Deleting the row
-  // does not remove the files by itself.
-  if (!(await removeFiles(announcement.attachments.map((a) => a.path)))) {
-    return { errorKey: 'announcements.files.removeFailed' };
-  }
+export async function deleteAnnouncement(announcement: Announcement, myId: string): Promise<ChangeOutcome> {
+  // Someone else's files first, while the announcement still lists them: Storage lets the author
+  // remove a file the Guru added only while it is on their announcement (migration 0010). My own
+  // files after the row, so a failed delete never leaves a live post listing files that are gone
+  // (D5-14). Deleting the row does not remove the files by itself.
+  const [mine, others] = splitByOwner(announcement.attachments.map((a) => a.path), myId);
+  if (!(await removeFiles(others))) return { errorKey: 'announcements.files.removeFailed' };
   const { data, error } = await supabase.from('announcements').delete().eq('id', announcement.id).select('id');
   if (error) return { errorKey: announcementErrorKey(error.message, error.code) };
-  return data.length === 0 ? { errorKey: 'announcements.errors.cannotChange' } : {};
+  if (data.length === 0) return { errorKey: 'announcements.errors.cannotChange' };
+  // If this fails (no internet), my files stay in Storage unused; docs/OPERATIONS.md "Files no announcement uses".
+  await removeFiles(mine);
+  return {};
+}
+
+/** The paths in `myId`'s folder, and the others (uploaded by someone else, e.g. the Guru). */
+function splitByOwner(paths: string[], myId: string): [string[], string[]] {
+  const mine = paths.filter((p) => p.startsWith(`${myId}/`));
+  return [mine, paths.filter((p) => !p.startsWith(`${myId}/`))];
 }
 
 // ---------------------------------------------------------------- posting and editing (C15)
@@ -363,6 +373,9 @@ export function formFromAnnouncement(announcement: Announcement): AnnouncementFo
   };
 }
 
+/** How far ahead an announcement may be scheduled: 182 days, a day inside the database's 183 (0038). */
+const MAX_SCHEDULE_MS = 182 * 24 * 60 * 60 * 1000;
+
 /** A problem with one field of the compose form, as the key of the message to show under it. */
 export type AnnouncementFormErrors = Partial<Record<keyof AnnouncementForm, MessageKey>>;
 
@@ -391,6 +404,8 @@ export function checkAnnouncementForm(form: AnnouncementForm, now: number, check
     if (!form.time.trim()) errors.time = 'announcements.errors.timeRequired';
     else if (!time) errors.time = 'announcements.errors.timeInvalid';
     if (date && time && Date.parse(localMoment(date, time)) <= now) errors.time = 'announcements.errors.timePast';
+    // Six months at most (D6-14): a year typo would hide the post for decades. The database allows 183 days (0038).
+    else if (date && time && Date.parse(localMoment(date, time)) > now + MAX_SCHEDULE_MS) errors.date = 'announcements.errors.dateTooFar';
   }
   return errors;
 }
@@ -463,10 +478,34 @@ export async function postAnnouncement(
     .select('id')
     .single();
   if (error) {
+    // No answer is not a refusal: the post may have been saved, and its files are then in use
+    // (D6-10). Look for it before removing anything, so it is neither broken nor posted twice.
+    if (isNetworkError(error.message)) {
+      const saved = await findJustPosted(myId, contentOf({ ...form, audience }).title, files.uploaded);
+      if (saved) return { id: saved };
+      // Still unknown (no internet): keep the files; an unused one is cleaned up later.
+      return { errorKey: 'announcements.errors.maybeSaved' };
+    }
     await removeFiles(files.uploaded);
     return { errorKey: announcementErrorKey(error.message, error.code) };
   }
   return { id: (data as { id: number }).id };
+}
+
+/**
+ * The id of the announcement I posted in the last 15 minutes with this title (and, when files were
+ * uploaded, the first of them), or null when there is none or it could not be read.
+ */
+async function findJustPosted(myId: string, title: string, uploaded: string[]): Promise<number | null> {
+  let query = supabase
+    .from('announcements')
+    .select('id')
+    .eq('created_by', myId)
+    .eq('title', title)
+    .gte('created_at', new Date(Date.now() - 15 * 60_000).toISOString());
+  if (uploaded.length > 0) query = query.contains('attachments', [{ path: uploaded[0] }]);
+  const { data, error } = await query.order('created_at', { ascending: false }).limit(1);
+  return !error && data.length > 0 ? (data[0] as { id: number }).id : null;
 }
 
 /**
@@ -484,8 +523,27 @@ export async function updateAnnouncement(
 ): Promise<ChangeOutcome> {
   const { audience } = form;
   if (!audience) return { errorKey: 'announcements.errors.choose' };
-  const files = await attachmentsOf(form, myId);
+  // D6-15: someone else (the Guru, a second coordinator) may have changed it while this form was
+  // open; saving would silently undo their change. Read it again and stop when it differs.
+  const current = await supabase.from('announcements').select(ANNOUNCEMENT_COLUMNS).eq('id', original.id).maybeSingle();
+  if (current.error) return { errorKey: announcementErrorKey(current.error.message, current.error.code) };
+  if (!current.data) return { errorKey: 'announcements.errors.cannotChange' };
+  if (changedSince(original, toAnnouncement(current.data as AnnouncementRow, new Set()))) {
+    return { errorKey: 'announcements.errors.changedMeanwhile' };
+  }
+  // D5-14: entries whose file is gone (a removal whose save then failed) are dropped on every save.
+  const gone = (await missingFiles(original.attachments.map((a) => a.path))) ?? new Set<string>();
+  const files = await attachmentsOf({ ...form, files: form.files.filter((f) => isPicked(f) || !gone.has(f.path)) }, myId);
   if (!files.attachments) return { errorKey: files.errorKey };
+  const kept = new Set(files.attachments.map((a) => a.path));
+  const dropped = original.attachments.map((a) => a.path).filter((p) => !kept.has(p) && !gone.has(p));
+  // FS3-03: a file someone else uploaded can be removed only while it is still listed, so before
+  // the save; my own files after it, so readers never meet a file of mine that is listed but gone.
+  const [mineDropped, othersDropped] = splitByOwner(dropped, myId);
+  if (!(await removeFiles(othersDropped))) {
+    await removeFiles(files.uploaded);
+    return { errorKey: 'announcements.files.removeFailed' };
+  }
   // Checked again now: the scheduled time may have passed while the form was open.
   const timeCanChange = isScheduled(original);
   const { data, error } = await supabase
@@ -498,15 +556,29 @@ export async function updateAnnouncement(
     })
     .eq('id', original.id)
     .select('id');
-  if (error || data.length === 0) {
+  if (error && isNetworkError(error.message)) {
+    // D6-10: no answer is not a refusal; the new files stay until it is known whether the change
+    // was saved (an unused one is cleaned up later). Saved when the row now holds what was sent.
+    const after = await supabase.from('announcements').select(ANNOUNCEMENT_COLUMNS).eq('id', original.id).maybeSingle();
+    const sent = contentOf({ ...form, audience });
+    const now = after.data ? toAnnouncement(after.data as AnnouncementRow, new Set()) : null;
+    const saved = !!now && now.title === sent.title && now.body === sent.body
+      && JSON.stringify(now.attachments.map((a) => a.path)) === JSON.stringify(files.attachments.map((a) => a.path));
+    if (!saved) return { errorKey: 'announcements.errors.maybeSaved' };
+  } else if (error || data.length === 0) {
     await removeFiles(files.uploaded);
     return { errorKey: error ? announcementErrorKey(error.message, error.code) : 'announcements.errors.cannotChange' };
   }
-  // Only now, so readers never meet a file that is listed but gone. If this fails (no internet),
-  // the file stays in Storage unused; docs/OPERATIONS.md "Files no announcement uses".
-  const kept = new Set(files.attachments.map((a) => a.path));
-  await removeFiles(original.attachments.filter((a) => !kept.has(a.path)).map((a) => a.path));
+  // If this fails (no internet), the file stays in Storage unused; docs/OPERATIONS.md "Files no announcement uses".
+  await removeFiles(mineDropped);
   return {};
+}
+
+/** True when the saved announcement differs from the one the form was opened with (D6-15). */
+function changedSince(original: Announcement, current: Announcement): boolean {
+  const fields = (a: Announcement) =>
+    JSON.stringify([a.title, a.body, a.audience, a.audienceLevel, a.audienceGroup, a.pinned, a.publishAt, a.attachments.map((f) => f.path)]);
+  return fields(original) !== fields(current);
 }
 
 /** What the compose screen offers besides levels: the groups, and whether I mentor anyone. */
@@ -727,6 +799,8 @@ function announcementErrorKey(message: string, code: string | undefined): Messag
       return 'announcements.errors.choose';
     case 'already_published':
       return 'announcements.errors.alreadyPublished';
+    case 'publish_too_far':
+      return 'announcements.errors.dateTooFar';
     case 'reply_required':
       return 'announcements.errors.replyRequired';
     case 'reply_too_long':

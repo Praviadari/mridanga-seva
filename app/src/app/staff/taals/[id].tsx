@@ -18,6 +18,7 @@ import { Checkbox } from '@/components/checkbox';
 import { ChoiceGroup } from '@/components/choice-group';
 import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
+import { RouteIdGuard } from '@/components/route-id-guard';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { TextField } from '@/components/text-field';
@@ -40,7 +41,7 @@ function readForm(bolsText: string, divisionsText: string, marksText: string) {
 }
 
 /** Add or edit one taal. */
-export default function TaalEditScreen() {
+function TaalEditScreenContent() {
   const { t } = useTranslation();
   const { profile } = useAuth();
   const isGuru = profile?.role === 'guru';
@@ -203,5 +204,14 @@ export default function TaalEditScreen() {
         </AppText>
       ) : null}
     </Screen>
+  );
+}
+
+/** Checks the address's id before the screen loads anything (D6-07). */
+export default function TaalEditScreen() {
+  return (
+    <RouteIdGuard kind="number" allowNew>
+      <TaalEditScreenContent />
+    </RouteIdGuard>
   );
 }

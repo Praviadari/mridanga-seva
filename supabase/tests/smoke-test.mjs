@@ -120,7 +120,7 @@ process.on('uncaughtException', (error) => {
 // D14-10: every check is counted, and the run fails when fewer (or more) checks ran than expected,
 // so a block skipped by a renamed migration or a commented-out section cannot pass unseen.
 // Adding or removing checks? Run the suite and set this to the new total it prints.
-const EXPECTED_CHECKS = 1327; // 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47
+const EXPECTED_CHECKS = 1346; // 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19
 let failures = 0;
 let passes = 0;
 
@@ -2203,6 +2203,8 @@ const far = await markAt(registered.id, 'in', { status: 'fix', lat: 17.395, lng:
 check('a check-in 1 km away is saved but flagged outside (accuracy counts at most 100 m)', far.action === 'in'
   && far.location_check === 'outside' && far.distance_m === 1112, JSON.stringify(far));
 await markAt(registered.id, 'out');
+// 0038 (D6-09): a scan within 30 seconds of a check-out answers already_out; this one comes later.
+await asOwner(`update visits set check_in = check_in - interval '1 minute', check_out = check_out - interval '1 minute' where student_id = '${registered.id}' and check_out > now() - interval '1 minute'`);
 const [refusedScan] = await asApp('authenticated', coordinator, 'select scan_qr($1, null, $2::jsonb) as r',
   [qrToken, JSON.stringify({ status: 'refused' })]);
 check('a QR scan with location refused is saved and flagged refused', refusedScan.r.action === 'in'
@@ -4666,6 +4668,58 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   await asOwner(`delete from materials where id = ${mat37}`);
 }
 
+// ---------------------------------------------------------------- 0038 app correctness (D6-09, D6-14, FS2-09, D6-21)
+{
+  const [s38] = await asOwner(`insert into students (full_name, dob) values ('Scan Twice 38', '1990-01-01') returning id, qr_token`);
+  const scan38 = async () => (await asApp('authenticated', coordinator, 'select scan_qr($1) as r', [s38.qr_token]))[0].r.action;
+  const visits38 = async () => (await asOwner(`select count(*)::int as n, count(*) filter (where check_out is null)::int as open from visits where student_id = '${s38.id}'`))[0];
+  check('D6-09: (control) a first scan checks in', (await scan38()) === 'in');
+  await asOwner(`update visits set check_in = check_in - interval '1 minute' where student_id = '${s38.id}'`);
+  check('D6-09: (control) a scan a minute later checks out', (await scan38()) === 'out');
+  const retried = await scan38();
+  const after = await visits38();
+  check('D6-09: the same scan again within 30 seconds (a retry, a second phone) answers already_out', retried === 'already_out', retried);
+  check('D6-09: ... and checks nobody back in', after.n === 1 && after.open === 0, JSON.stringify(after));
+  check('D6-09: toggle_visit locks the student row', (await asOwner(`select prosrc ~ 'for update' as ok from pg_proc where proname = 'toggle_visit'`))[0].ok === true);
+
+  const reason38 = (await asOwner(`select value ->> 0 as r from settings where key = 'call_reasons'`))[0].r;
+  const ahead = async (days) => (await asOwner(`select (today_ist() + ${days})::text as d`))[0].d;
+  await refusesWith('D6-14: a pause more than a year ahead is refused', 'next_date_too_far', async () =>
+    logCall(coordinator, { p_student: s38.id, p_outcome: 'paused', p_reason: reason38, p_comment: 'Typo 2062', p_next_date: await ahead(400) }));
+  await logCall(coordinator, { p_student: s38.id, p_outcome: 'paused', p_reason: reason38, p_comment: 'Exams', p_next_date: await ahead(300) });
+  check('D6-14: (control) a pause 300 days ahead is saved', (await statusOf(s38.id)).status === 'paused');
+  await refusesWith('D6-14: an announcement scheduled more than 6 months ahead is refused', 'publish_too_far', () =>
+    asApp('authenticated', coordinator, `insert into announcements (title, body, audience, publish_at) values ('Far 38', 'x', 'all', now() + interval '200 days')`));
+  const [{ id: soon38 }] = await asApp('authenticated', coordinator,
+    `insert into announcements (title, body, audience, publish_at) values ('Soon 38', 'x', 'all', now() + interval '30 days') returning id`);
+  check('D6-14: (control) one scheduled a month ahead is saved', !!soon38);
+  await refusesWith('D6-14: ... and cannot be moved past 6 months later', 'publish_too_far', () =>
+    asApp('authenticated', coordinator, `update announcements set publish_at = now() + interval '1 year' where id = $1`, [soon38]));
+  await asOwner(`delete from announcements where id = ${soon38}`);
+
+  await refusesWith('FS2-09: a call note over 1000 characters is refused', /call_logs_comment_length/, () =>
+    logCall(coordinator, { p_student: s38.id, p_outcome: 'not_reachable', p_reason: null, p_comment: 'x'.repeat(1001) }));
+  await refusesWith('FS2-09: an area over 100 characters is refused', /students_area_length/, () =>
+    asApp('authenticated', coordinator, `update students set area = repeat('a', 101) where id = $1`, [s38.id]));
+  await refusesWith('D6-21: a PIN code starting with 0 is refused', /students_pincode_check/, () =>
+    asApp('authenticated', coordinator, `update students set pincode = '012345' where id = $1`, [s38.id]));
+  await asApp('authenticated', coordinator, `update students set pincode = '500001', area = 'Abids' where id = $1`, [s38.id]);
+  check('D6-21: (control) a real PIN code is saved', (await asOwner(`select pincode from students where id = '${s38.id}'`))[0].pincode === '500001');
+  check('FS2-09: the guardian name has its bound', (await asOwner(`select count(*)::int as n from pg_constraint where conname = 'guardians_name_length'`))[0].n === 1);
+
+  // D1a-15: a minor's record never holds a parent's email.
+  const kid = (email, name) => asApp('authenticated', coordinator, `select register_student(p_full_name => $1, p_dob => (current_date - interval '10 years')::date,
+    p_email => $2, p_guardian_name => 'Parent 38', p_guardian_phone => '9876543210', p_guardian_email => 'parent.38@example.com',
+    p_guardian_relation => 'mother', p_id_type_checked => 'school_id', p_written_consent => true) as r`, [name, email]);
+  await refusesWith('D1a-15: a child registered with the parent\'s own email is refused', 'guardian_email_on_minor', () => kid('parent.38@example.com', 'Child A 38'));
+  const [{ r: childB }] = await kid('child.b.38@example.com', 'Child B 38');
+  check('D1a-15: (control) a child with their own email is registered', !!childB.id);
+  await refusesWith('D1a-15: a sibling given the parent\'s email (a guardian elsewhere) is refused', 'guardian_email_on_minor', () =>
+    asApp('authenticated', coordinator, `update students set email = 'PARENT.38@example.com' where id = $1`, [childB.id]));
+  await asApp('authenticated', coordinator, `update students set email = 'parent.38@example.com' where id = $1`, [s38.id]);
+  check('D1a-15: (control) an adult student may use the same email (a parent learning too)',
+    (await asOwner(`select email from students where id = '${s38.id}'`))[0].email === 'parent.38@example.com');
+}
 // ---------------------------------------------------------------- row-level security
 const seen =await asApp('authenticated', arjun, 'select full_name from students');
 check('student sees only their own student record', seen.length === 1 && seen[0].full_name === 'Arjun Rao');

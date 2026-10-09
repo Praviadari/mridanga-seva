@@ -34,7 +34,9 @@
     "linkBody": "Each email link works only once, and only for a while. Ask for a new link here. For a new confirmation email, first type your email in the sign-in form below.",
     "resendConfirmation": "Send a new confirmation email",
     "newPasswordLink": "Send a new password link",
-    "resent": "If {{email}} has an account waiting to be confirmed, a new link is on its way. Check the inbox and the spam folder."
+    "resent": "If {{email}} has an account waiting to be confirmed, a new link is on its way. Check the inbox and the spam folder.",
+    "endedTitle": "You were signed out",
+    "endedBody": "Your login ended (it ran out, or the password was changed on another device). Please sign in again. Anything not saved on the last screen was lost."
   },
   "signUp": {
     "title": "New student registration",
@@ -108,7 +110,9 @@
     "igTitle": "Ishtagoshti, free for everyone",
     "igHint": "Study the slokas with us: the sloka of the day, themes, your own notes. No class role needed.",
     "igJoin": "Join Ishtagoshti",
-    "igParentCode": "Type your parent's code"
+    "igParentCode": "Type your parent's code",
+    "serverError": "The server answered with an error. Tap Check again in a few minutes; if it keeps happening, sign out and tell a coordinator.",
+    "missingProfile": "Your account is not set up yet. Tap Check again in a minute; if it stays like this, sign out and sign in again."
   },
   "roles": {
     "guru": "Facilitator",
@@ -225,7 +229,8 @@
       "notAllowed": "Only coordinators and the facilitator can mark attendance.",
       "notFound": "This student is no longer in the records.",
       "alreadyMarked": "Another phone marked this student at the same moment. Check the list and try again."
-    }
+    },
+    "moreMatches": "Showing the first {{number}}. Type more of the name to find the right student."
   },
   "attendanceLocation": {
     "why": "When you check a student in, the app checks your phone's location — only while the app is open, to confirm you are at the class. Outside the area the check-in is still saved, but flagged for the facilitator.",
@@ -337,13 +342,15 @@
     "errors": {
       "nameRequired": "Enter the full name.",
       "dobInvalid": "Enter the date of birth as day-month-year, e.g. 15-06-2012.",
-      "phoneInvalid": "Enter a 10-digit phone number.",
-      "pincodeInvalid": "A pincode has 6 digits.",
+      "phoneInvalid": "Enter a 10-digit mobile number starting with 6, 7, 8 or 9, or a number with + and the country code.",
+      "pincodeInvalid": "A pincode has 6 digits and does not start with 0.",
       "choose": "Choose one.",
       "consentNeeded": "The signed consent form is needed before a student under 18 can be registered.",
       "minorNeedsConsent": "A student under 18 needs the parent's details, the ID check and the signed consent form.",
       "notAllowed": "Only coordinators and the facilitator can register students.",
-      "fixFields": "Please correct the fields marked in red."
+      "fixFields": "Please correct the fields marked in red.",
+      "minorByServer": "By the server's date this student is under 18. Fill in the parent's part below and save again.",
+      "guardianEmailOnMinor": "This is a parent's email. A child's record keeps the child's own email, or none: a login with a parent's email would be linked as the child."
     },
     "privacyNotice": "Privacy notice for parents",
     "privacyNoticeHint": "Show it to the parent before they sign the consent form.",
@@ -558,8 +565,10 @@
       "commentRequired": "Write what was said on the call.",
       "reasonUnknown": "This reason is no longer in the list. Choose another.",
       "notAllowed": "Only coordinators and the facilitator can log calls.",
-      "notFound": "This student is not in the records."
-    }
+      "notFound": "This student is not in the records.",
+      "dateTooFar": "Choose a date within the next 12 months."
+    },
+    "dialFailed": "This device cannot open a phone call. Dial {{phone}} on your phone."
   },
   "announcements": {
     "title": "Announcements",
@@ -654,7 +663,8 @@
       "scheduledNote": "Not published yet: you can still change when students see it.",
       "save": "Save changes",
       "cancel": "Cancel",
-      "back": "Back to the announcement"
+      "back": "Back to the announcement",
+      "loadLatest": "Load the latest version"
     },
     "replies": {
       "title": "Replies ({{number}})",
@@ -690,7 +700,10 @@
       "alreadyPublished": "It was published meanwhile, so its time can no longer change. Nothing was saved. Try again.",
       "replyRequired": "Write your reply.",
       "replyTooLong": "The reply is too long. Keep it to 1000 characters.",
-      "replyGone": "This announcement is no longer there, or no longer for you."
+      "replyGone": "This announcement is no longer there, or no longer for you.",
+      "changedMeanwhile": "Not saved: someone else changed this announcement while you were editing. Load the latest version and make your change again.",
+      "maybeSaved": "No answer from the server, so it is not known whether this was saved. Check the announcements list before you try again.",
+      "dateTooFar": "Choose a date at most 6 months ahead."
     },
     "files": {
       "sectionTitle": "Photos and PDFs",
@@ -721,7 +734,8 @@
       "openPhoto": "Open photo {{name}}",
       "open": "Open",
       "pdfLine": "PDF · {{size}}",
-      "notAvailable": "Could not load this file."
+      "notAvailable": "Could not load this file.",
+      "openFailed": "The file could not be opened on this device. Try again, or open the announcement on another phone or computer."
     }
   },
   "groups": {
@@ -766,7 +780,8 @@
       "purposeTooLong": "This is too long. Keep it to 200 characters.",
       "nameTaken": "Another group already has this name.",
       "notAllowed": "Only coordinators and the facilitator can change groups.",
-      "cannotChange": "Not changed: the group is no longer there."
+      "cannotChange": "Not changed: the group is no longer there.",
+      "changedMeanwhile": "Not saved: someone else changed this group meanwhile. Their version is shown now; make your change again."
     }
   },
   "push": {

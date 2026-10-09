@@ -2,10 +2,20 @@
 
 import { useLocalSearchParams } from 'expo-router';
 
+import { RouteIdGuard } from '@/components/route-id-guard';
 import { PollFormScreen } from '@/screens/poll-form';
 
 /** Route. */
-export default function EditPollRoute() {
+function EditPollRouteContent() {
   const { id } = useLocalSearchParams<{ id: string }>();
   return <PollFormScreen pollId={Number(id)} />;
+}
+
+/** Checks the address's id before the screen loads anything (D6-07). */
+export default function EditPollRoute() {
+  return (
+    <RouteIdGuard kind="number">
+      <EditPollRouteContent />
+    </RouteIdGuard>
+  );
 }

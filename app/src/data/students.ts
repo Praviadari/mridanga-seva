@@ -7,6 +7,7 @@ import * as Crypto from 'expo-crypto';
 import type { ParseKeys } from 'i18next';
 
 import { ageOn, isMinorOn, parseDayMonthYear, todayLocal } from '@/lib/dates';
+import { toE164 } from '@/lib/phone';
 import { PRIVACY_NOTICE_VERSION } from '@/lib/privacy-notice';
 import { supabase } from '@/lib/supabase';
 
@@ -84,10 +85,18 @@ export function cleanPhone(phone: string): string {
   return phone.replace(/[\s-]/g, '');
 }
 
-/** Indian mobile (10 digits) or with a country code (+91 ...), after cleanPhone. */
+/**
+ * After cleanPhone: an Indian mobile (10 digits starting 6-9, a leading 0 allowed), or a number
+ * with + and a country code that is a real number (D6-21: '0000000000' or '1234567890' would be
+ * saved and make follow-up calls for a minor impossible).
+ */
 function isValidPhone(phone: string): boolean {
-  return /^\+?[0-9]{10,13}$/.test(phone);
+  if (phone.startsWith('+')) return toE164(phone, 'IN') !== null;
+  return /^0?[6-9][0-9]{9}$/.test(phone);
 }
+
+/** An Indian PIN code: six digits, never starting with 0 (D6-21; the database checks the same, 0038). */
+const PINCODE = /^[1-9][0-9]{5}$/;
 
 function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
@@ -117,7 +126,7 @@ export function checkStudentDetails(form: RegistrationForm): RegistrationErrors 
   if (!iso || iso > today || ageOn(iso, today) > 100) errors.dob = 'register.errors.dobInvalid';
   if (form.phone.trim() && !isValidPhone(cleanPhone(form.phone))) errors.phone = 'register.errors.phoneInvalid';
   if (form.email.trim() && !isValidEmail(form.email)) errors.email = 'validation.emailInvalid';
-  if (form.pincode.trim() && !/^[0-9]{6}$/.test(form.pincode.trim())) {
+  if (form.pincode.trim() && !PINCODE.test(form.pincode.trim())) {
     errors.pincode = 'register.errors.pincodeInvalid';
   }
   return errors;
@@ -130,6 +139,10 @@ export function checkGuardianConsent(form: RegistrationForm): RegistrationErrors
   if (!isValidPhone(cleanPhone(form.guardianPhone))) errors.guardianPhone = 'register.errors.phoneInvalid';
   if (form.guardianEmail.trim() && !isValidEmail(form.guardianEmail)) {
     errors.guardianEmail = 'validation.emailInvalid';
+  }
+  // D1a-15: a login with the parent's email would be linked as the child (0038).
+  if (form.email.trim() && form.email.trim().toLowerCase() === form.guardianEmail.trim().toLowerCase()) {
+    errors.email = 'register.errors.guardianEmailOnMinor';
   }
   if (!form.relation) errors.relation = 'register.errors.choose';
   if (!form.idType) errors.idType = 'register.errors.choose';
@@ -153,11 +166,14 @@ export type Registered = {
 /**
  * Saves the student, and for a minor the guardian and consent, in one step (all or nothing).
  * Call only after checkStudentDetails (and checkGuardianConsent for a minor) found no problems.
+ * minorByServer: the database said this student is a minor although the phone's date says not
+ * (a birthday today or tomorrow and a phone clock a day off, D6-13); the guardian part goes along.
  */
 export async function registerStudent(
   form: RegistrationForm,
+  minorByServer = false,
 ): Promise<{ registered?: Registered; errorKey?: MessageKey }> {
-  const minor = ageFromForm(form.dob)?.minor ?? false;
+  const minor = minorByServer || (ageFromForm(form.dob)?.minor ?? false);
   const args = {
     p_full_name: form.fullName.trim(),
     p_dob: parseDayMonthYear(form.dob),
@@ -208,10 +224,13 @@ function registerErrorKey(message: string, code: string | undefined): MessageKey
     case 'dob_required':
       return 'register.errors.dobInvalid';
     case 'written_consent_required':
-      return 'register.errors.consentNeeded';    case 'minor_needs_guardian':
+      return 'register.errors.consentNeeded';
+    case 'minor_needs_guardian':
     case 'minor_needs_id_check':
     case 'minor_needs_consent':
       return 'register.errors.minorNeedsConsent';
+    case 'guardian_email_on_minor': // the email is a parent's of this or another child (0038)
+      return 'register.errors.guardianEmailOnMinor';
   }
   if (code === '23514') return 'register.errors.pincodeInvalid'; // the pincode check in the table
   if (isNetworkError(message)) return 'common.networkError';

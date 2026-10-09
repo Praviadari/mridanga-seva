@@ -15,6 +15,7 @@ import { Button } from '@/components/button';
 import { GuruOnly } from '@/components/guru-only';
 import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
+import { RouteIdGuard } from '@/components/route-id-guard';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { TextField } from '@/components/text-field';
@@ -32,7 +33,7 @@ import {
 import { mapUrl, readPoint } from '@/lib/map-link';
 
 /** Add or edit a centre. */
-export default function CentreScreen() {
+function CentreScreenContent() {
   const { t } = useTranslation();
   const { profile } = useAuth();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -229,5 +230,14 @@ export default function CentreScreen() {
         </Section>
       ) : null}
     </Screen>
+  );
+}
+
+/** Checks the address's id before the screen loads anything (D6-07). */
+export default function CentreScreen() {
+  return (
+    <RouteIdGuard kind="number" allowNew>
+      <CentreScreenContent />
+    </RouteIdGuard>
   );
 }

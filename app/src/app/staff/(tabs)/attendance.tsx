@@ -31,6 +31,7 @@ import {
   type AttendanceToday,
   type FoundStudent,
   type MarkOutcome,
+  type SearchResult,
 } from '@/data/attendance';
 import { assetTokenFromScan } from '@/lib/asset-link';
 import { locationForCheckIn, locationRefused, warmUpLocation } from '@/lib/attendance-location';
@@ -66,7 +67,7 @@ export default function MarkAttendanceScreen() {
 
   const [query, setQuery] = useState('');
   // undefined = nothing searched yet, null = the search failed.
-  const [found, setFound] = useState<FoundStudent[] | null | undefined>(undefined);
+  const [found, setFound] = useState<SearchResult | null | undefined>(undefined);
   const [markingId, setMarkingId] = useState<string | null>(null);
   // True when location was refused for good on this phone: check-ins are flagged, say how to allow it.
   const [noLocation, setNoLocation] = useState(false);
@@ -98,7 +99,8 @@ export default function MarkAttendanceScreen() {
     };
   }, [query, searching]);
   // Results of the last search, hidden while the text is too short to search.
-  const shown = searching ? found : undefined;
+  const result = searching ? found : undefined;
+  const shown = result === null ? null : result?.students;
 
   async function onScan(text: string) {
     if (working.current) return;
@@ -233,6 +235,7 @@ export default function MarkAttendanceScreen() {
         />
         {shown === null ? <Notice tone="error">{t('attendance.searchFailed')}</Notice> : null}
         {shown?.length === 0 ? <AppText tone="muted">{t('attendance.noMatch')}</AppText> : null}
+        {result?.more ? <AppText tone="muted">{t('attendance.moreMatches', { number: result.students.length })}</AppText> : null}
         {shown?.map((student) => {
           const since = hereSince.get(student.id);
           return (
@@ -240,7 +243,8 @@ export default function MarkAttendanceScreen() {
               <ListRow
                 leading="initials"
                 title={student.fullName}
-                chips={{ levelId: student.levelId }}
+                // Left and Paused show as a label (FS2-05): checking them in makes them Active again.
+                chips={{ levelId: student.levelId, status: student.status === 'active' ? undefined : student.status }}
                 details={[
                   student.rollNo,
                   ...(since ? [sinceText(since)] : []),

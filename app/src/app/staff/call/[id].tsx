@@ -16,6 +16,7 @@ import { FormErrorSummary } from '@/components/form-error-summary';
 import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
 import { PersonHeader } from '@/components/person-header';
+import { RouteIdGuard } from '@/components/route-id-guard';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { TextField } from '@/components/text-field';
@@ -39,15 +40,25 @@ import { goBackOr } from '@/lib/go-back';
 /** A phone number to dial: whose it is (already translated) and the number. */
 type Dial = { who: string; phone: string };
 
-/** Opens the phone's dialler with the number filled in. Nothing is dialled until the person taps Call. */
-function dial(phone: string) {
-  void Linking.openURL(`tel:${phone.replace(/[^\d+]/g, '')}`);
+/**
+ * Opens the phone's dialler with the number filled in. Nothing is dialled until the person taps
+ * Call. Resolves false when there is no dialler (a laptop, a tablet without phone; D6-16).
+ */
+function dial(phone: string): Promise<boolean> {
+  return Linking.openURL(`tel:${phone.replace(/[^\d+]/g, '')}`).then(
+    () => true,
+    () => false,
+  );
 }
 
+/** Longest call note, as the database allows (0038, FS2-09). */
+const COMMENT_MAX_LENGTH = 1000;
+
 /** The student's summary, buttons to phone them, the last calls, and the call form. */
-export default function CallLogScreen() {
+function CallLogScreenContent() {
   const { t } = useTranslation();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  // from = 'profile' when the student's profile opened this screen (FS2-07).
+  const { id, from } = useLocalSearchParams<{ id: string; from?: string }>();
   // undefined = loading, null = could not load, 'not_found' = no such student.
   const [context, setContext] = useState<CallContext | 'not_found' | null | undefined>(undefined);
   const [form, setForm] = useState<CallForm>(EMPTY_CALL_FORM);
@@ -58,6 +69,8 @@ export default function CallLogScreen() {
   // dialog does not work in the web version.
   const [confirmingLeft, setConfirmingLeft] = useState(false);
   const [saved, setSaved] = useState<CallForm | null>(null);
+  // The number that could not be opened in a dialler, shown to dial by hand.
+  const [dialFailed, setDialFailed] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setContext(await fetchCallContext(id));
@@ -91,7 +104,11 @@ export default function CallLogScreen() {
   }
 
   const { studentId } = context;
-  const openProfile = () => router.push({ pathname: '/staff/students/[id]', params: { id: studentId } });
+  // Back to the profile when it opened this screen, instead of stacking a second copy of it (FS2-07).
+  const openProfile = () =>
+    from === 'profile'
+      ? goBackOr({ pathname: '/staff/students/[id]', params: { id: studentId } })
+      : router.push({ pathname: '/staff/students/[id]', params: { id: studentId } });
 
   if (saved?.outcome) {
     const date = outcomeNeedsDate(saved.outcome) ? formatDate(parseDayMonthYear(saved.nextDate) ?? '') : '';
@@ -164,9 +181,10 @@ export default function CallLogScreen() {
           variant="secondary"
           icon="calls"
           label={t('callLog.dial', { who: d.who, phone: d.phone })}
-          onPress={() => dial(d.phone)}
+          onPress={() => void dial(d.phone).then((ok) => setDialFailed(ok ? null : d.phone))}
         />
       ))}
+      {dialFailed ? <Notice tone="info">{t('callLog.dialFailed', { phone: dialFailed })}</Notice> : null}
 
       {context.lastCalls.length > 0 ? (
         <Section icon="calls" title={t('callLog.lastCalls')}>
@@ -217,6 +235,7 @@ export default function CallLogScreen() {
           onChangeText={(comment) => update({ comment })}
           error={errors.comment ? t(errors.comment) : undefined}
           multiline
+          maxLength={COMMENT_MAX_LENGTH}
           numberOfLines={4}
           style={{ minHeight: 96, textAlignVertical: 'top' }}
         />
@@ -239,5 +258,14 @@ export default function CallLogScreen() {
       ) : null}
       <Button variant="link" label={t('callLog.openProfile')} onPress={openProfile} />
     </Screen>
+  );
+}
+
+/** Checks the address's id before the screen loads anything (D6-07). */
+export default function CallLogScreen() {
+  return (
+    <RouteIdGuard kind="uuid">
+      <CallLogScreenContent />
+    </RouteIdGuard>
   );
 }

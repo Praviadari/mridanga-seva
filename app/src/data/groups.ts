@@ -89,11 +89,21 @@ export async function createGroup(form: GroupForm): Promise<GroupSaveOutcome> {
   return { id: (data as { id: number }).id };
 }
 
-/** Renames a group or changes its purpose. Call only after checkGroupForm found no problems. */
-export async function saveGroupDetails(id: number, form: GroupForm): Promise<GroupSaveOutcome> {
-  const { data, error } = await supabase.from('groups').update(columnsOf(form)).eq('id', id).select('id');
+/**
+ * Renames a group or changes its purpose, only while they are still ase (what the form was
+ * filled with): a change someone else saved meanwhile is not overwritten (D6-15). Call only after
+ * checkGroupForm found no problems.
+ */
+export async function saveGroupDetails(id: number, form: GroupForm, base: GroupForm): Promise<GroupSaveOutcome> {
+  const was = columnsOf(base);
+  let update = supabase.from('groups').update(columnsOf(form)).eq('id', id).eq('name', was.name);
+  update = was.purpose === null ? update.is('purpose', null) : update.eq('purpose', was.purpose);
+  const { data, error } = await update.select('id');
   if (error) return groupSaveError(error.message, error.code);
-  return data.length === 0 ? { errorKey: 'groups.errors.cannotChange' } : { id };
+  if (data.length > 0) return { id };
+  // Nothing saved: changed meanwhile when the group is still there for me, else not allowed.
+  const still = await supabase.from('groups').select('id').eq('id', id).maybeSingle();
+  return { errorKey: still.data ? 'groups.errors.changedMeanwhile' : 'groups.errors.cannotChange' };
 }
 
 /**

@@ -19,6 +19,7 @@ import { ChoiceGroup } from '@/components/choice-group';
 import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
 import { CriteriaList, levelStep, nominationStatusName, RATING_TONE, ratingName } from '@/components/promotion-parts';
+import { RouteIdGuard } from '@/components/route-id-guard';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { Chip } from '@/components/status-chip';
@@ -47,7 +48,7 @@ import { spacing } from '@/theme/use-theme';
 const NOT_YET_DAYS = 30;
 
 /** The nomination, the answers, and the coordinator's or the Guru's form. */
-export default function NominationScreen() {
+function NominationScreenContent() {
   const { t } = useTranslation();
   const { area, profile } = useAuth();
   const isGuru = area === 'guru';
@@ -433,3 +434,12 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
 });
+
+/** Checks the address's id before the screen loads anything (D6-07). */
+export default function NominationScreen() {
+  return (
+    <RouteIdGuard kind="number">
+      <NominationScreenContent />
+    </RouteIdGuard>
+  );
+}

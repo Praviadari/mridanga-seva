@@ -3,13 +3,14 @@
 // a photo opens it full size. A PDF is a row with its name and size and an Open button. The files
 // are private: each time the screen loads, Storage gives signed links that work for an hour, and
 // only to people who may read the announcement (src/data/announcement-files.ts,
-// docs/DECISIONS.md #32).
+// docs/DECISIONS.md #32). Links older than 50 minutes are fetched again, checked each minute and
+// when the app comes back to the screen, so a screen left open never offers an expired link (FS4-03).
 
 import { Image } from 'expo-image';
 import * as WebBrowser from 'expo-web-browser';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { AppState, Pressable, StyleSheet, View } from 'react-native';
 
 import { signedLinks, type Attachment } from '@/data/announcement-files';
 import { fileSizeText } from '@/i18n/labels';
@@ -18,6 +19,10 @@ import { radius, spacing, useTheme } from '@/theme/use-theme';
 import { AppText } from './app-text';
 import { Button } from './button';
 import { Icon } from './icon';
+import { Notice } from './notice';
+
+/** Age after which the hour-long links are fetched again, in milliseconds. */
+const LINKS_FRESH_MS = 50 * 60_000;
 
 /** Props for AttachmentList. */
 export type AttachmentListProps = {
@@ -34,16 +39,38 @@ export function AttachmentList({ attachments }: AttachmentListProps) {
   // The links belong to one list of files; a different list means they are still loading.
   const [loaded, setLoaded] = useState<{ paths: string; links: Map<string, string> } | null>(null);
   const links = loaded?.paths === paths ? loaded.links : undefined;
+  // When the links were fetched (Date.now()), to renew them before they expire.
+  const fetchedAt = useRef(0);
+  const [openFailed, setOpenFailed] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     void signedLinks(paths ? paths.split('\n') : []).then((result) => {
-      if (!cancelled) setLoaded({ paths, links: result });
+      if (cancelled) return;
+      fetchedAt.current = Date.now();
+      setLoaded({ paths, links: result });
     });
     return () => {
       cancelled = true;
     };
   }, [paths, attempt]);
+
+  useEffect(() => {
+    const renewIfOld = () => {
+      if (fetchedAt.current > 0 && Date.now() - fetchedAt.current > LINKS_FRESH_MS) {
+        fetchedAt.current = 0;
+        setAttempt((n) => n + 1);
+      }
+    };
+    const timer = setInterval(renewIfOld, 60_000);
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') renewIfOld();
+    });
+    return () => {
+      clearInterval(timer);
+      subscription.remove();
+    };
+  }, []);
 
   if (attachments.length === 0) return null;
   const someMissing = links !== undefined && attachments.some((a) => !links.has(a.path));
@@ -52,7 +79,10 @@ export function AttachmentList({ attachments }: AttachmentListProps) {
   const pdfs = attachments.filter((a) => a.kind !== 'image');
   // Opened straight from the tap (no waiting first), so a browser does not block the new tab.
   const opener = (url: string | undefined) => () => {
-    if (url) void WebBrowser.openBrowserAsync(url);
+    if (!url) return;
+    setOpenFailed(false);
+    // D6-16: no browser to open it in, or the phone refused: say so instead of nothing happening.
+    WebBrowser.openBrowserAsync(url).catch(() => setOpenFailed(true));
   };
 
   return (
@@ -111,6 +141,7 @@ export function AttachmentList({ attachments }: AttachmentListProps) {
           </View>
         );
       })}
+      {openFailed ? <Notice tone="error">{t('announcements.files.openFailed')}</Notice> : null}
       {someMissing ? (
         <Button variant="link" label={t('common.tryAgain')} onPress={() => setAttempt((n) => n + 1)} />
       ) : null}

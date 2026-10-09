@@ -19,6 +19,7 @@ import { Notice } from '@/components/notice';
 import { PersonHeader } from '@/components/person-header';
 import { PracticePanel } from '@/components/practice-parts';
 import { PromotionPanel } from '@/components/promotion-parts';
+import { RouteIdGuard } from '@/components/route-id-guard';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { StudentDetailsPanel } from '@/components/student-details-panel';
@@ -41,7 +42,7 @@ import { ageOn, localDate, formatDate, localTime, todayLocal } from '@/lib/dates
 type Loaded = { profile: StudentProfile; staffNames: Map<string, string> };
 
 /** The whole profile, one section per topic, with the two actions at the top. */
-export default function StudentProfileScreen() {
+function StudentProfileScreenContent() {
   const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
   // undefined = loading, null = could not load, 'not_found' = no such student.
@@ -126,7 +127,7 @@ export default function StudentProfileScreen() {
       <Button
         icon="calls"
         label={t('profile.logCall')}
-        onPress={() => router.push({ pathname: '/staff/call/[id]', params: { id: student.id } })}
+        onPress={() => router.push({ pathname: '/staff/call/[id]', params: { id: student.id, from: 'profile' } })}
       />
       <Button
         variant="secondary"
@@ -294,5 +295,14 @@ export default function StudentProfileScreen() {
       {/* Phase 2 slice 8 (C19): items on loan. */}
       <HeldItemsPanel by={{ studentId: student.id }} openable />
     </Screen>
+  );
+}
+
+/** Checks the address's id before the screen loads anything (D6-07). */
+export default function StudentProfileScreen() {
+  return (
+    <RouteIdGuard kind="uuid">
+      <StudentProfileScreenContent />
+    </RouteIdGuard>
   );
 }

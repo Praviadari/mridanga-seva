@@ -18,6 +18,7 @@ import { ListRow } from '@/components/list-row';
 import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
 import { QrScanner } from '@/components/qr-scanner';
+import { RouteIdGuard } from '@/components/route-id-guard';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { TextField } from '@/components/text-field';
@@ -45,7 +46,7 @@ const SAME_LABEL_PAUSE_MS = 4000;
 type Loaded = { stocktake: Stocktake; seenIds: Set<number>; items: InventoryItem[] };
 
 /** One count. */
-export default function StocktakeScreen() {
+function StocktakeScreenContent() {
   const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { profile } = useAuth();
@@ -255,3 +256,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 });
+
+/** Checks the address's id before the screen loads anything (D6-07). */
+export default function StocktakeScreen() {
+  return (
+    <RouteIdGuard kind="number">
+      <StocktakeScreenContent />
+    </RouteIdGuard>
+  );
+}

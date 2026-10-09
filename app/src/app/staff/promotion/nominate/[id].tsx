@@ -17,6 +17,7 @@ import { Checkbox } from '@/components/checkbox';
 import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
 import { CriteriaList, levelStep } from '@/components/promotion-parts';
+import { RouteIdGuard } from '@/components/route-id-guard';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { TextField } from '@/components/text-field';
@@ -24,7 +25,7 @@ import { fetchNominateOptions, nominate, REASON_MAX, type NominateOptions } from
 import { formatDate } from '@/lib/dates';
 
 /** The C22 form. */
-export default function NominateScreen() {
+function NominateScreenContent() {
   const { t } = useTranslation();
   const { profile } = useAuth();
   const myId = profile?.id ?? '';
@@ -191,3 +192,12 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
   },
 });
+
+/** Checks the address's id before the screen loads anything (D6-07). */
+export default function NominateScreen() {
+  return (
+    <RouteIdGuard kind="uuid">
+      <NominateScreenContent />
+    </RouteIdGuard>
+  );
+}

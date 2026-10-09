@@ -14,6 +14,7 @@ import { Button } from '@/components/button';
 import { ListRow } from '@/components/list-row';
 import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
+import { RouteIdGuard } from '@/components/route-id-guard';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { TextField } from '@/components/text-field';
@@ -37,7 +38,7 @@ import {
 const MAX_RESULTS = 20;
 
 /** The group's details, its members and the search to add people. */
-export default function GroupScreen() {
+function GroupScreenContent() {
   const { t } = useTranslation();
   const { id: idParam, created } = useLocalSearchParams<{ id: string; created?: string }>();
   const id = Number(idParam);
@@ -45,6 +46,8 @@ export default function GroupScreen() {
   const [loaded, setLoaded] = useState<GroupDetail | 'not_found' | null | undefined>(undefined);
   // The name and purpose as typed; filled from the group once, so a reload keeps the typing.
   const [form, setForm] = useState<GroupForm | null>(null);
+  // The name and purpose as they were when the form was filled; saving checks nobody changed them since (D6-15).
+  const [base, setBase] = useState<GroupForm | null>(null);
   const [errors, setErrors] = useState<GroupFormErrors>({});
   const [saved, setSaved] = useState(false);
   const [search, setSearch] = useState('');
@@ -56,7 +59,9 @@ export default function GroupScreen() {
     const result = await fetchGroup(id);
     setLoaded(result);
     if (result && result !== 'not_found') {
-      setForm((current) => current ?? { name: result.group.name, purpose: result.group.purpose ?? '' });
+      const stored = { name: result.group.name, purpose: result.group.purpose ?? '' };
+      setForm((current) => current ?? stored);
+      setBase((current) => current ?? stored);
     }
   }, [id]);
 
@@ -110,12 +115,20 @@ export default function GroupScreen() {
     if (Object.keys(problems).length > 0) return;
     setBusy('details');
     setActionError(null);
-    const outcome = await saveGroupDetails(group.id, form);
+    const outcome = await saveGroupDetails(group.id, form, base ?? form);
     setBusy(null);
     if (outcome.errors) setErrors(outcome.errors);
-    else if (outcome.errorKey) setActionError(t(outcome.errorKey));
-    else {
+    else if (outcome.errorKey) {
+      setActionError(t(outcome.errorKey));
+      if (outcome.errorKey === 'groups.errors.changedMeanwhile') {
+        // Show the other person's version; the change is made again on top of it.
+        setForm(null);
+        setBase(null);
+        await load();
+      }
+    } else {
       setSaved(true);
+      setBase(form);
       await load();
     }
   }
@@ -226,5 +239,14 @@ export default function GroupScreen() {
         ) : null}
       </Section>
     </Screen>
+  );
+}
+
+/** Checks the address's id before the screen loads anything (D6-07). */
+export default function GroupScreen() {
+  return (
+    <RouteIdGuard kind="number">
+      <GroupScreenContent />
+    </RouteIdGuard>
   );
 }

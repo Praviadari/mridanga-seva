@@ -20,7 +20,7 @@ import { useAboutPrompt } from '@/lib/about-prompt';
 /** Pending-access screen with "Check again" and "Sign out". */
 export default function PendingScreen() {
   const { t } = useTranslation();
-  const { session, profile, profileFailed, refreshProfile } = useAuth();
+  const { session, profile, profileProblem, refreshProfile } = useAuth();
   const [checking, setChecking] = useState(false);
   // Step 2 of joining (docs/DECISIONS.md #164): opens by itself once; the card below opens it later.
   const waitingForDesk = !!profile?.active && profile.role === 'pending' && profile.ig_state !== 'active' && profile.ig_state !== 'blocked';
@@ -33,8 +33,11 @@ export default function PendingScreen() {
   }
 
   let message;
-  if (profileFailed || !profile) {
-    message = <Notice tone="error" title={t('pending.loadFailedTitle')}>{t('common.networkError')}</Notice>;
+  if (!profile) {
+    // Word each cause apart (D6-06): only a network failure is about the internet.
+    const body =
+      profileProblem === 'network' ? t('common.networkError') : profileProblem === 'server' ? t('pending.serverError') : t('pending.missingProfile');
+    message = <Notice tone="error" title={t('pending.loadFailedTitle')}>{body}</Notice>;
   } else if (!profile.active) {
     message = <Notice tone="error" title={t('pending.inactiveTitle')}>{t('pending.inactiveBody')}</Notice>;
   } else if (profile.role === 'kiosk') {

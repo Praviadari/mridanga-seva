@@ -17,6 +17,7 @@ import { ListRow } from '@/components/list-row';
 import { LoadingCards } from '@/components/loading-cards';
 import { MaterialRow } from '@/components/material-row';
 import { Notice } from '@/components/notice';
+import { RouteIdGuard } from '@/components/route-id-guard';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { fetchMaterials, type Material } from '@/data/materials';
@@ -27,7 +28,7 @@ import { spacing } from '@/theme/use-theme';
 type Loaded = { level: LevelSyllabus; materials: Material[] };
 
 /** One level's syllabus and lessons. */
-export default function LevelScreen() {
+function LevelScreenContent() {
   const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const levelId = Number(id);
@@ -200,3 +201,12 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
 });
+
+/** Checks the address's id before the screen loads anything (D6-07). */
+export default function LevelScreen() {
+  return (
+    <RouteIdGuard kind="number">
+      <LevelScreenContent />
+    </RouteIdGuard>
+  );
+}

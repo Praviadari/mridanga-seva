@@ -27,6 +27,7 @@ import {
 } from '@/data/follow-up';
 import { lastVisitText } from '@/i18n/labels';
 import { formatDate } from '@/lib/dates';
+import { useLatestLoad } from '@/lib/latest-load';
 
 /** The queue in groups, with a "mine / everyone" switch and a refresh button. */
 export default function FollowUpScreen() {
@@ -37,9 +38,12 @@ export default function FollowUpScreen() {
   const [queue, setQueue] = useState<FollowUpQueue | null | undefined>(undefined);
   const [scope, setScope] = useState<'everyone' | 'mine'>('everyone');
 
+  const beginLoad = useLatestLoad();
   const load = useCallback(async () => {
-    setQueue(await fetchFollowUpQueue());
-  }, []);
+    const isNewest = beginLoad();
+    const loaded = await fetchFollowUpQueue();
+    if (isNewest()) setQueue(loaded); // not an older load answering late (D6-19)
+  }, [beginLoad]);
 
   // Reload when coming back from the call screen: the student moves group or leaves the queue.
   useFocusEffect(

@@ -21,6 +21,7 @@ import { EmptyState } from '@/components/empty-state';
 import { ListRow } from '@/components/list-row';
 import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
+import { RouteIdGuard } from '@/components/route-id-guard';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { TextField } from '@/components/text-field';
@@ -56,7 +57,7 @@ type Mode = 'lend' | 'return' | 'check' | 'edit' | 'delete' | null;
 const EMPTY_FORM: ItemForm = { kind: 'fibreglass', label: '', category: '', notes: '', condition: 'good', conditionNote: '' };
 
 /** One inventory item. */
-export default function InventoryItemScreen() {
+function InventoryItemScreenContent() {
   const { t } = useTranslation();
   const params = useLocalSearchParams<{ id: string }>();
   const isNew = params.id === 'new';
@@ -495,3 +496,12 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
   },
 });
+
+/** Checks the address's id before the screen loads anything (D6-07). */
+export default function InventoryItemScreen() {
+  return (
+    <RouteIdGuard kind="number" allowNew>
+      <InventoryItemScreenContent />
+    </RouteIdGuard>
+  );
+}

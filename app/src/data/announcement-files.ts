@@ -296,6 +296,22 @@ export async function signedLinks(paths: string[], bucket: string = FILES_BUCKET
   }
 }
 
+/**
+ * The given files that are no longer in Storage (D5-14): an entry left behind when its file was
+ * removed but saving the announcement then failed. Null when Storage could not be asked (no
+ * internet): then nothing is known to be missing.
+ */
+export async function missingFiles(paths: string[], bucket: string = FILES_BUCKET): Promise<Set<string> | null> {
+  if (paths.length === 0) return new Set();
+  try {
+    const { data, error } = await supabase.storage.from(bucket).createSignedUrls(paths, 60);
+    if (error || !data) return null;
+    return new Set(data.flatMap((link) => (link.path && link.error ? [link.path] : [])));
+  } catch {
+    return null;
+  }
+}
+
 /** Turns a Storage error message into a translation key. */
 function storageErrorKey(message: string): MessageKey {
   if (/maximum allowed size|too large|payload/i.test(message)) return 'announcements.files.tooBig';

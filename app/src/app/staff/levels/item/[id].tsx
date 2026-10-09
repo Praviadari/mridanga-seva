@@ -18,6 +18,7 @@ import { EmptyState } from '@/components/empty-state';
 import { LoadingCards } from '@/components/loading-cards';
 import { MaterialRow } from '@/components/material-row';
 import { Notice } from '@/components/notice';
+import { RouteIdGuard } from '@/components/route-id-guard';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { Chip } from '@/components/status-chip';
@@ -43,7 +44,7 @@ import { spacing } from '@/theme/use-theme';
 type Loaded = { item: EditorItem | null; levelId: number; position: number; materials: Material[] };
 
 /** Add or edit one syllabus item. */
-export default function SyllabusItemScreen() {
+function SyllabusItemScreenContent() {
   const { t } = useTranslation();
   const params = useLocalSearchParams<{ id: string; level?: string }>();
   const isNew = params.id === 'new';
@@ -322,3 +323,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 });
+
+/** Checks the address's id before the screen loads anything (D6-07). */
+export default function SyllabusItemScreen() {
+  return (
+    <RouteIdGuard kind="number" allowNew>
+      <SyllabusItemScreenContent />
+    </RouteIdGuard>
+  );
+}

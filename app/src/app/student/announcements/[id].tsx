@@ -17,13 +17,14 @@ import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
 import { ReplyBox } from '@/components/reply-box';
 import { ReplyCard } from '@/components/reply-card';
+import { RouteIdGuard } from '@/components/route-id-guard';
 import { Screen } from '@/components/screen';
 import { fetchAnnouncement, markRead, sendReply, type MyAnnouncement } from '@/data/announcements';
 import { audienceName } from '@/i18n/labels';
 import { formatDateTime } from '@/lib/dates';
 
 /** The announcement's title, message, details and the reply box. */
-export default function MyAnnouncementScreen() {
+function MyAnnouncementScreenContent() {
   const { t } = useTranslation();
   const { id: idParam } = useLocalSearchParams<{ id: string }>();
   const id = Number(idParam);
@@ -123,5 +124,14 @@ export default function MyAnnouncementScreen() {
         </>
       ) : null}
     </Screen>
+  );
+}
+
+/** Checks the address's id before the screen loads anything (D6-07). */
+export default function MyAnnouncementScreen() {
+  return (
+    <RouteIdGuard kind="number">
+      <MyAnnouncementScreenContent />
+    </RouteIdGuard>
   );
 }

@@ -18,6 +18,7 @@ import { ChoiceGroup } from '@/components/choice-group';
 import { ListRow } from '@/components/list-row';
 import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
+import { RouteIdGuard } from '@/components/route-id-guard';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { Chip } from '@/components/status-chip';
@@ -47,7 +48,7 @@ const IN_FILTER: Record<Filter, (row: TrackerRow) => boolean> = {
 };
 
 /** The assessment, its releases and the tracker. */
-export default function StaffAssessmentScreen() {
+function StaffAssessmentScreenContent() {
   const { t } = useTranslation();
   const { area } = useAuth();
   const isGuru = area === 'guru';
@@ -288,3 +289,12 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
 });
+
+/** Checks the address's id before the screen loads anything (D6-07). */
+export default function StaffAssessmentScreen() {
+  return (
+    <RouteIdGuard kind="number">
+      <StaffAssessmentScreenContent />
+    </RouteIdGuard>
+  );
+}

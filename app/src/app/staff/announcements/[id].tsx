@@ -22,6 +22,7 @@ import { Notice } from '@/components/notice';
 import { ProgressBar } from '@/components/progress-bar';
 import { ReplyBox } from '@/components/reply-box';
 import { ReplyCard } from '@/components/reply-card';
+import { RouteIdGuard } from '@/components/route-id-guard';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import {
@@ -40,7 +41,7 @@ import { withMyReceipt } from '@/lib/announcement-receipt';
 import { formatDateTime } from '@/lib/dates';
 
 /** The announcement, its seen list, and the author's actions. */
-export default function StaffAnnouncementScreen() {
+function StaffAnnouncementScreenContent() {
   const { t } = useTranslation();
   const { profile } = useAuth();
   const myId = profile?.id ?? '';
@@ -171,7 +172,7 @@ export default function StaffAnnouncementScreen() {
   async function remove() {
     setBusy(true);
     setActionError(null);
-    const outcome = await deleteAnnouncement(a);
+    const outcome = await deleteAnnouncement(a, myId);
     setBusy(false);
     setConfirmingDelete(false);
     if (outcome.errorKey) setActionError(t(outcome.errorKey));
@@ -343,5 +344,14 @@ export default function StaffAnnouncementScreen() {
         </>
       ) : null}
     </Screen>
+  );
+}
+
+/** Checks the address's id before the screen loads anything (D6-07). */
+export default function StaffAnnouncementScreen() {
+  return (
+    <RouteIdGuard kind="number">
+      <StaffAnnouncementScreenContent />
+    </RouteIdGuard>
   );
 }

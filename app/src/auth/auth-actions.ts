@@ -18,6 +18,8 @@ import { currentLanguage } from '@/i18n';
 import { unregisterPush } from '@/lib/push';
 import { forgetStoredLogin, storedLoginUserId, supabase } from '@/lib/supabase';
 
+import { markOwnSignOut } from './session-end';
+
 /** A translation key, for example 'authErrors.invalidCredentials'. */
 export type MessageKey = ParseKeys;
 
@@ -176,12 +178,17 @@ export async function setNewPassword(password: string): Promise<AuthResult> {
  * The push token row stays on the server in that case; the phone's next sign-in replaces it.
  */
 export async function signOut(): Promise<void> {
-  clearSavedCard();
-  // Before signing out: deleting the token needs the login.
-  await unregisterPush();
-  const { error } = await supabase.auth.signOut({ scope: 'local' });
-  if (error && storedLoginUserId()) {
-    forgetStoredLogin();
-    await supabase.auth.signOut({ scope: 'local' });
+  markOwnSignOut(true);
+  try {
+    clearSavedCard();
+    // Before signing out: deleting the token needs the login.
+    await unregisterPush();
+    const { error } = await supabase.auth.signOut({ scope: 'local' });
+    if (error && storedLoginUserId()) {
+      forgetStoredLogin();
+      await supabase.auth.signOut({ scope: 'local' });
+    }
+  } finally {
+    markOwnSignOut(false);
   }
 }

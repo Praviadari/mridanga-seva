@@ -18,6 +18,7 @@ import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
 import { PersonHeader } from '@/components/person-header';
 import { ProgressBar } from '@/components/progress-bar';
+import { RouteIdGuard } from '@/components/route-id-guard';
 import { Screen } from '@/components/screen';
 import { SyllabusItemCard } from '@/components/syllabus-item-card';
 import { TextField } from '@/components/text-field';
@@ -46,7 +47,7 @@ type Open = { itemId: number; mode: 'remark' | 'untick' };
 type CardMessage = { itemId: number; tone: 'error' | 'success' | 'info'; key: NonNullable<TickOutcome['errorKey']> };
 
 /** The level choice, the count of ticked items, and one card per item of that level. */
-export default function SyllabusTickOffScreen() {
+function SyllabusTickOffScreenContent() {
   const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
   // undefined = loading, null = could not load, 'not_found' = no such student.
@@ -257,5 +258,14 @@ export default function SyllabusTickOffScreen() {
         );
       })}
     </Screen>
+  );
+}
+
+/** Checks the address's id before the screen loads anything (D6-07). */
+export default function SyllabusTickOffScreen() {
+  return (
+    <RouteIdGuard kind="uuid">
+      <SyllabusTickOffScreenContent />
+    </RouteIdGuard>
   );
 }

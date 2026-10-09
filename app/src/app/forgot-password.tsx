@@ -23,6 +23,7 @@ export default function ForgotPasswordScreen() {
   const [busy, setBusy] = useState(false);
 
   async function submit() {
+    if (busy) return; // Enter pressed again while the request runs (D6-17)
     setFieldError(isValidEmail(email) ? null : 'validation.emailInvalid');
     setFormError(null);
     if (!isValidEmail(email)) return;

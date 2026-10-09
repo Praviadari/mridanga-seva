@@ -8,7 +8,7 @@
 
 import type { ParseKeys } from 'i18next';
 
-import { parseDayMonthYear, todayLocal } from '@/lib/dates';
+import { addDays, parseDayMonthYear, todayLocal } from '@/lib/dates';
 import { readLogged } from '@/lib/logged-read';
 import { supabase } from '@/lib/supabase';
 
@@ -263,6 +263,9 @@ export const EMPTY_CALL_FORM: CallForm = { outcome: null, reason: null, nextDate
 /** A problem with one field of the call form, as the key of the message to show under it. */
 export type CallFormErrors = Partial<Record<keyof CallForm, MessageKey>>;
 
+/** How far ahead a pause or a "coming back on" date may be; the database allows 366 (0038). */
+const MAX_DAYS_AHEAD = 365;
+
 /**
  * Checks the call form before it is sent. `today` is 'YYYY-MM-DD' at the class. The database checks
  * the same things again (log_call in migration 0005).
@@ -281,6 +284,8 @@ export function checkCallForm(form: CallForm, today: string): CallFormErrors {
     if (!form.nextDate.trim()) errors.nextDate = 'callLog.errors.dateRequired';
     else if (!iso) errors.nextDate = 'callLog.errors.dateInvalid';
     else if (iso < today) errors.nextDate = 'callLog.errors.datePast';
+    // A year at most (D6-14): a typo like 2062 would hide the student from follow-up for decades.
+    else if (iso > addDays(today, MAX_DAYS_AHEAD)) errors.nextDate = 'callLog.errors.dateTooFar';
   }
   return errors;
 }
@@ -321,6 +326,8 @@ function callErrorKey(message: string): MessageKey {
       return 'callLog.errors.dateRequired';
     case 'next_date_past':
       return 'callLog.errors.datePast';
+    case 'next_date_too_far':
+      return 'callLog.errors.dateTooFar';
     case 'student_withdrawn': // consent withdrawn, the record is frozen (0025)
       return 'common.studentWithdrawn';
   }

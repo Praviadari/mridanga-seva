@@ -2,10 +2,20 @@
 
 import { useLocalSearchParams } from 'expo-router';
 
+import { RouteIdGuard } from '@/components/route-id-guard';
 import { EventStudentsScreen } from '@/screens/event-students';
 
 /** Route. */
-export default function EventPerformersRoute() {
+function EventPerformersRouteContent() {
   const { id } = useLocalSearchParams<{ id: string }>();
   return <EventStudentsScreen id={Number(id)} mode="performers" />;
+}
+
+/** Checks the address's id before the screen loads anything (D6-07). */
+export default function EventPerformersRoute() {
+  return (
+    <RouteIdGuard kind="number">
+      <EventPerformersRouteContent />
+    </RouteIdGuard>
+  );
 }

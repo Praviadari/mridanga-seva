@@ -36,6 +36,7 @@ export function ReplyBox({ title, note, onSend }: ReplyBoxProps) {
   const [sent, setSent] = useState(false);
 
   async function send() {
+    if (sending) return;
     const problem = checkReply(text);
     setError(problem);
     setSent(false);
@@ -47,7 +48,8 @@ export function ReplyBox({ title, note, onSend }: ReplyBoxProps) {
       setError(failed);
       return;
     }
-    setText('');
+    // Words typed while it was sending stay in the box (FS4-07); the part that went out goes.
+    setText((current) => (current.startsWith(text) ? current.slice(text.length).trimStart() : current));
     setSent(true);
   }
 

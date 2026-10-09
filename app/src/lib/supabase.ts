@@ -9,7 +9,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { AppState, Platform } from 'react-native';
 
-import { readLocal, removeLocal } from './local-storage'; // also provides `localStorage` on Android and iOS
+import { deviceStorage, readLocal, removeLocal } from './local-storage';
 
 // Expo copies EXPO_PUBLIC_* values into the app when it is built, so they are public. That is
 // fine for the URL and the publishable (anon) key, because row-level security guards the data.
@@ -87,7 +87,7 @@ export const supabase = createClient(
   supabaseConfigProblem ? 'not-configured' : key,
   {
     auth: {
-      storage: localStorage,
+      storage: deviceStorage,
       autoRefreshToken: true,
       persistSession: true,
       // Only the web version opens links from emails (confirm sign-up, reset password), which

@@ -16,6 +16,7 @@ import { Button } from '@/components/button';
 import { FormErrorSummary } from '@/components/form-error-summary';
 import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
+import { RouteIdGuard } from '@/components/route-id-guard';
 import { Screen } from '@/components/screen';
 import { isPicked } from '@/data/announcement-files';
 import {
@@ -41,7 +42,7 @@ type Loaded = {
 };
 
 /** The filled-in form and the Save button. */
-export default function EditAnnouncementScreen() {
+function EditAnnouncementScreenContent() {
   const { t } = useTranslation();
   const { profile } = useAuth();
   const myId = profile?.id ?? '';
@@ -53,6 +54,10 @@ export default function EditAnnouncementScreen() {
   const [errors, setErrors] = useState<AnnouncementFormErrors>({});
   const [serverError, setServerError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  // The announcement as it was when the form was filled in: saving checks nobody changed it since (D6-15).
+  const [base, setBase] = useState<Announcement | null>(null);
+  // True after a save found it changed by someone else; offers to load the latest version.
+  const [stale, setStale] = useState(false);
 
   const load = useCallback(async () => {
     const [detail, options] = await Promise.all([fetchStaffAnnouncement(id, myId), fetchComposeOptions(myId)]);
@@ -72,6 +77,7 @@ export default function EditAnnouncementScreen() {
     setLoaded({ announcement, authorName: detail.authorName, groups, hasMentees: options.hasMentees });
     // Filled in only the first time, so coming back to the screen never wipes what was typed.
     setForm((current) => current ?? formFromAnnouncement(announcement));
+    setBase((current) => current ?? announcement);
   }, [id, myId]);
 
   useFocusEffect(
@@ -144,10 +150,11 @@ export default function EditAnnouncementScreen() {
     setErrors(found);
     if (Object.keys(found).length > 0) return;
     setSaving(true);
-    const outcome = await updateAnnouncement(original, form, myId);
+    const outcome = await updateAnnouncement(base ?? original, form, myId);
     setSaving(false);
     if (outcome.errorKey) {
       setServerError(t(outcome.errorKey));
+      setStale(outcome.errorKey === 'announcements.errors.changedMeanwhile');
       return;
     }
     backToAnnouncement();
@@ -170,9 +177,33 @@ export default function EditAnnouncementScreen() {
       />
       <FormErrorSummary errors={errors} />
       {serverError ? <Notice tone="error">{serverError}</Notice> : null}
+      {stale ? (
+        <Button
+          variant="secondary"
+          icon="refresh"
+          label={t('announcements.edit.loadLatest')}
+          onPress={() => {
+            // The latest version replaces what was typed here; the person then makes their change again.
+            setForm(null);
+            setBase(null);
+            setStale(false);
+            setServerError(null);
+            void load();
+          }}
+        />
+      ) : null}
       {saving && form.files.some(isPicked) ? <AppText tone="muted">{t('announcements.files.uploading')}</AppText> : null}
       <Button label={t('announcements.edit.save')} loading={saving} onPress={() => void save()} />
       <Button variant="link" label={t('announcements.edit.cancel')} onPress={backToAnnouncement} />
     </Screen>
+  );
+}
+
+/** Checks the address's id before the screen loads anything (D6-07). */
+export default function EditAnnouncementScreen() {
+  return (
+    <RouteIdGuard kind="number">
+      <EditAnnouncementScreenContent />
+    </RouteIdGuard>
   );
 }

@@ -4,10 +4,20 @@
 
 import { useLocalSearchParams } from 'expo-router';
 
+import { RouteIdGuard } from '@/components/route-id-guard';
 import { AssessmentFormScreen } from '@/screens/assessment-form';
 
 /** Edits the assessment `id`. */
-export default function EditAssessmentScreen() {
+function EditAssessmentScreenContent() {
   const { id } = useLocalSearchParams<{ id: string }>();
   return <AssessmentFormScreen editId={Number(id)} />;
+}
+
+/** Checks the address's id before the screen loads anything (D6-07). */
+export default function EditAssessmentScreen() {
+  return (
+    <RouteIdGuard kind="number">
+      <EditAssessmentScreenContent />
+    </RouteIdGuard>
+  );
 }

@@ -18,6 +18,7 @@ import { Checkbox } from '@/components/checkbox';
 import { ChoiceGroup } from '@/components/choice-group';
 import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
+import { RouteIdGuard } from '@/components/route-id-guard';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { TextField } from '@/components/text-field';
@@ -39,7 +40,7 @@ import {
 const EMPTY: Record<IgLanguage, string> = { en: '', te: '', hi: '' };
 
 /** Add or edit one sloka. */
-export default function EditSlokaScreen() {
+function EditSlokaScreenContent() {
   const { t } = useTranslation();
   const { profile } = useAuth();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -308,5 +309,14 @@ export default function EditSlokaScreen() {
         </AppText>
       ) : null}
     </Screen>
+  );
+}
+
+/** Checks the address's id before the screen loads anything (D6-07). */
+export default function EditSlokaScreen() {
+  return (
+    <RouteIdGuard kind="number" allowNew>
+      <EditSlokaScreenContent />
+    </RouteIdGuard>
   );
 }

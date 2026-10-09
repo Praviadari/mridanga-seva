@@ -15,6 +15,7 @@ import { Checkbox } from '@/components/checkbox';
 import { ListRow } from '@/components/list-row';
 import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
+import { RouteIdGuard } from '@/components/route-id-guard';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { TextField } from '@/components/text-field';
@@ -22,7 +23,7 @@ import { deleteTheme, fetchCanEdit, fetchSlokas, fetchThemes, firstLine, saveThe
 import { spacing } from '@/theme/use-theme';
 
 /** Add or edit one theme. */
-export default function EditThemeScreen() {
+function EditThemeScreenContent() {
   const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const isNew = id === 'new';
@@ -220,3 +221,12 @@ const styles = StyleSheet.create({
   item: { gap: spacing.xs },
   moves: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
 });
+
+/** Checks the address's id before the screen loads anything (D6-07). */
+export default function EditThemeScreen() {
+  return (
+    <RouteIdGuard kind="number" allowNew>
+      <EditThemeScreenContent />
+    </RouteIdGuard>
+  );
+}

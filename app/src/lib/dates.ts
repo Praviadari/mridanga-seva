@@ -70,6 +70,12 @@ export function todayLocal(): string {
   return wallClock(Date.now()).slice(0, 10);
 }
 
+/** The day days after a 'YYYY-MM-DD' day (before it when negative), as 'YYYY-MM-DD'. */
+export function addDays(isoDate: string, days: number): string {
+  const [y, m, d] = isoDate.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10);
+}
+
 /** The date at the class of a moment from the database (an ISO timestamp), as 'YYYY-MM-DD'. */
 export function localDate(timestamp: string): string {
   return wallClock(Date.parse(timestamp)).slice(0, 10);

@@ -11,6 +11,7 @@ import { EmergencyPart, HeardPart, OccupationPart, YouPart } from '@/components/
 import { Button } from '@/components/button';
 import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
+import { RouteIdGuard } from '@/components/route-id-guard';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import {
@@ -33,7 +34,7 @@ import { supabase } from '@/lib/supabase';
 type Loaded = { name: string; minor: boolean; options: OptionSets; referrers: Referrer[] };
 
 /** The staff form for one student's details. */
-export default function StudentDetailsScreen() {
+function StudentDetailsScreenContent() {
   const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
   // undefined = loading, null = failed, 'missing' = the database has no 0036 yet.
@@ -142,5 +143,14 @@ export default function StudentDetailsScreen() {
       {message ? <Notice tone={message.tone}>{message.text}</Notice> : null}
       <Button icon="check" label={t('studentDetails.save')} onPress={() => void save()} loading={busy} />
     </Screen>
+  );
+}
+
+/** Checks the address's id before the screen loads anything (D6-07). */
+export default function StudentDetailsScreen() {
+  return (
+    <RouteIdGuard kind="uuid">
+      <StudentDetailsScreenContent />
+    </RouteIdGuard>
   );
 }
