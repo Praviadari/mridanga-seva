@@ -169,7 +169,8 @@ export async function setNewPassword(password: string): Promise<AuthResult> {
  * Signs out on this device only. Supabase's default ('global') would also sign the person out
  * of every other phone and browser they use. Also deletes the student's QR card saved on this
  * device (src/data/my-student.ts) and this phone's push token (src/lib/push.ts), so the next
- * person on a shared phone can neither use the card nor get this person's notifications.
+ * person on a shared phone can neither use the card nor get this person's notifications. The auth
+ * provider then clears the notification list and cached photos too (src/lib/device-traces.ts).
  *
  * Without internet and with an expired access token, Supabase's signOut cannot refresh the login
  * and returns an error while keeping it saved, so the person would stay signed in. Then the

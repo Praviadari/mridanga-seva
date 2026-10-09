@@ -3414,6 +3414,7 @@ whole text in the roll number (lib/student-search.ts); rows show a Left / Paused
 them in makes them Active); "Showing the first 20, type more" when there are more.
 
 **Consequences.** A real re-entry within 30 seconds of leaving needs a tap ("In") instead of a scan.
+(The search itself runs in 0039's search_students from #188.)
 
 ## 181. Saving an announcement or group never undoes someone else's change or loses files — 9 Oct 2026
 
@@ -3484,6 +3485,103 @@ wait and an error notice); the APK's embedded copy changes with the next APK (br
 (visits recorded at the home centre): the audit's default holds, home centre until a second centre
 exists. Not cited by the audit but the same pattern, left as they are: other screens' focus reloads
 (D6-19 fixed the two cited), and `openURL` without a catch on the lesson, centre map and label links.
+
+## 186. Every sign-out clears what the person left on the device — 9 Oct 2026
+
+**Context.** On a shared family phone or computer the next person could find the last person's
+traces: the QR card stayed when the server ended a login (D3-05, only Sign out deleted it), the
+notification list kept their announcements (FLOW-04), photos stayed in the image cache and the
+pickers' copies in the cache folder (D3-09), and the push token was deleted only if this app run had
+registered it (D2-05).
+
+**Decision.** `lib/device-traces.ts` runs on every SIGNED_OUT event, so also when the server ended
+the login: it deletes the saved QR card, dismisses this app's notifications, clears expo-image's
+memory and disk cache, and deletes the ImageManipulator, DocumentPicker and ImagePicker cache
+folders. The push token is also kept on the device (`pushToken`), so Sign out deletes it in a later
+app run too; the copy goes only when the delete worked. While nobody is signed in, a notice that
+still arrives is not shown while the app is open.
+
+**Consequences.** Photos stay in the disk cache while the person is signed in, so a screen opens
+them without downloading again (D9-06); they go at sign-out, not when an announcement is deleted.
+The OS still shows a notice that arrives while the app is closed and nobody is signed in: that needs
+the token delete to have failed (no internet at sign-out) and nobody to have signed in since.
+
+## 187. File links: the app chooses their life; phones open files with a two-minute link — 9 Oct 2026
+
+**Context.** D3-08: Storage signs a link for whatever time the app asks; the hour of #32 is the
+app's choice, and a link opened in a browser stays in its history and works for anyone until it
+expires. D3-15 / D4-16: type and metadata checks on uploads are in the app only; PDFs keep their name
+and inner details (author); EXIF removal from photos was assumed, not checked.
+
+**Decision.** Screens keep loading hour-long links to show files (FS4-03 renews them). On a phone,
+Open asks for a fresh link that works 2 minutes (`OPEN_LINK_SECONDS`) and opens that. The web opens
+the screen's link straight from the tap (a browser blocks a tab opened after waiting). The
+announcement form tells the author, once a PDF is added, that readers see its name and inner
+details. Photos: expo-image-manipulator re-encodes with Android's `Bitmap.compress` and iOS's
+`jpegData`, neither of which writes EXIF (read in the installed module's source, 9 Oct 2026); a
+check on a real phone photo is still worth doing once.
+
+**Consequences.** Storage's checks stay as 0010 set them (size, MIME list, path); a staff uploader
+could still send a PDF with metadata. Stripping PDF metadata or checking types on the server would
+need an Edge Function: not done.
+
+## 188. Staff search students through a function, not the address — 9 Oct 2026
+
+**Context.** ENT-08: the C5 and lending searches put the typed letters of a child's name into the
+request address (`?or=(full_name.ilike...)`), which platform request logs keep.
+
+**Decision.** 0039 `search_students(p_text, p_limit, p_with_left)`, called by POST: every word of the
+name in any order, or the whole text in the roll number (#180's rules), `%` and `_` searched as
+letters, staff only, runs as the caller (row-level security), at most 50 rows. C5 and lending use it;
+lending leaves Left students out.
+
+**Consequences.** The staff-name part of the lending search still filters by address (adults'
+names). The app's `studentSearchFilter` is gone; `cleanSearchText` stays.
+
+## 189. A switched-off person's phones are forgotten at once — 9 Oct 2026
+
+**Context.** D2-06: push tokens were never removed for people switched off or put back to waiting;
+the queue no longer sends to them, so the rows only kept device identifiers, many of minors.
+
+**Decision.** 0039 trigger `profiles_forget_phones`: when `active` turns false or the role is no
+longer guru, coordinator or student, that person's push tokens are deleted; the ones kept today are
+deleted once.
+
+**Consequences.** A token of someone still using the app but not opening it is kept; an age limit
+(the audit proposes 60 days) waits for the team's retention periods (audit section 6 H).
+
+## 190. A reset link names the account and offers to sign out of the browser — 9 Oct 2026
+
+**Context.** FLOW-05: links in emails open the web version, which signs the person in there; someone
+who uses the Android app or a borrowed computer stayed signed in in that browser. D3-03: a crafted
+link can swap the browser's session, and the reset screen did not say whose password was set.
+
+**Decision.** The reset screen shows "Setting a new password for <email>" and, beside Save, "Save
+and sign out of this browser" with a note for shared computers and Android users. On the phone,
+the sign-up and forgot-password confirmations say the link opens in the browser and to sign in in
+the app afterwards (en/te/hi).
+
+**Consequences.** token_hash links with `verifyOtp` (D3-03's real fix) wait for the team (#192).
+
+## 191. Small hardening from the security backlog — 9 Oct 2026
+
+**Decision.** D3-12: a requested path is decoded once, `\` read as `/`, slashes collapsed and dot
+segments resolved before it is compared with an area (`requested-path.ts pathOnly`); control
+characters count as nothing asked for; a failing `getInitialURL` opens the home screen. D3-11: the
+Supabase URL and key are trimmed before the secret-key check. D2-14: push bodies are cut by code
+points, never inside an emoji. D2-16: `SUPABASE_SECRET_KEYS` is read only as an object of non-empty
+texts ("default" first), else the legacy key; the variable used is logged once per start, never the
+key. D4-17: the minor-consent refusal names the roll number, not the child (0039).
+
+## 192. Security backlog items not changed, and those waiting for the team — 9 Oct 2026
+
+**Decision.** Waiting for the team, with the default this chat would take: D3-03 token_hash email
+links with `verifyOtp` (after the pilot); D3-04 recovery marker kept until USER_UPDATED, so a reload
+still asks for the new password; SURF-04 CAPTCHA (Turnstile) on sign-up and reset, decided after the
+pilot's sign-up volume; FS2-08 a minor's guardians listed first on the call screen. Not changed:
+D3-13 (custom scheme carries no secret; App Links come with brief 9), D3-16 (Confirm email on
+wherever real emails exist, OPERATIONS step 4; LIVE is decision A), D2-12 (fixed by #114). D3-11's
+build-time guard needs an `eas-build-pre-install` script in package.json: brief 9.
 
 ## 212. Phase 3 reads a location only at a check-in or check-out, never tracks — 9 Oct 2026
 

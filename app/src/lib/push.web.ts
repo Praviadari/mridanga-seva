@@ -10,6 +10,9 @@ export async function registerForPush(): Promise<void> {}
 /** Does nothing on the web. */
 export async function unregisterPush(): Promise<void> {}
 
+/** Does nothing on the web. */
+export async function dismissNotifications(): Promise<void> {}
+
 /** Does nothing on the web. `area` is taken only to match ./push.ts. */
 export function usePushTaps(area: Area): void {
   void area;

@@ -24,15 +24,21 @@ import type { Area } from '@/auth/types';
 import { isNoticeScreen } from '@/data/notifications';
 import i18n from '@/i18n';
 
-import { supabase } from './supabase';
+import { readLocal, removeLocal, writeLocal } from './local-storage';
+import { storedLoginUserId, supabase } from './supabase';
 
 type Notifications = typeof NotificationsModule;
 
 /** The Android notification channel; the Edge Function sends with the same id (messages.ts). */
 const CHANNEL_ID = 'announcements';
 
-/** The token this phone saved for the signed-in person, so sign-out can delete it. */
+/**
+ * The token this phone saved for the signed-in person, so sign-out can delete it. Also kept on the
+ * device (PUSH_TOKEN_KEY), so a sign-out in a later app run, before push has registered again, still
+ * deletes it (D2-05).
+ */
 let savedToken: string | null = null;
+const PUSH_TOKEN_KEY = 'pushToken';
 
 /** Notifications whose tap has been handled, so one tap never opens the screen twice. */
 const handled = new Set<string>();
@@ -76,13 +82,13 @@ function notifications(): Promise<Notifications | null> {
  * (src/auth/requested-path.ts), so the start page opens it once the login is checked.
  */
 function setUp(module: Notifications): Notifications {
+  // While nobody is signed in on this phone, a notice that still arrives (its token could not be
+  // deleted for lack of internet) is not shown: it is someone else's (FLOW-04).
   module.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowBanner: true,
-      shouldShowList: true,
-      shouldPlaySound: true,
-      shouldSetBadge: false,
-    }),
+    handleNotification: async () => {
+      const signedIn = storedLoginUserId() !== null;
+      return { shouldShowBanner: signedIn, shouldShowList: signedIn, shouldPlaySound: signedIn, shouldSetBadge: false };
+    },
   });
   const first = module.getLastNotificationResponse();
   const screen = screenOf(first);
@@ -131,28 +137,47 @@ export async function registerForPush(): Promise<void> {
     if (status !== 'granted') return;
     const token = (await module.getExpoPushTokenAsync({ projectId })).data;
     const { error } = await supabase.rpc('register_push_token', { p_token: token, p_platform: 'android' });
-    if (!error) savedToken = token;
+    if (!error) {
+      savedToken = token;
+      writeLocal(PUSH_TOKEN_KEY, token);
+    }
   } catch {
     // For example no Firebase key yet, or no internet: try again at the next start.
   }
 }
 
 /**
- * Deletes this phone's token for the signed-in person. Call just before signing out, while the
- * login still works. Waits at most 3 seconds, so signing out never hangs without internet; the
- * next person to sign in on the phone takes the token over anyway.
+ * Deletes this phone's token for the signed-in person: the one saved in this app run, or the copy
+ * kept on the device from an earlier run (D2-05). Call just before signing out, while the login
+ * still works. Waits at most 3 seconds, so signing out never hangs without internet; the device's
+ * copy is kept until a delete works, and the next person to sign in on the phone takes the token
+ * over anyway.
  */
 export async function unregisterPush(): Promise<void> {
-  const token = savedToken;
+  const token = savedToken ?? readLocal(PUSH_TOKEN_KEY);
   if (!token) return;
   savedToken = null;
   try {
-    await Promise.race([
+    const result = await Promise.race([
       supabase.from('push_tokens').delete().eq('token', token),
-      new Promise((resolve) => setTimeout(resolve, 3000)),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000)),
     ]);
+    if (result && !result.error) removeLocal(PUSH_TOKEN_KEY);
   } catch {
     // Signing out goes on.
+  }
+}
+
+/**
+ * Removes this app's notifications from the phone's notification list, so the next person on a
+ * shared phone does not read the last person's (FLOW-04). Used at every sign-out.
+ */
+export async function dismissNotifications(): Promise<void> {
+  const module = await notifications();
+  try {
+    await module?.dismissAllNotificationsAsync();
+  } catch {
+    // Nothing to remove, or push is not set up.
   }
 }
 

@@ -10,9 +10,9 @@ import { Image } from 'expo-image';
 import * as WebBrowser from 'expo-web-browser';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AppState, Pressable, StyleSheet, View } from 'react-native';
+import { AppState, Platform, Pressable, StyleSheet, View } from 'react-native';
 
-import { signedLinks, type Attachment } from '@/data/announcement-files';
+import { FILES_BUCKET, OPEN_LINK_SECONDS, signedLinks, type Attachment } from '@/data/announcement-files';
 import { fileSizeText } from '@/i18n/labels';
 import { radius, spacing, useTheme } from '@/theme/use-theme';
 
@@ -77,12 +77,18 @@ export function AttachmentList({ attachments }: AttachmentListProps) {
   const placeholder = links === undefined ? t('common.loading') : t('announcements.files.notAvailable');
   const photos = attachments.filter((a) => a.kind === 'image');
   const pdfs = attachments.filter((a) => a.kind !== 'image');
-  // Opened straight from the tap (no waiting first), so a browser does not block the new tab.
-  const opener = (url: string | undefined) => () => {
+  // The web opens the screen's link straight from the tap (no waiting first), so the browser does
+  // not block the new tab. A phone first asks for a link that works only two minutes, so the copy
+  // left in the browser's history soon stops working (D3-08).
+  const opener = (path: string, url: string | undefined) => () => {
     if (!url) return;
     setOpenFailed(false);
+    const link =
+      Platform.OS === 'web'
+        ? Promise.resolve(url)
+        : signedLinks([path], FILES_BUCKET, OPEN_LINK_SECONDS).then((fresh) => fresh.get(path) ?? url);
     // D6-16: no browser to open it in, or the phone refused: say so instead of nothing happening.
-    WebBrowser.openBrowserAsync(url).catch(() => setOpenFailed(true));
+    link.then((address) => WebBrowser.openBrowserAsync(address)).catch(() => setOpenFailed(true));
   };
 
   return (
@@ -99,7 +105,7 @@ export function AttachmentList({ attachments }: AttachmentListProps) {
                 accessibilityRole="button"
                 accessibilityLabel={t('announcements.files.openPhoto', { name: a.name })}
                 disabled={!url}
-                onPress={opener(url)}
+                onPress={opener(a.path, url)}
                 style={[
                   styles.photoFrame,
                   // One photo takes the whole width; several share a row as squares.
@@ -137,7 +143,7 @@ export function AttachmentList({ attachments }: AttachmentListProps) {
                 {url ? t('announcements.files.pdfLine', { size: fileSizeText(t, a.size) }) : placeholder}
               </AppText>
             </View>
-            <Button variant="secondary" label={t('announcements.files.open')} disabled={!url} onPress={opener(url)} />
+            <Button variant="secondary" label={t('announcements.files.open')} disabled={!url} onPress={opener(a.path, url)} />
           </View>
         );
       })}

@@ -12,7 +12,7 @@
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { TextInput } from 'react-native';
+import { Platform, type TextInput } from 'react-native';
 
 import {
   isValidEmail,
@@ -142,6 +142,8 @@ export default function SignUpScreen() {
         <Notice tone="success" title={t('signUp.checkEmailTitle')}>
           {t('signUp.checkEmail', { email: sentTo })}
         </Notice>
+        {/* The link opens the web version; the phone app needs its own sign-in after it (FLOW-05). */}
+        {Platform.OS !== 'web' ? <AppText tone="muted">{t('common.linkOpensInBrowser')}</AppText> : null}
         <AppText tone="muted">{t('signUp.nextStep')}</AppText>
         <Button label={t('forgotPassword.backToSignIn')} onPress={() => router.replace('/sign-in')} />
       </Screen>

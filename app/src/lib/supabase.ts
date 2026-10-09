@@ -14,8 +14,10 @@ import { deviceStorage, readLocal, removeLocal } from './local-storage';
 // Expo copies EXPO_PUBLIC_* values into the app when it is built, so they are public. That is
 // fine for the URL and the publishable (anon) key, because row-level security guards the data.
 // Write process.env.EXPO_PUBLIC_... in full here: Expo only replaces the literal expression.
-const url = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
-const key = process.env.EXPO_PUBLIC_SUPABASE_KEY ?? '';
+// Trimmed: a space or line break copied in with the key must not hide a secret key from the check
+// below (D3-11).
+const url = (process.env.EXPO_PUBLIC_SUPABASE_URL ?? '').trim();
+const key = (process.env.EXPO_PUBLIC_SUPABASE_KEY ?? '').trim();
 
 /**
  * Why the app cannot connect, or null when the settings look right. The root layout shows a

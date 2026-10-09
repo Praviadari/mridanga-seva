@@ -54,10 +54,41 @@ export function screenFor(role: string, announcementId: number): string {
     : `/student/announcements/${announcementId}`;
 }
 
-/** Shortens the text to BODY_LENGTH characters, ending with "…" when something was cut. */
+/**
+ * Shortens the text to BODY_LENGTH characters, ending with "…" when something was cut. Counts
+ * whole characters (code points), so an emoji at the cut is kept or dropped whole, never split
+ * into a broken half (D2-14).
+ */
 export function shortBody(text: string): string {
-  const oneLine = text.replace(/\s+/g, ' ').trim();
-  return oneLine.length <= BODY_LENGTH ? oneLine : `${oneLine.slice(0, BODY_LENGTH - 1).trimEnd()}…`;
+  const chars = Array.from(text.replace(/\s+/g, ' ').trim());
+  return chars.length <= BODY_LENGTH ? chars.join('') : `${chars.slice(0, BODY_LENGTH - 1).join('').trimEnd()}…`;
+}
+
+/**
+ * Picks the project's secret key from the two variables Supabase gives every Edge Function (D2-16):
+ * `secretKeys` = SUPABASE_SECRET_KEYS, a JSON object of name → key, and `legacyKey` =
+ * SUPABASE_SERVICE_ROLE_KEY. Only an object whose values are non-empty texts is accepted (its
+ * "default" key first); any other shape falls back to the legacy key. `source` names the variable
+ * used, for the log; the key itself is never logged.
+ */
+export function pickServiceKey(
+  secretKeys: string | undefined,
+  legacyKey: string | undefined,
+): { key: string; source: string } | null {
+  if (secretKeys) {
+    try {
+      const parsed: unknown = JSON.parse(secretKeys);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        const entries = Object.entries(parsed as Record<string, unknown>);
+        const named = entries.find(([name, value]) => name === 'default' && typeof value === 'string' && value !== '');
+        const found = named ?? entries.find(([, value]) => typeof value === 'string' && value !== '');
+        if (found) return { key: found[1] as string, source: `SUPABASE_SECRET_KEYS.${found[0]}` };
+      }
+    } catch {
+      // Not JSON: fall back to the older variable below.
+    }
+  }
+  return legacyKey ? { key: legacyKey, source: 'SUPABASE_SERVICE_ROLE_KEY' } : null;
 }
 
 /**

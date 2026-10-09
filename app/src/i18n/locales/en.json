@@ -14,7 +14,8 @@
     "genericError": "Something went wrong. Please try again.",
     "studentWithdrawn": "Consent for this student was withdrawn. Nothing new can be recorded for them; ask the Guru.",
     "networkError": "Cannot reach the server. Check your internet connection.",
-    "fixFieldsAbove": "Some fields need a fix ({{count}}). The messages are in red above."
+    "fixFieldsAbove": "Some fields need a fix ({{count}}). The messages are in red above.",
+    "linkOpensInBrowser": "The link opens in your web browser. When you are done there, come back to this app and sign in."
   },
   "password": {
     "show": "Show",
@@ -80,7 +81,10 @@
     "title": "Set a new password",
     "newPassword": "New password",
     "submit": "Save password",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "signedInAs": "Setting a new password for {{email}}. Not your email? Choose Cancel.",
+    "saveAndSignOut": "Save and sign out of this browser",
+    "browserNote": "On a shared or borrowed computer, or if you use the Android app, choose \"Save and sign out of this browser\". Then sign in to the app with the new password."
   },
   "validation": {
     "emailInvalid": "Enter a valid email address.",
@@ -709,6 +713,7 @@
       "sectionTitle": "Photos and PDFs",
       "limits": "Up to {{max}} files. Photos are made smaller before they are sent. A PDF can be up to 5 MB.",
       "consentHint": "Only add a photo that shows a student if their parent has given photo consent. Many students are under 18, and the law (DPDP) requires a parent's consent.",
+      "pdfHint": "Readers see the PDF's file name and the details saved inside it, such as its author. If they name a person, rename or re-save the PDF before adding it.",
       "addPhotos": "Add photos",
       "addPdf": "Add a PDF",
       "remove": "Remove",

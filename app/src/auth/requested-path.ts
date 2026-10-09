@@ -17,11 +17,26 @@ let requested: string | null = null;
 
 /**
  * Keeps only the path of an address: no query and no '#' part, which can carry sign-in tokens
- * (password-reset links), and no trailing slash. The start page '/' counts as nothing asked for.
+ * (password-reset links), and no trailing slash. The path is normalised before anything compares
+ * it (D3-12): decoded once ('%2e%2e' is '..'), '\' read as '/', repeated slashes collapsed, '.' and
+ * '..' resolved (never above the start page); one with control characters counts as nothing asked
+ * for. The start page '/' counts as nothing asked for.
  */
-function pathOnly(address: string): string | null {
-  const path = `/${address.split(/[?#]/)[0].replace(/^\/+/, '').replace(/\/+$/, '')}`;
-  return path === '/' ? null : path;
+export function pathOnly(address: string): string | null {
+  let raw = address.split(/[?#]/)[0];
+  try {
+    raw = decodeURIComponent(raw).split(/[?#]/)[0];
+  } catch {
+    // A broken %-sequence: the address is used as it is.
+  }
+  if (/[\u0000-\u001f\u007f]/.test(raw)) return null;
+  const segments: string[] = [];
+  for (const segment of raw.replace(/\\/g, '/').split('/')) {
+    if (segment === '' || segment === '.') continue;
+    if (segment === '..') segments.pop();
+    else segments.push(segment);
+  }
+  return segments.length === 0 ? null : `/${segments.join('/')}`;
 }
 
 /**
@@ -48,9 +63,12 @@ function pathOfAppLink(url: string): string | null {
 if (Platform.OS === 'web') {
   if (typeof window !== 'undefined') requested = pathOnly(window.location.pathname);
 } else {
-  void Linking.getInitialURL().then((url) => {
-    if (url && requested === null) requested = pathOfAppLink(url);
-  });
+  void Linking.getInitialURL()
+    .then((url) => {
+      if (url && requested === null) requested = pathOfAppLink(url);
+    })
+    // No link could be read: the app opens its home screen (D3-12).
+    .catch(() => undefined);
 }
 
 /**

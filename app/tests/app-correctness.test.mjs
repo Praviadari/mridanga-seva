@@ -10,7 +10,7 @@ import './stubs/register.mjs';
 
 const { isNetworkError } = await import('../src/data/errors.ts');
 const { isRouteId } = await import('../src/lib/route-id.ts');
-const { cleanSearchText, studentSearchFilter } = await import('../src/lib/student-search.ts');
+const { cleanSearchText } = await import('../src/lib/student-search.ts');
 const { addDays } = await import('../src/lib/dates.ts');
 
 test('D6-05: a failed request is a network error in Chrome, Safari, Firefox and on phones', () => {
@@ -40,13 +40,9 @@ test('D6-07: only real ids reach the database', () => {
 });
 
 test("FS2-04: 'K. Sri' searches the words K and Sri, so 'K. Srinivas' is found", () => {
+  // The words are matched by search_students (0039, smoke test "ENT-08").
   assert.equal(cleanSearchText('K. Sri'), 'K Sri');
-  assert.equal(
-    studentSearchFilter(cleanSearchText('K. Sri')),
-    'and(full_name.ilike.*K*,full_name.ilike.*Sri*),roll_no.ilike.*K Sri*',
-  );
-  assert.equal(studentSearchFilter('Radha'), 'full_name.ilike.*Radha*,roll_no.ilike.*Radha*');
-  // Nothing that PostgREST reads as syntax survives: commas, brackets, dots, stars.
+  // Nothing but letters, digits, spaces and hyphens survives: commas, brackets, dots, stars.
   assert.equal(cleanSearchText('a,b(c).d*e'), 'a b c d e');
   assert.equal(cleanSearchText('శ్రీనివాస్'), 'శ్రీనివాస్', 'Telugu vowel signs stay');
 });

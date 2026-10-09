@@ -76,6 +76,8 @@ export function AttachmentPicker({ files, onChange, error }: AttachmentPickerPro
       title={t('announcements.files.sectionTitle')}
       description={t('announcements.files.limits', { max: MAX_FILES })}>
       <AppText>{t('announcements.files.consentHint')}</AppText>
+      {/* A PDF is sent as it is: its name and the details saved inside it reach every reader (D4-16). */}
+      {files.some((f) => f.kind === 'pdf') ? <AppText tone="muted">{t('announcements.files.pdfHint')}</AppText> : null}
 
       {files.map((file) => {
         const preview = file.kind !== 'image' ? undefined : isPicked(file) ? file.uri : previews.get(file.path);

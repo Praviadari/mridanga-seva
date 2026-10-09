@@ -7,6 +7,7 @@
 
 import type { ParseKeys } from 'i18next';
 
+import { cleanSearchText } from '@/lib/student-search';
 import { supabase } from '@/lib/supabase';
 
 import { fallbackErrorKey } from './errors';
@@ -308,16 +309,11 @@ export type Borrower = { kind: 'student'; id: string; name: string; rollNo: stri
 
 /** Students (not Left) and staff whose name or roll number matches `text` (at least 2 letters). */
 export async function searchBorrowers(text: string): Promise<Borrower[] | null> {
-  const term = text.trim().replace(/[%,()*]/g, ' ');
+  const term = cleanSearchText(text);
   if (term.length < 2) return [];
   const [students, staff] = await Promise.all([
-    supabase
-      .from('students')
-      .select('id, full_name, roll_no')
-      .neq('status', 'left')
-      .or(`full_name.ilike.%${term}%,roll_no.ilike.%${term}%`)
-      .order('full_name')
-      .limit(8),
+    // A function call (POST), so a child's name stays out of request addresses (0039, ENT-08).
+    supabase.rpc('search_students', { p_text: term, p_limit: 8, p_with_left: false }),
     supabase
       .from('profiles')
       .select('id, full_name')

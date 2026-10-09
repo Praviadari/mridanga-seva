@@ -35,8 +35,14 @@ const ANNOUNCEMENT_LIMIT: PickLimit = { maxBytes: MAX_FILE_BYTES, tooBigKey: 'an
 const PHOTO_LONGEST_SIDE = 1600;
 /** JPEG quality, 0 to 1: about 200-400 KB for a phone photo at 1600 pixels. */
 const PHOTO_QUALITY = 0.7;
-/** How long a signed link to a file works, in seconds. Screens load new links each time they open. */
+/**
+ * How long a signed link to a file works, in seconds. Screens load new links each time they open.
+ * The app chooses it (Storage signs whatever it is asked for); a link copied or kept in a browser's
+ * history works for anyone until then (docs/DECISIONS.md #32, #187).
+ */
 const LINK_SECONDS = 60 * 60;
+/** How long the link a phone opens a file with works: just long enough to load it (D3-08). */
+export const OPEN_LINK_SECONDS = 2 * 60;
 
 /** 'image' for photos (JPEG, PNG, WebP), 'pdf' for PDF documents. */
 export type AttachmentKind = 'image' | 'pdf';
@@ -279,10 +285,14 @@ export async function removeFiles(paths: string[], bucket: string = FILES_BUCKET
  * is made only for the person on the screen (Storage checks they may read the announcement).
  * Files that failed are missing from the map.
  */
-export async function signedLinks(paths: string[], bucket: string = FILES_BUCKET): Promise<Map<string, string>> {
+export async function signedLinks(
+  paths: string[],
+  bucket: string = FILES_BUCKET,
+  seconds: number = LINK_SECONDS,
+): Promise<Map<string, string>> {
   if (paths.length === 0) return new Map();
   try {
-    const { data, error } = await supabase.storage.from(bucket).createSignedUrls(paths, LINK_SECONDS);
+    const { data, error } = await supabase.storage.from(bucket).createSignedUrls(paths, seconds);
     if (error || !data) return new Map();
     return new Map(
       data.flatMap((link) => (link.path && link.signedUrl && !link.error ? [[link.path, link.signedUrl] as const] : [])),

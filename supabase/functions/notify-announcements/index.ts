@@ -18,7 +18,7 @@
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
-import { batches } from './messages.ts';
+import { batches, pickServiceKey } from './messages.ts';
 import { EXPO_PROJECT, expoPost, runPush, type Rpc } from './send.ts';
 
 /** Answers the caller with a small JSON object. */
@@ -26,22 +26,21 @@ function reply(status: number, body: Record<string, unknown>): Response {
   return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 }
 
+/** True once this copy of the function has logged where its key came from. */
+let keySourceLogged = false;
+
 /**
  * The project's secret (service role) key, which Supabase gives every Edge Function: the new
- * SUPABASE_SECRET_KEYS list if there is one, else the older SUPABASE_SERVICE_ROLE_KEY.
+ * SUPABASE_SECRET_KEYS list if it has the expected shape, else the older SUPABASE_SERVICE_ROLE_KEY
+ * (messages.ts pickServiceKey, D2-16). Logs the variable's name once per start, never the key.
  */
 function serviceKey(): string | undefined {
-  const keys = Deno.env.get('SUPABASE_SECRET_KEYS');
-  if (keys) {
-    try {
-      const parsed = JSON.parse(keys) as Record<string, string>;
-      const key = parsed.default ?? Object.values(parsed)[0];
-      if (key) return key;
-    } catch {
-      // Fall back to the older variable below.
-    }
+  const picked = pickServiceKey(Deno.env.get('SUPABASE_SECRET_KEYS'), Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'));
+  if (picked && !keySourceLogged) {
+    keySourceLogged = true;
+    console.log('service key from', picked.source);
   }
-  return Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? undefined;
+  return picked?.key;
 }
 
 /** Compares two texts in the same time whatever they hold, so the secret cannot be guessed by timing. */

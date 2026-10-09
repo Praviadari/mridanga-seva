@@ -12,6 +12,7 @@ import {
   CHANNEL_ID,
   batches,
   screenFor,
+  pickServiceKey,
   shortBody,
   toMessages,
   toOutboxMessages,
@@ -202,5 +203,20 @@ check('runPush finishes the claim with each row\'s outcome', finishes.length ===
   && finishes[0].p_sent.join(',') === '1' && finishes[0].p_refused['2'] === 'OtherProject' && summary.sent === 1, JSON.stringify(finishes));
 check('... and its log holds no token and no title', logged.length > 0 && logged.every((line) => !line.includes('PushToken') && !line.includes('Secret')),
   logged.join(' | '));
+// D2-14: an emoji at the cut point is kept or dropped whole, never split into a lone half.
+const emojiCut = shortBody('a'.repeat(BODY_LENGTH - 2) + '🙏🙏🙏');
+check('D2-14 an emoji at the cut is not split into a broken character',
+  !/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/.test(emojiCut) && emojiCut.endsWith('🙏…'), JSON.stringify(emojiCut));
+check('D2-14 Telugu text is cut by letters, 150 at most', Array.from(shortBody('క'.repeat(200))).length === BODY_LENGTH);
+
+// D2-16: only a JSON object of texts is read; anything else falls back to the older variable.
+const keyOf = (keys, legacy) => pickServiceKey(keys, legacy);
+check('D2-16 the "default" secret key is used and named by its variable',
+  JSON.stringify(keyOf('{"other":"sb_secret_b","default":"sb_secret_a"}', 'legacy')) === '{"key":"sb_secret_a","source":"SUPABASE_SECRET_KEYS.default"}');
+check('D2-16 without "default", the first text value is used', keyOf('{"x":7,"y":"sb_secret_y"}', undefined)?.key === 'sb_secret_y');
+check('D2-16 a JSON string is not taken letter by letter (falls back)', keyOf('"sb_secret_a"', 'legacy')?.source === 'SUPABASE_SERVICE_ROLE_KEY');
+check('D2-16 an array, raw text or empty object falls back', keyOf('["sb_secret_a"]', 'legacy')?.key === 'legacy'
+  && keyOf('sb_secret_a', 'legacy')?.key === 'legacy' && keyOf('{}', 'legacy')?.key === 'legacy');
+check('D2-16 nothing usable at all = null (not_configured)', keyOf('{"default":""}', undefined) === null && keyOf(undefined, undefined) === null);
 console.log(failures ? `\n${failures} check(s) FAILED` : '\nAll checks passed');
 process.exit(failures ? 1 : 0);

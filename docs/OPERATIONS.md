@@ -140,7 +140,8 @@ removed or starts seeing different data.
    - **Confirm email:** while testing with dummy data and without step 5, you may turn it off (the
      built-in email sends only 2 emails an hour). **Turn it on before any real student record
      exists**: while it is off, anyone can sign up with a student's email and be linked to that
-     student's record ([DECISIONS.md #13](DECISIONS.md)).
+     student's record ([DECISIONS.md #13](DECISIONS.md)), and sign-up says whether an email already has
+     an account (D3-16).
    - **Authentication → URL Configuration:** set **Site URL** to the address of the web version
      that talks to this project: `https://mridanga-seva.pages.dev` for the live project,
      `https://mridanga-seva-test.pages.dev` for the test one (see "Publishing the web version"). Under

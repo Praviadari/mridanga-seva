@@ -120,7 +120,7 @@ process.on('uncaughtException', (error) => {
 // D14-10: every check is counted, and the run fails when fewer (or more) checks ran than expected,
 // so a block skipped by a renamed migration or a commented-out section cannot pass unseen.
 // Adding or removing checks? Run the suite and set this to the new total it prints.
-const EXPECTED_CHECKS = 1346; // 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19
+const EXPECTED_CHECKS = 1361; // 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15
 let failures = 0;
 let passes = 0;
 
@@ -4130,6 +4130,8 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
     // 0036: account creation, About you, the desk, the report; option_ok for the guard triggers
     'heard_about_report(date,date)', 'my_about()', 'option_ok(text,text,boolean)', 'save_about_me(jsonb)',
     'save_student_details(uuid,jsonb)', 'sign_up_choices()', 'waiting_sign_ups()', 'get_student_details(uuid)',
+    // 0039: the staff student search by POST (ENT-08)
+    'search_students(text,integer,boolean)',
   ];
   const runnableBy = async (role) => (await asOwner(`select p.oid::regprocedure::text as f from pg_proc p
     where p.pronamespace = 'public'::regnamespace
@@ -4720,7 +4722,58 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   check('D1a-15: (control) an adult student may use the same email (a parent learning too)',
     (await asOwner(`select email from students where id = '${s38.id}'`))[0].email === 'parent.38@example.com');
 }
-// ---------------------------------------------------------------- row-level security
+// ---------------------------------------------------------------- 0039 security backlog (D4-17, D2-06, ENT-08)
+{
+  // D4-17: the refusal for a minor without consent names the roll number, never the child's name.
+  let detail39 = null;
+  try {
+    await asApp('authenticated', coordinator, `insert into students (full_name, dob) values ('Secret Child 39', current_date - interval '9 years')`);
+  } catch (error) {
+    detail39 = `${error.message} | ${error.detail ?? ''}`;
+  }
+  check('D4-17: a minor without consent is still refused (control)', detail39?.startsWith('minor_needs_consent') === true, detail39 ?? 'was allowed');
+  check('D4-17: ... and the error detail holds the roll number, not the name', !!detail39 && !detail39.includes('Secret Child') && /MS-\d{4}-\d+/.test(detail39), detail39 ?? '');
+
+  // D2-06: phones of a person switched off, or given no class role, are forgotten at once.
+  const tok39 = (n) => `ExponentPushToken[sec39x${n}]`;
+  const phoneOf = async (n) => (await asOwner(`select count(*)::int as n from push_tokens where token = '${tok39(n)}'`))[0].n;
+  const staff39 = await signUp('staff.39@example.com', true);
+  const other39 = await signUp('other.39@example.com', true);
+  await asOwner(`update profiles set role = 'coordinator' where id in ('${staff39}', '${other39}')`);
+  await asApp('authenticated', staff39, 'select register_push_token($1, $2)', [tok39(1), 'android']);
+  await asApp('authenticated', other39, 'select register_push_token($1, $2)', [tok39(2), 'android']);
+  check('D2-06: (control) both coordinators have a phone saved', (await phoneOf(1)) === 1 && (await phoneOf(2)) === 1);
+  await asOwner(`update profiles set active = false where id = '${staff39}'`);
+  check('D2-06: switching a person off deletes their phones', (await phoneOf(1)) === 0);
+  check('D2-06: ... and leaves everyone else\'s', (await phoneOf(2)) === 1);
+  await asOwner(`update profiles set role = 'pending' where id = '${other39}'`);
+  check('D2-06: a person put back to waiting (no class role) loses their phones too', (await phoneOf(2)) === 0);
+  await asOwner(`update profiles set active = true, role = 'coordinator' where id = '${staff39}'`);
+  await asApp('authenticated', staff39, 'select register_push_token($1, $2)', [tok39(1), 'android']);
+  check('D2-06: (control) switched on again, the phone can be saved again', (await phoneOf(1)) === 1);
+  const stray = (await asOwner(`select count(*)::int as n from push_tokens t join profiles p on p.id = t.profile_id
+    where not p.active or p.role::text not in ('guru', 'coordinator', 'student')`))[0].n;
+  check('D2-06: no saved phone belongs to a person switched off or without a class role', stray === 0, String(stray));
+
+  // ENT-08: the staff search is a function call (POST body), with the C5 search's rules.
+  const find39 = async (who, text, limit, withLeft) => (await asApp('authenticated', who,
+    'select full_name, roll_no, status::text from search_students($1, $2, $3)', [text, limit ?? 20, withLeft ?? true]));
+  await asOwner(`insert into students (full_name, dob, status) values ('Kalyani Sri Devi 39', '1990-01-01', 'active'),
+    ('Sri Kalyan Left 39', '1990-01-01', 'left'), ('Percent 100% Shah 39', '1990-01-01', 'active')`);
+  const words = (await find39(coordinator, 'sri kaly')).map((r) => r.full_name);
+  check('ENT-08: every word of the name, in any order, finds the student', words.includes('Kalyani Sri Devi 39') && words.includes('Sri Kalyan Left 39'), words.join(', '));
+  const noLeft = (await find39(coordinator, 'sri kaly', 20, false)).map((r) => r.full_name);
+  check('ENT-08: Left students can be left out (lending)', noLeft.includes('Kalyani Sri Devi 39') && !noLeft.includes('Sri Kalyan Left 39'), noLeft.join(', '));
+  const [{ roll_no: roll39 }] = await asOwner(`select roll_no from students where full_name = 'Kalyani Sri Devi 39'`);
+  check('ENT-08: the roll number finds the student', (await find39(coordinator, roll39)).some((r) => r.full_name === 'Kalyani Sri Devi 39'));
+  check('ENT-08: % and _ are searched as letters, not as wildcards', (await find39(coordinator, '0%')).every((r) => r.full_name.includes('%'))
+    && (await find39(coordinator, 'a_a')).length === 0);
+  check('ENT-08: one letter finds nothing; at most 50 rows', (await find39(coordinator, 'a')).length === 0
+    && (await find39(coordinator, ' 39', 500)).length <= 50);
+  await refusesWith('ENT-08: a student cannot use the search', 'not_allowed', () => find39(arjun, 'rao'));
+  await refusesWith('ENT-08: anon cannot run it', 'permission denied for function search_students', () =>
+    asApp('anon', null, `select * from search_students('rao')`));
+}// ---------------------------------------------------------------- row-level security
 const seen =await asApp('authenticated', arjun, 'select full_name from students');
 check('student sees only their own student record', seen.length === 1 && seen[0].full_name === 'Arjun Rao');
 check('student sees only their own profile',

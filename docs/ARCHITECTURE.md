@@ -189,7 +189,9 @@ change of colour or wording is made in one place.
    ([DECISIONS.md #37](DECISIONS.md)). Sign-out forgets it. With no internet and an expired
    token, Supabase reports no session although the login is still saved; the app then keeps the
    person's screens from that copy until the login is refreshed, and Sign out still works
-   ([DECISIONS.md #42](DECISIONS.md)).
+   ([DECISIONS.md #42](DECISIONS.md)). Every sign-out, also one the server caused, clears the QR card,
+   the notification list, cached photos and picked-file copies (`src/lib/device-traces.ts`,
+   [DECISIONS.md #186](DECISIONS.md)).
 
 Links in emails go to the address set as **Site URL** in Supabase, or to the web address the
 request came from (see OPERATIONS.md).
@@ -258,7 +260,8 @@ read or write the person is not allowed, whatever the app shows.
   `guru_dashboard`) are security invoker for the same reason ([DECISIONS.md #31](DECISIONS.md)).
 - **Files follow the same rules.** Storage has row-level security too: a photo or PDF on an
   announcement opens only for people who may read that announcement, and the app shows it
-  through a signed link that works for an hour ([DECISIONS.md #32](DECISIONS.md)).
+  through a signed link that works for an hour; a phone opens a file with a fresh two-minute link
+  ([DECISIONS.md #32](DECISIONS.md), [#187](DECISIONS.md)).
 - **The app holds only the public (anon / publishable) key.** It is safe to ship because RLS protects
   the data. The `service_role` key bypasses RLS and must never be in the app or the repository.
   Only the Edge Function `notify-announcements` uses it, inside Supabase, which provides the key

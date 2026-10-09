@@ -41,6 +41,7 @@ in number order:
 | `0035_asset_labels.sql` | QR asset labels for every seva asset: new kinds + `category`; `asset_token` (unguessable, frozen) and a per-centre `code` (KHOL-007) on every item, backfilled; `resolve_asset`, `mark_labels_printed`; stocktake (`inventory_stocktakes`, `inventory_stocktake_items`, `start_stocktake`, `stocktake_see`, `finish_stocktake`) ([DECISIONS.md #156-#161](DECISIONS.md)). 0034 is the privacy brief's; 0035 does not depend on it. See "Asset labels and stocktake (0035)" |
 | `0036_account_creation.sql` | Account creation (team MoM 05-10-2026): option lists the Guru edits (`choice_options`), `centres.city`, `profiles.gender` + `referral_code`, `students.gender`, `person_details` (About you, the desk), the sign-up's date of birth, gender and centre, `sign_up_choices()` (the one function anon may run), same-gender coordinator auto-assignment, the report `heard_about_report` ([DECISIONS.md #162-#167](DECISIONS.md)). See "Account creation and About you (0036)". Numbers 0034 and 0035 belong to the privacy and asset-label branches |
 | `0037_db_backlog.sql` | Audit backlog, database + performance (dimensions 1, 5, 9): every policy calls its role helpers once per query (`(select is_staff())`), `student_overview` reads through the visits indexes, 12 lookup indexes; trigger functions and TRUNCATE closed to app roles, definer functions search `public, pg_temp`; `toggle_visit` / `scan_qr` say `not_allowed`; roll numbers past 9999 and owner-given ones; student value checks; group, announcement, call-reason, attachment, syllabus and audit fixes ([DECISIONS.md #168-#173](DECISIONS.md)). See "Backlog fixes (0037)" |
+| `0039_security_backlog.sql` | Audit backlog, app security and privacy (dimensions 3, 4): the minor-consent refusal names the roll number, not the child (D4-17); push tokens of a person switched off or without a class role are deleted (D2-06); staff student search `search_students` by POST (ENT-08) ([DECISIONS.md #186-#192](DECISIONS.md)). See "Security backlog (0039)" |
 
 The Phase 2 files were renumbered when they merged into main (#55). TEST ran some under their
 branch numbers (0012, 0014_promotion, 0016_practice, 0017_media, 0021_events_polls), so it skips
@@ -437,7 +438,7 @@ the file once the change is saved. A file whose removal failed stays unused; OPE
 
 **Push notifications** (0011, [DECISIONS.md #33](DECISIONS.md)). A phone that may receive
 notifications has a row in `push_tokens` (its Expo push token, the login, `android` or `ios`).
-The Android app saves it after sign-in with `register_push_token` and deletes it at sign-out; a
+The Android app saves it after sign-in with `register_push_token` and deletes it at sign-out (0039: also when the person is switched off); a
 person sees and deletes only their own. A token belongs to the login last signed in on that
 phone, and a person has at most 5 phones. The app does not turn the errors of `register_push_token` into
 messages (0011 lists them beside `src/lib/push.ts`, the caller): any refusal leaves the token unsaved,
@@ -1307,6 +1308,20 @@ redeployed (brief 8).
 
 Tests: section "0037 database and performance backlog" in `supabase/tests/smoke-test.mjs`.
 
+## Security backlog (0039)
+
+[DECISIONS.md #186-#192](DECISIONS.md). Needs 0001-0038; safe to run twice.
+
+- **No child's name in errors (D4-17):** `check_minor_consent` (0003) now says "Student MS-2026-0063 is
+  under 18 ...": the roll number, never the name, reaches the server log.
+- **Phones of people switched off (D2-06):** trigger `profiles_forget_phones` deletes a person's
+  `push_tokens` when `active` turns false or the role leaves guru / coordinator / student; the rows
+  kept today for such people are deleted once. An age limit waits for the retention decision.
+- **`search_students(p_text, p_limit = 20, p_with_left = true)` (ENT-08):** staff only (`not_allowed`),
+  runs as the caller. Students whose name holds every word of the text (any order), or whose roll
+  number contains the whole text, by name; `%` and `_` are letters; fewer than 2 letters find
+  nothing; 1-50 rows. Called by POST, so the letters stay out of request addresses. C5 Mark
+  attendance and lending (without Left students) use it.
 ## Linking a login to a student
 
 A student record can exist without a login (many students never install the app). When a person

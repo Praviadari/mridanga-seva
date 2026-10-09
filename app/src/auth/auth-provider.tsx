@@ -24,6 +24,7 @@ import { AppState } from 'react-native';
 import { isNetworkError } from '@/data/errors';
 import { applyProfileLanguage, currentLanguage, hasUnsavedChoice, markLanguageSaved, type Language } from '@/i18n';
 import { loadClassLocale } from '@/lib/class-locale';
+import { clearDeviceTraces } from '@/lib/device-traces';
 import { setRefusedListener, storedLoginUserId, supabase, supabaseConfigProblem } from '@/lib/supabase';
 
 // Loaded at start for its effect: it reads an email link's error from the address (D6-12).
@@ -109,6 +110,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
       // A remembered profile must never open someone's area after they signed out.
       if (event === 'SIGNED_OUT') {
         forgetSavedProfile();
+        // Also when the server ended the login: the QR card, notifications and cached photos go
+        // (src/lib/device-traces.ts; D3-05, D3-09, FLOW-04).
+        void clearDeviceTraces();
         // The sign-in screen says so when the person did not sign out themselves (D6-20).
         noteSignedOut();
       }

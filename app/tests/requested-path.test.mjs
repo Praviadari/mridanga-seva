@@ -63,3 +63,16 @@ test('phone: an app link and an Expo Go link give the same screen', async () => 
   app = await startApp('android', { initialUrl: null });
   assert.equal(app.requestedPathFor('student'), null, 'opened from the home screen icon');
 });
+
+test('D3-12: a path is normalised before it is compared', async () => {
+  const { pathOnly, belongsTo } = await startApp('web');
+  assert.equal(pathOnly('/student/../staff/fund'), '/staff/fund', 'dot segments resolved');
+  assert.equal(pathOnly('/student/%2e%2e/staff'), '/staff', 'decoded once, then resolved');
+  assert.equal(pathOnly('//student///announcements//12/'), '/student/announcements/12', 'slashes collapsed');
+  assert.equal(pathOnly('/student\\..\\staff'), '/staff', 'backslash read as a slash');
+  assert.equal(pathOnly('/../../..'), null, 'never above the start page');
+  assert.equal(pathOnly('/student/%0aannouncements'), null, 'control characters: nothing asked for');
+  assert.equal(pathOnly('/student/a%3Ftoken=x'), '/student/a', 'a decoded ? still ends the path');
+  assert.equal(pathOnly('/student/%E0%A4'), '/student/%E0%A4', 'a broken %-sequence is kept as it is');
+  assert.equal(belongsTo(pathOnly('/student/../staff/fund'), 'student'), false, 'so /student/.. cannot open a staff screen');
+});

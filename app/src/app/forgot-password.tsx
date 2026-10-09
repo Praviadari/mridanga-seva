@@ -4,8 +4,10 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Platform } from 'react-native';
 
 import { isValidEmail, sendPasswordReset, type MessageKey } from '@/auth/auth-actions';
+import { AppText } from '@/components/app-text';
 import { BrandHeader } from '@/components/brand';
 import { Button } from '@/components/button';
 import { Notice } from '@/components/notice';
@@ -39,7 +41,11 @@ export default function ForgotPasswordScreen() {
     <Screen centred header={<BrandHeader compact />}>
       <Section title={t('forgotPassword.title')} description={sentTo ? undefined : t('forgotPassword.subtitle')}>
         {sentTo ? (
-          <Notice tone="success">{t('forgotPassword.sent', { email: sentTo })}</Notice>
+          <>
+            <Notice tone="success">{t('forgotPassword.sent', { email: sentTo })}</Notice>
+            {/* The link opens the web version; the phone app needs its own sign-in after it (FLOW-05). */}
+            {Platform.OS !== 'web' ? <AppText tone="muted">{t('common.linkOpensInBrowser')}</AppText> : null}
+          </>
         ) : (
           <>
             {formError ? <Notice tone="error">{t(formError)}</Notice> : null}

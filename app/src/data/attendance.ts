@@ -13,7 +13,7 @@
 
 import type { PhoneLocation } from '@/lib/attendance-location';
 import { startOfTodayLocal } from '@/lib/dates';
-import { cleanSearchText, studentSearchFilter } from '@/lib/student-search';
+import { cleanSearchText } from '@/lib/student-search';
 import { supabase } from '@/lib/supabase';
 
 import type { StudentStatus } from './student-overview';
@@ -270,13 +270,9 @@ const SEARCH_LIMIT = 20;
 export async function searchStudents(text: string): Promise<SearchResult | null> {
   const query = cleanSearchText(text);
   if (query.length < MIN_SEARCH_LENGTH) return { students: [], more: false };
-  const { data, error } = await supabase
-    .from('students')
-    .select('id, full_name, roll_no, level_id, status')
-    .or(studentSearchFilter(query))
-    .order('full_name')
-    // One more than shown, to know whether there are more.
-    .limit(SEARCH_LIMIT + 1);
+  // A function call (POST): the letters of a child's name go in the request body, never into the
+  // address that request logs keep (0039, ENT-08). One more than shown, to know whether there are more.
+  const { data, error } = await supabase.rpc('search_students', { p_text: query, p_limit: SEARCH_LIMIT + 1 });
   if (error) return null;
   const rows = data as { id: string; full_name: string; roll_no: string; level_id: number; status: StudentStatus }[];
   return {
