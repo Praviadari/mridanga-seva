@@ -2,7 +2,7 @@
 // web link or an old bookmark ("/staff/announcements/abc") would otherwise reach the database, be
 // refused as bad input and show "no internet" with a Try again that can never work.
 
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
 import type { PropsWithChildren } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -21,6 +21,8 @@ export function RouteIdGuard({ kind, allowNew = false, children }: Props) {
   if (isRouteId(id, kind, allowNew)) return children;
   return (
     <Screen underHeader centred>
+      {/* No title: the route's own name ('announcements/[id]') would show otherwise. */}
+      <Stack.Screen options={{ title: '' }} />
       <AppText variant="subtitle">{t('notFound.title')}</AppText>
       <Button label={t('notFound.goHome')} onPress={() => router.replace('/')} />
     </Screen>
