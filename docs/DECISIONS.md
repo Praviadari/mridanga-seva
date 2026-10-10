@@ -3634,9 +3634,11 @@ and any row holding the old email are redacted, and a tombstone goes into `erasu
 **Why.** Records keep a "done by" that still resolves (reports, history, audit); `SET NULL` would
 lose who registered or marked what. The person's identifying data is gone.
 
-**Consequences.** Not yet tried against Supabase's own `auth.users` rights: if the owner may not
-change it, the result says `login_scrubbed: false` and the runbook deletes the login's identity in
-the dashboard. Audit rows about other records the person changed keep their values (they are about
+**Consequences.** Tried on TEST on 10 Oct 2026 (inside a block that rolled itself back): for a
+coordinator with work it answered `login_deleted: false, login_scrubbed: true, audit_rows_redacted: 15`
+and the sign-in email became `<id>@former-staff.invalid`, so the SQL editor's owner may change
+`auth.users`. Should Supabase ever refuse it, the result says `login_scrubbed: false` and the runbook
+bans the login in the dashboard. Audit rows about other records the person changed keep their values (they are about
 students, not about the staff member).
 
 ## 197. Edge Function deploys: settings in the repository, an exact supabase-js — 9 Oct 2026

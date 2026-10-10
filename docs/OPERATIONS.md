@@ -248,6 +248,7 @@ work cannot simply be deleted: the records say who registered, marked or called.
    - `login_deleted: true`: the login did nothing and is gone. Done.
    - `login_scrubbed: true`: the login stays only as a row with the email `<id>@former-staff.invalid`
      (nobody can sign in with it), and the person shows as **Former staff** in the app's history.
+     This is what TEST answered on 10 Oct 2026.
    - both `false`: the SQL editor may not change Supabase's login table. In **Authentication →
      Users**, find the email from step 2 and use **Ban user** (or remove the email under the
      user's details); the profile is anonymised anyway.
