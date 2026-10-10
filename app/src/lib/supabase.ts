@@ -10,6 +10,7 @@ import { createClient } from '@supabase/supabase-js';
 import { AppState, Platform } from 'react-native';
 
 import { deviceStorage, readLocal, removeLocal } from './local-storage';
+import { withTimeout } from './timed-fetch';
 
 // Expo copies EXPO_PUBLIC_* values into the app when it is built, so they are public. That is
 // fine for the URL and the publishable (anon) key, because row-level security guards the data.
@@ -64,9 +65,11 @@ export function setRefusedListener(listener: (() => void) | null): void {
  * fetch for the client: answers as usual, and when the database or Storage refused the call as not
  * allowed (permission code 42501, or the functions' own "not_allowed" / "not allowed"), tells the
  * listener. Sign-in calls (/auth/) are left out: a wrong password is not a lost role.
+ * Every call has a time limit for the server's answer (src/lib/timed-fetch.ts, docs/DECISIONS.md #237).
  */
+const timedFetch = withTimeout((input, init) => fetch(input, init));
 const watchedFetch: typeof fetch = async (input, init) => {
-  const response = await fetch(input, init);
+  const response = await timedFetch(input, init);
   const address = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
   if (onRefused && response.status >= 400 && response.status < 500 && !address.includes('/auth/v1/')) {
     response
@@ -118,15 +121,40 @@ const LOGIN_KEY = supabaseConfigProblem ? null : `sb-${new URL(url).hostname.spl
  * sign-out (docs/DECISIONS.md #42).
  */
 export function storedLoginUserId(): string | null {
+  return readStoredLogin()?.userId ?? null;
+}
+
+/**
+ * The refresh token of the login saved on this device, or null. Kept by Sign out without internet, so the
+ * login can be ended on the server at the next chance (src/auth/pending-sign-out.ts, docs/DECISIONS.md #238).
+ */
+export function storedRefreshToken(): string | null {
+  return readStoredLogin()?.refreshToken ?? null;
+}
+
+/** The saved login's user id and refresh token, or null when there is none or it cannot be read. */
+function readStoredLogin(): { userId: string; refreshToken: string } | null {
   const text = LOGIN_KEY ? readLocal(LOGIN_KEY) : null;
   if (!text) return null;
   try {
     const login = JSON.parse(text) as { refresh_token?: unknown; user?: { id?: unknown } };
-    return typeof login.refresh_token === 'string' && typeof login.user?.id === 'string' ? login.user.id : null;
+    return typeof login.refresh_token === 'string' && typeof login.user?.id === 'string'
+      ? { userId: login.user.id, refreshToken: login.refresh_token }
+      : null;
   } catch {
     return null;
   }
 }
+
+/**
+ * The project's address and public key, for the few calls made without the client: ending a login after an
+ * offline Sign out must not touch the client's own session (src/auth/pending-sign-out.ts). Null when the
+ * settings are missing.
+ */
+export const supabaseAddress: { url: string; key: string } | null = supabaseConfigProblem ? null : { url, key };
+
+/** The client's fetch, with its time limit, for those calls. */
+export const supabaseFetch: typeof fetch = timedFetch;
 
 /**
  * Deletes the login saved on this device without asking the server. Only for signing out with

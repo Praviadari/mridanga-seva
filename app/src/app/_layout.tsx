@@ -1,4 +1,5 @@
-// Root of the app: loads translations, keeps the splash screen up while the login is checked,
+// Root of the app: loads translations, keeps the splash screen up while the login is checked (handing over to
+// the app's own splash with "Taking long, try again" when that takes long; src/lib/slow-start.ts),
 // shows only the screens the signed-in person's role may use, sets up push notifications on the
 // Android app (src/lib/push.ts) and looks for app updates when it comes back to the front
 // (src/lib/app-update.ts). A screen that crashes shows a friendly page with Try again instead of a blank one
@@ -26,6 +27,7 @@ import { SetupNeeded } from '@/components/setup-needed';
 import { useUpdateChecks } from '@/lib/app-update';
 import { documentTitleLayout } from '@/lib/document-title';
 import { registerForPush, usePushTaps } from '@/lib/push';
+import { useTakingLong } from '@/lib/slow-start';
 import { supabaseConfigProblem } from '@/lib/supabase';
 import { useTheme } from '@/theme/use-theme';
 
@@ -81,10 +83,12 @@ function RootNavigator() {
   const { area } = useAuth();
   const { colors } = useTheme();
   const { t } = useTranslation();
+  // A slow start hides the native splash, so the app's own (src/app/index.tsx) can say so (docs/DECISIONS.md #237).
+  const slow = useTakingLong(area === 'loading');
 
   return (
     <>
-      <HideSplash when={area !== 'loading'} />
+      <HideSplash when={area !== 'loading' || slow} />
       <PushSetup />
       {/* The titles here have no header bar: they name the web page (src/lib/document-title.tsx). */}
       <Stack
