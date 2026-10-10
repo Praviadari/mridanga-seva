@@ -36,6 +36,7 @@ import {
 import { assetTokenFromScan } from '@/lib/asset-link';
 import { locationForCheckIn, locationRefused, warmUpLocation } from '@/lib/attendance-location';
 import { localDate, formatDate, localTime, todayLocal } from '@/lib/dates';
+import { scanFeedback } from '@/lib/haptics';
 
 /**
  * How long the same QR code is ignored after it was read, in milliseconds. The camera sees a
@@ -126,6 +127,8 @@ export default function MarkAttendanceScreen() {
     lastCode.current = token && scanned.result ? { token, at: now } : null;
     setTappedId(null);
     setOutcome(scanned);
+    // A buzz for the result, so the door need not watch the screen (D7-20, docs/DECISIONS.md #239).
+    scanFeedback(scanned.result !== undefined && scanned.result.action !== 'unknown');
     working.current = false;
     void loadToday();
     void locationRefused().then(setNoLocation);

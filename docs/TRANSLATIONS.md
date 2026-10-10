@@ -288,3 +288,6 @@ The privacy texts of 0034 (`signUp.privacyNotice`, `signUp.under18`, `register.p
   "attendance card" హాజరు కార్డు / उपस्थिति कार्ड; "without the app" యాప్ లేనివారు / बिना ऐप वाले;
   "replace a lost card" పోయిన కార్డును మార్చండి / खोया कार्ड बदलें; "frozen" స్తంభింపజేయబడింది / जमा हुआ
   (maybe रोका गया). `qrCards.logo` ("MS") is the logo placeholder and stays as it is.
+- **Device hardening** (branch `device-hardening`, [DECISIONS.md #237](DECISIONS.md), 10 Oct 2026): new line `app.slowStart`
+  (the splash after 10 s of starting: "This is taking long. Check your internet connection, then try again."); its Telugu and
+  Hindi are drafts. Words to check: Telugu "ఇంటర్నెట్ కనెక్షన్", Hindi "जाँचें".
