@@ -4098,6 +4098,63 @@ wording approved).**
 | Sender and domain | Placeholder (`NOTICE_FROM`, Praveen's verified address on TEST) | Brief 8: domain authenticated in Brevo |
 | Flagged (outside the area) check-ins | Same email; the flag stays for staff (#70) | Guru decision (FACE_ATTENDANCE_PLAN §2.6) |
 
+## 240. Simple homes: a greeting, then only circles — 10 Oct 2026
+
+**Status: decided by Praveen (10 Oct 2026); branch `simple-home`.**
+
+**Context.** The homes (S1, C1, G1) had grown into a long scroll: numbers, cards, the ring, buttons and links,
+then the account card. Praveen: "make it simple with only the circular screens icons where they will navigate to
+their own sub modules".
+
+**Decision.** Every home shows the saffron greeting and then only circles (`components/module-ring.tsx`), each
+opening its own screen; the cards move behind circles and are reused there. Student: My QR, Announcements, My
+progress, Assessments, Practice, Attendance (S9, now with this week's visits on top), Events & polls, About you
+(only while unfinished), My profile. Coordinator and Guru: a ring of nine (Overview, Follow-up calls, Promotions,
+Here now, New joiners, Assessments, Events & polls, My reports or Running the class, My profile) and two rows of
+four under it (Syllabus and lessons, Groups, Practice, Ishtagoshti, Instruments, Duty roster, Material
+suggestions, Class fund). Mark attendance, Students, Calls and Announcements are bottom tabs, so not circles (the
+big Mark attendance button is gone); My QR and Announcements stay circles on S1 too. New screens:
+`staff/overview.tsx` (the old numbers, every tile opening its filtered list; the Guru's per level and per
+status), `staff/new-joiners.tsx`, `staff/follow-ups-by-coordinator.tsx` (Guru), `staff/running-the-class.tsx`
+(Guru only). What waits for the person is a red count on its circle, said in the circle's name ("Announcements,
+3 new"): unread announcements, polls to vote, About you unfinished, calls due (coordinator: mine; Guru: overdue
+or escalated), promotions waiting (feedback asked / nominations to decide); 9+ above nine. Only notices stay on
+a home: the app update, could not load, no student record. The language switch, Sign out and the version line
+are on My profile (A3); the bell stays in the header.
+
+**Consequences.** The homes fit a 375 x 812 phone with little or no scroll (S1 none, C1/G1 about 50 px for the
+second row's labels). One more tap to reach a number. Large text keeps the two-column tile grid (#39), with the
+rows' modules after the ring's.
+
+## 241. Drawn art instead of a picture on the homes — 10 Oct 2026
+
+**Status: decided by Praveen (10 Oct 2026); branch `simple-home`.**
+
+**Decision.** Behind the ring a faint lotus mandala, and behind the fact card under it a faint temple between
+lotuses (`components/home-art.tsx`), drawn with react-native-svg in the theme's primary colour, light and dark.
+No photo or painting: #39 stands (a temple or deity picture is the temple's call, and a picture costs a few
+hundred KB per update). Decoration only: hidden from screen readers, never takes a tap. A picture with the
+temple's permission can go in the same place later.
+
+## 242. "Did you know?" and my level under the student's ring — 10 Oct 2026
+
+**Status: decided by Praveen (10 Oct 2026); branch `simple-home`.**
+
+**Decision.** Under the student's ring: a slim bar "My level: … · done of total" (a button to S4) and one short
+fact about the mṛdaṅga a day (`components/fact-card.tsx`, `lib/fact-of-the-day.ts`): 15 facts written for the app
+from the sourced instrument research (name and khol, Caitanya Mahāprabhu, the heads, syāhī, humidity, the
+fibreglass drum, care, bols, dhā, khol vs mṛdaṅgam, kartāls, daily practice, the rings of a head), the same for
+everyone on a day, changing at local midnight. No data call. Telugu and Hindi are drafts for the review.
+
+## 243. Ishtagoshti home as circles — 10 Oct 2026
+
+**Status: decided by Praveen (10 Oct 2026, "if possible circle"); branch `simple-home`.**
+
+**Decision.** I1 shows its intro line, then a ring: Sloka of the day (opens the sloka), Themes (a new list,
+`screens/ishtagoshti-themes.tsx`, routes `*/ishtagoshti/themes.tsx`), All slokas; editors also Add a sloka and Add
+a theme; the Guru also Ishtagoshti subscribers. Under it the memorised and slokas-to-study numbers. The verse and
+translation are no longer on I1 itself; they are one tap away. **#244 and #245 are unused.**
+
 ## 246. Parents get an email only when a check-out is recorded in the app — 10 Oct 2026
 
 **Status: the team's answers to #231 (Praveen, 10 Oct 2026); built in migration 0044, merged to main by the lead on 10 Oct 2026.**

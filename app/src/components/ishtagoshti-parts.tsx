@@ -21,6 +21,7 @@ export type IgArea = 'student' | 'staff' | 'subscriber';
 export const openIg = {
   home: (area: IgArea) => router.navigate(`/${area}/ishtagoshti` as Href),
   slokas: (area: IgArea) => router.push(`/${area}/ishtagoshti/slokas` as Href),
+  themes: (area: IgArea) => router.push(`/${area}/ishtagoshti/themes` as Href),
   sloka: (area: IgArea, id: number) => router.push(`/${area}/ishtagoshti/sloka/${id}` as Href),
   theme: (area: IgArea, id: number) => router.push(`/${area}/ishtagoshti/theme/${id}` as Href),
   editSloka: (id: number | 'new') => router.push(`/staff/ishtagoshti/edit-sloka/${id}` as Href),

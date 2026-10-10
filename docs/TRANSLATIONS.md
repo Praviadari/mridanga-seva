@@ -275,3 +275,10 @@ The privacy texts of 0034 (`signUp.privacyNotice`, `signUp.under18`, `register.p
   and the changed `parentNotices.on`, `parentNotices.loadFailed`, `parentNotices.blocks.*` are drafts. Words to check
   first: "attendance emails" written హాజరు ఈమెయిల్స్ / उपस्थिति ईमेल (replacing "check-in emails" on C8); "unless
   ticked" టిక్ చేస్తే తప్ప / टिक किए बिना; "at night" రాత్రి / रात में.
+- **Simple home** (branch `simple-home`, [DECISIONS.md #240-#243](DECISIONS.md), 10 Oct 2026): new keys, every Telugu
+  and Hindi line a draft for the review: `home.badges.*` (spoken after a circle's name: "3 new", "2 to vote", "not
+  finished", "4 due", "1 waiting"), `home.modules.*` (Overview, New joiners, Promotions; Promotions reuses the
+  wording of `promotion.home.coordinatorTitle`), `home.student.levelStrip`, `levelStripNone`, `home.guru.openCalls`
+  and `facts.*` (title and 15 facts about the mṛdaṅga). Check first: the bol and part names in `facts.f4`, `f5`,
+  `f10`, `f11`, `f15` (written in each script as the class says them), "ఓటు వేయాలి" / "पर वोट बाकी" for polls, and
+  సారాంశం / सारांश for Overview.

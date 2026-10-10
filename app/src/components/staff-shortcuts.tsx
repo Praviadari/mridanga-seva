@@ -1,73 +1,82 @@
-// The ways to the staff screens from the coordinator dashboard (C1) and the Guru dashboard (G1):
-// a big "Mark attendance" button (C5) at the top of the page, since coordinators do it most during
-// the class, and the ring of modules (components/module-ring.tsx) further down: Students (C7),
-// Attendance (C5), Who is here now (C6), Follow-up calls (C10), Announcements (C15), Groups,
-// Syllabus and lessons (G4 + G5; the Guru edits, coordinators read; round 7), Assessments (Phase 2:
-// C12-C14, G6), and
-// the two modules not built yet, Instruments and Events, which open the Coming soon screen
-// (docs/DECISIONS.md #39). One component, so both homes offer the same screens in the same order.
-// Register a student (C2) is the first button on the Students tab. Practice tools (S5, Phase 2) is a
-// button under the ring, and so is Ishtagoshti (I1, Phase 2 slice 6) for phones, where the Slokas
-// tab does not fit the bottom bar. Phase 2 slice 8 (docs/DECISIONS.md #65): Instruments opens C19
-// inventory, and two rows under the buttons open C20 duty roster and C18 material suggestions.
-// Phase 2 slice 9 (docs/DECISIONS.md #80): a third row opens the class fund ledger.
+// The circles of the coordinator home (C1) and the Guru home (G1), simple since 10-10-2026
+// (docs/DECISIONS.md #240, #241): nine on the ring around the drum (components/module-ring.tsx), the
+// ones used most and the ones that can wait for the person, then two rows of four under it. Mark
+// attendance (C5), Students (C7), Calls (C10) and Announcements (C15) are the bottom tabs, so they
+// are not circles. One component, so both homes offer the same screens in the same order.
+//
+// Ring: Overview (staff/overview.tsx: the numbers, each tile opening its filtered list), Follow-up
+// calls with the count due (the coordinator's own; for the Guru the overdue and escalated ones per
+// coordinator, staff/follow-ups-by-coordinator.tsx), Promotions with the count waiting (C22/C23,
+// G7), Who is here now (C6), New joiners (staff/new-joiners.tsx), Assessments (C12-C14, G6), Events &
+// polls (C16, C17), My reports (C21) for a coordinator or Running the class (G2, G3, G8-G13,
+// staff/running-the-class.tsx) for the Guru, and My profile (A3: language, Sign out, version).
+// Rows: Syllabus and lessons (G4, G5), Groups, Practice tools (S5), Ishtagoshti (I1; on a phone the
+// Slokas tab does not fit the staff bottom bar), Instruments (C19), Duty roster (C20), Material
+// suggestions (C18) and the Class fund (#80).
 
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 
-import { Button } from './button';
-import { ListRow } from './list-row';
 import { ModuleRing, type Module } from './module-ring';
 
-/** The main action of a staff home: opens Mark attendance (C5). */
-export function MarkAttendanceButton() {
-  const { t } = useTranslation();
-  return (
-    <Button size="large" icon="attendance" label={t('staff.markAttendance')} onPress={() => router.push('/staff/attendance')} />
-  );
-}
+/** Props for StaffModules. */
+export type StaffModulesProps = {
+  guru: boolean;
+  /** Calls due for my students (coordinator), or follow-ups overdue or escalated (Guru). */
+  callsDue: number;
+  /** Feedback asked of me (coordinator), or nominations to decide (Guru). */
+  promotionsWaiting: number;
+};
 
-/** The ring of modules of a staff home. */
-export function StaffShortcuts() {
+/** The circles of a staff home. */
+export function StaffModules({ guru, callsDue, promotionsWaiting }: StaffModulesProps) {
   const { t } = useTranslation();
-  const modules: Module[] = [
-    { key: 'students', icon: 'students', tone: 'green', label: t('staff.students'), onPress: () => router.push('/staff/students') },
-    { key: 'attendance', icon: 'attendance', tone: 'blue', label: t('tabs.attendance'), onPress: () => router.push('/staff/attendance') },
-    { key: 'hereNow', icon: 'hereNow', tone: 'teal', label: t('home.staff.hereNow'), onPress: () => router.push('/staff/here-now') },
-    { key: 'calls', icon: 'calls', tone: 'purple', label: t('staff.followUp'), onPress: () => router.push('/staff/follow-up') },
-    { key: 'news', icon: 'news', tone: 'orange', label: t('announcements.title'), onPress: () => router.push('/staff/announcements') },
-    { key: 'groups', icon: 'groups', tone: 'pink', label: t('groups.title'), onPress: () => router.push('/staff/groups') },
-    { key: 'syllabus', icon: 'library', tone: 'indigo', label: t('syllabusEditor.module'), onPress: () => router.push('/staff/levels') },
-    // Phase 2 (docs/DECISIONS.md #52).
-    { key: 'assessments', icon: 'assessment', tone: 'teal', label: t('assessments.title'), onPress: () => router.push('/staff/assessments') },
+  const ring: Module[] = [
+    { key: 'overview', icon: 'status', tone: 'blue', label: t('home.modules.overview'), onPress: () => router.push('/staff/overview') },
     {
-      key: 'instruments',
-      icon: 'instruments',
+      key: 'calls',
+      icon: 'calls',
       tone: 'purple',
-      label: t('modules.instruments'),
-      // Phase 2 slice 8: C19 inventory.
-      onPress: () => router.push('/staff/inventory'),
+      label: t('staff.followUp'),
+      badge: callsDue,
+      badgeSpoken: t('home.badges.due', { count: callsDue }),
+      onPress: () =>
+        guru
+          ? router.push('/staff/follow-ups-by-coordinator')
+          : router.push({ pathname: '/staff/follow-up', params: { scope: 'mine' } }),
     },
+    {
+      key: 'promotions',
+      icon: 'promote',
+      tone: 'green',
+      label: t('home.modules.promotions'),
+      badge: promotionsWaiting,
+      badgeSpoken: t('home.badges.waiting', { count: promotionsWaiting }),
+      onPress: () => router.push('/staff/promotion'),
+    },
+    { key: 'hereNow', icon: 'hereNow', tone: 'teal', label: t('home.staff.hereNow'), onPress: () => router.push('/staff/here-now') },
+    { key: 'newJoiners', icon: 'newJoiner', tone: 'orange', label: t('home.modules.newJoiners'), onPress: () => router.push('/staff/new-joiners') },
+    // Phase 2 (docs/DECISIONS.md #52).
+    { key: 'assessments', icon: 'assessment', tone: 'indigo', label: t('assessments.title'), onPress: () => router.push('/staff/assessments') },
     // Phase 2 slice 5: events and polls (C16, C17; docs/DECISIONS.md #61).
-    { key: 'events', icon: 'events', tone: 'orange', label: t('events.module'), onPress: () => router.push('/staff/events') },
+    { key: 'events', icon: 'events', tone: 'pink', label: t('events.module'), onPress: () => router.push('/staff/events') },
+    guru
+      ? { key: 'admin', icon: 'filter', tone: 'blue', label: t('admin.title'), onPress: () => router.push('/staff/running-the-class') }
+      : { key: 'reports', icon: 'report', tone: 'blue', label: t('reports.titleCoordinator'), onPress: () => router.push('/staff/reports') },
+    { key: 'profile', icon: 'profile', tone: 'green', label: t('myProfile.title'), onPress: () => router.push('/staff/profile') },
   ];
-  return (
-    <>
-      <ModuleRing title={t('home.staff.shortcuts')} modules={modules} />
-      {/* Phase 2 slice 3 (S5, docs/DECISIONS.md #54): the ring is full at ten, so Practice tools is a
-          button under it. */}
-      <Button variant="secondary" icon="practice" label={t('practice.title')} onPress={() => router.push('/staff/practice')} />
-      <Button variant="secondary" icon="ishtagoshti" label={t('ishtagoshti.title')} onPress={() => router.push('/staff/ishtagoshti')} />
-      {/* Phase 2 slice 8 (docs/DECISIONS.md #65): C20 duty roster and C18 material suggestions. */}
-      <ListRow leading="time" title={t('duty.title')} details={[t('duty.shortcutLine')]} onPress={() => router.push('/staff/duty')} />
-      <ListRow
-        leading="library"
-        title={t('suggestions.title')}
-        details={[t('suggestions.shortcutLine')]}
-        onPress={() => router.push('/staff/suggestions')}
-      />
-      {/* Phase 2 slice 9 (docs/DECISIONS.md #80): the class fund ledger, read by all staff. */}
-      <ListRow leading="fund" title={t('fund.title')} details={[t('fund.shortcutLine')]} onPress={() => router.push('/staff/fund')} />
-    </>
-  );
+  const more: Module[] = [
+    { key: 'syllabus', icon: 'library', tone: 'indigo', label: t('syllabusEditor.module'), onPress: () => router.push('/staff/levels') },
+    { key: 'groups', icon: 'groups', tone: 'pink', label: t('groups.title'), onPress: () => router.push('/staff/groups') },
+    // Phase 2 slice 3 (S5, docs/DECISIONS.md #54).
+    { key: 'practice', icon: 'practice', tone: 'purple', label: t('practice.module'), onPress: () => router.push('/staff/practice') },
+    { key: 'ishtagoshti', icon: 'ishtagoshti', tone: 'orange', label: t('ishtagoshti.title'), onPress: () => router.push('/staff/ishtagoshti') },
+    // Phase 2 slice 8 (docs/DECISIONS.md #65): C19 inventory, C20 duty roster, C18 material suggestions.
+    { key: 'instruments', icon: 'instruments', tone: 'teal', label: t('modules.instruments'), onPress: () => router.push('/staff/inventory') },
+    { key: 'duty', icon: 'time', tone: 'blue', label: t('duty.title'), onPress: () => router.push('/staff/duty') },
+    { key: 'suggestions', icon: 'feedback', tone: 'green', label: t('suggestions.title'), onPress: () => router.push('/staff/suggestions') },
+    // Phase 2 slice 9 (docs/DECISIONS.md #80): the class fund ledger, read by all staff.
+    { key: 'fund', icon: 'fund', tone: 'orange', label: t('fund.title'), onPress: () => router.push('/staff/fund') },
+  ];
+  return <ModuleRing modules={ring} more={more} />;
 }

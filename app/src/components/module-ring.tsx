@@ -3,6 +3,9 @@
 // module's screen. Modules that are not built yet (Instruments, Events) carry a small "under
 // construction" mark and open the Coming soon screen (docs/DECISIONS.md #39, #41). The idea comes
 // from the volunteers' mockup of 2 Oct 2026, "version 3": a central menu around the drum.
+// Since the simple home (10-10-2026, docs/DECISIONS.md #240) the ring is the whole home under the
+// greeting, and a circle can carry a count of what waits for the person (top left, red), said in
+// its accessible name ("Announcements, 3 new").
 //
 // When the phone's text is set large (useLargeText), or the window is very narrow, the ring would
 // not hold its labels, so the same modules are shown as a grid of tiles instead. Screen readers
@@ -11,10 +14,12 @@
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, useWindowDimensions, View, type StyleProp, type ViewStyle } from 'react-native';
 
+import { badgeText, moduleSpokenName } from '@/lib/module-badge';
 import type { ModuleTone } from '@/theme/colors';
 import { cardLook, spacing, useLargeText, useTheme } from '@/theme/use-theme';
 
 import { AppText } from './app-text';
+import { RingMandala } from './home-art';
 import { Icon, IconBadge, type IconName } from './icon';
 import { MridangaMark } from './mridanga-mark';
 
@@ -29,14 +34,25 @@ export type Module = {
   tone?: ModuleTone;
   /** Not built yet: marked and read out as "coming soon". */
   soon?: boolean;
+  /**
+   * Something waiting for the person (unread announcements, polls to vote, calls due ...): a count
+   * on the circle, and adgeSpoken (e.g. "3 new") added to the circle's accessible name.
+   */
+  badge?: number;
+  badgeSpoken?: string;
   onPress: () => void;
 };
 
 /** Props for ModuleRing. */
 export type ModuleRingProps = {
-  /** Heading above the ring, already translated. */
-  title: string;
+  /** Heading above the ring, already translated; left out on the simple homes, where the greeting is enough. */
+  title?: string;
   modules: readonly Module[];
+  /**
+   * Modules that do not fit on the ring (simple home, #241): smaller circles four to a row
+   * under it, read after the ring's.
+   */
+  more?: readonly Module[];
 };
 
 /** Diameter of a module's circle. */
@@ -71,14 +87,35 @@ const MAX_ON_RING = 10;
 const MIN_WIDTH = 340;
 
 /** The staff home's modules, as a ring (or a grid when the text is large). */
-export function ModuleRing({ title, modules }: ModuleRingProps) {
+export function ModuleRing({ title, modules, more = [] }: ModuleRingProps) {
   const { width } = useWindowDimensions();
   const largeText = useLargeText();
   const asGrid = largeText || width < MIN_WIDTH || modules.length > MAX_ON_RING;
   return (
     <View style={styles.block}>
-      <AppText variant="subtitle">{title}</AppText>
-      {asGrid ? <ModuleGrid modules={modules} /> : <Ring modules={modules} width={width} />}
+      {title ? <AppText variant="subtitle">{title}</AppText> : null}
+      {asGrid ? (
+        <ModuleGrid modules={[...modules, ...more]} />
+      ) : (
+        <>
+          <Ring modules={modules} width={width} />
+          {more.length > 0 ? <CircleRow modules={more} /> : null}
+        </>
+      )}
+    </View>
+  );
+}
+
+/** Diameter of a circle in the rows under the ring. */
+const CIRCLE_ROW = 48;
+
+/** The modules that did not fit on the ring: circles four to a row. */
+function CircleRow({ modules }: { modules: readonly Module[] }) {
+  return (
+    <View style={styles.circleRow}>
+      {modules.map((module) => (
+        <ModuleButton key={module.key} module={module} circle={CIRCLE_ROW} style={styles.circleCell} />
+      ))}
     </View>
   );
 }
@@ -95,8 +132,15 @@ function Ring({ modules, width }: { modules: readonly Module[]; width: number })
   const itemWidth = dense ? ITEM_WIDTH_DENSE : ITEM_WIDTH;
   const radius = size / 2 - itemWidth / 2;
   const centre = size / 2;
+  // As tall as the lowest circle and its label need (#241): no empty room under the ring.
+  const lowest = Math.max(...modules.map((_, index) => Math.sin(-Math.PI / 2 + (index * 2 * Math.PI) / modules.length)));
+  const height = Math.max(size, centre + radius * lowest + circle / 2 + LABEL_ROOM);
   return (
-    <View style={[styles.ring, { width: size, height: size + LABEL_ROOM }]}>
+    <View style={[styles.ring, { width: size, height }]}>
+      {/* The lotus mandala behind the circles (#241). */}
+      <View style={[styles.mandala, { width: size, height: size }]}>
+        <RingMandala size={size} />
+      </View>
       <View
         // One element for screen readers: the app name and motto together.
         accessible
@@ -173,10 +217,15 @@ function ModuleButton({
   const { t } = useTranslation();
   const { colors } = useTheme();
   const soonLook = colors.chips.warning;
+  const count = badgeText(module.badge);
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={module.soon ? `${module.label}, ${t('comingSoon.title')}` : module.label}
+      accessibilityLabel={moduleSpokenName(module.label, {
+        count: module.badge,
+        badgeSpoken: module.badgeSpoken,
+        soon: module.soon ? t('comingSoon.title') : undefined,
+      })}
       onPress={module.onPress}
       style={({ pressed }) => [styles.item, style, pressed && styles.pressed]}>
       <View>
@@ -184,6 +233,17 @@ function ModuleButton({
         {module.soon ? (
           <View style={[styles.soonMark, { backgroundColor: soonLook.background, borderColor: colors.background }]}>
             <Icon name="construction" size={12} color={soonLook.text} />
+          </View>
+        ) : null}
+        {count !== null ? (
+          // The count is in the accessible name above, so the badge itself is not read again.
+          <View
+            importantForAccessibility="no-hide-descendants"
+            accessibilityElementsHidden
+            style={[styles.countMark, { backgroundColor: colors.danger, borderColor: colors.background }]}>
+            <AppText variant="small" maxFontSizeMultiplier={1.2} style={[styles.countText, { color: colors.onPrimary }]}>
+              {count}
+            </AppText>
           </View>
         ) : null}
       </View>
@@ -242,6 +302,38 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  countMark: {
+    position: 'absolute',
+    left: -6,
+    top: -4,
+    minWidth: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  countText: {
+    fontWeight: '700',
+    lineHeight: 16,
+  },
+  mandala: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+  },
+  circleRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    rowGap: spacing.sm,
+  },
+  circleCell: {
+    width: '25%',
+    minHeight: 48,
+    paddingHorizontal: 2,
   },
   grid: {
     flexDirection: 'row',

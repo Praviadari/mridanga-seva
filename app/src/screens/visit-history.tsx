@@ -6,7 +6,7 @@
 // location check (outside the centre's area, no position) gets a red line under it (DECISIONS #70).
 
 import { Stack, useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
@@ -30,10 +30,12 @@ export type VisitHistoryScreenProps = {
   studentId: string;
   /** For staff: the student's name and roll number, shown at the top. */
   subtitle?: string;
+  /** For the student: this week's visits, shown above the months (moved from the home, #240). */
+  top?: ReactNode;
 };
 
 /** The visits of one student by month. */
-export function VisitHistoryScreen({ studentId, subtitle }: VisitHistoryScreenProps) {
+export function VisitHistoryScreen({ studentId, subtitle, top }: VisitHistoryScreenProps) {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const { area } = useAuth();
@@ -68,6 +70,7 @@ export function VisitHistoryScreen({ studentId, subtitle }: VisitHistoryScreenPr
     <Screen underHeader onRefresh={load}>
       <Stack.Screen options={{ title: t('visitHistory.title') }} />
       {subtitle ? <AppText variant="subtitle">{subtitle}</AppText> : null}
+      {top}
       <AppText tone="muted">{t('visitHistory.intro')}</AppText>
 
       {history === undefined ? <LoadingCards /> : null}

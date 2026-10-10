@@ -1,9 +1,12 @@
-// I1 Ishtagoshti home, the tab for every role (Phase 2 slice 6, docs/DECISIONS.md #57): the sloka
-// of the day (pinned by an editor, or the published slokas in turn, the same for everyone), how
-// many slokas I have memorised, the themes, and all slokas. Editors (the Guru and coordinators the
-// Guru marked) also get "Add a sloka" and "Add a theme"; the Guru also the subscriber list (I15, slice 7).
-// Routes: student/(tabs)/ishtagoshti.tsx, staff/(tabs)/ishtagoshti.tsx and, for public subscribers,
-// subscriber/(tabs)/ishtagoshti.tsx (docs/DECISIONS.md #88). Data: src/data/ishtagoshti.ts.
+// I1 Ishtagoshti home, the tab for every role (Phase 2 slice 6, docs/DECISIONS.md #57), circles
+// since the simple home (10-10-2026, #243): a line on what Ishtagoshti is, then the ring of its
+// screens around the drum: the sloka of the day (pinned by an editor, or the published slokas in
+// turn, the same for everyone; opens the sloka), the themes (screens/ishtagoshti-themes.tsx) and all
+// slokas. Editors (the Guru and coordinators the Guru marked) also get Add a sloka and Add a theme;
+// the Guru also the subscriber list (I15, slice 7). Under the ring: how many slokas I have
+// memorised and how many there are. Routes: student/(tabs)/ishtagoshti.tsx,
+// staff/(tabs)/ishtagoshti.tsx and, for public subscribers, subscriber/(tabs)/ishtagoshti.tsx
+// (docs/DECISIONS.md #88). Data: src/data/ishtagoshti.ts.
 
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
@@ -13,20 +16,18 @@ import { useAuth } from '@/auth/auth-provider';
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { EmptyState } from '@/components/empty-state';
-import { IgMarks, openIg, SlokaVerse, type IgArea } from '@/components/ishtagoshti-parts';
-import { ListRow } from '@/components/list-row';
+import { openIg, type IgArea } from '@/components/ishtagoshti-parts';
 import { LoadingCards } from '@/components/loading-cards';
+import { ModuleRing, type Module } from '@/components/module-ring';
 import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
-import { Section } from '@/components/section';
 import { StatGrid, StatTile } from '@/components/stat-tile';
-import { fetchIshtagoshtiHome, inLanguage, type IshtagoshtiHome as Home } from '@/data/ishtagoshti';
+import { fetchIshtagoshtiHome, type IshtagoshtiHome as Home } from '@/data/ishtagoshti';
 
-/** I1 for students or staff. */
+/** I1 for students, staff or subscribers. */
 export function IshtagoshtiHome({ area }: { area: IgArea }) {
   const { t } = useTranslation();
   const { profile } = useAuth();
-  const language = profile?.language ?? 'en';
   // undefined = loading, null = could not load.
   const [home, setHome] = useState<Home | null | undefined>(undefined);
 
@@ -42,7 +43,32 @@ export function IshtagoshtiHome({ area }: { area: IgArea }) {
   );
 
   const today = home?.today ?? null;
-  const translation = today ? inLanguage(today.translation, language) : null;
+  const modules: Module[] = home
+    ? [
+        ...(today
+          ? [{ key: 'today', icon: 'today', tone: 'orange', label: t('ishtagoshti.today'), onPress: () => openIg.sloka(area, today.id) } satisfies Module]
+          : []),
+        { key: 'themes', icon: 'theme', tone: 'purple', label: t('ishtagoshti.themes'), onPress: () => openIg.themes(area) },
+        { key: 'slokas', icon: 'sloka', tone: 'blue', label: t('ishtagoshti.allSlokas'), onPress: () => openIg.slokas(area) },
+        ...(home.canEdit
+          ? ([
+              { key: 'addSloka', icon: 'add', tone: 'green', label: t('ishtagoshti.addSloka'), onPress: () => openIg.editSloka('new') },
+              { key: 'addTheme', icon: 'add', tone: 'teal', label: t('ishtagoshti.addTheme'), onPress: () => openIg.editTheme('new') },
+            ] satisfies Module[])
+          : []),
+        ...(area === 'staff' && profile?.role === 'guru'
+          ? [
+              {
+                key: 'subscribers',
+                icon: 'groups',
+                tone: 'pink',
+                label: t('igSubscribers.title'),
+                onPress: () => router.push('/staff/ishtagoshti/subscribers'),
+              } satisfies Module,
+            ]
+          : []),
+      ]
+    : [];
 
   return (
     <Screen underHeader onRefresh={load}>
@@ -59,50 +85,14 @@ export function IshtagoshtiHome({ area }: { area: IgArea }) {
 
       {home ? (
         <>
-          {today ? (
-            <Section icon="today" title={t('ishtagoshti.today')} description={today.ref}>
-              <IgMarks sample={today.sample} published={today.published} />
-              <SlokaVerse sloka={today} compact />
-              {translation ? <AppText>{translation.text}</AppText> : null}
-              <Button variant="secondary" icon="sloka" label={t('ishtagoshti.readSloka')} onPress={() => openIg.sloka(area, today.id)} />
-            </Section>
-          ) : (
+          {!today ? (
             <EmptyState icon="ishtagoshti" title={t('ishtagoshti.noSlokas')} body={home.canEdit ? t('ishtagoshti.noSlokasEditor') : undefined} />
-          )}
-
+          ) : null}
+          <ModuleRing modules={modules} />
           <StatGrid>
             <StatTile icon="memorised" value={String(home.memorised.size)} label={t('ishtagoshti.memorisedCount')} />
             <StatTile icon="sloka" value={String(home.slokas.filter((s) => s.published).length)} label={t('ishtagoshti.slokaCount')} onPress={() => openIg.slokas(area)} />
           </StatGrid>
-
-          <Section icon="theme" title={t('ishtagoshti.themes')} description={t('ishtagoshti.themesHint')}>
-            {home.themes.length === 0 ? <AppText tone="muted">{t('ishtagoshti.noThemes')}</AppText> : null}
-            {home.themes.map((theme) => (
-              <ListRow
-                key={theme.id}
-                leading="theme"
-                title={theme.title}
-                details={[
-                  t('ishtagoshti.slokasInTheme', { count: theme.slokaIds.length }),
-                  [theme.sample ? t('ishtagoshti.sample') : '', theme.published ? '' : t('ishtagoshti.draft')].filter(Boolean).join(' · '),
-                ].filter(Boolean)}
-                onPress={() => openIg.theme(area, theme.id)}
-              />
-            ))}
-          </Section>
-
-          <Button variant="secondary" icon="sloka" label={t('ishtagoshti.allSlokas')} onPress={() => openIg.slokas(area)} />
-          {home.canEdit ? (
-            <Section icon="edit" title={t('ishtagoshti.editorTitle')} description={t('ishtagoshti.editorHint')}>
-              <Button icon="add" label={t('ishtagoshti.addSloka')} onPress={() => openIg.editSloka('new')} />
-              <Button variant="secondary" icon="add" label={t('ishtagoshti.addTheme')} onPress={() => openIg.editTheme('new')} />
-            </Section>
-          ) : null}
-          {area === 'staff' && profile?.role === 'guru' ? (
-            <Section icon="groups" title={t('igSubscribers.title')} description={t('igSubscribers.homeHint')}>
-              <Button variant="secondary" icon="groups" label={t('igSubscribers.open')} onPress={() => router.push('/staff/ishtagoshti/subscribers')} />
-            </Section>
-          ) : null}
         </>
       ) : null}
     </Screen>

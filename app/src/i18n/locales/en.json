@@ -142,7 +142,9 @@
       "noVisitYet": "no visit yet",
       "myLevel": "My level: {{level}}",
       "unread": "New for you: {{count}}",
-      "allAnnouncements": "All announcements"
+      "allAnnouncements": "All announcements",
+      "levelStrip": "My level: {{level}} · {{done}} of {{total}}",
+      "levelStripNone": "My level: {{level}}"
     },
     "staff": {
       "shortcuts": "Screens",
@@ -172,7 +174,20 @@
       "followUpsHint": "Calls past their date, and students handed to you. Tap to open the follow-up calls.",
       "followUpsEmpty": "No follow-up call is overdue.",
       "followUpLine": "Overdue: {{overdue}} · With the facilitator: {{escalated}}",
-      "noName": "(no name)"
+      "noName": "(no name)",
+      "openCalls": "Open all follow-up calls"
+    },
+    "badges": {
+      "new": "{{count}} new",
+      "toVote": "{{count}} to vote",
+      "notFinished": "not finished",
+      "due": "{{count}} due",
+      "waiting": "{{count}} waiting"
+    },
+    "modules": {
+      "overview": "Overview",
+      "newJoiners": "New joiners",
+      "promotions": "Promotions"
     }
   },
   "tabs": {
@@ -3375,5 +3390,23 @@
     "direction": "Income or expense",
     "eventAnswer": "Your answer",
     "eventsOrPolls": "Show events or polls"
+  },
+  "facts": {
+    "title": "Did you know?",
+    "f1": "Mṛdaṅga comes from the Sanskrit mṛt, clay, and aṅga, body: a drum with a body of clay.",
+    "f2": "In Bengal the mṛdaṅga is called the khol.",
+    "f3": "The mṛdaṅga has been the drum of saṅkīrtana since Śrī Caitanya Mahāprabhu, in Bengal in the 15th century.",
+    "f4": "The small head, the dāyāṅ, gives the high ringing sounds; the wide head, the bāyāṅ, gives the deep bass.",
+    "f5": "The black centre of each head is the syāhī, a paste with rice and iron filings that gives the drum its tone.",
+    "f6": "Damp air makes the bass head sound deeper and dry air higher, so players sometimes wet it a little.",
+    "f7": "The fibreglass mṛdaṅga was first made in the 1970s, so the drum would not break on travels or in the rain.",
+    "f8": "A clay khol has the warmest sound but needs care: keep it from strong heat and cold, with covers on the heads.",
+    "f9": "Never stand a mṛdaṅga on its bass head; lay it on its side.",
+    "f10": "Bols are the drum's alphabet: tā, nā and tī on the small head; ka, gha and ga on the big one.",
+    "f11": "dhā is tā and ga played together, one stroke on each head.",
+    "f12": "The Bengali khol is not the South Indian mṛdaṅgam, which has a wooden body and its own bols and tālas.",
+    "f13": "Kartāls keep time with the mṛdaṅga in four beats: open, closed, closed, open.",
+    "f14": "A little practice every day, 15 to 30 minutes, does more than one long session a week.",
+    "f15": "The rings of a head, from the edge in: gajarā, kinār, maidān and the black syāhī."
   }
 }

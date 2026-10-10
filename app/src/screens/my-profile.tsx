@@ -1,6 +1,6 @@
 // A3 Profile and app language, for everyone signed in: my name and phone (editable), my email
 // and role (read-only), the language switch (the same picker as on the home screens) and Sign
-// out. A student also sees their roll number and the way to My QR; the name on the roll is the
+// out, and the app version line (since the simple home, #240). A student also sees their roll number and the way to My QR; the name on the roll is the
 // coordinators' record and changes only through them. Shown by two routes: student/profile.tsx
 // (from the ring on S1) and staff/profile.tsx (from "My profile" at the foot of the staff homes).
 // A student also opens About you here (0036); staff see the referral code they give to people they bring.
@@ -22,6 +22,7 @@ import { Screen } from '@/components/screen';
 import { SignOutButton } from '@/components/sign-out-button';
 import { Section } from '@/components/section';
 import { TextField } from '@/components/text-field';
+import { VersionLine } from '@/components/update-notice';
 import { fetchMyReferralCode } from '@/data/about';
 import { checkMyDetails, fetchMyPhone, NAME_MAX, saveMyDetails, type MyDetailsErrors } from '@/data/my-profile';
 import { fetchMyStudent, type MyStudent } from '@/data/visits';
@@ -171,6 +172,8 @@ export function MyProfileScreen() {
       </Section>
 
       <SignOutButton icon="signOut" />
+      {/* The version line, once at the foot of the homes (simple home, docs/DECISIONS.md #240). */}
+      <VersionLine />
     </Screen>
   );
 }

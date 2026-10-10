@@ -1,44 +1,37 @@
-// S1 Student home: the saffron header with the greeting (components/home-header.tsx), a large
-// button to My QR (S3), this week's visits and the last visit, the student's level with their
-// syllabus progress, and the latest announcements with the ones not opened yet marked "New"
-// (S10), then the language switch, Sign out and the app version (components/account-footer.tsx).
-// On the Android app, "A new version is ready" shows under the greeting once an update is
-// downloaded (components/update-notice.tsx). Under the ring: the next event and the polls waiting
-// for a vote (Phase 2 slice 5, src/data/events.ts, polls.ts). Read-only.
+// S1 Student home, simple since 10-10-2026 (docs/DECISIONS.md #240): the saffron header with the
+// greeting (components/home-header.tsx), the ring of the student's screens around the
+// drum, each circle opening its own screen, so the home fits a phone without scrolling; a drawn
+// lotus mandala behind the ring (components/home-art.tsx, #241); under the ring a slim bar of
+// my level's syllabus (opens S4) and a fact of the day with a faint temple behind it (#242). What used
+// to be cards here lives behind a circle: this week's visits on Attendance (S9), the level and
+// syllabus on My progress (S4), the next event and the polls on Events & polls (S11, S12), the
+// latest announcements on Announcements (S10). What waits for the student is a count on its circle
+// (announcements not opened yet, polls to vote, About you not finished). Only notices stay on the
+// home: "A new version is ready" on the Android app (components/update-notice.tsx), could not load,
+// and no student record. Language, Sign out and the version line are on My profile (A3).
 // Numbers: student_home() through src/data/home.ts; announcements: src/data/announcements.ts.
-// It loads again each time it comes back into view, so "New" goes once an announcement is opened.
+// It loads again each time it comes back into view, so a count goes once the thing is done.
 
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Pressable, StyleSheet } from 'react-native';
 
 import { useAuth } from '@/auth/auth-provider';
-import { AccountFooter } from '@/components/account-footer';
-import { AnnouncementCard } from '@/components/announcement-card';
-import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
-import { EmptyState } from '@/components/empty-state';
-import { ListRow } from '@/components/list-row';
+import { FactCard } from '@/components/fact-card';
 import { HomeHeader } from '@/components/home-header';
-import { LoadingCards } from '@/components/loading-cards';
 import { ModuleRing, type Module } from '@/components/module-ring';
 import { Notice } from '@/components/notice';
 import { ProgressBar } from '@/components/progress-bar';
 import { Screen } from '@/components/screen';
-import { Section } from '@/components/section';
-import { StatGrid, StatTile } from '@/components/stat-tile';
 import { UpdateNotice } from '@/components/update-notice';
 import { fetchMyLatestAnnouncements, type MyLatestAnnouncements } from '@/data/announcements';
-import { fetchNextEvent, placeText, whenText, type EventItem, type EventNames } from '@/data/events';
 import { fetchStudentHome, type StudentHome } from '@/data/home';
 import { fetchPollsToVote } from '@/data/polls';
-import { audienceName, authorLine, lastVisitText, levelName } from '@/i18n/labels';
+import { levelName } from '@/i18n/labels';
 import { useAboutPrompt } from '@/lib/about-prompt';
-import { formatDateTime } from '@/lib/dates';
 import { useLatestLoad } from '@/lib/latest-load';
-
-/** How many announcements the home shows; the rest are one tap away on S10. */
-const LATEST_COUNT = 3;
 
 /** Student home screen. */
 export default function StudentHomeScreen() {
@@ -48,10 +41,9 @@ export default function StudentHomeScreen() {
   // undefined = loading, null = could not load.
   const [home, setHome] = useState<StudentHome | 'not_found' | null | undefined>(undefined);
   const [news, setNews] = useState<MyLatestAnnouncements | null | undefined>(undefined);
-  // Phase 2 slice 5: the next event and how many polls wait for a vote (null = none / not known).
-  const [nextEvent, setNextEvent] = useState<{ item: EventItem; names: EventNames } | null>(null);
   const [pollsToVote, setPollsToVote] = useState(0);
-  // About you (step 2 of joining, docs/DECISIONS.md #164): opens by itself once after the first sign-in.
+  // About you (step 2 of joining, docs/DECISIONS.md #164): opens by itself once after the first
+  // sign-in; while unfinished it is a circle with a mark.
   const aboutOpen = useAboutPrompt(profile?.id, '/student/about-you');
   const beginLoad = useLatestLoad();
   // The name on the student record, which staff keep correct, once loaded; until then the name
@@ -60,16 +52,15 @@ export default function StudentHomeScreen() {
 
   const load = useCallback(async () => {
     const isNewest = beginLoad();
-    const [loadedHome, loadedNews, loadedEvent, loadedPolls] = await Promise.all([
+    // One announcement is enough: only the unread count is shown here.
+    const [loadedHome, loadedNews, loadedPolls] = await Promise.all([
       fetchStudentHome(),
-      fetchMyLatestAnnouncements(myId, LATEST_COUNT),
-      fetchNextEvent(),
+      fetchMyLatestAnnouncements(myId, 1),
       fetchPollsToVote(),
     ]);
     if (!isNewest()) return; // an older load answering late (D6-19)
     setHome(loadedHome);
     setNews(loadedNews);
-    setNextEvent(loadedEvent);
     setPollsToVote(loadedPolls);
   }, [myId, beginLoad]);
 
@@ -81,32 +72,59 @@ export default function StudentHomeScreen() {
 
   const unread = news ? news.unread : 0;
 
-  // The ring of the student's screens (docs/DECISIONS.md #41, #44): the three tabs' subjects plus My
-  // progress (S4), Assessments (S7, Phase 2), Practice (S5), My attendance (S9), My profile (A3) and
-  // Events and polls (S11, S12).
+  // The ring of the student's screens (docs/DECISIONS.md #41, #44, #240), in reading order.
   const modules: Module[] = [
+    // My QR first: it works without internet (#21), when it is needed most; also a tab.
     { key: 'qr', icon: 'qr', tone: 'blue', label: t('tabs.myQr'), onPress: () => router.push('/student/my-qr') },
-    { key: 'news', icon: 'news', tone: 'orange', label: t('announcements.title'), onPress: () => router.push('/student/announcements') },
+    {
+      key: 'news',
+      icon: 'news',
+      tone: 'orange',
+      label: t('announcements.title'),
+      badge: unread,
+      badgeSpoken: t('home.badges.new', { count: unread }),
+      onPress: () => router.push('/student/announcements'),
+    },
+    // My level and its syllabus (S4).
     { key: 'progress', icon: 'syllabus', tone: 'purple', label: t('progress.title'), onPress: () => router.push('/student/progress') },
     // Phase 2 (S7, docs/DECISIONS.md #52); indigo here, as My attendance next to it is teal.
     { key: 'assessments', icon: 'assessment', tone: 'indigo', label: t('assessments.title'), onPress: () => router.push('/student/assessments') },
     // Phase 2 slice 3 (S5 Practice tools, docs/DECISIONS.md #54).
     { key: 'practice', icon: 'practice', tone: 'pink', label: t('practice.module'), onPress: () => router.push('/student/practice') },
+    // S9 with this week's visits at the top.
     { key: 'visits', icon: 'visits', tone: 'teal', label: t('visitHistory.module'), onPress: () => router.push('/student/visits') },
-    { key: 'profile', icon: 'profile', tone: 'green', label: t('myProfile.title'), onPress: () => router.push('/student/profile') },
     // Phase 2 slice 5: events and polls (S11, S12; docs/DECISIONS.md #61).
-    { key: 'events', icon: 'events', tone: 'purple', label: t('events.module'), onPress: () => router.push('/student/events') },
+    {
+      key: 'events',
+      icon: 'events',
+      tone: 'purple',
+      label: t('events.module'),
+      badge: pollsToVote,
+      badgeSpoken: t('home.badges.toVote', { count: pollsToVote }),
+      onPress: () =>
+        router.push(pollsToVote > 0 ? { pathname: '/student/events', params: { tab: 'polls' } } : '/student/events'),
+    },
+    ...(aboutOpen
+      ? [
+          {
+            key: 'about',
+            icon: 'about',
+            tone: 'green',
+            label: t('about.cardTitle'),
+            badge: 1,
+            badgeSpoken: t('home.badges.notFinished'),
+            onPress: () => router.push('/student/about-you'),
+          } satisfies Module,
+        ]
+      : []),
+    // A3, with the language switch, Sign out and the version line.
+    { key: 'profile', icon: 'profile', tone: 'green', label: t('myProfile.title'), onPress: () => router.push('/student/profile') },
   ];
 
   return (
     <Screen wide header={<HomeHeader name={name} />} onRefresh={load}>
       <UpdateNotice />
 
-      {/* First and always there, even when nothing else loads: My QR keeps a copy on the phone
-          and works without internet (docs/DECISIONS.md #21), which is when it is needed most. */}
-      <Button size="large" icon="qr" label={t('myQr.open')} onPress={() => router.push('/student/my-qr')} />
-
-      {home === undefined ? <LoadingCards kind="tiles" /> : null}
       {home === null || news === null ? (
         <>
           <Notice tone="error" title={t('home.loadFailed')}>
@@ -121,108 +139,41 @@ export default function StudentHomeScreen() {
         </Notice>
       ) : null}
 
-      {home && home !== 'not_found' ? (
-        <>
-          <StatGrid>
-            <StatTile icon="visits" value={String(home.visitsThisWeek)} label={home.weekStarts === 'rolling7' ? t('weekMeaning.studentRolling') : t('home.student.visitsThisWeek')} />
-            <StatTile
-              icon="time"
-              // Never came: no number of days to show; the line below says "No visit yet".
-              value={home.lastVisitAt ? String(home.daysSinceVisit) : '—'}
-              spokenValue={home.lastVisitAt ? undefined : t('home.student.noVisitYet')}
-              label={t('home.student.daysSinceVisit')}
-            />
-          </StatGrid>
-          <AppText variant="small" tone="muted">
-            {lastVisitText(t, home)}
-          </AppText>
+      {/* Shown while loading too: every circle opens its screen, which loads on its own. */}
+      <ModuleRing modules={modules} />
 
-          <Section icon="level" title={t('home.student.myLevel', { level: levelName(t, home.levelId) })}>
-            {home.syllabusTotal > 0 ? (
-              <ProgressBar
-                done={home.syllabusDone}
-                total={home.syllabusTotal}
-                label={t('syllabus.progressLabel', { level: levelName(t, home.levelId) })}
-                valueText={t('profile.syllabusDone', { done: home.syllabusDone, total: home.syllabusTotal })}
-              />
-            ) : (
-              <AppText tone="muted">{t('profile.noSyllabus')}</AppText>
-            )}
-            <Button variant="link" icon="syllabus" label={t('progress.open')} onPress={() => router.push('/student/progress')} />
-          </Section>
-        </>
-      ) : null}
-
-      {aboutOpen ? (
-        <Section icon="about" title={t('about.cardTitle')} description={t('about.cardBody')}>
-          <Button icon="about" label={t('about.cardOpen')} onPress={() => router.push('/student/about-you')} />
-        </Section>
-      ) : null}
-
-      <ModuleRing title={t('home.staff.shortcuts')} modules={modules} />
-
-      {nextEvent || pollsToVote > 0 ? (
-        <Section icon="events" title={t('events.home.title')}>
-          {nextEvent ? (
-            <ListRow
-              leading="events"
-              title={nextEvent.item.event.title}
-              details={[
-                whenText(nextEvent.item.event),
-                ...(placeText(nextEvent.item.event, nextEvent.names) ? [placeText(nextEvent.item.event, nextEvent.names)] : []),
-                nextEvent.item.counts.myResponse
-                  ? t('events.list.myAnswer', { answer: t(`events.responses.${nextEvent.item.counts.myResponse}`) })
-                  : t('events.list.pleaseAnswer'),
-              ]}
-              highlighted={nextEvent.item.counts.myResponse === 'going'}
-              onPress={() => router.push({ pathname: '/student/events/[id]', params: { id: String(nextEvent.item.event.id) } })}
-            />
-          ) : null}
-          {pollsToVote > 0 ? (
-            <ListRow
-              leading="poll"
-              title={t('events.home.pollsToVote', { n: pollsToVote })}
-              highlighted
-              onPress={() => router.push({ pathname: '/student/events', params: { tab: 'polls' } })}
-            />
-          ) : null}
-        </Section>
-      ) : null}
-
-      {news ? (
-        <Section
-          icon="news"
-          title={t('announcements.title')}
-          description={unread > 0 ? t('home.student.unread', { count: unread }) : undefined}>
-          {news.announcements.length === 0 ? (
-            <EmptyState icon="news" title={t('announcements.emptyStudent')} />
-          ) : null}
-          {/* Same order as S10: pinned first, then newest. */}
-          {news.announcements.slice(0, LATEST_COUNT).map((a) => (
-            <AnnouncementCard
-              key={a.id}
-              title={a.title}
-              body={a.body}
-              pinned={a.pinned}
-              unread={!a.readByMe}
-              details={[
-                `${formatDateTime(a.publishAt)} · ${audienceName(t, a, {
-                  groupName: a.audienceGroup !== null ? news.groupNames.get(a.audienceGroup) : null,
-                })}`,
-                ...authorLine(t, a.createdBy ? news.staffNames.get(a.createdBy) : undefined),
-              ]}
-              onPress={() => router.push({ pathname: '/student/announcements/[id]', params: { id: String(a.id) } })}
-            />
-          ))}
-          <Button
-            variant="secondary"
-            label={t('home.student.allAnnouncements')}
-            onPress={() => router.push('/student/announcements')}
-          />
-        </Section>
-      ) : null}
-
-      <AccountFooter />
+      {/* Under the ring (#242): my level at a glance (opens S4), and today's fact about the mṛdaṅga. */}
+      {home && home !== 'not_found' ? <LevelStrip home={home} /> : null}
+      <FactCard />
     </Screen>
   );
 }
+
+/** My level and its syllabus as one slim bar; a button to My progress (S4). */
+function LevelStrip({ home }: { home: StudentHome }) {
+  const { t } = useTranslation();
+  const level = levelName(t, home.levelId);
+  const text =
+    home.syllabusTotal > 0
+      ? t('home.student.levelStrip', { level, done: home.syllabusDone, total: home.syllabusTotal })
+      : t('home.student.levelStripNone', { level });
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={text}
+      onPress={() => router.push('/student/progress')}
+      style={({ pressed }) => [styles.strip, pressed && styles.pressed]}>
+      <ProgressBar done={home.syllabusDone} total={home.syllabusTotal} label={text} valueText={text} />
+    </Pressable>
+  );
+}
+
+const styles = StyleSheet.create({
+  strip: {
+    minHeight: 48,
+    justifyContent: 'center',
+  },
+  pressed: {
+    opacity: 0.7,
+  },
+});
