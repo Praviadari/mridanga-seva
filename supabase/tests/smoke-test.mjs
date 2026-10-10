@@ -123,7 +123,7 @@ process.on('uncaughtException', (error) => {
 // D14-10: every check is counted, and the run fails when fewer (or more) checks ran than expected,
 // so a block skipped by a renamed migration or a commented-out section cannot pass unseen.
 // Adding or removing checks? Run the suite and set this to the new total it prints.
-const EXPECTED_CHECKS = 1377; // 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16
+const EXPECTED_CHECKS = 1385; // 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8
 let failures = 0;
 let passes = 0;
 
@@ -452,7 +452,7 @@ await refusesWith('anon cannot run log_call', 'permission denied for function lo
   asApp('anon', null, `select log_call('${divya.id}', 'not_reachable', null, 'No answer')`));
 await refusesWith('a call log cannot be written directly, only through log_call', 'new row violates row-level security policy for table "call_logs"', () =>
   asApp('authenticated', coordinator, `insert into call_logs (student_id, outcome, comment) values ('${divya.id}', 'not_reachable', 'x')`));
-await refusesWith('status paused cannot be set by a plain edit', 'status paused can only be set by logging a call', () =>
+await refusesWith('status paused cannot be set by a plain edit', 'status_needs_call_log', () =>
   asApp('authenticated', coordinator, `update students set status = 'paused' where id = '${divya.id}'`));
 
 await logCall(coordinator, { p_student: divya.id, p_outcome: 'paused', p_reason: 'studies', p_comment: 'Exams till next month', p_next_date: inAMonth });
@@ -2643,7 +2643,7 @@ check('app roles cannot run the team-tools helpers', (await asOwner(`select
 
 // ---------------------------------------------------------------- class fund (0026)
 // coordinator2 becomes the treasurer; coordinator is a coordinator who only reads; late is a student.
-await refusesWith('a coordinator cannot make themselves treasurer', 'only the Guru can change role, treasurer or active', () => asApp('authenticated', coordinator,
+await refusesWith('a coordinator cannot make themselves treasurer', 'role_guru_only', () => asApp('authenticated', coordinator,
   'update profiles set is_treasurer = true where id = auth.uid()'));
 await refusesWith('only a coordinator can be a treasurer', 'treasurer_coordinator_only', () => asApp('authenticated', guru,
   'update profiles set is_treasurer = true where id = $1', [late]));
@@ -4285,9 +4285,9 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   // D14-08: the roll number is frozen, a status change leaves one history row, an edit one audit row
   // naming who made it.
   const tnStudent = await r10Student('TN Trigger Probe');
-  await refusesWith('D14-08: a coordinator cannot change a roll number', 'roll_no is frozen once issued', () =>
+  await refusesWith('D14-08: a coordinator cannot change a roll number', 'roll_no_frozen', () =>
     asApp('authenticated', tn.coordinator, `update students set roll_no = 'MS-2026-9999' where id = $1`, [tnStudent]));
-  await refusesWith('D14-08: ... nor can the dashboard', 'roll_no is frozen once issued', () =>
+  await refusesWith('D14-08: ... nor can the dashboard', 'roll_no_frozen', () =>
     asOwner(`update students set roll_no = 'MS-2026-9999' where id = '${tnStudent}'`));
   const auditCount = async (table, rowId) => (await asOwner(`select count(*)::int as n from audit_log
     where table_name = '${table}' and row_id = '${rowId}' and action = 'UPDATE' and changed_by = '${tn.coordinator}'`))[0].n;
@@ -4849,6 +4849,50 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   check('FS1a-14: an idle staff login is simply deleted', gone40.login_deleted === true
     && (await asOwner(`select count(*)::int as n from profiles where id = '${idle40}'`))[0].n === 0, JSON.stringify(gone40));
   await asOwner(`delete from students where id = '${made40}'`);
+}
+
+// ---------------------------------------------------------------- 0042 app leftovers
+{
+  const [rn] = await asOwner(`select is_nullable from information_schema.columns
+    where table_schema = 'public' and table_name = 'students' and column_name = 'roll_no'`);
+  check('D13-05: students.roll_no is not null', rn.is_nullable === 'NO', rn.is_nullable);
+  let noRoll = '';
+  await db.exec('begin');
+  try {
+    await db.exec(`alter table students disable trigger students_roll_no;
+      insert into students (full_name, dob) values ('No Roll 42', '1990-01-01')`);
+  } catch (e) { noRoll = String(e.message); }
+  await db.exec('rollback');
+  check('D13-05: ... a student saved without the roll-number trigger is refused', /null value in column "roll_no"/.test(noRoll), noRoll);
+
+  const sentences = await asOwner(`select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public' and p.prosrc ~ $re$raise exception '[^']* [^']*'$re$ order by 1`);
+  check('D13-02: no function of ours raises an English sentence instead of a code', sentences.length === 0,
+    sentences.map((r) => r.proname).join(', '));
+  const triggerRights = await asOwner(`select has_function_privilege('authenticated', 'guard_student_update()', 'execute') as s,
+    has_function_privilege('authenticated', 'guard_profile_update()', 'execute') as p`);
+  check('D13-02: ... the two re-made trigger functions cannot be called by app users', !triggerRights[0].s && !triggerRights[0].p, JSON.stringify(triggerRights[0]));
+
+  const file42 = readFileSync(new URL('migrations/0042_app_leftovers.sql', supabaseDir), 'utf8');
+  const fnComments = [...file42.matchAll(/^comment on function (\w+)\(/gm)].map((m) => m[1]);
+  const noFnComment = await asOwner(`select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public' and p.proname = any($1) and obj_description(p.oid, 'pg_proc') is null`.replace('$1', `array[${fnComments.map((n) => `'${n}'`).join(',')}]`));
+  check(`D13-06: the ${fnComments.length} functions 0042 describes have a comment`, fnComments.length >= 15 && noFnComment.length === 0,
+    noFnComment.map((r) => r.proname).join(', '));
+  const colComments = [...file42.matchAll(/^comment on column (\w+)\.(\w+) is/gm)].map((m) => [m[1], m[2]]);
+  const noColComment = [];
+  for (const [table, column] of colComments) {
+    const [row] = await asOwner(`select col_description('public.${table}'::regclass,
+      (select attnum from pg_attribute where attrelid = 'public.${table}'::regclass and attname = '${column}')) as d`);
+    if (!row.d) noColComment.push(`${table}.${column}`);
+  }
+  check(`D13-06: the ${colComments.length} columns 0042 describes have a comment`, colComments.length >= 25 && noColComment.length === 0, noColComment.join(', '));
+  const [{ n: g1 }] = await asOwner(`select count(*)::int as n from pg_proc where obj_description(oid, 'pg_proc') like 'Trigger on students:%'`);
+  check('D13-06: guard_student_update says what it guards', g1 >= 1);
+
+  let again = '';
+  try { await db.exec(file42); } catch (e) { again = String(e.message); }
+  check('0042 can run a second time', again === '', again);
 }
 
 // ---------------------------------------------------------------- row-level security

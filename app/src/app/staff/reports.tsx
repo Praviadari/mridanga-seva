@@ -147,6 +147,7 @@ export default function ReportsScreen() {
       <Section icon="visits" title={t('reports.rangeTitle')}>
         <ChoiceGroup
           chips
+          accessibilityLabel={t('reports.rangeTitle')}
           choices={[
             { value: 'thisMonth', label: t('reports.ranges.thisMonth') },
             { value: 'lastMonth', label: t('reports.ranges.lastMonth') },

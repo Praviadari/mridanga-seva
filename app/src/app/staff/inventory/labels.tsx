@@ -27,7 +27,7 @@ import { SIGNED_NUMBER_KEYBOARD, TextField } from '@/components/text-field';
 import { fetchInventory, fetchMyCentreId, markLabelsPrinted, type InventoryItem } from '@/data/inventory';
 import { assetLink, webAppOrigin } from '@/lib/asset-link';
 import { NUDGE_MAX, PER_SHEET, sheetHtml, sheetsNeeded, type LabelContent } from '@/lib/label-sheet';
-import { spaceKeyProps } from '@/lib/space-key';
+import { useRadioKeys, type RadioKeyProps } from '@/lib/space-key';
 import { radius, spacing, useTheme } from '@/theme/use-theme';
 
 type Which = 'unprinted' | 'all';
@@ -72,6 +72,8 @@ export default function LabelsScreen() {
     () => new Set((params.ids ?? '').split(',').map(Number).filter((n) => Number.isInteger(n) && n > 0)),
   );
   const [startAt, setStartAt] = useState(1);
+  // Arrow keys move the start along the sheet on the web (one Tab stop for the grid).
+  const startKeys = useRadioKeys(PER_SHEET, startAt - 1, (index) => setStartAt(index + 1));
   const [calibration, setCalibration] = useState(false);
   const [nudge, setNudge] = useState(readNudge);
   const [width, setWidth] = useState(0);
@@ -225,7 +227,7 @@ export default function LabelsScreen() {
         <AppText variant="label">{t('labels.startAt', { n: startAt })}</AppText>
         <View style={styles.grid} accessibilityRole="radiogroup" accessibilityLabel={t('labels.startAt', { n: startAt })}>
           {Array.from({ length: PER_SHEET }, (_, i) => i + 1).map((n) => (
-            <StartCell key={n} n={n} state={n < startAt ? 'used' : n === startAt ? 'start' : 'free'} onPress={() => setStartAt(n)} />
+            <StartCell key={n} n={n} state={n < startAt ? 'used' : n === startAt ? 'start' : 'free'} onPress={() => setStartAt(n)} keys={startKeys(n - 1)} />
           ))}
         </View>
         <Checkbox label={t('labels.calibration')} checked={calibration} onChange={setCalibration} />
@@ -280,7 +282,7 @@ export default function LabelsScreen() {
 }
 
 /** One position on the sheet: used (before the start), the start, or free. */
-function StartCell({ n, state, onPress }: { n: number; state: 'used' | 'start' | 'free'; onPress: () => void }) {
+function StartCell({ n, state, onPress, keys }: { n: number; state: 'used' | 'start' | 'free'; onPress: () => void; keys: RadioKeyProps }) {
   const { colors } = useTheme();
   const { t } = useTranslation();
   return (
@@ -289,7 +291,7 @@ function StartCell({ n, state, onPress }: { n: number; state: 'used' | 'start' |
       aria-checked={state === 'start'}
       accessibilityLabel={t('labels.position', { n })}
       onPress={onPress}
-      {...spaceKeyProps(onPress)}
+      {...keys}
       style={[
         styles.cell,
         {

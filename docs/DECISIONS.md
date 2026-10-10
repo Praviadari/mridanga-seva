@@ -3802,3 +3802,115 @@ parent's verifiable consent (s.9(1), Rule 10).
 **Consequences.** Phase 3 keeps the QR scanner and My QR. The proposed details (who scans, minimum age,
 retention, the child's own refusal, the impact-assessment gate) are in docs/phase3/ for the Guru;
 DECISIONS #214-#215 stay unused until then.
+
+## 216. A crash shows a page with Try again, never a blank screen — 10 Oct 2026
+
+**Status: decided by the lead's brief (audit D10-17 default "ErrorBoundary now; a reporter only after a privacy
+review"); branch `app-leftovers`.**
+
+**Context.** D10-17: nothing caught a rendering error, so a crash left a blank page (web) or a white screen
+(phone), and volunteer testers could only say "it stopped".
+
+**Decision.** The root layout exports Expo Router's `ErrorBoundary` (src/components/crash-screen.tsx): "Something
+went wrong" in en/te/hi, **Try again** (renders again), **Go to the home screen** (then tries again), how to report
+it, the error's first line (not translated, at most 200 characters) and the version line. It replaces the whole
+app, providers included, so it needs none of them; it hides the splash in case the crash came first. Only the
+stable root `ErrorBoundary` is used, not the per-navigator `unstable_screenErrorBoundary`. **No crash reporter:**
+nothing leaves the phone; a reporter (Sentry or similar) needs a privacy review first, minors use the app.
+
+**Consequences.** A crash in one screen takes the tabs with it until Try again or Go home; acceptable for a
+crash. The error line on screen can be read out or photographed for a bug report.
+
+## 217. Staff screens offer a waiting update; the app looks every 30 minutes in front — 10 Oct 2026
+
+**Status: decided by the lead's brief (FLOW-06); branch `app-leftovers`.**
+
+**Context.** FLOW-06: the "new version ready" notice was only on the three homes; a door phone left on the
+scanner for a whole class never saw it, and the app checked for updates only when it came back to the front.
+
+**Decision.** The staff layout sets `UpdateNoticeOnScreens`; `Screen` then shows the same notice and Restart
+button at the top of every staff screen that has no header band (the homes keep theirs under the greeting). The
+pending screen shows it too. While the app stays in front it asks every 5 minutes whether a check is due; the
+check itself still runs at most every 30 minutes and only in a release build (`useUpdateChecks`). Student screens
+are unchanged (their home shows it).
+
+**Consequences.** A downloaded update reaches the door phone within about 30 minutes plus a Restart tap. The
+two-cold-start recovery from a broken update stays as documented in OPERATIONS ("Rolling back", #194-#199).
+
+## 218. Long forms are kept after a forced sign-out, for the same login only — 10 Oct 2026
+
+**Status: decided by the lead's brief (D6-20 part 2); branch `app-leftovers`.**
+
+**Context.** D6-20: when the server ends a login (refresh token revoked or expired, password changed elsewhere)
+a coordinator lost a half-filled registration or announcement. Part 1 (#178-#185) added the sign-in notice.
+
+**Decision.** src/lib/form-drafts.ts. Register a student (C2/C3), New announcement and Edit announcement report
+what they hold while open (`useDraftKeeper`); **nothing is written to the device then.** Only on a sign-out the
+person did not ask for (`noteSignedOut`) are the open forms written to local storage under the login's user id.
+The form fills itself from the draft when the same login opens it again, says so ("What you typed is back") with
+a button to start empty / use the saved version, and deletes the draft from the device. Rules:
+- another login never gets it, and the auth provider deletes it as soon as another login signs in;
+- the person's own Sign out deletes every draft (a shared phone keeps nothing);
+- a draft older than 7 days is ignored and deleted;
+- consent ticks are never brought back (the coordinator ticks them again after checking the signed form);
+- files picked on the phone are not kept (the sign-out deletes them, #186); the form says to add them again;
+- the edit draft keeps the version it started from, so a save still notices someone else's change (D6-15);
+- a registration draft keeps its request id, so a save whose answer was lost is still not stored twice (#126).
+The sign-in notice (endedBody) now says a registration or announcement being written is kept.
+
+**Consequences.** A minor's registration draft can sit on the coordinator's phone for up to 7 days after a
+forced sign-out (in the app's local storage, like the login itself). Other forms (call notes, events, polls,
+assessments) are not kept; add them to the same module when needed.
+
+## 219. The last English-sentence errors become codes; roll_no is NOT NULL — 10 Oct 2026
+
+**Status: decided by the lead's brief (D13-02, D13-05); migration 0042, branch `app-leftovers`.**
+
+**Decision.** 0042 re-creates `guard_student_update` (`roll_no_frozen`, `status_needs_call_log`, the status in
+`detail`) and `guard_profile_update` (`role_guru_only`) and sets `students.roll_no NOT NULL` (it stops with
+`roll_no_missing` and changes nothing when a student without one exists). A smoke check now fails when any
+function of ours raises a message with a space in it. **The app keeps understanding `not allowed` and
+`student not found`** (data/attendance.ts) until LIVE has run 0037 (brief 8): LIVE is at about 0011 and gets the
+next update's JavaScript first.
+
+**Generated types (rest of D13-05): deferred.** `supabase gen types` and `createClient<Database>` would type every
+query; the app's hand-written row types and casts (every loader) would all have to change in one go. Doing it
+is a slice of its own, after LIVE reaches 0042 so the types match both projects.
+
+## 220. Comments on the helper functions and the core columns — 10 Oct 2026
+
+**Status: decided by the lead's brief (D13-06); migration 0042, branch `app-leftovers`.**
+
+**Decision.** 0042 adds `comment on` for the two 0001 functions the audit named that still had none
+(`guard_student_update`, `handle_user_confirmed`), `guard_profile_update`, the helpers row-level security and the
+storage rules call (`is_treasurer`, `my_student_id`, `event_visible_to`, `inventory_centre_ok`, the
+`*_readable` rules ...) and 29 non-obvious columns of students, profiles, guardians, consents, visits, call_logs,
+follow_up_tasks, centres, roll_counters and status_history. Existing comments are not rewritten. The smoke test
+reads 0042's own `comment on` lines and checks each landed.
+
+**Consequences.** About 50 later functions (push lines, guards of Phase 2 tables, pgcrypto's own) and many Phase 2
+columns still have no comment; the function names and their migration's header explain them. Not worth a
+migration on their own; add comments when a migration touches them.
+
+## 221. Radio groups follow the web's keyboard pattern; every group is named — 10 Oct 2026
+
+**Status: decided by the lead's brief (a11y leftovers of #201); branch `app-leftovers`.**
+
+**Decision.** `useRadioKeys` (src/lib/space-key.ts), web only: a group of radio buttons is one Tab stop, at the
+chosen button (the first when none); the arrow keys move to the next / previous button, round at the ends, and
+pick it; Space picks. Used by ChoiceGroup and the label sheet's start grid; the drop-down list (SelectField) moves
+the focus with the arrows without picking, since picking closes it. The ten ChoiceGroups without a visible label
+or `accessibilityLabel` got one (assessment level and tracker filters, import rows, fund direction, report range,
+week start, event answer, performer part, events/polls switch, poll vote), reusing the section title where it
+says the same. Phones: nothing changes (no keyboard focus).
+
+## 222. The language is saved through the data layer, never by changing the profile in place — 10 Oct 2026
+
+**Status: decided by the lead's brief (D13-12); branch `app-leftovers`. D8-01's behaviour unchanged.**
+
+**Decision.** `fetchProfile` only reads. After a fetch, `adoptProfile` remembers the profile and keeps the
+languages in step as before (#48): a language picked on this device and not saved yet goes to the profile (this
+is what keeps the phone's language at the first sign-in, D8-01); otherwise the profile's language is applied. The
+save is `saveMyLanguage` (data/my-profile.ts), which reports a refusal instead of hiding it; the provider puts the
+new language in a new profile object (`useAuth().saveLanguage`, used by the language picker). A failed save leaves
+the choice marked unsaved, so the next profile load tries again.

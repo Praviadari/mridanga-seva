@@ -103,6 +103,7 @@ export function EventsHomeScreen({ area }: { area: 'student' | 'staff' }) {
     <Screen underHeader wide onRefresh={load}>
       {header}
       <ChoiceGroup
+        accessibilityLabel={t('choiceNames.eventsOrPolls')}
         choices={[
           { value: 'events', label: t('events.title'), icon: 'events' },
           { value: 'polls', label: toVote > 0 ? t('polls.tabToVote', { n: toVote }) : t('polls.title'), icon: 'poll' },

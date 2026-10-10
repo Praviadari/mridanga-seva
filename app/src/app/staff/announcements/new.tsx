@@ -2,17 +2,19 @@
 // it is for (all students, one level, my mentees, staff only, a group), pin to the top, and
 // publish now or at a later date and time (the class's time). Posting uploads the files, saves the
 // announcement and opens it (./[id].tsx), where "seen by" fills up as people open it.
-// The fields are shared with the edit screen (src/components/announcement-form.tsx).
+// The fields are shared with the edit screen (src/components/announcement-form.tsx). When the server ends the
+// login while writing, the words are kept for the same login and filled in again (src/lib/form-drafts.ts, D6-20).
 // Data: src/data/announcements.ts; the database checks everything again (migrations 0007, 0008, 0010).
 
 import { router, Stack, useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useAuth } from '@/auth/auth-provider';
 import { AnnouncementFields } from '@/components/announcement-form';
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
+import { DraftNotice } from '@/components/draft-notice';
 import { FormErrorSummary } from '@/components/form-error-summary';
 import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
@@ -28,15 +30,35 @@ import {
   type AnnouncementFormErrors,
   type ComposeOptions,
 } from '@/data/announcements';
+import { discardDraft, peekDraft, useDraftKeeper } from '@/lib/form-drafts';
+
+/** The key of this form's draft (src/lib/form-drafts.ts). */
+const DRAFT_KEY = 'announcement-new';
+/** What is kept: the form without the files picked on the phone, which a sign-out deletes (src/lib/device-traces.ts). */
+type NewDraft = { form: AnnouncementForm; filesDropped: boolean };
 
 /** The compose form and the Post button. */
 export default function NewAnnouncementScreen() {
   const { t } = useTranslation();
-  const { profile } = useAuth();
+  const { profile, session } = useAuth();
   const myId = profile?.id ?? '';
+  const owner = session?.user.id;
   // undefined = loading, null = could not load.
   const [options, setOptions] = useState<ComposeOptions | null | undefined>(undefined);
-  const [form, setForm] = useState<AnnouncementForm>(EMPTY_ANNOUNCEMENT_FORM);
+  // A draft kept for this login after a forced sign-out (D6-20): read once, then deleted from the device.
+  const [restored] = useState(() => peekDraft<NewDraft>(DRAFT_KEY, owner));
+  const [showRestored, setShowRestored] = useState(restored !== null);
+  useEffect(() => {
+    if (restored) discardDraft(DRAFT_KEY);
+  }, [restored]);
+  const [form, setForm] = useState<AnnouncementForm>(() => restored?.form ?? EMPTY_ANNOUNCEMENT_FORM);
+  useDraftKeeper(
+    DRAFT_KEY,
+    owner,
+    form.title.trim() || form.body.trim()
+      ? ({ form: { ...form, files: [] }, filesDropped: form.files.length > 0 } satisfies NewDraft)
+      : null,
+  );
   const [errors, setErrors] = useState<AnnouncementFormErrors>({});
   const [serverError, setServerError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -100,6 +122,17 @@ export default function NewAnnouncementScreen() {
   return (
     <Screen underHeader>
       {header}
+      {showRestored ? (
+        <DraftNotice
+          notes={restored?.filesDropped ? [t('drafts.filesAgain')] : []}
+          discardLabel={t('drafts.startEmpty')}
+          onDiscard={() => {
+            setShowRestored(false);
+            setForm(EMPTY_ANNOUNCEMENT_FORM);
+            setErrors({});
+          }}
+        />
+      ) : null}
       <AnnouncementFields
         form={form}
         errors={errors}

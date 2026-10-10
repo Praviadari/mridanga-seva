@@ -3,8 +3,9 @@
 // both (guard_profile_details in 0013 and 0028, docs/DECISIONS.md #44, #97): a name that is the Guru's or a
 // coordinator's is refused there (name_taken). Role, email and active cannot be
 // changed here. A student's name on the roll (students.full_name, on the QR card) is the
-// coordinators' record and stays as registered.
+// coordinators' record and stays as registered. The person's language is saved here too (saveMyLanguage, D13-12).
 
+import type { Language } from '@/i18n';
 import { supabase } from '@/lib/supabase';
 
 import { isNetworkError, type MessageKey } from './errors';
@@ -64,5 +65,15 @@ export async function saveMyDetails(profileId: string, details: MyDetails): Prom
     if (isNetworkError(error.message)) return { errorKey: 'common.networkError' };
     return { errorKey: 'common.genericError' };
   }
+  return data.length === 0 ? { errorKey: 'common.genericError' } : {};
+}
+
+/**
+ * Saves the language the app shows as the person's language on their profile (docs/DECISIONS.md #48). Nothing =
+ * saved. The database accepts en, te and hi only (check on profiles.language); a refusal is reported, not hidden.
+ */
+export async function saveMyLanguage(profileId: string, language: Language): Promise<{ errorKey?: MessageKey }> {
+  const { data, error } = await supabase.from('profiles').update({ language }).eq('id', profileId).select('id');
+  if (error) return { errorKey: isNetworkError(error.message) ? 'common.networkError' : 'common.genericError' };
   return data.length === 0 ? { errorKey: 'common.genericError' } : {};
 }

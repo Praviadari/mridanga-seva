@@ -5,7 +5,7 @@
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
-import { saveProfileLanguage, useAuth } from '@/auth/auth-provider';
+import { useAuth } from '@/auth/auth-provider';
 import { chooseLanguage, LANGUAGES, type Language } from '@/i18n';
 
 import { ChoiceGroup } from './choice-group';
@@ -20,11 +20,11 @@ export function LanguagePicker() {
   // plain call's first answer, so the picker stayed on the start language (found 09-10-2026).
   const { t, i18n } = useTranslation();
   const shown = LANGUAGES.find(({ code }) => code === i18n.language)?.code ?? 'en';
-  const { profile } = useAuth();
+  const { profile, saveLanguage } = useAuth();
 
   function choose(language: Language) {
     chooseLanguage(language);
-    if (profile) saveProfileLanguage(profile, language);
+    if (profile) saveLanguage(language);
   }
 
   return (

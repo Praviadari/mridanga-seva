@@ -1,14 +1,17 @@
 // Page frame used by every screen: keeps content clear of the notch and system bars, scrolls
 // when the content is taller than the screen, moves up for the keyboard on iPhones, and keeps
 // forms to a readable width on tablets and computers. Home screens put a full-width header band
-// (components/home-header.tsx) above the content and use a wider column.
+// (components/home-header.tsx) above the content and use a wider column. On staff screens a downloaded app
+// update is offered at the top (UpdateNoticeOnScreens, FLOW-06); home screens place it themselves.
 
 import { BottomTabBarHeightContext } from 'expo-router/tabs';
-import { useCallback, useContext, useState, type PropsWithChildren, type ReactNode } from 'react';
+import { use, useCallback, useContext, useState, type PropsWithChildren, type ReactNode } from 'react';
 import { KeyboardAvoidingView, Platform, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { maxContentWidth, maxDashboardWidth, spacing, useTheme } from '@/theme/use-theme';
+
+import { UpdateNotice, UpdateNoticeOnScreens } from './update-notice';
 
 /** Props for Screen. */
 export type ScreenProps = PropsWithChildren<{
@@ -38,6 +41,8 @@ export function Screen({ centred, underHeader, header, wide, onRefresh, children
   const { colors } = useTheme();
   // Inside a tab navigator the tab bar already keeps clear of the phone's bottom edge.
   const inTabs = useContext(BottomTabBarHeightContext) !== undefined;
+  // Pages with a header band are homes, which show the notice under their greeting.
+  const updateNotice = use(UpdateNoticeOnScreens) && !header;
   const [refreshing, setRefreshing] = useState(false);
   const refresh = useCallback(async () => {
     if (!onRefresh) return;
@@ -83,6 +88,7 @@ export function Screen({ centred, underHeader, header, wide, onRefresh, children
           {header}
           <View style={[styles.content, centred && styles.centred]}>
             <View style={[styles.column, { maxWidth: wide ? maxDashboardWidth : maxContentWidth }]}>
+              {updateNotice ? <UpdateNotice /> : null}
               {children}
             </View>
           </View>

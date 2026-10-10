@@ -137,6 +137,7 @@ export default function SettingsScreen() {
 
       <Section icon="visits" title={t('settings.weekTitle')} description={t('settings.weekHint')}>
         <ChoiceGroup
+          accessibilityLabel={t('settings.weekTitle')}
           choices={[
             { value: 'monday', label: t('settings.weekMonday') },
             { value: 'rolling7', label: t('settings.weekRolling') },

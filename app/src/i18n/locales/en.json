@@ -37,7 +37,7 @@
     "newPasswordLink": "Send a new password link",
     "resent": "If {{email}} has an account waiting to be confirmed, a new link is on its way. Check the inbox and the spam folder.",
     "endedTitle": "You were signed out",
-    "endedBody": "Your login ended (it ran out, or the password was changed on another device). Please sign in again. Anything not saved on the last screen was lost."
+    "endedBody": "Your login ended (it ran out, or the password was changed on another device). Please sign in again. A student registration or announcement you were writing is kept: open it again after signing in."
   },
   "signUp": {
     "title": "New student registration",
@@ -3327,5 +3327,26 @@
     "noneInterest": "Nobody chose an instrument in these dates.",
     "interestLine_one": "{{count}} person",
     "interestLine_other": "{{count}} people"
+  },
+  "crash": {
+    "title": "Something went wrong",
+    "body": "This screen stopped working. Nothing you saved is lost. Try again, or go to the home screen.",
+    "tryAgain": "Try again",
+    "home": "Go to the home screen",
+    "report": "If it keeps happening, close the app fully and open it again. To report it, send a screenshot of this page to the coordinator."
+  },
+  "drafts": {
+    "restoredTitle": "What you typed is back",
+    "restoredBody": "You were signed out before saving. The form is filled in as you left it: check it, then save.",
+    "filesAgain": "Add the photos and PDFs again: they were removed from this device at sign-out.",
+    "consentAgain": "Tick the consent boxes again after checking the parent's signed form.",
+    "startEmpty": "Start with an empty form",
+    "useSaved": "Use the saved version instead"
+  },
+  "choiceNames": {
+    "rows": "Which rows to show",
+    "direction": "Income or expense",
+    "eventAnswer": "Your answer",
+    "eventsOrPolls": "Show events or polls"
   }
 }

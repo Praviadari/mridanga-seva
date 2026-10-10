@@ -168,6 +168,7 @@ export default function ImportScreen() {
                 </AppText>
               </View>
               <ChoiceGroup
+                accessibilityLabel={t('choiceNames.rows')}
                 choices={[
                   { value: 'problems', label: t('importStudents.showProblems', { count: bad.length }) },
                   { value: 'good', label: t('importStudents.showGood', { count: good.length }) },

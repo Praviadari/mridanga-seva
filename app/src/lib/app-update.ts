@@ -19,6 +19,9 @@ import { formatDateTime } from './dates';
 /** Least time between two checks when the app comes back to the front: 30 minutes. */
 const CHECK_EVERY_MS = 30 * 60 * 1000;
 
+/** How often the app, while in front, asks whether a check is due: 5 minutes (the check itself keeps 30). */
+const LOOK_EVERY_MS = 5 * 60 * 1000;
+
 /** True when updates can work here: a release build with expo-updates switched on. */
 const canUpdate = Updates.isEnabled && !__DEV__;
 
@@ -50,8 +53,9 @@ async function checkAndDownload(startupCheck: Date | undefined): Promise<void> {
 }
 
 /**
- * Checks for an update each time the app comes back to the front, at most every 30 minutes.
- * Used once, by the root layout.
+ * Checks for an update each time the app comes back to the front, and every 30 minutes while it
+ * stays in front (FLOW-06: the door phone shows the scanner for a whole class), at most every 30
+ * minutes. Used once, by the root layout.
  */
 export function useUpdateChecks(): void {
   const { lastCheckForUpdateTimeSinceRestart } = Updates.useUpdates();
@@ -60,10 +64,17 @@ export function useUpdateChecks(): void {
     startupCheck.current = lastCheckForUpdateTimeSinceRestart;
   }, [lastCheckForUpdateTimeSinceRestart]);
   useEffect(() => {
+    if (!canUpdate) return;
     const subscription = AppState.addEventListener('change', (state) => {
       if (state === 'active') void checkAndDownload(startupCheck.current);
     });
-    return () => subscription.remove();
+    const timer = setInterval(() => {
+      if (AppState.currentState === 'active') void checkAndDownload(startupCheck.current);
+    }, LOOK_EVERY_MS);
+    return () => {
+      subscription.remove();
+      clearInterval(timer);
+    };
   }, []);
 }
 

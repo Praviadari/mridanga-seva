@@ -43,6 +43,7 @@ in number order:
 | `0037_db_backlog.sql` | Audit backlog, database + performance (dimensions 1, 5, 9): every policy calls its role helpers once per query (`(select is_staff())`), `student_overview` reads through the visits indexes, 12 lookup indexes; trigger functions and TRUNCATE closed to app roles, definer functions search `public, pg_temp`; `toggle_visit` / `scan_qr` say `not_allowed`; roll numbers past 9999 and owner-given ones; student value checks; group, announcement, call-reason, attachment, syllabus and audit fixes ([DECISIONS.md #168-#173](DECISIONS.md)). See "Backlog fixes (0037)" |
 | `0039_security_backlog.sql` | Audit backlog, app security and privacy (dimensions 3, 4): the minor-consent refusal names the roll number, not the child (D4-17); push tokens of a person switched off or without a class role are deleted (D2-06); staff student search `search_students` by POST (ENT-08) ([DECISIONS.md #186-#192](DECISIONS.md)). See "Security backlog (0039)" |
 | `0040_ops_backlog.sql` | Audit backlog, operations (dimensions 10, 11): pg_cron's run history kept 7 days; announcement files no post lists removed daily (through the Edge Function); `anonymise_staff` for a staff login that cannot be deleted ([DECISIONS.md #194-#196](DECISIONS.md)). See "Operations backlog (0040)" |
+| `0042_app_leftovers.sql` | Audit leftovers, code quality (dimension 13): `students.roll_no` NOT NULL; the last two triggers answering with English sentences use codes (`roll_no_frozen`, `status_needs_call_log`, `role_guru_only`); comments on the helper functions and core columns ([DECISIONS.md #219-#220](DECISIONS.md)). 0041 was never used. See "App leftovers (0042)" |
 
 The Phase 2 files were renumbered when they merged into main (#55). TEST ran some under their
 branch numbers (0012, 0014_promotion, 0016_practice, 0017_media, 0021_events_polls), so it skips
@@ -197,7 +198,7 @@ The QR code on a student's phone holds the text `MS1:` followed by their `qr_tok
 
 Errors: `not_allowed`, `bad_action` and `student_not_found`. Until 0037 `toggle_visit` and `scan_qr`
 said `not allowed` and `student not found` with spaces; the app (`app/src/data/attendance.ts`) understands both
-spellings, so builds of either age work. Since 0037 a visit left open from an earlier day (the hourly
+spellings, so builds of either age work. Keep both until LIVE has run 0037 (DECISIONS #219). Since 0037 a visit left open from an earlier day (the hourly
 close job did not run) is closed at that day's closing time before the next tap, which then checks in.
 
 ### Location check at check-in (0024)
@@ -1335,6 +1336,21 @@ Tests: section "0037 database and performance backlog" in `supabase/tests/smoke-
 | Staff who leave (#196) | `anonymise_staff(profile, reason, request_ref)` for a switched-off coordinator or Guru login, not the caller's: deletes an idle login; otherwise sign-in email `<id>@former-staff.invalid`, profile "Former staff" without email, phone, duty hours, gender, referral code or extra roles, phones forgotten, the profile's audit rows and rows holding its email redacted; tombstone in `erasures.staff_profile`. Returns `{login_deleted, login_scrubbed, audit_rows_redacted}`. Errors `not_allowed`, `reason_required`, `reason_too_long`, `profile_not_found`, `not_staff`, `not_yourself`, `switch_off_first` | The owner in the SQL editor only (OPERATIONS "Staff who leave") |
 
 Tests: section "0040 operations backlog" in `supabase/tests/smoke-test.mjs`.
+
+## App leftovers (0042)
+
+[DECISIONS.md #219-#220](DECISIONS.md). Needs 0001-0040; safe to run twice. Nothing changes for the app.
+
+- **`students.roll_no` NOT NULL (D13-05):** `assign_roll_no` always set it; now the column says so. The
+  migration stops with `roll_no_missing` (and changes nothing) if a student without a roll number exists:
+  `select id, full_name, joined_on from students where roll_no is null;`
+- **Codes instead of sentences (D13-02):** `guard_student_update` raises `roll_no_frozen` and
+  `status_needs_call_log` (the status in `detail`), `guard_profile_update` raises `role_guru_only`.
+  The smoke test fails when any function of ours raises a message with a space in it.
+- **Comments (D13-06):** on the helper functions row-level security and the storage rules call, and on 29
+  non-obvious columns of the core tables.
+
+Tests: section "0042 app leftovers" in `supabase/tests/smoke-test.mjs`.
 
 ## Linking a login to a student
 

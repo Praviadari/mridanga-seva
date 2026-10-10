@@ -158,6 +158,7 @@ function ReleaseAssessmentScreenContent() {
         description={already > 0 ? t('assessments.release.already', { count: already }) : undefined}>
         <ChoiceGroup
           chips
+          accessibilityLabel={t('register.level')}
           choices={([0, 1, 2, 3] as const).map((value) => ({
             value,
             label: value === 0 ? t('assessments.release.allLevels') : levelName(t, value),

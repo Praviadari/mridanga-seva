@@ -203,6 +203,7 @@ export function EventDetailScreen({ id, area }: { id: number; area: 'student' | 
           ) : (
             <>
               <ChoiceGroup
+                accessibilityLabel={t('choiceNames.eventAnswer')}
                 choices={RESPONSES.map((r) => ({ value: r, label: responseLabel(r) }))}
                 value={counts.myResponse}
                 onChange={(r) => void answer(r)}

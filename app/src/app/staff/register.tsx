@@ -9,18 +9,22 @@
 // the top and fill the form in one tap (the coordinator checks the name against the ID and takes the
 // photo); gender and the optional About-you details are asked here too; the mentor is chosen
 // automatically (a coordinator of the same gender) unless the coordinator picks one.
+// When the server ends the login while the form is half filled, what was typed is kept for the same login and
+// filled in again next time (src/lib/form-drafts.ts, D6-20); the consent ticks must be given again.
 
 import { router, Stack } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import type { MessageKey } from '@/auth/auth-actions';
+import { useAuth } from '@/auth/auth-provider';
 import { EmergencyPart, HeardPart, OccupationPart, YouPart } from '@/components/about-fields';
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { Checkbox } from '@/components/checkbox';
 import { ListRow } from '@/components/list-row';
 import { ChoiceGroup } from '@/components/choice-group';
+import { DraftNotice } from '@/components/draft-notice';
 import { Notice } from '@/components/notice';
 import { PrivacyNoticeLink } from '@/components/privacy-notice-link';
 import { Screen } from '@/components/screen';
@@ -59,6 +63,7 @@ import {
 import { levelName } from '@/i18n/labels';
 import { classLocale } from '@/lib/class-locale';
 import { formatDateTime, formatTypedDate } from '@/lib/dates';
+import { discardDraft, peekDraft, useDraftKeeper } from '@/lib/form-drafts';
 
 /** Longest name, area and email the form takes (FS2-09; the database's bounds are 120, 100, 254). */
 const NAME_MAX_LENGTH = 100;
@@ -68,6 +73,10 @@ const EMAIL_MAX_LENGTH = 254;
 type Choices = { levels: LevelOption[]; mentors: MentorOption[] };
 /** The 0036 parts: option lists, staff who bring people, sign-ups waiting. Null before 0036 or when not loaded. */
 type Extras = { options: OptionSets; referrers: Referrer[]; waiting: WaitingSignUp[] };
+/** What is kept of this form when the server ends the login (src/lib/form-drafts.ts). */
+type RegisterDraft = { form: RegistrationForm; about: AboutForm };
+/** The key of this form's draft. */
+const DRAFT_KEY = 'register';
 
 /** Registration form, then a confirmation with the new roll number. */
 export default function RegisterStudentScreen() {
@@ -79,7 +88,17 @@ export default function RegisterStudentScreen() {
   // undefined = still loading, null = could not load.
   const [choices, setChoices] = useState<Choices | null | undefined>(undefined);
   const [loadAttempt, setLoadAttempt] = useState(0);
-  const [form, setForm] = useState<RegistrationForm>(() => emptyRegistration(defaultMentor));
+  const owner = useAuth().session?.user.id;
+  // A draft kept for this login after a forced sign-out (D6-20): read once, then deleted from the device.
+  const [restored] = useState(() => peekDraft<RegisterDraft>(DRAFT_KEY, owner));
+  const [showRestored, setShowRestored] = useState(restored !== null);
+  useEffect(() => {
+    if (restored) discardDraft(DRAFT_KEY);
+  }, [restored]);
+  // The consent ticks are never brought back: the coordinator confirms them again.
+  const [form, setForm] = useState<RegistrationForm>(() =>
+    restored ? { ...restored.form, photoConsent: false, writtenConsent: false } : emptyRegistration(defaultMentor),
+  );
   const [errors, setErrors] = useState<RegistrationErrors>({});
   const [formError, setFormError] = useState<MessageKey | null>(null);
   const [busy, setBusy] = useState(false);
@@ -87,7 +106,7 @@ export default function RegisterStudentScreen() {
   const [serverMinor, setServerMinor] = useState(false);
   const [saved, setSaved] = useState<{ registered: Registered; name: string; detailsFailed: boolean } | null>(null);
   const [extras, setExtras] = useState<Extras | null>(null);
-  const [about, setAbout] = useState<AboutForm>(() => emptyAboutForm(classLocale().country));
+  const [about, setAbout] = useState<AboutForm>(() => restored?.about ?? emptyAboutForm(classLocale().country));
   const [aboutErrors, setAboutErrors] = useState<AboutErrors>({});
   // The sign-up the form was filled from: its centre goes on the record; it leaves the waiting list.
   const [fromSignUp, setFromSignUp] = useState<WaitingSignUp | null>(null);
@@ -106,6 +125,10 @@ export default function RegisterStudentScreen() {
       cancelled = true;
     };
   }, [loadAttempt]);
+
+  // Kept only while something is typed and not saved yet (the requestId keeps a repeated Save single).
+  const typed = [form.fullName, form.dob, form.phone, form.email, form.guardianName, form.guardianPhone].some((v) => v.trim() !== '');
+  useDraftKeeper(DRAFT_KEY, owner, typed && !saved ? ({ form, about } satisfies RegisterDraft) : null);
 
   /** Returns a change handler for one form field. */
   function field<K extends keyof RegistrationForm>(key: K) {
@@ -170,6 +193,7 @@ export default function RegisterStudentScreen() {
   }
 
   function registerAnother() {
+    setShowRestored(false);
     setForm(emptyRegistration(defaultMentor));
     setServerMinor(false);
     setAbout(emptyAboutForm(classLocale().country));
@@ -224,6 +248,13 @@ export default function RegisterStudentScreen() {
     <Screen underHeader>
       {header}
       <AppText tone="muted">{t('register.intro')}</AppText>
+      {showRestored ? (
+        <DraftNotice
+          notes={restored?.form.writtenConsent || restored?.form.photoConsent ? [t('drafts.consentAgain')] : []}
+          discardLabel={t('drafts.startEmpty')}
+          onDiscard={registerAnother}
+        />
+      ) : null}
 
       {waiting.length > 0 ? (
         <Section icon="newJoiner" title={t('register.waitingTitle', { count: waiting.length })} description={t('register.waitingHint')}>

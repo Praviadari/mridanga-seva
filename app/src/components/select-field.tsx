@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FlatList, Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
 
-import { spaceKeyProps } from '@/lib/space-key';
+import { useRadioKeys } from '@/lib/space-key';
 import { cardRadius, maxContentWidth, radius, spacing, useTheme } from '@/theme/use-theme';
 
 import { AppText } from './app-text';
@@ -55,6 +55,13 @@ export function SelectField<T extends string | number>({
   const chosen = options.find((o) => o.value === value) ?? null;
   const shown = chosen?.label ?? placeholder ?? t('select.choose');
   const startIndex = Math.max(0, options.findIndex((o) => o.value === (value ?? startAt)));
+  /** Picks an entry and closes the list. */
+  function pick(index: number) {
+    onChange(options[index].value);
+    setOpen(false);
+  }
+  // On the web the arrow keys move along the list; Space or Enter picks (src/lib/space-key.ts).
+  const keys = useRadioKeys(options.length, startIndex, pick, false);
 
   return (
     <View style={[styles.wrapper, compact && styles.compact]}>
@@ -112,21 +119,15 @@ export function SelectField<T extends string | number>({
               initialNumToRender={Math.min(options.length, 120)}
               getItemLayout={(_, index) => ({ length: ROW, offset: ROW * index, index })}
               role="radiogroup"
-              renderItem={({ item }) => {
+              renderItem={({ item, index }) => {
                 const selected = item.value === value;
                 return (
                   <Pressable
                     accessibilityRole="radio"
                     aria-checked={selected}
                     accessibilityLabel={item.label}
-                    onPress={() => {
-                      onChange(item.value);
-                      setOpen(false);
-                    }}
-                    {...spaceKeyProps(() => {
-                      onChange(item.value);
-                      setOpen(false);
-                    })}
+                    onPress={() => pick(index)}
+                    {...keys(index)}
                     style={[styles.row, selected && { backgroundColor: colors.primarySoft }]}>
                     <AppText style={[styles.value, selected && { color: colors.onPrimarySoft }]}>{item.label}</AppText>
                     {selected ? <Icon name="tick" size={18} color={colors.onPrimarySoft} /> : null}

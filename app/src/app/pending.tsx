@@ -14,6 +14,7 @@ import { Button } from '@/components/button';
 import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
 import { SignOutButton } from '@/components/sign-out-button';
+import { UpdateNotice } from '@/components/update-notice';
 import { Section } from '@/components/section';
 import { useAboutPrompt } from '@/lib/about-prompt';
 
@@ -56,6 +57,8 @@ export default function PendingScreen() {
   return (
     <Screen centred header={<BrandHeader compact />}>
       <AppText variant="title">{t('pending.title')}</AppText>
+      {/* A fixed version may be what this person waits for (FLOW-06). */}
+      <UpdateNotice />
       {message}
       {waitingForDesk && aboutOpen !== null ? (
         <Section icon="about" title={t('about.cardTitle')} description={aboutOpen ? t('about.cardBody') : t('about.cardDone')}>

@@ -201,6 +201,7 @@ function StaffAssessmentScreenContent() {
         <Section title={t('assessments.tracker.title')} description={t('assessments.tracker.hint')}>
           <ChoiceGroup
             chips
+            accessibilityLabel={t('assessments.tracker.title')}
             choices={(['all', 'todo', 'review', 'done'] as const).map((f) => ({
               value: f,
               label: t(`assessments.tracker.filter.${f}`, { count: count(f) }),

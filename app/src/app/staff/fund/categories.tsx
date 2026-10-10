@@ -69,6 +69,7 @@ export default function FundCategoriesScreen() {
       {message ? <Notice tone={message.tone}>{message.text}</Notice> : null}
       <Section icon="add" title={t('fund.categoryAdd')} description={t('fund.categoryAddHint')}>
         <ChoiceGroup<Direction>
+          accessibilityLabel={t('choiceNames.direction')}
           choices={(['income', 'expense'] as const).map((d) => ({ value: d, label: t(`fund.directions.${d}`) }))}
           value={direction}
           onChange={setDirection}

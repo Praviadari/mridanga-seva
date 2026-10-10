@@ -1,10 +1,11 @@
 // A row of buttons where exactly one can be chosen, e.g. level, relation, language.
 // Easier to tap than a drop-down on a phone, and every choice stays visible. As `chips`, the
-// choices are rounded pills with an icon each, e.g. who an announcement is for (round 4).
+// choices are rounded pills with an icon each, e.g. who an announcement is for (round 4). On the web the group
+// is one Tab stop and the arrow keys move between the choices (src/lib/space-key.ts useRadioKeys).
 
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { spaceKeyProps } from '@/lib/space-key';
+import { useRadioKeys } from '@/lib/space-key';
 import { radius, spacing, useTheme } from '@/theme/use-theme';
 
 import { AppText } from './app-text';
@@ -47,11 +48,16 @@ export function ChoiceGroup<T extends string | number>({
   chips,
 }: ChoiceGroupProps<T>) {
   const { colors } = useTheme();
+  const keys = useRadioKeys(
+    choices.length,
+    choices.findIndex((choice) => choice.value === value),
+    (index) => onChange(choices[index].value),
+  );
   return (
     <View style={styles.wrapper}>
       {label ? <AppText variant="label">{label}</AppText> : null}
       <View role="radiogroup" accessibilityLabel={label ?? accessibilityLabel} style={styles.row}>
-        {choices.map((choice) => {
+        {choices.map((choice, index) => {
           const selected = choice.value === value;
           const textColour = selected ? colors.onPrimary : colors.text;
           return (
@@ -64,7 +70,7 @@ export function ChoiceGroup<T extends string | number>({
               // On the web the button's name is read in the page's language unless it has its own.
               {...(choice.lang ? { lang: choice.lang } : {})}
               onPress={() => onChange(choice.value)}
-              {...spaceKeyProps(() => onChange(choice.value))}
+              {...keys(index)}
               style={[
                 styles.option,
                 chips && styles.chip,

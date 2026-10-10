@@ -1,7 +1,9 @@
 // "A new version is ready" with a Restart button, and the small version line, for the three home
-// screens (S1, C1, G1). Android app only: on the web both render nothing (src/lib/app-update.web.ts).
+// screens (S1, C1, G1) and the pending screen. Staff screens show the notice at their top too (FLOW-06): the door
+// phone stays on the scanner for hours, so the staff layout sets UpdateNoticeOnScreens and components/screen.tsx
+// shows it above the content. Android app only: on the web both render nothing (src/lib/app-update.web.ts).
 
-import { useState } from 'react';
+import { createContext, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet } from 'react-native';
 
@@ -10,6 +12,9 @@ import { runningVersion, useAppUpdate } from '@/lib/app-update';
 import { AppText } from './app-text';
 import { Button } from './button';
 import { Notice } from './notice';
+
+/** True inside a part of the app whose screens show UpdateNotice at the top (the staff screens, FLOW-06). */
+export const UpdateNoticeOnScreens = createContext(false);
 
 /**
  * Shows a notice and a Restart button once a newer version is downloaded; otherwise nothing. If

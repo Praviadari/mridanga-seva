@@ -22,9 +22,11 @@ import { createContext, use, useEffect, useRef, useState, type PropsWithChildren
 import { AppState } from 'react-native';
 
 import { isNetworkError } from '@/data/errors';
+import { saveMyLanguage } from '@/data/my-profile';
 import { applyProfileLanguage, currentLanguage, hasUnsavedChoice, markLanguageSaved, type Language } from '@/i18n';
 import { loadClassLocale } from '@/lib/class-locale';
 import { clearDeviceTraces } from '@/lib/device-traces';
+import { dropOtherOwnersDrafts } from '@/lib/form-drafts';
 import { setRefusedListener, storedLoginUserId, supabase, supabaseConfigProblem } from '@/lib/supabase';
 
 // Loaded at start for its effect: it reads an email link's error from the address (D6-12).
@@ -49,6 +51,11 @@ export type AuthState = {
   profileProblem: 'network' | 'server' | 'missing' | null;
   /** Fetches the profile again, e.g. after the Guru has given a role. Resolves when done. */
   refreshProfile: () => Promise<void>;
+  /**
+   * Saves the language the person just chose to their profile (nothing when signed out: the choice
+   * goes to the profile at sign-in). The app already shows it; see withLanguageSaved below.
+   */
+  saveLanguage: (language: Language) => void;
 };
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -131,9 +138,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
   useEffect(() => {
     if (!userId) return;
+    // A form kept for another login after its forced sign-out never reaches this one (D6-20).
+    dropOtherOwnersDrafts(userId);
     let cancelled = false;
     fetchProfile(userId).then((result) => {
-      if (!cancelled) setProfileResult(withSavedFallback(result));
+      if (!cancelled) setProfileResult(withSavedFallback(adoptProfile(result)));
     });
     // The centre's time zone and country for dates and amounts (docs/I18N.md); kept from the last
     // start until it arrives, India before the first.
@@ -175,10 +184,18 @@ export function AuthProvider({ children }: PropsWithChildren) {
     profileFailed,
     profileProblem,
     refreshProfile: async () => {
-      if (userId) setProfileResult(withSavedFallback(await fetchProfile(userId)));
+      if (userId) setProfileResult(withSavedFallback(adoptProfile(await fetchProfile(userId))));
       // Asking for the session makes Supabase try the refresh again; when it works, its
       // TOKEN_REFRESHED event brings the session and the profile is fetched as usual.
       else if (offlineUserId) await supabase.auth.getSession();
+    },
+    saveLanguage: (language) => {
+      if (!profile) return;
+      const updated = withLanguageSaved(profile, language);
+      // A new object, never a change in place (D13-12): screens reading the profile see the new language.
+      if (updated !== profile) {
+        setProfileResult((result) => (result?.profile && result.userId === updated.id ? { ...result, profile: updated } : result));
+      }
     },
   };
 
@@ -226,7 +243,10 @@ function areaForProfile(profile: Profile): Area {
   }
 }
 
-/** Reads the signed-in person's own profile row (row-level security allows only their own). */
+/**
+ * Reads the signed-in person's own profile row (row-level security allows only their own). Only reads:
+ * remembering it and the language follow in adoptProfile (D13-12).
+ */
 async function fetchProfile(userId: string): Promise<ProfileResult> {
   const { data, error } = await supabase
     .from('profiles')
@@ -242,13 +262,22 @@ async function fetchProfile(userId: string): Promise<ProfileResult> {
     }
     if (!state.error) data.ig_state = ((state.data as { state?: IgState } | null)?.state ?? 'none') as IgState;
   }
-  if (data) {
-    syncLanguageWithProfile(data);
-    saveProfile(data);
-  } else {
-    forgetSavedProfile();
-  }
   return { userId, profile: data, failed: false };
+}
+
+/**
+ * After a fetch that got an answer: remembers the profile on this device (or forgets it when there is none)
+ * and brings the app's and the profile's language in step. Returns the result with the profile as it is now.
+ */
+function adoptProfile(result: ProfileResult): ProfileResult {
+  if (result.failed) return result;
+  if (!result.profile) {
+    forgetSavedProfile();
+    return result;
+  }
+  const profile = syncLanguageWithProfile(result.profile);
+  saveProfile(profile);
+  return profile === result.profile ? result : { ...result, profile };
 }
 
 /**
@@ -265,41 +294,37 @@ function withSavedFallback(result: ProfileResult): ProfileResult {
  * Keeps the app language and the profile's saved language in step. The profile holds the
  * person's language, so their last choice on any device is used everywhere. A language picked on
  * this device that has not reached the profile yet (picked on the sign-in screen, or without
- * internet) is saved to it now; otherwise the profile's language is used (docs/DECISIONS.md #48).
+ * internet) is saved to it now; otherwise the profile's language is used (docs/DECISIONS.md #48). This keeps
+ * D8-01: the language shown before the first sign-in reaches the new profile instead of its default.
+ * Returns the profile with the language it now has.
  */
-function syncLanguageWithProfile(profile: Profile): void {
-  if (hasUnsavedChoice()) {
-    saveProfileLanguage(profile, currentLanguage());
-    return;
-  }
+function syncLanguageWithProfile(profile: Profile): Profile {
+  if (hasUnsavedChoice()) return withLanguageSaved(profile, currentLanguage());
   applyProfileLanguage(profile.language);
+  return profile;
 }
 
 /**
- * Saves `language` as the signed-in person's language on their profile, when it differs. Used
- * when the profile loads and when the person switches language. Not awaited: the screen
- * language is already right. When the save works, the device stops marking the choice as unsaved
- * and the remembered profile gets the new language; when it fails (no internet), the next profile
- * load tries again.
- * @param profile the signed-in person's profile; its `language` is updated in place.
+ * Saves `language` as the signed-in person's language on their profile, when it differs (data/my-profile.ts
+ * saveMyLanguage). Used when the profile loads and when the person switches language. Not awaited: the
+ * screen language is already right. When the save works, the device stops marking the choice as unsaved
+ * and the remembered profile gets the new language; when it fails (no internet, or refused), the choice
+ * stays marked unsaved and the next profile load tries again.
+ * @param profile the signed-in person's profile; never changed in place (D13-12).
  * @param language the language the app now shows.
+ * @returns the profile with `language`, a new object when it changed; the same one when not.
  */
-export function saveProfileLanguage(profile: Profile, language: Language): void {
+function withLanguageSaved(profile: Profile, language: Language): Profile {
   if (profile.language === language) {
     markLanguageSaved();
-    return;
+    return profile;
   }
-  // Set at once, so a second quick switch is compared with this one and not with the old value.
-  profile.language = language;
-  void supabase
-    .from('profiles')
-    .update({ language })
-    .eq('id', profile.id)
-    .select('id')
-    .then(({ data, error }) => {
-      // A later switch has its own save; only the save of what the app shows ends the "unsaved".
-      if (error || !data || data.length === 0 || currentLanguage() !== language) return;
-      markLanguageSaved();
-      if (readSavedProfile()?.id === profile.id) saveProfile({ ...profile });
-    });
+  void saveMyLanguage(profile.id, language).then(({ errorKey }) => {
+    // A later switch has its own save; only the save of what the app shows ends the "unsaved".
+    if (errorKey || currentLanguage() !== language) return;
+    markLanguageSaved();
+    const copy = readSavedProfile();
+    if (copy?.id === profile.id) saveProfile({ ...copy, language });
+  });
+  return { ...profile, language };
 }

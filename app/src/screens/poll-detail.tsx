@@ -157,6 +157,7 @@ export function PollDetailScreen({ id, area }: { id: number; area: 'student' | '
       {state.canVote && !closed ? (
         <Section icon="check" title={state.myChoice === null ? t('polls.yourVote') : t('polls.changeVote')}>
           <ChoiceGroup
+            accessibilityLabel={state.myChoice === null ? t('polls.yourVote') : t('polls.changeVote')}
             choices={p.options.map((o, i) => ({ value: i, label: o }))}
             value={state.myChoice}
             onChange={(i) => void vote(i)}

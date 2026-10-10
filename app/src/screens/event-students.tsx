@@ -159,6 +159,7 @@ export function EventStudentsScreen({ id, mode }: { id: number; mode: 'performer
           <AppText variant="label">{t('events.performers.partForNew')}</AppText>
           <ChoiceGroup
             chips
+            accessibilityLabel={t('events.performers.partForNew')}
             choices={PARTS.map((p) => ({ value: t(`events.performers.parts.${p}`), label: t(`events.performers.parts.${p}`), icon: 'performer' as const }))}
             value={newPart}
             onChange={setNewPart}

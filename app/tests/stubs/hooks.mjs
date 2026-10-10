@@ -6,6 +6,8 @@ const stubs = {
   'react-native': stub('./react-native.mjs'),
   'expo-linking': stub('./expo-linking.mjs'),
   '@/i18n': stub('./i18n.mjs'),
+  // src/lib/local-storage.ts installs expo-sqlite's localStorage on phones; the tests give Node one of their own.
+  'expo-sqlite/localStorage/install': stub('./empty.mjs'),
 };
 
 /** Node module hook: resolves a stubbed package or app module to its stand-in file. */

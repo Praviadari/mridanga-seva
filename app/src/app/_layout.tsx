@@ -1,7 +1,8 @@
 // Root of the app: loads translations, keeps the splash screen up while the login is checked,
 // shows only the screens the signed-in person's role may use, sets up push notifications on the
 // Android app (src/lib/push.ts) and looks for app updates when it comes back to the front
-// (src/lib/app-update.ts).
+// (src/lib/app-update.ts). A screen that crashes shows a friendly page with Try again instead of a blank one
+// (ErrorBoundary below, src/components/crash-screen.tsx; D10-17).
 //
 // How role-based navigation works (docs/ARCHITECTURE.md "Navigation by role"):
 // useAuth().area names the part of the app the person may use. Each <Stack.Protected> below
@@ -13,13 +14,14 @@
 import '@/i18n'; // sets up translations before any screen renders
 import '@/auth/requested-path'; // notes the address the app was opened with, before any redirect
 
-import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
+import { DarkTheme, DefaultTheme, Stack, ThemeProvider, type ErrorBoundaryProps } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { AuthProvider, useAuth } from '@/auth/auth-provider';
+import { CrashScreen } from '@/components/crash-screen';
 import { SetupNeeded } from '@/components/setup-needed';
 import { useUpdateChecks } from '@/lib/app-update';
 import { documentTitleLayout } from '@/lib/document-title';
@@ -30,6 +32,14 @@ import { useTheme } from '@/theme/use-theme';
 // Keep the native splash screen until we know where to send the person. Must run at the top
 // level, before the first render (expo-splash-screen docs).
 SplashScreen.preventAutoHideAsync();
+
+/**
+ * Expo Router shows this in place of the app when anything below the root throws while rendering (D10-17,
+ * docs/DECISIONS.md #216): the person's language, Try again, the way home, the version and the error line.
+ */
+export function ErrorBoundary(props: ErrorBoundaryProps) {
+  return <CrashScreen {...props} />;
+}
 
 /** App root. Expo Router renders it around every screen. */
 export default function RootLayout() {

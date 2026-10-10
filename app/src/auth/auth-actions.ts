@@ -15,6 +15,7 @@ import { Platform } from 'react-native';
 
 import { clearSavedCard } from '@/data/my-student';
 import { currentLanguage, markLanguageSaved } from '@/i18n';
+import { dropAllDrafts } from '@/lib/form-drafts';
 import { unregisterPush } from '@/lib/push';
 import { forgetStoredLogin, storedLoginUserId, supabase } from '@/lib/supabase';
 
@@ -202,6 +203,8 @@ export async function signOut(): Promise<void> {
   markOwnSignOut(true);
   try {
     clearSavedCard();
+    // Forms kept after an earlier forced sign-out stay with nobody on a shared phone (D6-20).
+    dropAllDrafts();
     markLanguageSaved();
     // Before signing out: deleting the token needs the login.
     await unregisterPush();

@@ -2,17 +2,19 @@
 // photos and PDFs included (add or remove). "When should students see it?" is offered only while
 // it is still scheduled: once published, its time stays. Read receipts are kept, and a published
 // announcement shows "Edited" with the time (docs/DECISIONS.md #27, #32). Opened from the
-// announcement (../[id].tsx); saving goes back there.
+// announcement (../[id].tsx); saving goes back there. When the server ends the login while editing, the changes are
+// kept for the same login and filled in again next time (src/lib/form-drafts.ts, D6-20).
 // Data: src/data/announcements.ts; the database checks everything again (migrations 0008, 0010).
 
 import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useAuth } from '@/auth/auth-provider';
 import { AnnouncementFields } from '@/components/announcement-form';
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
+import { DraftNotice } from '@/components/draft-notice';
 import { FormErrorSummary } from '@/components/form-error-summary';
 import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
@@ -31,6 +33,7 @@ import {
   type AnnouncementForm,
   type AnnouncementFormErrors,
 } from '@/data/announcements';
+import { discardDraft, peekDraft, useDraftKeeper } from '@/lib/form-drafts';
 
 /** What the screen loaded: the announcement and what the form may offer. */
 type Loaded = {
@@ -41,13 +44,30 @@ type Loaded = {
   hasMentees: boolean;
 };
 
+/**
+ * What is kept of the edit when the server ends the login: the form without files picked on the phone (a
+ * sign-out deletes them, src/lib/device-traces.ts) and the version it started from, so a save still
+ * notices a change made by someone else meanwhile (D6-15).
+ */
+type EditDraft = { form: AnnouncementForm; base: Announcement; filesDropped: boolean };
+
 /** The filled-in form and the Save button. */
 function EditAnnouncementScreenContent() {
   const { t } = useTranslation();
-  const { profile } = useAuth();
+  const { profile, session } = useAuth();
   const myId = profile?.id ?? '';
+  const owner = session?.user.id;
   const { id: idParam } = useLocalSearchParams<{ id: string }>();
   const id = Number(idParam);
+  const draftKey = `announcement-edit:${id}`;
+  // A draft kept for this login after a forced sign-out (D6-20): read once, then deleted from the device.
+  const [restored] = useState(() => peekDraft<EditDraft>(draftKey, owner));
+  const [showRestored, setShowRestored] = useState(restored !== null);
+  // Used by the first load only; "use the saved version" and "load the latest" start from the database.
+  const pendingDraft = useRef(restored);
+  useEffect(() => {
+    if (restored) discardDraft(draftKey);
+  }, [restored, draftKey]);
   // undefined = loading, null = could not load, 'not_found' = deleted or never there.
   const [loaded, setLoaded] = useState<Loaded | 'not_found' | null | undefined>(undefined);
   const [form, setForm] = useState<AnnouncementForm | null>(null);
@@ -76,14 +96,26 @@ function EditAnnouncementScreenContent() {
         : options.groups;
     setLoaded({ announcement, authorName: detail.authorName, groups, hasMentees: options.hasMentees });
     // Filled in only the first time, so coming back to the screen never wipes what was typed.
-    setForm((current) => current ?? formFromAnnouncement(announcement));
-    setBase((current) => current ?? announcement);
+    const draft = pendingDraft.current;
+    pendingDraft.current = null;
+    setForm((current) => current ?? draft?.form ?? formFromAnnouncement(announcement));
+    setBase((current) => current ?? draft?.base ?? announcement);
   }, [id, myId]);
 
   useFocusEffect(
     useCallback(() => {
       void load();
     }, [load]),
+  );
+
+  // Kept only when it differs from the version it started from.
+  const changed = form !== null && base !== null && JSON.stringify(form) !== JSON.stringify(formFromAnnouncement(base));
+  useDraftKeeper(
+    draftKey,
+    owner,
+    changed && form && base
+      ? ({ form: { ...form, files: form.files.filter((f) => !isPicked(f)) }, base, filesDropped: form.files.some(isPicked) } satisfies EditDraft)
+      : null,
   );
 
   const header = <Stack.Screen options={{ title: t('announcements.edit.title') }} />;
@@ -166,6 +198,20 @@ function EditAnnouncementScreenContent() {
       <AppText tone="muted">
         {scheduled ? t('announcements.edit.scheduledNote') : t('announcements.edit.publishedNote')}
       </AppText>
+      {showRestored ? (
+        <DraftNotice
+          notes={restored?.filesDropped ? [t('drafts.filesAgain')] : []}
+          discardLabel={t('drafts.useSaved')}
+          onDiscard={() => {
+            setShowRestored(false);
+            setForm(null);
+            setBase(null);
+            setErrors({});
+            setServerError(null);
+            void load();
+          }}
+        />
+      ) : null}
       <AnnouncementFields
         form={form}
         errors={errors}
