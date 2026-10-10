@@ -8,33 +8,38 @@ Already settled (DECISIONS #212 — Praveen, 09-10-2026 — and #213): **no live
 location tracking at all**; location is read **only** at the moment of check-in and check-out,
 against the class area, and only "inside/outside + distance" is kept; verifiable parental consent
 is taken; face is a **separate biometric opt-in**, and QR / coordinator check-in stays for everyone
-for good.
+for good. Settled 10-10-2026 (Praveen, #248): **self-scan on the student's own phone only, no
+tablet, ₹0 budget**; no phone → printed QR card or roll number at the coordinator; parent emails on
+check-out only (#231 answers). Still open for the Guru: items 1, 3 (minimum age), 4, 7, 8, 9, 11, 12.
 
 1. **Go-ahead gate.** *Recommended:* face is switched on only after a lawyer has reviewed the DPIA
    and consent texts and the Guru signs off (closes audit D4-18). If the review comes late, ship
    parent notices first and face after.
 
-2. **Who scans.** *Recommended:* a **door tablet** at the entrance plus **coordinator phones**
-   (same screen, a coordinator present) first; **student self-scan on their own phone for adults
-   only** in the first term; review after the pilot.
+2. **Who scans.** **DECIDED by Praveen 10-10-2026 (DECISIONS #248):** face scan is the
+   **student's own phone only** (self-scan). No door tablet, no face scan on coordinator phones.
+   A student **without a phone** shows a **printed QR card** or tells the coordinator their **roll
+   number** (or name), and the coordinator checks them in as today (C5). The first face enrolment
+   is done at the desk on the student's phone, with a coordinator confirming it is the right
+   student.
 
-3. **Self-scan and face for minors.** *Recommended:* minors use the supervised scan (tablet /
-   coordinator), **no self-scan** for under-18s in the first term; face only from age **13**
-   (younger children by QR — faces change fast and errors are higher). Re-enrol minors every 12
-   months.
+3. **Face for minors.** Self-scan is open to minors with parental face consent (#248). *Still for
+   the Guru:* face only from age **13** (recommended — younger children by QR; faces change fast and
+   errors are higher). Re-enrol minors every 12 months.
 
 4. **Geofence radius at Abids.** *Recommended:* **100 m** for self-scan (blocked outside, with
    "ask a coordinator"), **150 m** kept for staff check-ins (saved and flagged, #70). Fine-tune from
    pilot data.
 
-5. **Check-out.** *Recommended:* check-out by face scan or coordinator tap; the nightly auto-close
-   tells parents "no check-out recorded" (never a made-up time). Self-scan check-out also checks
-   location once (flagged, never blocked).
+5. **Check-out.** *Recommended:* check-out by self-scan or coordinator tap (QR card / roll number
+   for students without phones). The nightly auto-close never makes up a leaving time and sends
+   parents nothing (#231 answers). Self-scan check-out also checks location once (flagged, never
+   blocked).
 
-6. **Parent notifications.** *Recommended:* **email** on check-in and check-out, on by default for
-   minors (parent can turn off), off for adults; contains first name, centre, time and how it was
-   marked — never the location. A parent app login is a later project. Can start in Dec 2026 on
-   today's QR check-in, before face.
+6. **Parent notifications.** **DECIDED 10-10-2026 (DECISIONS #231 answers; 0043 built, 0044 makes it check-out only — in progress 10-10):**
+   email to the guardian of a **minor** only when a **check-out is recorded in the app** — no
+   check-in email, no night "no check-out" email; opt-out with an Unsubscribe link; full name;
+   never the location. Already built on today's QR check-in; switched on by the Guru on G10.
 
 7. **Model and where it runs.** *Recommended:* **on the device** (no face image ever leaves the
    tablet/phone), with Apache-licensed open models (SFace + MiniFASNet, ML Kit detection). Not
@@ -48,14 +53,16 @@ for good.
    plus the phone's own permission prompt; no separate database consent scope unless the lawyer
    asks for one.
 
-10. **Budget.** *Recommended:* one Android tablet with a good front camera and a stand
-    (≈₹15-25k, estimate) + ₹0/month for on-device recognition; email notices on Brevo's free plan.
-    Lawyer's review fee — team to arrange. (Plan B cloud: ≈$5-80/month.)
+10. **Budget.** **DECIDED by Praveen 10-10-2026 (DECISIONS #248): ₹0.** No tablet (students scan
+    on their own phones); on-device open models (ML Kit, SFace, MiniFASNet — free, Apache 2.0);
+    Supabase, Expo and Brevo free plans. Still recommended: a lawyer's review of the DPIA and
+    consent texts — the team looks for a devotee lawyer to do it free. (A cloud face API, ≈$5-80/
+    month, is not planned.)
 
 11. **If a parent (or child) says no.** *Recommended:* nothing changes for that child — QR or
     coordinator, no reminders, no "face missing" mark, no difference in any report. The child's own
     "no" counts even if the parent signed.
 
 12. **Schedule.** *Recommended:* keep 1 Mar - 25 Apr build / 30 Apr live, with a one-week native
-    spike in Jan-Feb 2027 and face consents collected in Feb. Fallback for 30 Apr: tablet face +
-    parent notices only; self-scan later.
+    spike in Jan-Feb 2027 and face consents collected in Feb. Fallback for 30 Apr: parent notices
+    + QR (cards for students without phones); face later. Work packages: [WORK_PLAN.md](WORK_PLAN.md).

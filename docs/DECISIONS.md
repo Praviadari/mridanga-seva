@@ -4094,3 +4094,32 @@ A Telugu and a Hindi version follow from the team's English, with the consent fo
 | Full name or first name in the email? | Full name (#228) | Template change |
 | Sender and domain | Placeholder (`NOTICE_FROM`, Praveen's verified address on TEST) | Brief 8: domain authenticated in Brevo |
 | Flagged (outside the area) check-ins | Same email; the flag stays for staff (#70) | Guru decision (FACE_ATTENDANCE_PLAN §2.6) |
+
+## 248. Phase 3 face scan = student self-scan on their own phone; no phone = printed QR or roll number; ₹0 budget — 10 Oct 2026
+
+**Decided by Praveen, 10-10-2026.** Supersedes the "who scans" proposal in
+docs/phase3/FACE_ATTENDANCE_PLAN.md §2.1 (modes A door tablet and B coordinator phone are dropped)
+and answers DECISIONS_FOR_GURU items 2 and 10.
+
+- **Face scan is only the student's own phone (self-scan, 1:1):** the app checks that the face is
+  the student whose login it is, with liveness, and reads location once at that moment (#212).
+- **A student without a phone** is checked in by a coordinator as today: the coordinator scans the
+  student's **printed QR card** or types the **roll number or name** in C5 (search_students already
+  matches roll numbers, 0039). Printed QR cards are a new, small JS job (P3-1 in
+  docs/phase3/WORK_PLAN.md) that can ship before Phase 3.
+- **Budget ₹0:** no door tablet; on-device open models (ML Kit detection, SFace, MiniFASNet —
+  Apache 2.0 / free); Supabase, Expo and Brevo free plans. The lawyer's review stays recommended
+  (children's biometric data, DPDP s.9) — the team looks for a pro-bono reviewer.
+
+**Why:** most of the cost and build in the draft plan was the tablet and the 1:N scanner; self-scan
+needs neither, and students without phones already have a working path.
+
+**Trade-offs accepted, and how they are covered:** nobody watches a self-scan, so anti-spoofing must
+be stronger than a supervised scan — the first enrolment is done at the desk in front of a
+coordinator (who confirms it is the right student), every scan uses active + passive liveness, a
+conservative match threshold (prefer "use your QR" over a wrong match), Android's mocked-location
+flag and Play Integrity; self-scan is refused offline, outside the area or outside the class
+window, and the coordinator path stays. A child's own phone reading location at check-in is still
+a single moment, never tracking (#212); the DPIA and consent drafts are revised for self-scan
+before the lawyer sees them. Minimum age for face (item 3, recommended 13) stays a Guru decision.
+Work packages, order and pick-up rules: docs/phase3/WORK_PLAN.md.

@@ -14,6 +14,7 @@ maintainer can understand it without asking anyone.
 | [GLOSSARY.md](GLOSSARY.md) | What a word means: mridanga terms (bol, taal, dayan) and app terms (visit, mentor, irregular) |
 | [OPERATIONS.md](OPERATIONS.md) | How to set up, run, back up and hand over the live system |
 | [GO_LIVE_CHECKLIST.md](GO_LIVE_CHECKLIST.md) | The ordered steps that take the live project from migration 0011 to the pilot (audit brief 8) |
+| [phase3/WORK_PLAN.md](phase3/WORK_PLAN.md) | Phase 3 face self-scan: 9 work packages, order, how a volunteer picks one up (plan, DPIA, consent and Guru decisions in the same folder) |
 
 ## Rules for keeping these documents useful
 

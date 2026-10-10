@@ -1,5 +1,7 @@
 # Phase 3 — Face recognition model options (DRAFT, 09-10-2026)
 
+> **UPDATE 10-10-2026 (DECISIONS #248):** only **1:1** matching on the student's own phone is needed (no 1:N scanner, no tablet). The model choice (ML Kit + SFace + MiniFASNet, on device) is confirmed in the spike, P3-0 in [WORK_PLAN.md](WORK_PLAN.md).
+
 **Status:** research only; no model was downloaded or tested. "Verified" = read on the cited page
 on 09-10-2026. "Unverified" = from secondary sources or memory; check before relying on it.
 Context: [FACE_ATTENDANCE_PLAN.md](FACE_ATTENDANCE_PLAN.md).

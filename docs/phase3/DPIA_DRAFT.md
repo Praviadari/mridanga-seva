@@ -1,5 +1,7 @@
 # Phase 3 — Data protection impact assessment (DRAFT, 09-10-2026)
 
+> **UPDATE 10-10-2026 (DECISIONS #248):** the design is now **self-scan on the student's own phone only** (no door tablet, no coordinator face scan; no phone = printed QR card or roll number). Sections on modes A/B, the kiosk cache and the tablet are history; work package P3-8 in [WORK_PLAN.md](WORK_PLAN.md) revises this draft for self-scan **before** it goes to the lawyer.
+
 > **Not legal advice.** This draft was written by an AI assistant from public sources for the team
 > to take to a qualified Indian data-protection lawyer (and an EU/UK adviser before any expansion
 > abroad). Quotes of the law were read on secondary sites that reproduce the Act and Rules

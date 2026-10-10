@@ -1,5 +1,13 @@
 # Phase 3 — Face-scan attendance plan (DRAFT, 09-10-2026)
 
+> **UPDATE 10-10-2026 — read first (Praveen, DECISIONS #248):** face scan is **mode C only —
+> student self-scan on their own phone (1:1)**. Modes A (door tablet) and B (coordinator phone face
+> scan) below are **dropped**, and so is the tablet in the budget and timeline. Students without a
+> phone: **printed QR card or roll number** at the coordinator (C5, as today). The first enrolment is
+> done at the desk on the student's phone with a coordinator confirming. Parent emails: check-out
+> only (#231 answers). Where this file says A/B, 1:N, kiosk cache or tablet, it is history. The build
+> plan that replaces §9 is **[WORK_PLAN.md](WORK_PLAN.md)**.
+
 **Status:** preparation only. Nothing here is built or decided, except DECISIONS #212 (Praveen,
 09-10-2026: **no live or continuous location tracking at all** — GPS read only at the moment of
 check-in and check-out, against the class geofence; verifiable parental consent; face a separate

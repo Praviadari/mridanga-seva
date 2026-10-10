@@ -1,5 +1,7 @@
 # Phase 3 — Consent wording drafts (DRAFT, 09-10-2026)
 
+> **UPDATE 10-10-2026 (DECISIONS #248):** face scan is now done **only on the student's own phone**; text that mentions class devices or a tablet is revised in work package P3-8 ([WORK_PLAN.md](WORK_PLAN.md)). Parent emails: check-out only (#231 answers).
+
 > **Drafts for the team and a lawyer — not final, not legal advice.** English is the master text.
 > **Telugu and Hindi are machine-assisted drafts: NATIVE REVIEW NEEDED** before any use (meaning,
 > tone, and the words for "template", "consent", "withdraw"). `[ … ]` = to fill in.
