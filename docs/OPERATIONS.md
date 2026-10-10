@@ -710,6 +710,41 @@ starts bring the fix.
 (channels and the branch each one serves). The free plan covers 1,000 people a month who
 download updates; the class is about 200.
 
+## LIVE go-live (brief 8)
+
+The live project is at migrations 0001-0011. Taking it to the pilot is one ordered runbook with a
+person, a command or click path, an expected result and a "what if it differs" for every step:
+**[GO_LIVE_CHECKLIST.md](GO_LIVE_CHECKLIST.md)** ([DECISIONS.md #232-#234](DECISIONS.md)). In short:
+
+1. **Before:** the probe shows LIVE at `0011`; a backup as in "Backups" (no backup, no go-live);
+   `npm test` in `supabase/tests` passes on main, which includes the replay below; the drift query's
+   CSV saved.
+2. **Migrations 0013-0042**, one file per run in number order, the probe after each. 0012 and 0041
+   do not exist. 0031 is the corrected version (every `update push_status` ends in `where id;`).
+   0034 goes with the live web site (and a production update, once a production APK exists) the
+   same day.
+3. **Push:** steps 7-10 of "Push notifications" on LIVE, then `notify-announcements` deployed again
+   from main.
+4. **Email:** Brevo verified sender and SMTP; Confirm email on, auto-confirm off, password length 8,
+   Site URL and exact Redirect URLs (no localhost); one real sign-up and one real reset with a team
+   mailbox; `/auth/v1/settings` shows `"mailer_autoconfirm":false`.
+5. **Web:** the live site `mridanga-seva` on Pages, then `app.mridangaseva.com` and the switch of
+   Site URL and Redirect URLs. Steps marked **⏳ DOMAIN** wait for the domain move (Zoho nameservers
+   → Cloudflare).
+6. **After:** the checklist's read-only verification SQL (last migration, jobs, grant sweep,
+   safeupdate sweep, Vault and pg_net, push job, instantly confirmed logins) and row counts, and the
+   dated settings record filled in.
+
+**Never hand-confirm or Auto-Confirm an address that is on a student record without checking
+identity in person.** A confirmed login with that email is linked to the child's record (0002).
+
+**The replay proof** (`cd supabase/tests && npm ci && npm run replay`; also part of `npm test`,
+about 20-30 seconds): builds an in-memory database at LIVE's state (0001-0011 plus rows of every kind
+LIVE can hold), applies 0013-0042 in order and fails on any error, runs each file a second time
+(it must change nothing, or be refused as a whole and be marked "Run once"), compares the result
+with a fresh build, and runs the checklist's SQL blocks. A new migration fails its first check until
+the checklist lists it.
+
 ## Releasing a change: database first
 
 A release that has a migration goes in this order, every time ([DECISIONS.md #121](DECISIONS.md)).

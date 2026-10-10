@@ -3914,3 +3914,56 @@ is what keeps the phone's language at the first sign-in, D8-01); otherwise the p
 save is `saveMyLanguage` (data/my-profile.ts), which reports a refusal instead of hiding it; the provider puts the
 new language in a new profile object (`useAuth().saveLanguage`, used by the language picker). A failed save leaves
 the choice marked unsaved, so the next profile load tries again.
+
+## 232. LIVE goes live by one checklist, one migration file per run — 10 Oct 2026
+
+**Status: decided by the lead's brief (audit brief 8 prep); branch `golive-pack`. Nothing has run on LIVE.**
+
+**Decision.** The go-live is the ordered runbook `docs/GO_LIVE_CHECKLIST.md` (linked from OPERATIONS "LIVE go-live
+(brief 8)"): pre-checks, then 0013-0042 pasted one file per run in number order from GitHub main, a read-only
+**probe** after each file that names the last migration the project has (one object per file that only that file
+makes; 0012 and 0041 have none, they were never used), then push steps 7-10 and the function deployed again from
+main, Brevo and the auth settings, the live site and its address, a read-only verification block and a dated
+settings record. Every step names who does it (Praveen in a dashboard or in his terminal; the Guru for Zoho), the
+command or click path, the expected result and what to do when it differs. A result that differs stops the day
+at that step; SQL is never edited on LIVE to get past an error. Steps that wait on the domain move are marked
+⏳ DOMAIN, so the pilot can start on `mridanga-seva.pages.dev` and move to `app.mridangaseva.com` later.
+
+**Consequences.** LIVE has no migration table (files are pasted by hand), so the probe is the record of where it
+stands; it is tested after every file by the replay (#233). A new migration must be added to the checklist's
+table, or the replay fails.
+
+## 233. The replay proof gates the LIVE migrations — 10 Oct 2026
+
+**Status: decided by the lead's brief; branch `golive-pack`.**
+
+**Decision.** `supabase/tests/live-replay.mjs` (in `npm test`, about 20-30 s, and `npm run replay`) builds a PGlite
+database at LIVE's state (0001-0011, then rows of every kind LIVE can hold at 0011), runs each later file in one
+transaction and stops at the first error, checks the probe after each, runs each file a second time, compares the
+result with a fresh build of every migration (1,798 objects: functions, grants, tables, constraints, indexes,
+policies, triggers, views, jobs, buckets; and the count of function comments) and runs the checklist's SQL blocks,
+which it reads from the checklist itself so the pasted text is the tested text. The Supabase imitation is read
+from `smoke-test.mjs`, not copied. **Second-run rule:** a file run twice must change nothing at all (schema and
+every row) or be refused as a whole and say "Run once"; a file that runs twice and changes something must say
+"Run once" too. Result on main `bcdb2bb`: 23 files are refused on a second run (each says "Run once"; 0034's
+header does not, so its checklist row carries it, since an applied file is not edited), 6 change nothing (0029,
+0033, 0035, 0038, 0039, 0042), none changes anything on a second run.
+
+**Consequences.** A pass does not cover pg_cron running, pg_net, the Vault, Auth, SMTP or Storage limits, nor LIVE
+rows of a shape the sample lacks; the checklist's parts C-F check those on LIVE.
+
+## 234. LIVE's email settings: Brevo, Confirm email on, exact addresses — 10 Oct 2026
+
+**Status: decided by the lead's brief and audit brief 8 (decision 6.1 C (b)); branch `golive-pack`.**
+
+**Decision.** LIVE sends sign-up and reset mail through Brevo's SMTP relay (port 587) from a verified sender: a
+team mailbox's address until the domain move, then an address on `mridangaseva.com` with the domain authenticated
+in Brevo (DKIM, DMARC; one SPF record with Zoho's and Brevo's includes). Confirm email stays on (auto-confirm off)
+for good, minimum password length 8, email rate limit 30 an hour. The Site URL is the live site's address and the
+Redirect URLs list exactly that origin (the app sends `window.location.origin`, no path): no localhost, no
+wildcard; both addresses only for the week of the switch to `app.mridangaseva.com`. One real sign-up and one real
+reset with a team mailbox prove it, and `/auth/v1/settings` must show `"mailer_autoconfirm":false`. Nobody
+hand-confirms or Auto-Confirms an address on a student record without checking identity in person (D10-04).
+
+**Consequences.** Mail from a free-mail sender may land in spam before the domain is authenticated; the real
+sign-up test shows it, and the pilot waits for the domain if it does. #235 is unused.

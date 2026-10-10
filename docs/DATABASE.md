@@ -1583,3 +1583,8 @@ request.
 It imitates Supabase's `auth` schema, roles, `storage.objects` and the service role, which is
 close but not exact: the bucket's size and type limits, pg_net and the Vault are not imitated.
 After it passes, still run a new migration on a test project before the live one.
+
+`npm test` ends with `live-replay.mjs` (also `npm run replay`): the live project's path, 0001-0011 with
+rows, then every later file in order, each run twice, compared with a fresh build
+([GO_LIVE_CHECKLIST.md](GO_LIVE_CHECKLIST.md), [DECISIONS.md #233](DECISIONS.md)). A new migration must be
+added to the checklist's table first.
