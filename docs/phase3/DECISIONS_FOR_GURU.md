@@ -36,10 +36,11 @@ check-out only (#231 answers). Still open for the Guru: items 1, 3 (minimum age)
    parents nothing (#231 answers). Self-scan check-out also checks location once (flagged, never
    blocked).
 
-6. **Parent notifications.** **DECIDED 10-10-2026 (DECISIONS #231 answers; 0043 built, 0044 makes it check-out only — in progress 10-10):**
+6. **Parent notifications.** **DECIDED 10-10-2026 (DECISIONS #231 answers, #246; 0043 built, 0044 makes it check-out only):**
    email to the guardian of a **minor** only when a **check-out is recorded in the app** — no
-   check-in email, no night "no check-out" email; opt-out with an Unsubscribe link; full name;
-   never the location. Already built on today's QR check-in; switched on by the Guru on G10.
+   check-in email, no night "no check-out" email (both G10 switches, off); opt-out with an
+   Unsubscribe link; full name; never the location. Already built on today's QR check-in; switched
+   on by the Guru on G10.
 
 7. **Model and where it runs.** *Recommended:* **on the device** (no face image ever leaves the
    student's phone), with Apache-licensed open models (SFace + MiniFASNet, ML Kit detection). Not

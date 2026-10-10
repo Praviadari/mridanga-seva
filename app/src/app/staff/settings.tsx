@@ -2,7 +2,7 @@
 // window, what "this week" means, when a student counts as Irregular or Inactive and how calls
 // are planned, how long someone is a new joiner; and the promotion criteria that Phase 2 will
 // read (shown as "not used yet"); the default translator credit of Ishtagoshti slokas; the class fund's approval and bill limits;
-// check-in / check-out emails to parents (0043). Settings planned for later are listed at the end. Saved
+// emails to parents (0043; check-out only by default, 0044). Settings planned for later are listed at the end. Saved
 // together, all or nothing; every change is in the audit log (G11). Data: src/data/settings.ts.
 
 import { Stack, useFocusEffect } from 'expo-router';
@@ -203,7 +203,8 @@ export default function SettingsScreen() {
         </Section>
       ) : null}
 
-      {/* Check-in / check-out emails to parents (0043, docs/DECISIONS.md #224-#231): shown once the migration has added the settings. */}
+      {/* Emails to parents (0043, docs/DECISIONS.md #224-#231, #246): shown once the migration has added the settings; the
+          check-in and night boxes once 0044 has (both off: the team chose check-out emails only). */}
       {form.notices ? (
         <Section icon="guardian" title={t('settings.noticesTitle')} description={t('settings.noticesHint')}>
           <Checkbox
@@ -216,6 +217,20 @@ export default function SettingsScreen() {
             checked={form.notices.checkOut}
             onChange={(checkOut) => form.notices && setForm({ ...form, notices: { ...form.notices, checkOut } })}
           />
+          {form.notices.checkIn !== null ? (
+            <Checkbox
+              label={t('settings.fields.parent_notices_check_in')}
+              checked={form.notices.checkIn}
+              onChange={(checkIn) => form.notices && setForm({ ...form, notices: { ...form.notices, checkIn } })}
+            />
+          ) : null}
+          {form.notices.noCheckout !== null ? (
+            <Checkbox
+              label={t('settings.fields.parent_notices_no_checkout')}
+              checked={form.notices.noCheckout}
+              onChange={(noCheckout) => form.notices && setForm({ ...form, notices: { ...form.notices, noCheckout } })}
+            />
+          ) : null}
           <TextField
             label={t('settings.fields.parent_notice_contact')}
             hint={t('settings.contactHint')}

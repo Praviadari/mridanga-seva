@@ -4070,6 +4070,7 @@ is worse than none). At most 200 sent a day (Brevo's free plan: 300; the Ishtago
 
 **Status: draft only.** The team words the real line and adds it to the paper form and the privacy
 notice before notices are switched on at LIVE; Brevo is then listed as a processor for these emails.
+**Approved as drafted on 10 Oct 2026: see #247.**
 
 > *Draft (en):* "When the class's attendance emails are switched on, we will email you when your child
 > is checked in and checked out at the class (name, centre, time). These emails never contain your
@@ -4082,6 +4083,8 @@ A Telugu and a Hindi version follow from the team's English, with the consent fo
 ## 231. Parent notices: decisions for the team, with the defaults built — 10 Oct 2026
 
 **Status: open; the build follows the defaults below, each a setting or a small change.**
+**Decided 10 Oct 2026: see #246 (check-out emails only; every other default kept) and #247 (#230's
+wording approved).**
 
 | Question | Default built | To change |
 |---|---|---|
@@ -4094,6 +4097,54 @@ A Telugu and a Hindi version follow from the team's English, with the consent fo
 | Full name or first name in the email? | Full name (#228) | Template change |
 | Sender and domain | Placeholder (`NOTICE_FROM`, Praveen's verified address on TEST) | Brief 8: domain authenticated in Brevo |
 | Flagged (outside the area) check-ins | Same email; the flag stays for staff (#70) | Guru decision (FACE_ATTENDANCE_PLAN §2.6) |
+
+## 246. Parents get an email only when a check-out is recorded in the app — 10 Oct 2026
+
+**Status: the team's answers to #231 (Praveen, 10 Oct 2026); built in migration 0044, merged to main by the lead on 10 Oct 2026.**
+
+**Context.** #231 left the defaults of the parent emails to the team. Their answers: minors only — yes;
+both check-in and check-out — **no: "only checkout if added in app or else no send"**; opt-out — yes;
+quiet hours — none; full name — yes; a flagged (outside the area) check-in or check-out — the same email
+as any other.
+
+**Decision.** An email goes to the parent only when a check-out is recorded in the app (QR, door
+tablet, a coordinator's tap, Check out all). No email at check-in, and no night "no check-out was
+recorded" email when the hourly job closes a visit nobody checked out. Built as two new G10 switches,
+**both off**: `parent_notices_check_in` and `parent_notices_no_checkout`; `parent_notices_check_out`
+stays on. The visits trigger checks each kind's switch; the night email is no longer tied to the
+check-out switch. The kinds `in` and `no_checkout` stay in the queue's check, so 0043's rows stay
+valid. Every other #231 default is kept as built; the flag (#70) stays for staff only (#228).
+
+**Why switches, not a hard removal.** The trigger, the email texts and the tests for the other two
+kinds already exist and passed on TEST; removing them saves no running cost (nothing is queued while
+off) but would need a migration and an app update to bring back if the team changes its mind. Two
+unticked boxes cost one guard line each, and "off" is the safe default for any database that runs
+0044.
+
+**Why the "not news" rule stays.** A check-out is queued only when it is set to about now (within
+the last 10 minutes). Every check-out the app records is set to now: `toggle_visit` and `mark_visit`
+use `now()`, `check_out_all` uses `now()` for today's visits (an old day's visit gets its closing time,
+which is not news). So the rule never holds back a genuine app check-out; it only skips a check-out
+typed in later or a corrected time (#110), where an email at the wrong moment would mislead.
+
+**Consequences.** Migration 0044 (settings, `guard_setting`, `queue_parent_notices`); no Edge
+Function change, no redeploy. G10 shows "When the student is checked out in the app" (ticked), "When
+the student is checked in" and "At night, when nobody checked the student out" (unticked); the two
+new boxes appear only once the database has 0044. C8 says "attendance emails" instead of "check-in
+emails". Smoke tests "0044 check-out emails only"; GO_LIVE_CHECKLIST M0044.
+
+## 247. The consent line for parent emails is approved as drafted — 10 Oct 2026
+
+**Decision.** #230's English draft is the team's wording (Praveen, 10 Oct 2026). It goes on the
+paper consent form and in the privacy notice before the emails are switched on at LIVE, with Brevo
+listed as a processor; the Telugu and Hindi versions follow from it with the form's other lines
+(docs/phase3/CONSENT_DRAFT.md).
+
+**Note for the team.** The approved line says "we will email you when your child is checked in and
+checked out"; with #246 only the check-out email is sent. It over-promises rather than hides
+anything, so it was kept as approved; if the team wants it exact, dropping "checked in and" ("when
+your child is checked out at the class") is the one-phrase change, to be made before the forms are
+printed.
 
 ## 248. Phase 3 face scan = student self-scan on their own phone; no phone = printed QR or roll number; ₹0 budget — 10 Oct 2026
 

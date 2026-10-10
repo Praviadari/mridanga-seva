@@ -109,6 +109,10 @@ leave the record. Today #70 does not check check-outs; changing that is a Guru d
 
 ### 2.6 What parents see
 
+*Built and decided 10 Oct 2026 (DECISIONS #224-#231, #246-#247):* email via Brevo, opt-out, minors
+only, full name, **at check-out only** (check-in and night emails are G10 switches, off). The
+proposal below is kept as written.
+
 Parents have no app login today (guardians are rows with a phone; #146 limits who reads them).
 Options for the notice, cheapest first:
 

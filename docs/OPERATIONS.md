@@ -1083,9 +1083,12 @@ on conflict (profile_id) do update set code_hash = excluded.code_hash, expires_a
 ```
 ## Parent notices by email
 
-When a student under 18 is checked in or out (QR, door tablet, a coordinator's tap), the parent gets
-a short email: name, centre, time, how it was marked; at night "no check-out recorded" if nobody
-checked the student out ([DECISIONS.md #224-#231](DECISIONS.md), DATABASE.md "Parent notices (0043)").
+When a student under 18 is checked out in the app (QR, door tablet, a coordinator's tap, Check out
+all), the parent gets a short email: name, centre, time. **Check-out only** is the team's choice of
+10 Oct 2026 ([DECISIONS.md #246](DECISIONS.md)): since 0044 the check-in email (the "When the
+student is checked in" box) and the night's "no check-out recorded" email (the "At night…" box) are G10 switches,
+both off; ticking them brings back 0043's behaviour ([#224-#231](DECISIONS.md), DATABASE.md "Parent
+notices (0043)").
 Never a location or a photo. It goes: trigger on `visits` → queue `parent_notices` → job
 `mridanga-parent-notices` (every minute) → Edge Function `notify-parents` → Brevo's transactional
 API → the parent's inbox. **Off by default**: nothing is queued until the Guru ticks "Email parents…"
@@ -1111,7 +1114,8 @@ dashboard (**Edge Functions → Secrets → Add new secret**, never in a termina
    select jobname, schedule, active from cron.job where jobname = 'mridanga-parent-notices';
    ```
    Expected: `parent_notice_contact ""`, `parent_notices_check_out true`, `parent_notices_enabled false`;
-   the job `* * * * *`, active.
+   the job `* * * * *`, active. Then `0044_parent_checkout_only.sql`; the first select adds
+   `parent_notices_check_in false` and `parent_notices_no_checkout false`.
 2. Deploy the function from the repository folder (the CLI is logged in on Praveen's PC; this really
    deploys, so only with the TEST ref):
    ```bash
@@ -1121,19 +1125,19 @@ dashboard (**Edge Functions → Secrets → Add new secret**, never in a termina
    {"error":"not_allowed"}`. `supabase/config.toml` keeps its JWT check off as for push.
 3. Dry run (no `BREVO_API_KEY` yet): register a test student under 18 on C2/C3 with your own email as the
    parent's (a made-up child; TEST only), tick "Email parents…" on G10 as the Guru and save, then check the
-   student in on C8. Within a minute:
+   student in on C8 (nothing is queued: check-in emails are off) and out again. Within a minute:
    ```sql
    select id, kind, outcome, tries, created_at from parent_notices order by id desc limit 5;
    select last_job_at, last_job_result, last_run_at, last_run from parent_notice_status;
    ```
    Expected: the row's `outcome` = `skipped`, `last_run` `{"dryRun": true, "skipped": 1, …}`, and in
-   **Edge Functions → notify-parents → Logs** a line `would send <id> in en`. `last_job_result`
+   **Edge Functions → notify-parents → Logs** a line `would send <id> out en`. `last_job_result`
    `not_set_up` = the push Vault secrets are missing (push steps 7-8).
 4. One real email: in Brevo verify your own address as a sender (Senders, Domains & Dedicated IPs →
    Senders → Add a sender), then add the secrets `BREVO_API_KEY` and `NOTICE_FROM` (that address).
    Check the student out on C8: the email arrives within about a minute; the row says `sent`. Try the
    mail app's "Unsubscribe" if it shows one (Gmail shows it only for an authenticated domain): C8 then
-   says "Check-in emails stopped (the parent asked)"; "Send emails to this parent again" undoes it.
+   says "Attendance emails stopped (the parent asked)"; "Send emails to this parent again" undoes it.
 5. Untick "Email parents…" on G10 when done.
 
 `outcome` of a row, if not `sent`: `skipped` dry run; `brevo_400` sender not verified or bad address;
@@ -1142,12 +1146,13 @@ later); `expired` the email could not go within 6 hours; `stopped` / `switched_o
 nothing to send any more. At most 200 are sent a day (Brevo's free plan sends 300; the Ishtagoshti
 parent codes take up to 100); the rest wait and expire after 6 hours.
 
-**On LIVE (brief 8)**, after the team's decisions (DECISIONS #231) and wording:
+**On LIVE (brief 8)** (the team decided #231 on 10 Oct 2026: check-out only, [#246](DECISIONS.md)):
 the class domain authenticated in Brevo; the consent line added to the paper form and the privacy
-notice (DECISIONS #230), Brevo listed as a processor for these emails ("Who processes the data");
-then run 0043 (after 0012-0040 in order), deploy `notify-parents` with the LIVE ref, set
+notice (DECISIONS #230, wording approved; [#247](DECISIONS.md)), Brevo listed as a processor for these emails ("Who processes the data");
+then run 0043 and 0044 (after 0012-0042 in order), deploy `notify-parents` with the LIVE ref, set
 `BREVO_API_KEY`, `NOTICE_FROM` = `notices@<domain>`, `NOTICE_REPLY_TO` = the desk; send one email to
-a team member's child (or a test record) and only then tick "Email parents…".
+a team member's child (or a test record) and only then tick "Email parents…" (leave the check-in and
+night boxes unticked).
 
 **Switching it off:** untick on G10 (nothing more is queued; waiting rows end as `switched_off`). In
 an emergency, `select cron.unschedule('mridanga-parent-notices');` stops the sending at once; to switch

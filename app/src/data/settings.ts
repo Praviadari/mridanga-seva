@@ -13,9 +13,11 @@
 //                                  migration 0021, docs/DECISIONS.md #57)
 //   fund_approval_rupees,          the class fund: expenses over this wait for approval; a bill
 //   fund_bill_rupees               is needed over that (Phase 2, migration 0026, docs/DECISIONS.md #80)
-//   parent_notices_enabled,        check-in / check-out emails to a minor's parent: on or off (off by default),
-//   parent_notices_check_out,      check-outs too, and the class contact the email gives (migration 0043,
-//   parent_notice_contact          docs/DECISIONS.md #224-#231)
+//   parent_notices_enabled,        emails to a minor's parent: on or off (off by default); which ones: a
+//   parent_notices_check_out,      check-out recorded in the app (on), the check-in and the night's "no
+//   parent_notices_check_in,       check-out was recorded" (both off, 0044); the class contact the email
+//   parent_notices_no_checkout,    gives (migration 0043, docs/DECISIONS.md #224-#231, #246-#247)
+//   parent_notice_contact
 // Saved together by save_settings (migration 0014), which checks every value and keeps Irregular
 // before Inactive; every change goes to the audit log.
 
@@ -62,8 +64,11 @@ export type SettingsForm = {
   translator: string | null;
   /** The fund limits as typed; null = the database has no such settings yet (before 0026). */
   fund: Record<FundSetting, string> | null;
-  /** Emails to parents (0043); null = the database has no such settings yet. */
-  notices: { enabled: boolean; checkOut: boolean; contact: string } | null;
+  /**
+   * Emails to parents (0043); null = the database has no such settings yet. checkIn and noCheckout
+   * are null before 0044 (then 0043's rule: check-ins always, the night email with check-outs).
+   */
+  notices: { enabled: boolean; checkOut: boolean; checkIn: boolean | null; noCheckout: boolean | null; contact: string } | null;
   /** The centre whose window is shown (Abids, the only one in Phase 1). */
   centreId: number | null;
   centreName: string;
@@ -105,6 +110,8 @@ export async function fetchSettings(): Promise<SettingsForm | null> {
         ? {
             enabled: byKey.get('parent_notices_enabled') === true,
             checkOut: byKey.get('parent_notices_check_out') !== false,
+            checkIn: flagOrNull(byKey.get('parent_notices_check_in')),
+            noCheckout: flagOrNull(byKey.get('parent_notices_no_checkout')),
             contact: byKey.get('parent_notice_contact') as string,
           }
         : null,
@@ -165,6 +172,8 @@ export async function saveSettings(form: SettingsForm): Promise<{ errorKey?: Mes
   if (form.notices) {
     values.parent_notices_enabled = form.notices.enabled;
     values.parent_notices_check_out = form.notices.checkOut;
+    if (form.notices.checkIn !== null) values.parent_notices_check_in = form.notices.checkIn;
+    if (form.notices.noCheckout !== null) values.parent_notices_no_checkout = form.notices.noCheckout;
     values.parent_notice_contact = form.notices.contact.trim();
   }
   const { error } = await supabase.rpc('save_settings', { p_values: values });
@@ -179,6 +188,11 @@ export async function saveSettings(form: SettingsForm): Promise<{ errorKey?: Mes
     if (centreError) return { errorKey: errorKeyOf(centreError.message) };
   }
   return {};
+}
+
+/** A yes/no setting as stored, or null when the database has no such setting. */
+function flagOrNull(value: unknown): boolean | null {
+  return typeof value === 'boolean' ? value : null;
 }
 
 function errorKeyOf(message: string): MessageKey {

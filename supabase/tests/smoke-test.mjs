@@ -124,7 +124,7 @@ process.on('uncaughtException', (error) => {
 // D14-10: every check is counted, and the run fails when fewer (or more) checks ran than expected,
 // so a block skipped by a renamed migration or a commented-out section cannot pass unseen.
 // Adding or removing checks? Run the suite and set this to the new total it prints.
-const EXPECTED_CHECKS = 1431; // 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46
+const EXPECTED_CHECKS = 1443; // 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12
 let failures = 0;
 let passes = 0;
 
@@ -4917,8 +4917,9 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   const settings43 = async (values) => asApp('authenticated', guru, 'select save_settings($1::jsonb)', [JSON.stringify(values)]);
 
   const defaults = await asOwner(`select key, value from settings where key like 'parent_notice%' order by key`);
-  check('0043: notices are OFF by default, check-outs included, no contact yet',
-    JSON.stringify(defaults.map((r) => [r.key, r.value])) === JSON.stringify([['parent_notice_contact', ''], ['parent_notices_check_out', true], ['parent_notices_enabled', false]]),
+  check('0043: notices are OFF by default, check-outs only (0044: check-in and night emails off), no contact yet',
+    JSON.stringify(defaults.map((r) => [r.key, r.value])) === JSON.stringify([['parent_notice_contact', ''], ['parent_notices_check_in', false],
+      ['parent_notices_check_out', true], ['parent_notices_enabled', false], ['parent_notices_no_checkout', false]]),
     JSON.stringify(defaults));
   check('0043: switched off, a check-in and check-out queue nothing', (await scan43()) === 'in'
     && (await back43(kid43.id), await scan43()) === 'out' && (await rows43(kid43.id)).length === 0);
@@ -4928,7 +4929,8 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
     asApp('authenticated', coordinator, `select save_settings('{"parent_notices_enabled": true}'::jsonb)`));
   await refusesWith('0043: the switch takes true / false only', 'setting_invalid', () => settings43({ parent_notices_enabled: 'yes' }));
   await refusesWith('0043: the contact is at most 100 characters', 'setting_invalid', () => settings43({ parent_notice_contact: 'x'.repeat(101) }));
-  await settings43({ parent_notices_enabled: true, parent_notice_contact: ' 98480 00000 ' });
+  // 0044's two switches ticked too, so this block checks 0043's full behaviour (check-in and night emails).
+  await settings43({ parent_notices_enabled: true, parent_notice_contact: ' 98480 00000 ', parent_notices_check_in: true, parent_notices_no_checkout: true });
   check('0043: the Guru switches notices on (G10), contact trimmed', (await asOwner(`select value #>> '{}' as v from settings
     where key = 'parent_notice_contact'`))[0].v === '98480 00000');
   check('0043: ... and the change is in the audit log', (await asOwner(`select count(*)::int as n from audit_log
@@ -5085,6 +5087,74 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   check('0043: the every-minute job is scheduled', job43?.schedule === '* * * * *' && job43.command === 'select send_parent_notices()');
   await asOwner(`delete from students where id in ('${kid43.id}', '${adult43}', '${sib43.id}')`);
   check('0043: deleting a student deletes their notices', (await asOwner(`select count(*)::int as n from parent_notices where guardian_id = '${g43}'`))[0].n === 0);
+}
+
+// ---------------------------------------------------------------- 0044 check-out emails only (DECISIONS #246-#247)
+{
+  const kid = (await asApp('authenticated', coordinator, `select register_student(p_full_name => 'Mira Notice 44',
+    p_dob => (current_date - interval '9 years')::date, p_guardian_name => 'Parent 44', p_guardian_phone => '9876543214',
+    p_guardian_email => 'parent.44@example.com', p_guardian_relation => 'mother', p_id_type_checked => 'school_id',
+    p_written_consent => true) as r`))[0].r;
+  const mark = async (action) => (await asApp('authenticated', coordinator, 'select mark_visit($1, $2) as r', [kid.id, action]))[0].r.action;
+  const back = () => asOwner(`update visits set check_in = check_in - interval '1 minute', check_out = check_out - interval '1 minute'
+    where student_id = '${kid.id}' and check_in > now() - interval '5 minutes'`);
+  // The hourly job closing a visit nobody checked out: no app user, the closing time an hour ago.
+  const closeByJob = () => asOwner(`update visits set check_in = now() - interval '3 hours', check_out = now() - interval '1 hour'
+    where student_id = '${kid.id}' and check_out is null`);
+  const kinds = async () => (await asOwner(`select p.kind from parent_notices p join visits v on v.id = p.visit_id
+    where v.student_id = '${kid.id}' order by p.id`)).map((r) => r.kind).join(',');
+  const settings = (values) => asApp('authenticated', guru, 'select save_settings($1::jsonb)', [JSON.stringify(values)]);
+  // The team's defaults, as a new database has them (0043's block ticked the two switches).
+  await settings({ parent_notices_enabled: true, parent_notices_check_out: true, parent_notices_check_in: false, parent_notices_no_checkout: false });
+
+  check('0044: a check-in queues nothing by default', (await mark('in')) === 'in' && (await kinds()) === '');
+  await back();
+  check('0044: a check-out recorded in the app queues an out email', (await mark('out')) === 'out' && (await kinds()) === 'out');
+  await back();
+  await mark('in');
+  await closeByJob();
+  check('0044: the night job closing a visit nobody checked out queues nothing by default', (await kinds()) === 'out');
+  const [{ id: late }] = await asOwner(`insert into visits (student_id, check_in, method) values ('${kid.id}', now() - interval '2 hours', 'manual') returning id`);
+  // Typed by a signed-in coordinator (a time correction, #110), so it is not the night job either.
+  await db.query(`select set_config('request.jwt.claim.sub', $1, false)`, [coordinator]);
+  try {
+    await asOwner(`update visits set check_out = now() - interval '30 minutes' where id = ${late}`);
+  } finally {
+    await db.query(`select set_config('request.jwt.claim.sub', '', false)`);
+  }
+  check('0044: a check-out typed in later (half an hour ago) is not news: nothing', (await kinds()) === 'out');
+
+  await refusesWith('0044: the check-in switch takes true / false only', 'setting_invalid', () => settings({ parent_notices_check_in: 'yes' }));
+  await refusesWith('0044: the night switch takes true / false only', 'setting_invalid', () => settings({ parent_notices_no_checkout: 1 }));
+  await refusesWith('0044: a coordinator cannot tick the check-in emails on', 'not_allowed', () =>
+    asApp('authenticated', coordinator, `select save_settings('{"parent_notices_check_in": true}'::jsonb)`));
+
+  // The night email on its own: not tied to the check-out switch any more.
+  await settings({ parent_notices_check_out: false, parent_notices_no_checkout: true });
+  await back();
+  check('0044: with check-outs off, a check-out queues nothing', (await mark('in')) === 'in'
+    && (await back(), await mark('out')) === 'out' && (await kinds()) === 'out');
+  await back();
+  await mark('in');
+  await closeByJob();
+  check('0044: the night switch alone queues the no_checkout email', (await kinds()) === 'out,no_checkout');
+
+  // Every switch on: 0043's behaviour.
+  await settings({ parent_notices_check_out: true, parent_notices_check_in: true });
+  await back();
+  check('0044: with every switch on, check-in and check-out queue as in 0043', (await mark('in')) === 'in'
+    && (await back(), await mark('out')) === 'out' && (await kinds()) === 'out,no_checkout,in,out');
+
+  const file44 = readFileSync(new URL('migrations/0044_parent_checkout_only.sql', supabaseDir), 'utf8');
+  let again = '';
+  try { await db.exec(file44); } catch (e) { again = String(e.message); }
+  check('0044 can run a second time, keeping the switches as the Guru set them', again === ''
+    && (await asOwner(`select value from settings where key = 'parent_notices_check_in'`))[0].value === true, again);
+  check('0044: no app role may run the trigger function', !(await asOwner(`select has_function_privilege('authenticated',
+    'queue_parent_notices()', 'execute') as x`))[0].x);
+
+  await settings({ parent_notices_enabled: false, parent_notices_check_in: false, parent_notices_no_checkout: false });
+  await asOwner(`delete from students where id = '${kid.id}'`);
 }
 
 // ---------------------------------------------------------------- row-level security

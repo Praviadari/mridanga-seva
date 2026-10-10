@@ -45,6 +45,7 @@ in number order:
 | `0040_ops_backlog.sql` | Audit backlog, operations (dimensions 10, 11): pg_cron's run history kept 7 days; announcement files no post lists removed daily (through the Edge Function); `anonymise_staff` for a staff login that cannot be deleted ([DECISIONS.md #194-#196](DECISIONS.md)). See "Operations backlog (0040)" |
 | `0042_app_leftovers.sql` | Audit leftovers, code quality (dimension 13): `students.roll_no` NOT NULL; the last two triggers answering with English sentences use codes (`roll_no_frozen`, `status_needs_call_log`, `role_guru_only`); comments on the helper functions and core columns ([DECISIONS.md #219-#220](DECISIONS.md)). 0041 was never used. See "App leftovers (0042)" |
 | `0043_parent_notices.sql` | Check-in / check-out emails to a minor's parent: settings (off by default), per-guardian stop and language, the `parent_notices` queue filled by a trigger on `visits`, the every-minute job and the functions of the Edge Function `notify-parents`, the C8 status and switch ([DECISIONS.md #224-#231](DECISIONS.md)). See "Parent notices (0043)" |
+| `0044_parent_checkout_only.sql` | Parent emails only for a check-out recorded in the app: settings `parent_notices_check_in` and `parent_notices_no_checkout` (both off), `guard_setting` with them, the visits trigger honouring each switch ([DECISIONS.md #246-#247](DECISIONS.md)). See "Parent notices (0043)" |
 
 The Phase 2 files were renumbered when they merged into main (#55). TEST ran some under their
 branch numbers (0012, 0014_promotion, 0016_practice, 0017_media, 0021_events_polls), so it skips
@@ -602,7 +603,7 @@ The trigger `settings_guard` checks each value however it is written:
 | `call_reasons` | a list of codes | C11, `log_call` (not edited in the app yet) |
 | `promotion_syllabus_percent` 0-100 (100), `promotion_min_visits` 0-100 (8), `promotion_visit_weeks` 1-52 (8), `promotion_min_feedback` 1-10 (2) | whole numbers | `promotion_criteria`, `decide_promotion` (Phase 2 promotion, 0017) |
 | `promotion_needs_level_up` | true / false (true) | `promotion_criteria` (Phase 2 promotion, 0017) |
-| `parent_notices_enabled` true / false (false), `parent_notices_check_out` true / false (true), `parent_notice_contact` text ≤ 100 ('') | | parent check-in / check-out emails (0043) |
+| `parent_notices_enabled` true / false (false), `parent_notices_check_out` true / false (true), `parent_notices_check_in` true / false (false, 0044), `parent_notices_no_checkout` true / false (false, 0044), `parent_notice_contact` text ≤ 100 ('') | | parent emails: check-out only by default (0043, 0044, #246) |
 
 Out-of-range values give `setting_invalid`; the app cannot add (`setting_unknown`) or delete
 (`setting_required`) a setting. Every change goes to `audit_log` with the key as `row_id`
@@ -1357,15 +1358,16 @@ Tests: section "0042 app leftovers" in `supabase/tests/smoke-test.mjs`.
 ## Parent notices (0043)
 
 [DECISIONS.md #224-#231](DECISIONS.md). Run after 0040. An email to the parent of a student under 18
-when the student is checked in or out; nothing is sent until the Guru switches it on (G10).
+when the student is checked out in the app (since 0044, [#246](DECISIONS.md): the check-in email and
+the night's no-check-out email are switches, both off); nothing is sent until the Guru switches it on (G10).
 
 | What | How |
 |---|---|
-| Settings | `parent_notices_enabled` true/false (**false**), `parent_notices_check_out` true/false (true: check-outs too), `parent_notice_contact` text ≤ 100 (the class desk's phone or email, last line of the email; '') |
+| Settings | `parent_notices_enabled` true/false (**false**), `parent_notices_check_out` true/false (true: check-outs), 0044's `parent_notices_check_in` true/false (**false**: check-ins) and `parent_notices_no_checkout` true/false (**false**: the night email), `parent_notice_contact` text ≤ 100 (the class desk's phone or email, last line of the email; '') |
 | Guardians | `notices_stopped_at` (the parent said stop: the desk on C8, or the email's one-click unsubscribe; one address = one choice, so a stop on any row with that email counts), `notice_language` en / te / hi (null = the child's app language, else English) |
 | Queue `parent_notices` | One row per visit × kind (`in`, `out`, `no_checkout`) × guardian email: `visit_id`, `guardian_id`, `kind`, `event_at`, `tries`, `next_try_at`, `claimed_by`, `done_at`, `outcome` (`sent`, `skipped` = dry run, `switched_off`, `stopped`, `not_eligible`, `expired` = over 6 hours old, `gave_up` = 5 tries, or Brevo's refusal such as `brevo_400`). Unique (visit, guardian, kind). No location, distance, photo or text is stored (#212). Deleted after 30 days. Closed to every app role (RLS on, no grants) |
 | Who gets one | `parent_notice_block(student, guardian)` is null: notices on; the student under 18 (`is_minor`), not withdrawn, with a current `data` consent; the guardian has an email and no stop. Guardians sharing one email get one email (the consenting guardian's row first) |
-| Filled by | Trigger `visits_parent_notices` (after insert / update of `check_out` on `visits`), so every path counts: QR (`scan_qr`), the door tablet, C5/C8 taps (`mark_visit`), Check out all. A check-in over 10 minutes old (typed in later), a time corrected afterwards, an old day's visit closed by the next check-in: nothing. The hourly `close_open_visits` (no app user) gives `no_checkout` ("no check-out recorded", never a made-up leaving time). A repeated scan within 30 seconds (0038) writes no visit, so no second notice |
+| Filled by | Trigger `visits_parent_notices` (after insert / update of `check_out` on `visits`), so every path counts: QR (`scan_qr`), the door tablet, C5/C8 taps (`mark_visit`), Check out all; each kind only with its switch (0044). A check-in over 10 minutes old (typed in later), a time corrected afterwards, an old day's visit closed by the next check-in: nothing. The hourly `close_open_visits` (no app user) gives `no_checkout` ("no check-out recorded", never a made-up leaving time). A repeated scan within 30 seconds (0038) writes no visit, so no second notice |
 | Sent by | Job `mridanga-parent-notices` every minute: `send_parent_notices()` answers `off`, `nothing_due`, `not_set_up` (pg_net or the push Vault secrets missing) or `called` (POST to the Edge Function `notify-parents` with the push secret). The function calls `claim_parent_notices(limit)` (purges, ends rows that may no longer go, claims ≤ 100 under a daily cap of 200 sent, 5-minute lease) and `finish_parent_notices(claim, sent, skipped, retry, refused, summary)`; retries after 2, 8, 18, 32 minutes. `parent_notice_status` keeps the last job result and run counts |
 | Unsubscribe | The email's `List-Unsubscribe` link (RFC 8058 one-click POST) carries the guardian id signed with an HMAC of the push secret; the function checks it and calls `stop_parent_notices(guardian)`, which stops that address for every child |
 | Staff (C8) | `guardian_notice_status(student)`: per guardian `block` (null = gets them), `language`, `stopped_at`, `last_sent_at`; no name or email (those come from the logged `get_guardians`). `set_guardian_notices(guardian, on, language)`: errors `not_allowed`, `guardian_not_found`, `language_invalid`. Both staff only (checked inside) |
@@ -1373,8 +1375,8 @@ when the student is checked in or out; nothing is sent until the Guru switches i
 Who may run them: `claim_parent_notices`, `finish_parent_notices`, `stop_parent_notices`,
 `parent_notice_block` the service role (Edge Function) only; `send_parent_notices` and the trigger
 the owner (pg_cron); `guardian_notice_status`, `set_guardian_notices` signed-in (staff inside).
-`guard_setting` now knows the three new keys; a later migration that replaces it must keep them.
-Tests: section "0043 parent notices" in `supabase/tests/smoke-test.mjs`, and
+`guard_setting` now knows the three new keys (0044: five); a later migration that replaces it must keep them.
+Tests: sections "0043 parent notices" and "0044 check-out emails only" in `supabase/tests/smoke-test.mjs`, and
 `supabase/tests/parent-notices.test.mjs` (the email texts, the signed link, Brevo's answers, a run).
 ## Linking a login to a student
 
@@ -1506,7 +1508,7 @@ and the helpers `my_role`, `is_guru`, `is_staff`,
 | `mridanga-events-polls` | 03:30 UTC = 09:00 IST | `events_polls_daily()` — reminds those going or maybe of an event tomorrow, and those who have not voted on a poll closing within 24 hours; each once (0022) |
 | `mridanga-orphan-files` | 02:00 UTC = 07:30 IST | `orphan_files_daily()` — asks the Edge Function (`{"cleanup": true}`) to delete announcement files no announcement lists (0040) |
 | `mridanga-cron-history-purge` | 02:15 UTC = 07:45 IST | Deletes pg_cron's run details older than 7 days (0040) |
-| `mridanga-parent-notices` | Every minute | `send_parent_notices()` — calls the Edge Function `notify-parents` when a parent check-in / check-out email waits; nothing while switched off (0043) |
+| `mridanga-parent-notices` | Every minute | `send_parent_notices()` — calls the Edge Function `notify-parents` when a parent email waits; nothing while switched off (0043) |
 
 ## Who can see what
 

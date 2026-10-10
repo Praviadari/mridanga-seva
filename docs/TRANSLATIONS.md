@@ -270,3 +270,8 @@ The privacy texts of 0034 (`signUp.privacyNotice`, `signUp.under18`, `register.p
   చెక్-ఇన్ / చెక్-అవుట్ and चेक-इन / चेक-आउट (as on the attendance screens); "consent" సమ్మతి / सहमति;
   "unsubscribe" left in English (it is the mail app's own button name); the Hindi bodies are written
   without a gendered verb ("{{name}} का चेक-इन … हुआ") on purpose.
+- **Parent emails, check-out only** (branch `parent-checkout-only`, [DECISIONS.md #246](DECISIONS.md)): the Telugu
+  and Hindi `settings.fields.parent_notices_enabled`, `_check_out`, `_check_in`, `_no_checkout`, `settings.noticesHint`
+  and the changed `parentNotices.on`, `parentNotices.loadFailed`, `parentNotices.blocks.*` are drafts. Words to check
+  first: "attendance emails" written హాజరు ఈమెయిల్స్ / उपस्थिति ईमेल (replacing "check-in emails" on C8); "unless
+  ticked" టిక్ చేస్తే తప్ప / टिक किए बिना; "at night" రాత్రి / रात में.

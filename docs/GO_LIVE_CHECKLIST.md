@@ -80,7 +80,8 @@ with m(migration, present) as (values
   ('0039', exists (select 1 from pg_proc where proname = 'search_students' and pronamespace = 'public'::regnamespace)),
   ('0040', exists (select 1 from pg_proc where proname = 'anonymise_staff' and pronamespace = 'public'::regnamespace)),
   ('0042', coalesce((select attnotnull from pg_attribute where attrelid = to_regclass('public.students') and attname = 'roll_no'), false)),
-  ('0043', to_regclass('public.parent_notices') is not null)
+  ('0043', to_regclass('public.parent_notices') is not null),
+  ('0044', exists (select 1 from settings where key = 'parent_notices_no_checkout'))
 )
 select migration, case when present then 'yes' else 'no' end as present from m
 union all
@@ -92,7 +93,7 @@ select 'MISSING', coalesce((select string_agg(a.migration, ' ' order by a.migrat
 order by 1;
 ```
 
-## B. Migrations 0013-0043, one file per run
+## B. Migrations 0013-0044, one file per run
 
 For each row: GitHub main → `supabase/migrations/<file>` → **Copy raw file** → LIVE → SQL Editor →
 New query → paste → check the project → **Run** → then paste the probe again (or keep it in a second
@@ -139,15 +140,16 @@ a second paste. So pasting a file twice by mistake is harmless; still, never do 
 | M0040 | `0040_ops_backlog.sql` | Praveen · dashboard | `schedule` table (two jobs); probe `0040` | Adds `mridanga-cron-history-purge`, `mridanga-orphan-files`. Until C4 the old function ignores the orphan-files call |
 | M0042 | `0042_app_leftovers.sql` | Praveen · dashboard | No rows; probe `0042`, `MISSING` `none` | Stops with `roll_no_missing` (changing nothing) if a student has no roll number: run the hint's select, give each one a roll number with a chat's help, run 0042 again |
 | M0043 | `0043_parent_notices.sql` | Praveen · dashboard | `schedule` table (one job); probe `0043`, `MISSING` `none` | Adds `mridanga-parent-notices` (answers `off`: parent emails stay off until the Guru ticks them on G10). Its Edge Function is C7-C8 |
+| M0044 | `0044_parent_checkout_only.sql` | Praveen · dashboard | No rows; probe `0044`, `MISSING` `none` | Parent emails only for a check-out recorded in the app ([#246](DECISIONS.md)): adds the switches `parent_notices_check_in` and `parent_notices_no_checkout`, both off. No Edge Function change |
 
-**A file newer than 0043 on main:** the replay's first check fails until this table lists it. Add it
+**A file newer than 0044 on main:** the replay's first check fails until this table lists it. Add it
 here, with its own steps, then run it last.
 
 **B-end.** Paste the **verification SQL** (part F) and the drift query again. Download the drift CSV
 as `drift-live-after-<date>.csv`, run the same drift query on TEST, and compare the `KIND:` rows
 ([OPERATIONS.md "Releasing a change"](OPERATIONS.md#releasing-a-change-database-first) step 4).
 Expected differences only: `config_rows`, `vault_secret` until part C, and the objects of any
-migration TEST has run that is not on main yet (none on 10 Oct 2026: TEST and main both end at 0043).
+migration TEST has run that is not on main yet (none on 10 Oct 2026: TEST and main both end at 0044).
 
 ## C. Push notifications on LIVE
 
@@ -251,7 +253,8 @@ with m(migration, present) as (values
   ('0039', exists (select 1 from pg_proc where proname = 'search_students' and pronamespace = 'public'::regnamespace)),
   ('0040', exists (select 1 from pg_proc where proname = 'anonymise_staff' and pronamespace = 'public'::regnamespace)),
   ('0042', coalesce((select attnotnull from pg_attribute where attrelid = to_regclass('public.students') and attname = 'roll_no'), false)),
-  ('0043', to_regclass('public.parent_notices') is not null)
+  ('0043', to_regclass('public.parent_notices') is not null),
+  ('0044', exists (select 1 from settings where key = 'parent_notices_no_checkout'))
 ),
 last_in_order as (select coalesce(max(a.migration), 'before 0010') as v from m a
   where a.present and not exists (select 1 from m b where b.migration <= a.migration and not b.present)),
@@ -261,7 +264,7 @@ jobs(name) as (values ('mridanga-status-refresh'), ('mridanga-close-visits'), ('
   ('mridanga-assessments'), ('mridanga-events-polls'), ('mridanga-duty'), ('mridanga-access-log-purge'),
   ('mridanga-cron-history-purge'), ('mridanga-orphan-files'), ('mridanga-parent-notices')),
 checks(sort, check_name, ok, found, expected) as (
-  select 1, 'last migration', (select v from last_in_order) = '0043', (select v from last_in_order), '0043'
+  select 1, 'last migration', (select v from last_in_order) = '0044', (select v from last_in_order), '0044'
   union all select 2, 'migrations missing', (select v from missing) = 'none', (select v from missing), 'none'
   union all select 3, 'scheduled jobs',
     (select count(*) from jobs j join cron.job c on c.jobname = j.name and c.active) = 11,
@@ -338,7 +341,7 @@ changes later, with the new date.
 
 | Setting | Where | Expected | Seen on LIVE | Date | By |
 |---|---|---|---|---|---|
-| Last migration (probe) | SQL editor | `0043`, MISSING none | | | |
+| Last migration (probe) | SQL editor | `0044`, MISSING none | | | |
 | Backup before go-live | `backup-log.csv` | archive name, `before go-live` | | | |
 | Drift before / after | CSVs of A4, B-end | `ALL` hashes noted; KIND rows = TEST except the expected | | | |
 | Scheduled jobs | verification row 3 | 11 of 11 active | | | |
@@ -348,7 +351,7 @@ changes later, with the new date.
 | `notify-announcements` | `functions list` | ACTIVE, version __, from commit __ | | | |
 | `notify-parents` | `functions list` | ACTIVE, version __, from commit __ | | | |
 | `BREVO_API_KEY`, `NOTICE_FROM`, `NOTICE_REPLY_TO` | Edge Functions → Secrets | set; sender `notices@<domain>` (domain authenticated) — or none yet = dry run | | | |
-| Parent emails (G10) | G10 Settings → Emails to parents | **off** until the team's decisions (DECISIONS #231) and consent line (#230) | | | |
+| Parent emails (G10) | G10 Settings → Emails to parents | **off** until the consent line (#230, wording approved 10 Oct 2026) is on the paper form and the privacy notice; then on: check-out emails only (#246), "check-in" and "night" boxes unticked | | | |
 | Email provider | Sign In / Providers → Email | on | | | |
 | Confirm email | Sign In / Providers → Email | **on** (auto-confirm off) | | | |
 | Minimum password length | Sign In / Providers → Email | 8 | | | |
