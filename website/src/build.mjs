@@ -150,6 +150,7 @@ function layout({ lang, page, body, cssHref }) {
       ].join('\n');
 
   const mainNav = pages
+    .filter((p) => p.menu !== false)
     .map((p) => {
       const current = p === page ? ' aria-current="page"' : '';
       return `<li><a href="${pagePath(lang.code, p.slug)}"${current}>${esc(s.nav[p.id])}</a></li>`;

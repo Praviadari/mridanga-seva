@@ -30,7 +30,8 @@
     "join": "How to join",
     "app": "Get the app",
     "privacy": "Privacy",
-    "contact": "Contact"
+    "contact": "Contact",
+    "tech": "How the app is built"
   },
   "pages": {
     "home": {
@@ -56,6 +57,10 @@
     "contact": {
       "title": "Contact",
       "description": "Write to Mridanga Seva: info@mridangaseva.com for questions about the class, privacy@mridangaseva.com for questions about your data."
+    },
+    "tech": {
+      "title": "How the app is built",
+      "description": "Why the Mridanga Seva app uses Expo, Supabase and PostgreSQL, compared with Firebase, MySQL, separate phone apps, no-code tools and WhatsApp."
     },
     "notFound": {
       "title": "Page not found",

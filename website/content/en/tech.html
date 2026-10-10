@@ -1,0 +1,80 @@
+<!-- How the app is built. Same content as docs/WHY_THIS_STACK.md (10-10-2026), shortened for the site;
+     reasons from docs/DECISIONS.md #1, #5, #6. Prices and free-plan limits as of October 2026. -->
+<h1>How the app is built</h1>
+<p class="lead">Why the Mridanga Seva app uses Expo, Supabase and PostgreSQL. The class has about 200 students, many of them children, and is run by volunteers with no budget. These choices follow from that.</p>
+
+<h2>Three ideas behind it</h2>
+<ul>
+  <li><strong>One code base.</strong> The Android app, the web version for iPhones and the version for computers all come from the same code.</li>
+  <li><strong>Rules in the database.</strong> Who may see a child's record is decided by the database itself, so no screen or old version of the app can get round it.</li>
+  <li><strong>Nothing to pay in the first phase.</strong> Every service runs on a free plan. Paying later is a choice, not a rewrite.</li>
+</ul>
+
+<h2>What the app had to handle</h2>
+<ul>
+  <li><strong>Children's data:</strong> dates of birth, parents' phone numbers, consent and attendance for students under 18. India's DPDP Act applies.</li>
+  <li><strong>Most members use iPhones:</strong> an App Store listing costs US$99 a year, which the first phase cannot spend.</li>
+  <li><strong>No budget</strong> and <strong>few volunteer maintainers</strong>: the code must be in common languages, with the rules written down in one place.</li>
+  <li><strong>Drop-in, not batches:</strong> students come any time in the open window, so attendance is a visit with check-in and check-out times.</li>
+  <li><strong>Three languages, more centres later:</strong> English, Telugu and Hindi now; other centres, possibly abroad, each with its own time zone.</li>
+</ul>
+
+<h2>The pieces</h2>
+<div class="card">
+  <p><strong>On your phone or computer:</strong> the app, built with Expo (React Native and TypeScript). Android users install it from a link; iPhone users add the web version to their home screen.</p>
+  <p><strong>Behind it:</strong> one Supabase project, which is a PostgreSQL database with sign-in, file storage and scheduled jobs. Every read and write goes through the database's rules.</p>
+  <p><strong>Outside services, each replaceable:</strong> Expo and Firebase deliver Android notifications, Brevo sends emails, lesson videos stay on YouTube, and Cloudflare Pages serves the web version and this website.</p>
+</div>
+
+<h2>Compared with the usual alternatives</h2>
+<p>Each row is a way this app could have been built. The comments are about this class's situation, not about the technology in general.</p>
+<table>
+  <thead>
+    <tr><th scope="col">Option</th><th scope="col">Good for us</th><th scope="col">Problems for us</th></tr>
+  </thead>
+  <tbody>
+    <tr><th scope="row">Expo + Supabase (what we use)</th><td>Free plans; one code base for Android, iPhone web and later an iOS app; access rules inside PostgreSQL; reports are plain SQL; the data is a standard PostgreSQL dump.</td><td>The rules need SQL skills; iPhone users get a web app for now.</td></tr>
+    <tr><th scope="row">Flutter + Firebase (our first draft)</th><td>One code base; popular.</td><td>For new projects, file storage and server functions need a paid plan with a card; reports are harder in a document database; data and rules are Firebase-specific.</td></tr>
+    <tr><th scope="row">Separate Android and iPhone apps</th><td>The best iPhone app.</td><td>Two code bases plus a server; needs a Mac and US$99 a year.</td></tr>
+    <tr><th scope="row">PHP or Node with MySQL</th><td>Common skills; fully our own.</td><td>Hosting costs money every month; MySQL cannot limit rows per user, so every rule lives in a server we must write, secure and patch; sign-in, files and notifications are all ours to build.</td></tr>
+    <tr><th scope="row">No-code (Google Sheets with AppSheet or Glide)</th><td>Quick to start; easy for non-programmers.</td><td>Children's data sits in a spreadsheet anyone with edit access can read or change; paid per user as the class grows.</td></tr>
+    <tr><th scope="row">Ready-made music-school software</th><td>Nothing to maintain.</td><td>A monthly fee; built for booked, paid lessons, not drop-in seva or Telugu and Hindi.</td></tr>
+    <tr><th scope="row">WhatsApp and Excel (how the class runs today)</th><td>Free; everyone already has it.</td><td>Every member sees every phone number; no consent record; no attendance history at 200 students.</td></tr>
+  </tbody>
+</table>
+
+<h2>Why PostgreSQL and not MySQL?</h2>
+<p>Both are good databases. The deciding point is where the rules live.</p>
+<ul>
+  <li><strong>Row-level security:</strong> PostgreSQL itself can refuse a row to a user, so a student sees only their own record. MySQL cannot, so we would need our own server in between.</li>
+  <li><strong>Checks when a change is saved:</strong> "a child on record must have a parent's consent" is checked at the end of a change, even one made in several steps.</li>
+  <li><strong>Scheduled jobs inside the database:</strong> daily follow-ups and closing forgotten check-ins.</li>
+  <li><strong>A free service around it:</strong> Supabase adds sign-in, file storage and an interface for the app to PostgreSQL on a free plan.</li>
+</ul>
+
+<h2>Why Expo?</h2>
+<ul>
+  <li><strong>One code base</strong> for the Android app, the web version and, when the budget allows, an iPhone app.</li>
+  <li><strong>Builds in the cloud,</strong> so nobody needs a Mac or a full Android setup.</li>
+  <li><strong>Updates without reinstalling:</strong> fixes reach installed phones in minutes.</li>
+  <li><strong>Ready parts</strong> for notifications, the camera for QR codes, sound for practice tools and location for check-in.</li>
+  <li><strong>Common skills:</strong> TypeScript and React are widely known.</li>
+</ul>
+
+<h2>What these choices cost us</h2>
+<ul>
+  <li>The free database pauses after 7 days without use. Daily class use keeps it awake, and Supabase sends a warning first.</li>
+  <li>The free plan has no automatic backups. We take an encrypted backup every week and practise restoring it.</li>
+  <li>The free plan holds 500 MB of data and 1 GB of files. Videos stay on YouTube; the paid plan (about US$25 a month) is the next step, with no code changes.</li>
+  <li>We depend on the Expo and Supabase accounts. Both run on open, standard code, so a move elsewhere stays possible.</li>
+</ul>
+
+<h2>Short answers</h2>
+<h3>Isn't a free plan risky?</h3>
+<p>The free plan has the same database rules as the paid one. The risks are a pause or lost data, and we handle them with weekly backups. Moving to the paid plan takes a day.</p>
+<h3>What if Supabase closes or changes its prices?</h3>
+<p>The data is ordinary PostgreSQL. A backup restores on any PostgreSQL host, and Supabase itself is open source and can run on our own server.</p>
+<h3>Why not just keep WhatsApp?</h3>
+<p>WhatsApp shows every parent's number to every member and keeps no attendance history. The app takes over the record-keeping; WhatsApp can stay for chat.</p>
+
+<p class="note">Prices and free-plan limits as of October 2026. The full reasoning, with a diagram, is in the <a href="{{sourceUrl}}/blob/main/docs/WHY_THIS_STACK.md">project's source code</a>.</p>

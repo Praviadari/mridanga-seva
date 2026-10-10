@@ -30,7 +30,8 @@
     "join": "कैसे जुड़ें",
     "app": "ऐप पाएँ",
     "privacy": "गोपनीयता",
-    "contact": "संपर्क"
+    "contact": "संपर्क",
+    "tech": "ऐप कैसे बना है"
   },
   "pages": {
     "home": {
@@ -56,6 +57,10 @@
     "contact": {
       "title": "संपर्क",
       "description": "मृदंग सेवा को लिखें: कक्षा के बारे में info@mridangaseva.com, अपने डेटा के बारे में privacy@mridangaseva.com।"
+    },
+    "tech": {
+      "title": "ऐप कैसे बना है",
+      "description": "मृदंग सेवा ऐप Expo, Supabase और PostgreSQL का उपयोग क्यों करता है: Firebase, MySQL, अलग-अलग फ़ोन ऐप, नो-कोड औज़ारों और WhatsApp से तुलना।"
     },
     "notFound": {
       "title": "पेज नहीं मिला",

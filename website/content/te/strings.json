@@ -30,7 +30,8 @@
     "join": "ఎలా చేరాలి",
     "app": "యాప్ పొందండి",
     "privacy": "గోప్యత",
-    "contact": "సంప్రదించండి"
+    "contact": "సంప్రదించండి",
+    "tech": "యాప్‌ను ఎలా నిర్మించాం"
   },
   "pages": {
     "home": {
@@ -56,6 +57,10 @@
     "contact": {
       "title": "సంప్రదించండి",
       "description": "మృదంగ సేవకు రాయండి: తరగతి గురించి info@mridangaseva.com, మీ డేటా గురించి privacy@mridangaseva.com."
+    },
+    "tech": {
+      "title": "యాప్‌ను ఎలా నిర్మించాం",
+      "description": "మృదంగ సేవ యాప్ Expo, Supabase, PostgreSQL లను ఎందుకు ఉపయోగిస్తుంది: Firebase, MySQL, వేర్వేరు ఫోన్ యాప్‌లు, నో-కోడ్ సాధనాలు, WhatsApp తో పోలిక."
     },
     "notFound": {
       "title": "పేజీ కనబడలేదు",

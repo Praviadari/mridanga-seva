@@ -9,12 +9,16 @@ export const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 export const contentDir = join(root, 'content');
 export const outDir = join(root, 'dist');
 
-/** Pages in menu order. `file` is the content file in each language folder. */
+/**
+ * Pages in menu order. `file` is the content file in each language folder. `menu: false` keeps a
+ * page out of the main menu; it is still in the footer, the sitemap and every language.
+ */
 export const pages = [
   { id: 'home', slug: '', file: 'home.html' },
   { id: 'classes', slug: 'classes', file: 'classes.html' },
   { id: 'join', slug: 'join', file: 'join.html' },
   { id: 'app', slug: 'get-the-app', file: 'app.html' },
+  { id: 'tech', slug: 'how-the-app-is-built', file: 'tech.html', menu: false },
   { id: 'privacy', slug: 'privacy', file: 'privacy.html' },
   { id: 'contact', slug: 'contact', file: 'contact.html' },
 ];
