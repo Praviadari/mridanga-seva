@@ -5,8 +5,8 @@
 // gradient package (native code) is needed (docs/DECISIONS.md #36).
 
 import { StatusBar } from 'expo-status-bar';
-import { useId, type PropsWithChildren } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { useId, useState, type PropsWithChildren } from 'react';
+import { StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
@@ -26,20 +26,34 @@ export function SaffronBand({ maxWidth = maxDashboardWidth, centred, children }:
   const insets = useSafeAreaInsets();
   // SVG gradient ids are global on a web page; useId keeps two bands from sharing one.
   const gradientId = `band-${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
+  // The band's measured size. An SVG sized "100%" kept the size of an earlier layout on an iQOO Z7
+  // (Android, 10-10-2026: the gradient stopped short on the right and above the role line), so the
+  // SVG gets the band's real size in pixels, and the band's own colour shows until it is measured.
+  const [size, setSize] = useState<{ width: number; height: number } | null>(null);
+  const onLayout = (e: LayoutChangeEvent) => {
+    const { width, height } = e.nativeEvent.layout;
+    setSize((old) => (old && old.width === width && old.height === height ? old : { width, height }));
+  };
 
   return (
-    <View style={[styles.band, { paddingTop: insets.top + spacing.lg }]}>
+    <View
+      onLayout={onLayout}
+      style={[styles.band, { paddingTop: insets.top + spacing.lg, backgroundColor: colors.headerBottom }]}>
       {/* Light status-bar icons on saffron, while the band is on screen. */}
       <StatusBar style="light" />
-      {/* width/height in percent: on the web an SVG without them is drawn 300 x 150 px. */}
-      <Svg style={StyleSheet.absoluteFill} width="100%" height="100%" aria-hidden>
+      {/* Sized in pixels: on the web an SVG without width/height is drawn 300 x 150 px. */}
+      <Svg
+        style={StyleSheet.absoluteFill}
+        width={size?.width ?? '100%'}
+        height={size?.height ?? '100%'}
+        aria-hidden>
         <Defs>
           <LinearGradient id={gradientId} x1="0" y1="0" x2="0.4" y2="1">
             <Stop offset="0" stopColor={colors.headerTop} />
             <Stop offset="1" stopColor={colors.headerBottom} />
           </LinearGradient>
         </Defs>
-        <Rect width="100%" height="100%" fill={`url(#${gradientId})`} />
+        <Rect width={size?.width ?? '100%'} height={size?.height ?? '100%'} fill={`url(#${gradientId})`} />
       </Svg>
       <View style={[styles.column, { maxWidth }, centred && styles.centred]}>{children}</View>
     </View>
