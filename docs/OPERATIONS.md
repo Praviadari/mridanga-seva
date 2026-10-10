@@ -448,7 +448,7 @@ ARCHITECTURE.md "The public website"). It needs only Node 20 or newer; there is 
 - The privacy notice: edit the three `privacy.html` files and raise `privacyNotice.version` and
   `date` in the config.
 - A new language: copy `website/content/en` to `website/content/<code>` (BCP 47, e.g. `ta`, `bn`,
-  `fr`), translate the seven `.html` files and `strings.json`, and set its `meta` (`bcp47`,
+  `fr`), translate the eight `.html` files and `strings.json`, and set its `meta` (`bcp47`,
   `ogLocale`, `dateLocale`, `name`, `nativeName`, `dir`, `order`). Nothing else changes.
 
 **Build and check** (from `website/`):
