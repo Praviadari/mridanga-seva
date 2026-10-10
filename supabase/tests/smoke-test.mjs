@@ -124,7 +124,7 @@ process.on('uncaughtException', (error) => {
 // D14-10: every check is counted, and the run fails when fewer (or more) checks ran than expected,
 // so a block skipped by a renamed migration or a commented-out section cannot pass unseen.
 // Adding or removing checks? Run the suite and set this to the new total it prints.
-const EXPECTED_CHECKS = 1443; // 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12
+const EXPECTED_CHECKS = 1454; // 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
 let failures = 0;
 let passes = 0;
 
@@ -4137,7 +4137,7 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
     // 0039: the staff student search by POST (ENT-08)
     'search_students(text,integer,boolean)',
     // 0043: parent notices, staff only inside (C8)
-    'guardian_notice_status(uuid)', 'set_guardian_notices(uuid,boolean,text)',
+    'guardian_notice_status(uuid)', 'set_guardian_notices(uuid,boolean,text)', 'reissue_qr_code(uuid)',
   ];
   const runnableBy = async (role) => (await asOwner(`select p.oid::regprocedure::text as f from pg_proc p
     where p.pronamespace = 'public'::regnamespace
@@ -5155,6 +5155,34 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
 
   await settings({ parent_notices_enabled: false, parent_notices_check_in: false, parent_notices_no_checkout: false });
   await asOwner(`delete from students where id = '${kid.id}'`);
+}
+
+// ---------------------------------------------------------------- 0045 printed QR cards (DECISIONS #249-#252)
+{
+  const [card] = await asOwner(`insert into students (full_name, dob) values ('Card Holder 45', '1990-01-01') returning id, qr_token`);
+  const scan45 = async (token) => (await asApp('authenticated', coordinator, 'select scan_qr($1) as r', [token]))[0].r;
+  const reissue45 = (who, id) => asApp('authenticated', who, 'select reissue_qr_code($1)', [id]);
+  check('0045: a printed card (the same code as My QR) checks the student in', (await scan45(card.qr_token)).action === 'in');
+  await refusesWith('0045: a coordinator cannot reissue a code', 'not_allowed', () => reissue45(coordinator, card.id));
+  await refusesWith('0045: nor a student', 'not_allowed', () => reissue45(arjun, card.id));
+  await refusesWith('0045: nor anon', 'permission denied for function reissue_qr_code', () =>
+    asApp('anon', null, 'select reissue_qr_code($1)', [card.id]));
+  await reissue45(guru, card.id);
+  const [{ qr_token: new45 }] = await asOwner(`select qr_token from students where id = '${card.id}'`);
+  check('0045: the Guru reissues: the student has a new code', new45 !== card.qr_token);
+  check('0045: the old (lost) card is refused as unknown', (await scan45(card.qr_token)).action === 'unknown');
+  await asOwner(`update visits set check_in = check_in - interval '1 minute' where student_id = '${card.id}'`);
+  check('0045: the new card works (checks the student out again)', (await scan45(new45)).action === 'out');
+  const audit45 = await asOwner(`select changed_by from audit_log where table_name = 'students' and row_id = '${card.id}' and action = 'UPDATE'
+    and old_row->>'qr_token' is distinct from new_row->>'qr_token'`);
+  check('0045: the reissue is in the audit log, by the Guru', audit45.length === 1 && audit45[0].changed_by === guru, JSON.stringify(audit45));
+  await refusesWith('0045: an unknown student', 'student_not_found', () => reissue45(guru, '00000000-0000-4000-8000-000000000045'));
+  await asOwner(`update students set withdrawn_at = now() where id = '${card.id}'`);
+  await refusesWith('0045: a withdrawn record stays frozen', 'student_withdrawn', () => reissue45(guru, card.id));
+  await asOwner(`delete from students where id = '${card.id}'`);
+  let again = '';
+  try { await db.exec(readFileSync(new URL('migrations/0045_qr_cards.sql', supabaseDir), 'utf8')); } catch (e) { again = String(e.message); }
+  check('0045 can run a second time', again === '', again);
 }
 
 // ---------------------------------------------------------------- row-level security

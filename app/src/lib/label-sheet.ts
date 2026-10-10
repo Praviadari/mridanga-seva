@@ -60,21 +60,21 @@ export type SheetOptions = {
 };
 
 /** Escapes text for HTML. */
-function esc(text: string): string {
+export function esc(text: string): string {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 /** A number written for CSS with at most two decimals. */
-function mm(value: number): string {
+export function mm(value: number): string {
   return `${Math.round(value * 100) / 100}mm`;
 }
 
-/** The QR code as inline SVG, QR_MM square including its quiet zone, black on white. */
-function qrSvg(link: string): string {
+/** The QR code as inline SVG, sizeMm square including its quiet zone, black on white. */
+export function qrSvg(link: string, sizeMm: number = QR_MM): string {
   const { path, modules, quietZone } = qrShape(link);
   const box = modules + quietZone * 2;
   return (
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${box} ${box}" width="${QR_MM}mm" height="${QR_MM}mm" ` +
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${box} ${box}" width="${sizeMm}mm" height="${sizeMm}mm" ` +
     `shape-rendering="crispEdges" role="img" aria-label="QR"><rect width="${box}" height="${box}" fill="#fff"/>` +
     `<path d="${path}" fill="#000"/></svg>`
   );
@@ -92,11 +92,27 @@ export function sheetsNeeded(count: number, startAt: number): number {
   return count === 0 ? 0 : Math.ceil((count + startAt - 1) / PER_SHEET);
 }
 
-/** The CSS of the sheet: the page box, the labels, and printing only the sheet (#ms-label-print). */
-export const SHEET_CSS = `
+/**
+ * The A4 page box and printing only the sheets (#ms-label-print), shared by the asset labels and
+ * the students' QR cards (src/lib/qr-card-sheet.ts).
+ */
+export const PAGE_CSS = `
 .ms-sheet{position:relative;width:${SHEET.pageWidth}mm;height:${SHEET.pageHeight}mm;background:#fff;color:#000;overflow:hidden;
   box-sizing:border-box;font-family:Arial,"Noto Sans","Noto Sans Telugu","Noto Sans Devanagari",sans-serif;
   -webkit-print-color-adjust:exact;print-color-adjust:exact}
+@media screen{#ms-label-print{display:none}}
+@media print{
+  @page{size:A4 portrait;margin:0}
+  html,body{margin:0!important;padding:0!important;height:auto!important;overflow:visible!important;background:#fff!important}
+  body>*:not(#ms-label-print){display:none!important}
+  #ms-label-print{display:block!important}
+  #ms-label-print .ms-sheet{break-after:page;page-break-after:always}
+  #ms-label-print .ms-sheet:last-child{break-after:auto;page-break-after:auto}
+}
+`;
+
+/** The CSS of the label sheet: the page box, the labels, and printing only the sheet. */
+export const SHEET_CSS = `${PAGE_CSS}
 .ms-label{position:absolute;width:${SHEET.labelWidth}mm;height:${SHEET.labelHeight}mm;box-sizing:border-box;overflow:hidden}
 .ms-label .qr{position:absolute;left:1mm;top:1.5mm;width:${QR_MM}mm;height:${QR_MM}mm}
 .ms-label .qr svg{display:block}
@@ -113,15 +129,6 @@ export const SHEET_CSS = `
   background:#fff;border:0.2mm solid #000;padding:2mm;box-sizing:border-box}
 .ms-ruler{margin:2mm auto 0;width:100mm;height:3mm;border:0.2mm solid #000;border-top:none;box-sizing:border-box;
   background:repeating-linear-gradient(to right,#000 0 0.2mm,transparent 0.2mm 10mm)}
-@media screen{#ms-label-print{display:none}}
-@media print{
-  @page{size:A4 portrait;margin:0}
-  html,body{margin:0!important;padding:0!important;height:auto!important;overflow:visible!important;background:#fff!important}
-  body>*:not(#ms-label-print){display:none!important}
-  #ms-label-print{display:block!important}
-  #ms-label-print .ms-sheet{break-after:page;page-break-after:always}
-  #ms-label-print .ms-sheet:last-child{break-after:auto;page-break-after:auto}
-}
 `;
 
 /**

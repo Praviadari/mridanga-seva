@@ -282,3 +282,9 @@ The privacy texts of 0034 (`signUp.privacyNotice`, `signUp.under18`, `register.p
   and `facts.*` (title and 15 facts about the mṛdaṅga). Check first: the bol and part names in `facts.f4`, `f5`,
   `f10`, `f11`, `f15` (written in each script as the class says them), "ఓటు వేయాలి" / "पर वोट बाकी" for polls, and
   సారాంశం / सारांश for Overview.
+- **Phase 3 P3-1 printed QR cards** (branch `p3-qr-cards`, [DECISIONS.md #249-#252](DECISIONS.md), 10 Oct 2026):
+  every Telugu and Hindi line under `qrCards.*` (35 keys each) and the changed `attendance.scanIntro`,
+  `attendance.searchHint` and `attendance.unknownBody` are drafts for the review. Words to check first:
+  "attendance card" హాజరు కార్డు / उपस्थिति कार्ड; "without the app" యాప్ లేనివారు / बिना ऐप वाले;
+  "replace a lost card" పోయిన కార్డును మార్చండి / खोया कार्ड बदलें; "frozen" స్తంభింపజేయబడింది / जमा हुआ
+  (maybe रोका गया). `qrCards.logo` ("MS") is the logo placeholder and stays as it is.

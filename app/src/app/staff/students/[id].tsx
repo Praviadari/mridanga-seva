@@ -7,6 +7,7 @@
 // "All visits by month" opens S9 Attendance history for this student (staff/visits/[id]).
 // Under each guardian of a minor: whether they get the attendance emails (check-out only by default,
 // 0044), with the switch (0043).
+// At the end: print the student's QR card, or (the Guru) replace a lost one (0045, P3-1).
 
 import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Fragment, useCallback, useState } from 'react';
@@ -22,6 +23,7 @@ import { Notice } from '@/components/notice';
 import { PersonHeader } from '@/components/person-header';
 import { PracticePanel } from '@/components/practice-parts';
 import { PromotionPanel } from '@/components/promotion-parts';
+import { QrCardPanel } from '@/components/qr-card-panel';
 import { RouteIdGuard } from '@/components/route-id-guard';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
@@ -302,6 +304,9 @@ function StudentProfileScreenContent() {
 
       {/* Phase 2 slice 8 (C19): items on loan. */}
       <HeldItemsPanel by={{ studentId: student.id }} openable />
+
+      {/* Phase 3 P3-1 (docs/DECISIONS.md #249-#252): print or replace the printed QR card. */}
+      <QrCardPanel studentId={student.id} />
     </Screen>
   );
 }

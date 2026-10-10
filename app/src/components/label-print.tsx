@@ -3,7 +3,7 @@
 // (docs/DECISIONS.md #158). This file keeps the same names for the phone build.
 
 /** Props for LabelPrint. */
-export type LabelPrintProps = { html: string; previewWidth: number; label: string };
+export type LabelPrintProps = { html: string; previewWidth: number; label: string; css?: string };
 
 /** Nothing on a phone. */
 export function LabelPrint(_props: LabelPrintProps) {

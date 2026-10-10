@@ -1,6 +1,6 @@
 // C7 Student list, for coordinators and the Guru: every student with level, status and when
 // they last came. Search by name or roll number; filter by level, status, mentor and days since
-// the last visit. Tapping a student opens their profile (C8, ./[id].tsx).
+// the last visit. Tapping a student opens their profile (C8, ./[id].tsx). A link opens Print QR cards (C24).
 // Data: student_overview (src/data/student-overview.ts). The whole list is loaded once and
 // filtered on the phone, so the search answers as the coordinator types.
 
@@ -120,6 +120,8 @@ export default function StudentListScreen() {
       onPress={() => router.push('/staff/register')}
     />
   );
+  // Printed QR cards for students without a phone (C24, P3-1).
+  const cardsButton = <Button variant="link" icon="qr" label={t('qrCards.title')} onPress={() => router.push('/staff/qr-cards')} />;
   const searchField = (
     <TextField
       label={t('students.searchLabel')}
@@ -155,6 +157,7 @@ export default function StudentListScreen() {
           <View style={styles.toolbarButtons}>
             {registerButton}
             {filterButton}
+            {cardsButton}
           </View>
         </View>
       ) : (
@@ -162,6 +165,7 @@ export default function StudentListScreen() {
           {registerButton}
           {searchField}
           {filterButton}
+          {cardsButton}
         </>
       )}
 

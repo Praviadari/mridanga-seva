@@ -46,6 +46,7 @@ in number order:
 | `0042_app_leftovers.sql` | Audit leftovers, code quality (dimension 13): `students.roll_no` NOT NULL; the last two triggers answering with English sentences use codes (`roll_no_frozen`, `status_needs_call_log`, `role_guru_only`); comments on the helper functions and core columns ([DECISIONS.md #219-#220](DECISIONS.md)). 0041 was never used. See "App leftovers (0042)" |
 | `0043_parent_notices.sql` | Check-in / check-out emails to a minor's parent: settings (off by default), per-guardian stop and language, the `parent_notices` queue filled by a trigger on `visits`, the every-minute job and the functions of the Edge Function `notify-parents`, the C8 status and switch ([DECISIONS.md #224-#231](DECISIONS.md)). See "Parent notices (0043)" |
 | `0044_parent_checkout_only.sql` | Parent emails only for a check-out recorded in the app: settings `parent_notices_check_in` and `parent_notices_no_checkout` (both off), `guard_setting` with them, the visits trigger honouring each switch ([DECISIONS.md #246-#247](DECISIONS.md)). See "Parent notices (0043)" |
+| `0045_qr_cards.sql` | Printed QR cards for students without a phone (Phase 3 P3-1): `reissue_qr_code(student)`, the Guru gives a student a new `qr_token` when a card is lost, so the old card scans as unknown ([DECISIONS.md #249-#252](DECISIONS.md)). The cards carry the My QR code and need no table. See "Attendance" |
 
 The Phase 2 files were renumbered when they merged into main (#55). TEST ran some under their
 branch numbers (0012, 0014_promotion, 0016_practice, 0017_media, 0021_events_polls), so it skips
@@ -197,6 +198,10 @@ nightly job `close_open_visits` closes anything still open, at the centre's clos
 
 The QR code on a student's phone holds the text `MS1:` followed by their `qr_token` in capitals
 ([DECISIONS.md #17](DECISIONS.md)). The app removes the prefix and sends the token to `scan_qr`.
+A printed QR card (C24, for a student without a phone; 0045) holds the same text, so `scan_qr` reads
+it the same way. A lost card: the Guru calls `reissue_qr_code(student)` (Guru only, `not_allowed`; `student_not_found`;
+a withdrawn record is `student_withdrawn`), which gives a new `qr_token`; the old card and any old My QR then
+answer `unknown`. The change is in the audit log ([DECISIONS.md #250](DECISIONS.md)).
 
 Errors: `not_allowed`, `bad_action` and `student_not_found`. Until 0037 `toggle_visit` and `scan_qr`
 said `not allowed` and `student not found` with spaces; the app (`app/src/data/attendance.ts`) understands both
@@ -1428,6 +1433,7 @@ switched-off login is refused like a stranger.
 | `toggle_visit(student, method, device)` | Guru, coordinator, kiosk | Check in if no open visit, else check out. A check-in sets status *Active* and closes open follow-up tasks. Returns the student's name, roll number and time |
 | `scan_qr(qr_token, device)` | Guru, coordinator, kiosk | Finds the student by their QR token and calls `toggle_visit`. Returns `unknown` for an unrecognised code |
 | `mark_visit(student, action, device)` | Guru, coordinator | Checks the student in (`action = 'in'`) or out (`'out'`), or returns `already_in` / `already_out` and changes nothing. See "Attendance" |
+| `reissue_qr_code(student)` | Guru | Gives the student a new `qr_token` (a lost printed card, 0045): the old card and old My QR codes stop scanning. Refuses a withdrawn record. See "Attendance" |
 | `check_out_all(centre)` | Guru, coordinator | Closes every open visit, at one centre or all (`null`, the default). Returns how many |
 | `log_call(student, outcome, reason, comment, next_date)` | Guru, coordinator | Records a follow-up call and applies its outcome (pause, leave, new call task, retry). See "Follow-up calls" |
 | `get_guardians(student)`, `get_consents(student)`, `get_call_notes(student, limit)` | Guru, coordinator | A student's guardians, consents or call notes; each call writes one `access_log` row. See "Access log (0034)" |

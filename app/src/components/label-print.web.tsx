@@ -1,4 +1,4 @@
-// The label sheet in the browser (docs/DECISIONS.md #158): a scaled preview of the first sheet on
+// The label sheet in the browser (docs/DECISIONS.md #158; the students' QR cards reuse it, #249): a scaled preview of the first sheet on
 // the page, and the full-size sheets in #ms-label-print, a direct child of <body> that only the
 // printer sees (SHEET_CSS hides everything else when printing). The HTML comes from
 // src/lib/label-sheet.ts; it holds no scripts.
@@ -15,6 +15,8 @@ export type LabelPrintProps = {
   previewWidth: number;
   /** What a screen reader says for the preview, already translated. */
   label: string;
+  /** The sheet's CSS; the asset labels' SHEET_CSS when left out (the QR cards pass CARD_CSS). */
+  css?: string;
 };
 
 /** 1 mm in CSS pixels. */
@@ -24,7 +26,7 @@ const PX_PER_MM = 96 / 25.4;
 const PRINT_ID = 'ms-label-print';
 
 /** The preview (first sheet, scaled to fit) and the hidden print copy. */
-export function LabelPrint({ html, previewWidth, label }: LabelPrintProps) {
+export function LabelPrint({ html, previewWidth, label, css = SHEET_CSS }: LabelPrintProps) {
   // The print copy lives directly under <body>, outside the app's own layout, so the print CSS can
   // hide the app with one rule. It is replaced when the sheets change and removed with the screen.
   useEffect(() => {
@@ -41,7 +43,7 @@ export function LabelPrint({ html, previewWidth, label }: LabelPrintProps) {
   return createElement(
     'div',
     null,
-    createElement('style', null, SHEET_CSS),
+    createElement('style', null, css),
     createElement(
       'div',
       {

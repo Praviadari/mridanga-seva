@@ -316,7 +316,7 @@ session, which is kept on the phone already.
 **Consequences.** Code: `app/src/components/qr-code.tsx`, `app/src/data/my-student.ts`. A code
 shown from the saved copy stops working if its `qr_token` is changed on the server; the card
 updates the next time the phone is online. There is no screen yet to issue a new `qr_token` for a
-student whose code was shared.
+student whose code was shared. *(Since 10 Oct 2026 the Guru can: #250.)*
 
 ## 22. A syllabus tick records who ticked it, and an untick leaves a trace — 29 Sep 2026
 
@@ -4232,6 +4232,83 @@ window, and the coordinator path stays. A child's own phone reading location at 
 a single moment, never tracking (#212); the DPIA and consent drafts are revised for self-scan
 before the lawyer sees them. Minimum age for face (item 3, recommended 13) stays a Guru decision.
 Work packages, order and pick-up rules: docs/phase3/WORK_PLAN.md.
+
+## 249. A printed QR card carries the student's My QR code, not a code of its own — 10 Oct 2026
+
+**Context.** Phase 3 P3-1 (docs/phase3/WORK_PLAN.md, #248): a student without a phone needs a card the
+coordinator can scan in C5. The work plan asked first how My QR is encoded: if it were time-limited or
+signed per session, the card would need a long-lived code of its own.
+
+**Decision.** It is neither: My QR is `MS1:` + the student's `qr_token` (#17), a random value kept on the
+record until it is replaced (#250). The card prints exactly that text (`studentQrText`), so `scan_qr` and
+C5 read a card like a phone, with no change. No card table, no second token, no new prefix.
+
+**Why.** One code per student keeps one scanner path and one place that knows the format
+(`app/src/data/attendance.ts`). A separate card code would need a table, a second lookup in `scan_qr` and a
+rule for students who have both.
+
+**Consequences.** A card and the student's phone show the same code; replacing one replaces both (#250).
+Like a screenshot of My QR, a card can be lent; the C5 result card still shows the name and roll number large
+for the coordinator to check (#17). If codes ever expire (a future `MS2:`), printed cards need a decision of
+their own.
+
+## 250. A lost card: the Guru gives the student a new code — 10 Oct 2026
+
+**Context.** The work plan asks that the Guru can revoke a lost card, and #21 noted there was no screen to
+issue a new `qr_token`. `qr_token` is frozen for app users (0025).
+
+**Decision.** Migration 0045 adds `reissue_qr_code(student)`: the Guru only (`not_allowed` otherwise),
+`student_not_found`, and a withdrawn record stays frozen (`student_withdrawn`). It sets a new random
+`qr_token`. On C8 a "QR card" section has *Print QR card* for staff and, for the Guru, *Replace a lost card*,
+which asks first. The old card, and any photo of it or of the old My QR, then scans as "Code not recognised";
+C5's text for that now says it may be an old card that was replaced. The change is in the audit log
+(`audit_students`).
+
+**Why.** Rotating the one token is the whole revocation: nothing to list or check at every scan. The Guru
+only, as asked, so a coordinator cannot lock a student out by mistake.
+
+**Consequences.** A student who also has a phone sees the new code in My QR the next time the phone is
+online (#21); until then their saved card shows the old code. The audit log page hides `qr_token` values
+(quiet field), so the entry shows who changed the record and when, not the codes. LIVE runs 0045 after 0044: docs/GO_LIVE_CHECKLIST.md M0045.
+
+## 251. Who prints cards: staff, a coordinator for their own centre — 10 Oct 2026
+
+**Context.** Work plan: "Who may print: staff of the student's centre." Staff can already read every student,
+`qr_token` included (row-level security `own_or_staff`, 0025).
+
+**Decision.** The print screen (C24) shows a coordinator only the students of their login's centre
+(`profiles.centre_id`); a coordinator with no centre set, and the Guru, choose the centre. The codes are read
+only for the students picked, when the sheet is built. Row-level security is unchanged.
+
+**Why.** The same rule and the same reasoning as the asset labels (#159): the screen keeps people to their
+centre; tightening what staff may read per centre is a wider change, left for when a second real centre
+starts.
+
+**Consequences.** A coordinator can still open another centre's student profile (C8) and print from there;
+that is accepted for now, as for labels.
+
+## 252. The card sheet: ten bank-card size cards on A4, printed from the web page — 10 Oct 2026
+
+**Context.** Cards are cut by hand from plain paper or thin card; the class has no card printer. The asset
+labels already print exact millimetre layouts from the browser (#158).
+
+**Decision.** `/staff/qr-cards` (C24; Guru and coordinators, web only — the phone app opens it in the
+browser, as for labels) builds the sheet in `app/src/lib/qr-card-sheet.ts`: 2 x 5 cards of 85.6 x 54 mm
+(bank-card size, fits a wallet or card holder), centred on A4 (19.4 mm left, 13.5 mm top), with dashed cut
+lines. Each card: the QR 32 mm with its 4-module quiet zone (error correction Q, black on white, #21), a round
+logo placeholder ("MS") and "Mridanga Seva · Attendance card", the full name, the roll number large, the
+centre, and "Show this card at the door to check in. If found, please return it to the class." Students are
+picked by centre (#251), "Without the app" (no login; the default) or all, level, a name / roll-number search,
+or one by one; `?ids=` preselects (C8's button). The print path is the labels' one (`LabelPrint` with the
+card CSS; the A4 page and print rules are shared as `PAGE_CSS`). No start position or nudge: plain paper is
+cut, not label stock. C5's search hint now says "name or roll number" and its scan text mentions the card.
+
+**Why.** Bank-card size is what a student keeps; 32 mm of QR scans easily from a phone at arm's length. No
+dependency, no native module, fingerprint unchanged.
+
+**Consequences.** Print at 100 % (Actual size), as for labels. The logo placeholder is replaced when the class
+has a logo (one CSS rule and the `qrCards.logo` text). Lamination is fine; a glossy pouch can glare under
+tube lights, so a matte pouch is better.
 
 ## 253. A self-scan's single location reading is an attendance record, not tracking; the lawyer answers it first — 10 Oct 2026
 
