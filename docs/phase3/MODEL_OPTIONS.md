@@ -21,7 +21,7 @@ Steps 1-5 can all run on the phone (on-device) or steps 3-5 on a server (send a 
 | | On-device | Server / cloud API |
 |---|---|---|
 | Face images leave the phone | **No** (only templates, encrypted) | **Yes**, every scan |
-| Works offline | Yes (tablet cache) | No |
+| Works offline | Yes (on the phone; self-scan is still refused offline by design, #248) | No |
 | Per-scan cost | ₹0 | Per call (AWS ≈ $0.001/search + $0.015/liveness check, US prices) |
 | Processor abroad (D4-12) | None new | AWS / Microsoft: US companies (servers may be in Mumbai); add to the processor register and notice |
 | Accuracy | Lower than top commercial engines; must be calibrated by us | High, vendor-tested; still not tested on our students |
@@ -31,7 +31,7 @@ Steps 1-5 can all run on the phone (on-device) or steps 3-5 on a server (send a 
 | Fit with DPDP minimisation | Best | Weaker (images of children sent to a third party) |
 
 **Recommendation: on-device**, for privacy (no child's face image leaves the device), zero running
-cost, offline use on the tablet, and no new processor abroad. Keep a cloud API only as Plan B if the
+cost, and no new processor abroad. Keep a cloud API only as Plan B if the
 on-device spike fails.
 
 ## 3. Candidates
@@ -59,7 +59,7 @@ on-device spike fails.
 | Option | Licence | Notes | Verdict |
 |---|---|---|---|
 | **MiniFASNet** (Minivision "Silent-Face-Anti-Spoofing"), V2 + V1SE ensemble | **Apache 2.0 per third-party integrations — upstream LICENSE not verified** | ~1.7-2 MB each, 80×80 input; passive (no user action); weaker when the face is turned > 30° | First choice for passive; verify upstream licence |
-| Active challenge (blink / turn head) using ML Kit eye-open and head-angle values | No model | Cheap and effective against photos; adds 1-2 s | Use for self-scan (mode C) |
+| Active challenge (blink / turn head) using ML Kit eye-open and head-angle values | No model | Cheap and effective against photos; adds 1-2 s | Use for every self-scan (#248) |
 | AWS Rekognition Face Liveness | AWS terms; available in **Asia Pacific (Mumbai)** among 5 regions (secondary source); $0.015/check US-East, billed pass or fail | Strong, but face video goes to AWS | Plan B |
 | Azure Face liveness | Limited Access (gated separately) | See §3.4 | No |
 
@@ -103,9 +103,9 @@ Current app: Expo SDK 57, React Native 0.86, `expo-camera` for QR, `expo-locatio
   age for face (DECISIONS_FOR_GURU #3).
 - **Our own calibration is required:** in week 6, with consenting adult volunteers at the centre's
   real lighting, measure genuine and impostor scores and set the threshold for a false-accept rate
-  around 1 in 10,000 per comparison (1:N over 200 people ≈ 1 in 50 chance of *some* wrong candidate
-  per scan without the margin rule — so also require the best match to beat the second by a margin
-  and the coordinator to glance at the card). Siblings at the same class are the realistic hard
+  around 1 in 10,000 per comparison (history: a 1:N search over 200 people, dropped by #248, would have had ≈ 1 in 50 chance of *some* wrong candidate
+  per scan without a margin rule; 1:1 on the student's own phone compares with one template only).
+  Siblings at the same class are the realistic hard
   case; record them during the pilot.
 
 ## 6. Licence checklist (for the lawyer / before the build)

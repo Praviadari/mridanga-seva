@@ -4123,3 +4123,56 @@ window, and the coordinator path stays. A child's own phone reading location at 
 a single moment, never tracking (#212); the DPIA and consent drafts are revised for self-scan
 before the lawyer sees them. Minimum age for face (item 3, recommended 13) stays a Guru decision.
 Work packages, order and pick-up rules: docs/phase3/WORK_PLAN.md.
+
+## 253. A self-scan's single location reading is an attendance record, not tracking; the lawyer answers it first — 10 Oct 2026
+
+**Status: team position for the legal review (P3-8, branch `p3-privacy-docs`); docs only.**
+
+**Context.** With #248 the location at check-in/out is read on the **child's own phone**, not on a
+door tablet or a coordinator's phone, so DPDP s.9(3) ("tracking or behavioural monitoring of
+children") needs a fresh argument. The Act does not define tracking; the Fourth Schedule (Part A
+item 5) treats "tracking the location ... during the course of their travel" as tracking.
+
+**Decision.** The DPIA (docs/phase3/DPIA_DRAFT.md §4) argues that one foreground fix at the child's
+own check-in/out tap, kept only as inside/outside + distance against one fixed point (#70, #212), is
+an attendance record, not tracking, and that 1:1 face verification is not behavioural monitoring.
+This is **question 1** of the lawyer's pack (docs/phase3/LAWYER_PACK.md). The Fourth Schedule
+exemption is not relied on. If the lawyer disagrees, minors lose the location step or self-scan (QR
+card / coordinator only) and adults keep it; proposal for P3-5: a setting for the location step of
+minors, so no new APK is needed.
+
+**Why.** It is the only new legal risk self-scan adds over v1, and the rest of Phase 3 does not depend
+on it.
+
+## 254. The Phase 3 privacy papers describe self-scan only, 1:1, with phone and server copies of the face code — 10 Oct 2026
+
+**Status: drafts for the lawyer (P3-8); nothing built.**
+
+**Decision.** DPIA v2, consent drafts v2 (en master; te/hi NATIVE REVIEW NEEDED) and the notice
+additions (docs/phase3/PRIVACY_NOTICE_DRAFT.md) describe: separate face consent (parent's in person
+for a minor + the child's own yes); supervised first enrolment on the student's phone; the face code
+kept encrypted on that phone (Android Keystore) and on the server (Vault key), matched 1:1 only, no
+class device or cache; active + passive liveness, mocked-location check, Play Integrity; refused
+offline, outside the area or window; check-out outside = saved and flagged. Withdrawal: one tap or the
+desk; server copy deleted at once, phone copy at once on switch-off / sign-out, else at the app's next
+online start (until then the server refuses face check-ins); expiry 12 months minors / 24 adults,
+Left + 30 days, model change. Parent email: check-out only (#231 answers, 0044). Location keeps no
+consent scope of its own (told on the form and in the notice) unless the lawyer asks.
+
+**Why.** The papers the lawyer reviews must match the decided design (#248); v1's tablet, kiosk cache
+and 1:N text are history.
+
+**Consequences.** Open technical point for P3-0 / P3-6: the APK is installed from a link, not Google
+Play, and Play Integrity may then give only a device verdict; if it cannot be used, self-scan for
+minors waits (DPIA §6).
+
+## 255. When each privacy-notice addition goes on the website — 10 Oct 2026
+
+**Decision.** The website notice (`website/content/*/privacy.html`) is not changed by P3-8.
+Part N1 (guardian email, check-out emails, Brevo's new use) is pasted in before the Guru switches
+parent emails on at LIVE (#230). Parts N2-N4 (face scan, self-scan location, Play Integrity) are
+pasted in only after the lawyer's review, with the Phase 3 APK (P3-7). Each paste raises
+`privacyNotice.version` and `date` in `website/site.config.mjs`; te/hi only after native review.
+
+**Why.** A notice must describe what the app does now: describing face scan before it exists would
+mislead, and the parent emails need their notice line before they are switched on.

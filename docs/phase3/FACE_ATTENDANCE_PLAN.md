@@ -6,7 +6,9 @@
 > phone: **printed QR card or roll number** at the coordinator (C5, as today). The first enrolment is
 > done at the desk on the student's phone with a coordinator confirming. Parent emails: check-out
 > only (#231 answers). Where this file says A/B, 1:N, kiosk cache or tablet, it is history. The build
-> plan that replaces §9 is **[WORK_PLAN.md](WORK_PLAN.md)**.
+> plan that replaces §9 is **[WORK_PLAN.md](WORK_PLAN.md)**. Privacy papers for self-scan (P3-8):
+> [DPIA_DRAFT.md](DPIA_DRAFT.md), [CONSENT_DRAFT.md](CONSENT_DRAFT.md),
+> [PRIVACY_NOTICE_DRAFT.md](PRIVACY_NOTICE_DRAFT.md), [LAWYER_PACK.md](LAWYER_PACK.md).
 
 **Status:** preparation only. Nothing here is built or decided, except DECISIONS #212 (Praveen,
 09-10-2026: **no live or continuous location tracking at all** — GPS read only at the moment of

@@ -42,11 +42,11 @@ check-out only (#231 answers). Still open for the Guru: items 1, 3 (minimum age)
    never the location. Already built on today's QR check-in; switched on by the Guru on G10.
 
 7. **Model and where it runs.** *Recommended:* **on the device** (no face image ever leaves the
-   tablet/phone), with Apache-licensed open models (SFace + MiniFASNet, ML Kit detection). Not
+   student's phone), with Apache-licensed open models (SFace + MiniFASNet, ML Kit detection). Not
    InsightFace's free models (non-commercial only). Cloud (AWS Rekognition, Mumbai) only as Plan B.
 
 8. **Data location and keeping.** *Recommended:* face codes encrypted on the class's Supabase server
-   in Mumbai and on the check-in devices; no photos kept; deleted at once on withdrawal, 30 days
+   in Mumbai and on the student's own phone only (no class device holds face codes, #248); no photos kept; deleted at once on withdrawal, 30 days
    after a student leaves, after 12 months (minors) / 24 months (adults), or on a model change.
 
 9. **Location consent.** *Recommended:* tell it in the notice and the consent form (L-P / L-A text),
