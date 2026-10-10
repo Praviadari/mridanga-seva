@@ -22,8 +22,8 @@ A/B there are dropped), [MODEL_OPTIONS.md](MODEL_OPTIONS.md), [DPIA_DRAFT.md](DP
 
 | ID | Package | Branch | Needs first | Earliest start | Days (est.) | Native? | Status |
 |---|---|---|---|---|---|---|---|
-| P3-1 | Printed QR cards for students without phones | `p3-qr-cards` | — | **now** | 1.5 | No (OTA) | open |
-| P3-8 | DPIA, consent and privacy notice revised for self-scan | `p3-privacy-docs` | — | **now** | 2 | No (docs) | open |
+| P3-1 | Printed QR cards for students without phones | `p3-qr-cards` | — | **now** | 1.5 | No (OTA) | taken — lead chat 6 worker, 10-10-2026, branch p3-qr-cards; migration 0045 if needed, DECISIONS #249-#252 |
+| P3-8 | DPIA, consent and privacy notice revised for self-scan | `p3-privacy-docs` | — | **now** | 2 | No (docs) | taken — lead chat 6 worker, 10-10-2026, branch p3-privacy-docs; DECISIONS #253-#255 |
 | P3-0 | Native spike: camera → detect → embed → match on a cheap phone | `p3-spike` (never merged) | brief 9 APK merged | Jan 2027 | 5 | Throwaway dev build | open |
 | P3-2 | Data layer: face templates, enrol/withdraw, visit columns | `p3-data` | Guru answers (15 Nov); P3-8 reviewed | Feb 2027 | 3 | No (migration) | open |
 | P3-3 | Native foundation for the Phase 3 APK | `p3-native` | P3-0 result | 1 Mar 2027 | 3 | **Yes** | open |
