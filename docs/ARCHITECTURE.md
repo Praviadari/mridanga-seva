@@ -131,9 +131,10 @@ app/
                        (the drum mark), person-header.tsx (initials and name on C8, C11),
                        status-chip.tsx (coloured level and status labels on lists and C8),
                        loading-cards.tsx (grey shapes while loading), empty-state.tsx,
-                       account-footer.tsx (language, My profile, Sign out, version),
+                       home-art.tsx (mandala and temple drawn on the simple homes, #241),
+                       fact-card.tsx ("Did you know?" under the student ring, #242),
                        material-row.tsx (a lesson with Open, on G4/G5 and S4; DECISIONS.md #44),
-                       admin-links.tsx ("Running the class" on G1, "My reports" on C1) and
+                       admin-links.tsx ("Running the class", a screen behind a G1 circle since #240) and
                        guru-only.tsx (round 8); inbox-bell.tsx (the bell on the home header) and
                        data-table.tsx (tables of the reports on a laptop) (round 9); select-field.tsx
                        (a drop-down in a dialog), birth-date-field.tsx (day / month / year),
