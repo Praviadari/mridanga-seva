@@ -1,13 +1,15 @@
 // The app's name and drum mark: a full-screen splash for loading, and the saffron header of the
 // sign-in screens. The splash keeps the drum image of the phone's own splash screen (a new one
 // needs a new APK); the header draws the app's own mark (components/mridanga-mark.tsx). Both
-// stand in for a logo until the team has one (docs/DECISIONS.md #36).
+// stand in for a logo until the team has one (docs/DECISIONS.md #36). A start that takes long says so on the
+// splash, with Try again (src/lib/slow-start.ts, docs/DECISIONS.md #237).
 
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Image, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, StyleSheet, View } from 'react-native';
 
+import { restartApp } from '@/lib/slow-start';
 import { brand, onBrand } from '@/theme/colors';
-import { maxContentWidth, spacing, useTheme } from '@/theme/use-theme';
+import { maxContentWidth, radius, spacing, useTheme } from '@/theme/use-theme';
 
 import { AppText } from './app-text';
 import { MridangaMark } from './mridanga-mark';
@@ -19,9 +21,31 @@ const drum = require('@/assets/images/splash-icon.png');
  * Full-screen saffron splash with the drum and the app name. Looks like the phone's own splash
  * screen (app.json, expo-splash-screen), so the change from one to the other cannot be seen.
  * Also the only splash on the web version, where there is no native one.
+ * @param slow true when the start takes long (src/lib/slow-start.ts): the splash then says so and offers
+ *        Try again, which starts the app again.
  */
-export function BrandSplash() {
+export function BrandSplash({ slow }: { slow?: boolean }) {
   const { t } = useTranslation();
+  if (slow) {
+    return (
+      <View style={[styles.splash, { backgroundColor: brand }]}>
+        <Image source={drum} style={styles.splashImage} resizeMode="contain" />
+        <AppText variant="title" style={styles.splashText}>
+          {t('app.name')}
+        </AppText>
+        {/* Read out as soon as it appears. */}
+        <AppText role="alert" aria-live="assertive" style={[styles.splashText, styles.slowText]}>
+          {t('app.slowStart')}
+        </AppText>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => void restartApp()}
+          style={({ pressed }) => [styles.retry, { opacity: pressed ? 0.8 : 1 }]}>
+          <AppText style={styles.retryText}>{t('common.tryAgain')}</AppText>
+        </Pressable>
+      </View>
+    );
+  }
   return (
     // accessible + role, or the label on a plain View is never read out; the whole splash is one
     // "Loading" for screen readers.
@@ -91,6 +115,23 @@ const styles = StyleSheet.create({
   },
   splashText: {
     color: onBrand,
+  },
+  slowText: {
+    textAlign: 'center',
+    maxWidth: 320,
+    paddingHorizontal: spacing.lg,
+  },
+  // White on the saffron, like the splash text; at least 48 px tall for a finger.
+  retry: {
+    minHeight: 48,
+    justifyContent: 'center',
+    paddingHorizontal: spacing.xl,
+    borderRadius: radius,
+    backgroundColor: onBrand,
+  },
+  retryText: {
+    color: brand,
+    fontWeight: '600',
   },
   badge: {
     alignItems: 'center',
