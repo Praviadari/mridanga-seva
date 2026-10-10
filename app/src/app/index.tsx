@@ -9,6 +9,7 @@ import { useAuth } from '@/auth/auth-provider';
 import { forgetRequestedPath, requestedPathFor } from '@/auth/requested-path';
 import type { Area } from '@/auth/types';
 import { BrandSplash } from '@/components/brand';
+import { useTakingLong } from '@/lib/slow-start';
 
 /** First screen of each area. Change here when an area gets a new home screen. */
 const HOME: Record<Exclude<Area, 'loading'>, Href> = {
@@ -29,6 +30,8 @@ const SIGNED_IN: readonly Area[] = ['pending', 'guru', 'coordinator', 'student',
 export default function Index() {
   const { area, profileFailed } = useAuth();
   const requested = requestedPathFor(area);
+  // A start that takes long says so on the splash, with Try again (docs/DECISIONS.md #237).
+  const slow = useTakingLong(area === 'loading');
 
   // Forget the link after this redirect, so it is used only once (docs/DECISIONS.md #30). Not
   // while the profile could not be loaded (no internet): the person waits on the pending screen,
@@ -37,7 +40,7 @@ export default function Index() {
     if (SIGNED_IN.includes(area) && !profileFailed) forgetRequestedPath();
   }, [area, profileFailed]);
 
-  if (area === 'loading') return <BrandSplash />;
+  if (area === 'loading') return <BrandSplash slow={slow} />;
   // withAnchor puts the role's tabs underneath (the anchor in student/_layout.tsx and
   // staff/_layout.tsx), so Back leads there, not out of the app.
   // Not for the home itself (`/staff`, `/student`): it is the anchor, and the address would only

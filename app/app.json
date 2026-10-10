@@ -11,6 +11,12 @@
     "android": {
       "package": "org.mridangaseva.app",
       "googleServicesFile": "./google-services.json",
+      "allowBackup": false,
+      "blockedPermissions": [
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
+      ],
       "adaptiveIcon": {
         "backgroundColor": "#B45309",
         "foregroundImage": "./assets/images/android-icon-foreground.png",

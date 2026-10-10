@@ -16,6 +16,8 @@ export async function resolve(specifier, context, nextResolve) {
   // src/lib/class-locale.ts reads the database and the device's storage; the stand-in lets a test
   // pick the class's zone and country.
   if (/(^|\/)class-locale(\.ts)?$/.test(specifier)) return { url: stub('./class-locale.mjs'), shortCircuit: true };
+  // The app's '@/' alias (tsconfig paths) for the other app modules: src/<path>.ts.
+  if (specifier.startsWith('@/')) return nextResolve(new URL(`../../src/${specifier.slice(2)}.ts`, import.meta.url).href, context);
   // App source imports a sibling without its extension ('./dates'), as Metro allows; Node needs '.ts'.
   if (/^\.\.?\/[^.]+$/.test(specifier)) {
     try {

@@ -3967,3 +3967,79 @@ hand-confirms or Auto-Confirms an address on a student record without checking i
 
 **Consequences.** Mail from a free-mail sender may land in spam before the domain is authenticated; the real
 sign-up test shows it, and the pilot waits for the domain if it does. #235 is unused.
+
+## 236. The Android app keeps nothing in phone backups and asks for no overlay or old storage permission — 10 Oct 2026
+
+**Status: decided by the lead's brief (audit brief 9, D3-02 / FS4-10); branch `device-hardening`, ships with the
+next APK (production). Native change: fingerprint 185e839f → 835f9adb.**
+
+**Context.** Android backed up the app's data to the person's Google account by default (`allowBackup` true): the
+saved login (refresh token), the remembered profile and a student's saved QR card went with it, and came back on
+another phone restored from that backup. The merged manifest also listed SYSTEM_ALERT_WINDOW (draw over other
+apps, added by React Native for its developer menu) and READ/WRITE_EXTERNAL_STORAGE (old shared-storage access),
+which the app never uses: it picks photos and files through the system pickers and keeps its own files in its own
+folders.
+
+**Decision.** `android.allowBackup: false` and `android.blockedPermissions` for SYSTEM_ALERT_WINDOW,
+READ_EXTERNAL_STORAGE and WRITE_EXTERNAL_STORAGE in app/app.json (they are removed from the merged manifest with
+`tools:node="remove"`). `npx expo config --type introspect` shows `android:allowBackup="false"` and the three as
+removed (NOTES.md "10-10-2026 — Device hardening"). No `dataExtractionRules` file: with backup off, the only copy
+Android still makes is a phone-to-phone transfer that the owner starts while setting up a new phone, which moves
+the person's own login to the person's own new phone. Revisit if that matters (it needs a small config plugin).
+
+## 237. Every call to Supabase has a 15-second limit, and a slow start says so — 10 Oct 2026
+
+**Status: decided by the lead's brief (audit brief 9, D6-02 / FS3-04); branch `device-hardening`. JS only, but it
+rides the production APK with #236.**
+
+**Context.** The Supabase client used the plain fetch, which waits as long as the connection stays open. A
+stalled connection (one bar of signal, a captive Wi-Fi page) kept the splash screen up with no way out.
+
+**Decision.**
+- `withTimeout` (src/lib/timed-fetch.ts) wraps the client's fetch (src/lib/supabase.ts): a call that has no
+  answer within 15 s is cancelled and fails as a TypeError whose message contains "Network request failed", so the
+  screens show the usual "Could not reach the server" (isNetworkError) and the auth client counts it as a network
+  failure it may retry. The limit covers the wait for the answer, not the reading of a long body; a signal the
+  caller passes still cancels. A controller and a timer, not `AbortSignal.timeout`: that timer cannot be stopped
+  and Hermes may lack it; the timer also rejects by itself, so a fetch that ignores the signal cannot hang.
+- Storage uploads (POST/PUT to `/storage/v1/object/` or `/upload/`) have no limit: the whole file goes up before
+  the server answers, which on a phone connection can take minutes.
+- A start still `loading` after 10 s (`useTakingLong`, src/lib/slow-start.ts) hides the native splash and the
+  app's splash says "This is taking long. Check your internet connection, then try again." with Try again, which
+  starts the app again (page reload on the web, `Updates.reloadAsync` on the phone). 10 s, under the call limit,
+  so the person hears something before the calls give up. Telugu and Hindi lines are drafts (docs/TRANSLATIONS.md).
+
+## 238. A sign-out without internet is finished on the server at the next online moment (adds to #42) — 10 Oct 2026
+
+**Status: decided by the lead's brief (audit brief 9, D3-07 / R2G2-05); branch `device-hardening`. #42 stands; this
+adds what happens to the login on the server.**
+
+**Context.** #42 made Sign out work without internet by deleting the saved login on the phone. The login itself
+stayed valid on the server: its refresh token, if copied from the phone before (a backup, a debugging tool), could
+still be used for up to the login's lifetime. Reading supabase-js 2.117 also showed a second case #42 did not
+name: with a still valid access token and no internet, `signOut` deletes the saved login first and then returns
+the error, so the token was gone before the app could keep it.
+
+**Decision.**
+- `signOut` (src/auth/auth-actions.ts) reads the saved refresh token **before** calling Supabase. When the call
+  fails, the token is kept as a "sign-out pending" (src/auth/pending-sign-out.ts, device key `pendingSignOut`, at
+  most 5), then #42's fallback runs as before when the login is still saved.
+- `finishPendingSignOuts` ends each pending login on the server with the project's address and key and the
+  client's timed fetch, never through the client (whose session may by then be the next person's): POST
+  `/auth/v1/token?grant_type=refresh_token` with the kept token, then POST `/auth/v1/logout?scope=local` with the
+  fresh access token, which ends that whole login (every refresh token of it). Outcomes: done (logout answered, or
+  the server refused the token with 400/401/403, i.e. it is already dead); no answer or 429/5xx → kept for the next
+  try; refreshed but /logout unreachable → the new refresh token is kept instead (the old one is used up).
+- "Next online moment": app start, the app back on screen, the browser's `online` event (web), and the auth events
+  SIGNED_IN / TOKEN_REFRESHED, which prove the server can be reached (src/auth/auth-provider.tsx). One run at a time.
+- The push token row still stays on the server after an offline sign-out until the phone's next sign-in (#42).
+
+## 239. A QR scan buzzes once: success or error — 10 Oct 2026
+
+**Status: decided by the lead's brief (audit brief 9, optional, D7-20); branch `device-hardening`. expo-haptics was
+already installed (no new native package).**
+
+**Decision.** `scanFeedback` (src/lib/haptics.ts) after each student scan on C5 (attendance): the success pattern
+when the visit was marked, the error pattern for an unknown code or a failed call. Not on the web; never throws.
+The phone's "touch vibration" setting can silence it. Taps on the name list stay silent (the finger is already on
+the screen).

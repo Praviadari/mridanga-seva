@@ -17,8 +17,9 @@ import { clearSavedCard } from '@/data/my-student';
 import { currentLanguage, markLanguageSaved } from '@/i18n';
 import { dropAllDrafts } from '@/lib/form-drafts';
 import { unregisterPush } from '@/lib/push';
-import { forgetStoredLogin, storedLoginUserId, supabase } from '@/lib/supabase';
+import { forgetStoredLogin, storedRefreshToken, supabase } from '@/lib/supabase';
 
+import { keepPendingSignOut } from './pending-sign-out';
 import { markOwnSignOut } from './session-end';
 
 /** A translation key, for example 'authErrors.invalidCredentials'. */
@@ -194,7 +195,10 @@ export async function setNewPassword(password: string): Promise<AuthResult> {
  * and returns an error while keeping it saved, so the person would stay signed in. Then the
  * saved login is deleted here and signOut runs again: with nothing saved it only clears the
  * client and tells the app (SIGNED_OUT), which forgets the saved profile (docs/DECISIONS.md #42).
- * The push token row stays on the server in that case; the phone's next sign-in replaces it.
+ * The push token row stays on the server in that case; the phone's next sign-in replaces it. Whenever
+ * signOut fails (no internet, with an expired or a still valid access token), the login's refresh token is
+ * kept as a pending sign-out, which ends the login on the server the next time the app is online
+ * (src/auth/pending-sign-out.ts, docs/DECISIONS.md #238).
  *
  * A language this person picked that did not reach their profile (saved without internet) is
  * forgotten as unsaved: otherwise the next person to sign in on this phone got it on their profile.
@@ -208,10 +212,16 @@ export async function signOut(): Promise<void> {
     markLanguageSaved();
     // Before signing out: deleting the token needs the login.
     await unregisterPush();
+    // Read first: when the access token is still valid but /logout cannot be reached, Supabase deletes the
+    // saved login and only then reports the error, so the token is gone afterwards.
+    const refreshToken = storedRefreshToken();
     const { error } = await supabase.auth.signOut({ scope: 'local' });
-    if (error && storedLoginUserId()) {
-      forgetStoredLogin();
-      await supabase.auth.signOut({ scope: 'local' });
+    if (error && refreshToken) {
+      keepPendingSignOut(refreshToken);
+      if (storedRefreshToken()) {
+        forgetStoredLogin();
+        await supabase.auth.signOut({ scope: 'local' });
+      }
     }
   } finally {
     markOwnSignOut(false);
