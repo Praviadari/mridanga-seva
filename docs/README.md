@@ -6,6 +6,7 @@ maintainer can understand it without asking anyone.
 | Document | Read it when you want to know |
 |---|---|
 | [guide/](guide/README.md) | The beginner's guide: the class and the instrument, a user guide per role, how the app works and how it was built, in plain words |
+| [WHY_THIS_STACK.md](WHY_THIS_STACK.md) | Why Expo, Supabase and PostgreSQL, compared with Firebase, MySQL, native apps, no-code and WhatsApp + Excel |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | How the pieces fit together: app, database, roles, security |
 | [DATABASE.md](DATABASE.md) | What each table holds, the student status rules, the database functions and scheduled jobs, how to test a migration |
 | [SCREENS.md](SCREENS.md) | Which screens exist, which are still to build, and in what order |
