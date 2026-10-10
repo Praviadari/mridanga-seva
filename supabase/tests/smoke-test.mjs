@@ -54,6 +54,7 @@ import { pgcrypto } from '@electric-sql/pglite/contrib/pgcrypto';
 import { readdirSync, readFileSync } from 'node:fs';
 
 import { runPush } from '../functions/notify-announcements/send.ts';
+import { runNotices } from '../functions/notify-parents/send.ts';
 
 const supabaseDir = new URL('../', import.meta.url);
 const db = new PGlite({ extensions: { pgcrypto } });
@@ -123,7 +124,7 @@ process.on('uncaughtException', (error) => {
 // D14-10: every check is counted, and the run fails when fewer (or more) checks ran than expected,
 // so a block skipped by a renamed migration or a commented-out section cannot pass unseen.
 // Adding or removing checks? Run the suite and set this to the new total it prints.
-const EXPECTED_CHECKS = 1385; // 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8
+const EXPECTED_CHECKS = 1431; // 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46
 let failures = 0;
 let passes = 0;
 
@@ -4135,6 +4136,8 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
     'save_student_details(uuid,jsonb)', 'sign_up_choices()', 'waiting_sign_ups()', 'get_student_details(uuid)',
     // 0039: the staff student search by POST (ENT-08)
     'search_students(text,integer,boolean)',
+    // 0043: parent notices, staff only inside (C8)
+    'guardian_notice_status(uuid)', 'set_guardian_notices(uuid,boolean,text)',
   ];
   const runnableBy = async (role) => (await asOwner(`select p.oid::regprocedure::text as f from pg_proc p
     where p.pronamespace = 'public'::regnamespace
@@ -4893,6 +4896,195 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   let again = '';
   try { await db.exec(file42); } catch (e) { again = String(e.message); }
   check('0042 can run a second time', again === '', again);
+}
+
+// ---------------------------------------------------------------- 0043 parent notices (DECISIONS #224-#231)
+{
+  const reg43 = async (name, years, guardianEmail) => (await asApp('authenticated', coordinator, `select register_student(p_full_name => $1,
+    p_dob => (current_date - ($2 || ' years')::interval)::date, p_guardian_name => 'Parent 43', p_guardian_phone => '9876543210',
+    p_guardian_email => $3, p_guardian_relation => 'mother', p_id_type_checked => 'school_id', p_written_consent => true) as r`,
+    [name, String(years), guardianEmail]))[0].r;
+  const kid43 = await reg43('Arjun Notice 43', 10, 'parent.43@example.com');
+  const [{ id: g43, qr_token: qr43 }] = await asOwner(`select g.id, s.qr_token from guardians g join students s on s.id = g.student_id
+    where s.id = '${kid43.id}'`);
+  const scan43 = async () => (await asApp('authenticated', coordinator, 'select scan_qr($1) as r', [qr43]))[0].r.action;
+  const mark43 = async (sid, action) => (await asApp('authenticated', coordinator, 'select mark_visit($1, $2) as r', [sid, action]))[0].r.action;
+  const back43 = (sid) => asOwner(`update visits set check_in = check_in - interval '1 minute', check_out = check_out - interval '1 minute'
+    where student_id = '${sid}' and check_in > now() - interval '5 minutes'`);
+  const rows43 = async (sid) => asOwner(`select p.id::int, p.kind, p.outcome, p.guardian_id from parent_notices p
+    join visits v on v.id = p.visit_id where v.student_id = '${sid}' order by p.id`);
+  const kinds = (rows) => rows.map((r) => r.kind).join(',');
+  const settings43 = async (values) => asApp('authenticated', guru, 'select save_settings($1::jsonb)', [JSON.stringify(values)]);
+
+  const defaults = await asOwner(`select key, value from settings where key like 'parent_notice%' order by key`);
+  check('0043: notices are OFF by default, check-outs included, no contact yet',
+    JSON.stringify(defaults.map((r) => [r.key, r.value])) === JSON.stringify([['parent_notice_contact', ''], ['parent_notices_check_out', true], ['parent_notices_enabled', false]]),
+    JSON.stringify(defaults));
+  check('0043: switched off, a check-in and check-out queue nothing', (await scan43()) === 'in'
+    && (await back43(kid43.id), await scan43()) === 'out' && (await rows43(kid43.id)).length === 0);
+  check('0043: switched off, the job answers off', (await asOwner('select send_parent_notices() as r'))[0].r === 'off');
+
+  await refusesWith('0043: a coordinator cannot switch notices on', 'not_allowed', () =>
+    asApp('authenticated', coordinator, `select save_settings('{"parent_notices_enabled": true}'::jsonb)`));
+  await refusesWith('0043: the switch takes true / false only', 'setting_invalid', () => settings43({ parent_notices_enabled: 'yes' }));
+  await refusesWith('0043: the contact is at most 100 characters', 'setting_invalid', () => settings43({ parent_notice_contact: 'x'.repeat(101) }));
+  await settings43({ parent_notices_enabled: true, parent_notice_contact: ' 98480 00000 ' });
+  check('0043: the Guru switches notices on (G10), contact trimmed', (await asOwner(`select value #>> '{}' as v from settings
+    where key = 'parent_notice_contact'`))[0].v === '98480 00000');
+  check('0043: ... and the change is in the audit log', (await asOwner(`select count(*)::int as n from audit_log
+    where table_name = 'settings' and row_id = 'parent_notices_enabled'`))[0].n >= 1);
+
+  await back43(kid43.id);
+  check('0043: a check-in queues one notice for the guardian', (await scan43()) === 'in'
+    && kinds(await rows43(kid43.id)) === 'in' && (await rows43(kid43.id))[0].guardian_id === g43);
+  check('0043: the same scan again within 30 seconds (0038) queues nothing more', (await scan43()) === 'already_in'
+    && (await rows43(kid43.id)).length === 1);
+  await back43(kid43.id);
+  check('0043: the check-out queues an out notice', (await scan43()) === 'out' && kinds(await rows43(kid43.id)) === 'in,out');
+  check('0043: ... and a repeated scan does not send it twice', (await scan43()) === 'already_out' && (await rows43(kid43.id)).length === 2);
+
+  // A second guardian with the same address (other letters' case) gets one email; one without email none.
+  await asOwner(`insert into guardians (student_id, full_name, phone, email, relation) values
+    ('${kid43.id}', 'Father 43', '9876543211', 'PARENT.43@Example.com', 'father'),
+    ('${kid43.id}', 'Grandma 43', '9876543212', null, 'guardian')`);
+  await back43(kid43.id);
+  check('0043: guardians sharing one email get one notice; a guardian without email none', (await mark43(kid43.id, 'in')) === 'in'
+    && kinds(await rows43(kid43.id)) === 'in,out,in', kinds(await rows43(kid43.id)));
+
+  // Not news: a visit typed in later, a corrected time.
+  const [{ id: late43 }] = await asOwner(`insert into visits (student_id, check_in, check_out, method)
+    values ('${kid43.id}', now() - interval '3 days', now() - interval '3 days' + interval '1 hour', 'manual') returning id`);
+  await asOwner(`update visits set check_out = check_out + interval '5 minutes' where id = ${late43}`);
+  check('0043: a past visit typed in later, or its time corrected, queues nothing', (await rows43(kid43.id)).length === 3);
+
+  // The hourly close of a visit nobody checked out (no app user): no_checkout.
+  await asOwner(`update visits set check_in = now() - interval '3 hours', check_out = now() - interval '1 hour'
+    where student_id = '${kid43.id}' and check_out is null`);
+  check('0043: a visit closed by the job (nobody checked out) queues no_checkout', kinds(await rows43(kid43.id)) === 'in,out,in,no_checkout');
+
+  // Adults: nothing, even with a guardian's email on record.
+  const [{ id: adult43 }] = await asOwner(`insert into students (full_name, dob) values ('Adult Notice 43', '1990-01-01') returning id`);
+  await asOwner(`insert into guardians (student_id, full_name, phone, email) values ('${adult43}', 'Mum 43', '9876543213', 'mum.43@example.com')`);
+  check('0043: an adult student\'s check-in queues nothing', (await mark43(adult43, 'in')) === 'in' && (await rows43(adult43)).length === 0);
+
+  // Check-outs switched off: check-ins only.
+  await settings43({ parent_notices_check_out: false });
+  await back43(kid43.id);
+  check('0043: with check-outs switched off, a check-out queues nothing', (await mark43(kid43.id, 'in')) === 'in'
+    && (await back43(kid43.id), await mark43(kid43.id, 'out')) === 'out' && kinds(await rows43(kid43.id)) === 'in,out,in,no_checkout,in');
+  await settings43({ parent_notices_check_out: true });
+
+  // Staff view and the per-guardian switch.
+  const status43 = async () => asApp('authenticated', coordinator, 'select guardian_id, block, language from guardian_notice_status($1)', [kid43.id]);
+  const st = await status43();
+  check('0043: C8 status: the guardians with an email get notices, the one without says no_email',
+    st.length === 3 && st.filter((r) => r.block === null).length === 2 && st.some((r) => r.block === 'no_email'), JSON.stringify(st));
+  await refusesWith('0043: a student cannot read the notice status', 'not_allowed', () =>
+    asApp('authenticated', arjun, 'select * from guardian_notice_status($1)', [kid43.id]));
+  await refusesWith('0043: a student cannot switch a parent\'s notices', 'not_allowed', () =>
+    asApp('authenticated', arjun, 'select set_guardian_notices($1, false)', [g43]));
+  await refusesWith('0043: anon cannot', 'permission denied for function set_guardian_notices', () =>
+    asApp('anon', null, 'select set_guardian_notices($1, false)', [g43]));
+  await refusesWith('0043: a language other than en / te / hi is refused', 'language_invalid', () =>
+    asApp('authenticated', coordinator, `select set_guardian_notices($1, true, 'fr')`, [g43]));
+  await asApp('authenticated', coordinator, `select set_guardian_notices($1, true, 'te')`, [g43]);
+  check('0043: a coordinator sets the guardian\'s language', (await status43()).find((r) => r.guardian_id === g43).language === 'te');
+
+  // Sending: the Edge Function's send.ts against this queue, as the service role.
+  const sent43 = [];
+  const parentRpc = async (name, args) => {
+    try {
+      if (name === 'claim_parent_notices') {
+        const rows = await asApp('service_role', null, 'select * from claim_parent_notices($1)', [args.p_limit]);
+        return { data: rows.map((r) => ({ ...r, notice_id: Number(r.notice_id) })), error: null };
+      }
+      await asApp('service_role', null, 'select finish_parent_notices($1::uuid, $2::bigint[], $3::bigint[], $4::bigint[], $5::jsonb, $6::jsonb)',
+        [args.p_claim, args.p_sent, args.p_skipped, args.p_retry, JSON.stringify(args.p_refused), JSON.stringify(args.p_summary)]);
+      return { data: null, error: null };
+    } catch (failure) {
+      return { data: null, error: { message: String(failure.message ?? failure) } };
+    }
+  };
+  const fakeMail = async (to, email) => { sent43.push({ to, ...email }); return { status: 'sent' }; };
+  const run43 = (mailer) => runNotices(parentRpc, mailer, async () => null, () => {});
+  const waiting = async () => (await asOwner('select count(*)::int as n from parent_notices where outcome is null'))[0].n;
+  check('0043: with rows waiting the job calls the function (here: not_set_up, no pg_net)', (await asOwner('select send_parent_notices() as r'))[0].r === 'not_set_up');
+
+  // A row over 6 hours old is not sent (expired); the dry run then skips the rest.
+  const [{ id: oldRow }] = await asOwner(`update parent_notices set event_at = now() - interval '7 hours'
+    where id = (select min(id) from parent_notices where outcome is null) returning id`);
+  const dry = await run43(null);
+  check('0043: dry run (no Brevo key): rows end skipped, nothing sent', dry.dryRun === true && dry.skipped >= 1 && (await waiting()) === 0, JSON.stringify(dry));
+  check('0043: ... a row over 6 hours old ended as expired', (await asOwner(`select outcome from parent_notices where id = ${oldRow}`))[0].outcome === 'expired');
+
+  await back43(kid43.id);
+  await mark43(kid43.id, 'in');
+  const real = await run43(fakeMail);
+  const mail = sent43.at(-1);
+  check('0043: a real run sends one email per waiting row and records it', real.sent === 1 && (await waiting()) === 0
+    && (await rows43(kid43.id)).at(-1).outcome === 'sent', JSON.stringify(real));
+  check('0043: ... to the guardian, in their language, with the name, centre, time and contact',
+    mail.to === 'parent.43@example.com' && mail.text.includes('Arjun Notice 43') && mail.text.includes('చెక్-ఇన్')
+    && /\d\d:\d\d/.test(mail.text) && mail.text.includes('98480 00000'), mail.subject);
+  check('0043: ... and the next run sends nothing again', (await run43(fakeMail)).claimed === 0 && sent43.length === 1);
+  check('0043: C8 shows when the last notice went', !!(await asApp('authenticated', coordinator,
+    'select last_sent_at from guardian_notice_status($1) where guardian_id = $2', [kid43.id, g43]))[0].last_sent_at);
+
+  // Opt-out by the desk: waiting rows end, new check-ins skip the guardian.
+  await back43(kid43.id);
+  await mark43(kid43.id, 'out');
+  await asApp('authenticated', coordinator, 'select set_guardian_notices($1, false)', [g43]);
+  check('0043: a parent who says stop: the waiting notice ends as stopped', (await rows43(kid43.id)).at(-1).outcome === 'stopped');
+  await back43(kid43.id);
+  const before43 = (await rows43(kid43.id)).length;
+  await mark43(kid43.id, 'in');
+  const after43 = await rows43(kid43.id);
+  check('0043: ... and gets no new ones, also not through a second guardian row with the same address', after43.length === before43,
+    JSON.stringify(after43.slice(before43)));
+  check('0043: C8 says stopped for both rows of that address', (await status43()).filter((r) => r.block === 'stopped').length === 2);
+  await asApp('authenticated', coordinator, 'select set_guardian_notices($1, true)', [g43]);
+  check('0043: (control) switched on again', (await status43()).filter((r) => r.block === null).length === 2);
+  // A parent with this address for another child too: one-click stops the address for both.
+  const sib43 = await reg43('Sister Notice 43', 8, 'parent.43@example.com');
+  // One-click unsubscribe (the function checks the link's signature, then calls this).
+  const [{ r: stopped43 }] = await asApp('service_role', null, 'select stop_parent_notices($1) as r', [g43]);
+  check('0043: the email\'s one-click unsubscribe stops the guardian', stopped43 === true
+    && (await status43()).find((r) => r.guardian_id === g43).block === 'stopped');
+  const sibStatus = await asApp('authenticated', coordinator, 'select block from guardian_notice_status($1)', [sib43.id]);
+  check('0043: ... and the same address for a brother or sister', sibStatus.length === 1 && sibStatus[0].block === 'stopped', JSON.stringify(sibStatus));
+  check('0043: an unknown guardian id stops nothing', (await asApp('service_role', null,
+    `select stop_parent_notices('00000000-0000-4000-8000-000000000000') as r`))[0].r === false);
+  await refusesWith('0043: a signed-in person cannot call the unsubscribe function', 'permission denied for function stop_parent_notices', () =>
+    asApp('authenticated', guru, 'select stop_parent_notices($1)', [g43]));
+
+  // Switched off with a row waiting: the row ends, nothing is sent.
+  await asApp('authenticated', coordinator, 'select set_guardian_notices($1, true)', [g43]);
+  await back43(kid43.id);
+  await mark43(kid43.id, 'out');
+  await settings43({ parent_notices_enabled: false });
+  const offRun = await run43(fakeMail);
+  check('0043: switched off, a waiting row ends as switched_off and is not sent', offRun.claimed === 0
+    && (await rows43(kid43.id)).at(-1).outcome === 'switched_off' && sent43.length === 1);
+
+  // Kept 30 days.
+  await asOwner(`update parent_notices set created_at = now() - interval '31 days' where id = (select min(id) from parent_notices)`);
+  const n43 = (await asOwner('select count(*)::int as n from parent_notices'))[0].n;
+  await run43(null);
+  check('0043: rows older than 30 days are deleted', (await asOwner('select count(*)::int as n from parent_notices'))[0].n === n43 - 1);
+
+  // Closed to the app.
+  await refusesWith('0043: the Guru cannot read the queue', 'permission denied for table parent_notices', () =>
+    asApp('authenticated', guru, 'select * from parent_notices'));
+  await refusesWith('0043: a coordinator cannot add to it', 'permission denied for table parent_notices', () =>
+    asApp('authenticated', coordinator, `insert into parent_notices (visit_id, guardian_id, kind, event_at) values (1, '${g43}', 'in', now())`));
+  await refusesWith('0043: an app user cannot claim notices', 'permission denied for function claim_parent_notices', () =>
+    asApp('authenticated', guru, 'select * from claim_parent_notices()'));
+  await refusesWith('0043: nor read the job status', 'permission denied for table parent_notice_status', () =>
+    asApp('authenticated', guru, 'select * from parent_notice_status'));
+  const [job43] = await asOwner(`select schedule, command from cron.job where jobname = 'mridanga-parent-notices'`);
+  check('0043: the every-minute job is scheduled', job43?.schedule === '* * * * *' && job43.command === 'select send_parent_notices()');
+  await asOwner(`delete from students where id in ('${kid43.id}', '${adult43}', '${sib43.id}')`);
+  check('0043: deleting a student deletes their notices', (await asOwner(`select count(*)::int as n from parent_notices where guardian_id = '${g43}'`))[0].n === 0);
 }
 
 // ---------------------------------------------------------------- row-level security

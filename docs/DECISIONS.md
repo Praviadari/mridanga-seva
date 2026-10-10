@@ -3967,3 +3967,130 @@ hand-confirms or Auto-Confirms an address on a student record without checking i
 
 **Consequences.** Mail from a free-mail sender may land in spam before the domain is authenticated; the real
 sign-up test shows it, and the pilot waits for the domain if it does. #235 is unused.
+
+## 224. Parents get an email when their child is checked in or out; off until the Guru switches it on — 10 Oct 2026
+
+**Status: built on branch `parent-notices` (worker of lead chat 5); not on main until Praveen's OK.
+The email wording and the team decisions in #231 are open; the Telugu and Hindi texts are drafts.**
+
+**Context.** The Guru wants parents to know accurately when their child arrived and left
+(docs/phase3/DECISIONS_FOR_GURU.md item 6). Parents have no app login; guardians are rows with a phone
+and, often, an email (#16, #100). The face-scan plan (docs/phase3/FACE_ATTENDANCE_PLAN.md §2.6) showed
+that the notice gives most of the value without face and fits today's QR and coordinator check-in.
+
+**Decision.** An email to each guardian (with an email) of a student under 18, at check-in and at
+check-out, through Brevo (#88's provider). A class switch `parent_notices_enabled` on G10, **off by
+default**; a second switch for check-outs (`parent_notices_check_out`, on); the class contact for the
+email's last line (`parent_notice_contact`). Once switched on, every eligible parent gets them unless
+they say stop (opt-out, as the plan proposes); the paper consent form tells them (#230).
+
+**Why.** Email costs nothing on Brevo's free plan and needs no parent login, no new role and no APK.
+Off by default because the team has not yet answered #231 and the domain for a real sender is brief 8.
+
+**Consequences.** Migration 0043, Edge Function `notify-parents`, G10 section "Emails to parents", C8
+lines under each guardian. OPERATIONS.md "Parent notices by email". A parent login with push stays a
+separate, later project.
+
+## 225. The notices are queued by a trigger on visits; one per visit, kind and address — 10 Oct 2026
+
+**Context.** A visit is written by `toggle_visit` (QR, door tablet), `mark_visit` (C5/C8 taps),
+`check_out_all`, the hourly `close_open_visits` and staff time corrections (#110). The brief asked that
+0038's 30-second repeat-scan rule never sends twice.
+
+**Decision.** An after insert / update of `check_out` trigger on `visits` (`queue_parent_notices`) adds
+rows to `parent_notices`, so no path is missed and no RPC was copied again (`toggle_visit` stays 0038's).
+Only news is sent: a check-in written within the last 10 minutes; a check-out set to about now; a
+visit closed by the hourly job (nobody signed in) within 6 hours = `no_checkout`. A visit typed in later,
+a corrected time and an old day's visit closed by the next check-in send nothing. Dedupe: unique
+(visit, guardian, kind); guardians sharing one email get one email (the consenting guardian's row
+first); the repeat scan writes no visit at all, so it queues nothing.
+
+**Why.** A trigger is the single place every check-in passes through; adding a call to four functions
+would copy them again and miss the next one.
+
+**Consequences.** A coordinator's quick mistake (in, out, in) sends what happened, three emails; the
+times say the truth. Smoke tests "0043 parent notices".
+
+## 226. A new Edge Function notify-parents sends them, with a dry run — 10 Oct 2026
+
+**Context.** Push already has a database job → Edge Function → provider pipeline (#33, #112-#115);
+the Ishtagoshti parent code calls Brevo straight from the database (#88).
+
+**Decision.** A **new** Edge Function `notify-parents`, not a mode of `notify-announcements`. The
+every-minute job `send_parent_notices()` calls it (pg_net, the push secret) only when a row waits; it
+claims up to 50 rows, sends one Brevo transactional email each, and records sent / retry (2, 8, 18,
+32 minutes; a 401 stops the run) / refused, like 0031's queue. Secrets `BREVO_API_KEY`, `NOTICE_FROM`
+(placeholder until brief 8), optional `NOTICE_FROM_NAME`, `NOTICE_REPLY_TO`, `PARENT_NOTICES_DRY_RUN`.
+**Without a key or sender it is a dry run**: logs "would send <row> <kind> <language>" and marks the
+rows `skipped`. Logs never hold an address, a name or a text.
+
+**Why a new function.** Push and email fail differently (Expo vs Brevo, tokens vs addresses); one
+function's error or deploy then never delays the other, its logs show only one thing, and LIVE can get
+notices without redeploying push. It shares the push secret and `pickServiceKey`, so the set-up is the
+same. Not from the database like #88: the email needs per-language templates, retries and an
+unsubscribe link, which are easier to test in TypeScript (`parent-notices.test.mjs`) than in SQL.
+
+**Consequences.** One more deploy on TEST and LIVE (`supabase/config.toml` keeps its JWT check off).
+One more pg_cron job (about 1,440 run rows a day, trimmed by 0040's purge).
+
+## 227. Who gets one, and how a parent stops them — 10 Oct 2026
+
+**Decision.** A guardian gets the email when (`parent_notice_block` is null): notices are on; the
+student is under 18 (`is_minor`), not withdrawn (#75), with a current `data` consent (#16, #74); the
+guardian has an email and no stop. Adults get none, even with a guardian on record (#231). Stopping:
+the desk on C8 ("Stop emails to this parent", `set_guardian_notices`, staff, audited through
+guardians), or the email's one-click **Unsubscribe** (RFC 8058: the mail app POSTs a link carrying the
+guardian id signed with an HMAC of the push secret; a link scanner's GET does nothing). One address,
+one choice: a stop on any guardian row with that email counts, and the one-click stops the address for
+every child. The language is per guardian (en / te / hi; empty = the child's app language).
+
+**Why.** Withdrawing must be as easy as giving (DPDP s.6(4)); a signed link needs no parent login and
+cannot be used to stop someone else's emails.
+
+## 228. What the email says: name, centre, time, how — never where — 10 Oct 2026
+
+**Decision.** Plain and short, en / te / hi (`supabase/functions/notify-parents/template.ts`): "Arjun
+Rao checked in at Abids at 17:02 on 10-10-2026 (QR code scanned)"; check-out without the method; for
+`no_checkout` "No check-out was recorded … closed at 20:00, the centre's closing time; this is not the
+time Arjun Rao left" (the plan's rule: never a made-up leaving time). Then: it never includes the
+child's location or photo; "Questions: <class contact>"; how to stop. The student's **full name** as
+on the record (a first word can be an initial, and siblings must be told apart). Times in the centre's
+time zone (0033), dates day first. No location, distance, geofence result or photo — not in the email,
+not in the queue (#212); a flagged check-in (#70) looks like any other to the parent.
+
+## 229. Notice rows are short-lived; at most 200 a day — 10 Oct 2026
+
+**Decision.** `parent_notices` holds ids, the kind, times and the outcome only, and is deleted after 30
+days (each run purges). A row not sent within 6 hours of the event ends as `expired` (a late "arrived"
+is worse than none). At most 200 sent a day (Brevo's free plan: 300; the Ishtagoshti codes take up to
+100); the rest wait and expire. The queue and `parent_notice_status` are closed to every app role
+(RLS on, no grants); the claim functions are the service role's (#14).
+
+## 230. A line for the parent consent form (DRAFT — the team's wording) — 10 Oct 2026
+
+**Status: draft only.** The team words the real line and adds it to the paper form and the privacy
+notice before notices are switched on at LIVE; Brevo is then listed as a processor for these emails.
+
+> *Draft (en):* "When the class's attendance emails are switched on, we will email you when your child
+> is checked in and checked out at the class (name, centre, time). These emails never contain your
+> child's location or photo. You can stop them at any time with the Unsubscribe link in the email or
+> by telling the class desk."
+
+A Telugu and a Hindi version follow from the team's English, with the consent form's other lines
+(docs/phase3/CONSENT_DRAFT.md).
+
+## 231. Parent notices: decisions for the team, with the defaults built — 10 Oct 2026
+
+**Status: open; the build follows the defaults below, each a setting or a small change.**
+
+| Question | Default built | To change |
+|---|---|---|
+| Switch on at all, and when? | Off (`parent_notices_enabled` false) | Tick on G10 |
+| Adult students too (e.g. a parent asks for their 19-year-old)? | No: minors only; an adult decides about their own data | A new decision + the adult's own consent; a small change in `parent_notice_block` |
+| Both check-in and check-out? | Both | Untick "and when they are checked out" on G10 |
+| The night's "no check-out recorded" email? | Sent (with check-outs), about an hour after closing (21:00-21:30 IST at Abids) | Ask for a separate switch |
+| Quiet hours? | None: emails follow the class times; the latest is that night's no-check-out email | Ask for a window (e.g. none after 21:30) |
+| Opt-out (on for every eligible parent) or opt-in? | Opt-out, as the plan proposes, told on the consent form (#230) | Opt-in = a new consent scope `notices` and a tick on C3 |
+| Full name or first name in the email? | Full name (#228) | Template change |
+| Sender and domain | Placeholder (`NOTICE_FROM`, Praveen's verified address on TEST) | Brief 8: domain authenticated in Brevo |
+| Flagged (outside the area) check-ins | Same email; the flag stays for staff (#70) | Guru decision (FACE_ATTENDANCE_PLAN §2.6) |

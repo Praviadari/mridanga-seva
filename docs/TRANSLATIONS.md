@@ -263,3 +263,10 @@ The privacy texts of 0034 (`signUp.privacyNotice`, `signUp.under18`, `register.p
   "మీ రాక, వెళ్ళడం"; Hindi `home.staff.joinedVisits` and "विज़िट"; Hindi `followUp.noTask`; Hindi "सेव करें" against
   "सहेजें" (pick one); Telugu మళ్ళీ / మళ్లీ and క్లాసు / తరగతి (pick one each); Telugu `pending.title`
   (subject "it", a person is meant); Hindi "घं" in `time.hoursMinutes`.
+- **Parent notices** (branch `parent-notices`, [DECISIONS.md #224-#231](DECISIONS.md)): every Telugu and Hindi line
+  under `parentNotices.*`, `settings.notices*`, `settings.contactHint` and `settings.fields.parent_notice*` is a
+  draft, and so are the email texts in `supabase/functions/notify-parents/template.ts` (subjects, the three
+  bodies, "how it was marked", the footer). Words to check first: "check-in / check-out" kept as
+  చెక్-ఇన్ / చెక్-అవుట్ and चेक-इन / चेक-आउट (as on the attendance screens); "consent" సమ్మతి / सहमति;
+  "unsubscribe" left in English (it is the mail app's own button name); the Hindi bodies are written
+  without a gendered verb ("{{name}} का चेक-इन … हुआ") on purpose.

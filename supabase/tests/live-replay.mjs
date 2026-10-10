@@ -1,6 +1,6 @@
 // LIVE go-live replay (audit brief 8 prep; docs/GO_LIVE_CHECKLIST.md). The live project ran
 // migrations 0001-0011 by hand and has had real use since (Praveen's login, the guarded clean-up
-// of the seed of 29 Sep 2026). Before Praveen pastes 0012-0042 into it, this proves on an
+// of the seed of 29 Sep 2026). Before Praveen pastes 0012-0043 into it, this proves on an
 // in-memory Postgres (PGlite), with nothing sent anywhere:
 //   1. a database at LIVE's state (0001-0011, then rows of the kinds LIVE can hold: logins, staff,
 //      students with a minor's guardian and consents, visits open and closed, calls, ticks,
@@ -41,7 +41,7 @@ const checklist = readFileSync(new URL('../../docs/GO_LIVE_CHECKLIST.md', import
 const LIVE_LAST = 11;
 const GO_LIVE = ['0013', '0014', '0015', '0016', '0017', '0018', '0019', '0020', '0021', '0022', '0023', '0024',
   '0025', '0026', '0027', '0028', '0029', '0030', '0031', '0032', '0033', '0034', '0035', '0036', '0037', '0038',
-  '0039', '0040', '0042'];
+  '0039', '0040', '0042', '0043'];
 
 let failures = 0;
 let passes = 0;
@@ -226,7 +226,7 @@ const [{ n: rolls }] = (await live.query(`select count(*)::int as n from student
 check('LIVE-state rows written: the adult student\'s confirmed login is linked, every student has a roll number',
   linked === 1 && rolls === 3, `linked ${linked}, roll numbers ${rolls}`);
 
-// ---------------------------------------------------------------- 2.-3. 0013-0042, each twice
+// ---------------------------------------------------------------- 2.-3. 0013-0043, each twice
 const runOnce = [];
 const rerunChanged = [];
 for (const f of files.filter((f) => Number(numberOf(f)) > LIVE_LAST)) {
@@ -291,8 +291,8 @@ const row = (name) => verify.find((r) => r.check_name === name);
 const expectOk = ['last migration', 'migrations missing', 'tables without row-level security',
   'anon table rights', 'anon function rights', 'update/delete without where', 'roll numbers missing'];
 for (const name of expectOk) check(`verification SQL: "${name}" is ok on the replayed LIVE`, row(name)?.ok === true, JSON.stringify(row(name)));
-check('verification SQL: "scheduled jobs" counts the ten jobs of 0001-0042',
-  row('scheduled jobs')?.found === '10 of 10', JSON.stringify(row('scheduled jobs')));
+check('verification SQL: "scheduled jobs" counts the eleven jobs of 0001-0043',
+  row('scheduled jobs')?.found === '11 of 11', JSON.stringify(row('scheduled jobs')));
 check('verification SQL: Vault and pg_net are reported missing here (PGlite has neither), not hidden',
   row('vault secrets')?.ok === false && row('pg_net')?.ok === false);
 check('verification SQL: the three sample logins confirmed at sign-up are flagged (what auto-confirm would leave)',
@@ -303,7 +303,7 @@ const rowCounts = (await live.query(checklistSql('row-counts'))).rows;
 check('row-count SQL runs and counts the replayed students and logins',
   rowCounts.find((r) => r.table_name === 'students')?.rows === 3 && rowCounts.find((r) => r.table_name === '(auth.users)')?.rows === 4);
 const probe = (await live.query(probeSql)).rows;
-check('the probe has one row per migration 0010-0042 plus the summary rows',
+check('the probe has one row per migration 0010-0043 plus the summary rows',
   probe.length === 2 /* 0010, 0011 */ + GO_LIVE.length + 2 /* LAST IN ORDER, MISSING */, String(probe.length));
 
 console.log(`\nSecond run refused (run-once files; a refused paste changes nothing):\n  ${runOnce.join('\n  ') || '(none)'}`);

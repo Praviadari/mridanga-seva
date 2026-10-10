@@ -79,7 +79,8 @@ with m(migration, present) as (values
   ('0038', exists (select 1 from pg_proc where proname = 'guard_call_log_date' and pronamespace = 'public'::regnamespace)),
   ('0039', exists (select 1 from pg_proc where proname = 'search_students' and pronamespace = 'public'::regnamespace)),
   ('0040', exists (select 1 from pg_proc where proname = 'anonymise_staff' and pronamespace = 'public'::regnamespace)),
-  ('0042', coalesce((select attnotnull from pg_attribute where attrelid = to_regclass('public.students') and attname = 'roll_no'), false))
+  ('0042', coalesce((select attnotnull from pg_attribute where attrelid = to_regclass('public.students') and attname = 'roll_no'), false)),
+  ('0043', to_regclass('public.parent_notices') is not null)
 )
 select migration, case when present then 'yes' else 'no' end as present from m
 union all
@@ -91,7 +92,7 @@ select 'MISSING', coalesce((select string_agg(a.migration, ' ' order by a.migrat
 order by 1;
 ```
 
-## B. Migrations 0013-0042, one file per run
+## B. Migrations 0013-0043, one file per run
 
 For each row: GitHub main → `supabase/migrations/<file>` → **Copy raw file** → LIVE → SQL Editor →
 New query → paste → check the project → **Run** → then paste the probe again (or keep it in a second
@@ -137,16 +138,16 @@ a second paste. So pasting a file twice by mistake is harmless; still, never do 
 | M0039 | `0039_security_backlog.sql` | Praveen · dashboard | No rows; probe `0039` | |
 | M0040 | `0040_ops_backlog.sql` | Praveen · dashboard | `schedule` table (two jobs); probe `0040` | Adds `mridanga-cron-history-purge`, `mridanga-orphan-files`. Until C4 the old function ignores the orphan-files call |
 | M0042 | `0042_app_leftovers.sql` | Praveen · dashboard | No rows; probe `0042`, `MISSING` `none` | Stops with `roll_no_missing` (changing nothing) if a student has no roll number: run the hint's select, give each one a roll number with a chat's help, run 0042 again |
+| M0043 | `0043_parent_notices.sql` | Praveen · dashboard | `schedule` table (one job); probe `0043`, `MISSING` `none` | Adds `mridanga-parent-notices` (answers `off`: parent emails stay off until the Guru ticks them on G10). Its Edge Function is C7-C8 |
 
-**A file newer than 0042 on main** (0043 parent notices is on its branch on 10 Oct 2026): the replay's
-first check fails until this table lists it. Add it here, with its own steps (0043 needs its Edge
-Function `notify-parents`), then run it last.
+**A file newer than 0043 on main:** the replay's first check fails until this table lists it. Add it
+here, with its own steps, then run it last.
 
 **B-end.** Paste the **verification SQL** (part F) and the drift query again. Download the drift CSV
 as `drift-live-after-<date>.csv`, run the same drift query on TEST, and compare the `KIND:` rows
 ([OPERATIONS.md "Releasing a change"](OPERATIONS.md#releasing-a-change-database-first) step 4).
 Expected differences only: `config_rows`, `vault_secret` until part C, and the objects of any
-migration TEST has run that is not on main yet (on 10 Oct 2026 TEST also ran 0043).
+migration TEST has run that is not on main yet (none on 10 Oct 2026: TEST and main both end at 0043).
 
 ## C. Push notifications on LIVE
 
@@ -167,6 +168,8 @@ select (select count(*) from pg_extension where extname = 'pg_net') as pg_net,
 | C4 | Praveen · terminal | Step 10, from the main folder on **main at the replay's commit** (`git status` clean, `git log -1` = that commit): `npx supabase@latest functions deploy notify-announcements --project-ref qeozvvizcojzxcjgnaei --no-verify-jwt --use-api`, then `npx supabase@latest functions list --project-ref qeozvvizcojzxcjgnaei` | `notify-announcements` ACTIVE, version one higher than before | Check the ref twice before Enter: the CLI is logged in and deploys at once. An empty list: nothing deployed, run it again |
 | C5 | Praveen · terminal | `curl.exe -s -X POST https://qeozvvizcojzxcjgnaei.supabase.co/functions/v1/notify-announcements` | `{"error":"not_allowed"}` | `404`: not deployed. `Missing authorization header` / `Invalid JWT`: deployed with the JWT check on; deploy again from the repository folder (step 13 of OPERATIONS) |
 | C6 | Praveen · dashboard | A minute later: `select last_job_at, last_job_result from push_status;` | `last_job_at` within the last minutes; `last_job_result` `nothing_due` or `called` | `not_set_up`: C1 or C2 is missing, or the URL is not `https://<ref>.supabase.co` |
+| C7 | Praveen · terminal | Parent emails' function, same folder and commit as C4: `npx supabase@latest functions deploy notify-parents --project-ref qeozvvizcojzxcjgnaei --no-verify-jwt --use-api`, then `functions list` | `notify-parents` ACTIVE, version 1 | As C4. It needs no secret of its own to deploy: without `BREVO_API_KEY` / `NOTICE_FROM` it only does dry runs ([OPERATIONS.md "Parent notices by email"](OPERATIONS.md#parent-notices-by-email)) |
+| C8 | Praveen · terminal | `curl.exe -s -X POST https://qeozvvizcojzxcjgnaei.supabase.co/functions/v1/notify-parents` | `{"error":"not_allowed"}` | As C5. Brevo secrets and switching the emails on are later steps (OPERATIONS "On LIVE"), not go-live |
 
 The real push test needs the production APK (brief 9): OPERATIONS step 12 with it, then.
 
@@ -247,7 +250,8 @@ with m(migration, present) as (values
   ('0038', exists (select 1 from pg_proc where proname = 'guard_call_log_date' and pronamespace = 'public'::regnamespace)),
   ('0039', exists (select 1 from pg_proc where proname = 'search_students' and pronamespace = 'public'::regnamespace)),
   ('0040', exists (select 1 from pg_proc where proname = 'anonymise_staff' and pronamespace = 'public'::regnamespace)),
-  ('0042', coalesce((select attnotnull from pg_attribute where attrelid = to_regclass('public.students') and attname = 'roll_no'), false))
+  ('0042', coalesce((select attnotnull from pg_attribute where attrelid = to_regclass('public.students') and attname = 'roll_no'), false)),
+  ('0043', to_regclass('public.parent_notices') is not null)
 ),
 last_in_order as (select coalesce(max(a.migration), 'before 0010') as v from m a
   where a.present and not exists (select 1 from m b where b.migration <= a.migration and not b.present)),
@@ -255,16 +259,16 @@ missing as (select coalesce(string_agg(a.migration, ' ' order by a.migration), '
   where not a.present and exists (select 1 from m b where b.present and b.migration > a.migration)),
 jobs(name) as (values ('mridanga-status-refresh'), ('mridanga-close-visits'), ('mridanga-push'), ('mridanga-inbox-cleanup'),
   ('mridanga-assessments'), ('mridanga-events-polls'), ('mridanga-duty'), ('mridanga-access-log-purge'),
-  ('mridanga-cron-history-purge'), ('mridanga-orphan-files')),
+  ('mridanga-cron-history-purge'), ('mridanga-orphan-files'), ('mridanga-parent-notices')),
 checks(sort, check_name, ok, found, expected) as (
-  select 1, 'last migration', (select v from last_in_order) = '0042', (select v from last_in_order), '0042'
+  select 1, 'last migration', (select v from last_in_order) = '0043', (select v from last_in_order), '0043'
   union all select 2, 'migrations missing', (select v from missing) = 'none', (select v from missing), 'none'
   union all select 3, 'scheduled jobs',
-    (select count(*) from jobs j join cron.job c on c.jobname = j.name and c.active) = 10,
-    (select count(*) from jobs j join cron.job c on c.jobname = j.name and c.active)::text || ' of 10', '10 of 10 (active)'
+    (select count(*) from jobs j join cron.job c on c.jobname = j.name and c.active) = 11,
+    (select count(*) from jobs j join cron.job c on c.jobname = j.name and c.active)::text || ' of 11', '11 of 11 (active)'
   union all select 4, 'other mridanga jobs', not exists (select 1 from cron.job where jobname like 'mridanga%' and jobname not in (select name from jobs)),
     coalesce((select string_agg(jobname, ', ') from cron.job where jobname like 'mridanga%' and jobname not in (select name from jobs)), 'none'),
-    'none (0043 adds mridanga-parent-notices once it is on main)'
+    'none'
   union all select 5, 'job failures in 2 days', (select count(*) from cron.job_run_details where status = 'failed' and start_time > now() - interval '2 days') = 0,
     (select count(*) from cron.job_run_details where status = 'failed' and start_time > now() - interval '2 days')::text, '0 (OPERATIONS "Scheduled jobs: health check" says why)'
   union all select 6, 'tables without row-level security',
@@ -334,14 +338,17 @@ changes later, with the new date.
 
 | Setting | Where | Expected | Seen on LIVE | Date | By |
 |---|---|---|---|---|---|
-| Last migration (probe) | SQL editor | `0042`, MISSING none | | | |
+| Last migration (probe) | SQL editor | `0043`, MISSING none | | | |
 | Backup before go-live | `backup-log.csv` | archive name, `before go-live` | | | |
 | Drift before / after | CSVs of A4, B-end | `ALL` hashes noted; KIND rows = TEST except the expected | | | |
-| Scheduled jobs | verification row 3 | 10 of 10 active | | | |
+| Scheduled jobs | verification row 3 | 11 of 11 active | | | |
 | pg_net | Database → Extensions | on | | | |
 | Vault secret names | verification row 12 | `mridanga_project_url`, `mridanga_push_secret` | | | |
 | `PUSH_SECRET` | Edge Functions → Secrets | set; SHA-256 = Vault's | | | |
 | `notify-announcements` | `functions list` | ACTIVE, version __, from commit __ | | | |
+| `notify-parents` | `functions list` | ACTIVE, version __, from commit __ | | | |
+| `BREVO_API_KEY`, `NOTICE_FROM`, `NOTICE_REPLY_TO` | Edge Functions → Secrets | set; sender `notices@<domain>` (domain authenticated) — or none yet = dry run | | | |
+| Parent emails (G10) | G10 Settings → Emails to parents | **off** until the team's decisions (DECISIONS #231) and consent line (#230) | | | |
 | Email provider | Sign In / Providers → Email | on | | | |
 | Confirm email | Sign In / Providers → Email | **on** (auto-confirm off) | | | |
 | Minimum password length | Sign In / Providers → Email | 8 | | | |

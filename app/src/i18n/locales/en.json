@@ -1265,7 +1265,10 @@
       "promotion_min_feedback": "Coordinators' answers needed before the facilitator decides",
       "ig_translator": "Default translator's name",
       "fund_approval_rupees": "Approval needed over (Rs)",
-      "fund_bill_rupees": "Bill needed over (Rs)"
+      "fund_bill_rupees": "Bill needed over (Rs)",
+      "parent_notices_enabled": "Email parents when a student under 18 is checked in",
+      "parent_notices_check_out": "... and when they are checked out",
+      "parent_notice_contact": "Class contact in the email (phone or email)"
     },
     "errors": {
       "range": "Enter a whole number from {{min}} to {{max}}.",
@@ -1279,7 +1282,29 @@
     "translatorHint": "The name shown as \"Translation and purport: …\" on a sloka whose own credit is left empty. Empty = no credit.",
     "fundTitle": "Class fund",
     "fundHint": "Expenses over the approval limit wait for the facilitator (or a treasurer, for the facilitator's own). A bill photo is needed over the bill limit. 0 = every expense.",
-    "fundRangeHint": "Whole rupees, 0 to {{max}}."
+    "fundRangeHint": "Whole rupees, 0 to {{max}}.",
+    "noticesTitle": "Emails to parents",
+    "noticesHint": "A short email to the parent of a student under 18 at each check-in and check-out: name, centre, time, and how it was marked. Never the location or a photo. A parent can stop them; the desk can switch them off per parent on the student's profile.",
+    "contactHint": "Shown at the end of the email for questions. At most 100 characters."
+  },
+  "parentNotices": {
+    "on": "Gets check-in and check-out emails",
+    "lastSent": "last sent {{date}} {{time}}",
+    "language": "Email language",
+    "appLanguage": "Student's app language",
+    "stop": "Stop emails to this parent",
+    "start": "Send emails to this parent again",
+    "loadFailed": "Could not load whether the parents get check-in emails.",
+    "notAllowed": "Only coordinators and the facilitator can change this.",
+    "blocks": {
+      "switched_off": "Check-in emails are switched off for the class (Settings)",
+      "not_eligible": "No check-in emails",
+      "withdrawn": "No check-in emails: consent withdrawn",
+      "adult": "No check-in emails: the student is 18 or older",
+      "no_consent": "No check-in emails: no current consent",
+      "no_email": "No check-in emails: no email address",
+      "stopped": "Check-in emails stopped (the parent asked)"
+    }
   },
   "auditLog": {
     "title": "Audit log",

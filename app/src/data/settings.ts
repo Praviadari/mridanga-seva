@@ -13,6 +13,9 @@
 //                                  migration 0021, docs/DECISIONS.md #57)
 //   fund_approval_rupees,          the class fund: expenses over this wait for approval; a bill
 //   fund_bill_rupees               is needed over that (Phase 2, migration 0026, docs/DECISIONS.md #80)
+//   parent_notices_enabled,        check-in / check-out emails to a minor's parent: on or off (off by default),
+//   parent_notices_check_out,      check-outs too, and the class contact the email gives (migration 0043,
+//   parent_notice_contact          docs/DECISIONS.md #224-#231)
 // Saved together by save_settings (migration 0014), which checks every value and keeps Irregular
 // before Inactive; every change goes to the audit log.
 
@@ -59,6 +62,8 @@ export type SettingsForm = {
   translator: string | null;
   /** The fund limits as typed; null = the database has no such settings yet (before 0026). */
   fund: Record<FundSetting, string> | null;
+  /** Emails to parents (0043); null = the database has no such settings yet. */
+  notices: { enabled: boolean; checkOut: boolean; contact: string } | null;
   /** The centre whose window is shown (Abids, the only one in Phase 1). */
   centreId: number | null;
   centreName: string;
@@ -95,6 +100,14 @@ export async function fetchSettings(): Promise<SettingsForm | null> {
       typeof byKey.get('fund_approval_rupees') === 'number' && typeof byKey.get('fund_bill_rupees') === 'number'
         ? { fund_approval_rupees: String(byKey.get('fund_approval_rupees')), fund_bill_rupees: String(byKey.get('fund_bill_rupees')) }
         : null,
+    notices:
+      typeof byKey.get('parent_notices_enabled') === 'boolean' && typeof byKey.get('parent_notice_contact') === 'string'
+        ? {
+            enabled: byKey.get('parent_notices_enabled') === true,
+            checkOut: byKey.get('parent_notices_check_out') !== false,
+            contact: byKey.get('parent_notice_contact') as string,
+          }
+        : null,
     centreId: centre?.id ?? null,
     centreName: centre?.name ?? '',
     opensAt: centre ? centre.opens_at.slice(0, 5) : '',
@@ -110,7 +123,7 @@ export async function fetchWeekStarts(): Promise<WeekStarts> {
 }
 
 /** Problems with fields of the form, as message keys. */
-export type SettingsErrors = Partial<Record<NumberSetting | FundSetting | 'opensAt' | 'closesAt' | 'translator', MessageKey>>;
+export type SettingsErrors = Partial<Record<NumberSetting | FundSetting | 'opensAt' | 'closesAt' | 'translator' | 'contact', MessageKey>>;
 
 /** Checks the form as the database will. */
 export function checkSettings(form: SettingsForm): SettingsErrors {
@@ -125,6 +138,7 @@ export function checkSettings(form: SettingsForm): SettingsErrors {
     errors.inactive_days = 'settings.errors.inactiveAfter';
   }
   if (form.translator !== null && form.translator.trim().length > 100) errors.translator = 'settings.errors.translator';
+  if (form.notices && form.notices.contact.trim().length > 100) errors.contact = 'settings.errors.translator';
   if (form.fund) {
     for (const key of Object.keys(FUND_SETTINGS) as FundSetting[]) {
       const text = form.fund[key].trim();
@@ -148,6 +162,11 @@ export async function saveSettings(form: SettingsForm): Promise<{ errorKey?: Mes
   for (const key of FLAG_SETTINGS) values[key] = form.flags[key];
   if (form.translator !== null) values.ig_translator = form.translator.trim();
   if (form.fund) for (const key of Object.keys(FUND_SETTINGS) as FundSetting[]) values[key] = Number(form.fund[key]);
+  if (form.notices) {
+    values.parent_notices_enabled = form.notices.enabled;
+    values.parent_notices_check_out = form.notices.checkOut;
+    values.parent_notice_contact = form.notices.contact.trim();
+  }
   const { error } = await supabase.rpc('save_settings', { p_values: values });
   if (error) return { errorKey: errorKeyOf(error.message) };
   const opensAt = parseTimeOfDay(form.opensAt);

@@ -7,8 +7,9 @@
     "node": "^22.18.0 || >=23.6.0"
   },
   "scripts": {
-    "test": "node smoke-test.mjs && node push-messages.test.mjs && node live-replay.mjs",
+    "test": "node smoke-test.mjs && node push-messages.test.mjs && node parent-notices.test.mjs && node live-replay.mjs",
     "test:push": "node push-messages.test.mjs",
+    "test:parents": "node parent-notices.test.mjs",
     "replay": "node live-replay.mjs"
   },
   "devDependencies": {

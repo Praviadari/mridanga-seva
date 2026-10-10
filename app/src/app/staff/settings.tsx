@@ -1,7 +1,8 @@
 // G10 Settings, the Guru only: the class settings the database uses, in plain words: the open
 // window, what "this week" means, when a student counts as Irregular or Inactive and how calls
 // are planned, how long someone is a new joiner; and the promotion criteria that Phase 2 will
-// read (shown as "not used yet"); the default translator credit of Ishtagoshti slokas; the class fund's approval and bill limits. Settings planned for later are listed at the end. Saved
+// read (shown as "not used yet"); the default translator credit of Ishtagoshti slokas; the class fund's approval and bill limits;
+// check-in / check-out emails to parents (0043). Settings planned for later are listed at the end. Saved
 // together, all or nothing; every change is in the audit log (G11). Data: src/data/settings.ts.
 
 import { Stack, useFocusEffect } from 'expo-router';
@@ -199,6 +200,30 @@ export default function SettingsScreen() {
               error={errors[key] ? t('settings.fundRangeHint', { max: FUND_SETTINGS[key].max }) : undefined}
             />
           ))}
+        </Section>
+      ) : null}
+
+      {/* Check-in / check-out emails to parents (0043, docs/DECISIONS.md #224-#231): shown once the migration has added the settings. */}
+      {form.notices ? (
+        <Section icon="guardian" title={t('settings.noticesTitle')} description={t('settings.noticesHint')}>
+          <Checkbox
+            label={t('settings.fields.parent_notices_enabled')}
+            checked={form.notices.enabled}
+            onChange={(enabled) => form.notices && setForm({ ...form, notices: { ...form.notices, enabled } })}
+          />
+          <Checkbox
+            label={t('settings.fields.parent_notices_check_out')}
+            checked={form.notices.checkOut}
+            onChange={(checkOut) => form.notices && setForm({ ...form, notices: { ...form.notices, checkOut } })}
+          />
+          <TextField
+            label={t('settings.fields.parent_notice_contact')}
+            hint={t('settings.contactHint')}
+            value={form.notices.contact}
+            onChangeText={(contact) => form.notices && setForm({ ...form, notices: { ...form.notices, contact } })}
+            maxLength={100}
+            error={errors.contact ? t(errors.contact) : undefined}
+          />
         </Section>
       ) : null}
 

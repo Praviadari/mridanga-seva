@@ -7,3 +7,8 @@ project_id = "mridanga-seva"
 
 [functions.notify-announcements]
 verify_jwt = false
+
+# Parent check-in / check-out emails (0043): called by the database job with the push secret, and
+# by mail apps' one-click unsubscribe (a signed link), neither with a login.
+[functions.notify-parents]
+verify_jwt = false

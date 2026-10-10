@@ -5,14 +5,16 @@
 // never see (docs/DATABASE.md "Who can see what"). Data: src/data/student-profile.ts.
 // Progress is read-only here; its button opens C9 Syllabus tick-off (staff/syllabus/[id]).
 // "All visits by month" opens S9 Attendance history for this student (staff/visits/[id]).
+// Under each guardian of a minor: whether they get check-in / check-out emails, with the switch (0043).
 
 import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { Fragment, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { DetailGrid } from '@/components/detail-grid';
+import { GuardianNoticeLine, useGuardianNotices } from '@/components/guardian-notices';
 import { HeldItemsPanel } from '@/components/held-items';
 import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
@@ -50,6 +52,9 @@ function StudentProfileScreenContent() {
   const [loaded, setLoaded] = useState<Loaded | 'not_found' | null | undefined>(undefined);
   const [marking, setMarking] = useState(false);
   const [markOutcome, setMarkOutcome] = useState<MarkOutcome | null>(null);
+  // Check-in emails to parents (0043): per guardian; nothing before the migration or for an adult.
+  const minor = loaded && typeof loaded === 'object' ? loaded.profile.minor : false;
+  const { notices, reload: reloadNotices } = useGuardianNotices(id, minor);
 
   const load = useCallback(async () => {
     const [profile, staff] = await Promise.all([fetchStudentProfile(id), fetchStaff()]);
@@ -162,11 +167,15 @@ function StudentProfileScreenContent() {
             <Notice tone="error">{t('profile.consentMissing')}</Notice>
           ) : null}
           {profile.guardians.map((g) => (
-            <AppText key={g.id}>
-              <AppText variant="label">{g.fullName}</AppText>
-              {[relationName(t, g.relation), g.phone, g.email].filter(Boolean).map((part) => ` · ${part}`).join('')}
-            </AppText>
+            <Fragment key={g.id}>
+              <AppText>
+                <AppText variant="label">{g.fullName}</AppText>
+                {[relationName(t, g.relation), g.phone, g.email].filter(Boolean).map((part) => ` · ${part}`).join('')}
+              </AppText>
+              <GuardianNoticeLine notice={notices?.get(g.id)} onChanged={reloadNotices} />
+            </Fragment>
           ))}
+          {notices === null ? <Notice tone="error">{t('parentNotices.loadFailed')}</Notice> : null}
           {profile.consents.map((c) => (
             <AppText key={c.id} tone={c.revokedAt ? 'muted' : 'default'}>
               {t('profile.consentLine', {

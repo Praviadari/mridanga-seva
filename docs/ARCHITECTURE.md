@@ -47,7 +47,7 @@ flowchart LR
 | Storage | Photos and PDFs on announcements, in the private bucket `announcement-files`; later student photos (only with consent). Phase 2: assessment files and students' recordings in `assessment-files` (50 MB a file, deleted 30 days after review) | Supabase Storage, rules in `supabase/migrations/0010_announcement_files.sql` and `0016_assessments.sql` |
 | Scheduled jobs | Move quiet students to *Irregular*, create follow-up calls, close check-ins left open (daily); send push notifications for new announcements (every minute) | `pg_cron`, defined in the migrations |
 | Push notifications | Tell Android phones about a new announcement; in Phase 2 also about assessments (given, reminded, reviewed, a recording sent), queued in `push_outbox` | Edge Function `supabase/functions/notify-announcements/` → Expo's push service → Firebase Cloud Messaging (OPERATIONS.md "Push notifications"). Since 0031 every push is a row per phone in `push_queue`, sent, retried or given up on its own ([DECISIONS.md #112-#115](DECISIONS.md)) |
-| Email | Sends sign-up confirmation and password-reset emails | Brevo free plan, plugged into Supabase as SMTP |
+| Email | Sends sign-up confirmation and password-reset emails; since 0043 check-in / check-out emails to a minor's parent (off until the Guru switches them on) | Brevo free plan, plugged into Supabase as SMTP; the parent notices go trigger on `visits` → `parent_notices` → Edge Function `supabase/functions/notify-parents/` → Brevo's API (OPERATIONS.md "Parent notices by email", [DECISIONS.md #224-#231](DECISIONS.md)) |
 | Videos | Lesson videos stay on YouTube; the app only stores links | YouTube |
 | Web hosting | Serves the web version that iPhone users add to their home screen | Cloudflare Pages, uploaded from `app/dist` (OPERATIONS.md) |
 | Public website | mridangaseva.com: what the seva is, classes, how to join, get the app, privacy notice, contact; English, Telugu, Hindi. Plain HTML, no JavaScript, no cookies (see "The public website" below) | `website/`, Cloudflare Pages project `mridangaseva-site` |
@@ -160,8 +160,9 @@ app/
 supabase/
   migrations/          The database, in number order (docs/DATABASE.md)
   functions/           Edge Functions: notify-announcements sends the push notifications
-                        (index.ts wires send.ts; messages.ts words them)
-  tests/               The database smoke test and the push message test
+                        (index.ts wires send.ts; messages.ts words them); notify-parents the
+                        check-in / check-out emails (send.ts, template.ts)
+  tests/               The database smoke test, the push message test and the parent-notice test
 ```
 
 Screens use only `components/` and `theme/` for their look, and `t('...')` for every word, so a
@@ -264,8 +265,8 @@ read or write the person is not allowed, whatever the app shows.
   ([DECISIONS.md #32](DECISIONS.md), [#187](DECISIONS.md)).
 - **The app holds only the public (anon / publishable) key.** It is safe to ship because RLS protects
   the data. The `service_role` key bypasses RLS and must never be in the app or the repository.
-  Only the Edge Function `notify-announcements` uses it, inside Supabase, which provides the key
-  to it by itself; the Firebase service-account key lives only in EAS ([DECISIONS.md #33](DECISIONS.md)).
+  Only the Edge Functions `notify-announcements` and `notify-parents` use it, inside Supabase, which provides the key
+  to them by itself; the Firebase service-account key lives only in EAS ([DECISIONS.md #33](DECISIONS.md)).
 - **The app refuses to start with the `service_role` key** in `app/.env` and shows a warning
   instead (`src/lib/supabase.ts`), because everything in `EXPO_PUBLIC_*` ends up in the public web version.
 - **Actions that change several things at once run as database functions** (`toggle_visit`,
