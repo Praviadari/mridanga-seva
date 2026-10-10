@@ -16,10 +16,13 @@
 // The profile is read again when the app comes back to the screen, when the login token is
 // refreshed, and when the database refuses a call as not allowed, so a person the Guru switched
 // off (or whose role changed) loses their screens and the QR scanner at once (docs/DECISIONS.md #99).
+// A login signed out without internet is ended on the server at the next online moment: at start, back on
+// screen, when the browser goes online, and when a sign-in or token refresh shows the server can be reached
+// (src/auth/pending-sign-out.ts, docs/DECISIONS.md #238).
 
 import type { Session } from '@supabase/supabase-js';
 import { createContext, use, useEffect, useRef, useState, type PropsWithChildren } from 'react';
-import { AppState } from 'react-native';
+import { AppState, Platform } from 'react-native';
 
 import { isNetworkError } from '@/data/errors';
 import { saveMyLanguage } from '@/data/my-profile';
@@ -27,10 +30,18 @@ import { applyProfileLanguage, currentLanguage, hasUnsavedChoice, markLanguageSa
 import { loadClassLocale } from '@/lib/class-locale';
 import { clearDeviceTraces } from '@/lib/device-traces';
 import { dropOtherOwnersDrafts } from '@/lib/form-drafts';
-import { setRefusedListener, storedLoginUserId, supabase, supabaseConfigProblem } from '@/lib/supabase';
+import {
+  setRefusedListener,
+  storedLoginUserId,
+  supabase,
+  supabaseAddress,
+  supabaseConfigProblem,
+  supabaseFetch,
+} from '@/lib/supabase';
 
 // Loaded at start for its effect: it reads an email link's error from the address (D6-12).
 import './email-link';
+import { finishPendingSignOuts } from './pending-sign-out';
 import { forgetSavedProfile, readSavedProfile, saveProfile } from './saved-profile';
 import { noteSignedOut } from './session-end';
 import type { Area, IgState, Profile } from './types';
@@ -66,6 +77,11 @@ type ProfileResult = { userId: string; profile: Profile | null; failed: boolean;
 /** At most one re-check of the profile in this time, however many calls are refused at once. */
 const RECHECK_GAP_MS = 10_000;
 
+/** Ends on the server the logins signed out on this device without internet (src/auth/pending-sign-out.ts). */
+function finishPending(): void {
+  void finishPendingSignOuts(supabaseAddress && { ...supabaseAddress, fetch: supabaseFetch });
+}
+
 /** Provides AuthState to everything inside it. Use once, around the whole app. */
 export function AuthProvider({ children }: PropsWithChildren) {
   const [session, setSession] = useState<Session | null>(null);
@@ -96,13 +112,19 @@ export function AuthProvider({ children }: PropsWithChildren) {
       lastRecheck.current = now;
       setRecheck((n) => n + 1);
     };
+    finishPending();
     const subscription = AppState.addEventListener('change', (state) => {
-      if (state === 'active') askRecheck();
+      if (state !== 'active') return;
+      askRecheck();
+      finishPending();
     });
     setRefusedListener(askRecheck);
+    // Phones have no such event; coming back on screen and the auth events below stand in for it.
+    if (Platform.OS === 'web') window.addEventListener('online', finishPending);
     return () => {
       subscription.remove();
       setRefusedListener(null);
+      if (Platform.OS === 'web') window.removeEventListener('online', finishPending);
     };
   }, []);
 
@@ -128,6 +150,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
       setOfflineUserId(event === 'INITIAL_SESSION' && !newSession ? storedLoginUserId() : null);
       // About hourly while the app is open: a good moment to see whether the role still holds.
       if (event === 'TOKEN_REFRESHED') setRecheck((n) => n + 1);
+      // The server answered just now: a good moment for logins signed out offline (not a client call, so safe here).
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') finishPending();
       setSession(newSession);
       setSessionLoaded(true);
     });

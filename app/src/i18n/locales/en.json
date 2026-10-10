@@ -2,7 +2,8 @@
   "app": {
     "name": "Mridanga Seva",
     "tagline": "Class records, lessons and attendance in one place",
-    "motto": "Saṅkalpa · Sādhana · Seva"
+    "motto": "Saṅkalpa · Sādhana · Seva",
+    "slowStart": "This is taking long. Check your internet connection, then try again."
   },
   "common": {
     "email": "Email",
