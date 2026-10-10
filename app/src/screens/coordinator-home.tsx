@@ -1,5 +1,5 @@
 // C1 Coordinator home, simple since 10-10-2026 (docs/DECISIONS.md #240): the saffron header with the
-// greeting, then only circles (components/staff-shortcuts.tsx): a ring of nine around the drum and
+// greeting, then only circles (components/staff-shortcuts.tsx): a ring of eight around the drum and
 // two rows of four under it. What used to be cards here lives behind a circle: the numbers on
 // Overview (CoordinatorOverview below, staff/overview.tsx), the new joiners on New joiners
 // (NewJoinersList below, staff/new-joiners.tsx), promotions on C22/C23. What waits for the

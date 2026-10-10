@@ -1,5 +1,5 @@
 // G1 Guru home, simple since 10-10-2026 (docs/DECISIONS.md #240): the saffron header with the
-// greeting, then only circles (components/staff-shortcuts.tsx): a ring of nine around the drum and
+// greeting, then only circles (components/staff-shortcuts.tsx): a ring of eight around the drum and
 // two rows of four under it. What used to be cards here lives behind a circle: the numbers, students
 // per level and per status on Overview (GuruOverview below, staff/overview.tsx), the overdue and
 // escalated follow-ups per coordinator on Follow-ups (GuruFollowUps below,

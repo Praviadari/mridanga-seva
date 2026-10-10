@@ -4,7 +4,8 @@
 // shows only the mantra (docs/DECISIONS.md #36); slokas with the temple's own translations live in
 // the Ishtagoshti tab (#57). The band itself, with its
 // gradient and the space for the notch, is components/saffron-band.tsx. The bell at the top right opens the
-// notifications inbox (A2, components/inbox-bell.tsx).
+// notifications inbox (A2, components/inbox-bell.tsx); beside it the person button opens My profile (A3,
+// components/profile-button.tsx; Praveen 10-10-2026, instead of a circle on the simple homes, #240).
 
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
@@ -13,6 +14,7 @@ import { spacing, useTheme } from '@/theme/use-theme';
 
 import { AppText } from './app-text';
 import { InboxBell } from './inbox-bell';
+import { ProfileButton } from './profile-button';
 import { MridangaMark } from './mridanga-mark';
 import { SaffronBand } from './saffron-band';
 
@@ -33,7 +35,7 @@ export function HomeHeader({ name, role }: HomeHeaderProps) {
     <SaffronBand>
       <View style={styles.row}>
         <View style={[styles.markCircle, { backgroundColor: colors.onHeader }]}>
-          <MridangaMark size={40} color={colors.headerTop} accent={colors.onHeader} />
+          <MridangaMark size={34} color={colors.headerTop} accent={colors.onHeader} />
         </View>
         <View style={styles.names}>
           {name ? (
@@ -41,7 +43,7 @@ export function HomeHeader({ name, role }: HomeHeaderProps) {
               <AppText variant="label" style={{ color: colors.onHeaderMuted }}>
                 {t('home.greetingNoName')}
               </AppText>
-              <AppText variant="title" style={{ color: colors.onHeader }} numberOfLines={2}>
+              <AppText variant="title" style={[styles.name, { color: colors.onHeader }]} numberOfLines={2}>
                 {name}
               </AppText>
             </>
@@ -51,7 +53,10 @@ export function HomeHeader({ name, role }: HomeHeaderProps) {
             </AppText>
           )}
         </View>
-        <InboxBell />
+        <View style={styles.buttons}>
+          <InboxBell />
+          <ProfileButton />
+        </View>
       </View>
 
       {role ? (
@@ -76,17 +81,26 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
+    gap: spacing.sm,
   },
   markCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
   },
   names: {
     flex: 1,
+  },
+  buttons: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+  },
+  // A little under the title size, so a usual name stays on one line beside the two buttons.
+  name: {
+    fontSize: 22,
+    lineHeight: 28,
   },
   mantra: {
     borderLeftWidth: 2,

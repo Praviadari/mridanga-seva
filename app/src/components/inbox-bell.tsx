@@ -57,9 +57,9 @@ export function InboxBell() {
 
 const styles = StyleSheet.create({
   bell: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',

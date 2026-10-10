@@ -4109,9 +4109,8 @@ their own sub modules".
 **Decision.** Every home shows the saffron greeting and then only circles (`components/module-ring.tsx`), each
 opening its own screen; the cards move behind circles and are reused there. Student: My QR, Announcements, My
 progress, Assessments, Practice, Attendance (S9, now with this week's visits on top), Events & polls, About you
-(only while unfinished), My profile. Coordinator and Guru: a ring of nine (Overview, Follow-up calls, Promotions,
-Here now, New joiners, Assessments, Events & polls, My reports or Running the class, My profile) and two rows of
-four under it (Syllabus and lessons, Groups, Practice, Ishtagoshti, Instruments, Duty roster, Material
+(only while unfinished). Coordinator and Guru: a ring of eight (Overview, Follow-up calls, Promotions, Here now,
+New joiners, Assessments, Events & polls, My reports or Running the class) and two rows of four under it (Syllabus and lessons, Groups, Practice, Ishtagoshti, Instruments, Duty roster, Material
 suggestions, Class fund). Mark attendance, Students, Calls and Announcements are bottom tabs, so not circles (the
 big Mark attendance button is gone); My QR and Announcements stay circles on S1 too. New screens:
 `staff/overview.tsx` (the old numbers, every tile opening its filtered list; the Guru's per level and per
@@ -4120,9 +4119,11 @@ status), `staff/new-joiners.tsx`, `staff/follow-ups-by-coordinator.tsx` (Guru), 
 3 new"): unread announcements, polls to vote, About you unfinished, calls due (coordinator: mine; Guru: overdue
 or escalated), promotions waiting (feedback asked / nominations to decide); 9+ above nine. Only notices stay on
 a home: the app update, could not load, no student record. The language switch, Sign out and the version line
-are on My profile (A3); the bell stays in the header.
+are on My profile (A3), opened by a person button beside the bell in the header (Praveen, 10 Oct 2026;
+components/profile-button.tsx), so My profile is not a circle. The header's drum mark, buttons and name are a
+little smaller so a usual name stays on one line.
 
-**Consequences.** The homes fit a 375 x 812 phone with little or no scroll (S1 none, C1/G1 about 50 px for the
+**Consequences.** The homes fit a 375 x 812 phone with little or no scroll (S1 none, C1/G1 about 47 px for the
 second row's labels). One more tap to reach a number. Large text keeps the two-column tile grid (#39), with the
 rows' modules after the ring's.
 

@@ -8,7 +8,8 @@
 // latest announcements on Announcements (S10). What waits for the student is a count on its circle
 // (announcements not opened yet, polls to vote, About you not finished). Only notices stay on the
 // home: "A new version is ready" on the Android app (components/update-notice.tsx), could not load,
-// and no student record. Language, Sign out and the version line are on My profile (A3).
+// and no student record. Language, Sign out and the version line are on My profile (A3), opened
+// by the person button beside the bell in the header.
 // Numbers: student_home() through src/data/home.ts; announcements: src/data/announcements.ts.
 // It loads again each time it comes back into view, so a count goes once the thing is done.
 
@@ -117,8 +118,6 @@ export default function StudentHomeScreen() {
           } satisfies Module,
         ]
       : []),
-    // A3, with the language switch, Sign out and the version line.
-    { key: 'profile', icon: 'profile', tone: 'green', label: t('myProfile.title'), onPress: () => router.push('/student/profile') },
   ];
 
   return (

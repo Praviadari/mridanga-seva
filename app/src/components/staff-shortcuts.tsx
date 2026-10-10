@@ -1,5 +1,5 @@
 // The circles of the coordinator home (C1) and the Guru home (G1), simple since 10-10-2026
-// (docs/DECISIONS.md #240, #241): nine on the ring around the drum (components/module-ring.tsx), the
+// (docs/DECISIONS.md #240, #241): eight on the ring around the drum (components/module-ring.tsx), the
 // ones used most and the ones that can wait for the person, then two rows of four under it. Mark
 // attendance (C5), Students (C7), Calls (C10) and Announcements (C15) are the bottom tabs, so they
 // are not circles. One component, so both homes offer the same screens in the same order.
@@ -9,7 +9,8 @@
 // coordinator, staff/follow-ups-by-coordinator.tsx), Promotions with the count waiting (C22/C23,
 // G7), Who is here now (C6), New joiners (staff/new-joiners.tsx), Assessments (C12-C14, G6), Events &
 // polls (C16, C17), My reports (C21) for a coordinator or Running the class (G2, G3, G8-G13,
-// staff/running-the-class.tsx) for the Guru, and My profile (A3: language, Sign out, version).
+// staff/running-the-class.tsx) for the Guru. My profile (A3: language, Sign out, version) is the
+// person button beside the bell in the header.
 // Rows: Syllabus and lessons (G4, G5), Groups, Practice tools (S5), Ishtagoshti (I1; on a phone the
 // Slokas tab does not fit the staff bottom bar), Instruments (C19), Duty roster (C20), Material
 // suggestions (C18) and the Class fund (#80).
@@ -63,7 +64,6 @@ export function StaffModules({ guru, callsDue, promotionsWaiting }: StaffModules
     guru
       ? { key: 'admin', icon: 'filter', tone: 'blue', label: t('admin.title'), onPress: () => router.push('/staff/running-the-class') }
       : { key: 'reports', icon: 'report', tone: 'blue', label: t('reports.titleCoordinator'), onPress: () => router.push('/staff/reports') },
-    { key: 'profile', icon: 'profile', tone: 'green', label: t('myProfile.title'), onPress: () => router.push('/staff/profile') },
   ];
   const more: Module[] = [
     { key: 'syllabus', icon: 'library', tone: 'indigo', label: t('syllabusEditor.module'), onPress: () => router.push('/staff/levels') },
