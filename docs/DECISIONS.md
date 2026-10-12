@@ -4480,3 +4480,81 @@ pincode message. (6) Editing a field clears its message; phone fields take at mo
 
 **Not here.** The desk's centre picker and a duplicate-person check need a migration (the `form-rules-sql` worker,
 0047); sign-up.tsx belongs to the `forms-fix` worker; the error summary, leave guard and autofill fixes are audit B4.
+## 271. One name rule, in SQL, for every person's name — 12 Oct 2026
+
+**Context.** Audit phase 1 (12-10-2026), P1-08: the sign-up only trimmed the name (0036), the other
+paths refused control and invisible characters only, so "Ravi 2", "రవి ౨" or "राम १" were stored; Praveen
+found names accepting digits in his own test. The client rule is being rebuilt by the forms-fix branch.
+
+**Decision.** `clean_person_name(name, max)` (0047) is the one rule: NFC; ‘ ’ ʼ become `'`; runs of spaces
+(also no-break spaces) become one; ends trimmed; then only the characters of `person_name_chars()` —
+space `. ' -`, Latin letters with IAST and combining accents, Cyrillic, the Indian scripts of
+U+0900-U+0DFF with their vowel signs and viramas but **without** their digits, fraction and number signs,
+dandas and abbreviation signs, and ZWJ/ZWNJ only inside a word; at least one letter. Errors stay the
+known codes `name_required`, `name_too_long`, `name_invalid` (Ishtagoshti's parent: `parent_name_invalid`).
+It runs at sign-up, on a login's name change (with the staff-name clash `name_taken`, now also at sign-up),
+and by trigger on `students`, `guardians`, the emergency contact and the Ishtagoshti parent whenever an
+app user writes a name (inside the app's functions too). Limits unchanged: 80 for a login and the
+emergency contact, 100 for a student record and a parent. The exact code-point list is in
+docs/DATABASE.md "Form rules (0047)"; the app's mirror (lib, forms-fix) uses the same list.
+
+**Why.** An explicit list, not "any letter": PostgreSQL's regular expressions have no Unicode letter class
+that behaves the same on Supabase and in the PGlite tests, and the app and the server must accept exactly
+the same names. The scripts listed cover the class's students (Telugu, Hindi, English with IAST, other
+Indian languages, Russian devotees); another script is one line in a later migration. A trigger rather
+than edits to each function catches every path, including direct API writes and 0046's Accept.
+
+**Consequences.** Names already stored are not touched or re-checked; one is checked again only when
+it is edited. A sign-up with a refused name (only possible past the app's own check) or with the Guru's
+or a coordinator's name fails with Supabase's generic "Database error saving new user"; the app shows
+its general error, so the sign-up form's hint should say "add a surname or initial" (lead to align
+with forms-fix). The dashboard is not checked.
+
+## 272. A minor needs their own guardian with a phone, and that guardian's consent, at every check — 12 Oct 2026
+
+**Context.** Audit P1-01 (High): `check_minor_consent` (0003, 0039) asked only for a current data consent.
+A coordinator writing tables directly could add an adult, add a data consent naming no guardian (or
+another child's), then change the date of birth to a minor's: nothing refused it (#16, #100).
+
+**Decision.** One function `minor_rule_gap` decides, used by the commit-time checks on students (insert,
+`dob`, now also `withdrawn_at`) and on consents and guardians (0025, 0028): a minor on record and not
+withdrawn needs a current data consent (`minor_needs_consent`), a guardian with a phone
+(`minor_needs_guardian`) and a current data consent given through one of their own guardians
+(`minor_needs_consent`). A consent naming another student's guardian is refused at once, for everyone
+(`consent_guardian_mismatch`).
+
+**Why.** The same test everywhere closes the gap between the insert check and the 0028 recheck;
+`register_student` already writes exactly this shape, so the app is unaffected.
+
+**Consequences.** A minor stored before 0047 whose consent names no guardian keeps working until their
+record, consent or guardian is changed; the TEST check query of 12-10-2026 counts such records (LIVE has
+no class data).
+
+## 273. A student sets their own gender once; staff change it — 12 Oct 2026
+
+**Context.** Audit P1-12: About you let a student overwrite the gender on their own student record at any
+time, though #164 said "only if none", and the gender drives mentor matching (#165).
+
+**Decision.** `guard_student_gender` keeps a gender already on the record when the student's own login
+writes it: no change, no clearing, no error; About you shows the kept value. An empty gender is filled
+as before; coordinators and the Guru change it in `save_student_details`.
+
+**Why.** Silent keeping needs no new error message in three languages before launch; the screen shows
+the kept value after the save. The app may disable the field once set (a JS change, not 0047).
+
+## 274. The desk's default centre is the coordinator's; the desk can ask for possible duplicates — 12 Oct 2026
+
+**Context.** Audit P1-05 and P1-06: a student typed in at the desk always got centre 1 (the column
+default), and nothing warned of a person already on record or already signed up.
+
+**Decision.** `students.home_centre_id` defaults to `default_home_centre()`: the signed-in Guru's or
+coordinator's own active centre, else the lowest active centre, else 1; an explicit centre is kept.
+`possible_duplicates(full_name, dob, phone)`, staff only, lists up to 10 student records (every centre)
+and waiting sign-ups (the coordinator's centre; the Guru all) with the same cleaned name and date of
+birth, or the same phone's last 10 digits; the app shows "Possible duplicate" before saving (B2, a later
+JS change). The sign-up's own centre fallback is left as it is: the app blocks a sign-up whose centre
+list failed (forms-fix), and refusing in the database would fail the sign-up with a generic error.
+
+**Why.** A column default covers the desk form, the import and the API without changing
+`register_student`'s signature, which the desk form calls. Name and date of birth together (or a
+phone) keep false alarms rare: siblings share a parent's phone, not their own.

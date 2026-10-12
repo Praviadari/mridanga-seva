@@ -70,8 +70,9 @@ insert into students (full_name, dob, email, area, pincode, level_id, status, jo
 update students set created_at = joined_on::timestamp at time zone 'Asia/Kolkata' where created_at > joined_on;
 
 -- ---------------------------------------------------------------- guardians + written consent for minors
-insert into guardians (student_id, full_name, email, relation)
-select id, 'Parent of ' || full_name, null, 'mother'
+-- A minor's guardian needs a phone (0028, 0047): a fictional one, the same for all.
+insert into guardians (student_id, full_name, phone, email, relation)
+select id, 'Parent of ' || full_name, '+91 90000 00000', null, 'mother'
 from students where is_minor(students);
 
 insert into consents (student_id, guardian_id, scope, method, id_type_checked)

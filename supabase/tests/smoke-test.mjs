@@ -51,6 +51,7 @@
 
 import { PGlite } from '@electric-sql/pglite';
 import { pgcrypto } from '@electric-sql/pglite/contrib/pgcrypto';
+import { randomUUID } from 'node:crypto';
 import { readdirSync, readFileSync } from 'node:fs';
 
 import { runPush } from '../functions/notify-announcements/send.ts';
@@ -124,7 +125,7 @@ process.on('uncaughtException', (error) => {
 // D14-10: every check is counted, and the run fails when fewer (or more) checks ran than expected,
 // so a block skipped by a renamed migration or a commented-out section cannot pass unseen.
 // Adding or removing checks? Run the suite and set this to the new total it prints.
-const EXPECTED_CHECKS = 1490; // 0046 registration accept: +36;0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
+const EXPECTED_CHECKS = 1553; // 0047 form rules: +63; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
 let failures = 0;
 let passes = 0;
 
@@ -3255,7 +3256,8 @@ const mayAnswer = new Set(['my_role', 'today_ist', 'my_time_zone', 'centre_tz', 
   'gen_random_uuid', // pgcrypto's, in public only here (Supabase keeps it in extensions)
   'practice_weeks', // empty weeks with 0 minutes for a null student
   'scan_qr', // {action: unknown} for a null code
-  'my_about', 'sign_up_choices']); // 0036: the caller's own About you; the public sign-up lists (#163)
+  'my_about', 'sign_up_choices', // 0036: the caller's own About you; the public sign-up lists (#163)
+  'person_name_chars', 'default_home_centre']); // 0047: the name rule's character list (the app mirrors it, #271); a new record's default centre id (#274)
 const answered = [];
 for (const fn of fns) {
   if (skip.has(fn.name)) continue;
@@ -3315,7 +3317,7 @@ check('... and "+91 98765 43210" is kept', goodPhone?.phone === '+91 98765 43210
 await asOwner(`update auth.users set email = 'arjun.new@example.com' where id = '${arjun}'`);
 check('a changed sign-in email reaches the profile (FS1a-19)',
   (await asOwner(`select email from profiles where id = '${arjun}'`))[0].email === 'arjun.new@example.com');
-await register(coordinator, { p_full_name: 'Sec2 Sync Target', p_dob: '1993-03-03', p_email: 'sec2.target@example.com' });
+await register(coordinator, { p_full_name: 'Sec Two Sync Target', p_dob: '1993-03-03', p_email: 'sec2.target@example.com' });
 const syncLogin = await signUp('sec2.typo@example.com', true);
 await asOwner(`update auth.users set email = 'sec2.target@example.com' where id = '${syncLogin}'`);
 check('... and a waiting login is linked to the record with its new email',
@@ -3364,12 +3366,12 @@ for (const [who, id] of [['a pending stranger', stranger], ['the door tablet', k
 }
 await db.exec(`select set_config('app.via_call_log', 'on', false); update students set status = 'left' where profile_id = '${late}';
   select set_config('app.via_call_log', '', false);`); // as log_call does
-const forLeft = await post(coordinator, { title: 'Sec2 for all', body: 'x', audience: 'all' });
+const forLeft = await post(coordinator, { title: 'Sec Two for all', body: 'x', audience: 'all' });
 const leftSees = (await asApp('authenticated', late, 'select id from announcements where id = $1', [forLeft.id])).length;
 const [{ n: leftAddressed }] = await asOwner(`select count(*)::int as n from announcement_audience where profile_id = '${late}' and announcement_id = ${forLeft.id}`);
 check('a Left student keeps announcements (Praveen, 6 Oct 2026)', leftSees === 1 && leftAddressed === 1, `reads ${leftSees}, addressed ${leftAddressed}`);
 await asOwner(`update students set status = 'active' where profile_id = '${late}'`);
-const relinked = await register(coordinator, { p_full_name: 'Sec2 Moved', p_dob: '1992-02-02', p_email: 'sec2.moved@example.com' });
+const relinked = await register(coordinator, { p_full_name: 'Sec Two Moved', p_dob: '1992-02-02', p_email: 'sec2.moved@example.com' });
 const relinkedLogin = await signUp('sec2.moved@example.com', true);
 await registerToken(relinkedLogin, 'ExponentPushToken[sec2moved]');
 await asOwner(`update students set profile_id = null where id = '${relinked.id}'`); // the dashboard
@@ -3395,18 +3397,18 @@ check('a material file deleted while its material lists it cannot be uploaded ag
   && await uploadMaterial(guru, allLevels).then(() => false, () => true));
 
 // D14-02: consent edges not covered by 0025 (dob edits across the 18-year line, guardian phone).
-const edge = await register(coordinator, { p_full_name: 'Sec2 Edge Adult', p_dob: '1990-02-02' });
+const edge = await register(coordinator, { p_full_name: 'Sec Two Edge Adult', p_dob: '1990-02-02' });
 await refusesWith('0028 consent edges: an adult edited to one day short of 18 is refused', 'minor_needs_consent', () =>
   asApp('authenticated', coordinator, 'update students set dob = $2 where id = $1', [edge.id, almost18]));
 const [edgeDob] = await asApp('authenticated', coordinator, 'update students set dob = $2 where id = $1 returning dob::text as d', [edge.id, eighteen]);
 check('... edited to exactly 18 today is kept', edgeDob?.d === eighteen, edgeDob?.d);
 await refusesWith('a 17-year-old added straight to the table without consent is refused at commit', 'minor_needs_consent', () =>
-  asApp('authenticated', guru, `insert into students (full_name, dob) values ('Sec2 Seventeen', $1)`, [almost18]));
+  asApp('authenticated', guru, `insert into students (full_name, dob) values ('Sec Two Seventeen', $1)`, [almost18]));
 await refusesWith('a minor with a guardian name but a blank phone is refused', 'minor_needs_guardian', () =>
-  register(coordinator, { p_full_name: 'Sec2 Child', p_dob: childDob, p_guardian_name: 'Parent', p_guardian_phone: '   ',
+  register(coordinator, { p_full_name: 'Sec Two Child', p_dob: childDob, p_guardian_name: 'Parent', p_guardian_phone: '   ',
     p_guardian_relation: 'father', p_id_type_checked: 'aadhaar', p_written_consent: true }));
 await refusesWith('... and one with a phone but no guardian name', 'minor_needs_guardian', () =>
-  register(coordinator, { p_full_name: 'Sec2 Child', p_dob: childDob, p_guardian_name: ' ', p_guardian_phone: '9000012345',
+  register(coordinator, { p_full_name: 'Sec Two Child', p_dob: childDob, p_guardian_name: ' ', p_guardian_phone: '9000012345',
     p_guardian_relation: 'father', p_id_type_checked: 'aadhaar', p_written_consent: true }));
 await refusesWith('a minor\'s only guardian phone cannot be cleared later (checked at commit)', 'minor_needs_guardian', () =>
   asApp('authenticated', guru, 'update guardians set phone = null where student_id = $1', [child.id]));
@@ -3510,11 +3512,11 @@ await asApp('authenticated', guru, `select save_settings('{"irregular_days": 14,
 
 // D1b-04 / D12a-04: no INSERT straight into Paused / Left; paused_until only through a call.
 await refusesWith('D1b-04: a coordinator cannot insert a student as Paused', 'status_on_insert', () =>
-  asApp('authenticated', coordinator, `insert into students (full_name, dob, status, paused_until) values ('R10 Side Door', '1990-01-01', 'paused', today_ist() + 400)`));
+  asApp('authenticated', coordinator, `insert into students (full_name, dob, status, paused_until) values ('Round Ten Side Door', '1990-01-01', 'paused', today_ist() + 400)`));
 await refusesWith('D12a-04: ... nor as Left', 'status_on_insert', () =>
-  asApp('authenticated', coordinator, `insert into students (full_name, dob, status) values ('R10 Side Door', '1990-01-01', 'left')`));
+  asApp('authenticated', coordinator, `insert into students (full_name, dob, status) values ('Round Ten Side Door', '1990-01-01', 'left')`));
 const [r10New] = await asApp('authenticated', coordinator,
-  `insert into students (full_name, dob, paused_until) values ('R10 New Pause', '1990-01-01', today_ist() + 400) returning id, paused_until`);
+  `insert into students (full_name, dob, paused_until) values ('Round Ten New Pause', '1990-01-01', today_ist() + 400) returning id, paused_until`);
 check('D1b-04: a pause date on a new record is dropped', r10New.paused_until === null);
 await refusesWith('D1b-04: a pause cannot be moved by a plain edit', 'student_field_locked', () =>
   asApp('authenticated', coordinator, `update students set paused_until = today_ist() + 400 where id = $1`, [divya.id]));
@@ -4140,6 +4142,8 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
     'guardian_notice_status(uuid)', 'set_guardian_notices(uuid,boolean,text)', 'reissue_qr_code(uuid)',
     // 0046: Accept on Register a student (staff only inside)
     'accept_sign_up(uuid)',
+    // 0047: the name rule (runs as the person saving), the desk's default centre, duplicates (staff only inside)
+    'clean_person_name(text,integer)', 'person_name_chars()', 'default_home_centre()', 'possible_duplicates(text,date,text)',
   ];
   const runnableBy = async (role) => (await asOwner(`select p.oid::regprocedure::text as f from pg_proc p
     where p.pronamespace = 'public'::regnamespace
@@ -4560,7 +4564,7 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   check('FS1a-18: a roll number the owner gives (import, restore) is kept, and the next one follows it', given.roll_no === 'MS-1999-0042'
     && next.roll_no === 'MS-1999-0043', `${given.roll_no} ${next.roll_no}`);
   const [byApp] = await asApp('authenticated', coordinator, `insert into students (full_name, dob, joined_on, roll_no)
-    values ('App 37', '1990-01-01', '1999-08-01', 'MS-1999-0500') returning id, roll_no`);
+    values ('App Thirtyseven', '1990-01-01', '1999-08-01', 'MS-1999-0500') returning id, roll_no`);
   check('FS1a-18: ... an app user\'s roll number is still made by the database', byApp.roll_no === 'MS-1999-0044', byApp.roll_no);
   await asOwner(`insert into roll_counters (year, last) values (1998, 9999)`);
   const [big] = await asOwner(`insert into students (full_name, dob, joined_on) values ('Import 37 C', '1990-01-01', '1998-03-01') returning id, roll_no`);
@@ -4719,10 +4723,10 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
 
   // D1a-15: a minor's record never holds a parent's email.
   const kid = (email, name) => asApp('authenticated', coordinator, `select register_student(p_full_name => $1, p_dob => (current_date - interval '10 years')::date,
-    p_email => $2, p_guardian_name => 'Parent 38', p_guardian_phone => '9876543210', p_guardian_email => 'parent.38@example.com',
+    p_email => $2, p_guardian_name => 'Parent Thirtyeight', p_guardian_phone => '9876543210', p_guardian_email => 'parent.38@example.com',
     p_guardian_relation => 'mother', p_id_type_checked => 'school_id', p_written_consent => true) as r`, [name, email]);
-  await refusesWith('D1a-15: a child registered with the parent\'s own email is refused', 'guardian_email_on_minor', () => kid('parent.38@example.com', 'Child A 38'));
-  const [{ r: childB }] = await kid('child.b.38@example.com', 'Child B 38');
+  await refusesWith('D1a-15: a child registered with the parent\'s own email is refused', 'guardian_email_on_minor', () => kid('parent.38@example.com', 'Child A Thirtyeight'));
+  const [{ r: childB }] = await kid('child.b.38@example.com', 'Child B Thirtyeight');
   check('D1a-15: (control) a child with their own email is registered', !!childB.id);
   await refusesWith('D1a-15: a sibling given the parent\'s email (a guardian elsewhere) is refused', 'guardian_email_on_minor', () =>
     asApp('authenticated', coordinator, `update students set email = 'PARENT.38@example.com' where id = $1`, [childB.id]));
@@ -4735,7 +4739,7 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   // D4-17: the refusal for a minor without consent names the roll number, never the child's name.
   let detail39 = null;
   try {
-    await asApp('authenticated', coordinator, `insert into students (full_name, dob) values ('Secret Child 39', current_date - interval '9 years')`);
+    await asApp('authenticated', coordinator, `insert into students (full_name, dob) values ('Secret Child Thirtynine', current_date - interval '9 years')`);
   } catch (error) {
     detail39 = `${error.message} | ${error.detail ?? ''}`;
   }
@@ -4903,10 +4907,10 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
 // ---------------------------------------------------------------- 0043 parent notices (DECISIONS #224-#231)
 {
   const reg43 = async (name, years, guardianEmail) => (await asApp('authenticated', coordinator, `select register_student(p_full_name => $1,
-    p_dob => (current_date - ($2 || ' years')::interval)::date, p_guardian_name => 'Parent 43', p_guardian_phone => '9876543210',
+    p_dob => (current_date - ($2 || ' years')::interval)::date, p_guardian_name => 'Parent Fortythree', p_guardian_phone => '9876543210',
     p_guardian_email => $3, p_guardian_relation => 'mother', p_id_type_checked => 'school_id', p_written_consent => true) as r`,
     [name, String(years), guardianEmail]))[0].r;
-  const kid43 = await reg43('Arjun Notice 43', 10, 'parent.43@example.com');
+  const kid43 = await reg43('Arjun Notice Fortythree', 10, 'parent.43@example.com');
   const [{ id: g43, qr_token: qr43 }] = await asOwner(`select g.id, s.qr_token from guardians g join students s on s.id = g.student_id
     where s.id = '${kid43.id}'`);
   const scan43 = async () => (await asApp('authenticated', coordinator, 'select scan_qr($1) as r', [qr43]))[0].r.action;
@@ -4967,7 +4971,7 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   check('0043: a visit closed by the job (nobody checked out) queues no_checkout', kinds(await rows43(kid43.id)) === 'in,out,in,no_checkout');
 
   // Adults: nothing, even with a guardian's email on record.
-  const [{ id: adult43 }] = await asOwner(`insert into students (full_name, dob) values ('Adult Notice 43', '1990-01-01') returning id`);
+  const [{ id: adult43 }] = await asOwner(`insert into students (full_name, dob) values ('Adult Notice Fortythree', '1990-01-01') returning id`);
   await asOwner(`insert into guardians (student_id, full_name, phone, email) values ('${adult43}', 'Mum 43', '9876543213', 'mum.43@example.com')`);
   check('0043: an adult student\'s check-in queues nothing', (await mark43(adult43, 'in')) === 'in' && (await rows43(adult43)).length === 0);
 
@@ -5028,7 +5032,7 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   check('0043: a real run sends one email per waiting row and records it', real.sent === 1 && (await waiting()) === 0
     && (await rows43(kid43.id)).at(-1).outcome === 'sent', JSON.stringify(real));
   check('0043: ... to the guardian, in their language, with the name, centre, time and contact',
-    mail.to === 'parent.43@example.com' && mail.text.includes('Arjun Notice 43') && mail.text.includes('చెక్-ఇన్')
+    mail.to === 'parent.43@example.com' && mail.text.includes('Arjun Notice Fortythree') && mail.text.includes('చెక్-ఇన్')
     && /\d\d:\d\d/.test(mail.text) && mail.text.includes('98480 00000'), mail.subject);
   check('0043: ... and the next run sends nothing again', (await run43(fakeMail)).claimed === 0 && sent43.length === 1);
   check('0043: C8 shows when the last notice went', !!(await asApp('authenticated', coordinator,
@@ -5049,7 +5053,7 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   await asApp('authenticated', coordinator, 'select set_guardian_notices($1, true)', [g43]);
   check('0043: (control) switched on again', (await status43()).filter((r) => r.block === null).length === 2);
   // A parent with this address for another child too: one-click stops the address for both.
-  const sib43 = await reg43('Sister Notice 43', 8, 'parent.43@example.com');
+  const sib43 = await reg43('Sister Notice Fortythree', 8, 'parent.43@example.com');
   // One-click unsubscribe (the function checks the link's signature, then calls this).
   const [{ r: stopped43 }] = await asApp('service_role', null, 'select stop_parent_notices($1) as r', [g43]);
   check('0043: the email\'s one-click unsubscribe stops the guardian', stopped43 === true
@@ -5093,8 +5097,8 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
 
 // ---------------------------------------------------------------- 0044 check-out emails only (DECISIONS #246-#247)
 {
-  const kid = (await asApp('authenticated', coordinator, `select register_student(p_full_name => 'Mira Notice 44',
-    p_dob => (current_date - interval '9 years')::date, p_guardian_name => 'Parent 44', p_guardian_phone => '9876543214',
+  const kid = (await asApp('authenticated', coordinator, `select register_student(p_full_name => 'Mira Notice Fortyfour',
+    p_dob => (current_date - interval '9 years')::date, p_guardian_name => 'Parent Fortyfour', p_guardian_phone => '9876543214',
     p_guardian_email => 'parent.44@example.com', p_guardian_relation => 'mother', p_id_type_checked => 'school_id',
     p_written_consent => true) as r`))[0].r;
   const mark = async (action) => (await asApp('authenticated', coordinator, 'select mark_visit($1, $2) as r', [kid.id, action]))[0].r.action;
@@ -5320,6 +5324,172 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   check('0046: ... and it links a stuck hand-set student login to the record with its email', (await linkOf('navy6.accept@example.com')) === navy6);
   check('0046: ... no Guru or coordinator became a student', (await asOwner(`select count(*)::int as n from profiles
     where role in ('guru', 'coordinator')`))[0].n === coordinatorsBefore && (await roleOf(coordinator)) === 'coordinator');
+}
+
+// ---------------------------------------------------------------- 0047 form rules in SQL (DECISIONS #271-#274)
+{
+  const adultDob47 = `${year - 30}-03-03`;
+  const minorDob47 = `${year - 10}-03-03`;
+
+  // P1-01: the audit's REST repro, as a coordinator writing tables directly (no register_student).
+  const [rest] = await asApp('authenticated', coordinator,
+    `insert into students (full_name, dob) values ('Rest Repro Adult', $1) returning id, roll_no`, [adultDob47]);
+  await asApp('authenticated', coordinator,
+    `insert into consents (student_id, scope, method, signed_form) values ($1, 'data', 'written', true)`, [rest.id]);
+  await refusesWith('0047 P1-01: an adult with a guardian-less consent made a minor by a dob update is refused (the REST repro)',
+    'minor_needs_guardian', () => asApp('authenticated', coordinator, 'update students set dob = $2 where id = $1', [rest.id, minorDob47]));
+  const [{ g: otherGuardian }] = await asOwner(`select g.id as g from guardians g where g.student_id = '${child.id}'`);
+  await refusesWith('0047 P1-01: a consent naming another child\'s guardian is refused', 'consent_guardian_mismatch', () =>
+    asApp('authenticated', coordinator, `insert into consents (student_id, guardian_id, scope, method, signed_form)
+      values ($1, $2, 'data', 'written', true)`, [rest.id, otherGuardian]));
+  await asApp('authenticated', coordinator,
+    `insert into guardians (student_id, full_name, relation) values ($1, 'Phoneless Parent', 'mother')`, [rest.id]);
+  await refusesWith('0047 P1-01: ... a guardian without a phone is not enough', 'minor_needs_guardian', () =>
+    asApp('authenticated', coordinator, 'update students set dob = $2 where id = $1', [rest.id, minorDob47]));
+  const restParent = randomUUID(); // a coordinator may add a guardian but not read one back (0034)
+  await asApp('authenticated', coordinator, `insert into guardians (id, student_id, full_name, phone, relation)
+    values ($2, $1, 'Rest Parent', '+91 98765 47047', 'father')`, [rest.id, restParent]);
+  await refusesWith('0047 P1-01: ... nor a guardian with a phone while the consent names no guardian', 'minor_needs_consent', () =>
+    asApp('authenticated', coordinator, 'update students set dob = $2 where id = $1', [rest.id, minorDob47]));
+  await asApp('authenticated', coordinator, `insert into consents (student_id, guardian_id, scope, method, id_type_checked, signed_form)
+    values ($1, $2, 'data', 'written', 'aadhaar', true)`, [rest.id, restParent]);
+  await asApp('authenticated', coordinator, 'update students set dob = $2 where id = $1', [rest.id, minorDob47]);
+  check('0047 P1-01: with its own guardian (phone) and that guardian\'s consent, the record may become a minor\'s',
+    (await asOwner(`select dob::text as d from students where id = '${rest.id}'`))[0].d === minorDob47);
+  await refusesWith('0047 P1-01: a minor added straight into the table with nothing is still refused at commit', 'minor_needs_consent', () =>
+    asApp('authenticated', coordinator, `insert into students (full_name, dob) values ('Bare Minor', $1)`, [minorDob47]));
+  await db.exec(`delete from consents where student_id = '${rest.id}'; delete from students where id = '${rest.id}'`);
+
+  // P1-08: one name rule (#271) on every path an app user writes a name through.
+  const reg47 = (name, extra = {}) => register(coordinator, { p_full_name: name, p_dob: adultDob47, ...extra });
+  const nameOf = async (id) => (await asOwner(`select full_name from students where id = '${id}'`))[0].full_name;
+  for (const [label, name] of [['ASCII', 'Ravi Kumar 2'], ['Telugu', 'రవి ౨'], ['Devanagari', 'राम १'],
+    ['Telugu fraction', 'రవి౸'], ['Tamil', 'ராம ௧'], ['full-width', 'Ravi １']]) {
+    await refusesWith(`0047 P1-08: a name with ${label} digits is refused (register_student)`, 'name_invalid', () => reg47(name));
+  }
+  for (const [label, name] of [['an emoji', 'Ravi 🙏'], ['@', 'ravi@home'], ['a zero-width space', 'Ravi​Kumar'],
+    ['a line break', 'Ravi\nKumar'], ['a danda', 'राम।'], ['only dots', '. .'], ['a joiner first', '‌Ravi'], ['a joiner before a space', 'శ్రీ‌ నివాస్']]) {
+    await refusesWith(`0047 P1-08: a name with ${label} is refused`, 'name_invalid', () => reg47(name));
+  }
+  const accepted = [
+    ['Telugu with virama and ZWNJ', 'శ్రీ‌నివాస్ రావు', 'శ్రీ‌నివాస్ రావు'],
+    ['Telugu with vowel signs', 'లక్ష్మీ ప్రసన్న', 'లక్ష్మీ ప్రసన్న'],
+    ['Devanagari with matras and nukta', 'राधा कृष्ण ज़ैदी', 'राधा कृष्ण ज़ैदी'],
+    ['Devanagari with ZWJ', 'क्‍ष', 'क्‍ष'],
+    ['IAST', 'Kṛṣṇa Dāsa', 'Kṛṣṇa Dāsa'],
+    ['dot, apostrophe, hyphen; spaces cleaned', '  D.  O’Brien-Rao  ', "D. O'Brien-Rao"],
+    ['decomposed accents (stored NFC)', 'José Niño', 'José Niño'],
+    ['Cyrillic', 'Гопи Дас', 'Гопи Дас'],
+  ];
+  for (const [label, name, stored] of accepted) {
+    let got = null;
+    try { got = await nameOf((await reg47(name)).id); } catch (e) { got = `refused: ${e.message}`; }
+    check(`0047 P1-08: ${label} is accepted and stored as expected`, got === stored, JSON.stringify(got));
+  }
+  await refusesWith('0047 P1-08: a minor\'s guardian name with digits is refused', 'name_invalid', () =>
+    register(coordinator, { p_full_name: 'Guarded Child', p_dob: minorDob47, p_guardian_name: 'Parent 2',
+      p_guardian_phone: '9876547047', p_guardian_relation: 'mother', p_id_type_checked: 'aadhaar', p_written_consent: true }));
+  await refusesWith('0047 P1-08: a name over 100 characters on a student record is name_too_long', 'name_too_long', () => reg47('A'.repeat(101)));
+  await refusesWith('0047 P1-08: a coordinator renaming a record directly gets the same rule', 'name_invalid', () =>
+    asApp('authenticated', coordinator, `update students set full_name = 'Arjun 3' where id = $1`, [adult.id]));
+  const imported = await asApp('authenticated', guru, 'select import_students($1) as r', [JSON.stringify([
+    { line: 2, full_name: 'Import Seven 7', dob: '1990-01-01' },
+    { line: 3, full_name: '  సాయి   కిరణ్ ', dob: '1991-01-01' },
+    { line: 4, full_name: 'Kiran Rao', dob: '1990-01-01' },
+    { line: 5, full_name: 'KIRAN  rao', dob: '1990-01-01' }])]);
+  const byLine47 = new Map(imported[0].r.map((x) => [x.line, x]));
+  check('0047 P1-08: the import refuses a name with digits (row error name_invalid)', byLine47.get(2).error === 'name_invalid', JSON.stringify(byLine47.get(2)));
+  check('0047 P1-08: ... and saves a Telugu name, cleaned', byLine47.get(3).roll_no && (await nameOf(byLine47.get(3).id)) === 'సాయి కిరణ్');
+  check('0047 P1-08: ... and finds the same name and dob after cleaning (duplicate_student)', byLine47.get(5).error === 'duplicate_student', JSON.stringify(byLine47.get(5)));
+
+  const signUpWith47 = async (email, meta) => (await db.query(
+    `insert into auth.users (email, email_confirmed_at, raw_user_meta_data) values ($1, now(), $2) returning id`,
+    [email, JSON.stringify(meta)])).rows[0].id;
+  await refusesWith('0047 P1-08: a sign-up whose name has digits is refused (it was only trimmed)', 'name_invalid', () =>
+    signUpWith47('digits.47@example.com', { full_name: 'Arjun 7' }));
+  await refusesWith('0047 P1-08: ... and one with Devanagari digits', 'name_invalid', () =>
+    signUpWith47('hidigits.47@example.com', { full_name: 'अर्जुन ७' }));
+  await refusesWith('0047 P1-08: a sign-up with the Guru\'s name is refused (name_taken, as for an edit)', 'name_taken', () =>
+    signUpWith47('impostor.47@example.com', { full_name: 'guru  maharaj' }));
+  const teSignUp = await signUpWith47('te.signup.47@example.com', { full_name: ' సాయి  కిరణ్ ', dob: adultDob47, phone: '+919848047047', centre_id: 1 });
+  check('0047 P1-08: a Telugu sign-up name is stored cleaned', (await asOwner(`select full_name from profiles where id = '${teSignUp}'`))[0].full_name === 'సాయి కిరణ్');
+  const noName = await signUp('no.name.47@example.com', true);
+  check('0047 P1-08: a login made without a name (dashboard) still gets an empty name',
+    (await asOwner(`select full_name from profiles where id = '${noName}'`))[0].full_name === '');
+  await refusesWith('0047 P1-08: a person renaming their own login with digits is refused', 'name_invalid', () =>
+    asApp('authenticated', arjun, `update profiles set full_name = 'Arjun ३' where id = $1`, [arjun]));
+  await refusesWith('0047 P1-08: an emergency contact name with digits is refused (About you)', 'name_invalid', () =>
+    asApp('authenticated', arjun, 'select save_about_me($1::jsonb)', [JSON.stringify({ emergency_name: 'Amma 1' })]));
+  await asApp('authenticated', arjun, 'select save_about_me($1::jsonb)', [JSON.stringify({ emergency_name: ' అమ్మ ' })]);
+  check('0047 P1-08: ... a Telugu one is kept, cleaned', (await asOwner(`select d.emergency_name as n from person_details d
+    join students s on s.id = d.student_id where s.profile_id = '${arjun}'`))[0]?.n === 'అమ్మ');
+  const igKid = await signUp('ig.kid.47@example.com', true);
+  await refusesWith('0047 P1-08: an Ishtagoshti parent name with digits is refused as parent_name_invalid', 'parent_name_invalid', () =>
+    asApp('authenticated', igKid, `select ig_join($1, 'v1', false, null, 'Amma 2', 'amma.47@example.com', 'mother')`, [year - 12]));
+  await asApp('authenticated', igKid, `select ig_join($1, 'v1', false, null, 'అమ్మ', 'amma.47@example.com', 'mother')`, [year - 12]);
+  check('0047 P1-08: ... a Telugu parent name is kept', (await asOwner(`select parent_name from ig_subscribers where profile_id = '${igKid}'`))[0]?.parent_name === 'అమ్మ');
+  const [{ id: legacy }] = await asOwner(`insert into students (full_name, dob) values ('Legacy Name 9', '1990-01-01') returning id`);
+  await asApp('authenticated', coordinator, `update students set area = 'Abids' where id = $1`, [legacy]);
+  check('0047 P1-08: a stored name the rule would refuse is not re-checked when other fields change', (await nameOf(legacy)) === 'Legacy Name 9');
+  await asOwner(`delete from students where id = '${legacy}'`);
+  check('0047 P1-08: clean_person_name answers as documented (person_name_chars is the published class list)',
+    (await asOwner(`select clean_person_name(E' Sri\\u00a0 Rama ') as n`))[0].n === 'Sri Rama'
+    && (await asOwner(`select person_name_chars() as c`))[0].c.startsWith("A-Za-z .'"));
+
+  // P1-12: About you keeps a gender already on the student's record (#273).
+  const arjunRec = (await asOwner(`select id from students where profile_id = '${arjun}'`))[0].id;
+  await asOwner(`update students set gender = null where id = '${arjunRec}'`);
+  await asApp('authenticated', arjun, 'select save_about_me($1::jsonb)', [JSON.stringify({ gender: 'male' })]);
+  const genderOf = async () => (await asOwner(`select gender from students where id = '${arjunRec}'`))[0].gender;
+  check('0047 P1-12: About you fills an empty gender', (await genderOf()) === 'male', await genderOf());
+  const afterTry = await asApp('authenticated', arjun, 'select save_about_me($1::jsonb) as r', [JSON.stringify({ gender: 'female' })]);
+  check('0047 P1-12: ... but cannot change it once set (kept, and About you shows the kept one)',
+    (await genderOf()) === 'male' && afterTry[0].r.gender === 'male', `${await genderOf()} ${afterTry[0].r.gender}`);
+  await asApp('authenticated', arjun, 'select save_about_me($1::jsonb)', [JSON.stringify({ gender: null })]);
+  check('0047 P1-12: ... nor clear it', (await genderOf()) === 'male');
+  await asApp('authenticated', coordinator, 'select save_student_details($1, $2::jsonb)', [arjunRec, JSON.stringify({ gender: 'female' })]);
+  check('0047 P1-12: staff can still change it', (await genderOf()) === 'female');
+  await asOwner(`update students set gender = null where id = '${arjunRec}'`);
+
+  // P1-05: the desk's default centre is the coordinator's own (#274).
+  const [{ id: kpCentre }] = await asOwner(`insert into centres (name) values ('Kukatpally 47') returning id`);
+  await asOwner(`update profiles set centre_id = ${kpCentre} where id = '${coordinator2}'`);
+  const kpStudent = await register(coordinator2, { p_full_name: 'Kukatpally Learner', p_dob: adultDob47 });
+  const centreOf = async (id) => (await asOwner(`select home_centre_id from students where id = '${id}'`))[0].home_centre_id;
+  check('0047 P1-05: a student registered at the desk gets the coordinator\'s centre, not centre 1', (await centreOf(kpStudent.id)) === kpCentre,
+    String(await centreOf(kpStudent.id)));
+  const abidsStudent = await register(coordinator, { p_full_name: 'Abids Learner', p_dob: adultDob47 });
+  check('0047 P1-05: ... and another coordinator\'s registration gets theirs', (await centreOf(abidsStudent.id)) === 1);
+  const [{ id: explicit }] = await asApp('authenticated', coordinator2,
+    `insert into students (full_name, dob, home_centre_id) values ('Explicit Centre', $1, 1) returning id`, [adultDob47]);
+  check('0047 P1-05: a centre given explicitly is kept', (await centreOf(explicit)) === 1);
+  await asOwner(`update centres set active = false where id = ${kpCentre}`);
+  const inactive = await register(coordinator2, { p_full_name: 'Closed Centre Learner', p_dob: adultDob47 });
+  check('0047 P1-05: a coordinator whose centre is closed falls back to the lowest active centre', (await centreOf(inactive.id)) === 1);
+
+  // P1-06: possible duplicates (#274).
+  const dup = async (who, name, dob, phone) => (await asApp('authenticated', who, 'select possible_duplicates($1, $2, $3) as r', [name, dob, phone]))[0].r;
+  const byName = await dup(coordinator, '  ADULT   learner ', '1990-01-01', null);
+  check('0047 P1-06: the same name (case and spaces ignored) and dob finds the record', byName.some((r) => r.kind === 'student'
+    && r.id === adult.id && r.matched.includes('name_dob') && r.roll_no === adult.roll_no), JSON.stringify(byName).slice(0, 200));
+  check('0047 P1-06: ... a different dob does not', (await dup(coordinator, 'Adult Learner', '1990-01-02', null)).every((r) => r.id !== adult.id));
+  await asOwner(`update students set phone = '+91 98480 47470' where id = '${abidsStudent.id}'`);
+  const byPhone = await dup(coordinator, 'Someone Else', null, '098480-47470');
+  check('0047 P1-06: the same phone (last 10 digits) finds the record', byPhone.some((r) => r.id === abidsStudent.id && r.matched.join() === 'phone'),
+    JSON.stringify(byPhone).slice(0, 200));
+  const signUpMatch = await dup(coordinator, 'సాయి కిరణ్', adultDob47, null);
+  check('0047 P1-06: a waiting sign-up of the coordinator\'s centre is found too (kind sign_up)',
+    signUpMatch.some((r) => r.kind === 'sign_up' && r.id === teSignUp), JSON.stringify(signUpMatch).slice(0, 200));
+  check('0047 P1-06: ... not by a coordinator of another centre', (await dup(coordinator2, 'సాయి కిరణ్', adultDob47, null)).every((r) => r.kind !== 'sign_up'));
+  await asOwner(`update profiles set centre_id = 1 where id = '${coordinator2}'`);
+  check('0047 P1-06: too little to match on answers an empty list', (await dup(coordinator, 'Adult Learner', null, '12')).length === 0);
+  await refusesWith('0047 P1-06: a student cannot ask', 'not_allowed', () => dup(arjun, 'Adult Learner', '1990-01-01', null));
+  await refusesWith('0047 P1-06: nor anon', 'permission denied for function possible_duplicates', () =>
+    asApp('anon', null, 'select possible_duplicates($1, $2, $3)', ['Adult Learner', '1990-01-01', null]));
+
+  let again = '';
+  try { await db.exec(readFileSync(new URL('migrations/0047_form_rules.sql', supabaseDir), 'utf8')); } catch (e) { again = String(e.message); }
+  check('0047 can run a second time', again === '', again);
 }
 
 // ---------------------------------------------------------------- row-level security

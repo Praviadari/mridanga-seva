@@ -83,7 +83,8 @@ with m(migration, present) as (values
   ('0043', to_regclass('public.parent_notices') is not null),
   ('0044', exists (select 1 from settings where key = 'parent_notices_no_checkout')),
   ('0045', exists (select 1 from pg_proc where proname = 'reissue_qr_code' and pronamespace = 'public'::regnamespace)),
-  ('0046', exists (select 1 from pg_proc where proname = 'accept_sign_up' and pronamespace = 'public'::regnamespace))
+  ('0046', exists (select 1 from pg_proc where proname = 'accept_sign_up' and pronamespace = 'public'::regnamespace)),
+  ('0047', exists (select 1 from pg_proc where proname = 'clean_person_name' and pronamespace = 'public'::regnamespace))
 )
 select migration, case when present then 'yes' else 'no' end as present from m
 union all
@@ -95,7 +96,7 @@ select 'MISSING', coalesce((select string_agg(a.migration, ' ' order by a.migrat
 order by 1;
 ```
 
-## B. Migrations 0013-0046, one file per run
+## B. Migrations 0013-0047, one file per run
 
 For each row: GitHub main → `supabase/migrations/<file>` → **Copy raw file** → LIVE → SQL Editor →
 New query → paste → check the project → **Run** → then paste the probe again (or keep it in a second
@@ -145,15 +146,16 @@ a second paste. So pasting a file twice by mistake is harmless; still, never do 
 | M0044 | `0044_parent_checkout_only.sql` | Praveen · dashboard | No rows; probe `0044`, `MISSING` `none` | Parent emails only for a check-out recorded in the app ([#246](DECISIONS.md)): adds the switches `parent_notices_check_in` and `parent_notices_no_checkout`, both off. No Edge Function change |
 | M0045 | `0045_qr_cards.sql` | Praveen · dashboard | No rows; probe `0045`, `MISSING` `none` | Adds `reissue_qr_code` (the Guru replaces a lost printed QR card, [#250](DECISIONS.md)); the cards need no other database change |
 | M0046 | `0046_registration_accept.sql` | Praveen · dashboard | No rows; probe `0046`, `MISSING` `none` | Adds `accept_sign_up` (Accept on Register a student, [#263](DECISIONS.md)) and lets every link path take a login whose role was set to `student` by hand without a record ([#265](DECISIONS.md)); links such logins that a record with their email already waits for. **Before the students sign up on LIVE** |
+| M0047 | `0047_form_rules.sql` | Praveen · dashboard | No rows; probe `0047`, `MISSING` `none` | Form rules in SQL (audit phase 1, [#271-#274](DECISIONS.md)): one name rule on every name an app user writes (no digits in any script, Telugu/Hindi vowel signs and joiners kept), a minor needs a guardian with a phone and that guardian's consent also when the date of birth changes, About you keeps a student's gender once set, the desk's new students get the coordinator's centre, `possible_duplicates` for the desk. Checks only what is written from now on: stored rows are not changed or re-checked. **Before the students sign up on LIVE.** |
 
-**A file newer than 0046 on main:** the replay's first check fails until this table lists it. Add it
+**A file newer than 0047 on main:** the replay's first check fails until this table lists it. Add it
 here, with its own steps, then run it last.
 
 **B-end.** Paste the **verification SQL** (part F) and the drift query again. Download the drift CSV
 as `drift-live-after-<date>.csv`, run the same drift query on TEST, and compare the `KIND:` rows
 ([OPERATIONS.md "Releasing a change"](OPERATIONS.md#releasing-a-change-database-first) step 4).
 Expected differences only: `config_rows`, `vault_secret` until part C, and the objects of any
-migration TEST has run that is not on main yet (none on 12 Oct 2026 once branch reg-accept is merged: TEST and main both end at 0046).
+migration TEST has run that is not on main yet (none once branch form-rules-sql is merged: TEST and main then both end at 0047).
 
 ## C. Push notifications on LIVE
 
@@ -260,7 +262,8 @@ with m(migration, present) as (values
   ('0043', to_regclass('public.parent_notices') is not null),
   ('0044', exists (select 1 from settings where key = 'parent_notices_no_checkout')),
   ('0045', exists (select 1 from pg_proc where proname = 'reissue_qr_code' and pronamespace = 'public'::regnamespace)),
-  ('0046', exists (select 1 from pg_proc where proname = 'accept_sign_up' and pronamespace = 'public'::regnamespace))
+  ('0046', exists (select 1 from pg_proc where proname = 'accept_sign_up' and pronamespace = 'public'::regnamespace)),
+  ('0047', exists (select 1 from pg_proc where proname = 'clean_person_name' and pronamespace = 'public'::regnamespace))
 ),
 last_in_order as (select coalesce(max(a.migration), 'before 0010') as v from m a
   where a.present and not exists (select 1 from m b where b.migration <= a.migration and not b.present)),
@@ -270,7 +273,7 @@ jobs(name) as (values ('mridanga-status-refresh'), ('mridanga-close-visits'), ('
   ('mridanga-assessments'), ('mridanga-events-polls'), ('mridanga-duty'), ('mridanga-access-log-purge'),
   ('mridanga-cron-history-purge'), ('mridanga-orphan-files'), ('mridanga-parent-notices')),
 checks(sort, check_name, ok, found, expected) as (
-  select 1, 'last migration', (select v from last_in_order) = '0046', (select v from last_in_order), '0046'
+  select 1, 'last migration', (select v from last_in_order) = '0047', (select v from last_in_order), '0047'
   union all select 2, 'migrations missing', (select v from missing) = 'none', (select v from missing), 'none'
   union all select 3, 'scheduled jobs',
     (select count(*) from jobs j join cron.job c on c.jobname = j.name and c.active) = 11,
@@ -347,7 +350,7 @@ changes later, with the new date.
 
 | Setting | Where | Expected | Seen on LIVE | Date | By |
 |---|---|---|---|---|---|
-| Last migration (probe) | SQL editor | `0046`, MISSING none | | | |
+| Last migration (probe) | SQL editor | `0047`, MISSING none | | | |
 | Backup before go-live | `backup-log.csv` | archive name, `before go-live` | | | |
 | Drift before / after | CSVs of A4, B-end | `ALL` hashes noted; KIND rows = TEST except the expected | | | |
 | Scheduled jobs | verification row 3 | 11 of 11 active | | | |
