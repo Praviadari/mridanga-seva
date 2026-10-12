@@ -301,4 +301,5 @@ The privacy texts of 0034 (`signUp.privacyNotice`, `signUp.under18`, `register.p
   `nameSymbols`, `nameTooShort`, `nameTooLong` (the one name rule of every form), `birthDate.pick` and `birthDate.opensCalendar`
   (the calendar box on the phone), and the changed `register.dobHint` and `register.errors.dobInvalid`; their Telugu and Hindi
   are drafts. Words to check: "apostrophe" అపాస్ట్రఫీ / अपॉस्ट्रॉफ़ी and "hyphen" హైఫన్ / हाइफ़न (maybe show only the signs),
-  "Tap" నొక్కండి / दबाएँ.
+  "Tap" నొక్కండి / दबाएँ. Added the same day: `signUp.choicesNeeded`, `signUp.noticeRead`, `signUp.noticeRequired`,
+  `importErrors.name_digits`, `importErrors.name_signs` (drafts); "privacy notice" follows `signUp.privacyNotice` (గోప్యతా ప్రకటన / गोपनीयता सूचना).

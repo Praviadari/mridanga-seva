@@ -70,7 +70,9 @@
     "fixFields": "Please correct the fields that show a message under them.",
     "nextStep": "After you sign in, the app asks a few optional questions about you. Then come to the class desk: a coordinator checks your name against your ID and registers you.",
     "phoneRequired": "Enter your mobile number.",
-    "choicesNeeded": "Your centre is needed before the account can be made. Check the internet connection, tap Try again, then Create account."
+    "choicesNeeded": "Your centre is needed before the account can be made. Check the internet connection, tap Try again, then Create account.",
+    "noticeRead": "I have read the privacy notice.",
+    "noticeRequired": "Read the privacy notice (link above), then tick this box."
   },
   "forgotPassword": {
     "title": "Reset your password",

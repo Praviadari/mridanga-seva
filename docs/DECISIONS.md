@@ -4764,6 +4764,23 @@ account would otherwise get no centre and the server would pick the lowest-id on
 centre is needed …" shows on the failed-list notice, the page goes to its Try again button, and the
 message clears when the list arrives.
 
+**Privacy notice tick (audit phase 3, S4-02, added 12 Oct 2026).** An adult's own sign-up recorded no
+acceptance of the privacy notice. Create an account now has a required tick "I have read the privacy
+notice." with the notice link directly above it (no longer under the button); without it Create shows
+"Read the privacy notice (link above), then tick this box." and goes to the tick. The sign-up sends the
+notice version it showed (`PRIVACY_NOTICE_VERSION` of #150, now '0.1-draft') in the user metadata as
+`notice_version`; migration 0047 (`form-rules-sql`) keeps it in `handle_new_user`, and a database before
+0047 ignores it.
+
+**Join Ishtagoshti on the waiting screen (audit S4-08, added 12 Oct 2026).** The card showed the
+placeholder "TEST —" terms, and an adult who joined left Register a student's waiting list (Accept then
+answers `not_waiting`). It is now hidden for a login that has not started joining, behind
+`IG_JOIN_FOR_WAITING` (`app/src/lib/ishtagoshti-terms.ts`, false). It is an app setting, not a database
+one (no migration in this branch): to turn it on, put the team's terms in en/te/hi, set it to true and
+publish an update; a test refuses true while any language still has the TEST terms. A login already
+waiting for a parent's code still sees the card, to finish. Until then no one can join Ishtagoshti from
+the app, although the sign-up's subtitle still mentions it (the team's wording, left as it is).
+
 **Why.** Praveen's test: with the messages far up the page, people pressed Save again and nothing seemed
 to happen.
 
