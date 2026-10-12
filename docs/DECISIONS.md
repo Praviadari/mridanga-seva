@@ -4390,3 +4390,73 @@ JavaScript only (fingerprint 185e839f unchanged), so it reaches the installed AP
 frozen screen), the layout cleanup stops a running recording then too, which is what leaving should do.
 Expo's own listener removal after the release is harmless on Android: the AudioRecorder class declares no
 events, so no native stop-listening call is made. #261 and #262 were reserved for this bug and are unused.
+
+## 263. Accept: an adult's sign-up becomes a student record in one tap, by one database function — 12 Oct 2026
+
+**Context.** Praveen's rule (12 Oct 2026): a student's registration form is filled once, by the student at
+sign-up; staff never type it again. Register a student already listed the waiting sign-ups with "Fill the
+form" (#162), which copies the answers into the form; the coordinator still had to save the form and could
+change it by mistake. Students self-register on LIVE on 16-18 Oct 2026; the desk will accept many in a row.
+
+**Decision.** Each adult sign-up on the waiting list gets **Accept**. It calls one function,
+`accept_sign_up(profile)` (migration 0046, security definer, staff; a coordinator only for their own
+centre, like the list). The function reads the sign-up's own data on the server (the profile's name,
+mobile and centre, the confirmed sign-in email, the sign-up date of birth on `person_details`), inserts
+the student (level 1, roll number by trigger), links the login and makes it a student, all in one
+transaction. The About-you row moves to the record and the login's gender fills the record through the
+0036 link trigger, which then gives the mentor by the Automatic rule (#165: the referral first, then
+the least loaded coordinator of that gender). The record's `request_id` is the login's id: a second
+Accept (a lost answer, or two coordinators at once; the profile row is locked) returns the first record
+with `repeated: true`. A record that already carries the email without a login (registered at the desk
+while the login was switched off) is linked instead of a second record being made (`existing: true`).
+
+**Why one function, not the app chaining `register_student` + `save_student_details` + a link.** One
+transaction cannot leave a record without its login or details; the server reads the data, so nothing
+on the phone can change what is stored; the retry rule and the centre rule live in one place; the
+existing triggers (link, details, mentor, audit) run exactly as on the desk path.
+
+**Consequences.** Errors: `not_allowed`, `sign_up_not_found`, `already_registered`, `not_waiting`,
+`email_not_confirmed`, `dob_required`, `minor_needs_desk`, `name_required` (the app maps each to a
+sentence). Area and pincode stay empty (the sign-up does not ask them); the photo is taken on the
+student's page as before. Tests: section "0046 registration accept" in `supabase/tests/smoke-test.mjs`.
+
+## 264. Accept on the waiting list: one button per row, a confirm card that asks for the ID check — 12 Oct 2026
+
+**Decision.** A waiting adult's row shows **Accept** (a person under 18 or without a date of birth shows
+"Fill the form", as before). Accept opens a confirm card in place of the row: name, date of birth with the
+age, centre, phone and email as the person gave them, the line **"Check the name against the government
+ID."**, and Accept / "Change something first: fill the form" / Cancel. After Accept the screen stays on
+the list with "Student registered: roll number …" and "Open the student's page"; the person leaves the
+list.
+
+**Why.** Two buttons beside a name do not fit a 375-pixel phone; "Fill the form" stays one tap away on the
+card for a correction. Staying on the list suits accepting several people in a row.
+
+## 265. A login set to "student" by hand without a record is linked like a waiting one — 12 Oct 2026
+
+**Context.** On TEST (12 Oct 2026) a profile's role was set to `student` in the dashboard before any
+record existed. `link_login_to_student` (0037), `link_student_email` (0002) and `link_student_login`
+(0014) all asked for `pending`, so the login was never linked, and the app said "No student record
+found" (#96 already treats such a login as `pending` for every rule).
+
+**Decision.** Migration 0046 adds `login_awaits_record(profile)`: switched on, `pending` or a `student`
+that no record points at, and not on a record yet. The three link paths, `waiting_sign_ups` (Register a
+student) and `accept_sign_up` use it. Kept: the email must be confirmed (#13), a switched-off login is
+never linked, a login already on a record is never linked again, the Guru and coordinators are never made
+students. The migration also links, once, every such login whose email a record without a login already
+carries.
+
+**Consequences.** The rule for people stays: never set `student` by hand; register the record with the
+login's email or Accept the sign-up. The Guru's people board (G2) still lists only `pending` logins; a
+hand-set one is found on Register a student instead.
+
+## 266. Accept is for adults only; under 18 stays at the desk with a parent — 12 Oct 2026
+
+**Decision.** `accept_sign_up` refuses a date of birth under 18 (`minor_needs_desk`, by the centre's date,
+like `register_student`) and a sign-up without a date of birth (`dob_required`); the app hides Accept for
+both. The sign-up form already stops under 18 (#150) and keeps no minor's date of birth, so such a
+sign-up should not exist; if one does, "Fill the form" with the parent, the ID check and the signed form
+(C3) is the only way.
+
+**Why.** A minor's data needs the parent's written consent before it is stored (#16); a one-tap path must
+not reach around it. An adult's registration needs no consent row (as on the desk).

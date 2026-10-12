@@ -176,7 +176,10 @@ change of colour or wording is made in one place.
    lists come from `sign_up_choices()`, the one function anon may run (#163). The database creates
    a `profiles` row with role `pending` (gender, centre) and keeps an adult's date of birth on
    `person_details`. After the first sign-in **About you** opens once (#164); the desk then
-   registers the person from the waiting sign-ups (C2) and the login links by email.
+   registers the person from the waiting sign-ups (C2) and the login links by email. Since 0046 an
+   adult is registered with one tap, **Accept**, from what they gave (`accept_sign_up`, [#263](DECISIONS.md));
+   the form is filled once, by the student. A login set to `student` by hand without a record is
+   linked the same way as a `pending` one ([#265](DECISIONS.md)).
 2. **Confirm the email:** Supabase sends a link (through Brevo). The link opens the web version.
    On confirmation the database links the login to the student record with the same email, if
    there is one, and the role becomes `student`.

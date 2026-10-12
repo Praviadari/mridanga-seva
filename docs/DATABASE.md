@@ -167,6 +167,10 @@ short `snake_case` code, and put the explanation for people reading the dashboar
 **Since 0032** ([DECISIONS.md #126](DECISIONS.md)): `register_student` also takes `p_request_id`, the
 form's random id; saving the same form again returns the first student with `repeated: true`.
 
+**Since 0046** ([DECISIONS.md #263-#266](DECISIONS.md)): an adult who signed up and waits for the desk is
+registered without the form by `accept_sign_up(profile)` (Accept on Register a student), from their own
+sign-up data. See "Registration accept (0046)".
+
 **Since 0025** ([DECISIONS.md #74](DECISIONS.md)): `register_student` takes `p_written_consent`, the
 coordinator's tick that the parent signed the paper form; for a minor it must be true
 (`written_consent_required`) and it is stored as `consents.signed_form` (NULL on consents written
@@ -1234,7 +1238,7 @@ stays with the record.
 | `save_about_me(p)` | A waiting login or a student | Saves the keys present in `p`: `gender`, `phone` (E.164, onto the profile and an empty record phone), `emergency_*`, `heard_via`, `referral_code`, `heard_other`, `occupation(_other)`, `service_areas`, `service_other`, `diksha_name`, `learn_interests`, `about_state` ("done" is not undone by a later "skipped"). Returns `my_about()` |
 | `save_student_details(student, p)` | Guru, coordinator | The same keys for a record, plus `gender`, `centre` (home centre) and `referred_by` (a staff id) instead of a code |
 | `get_student_details(student)` | Guru, coordinator | `{gender, details}` for C8 (no `dob`, no `profile_id`); writes 0034's access log when `log_access` exists |
-| `waiting_sign_ups()` | Guru (all), coordinator (own centre) | Confirmed waiting logins of the last 180 days without a record, not Ishtagoshti subscribers, with their sign-up and About-you answers, newest first |
+| `waiting_sign_ups()` | Guru (all), coordinator (own centre) | Confirmed waiting logins of the last 180 days without a record, not Ishtagoshti subscribers, with their sign-up and About-you answers, newest first (since 0046 also a hand-set `student` login without a record, and the centre's name) |
 | `heard_about_report(from, to)` | Guru | Rows made in the dates (Guru's centre days, at most 367): `people`, `answered`, `students`, `by_source`, `by_interest`, `by_coordinator` (each with `people`; source and coordinator also `students`) |
 
 Errors: `not_allowed`, `student_not_found`, `student_withdrawn`, `centre_unknown`, `gender_unknown`,
@@ -1383,6 +1387,23 @@ the owner (pg_cron); `guardian_notice_status`, `set_guardian_notices` signed-in 
 `guard_setting` now knows the three new keys (0044: five); a later migration that replaces it must keep them.
 Tests: sections "0043 parent notices" and "0044 check-out emails only" in `supabase/tests/smoke-test.mjs`, and
 `supabase/tests/parent-notices.test.mjs` (the email texts, the signed link, Brevo's answers, a run).
+
+## Registration accept (0046)
+
+[DECISIONS.md #263-#266](DECISIONS.md). Needs 0001-0045; safe to run twice. Additive: the published app
+keeps working (it shows "Fill the form" only); the new app shows "Accept is not available on this server
+yet" on a database without it.
+
+| Object | What |
+|---|---|
+| `accept_sign_up(profile)` | Guru, coordinator (own centre: `not_allowed` otherwise). Registers an adult confirmed sign-up from its own data: `full_name` and `phone` from the profile, the confirmed sign-in email (lower case), the sign-up `dob` from `person_details`, `home_centre_id` = the profile's centre, level 1, `request_id` = the login's id; links the login and makes it a student. The 0036 triggers then move About you to the record, copy the gender and give the mentor (#165). Returns `{id, roll_no, full_name, linked, repeated, existing}`: `repeated` = this login was accepted before (same record, nothing new); `existing` = an unlinked record already had the email and was linked instead of a new one. Errors: `not_allowed`, `sign_up_not_found`, `already_registered` (on a record not made by Accept), `not_waiting` (switched off, staff, an Ishtagoshti subscriber, or a role other than `pending` / `student`), `email_not_confirmed`, `dob_required`, `minor_needs_desk` (under 18 by `today_ist()`), `name_required` |
+| `login_awaits_record(profile)` | Internal (closed to app roles). True for a switched-on login that is `pending`, or `student` with no record (#96), and is on no record. Used by the link paths below, `waiting_sign_ups` and `accept_sign_up` |
+| `waiting_sign_ups()` | As 0036, plus a hand-set `student` login without a record, and `centre_name` on each row (Accept's confirm card). Ishtagoshti subscribers are left out by `ig_subscribers` directly |
+| `link_login_to_student`, `link_student_email`, `link_student_login` | Take a login for which `login_awaits_record` is true (before: `pending` only). See "Linking a login to a student" |
+| Once, when run | Every switched-on `student` login with a confirmed email and no record is offered to `link_login_to_student`: one whose email a record without a login carries is linked |
+
+Tests: section "0046 registration accept" in `supabase/tests/smoke-test.mjs`.
+
 ## Linking a login to a student
 
 A student record can exist without a login (many students never install the app). When a person
@@ -1393,8 +1414,11 @@ when **both** are true:
 - a student record has the **same email** (not case-sensitive) and no login yet.
 
 Whichever happens last makes the link: confirming the email (trigger `on_auth_user_confirmed`),
-or a coordinator saving the email on the record (trigger `students_link_login`). Only `pending`
-logins are linked, so a coordinator who is also on a student record keeps the coordinator role.
+or a coordinator saving the email on the record (trigger `students_link_login`). Only logins that
+wait for a record are linked — `pending`, or since 0046 a `student` login that no record points at
+(the role set by hand in the dashboard, [DECISIONS.md #265](DECISIONS.md)); so a coordinator who is
+also on a student record keeps the coordinator role. Accept on Register a student (`accept_sign_up`,
+0046) is a fourth path: it makes the record and links it in one step.
 A login the Guru switched off is not linked (0037). Typing a waiting login's email on a record is
 therefore how a coordinator gives the `student` role; every other role change goes through the Guru.
 Server code holding the service key bypasses the role guard; only the Edge Function holds it.
@@ -1439,6 +1463,7 @@ switched-off login is refused like a stranger.
 | `get_guardians(student)`, `get_consents(student)`, `get_call_notes(student, limit)` | Guru, coordinator | A student's guardians, consents or call notes; each call writes one `access_log` row. See "Access log (0034)" |
 | `get_audit_log(table, person, action, since, before, limit)` | Guru | One page of the audit log (G11); writes one `access_log` row |
 | `register_student(...)` | Guru, coordinator | Saves a new student, and for a minor the guardian and consent, in one step. Returns the id, roll number and whether an existing login was linked. See "Registering a student" |
+| `accept_sign_up(profile)` | Guru, coordinator (own centre) | Registers an adult waiting sign-up from its own data and links the login (Accept, 0046). See "Registration accept (0046)" |
 | `staff_names()` | Guru, coordinator, student (others get nothing) | Id and name of every Guru and coordinator, active or not, for "posted by". Security definer. See "Announcements" |
 | `student_home()` | Anyone signed in (a student gets their own numbers) | The student home's numbers. See "Home screens" |
 | `coordinator_dashboard()` | Guru, coordinator | The coordinator dashboard's numbers. See "Home screens" |
@@ -1446,7 +1471,7 @@ switched-off login is refused like a stranger.
 | `move_syllabus_item(item, up)` | Guru | Moves a syllabus item one place up or down among the items in use. See "Syllabus editor" |
 | `syllabus_item_counts()` | Guru, coordinator | Ticks and materials per syllabus item. See "Syllabus editor" |
 | `week_start_ist()` | Anyone signed in | First day of "this week" at the caller's centre (Monday, or 6 days ago with `week_starts` = `rolling7`); used by the functions above |
-| `link_student_login(profile, student)` | Guru | Links a pending login to a student record without a login; the person becomes that student. Security definer. See "Coordinators and roles" |
+| `link_student_login(profile, student)` | Guru | Links a pending login (since 0046 also a `student` login without a record) to a student record without a login; the person becomes that student. Security definer. See "Coordinators and roles" |
 | `reassign_mentees(students, to)` | Guru | Moves the students to another mentor (an active coordinator or the Guru); returns how many. See "Coordinators and roles" |
 | `unlink_student_login(student)` | Guru | Takes the login off a student record; the login goes back to `pending`. Security definer. See "Linking a login to a student" |
 | `withdraw_consent(student, note)` | Guru (or the owner in the SQL editor) | Records a withdrawal of consent and freezes the record. See "Withdrawal and erasure (0025)" |
@@ -1480,7 +1505,7 @@ person's own access. The same holds for `material_file_readable`, `material_file
 
 Internal functions (not called by the app, and not allowed to): `refresh_student_statuses`,
 `close_open_visits`, `send_due_push`, `call_notify_function`, `handle_new_user`, `handle_user_confirmed`,
-`link_login_to_student`, `link_student_email`, `assign_roll_no`, `check_minor_consent`, the guard
+`link_login_to_student`, `link_student_email`, `login_awaits_record` (0046), `assign_roll_no`, `check_minor_consent`, the guard
 and audit triggers (including `guard_student_progress`, `audit_student_progress`,
 `guard_announcement`, `guard_announcement_attachments`, `guard_announcement_notified`,
 `guard_group`, `guard_announcement_reply`, `guard_syllabus_item`, `protect_syllabus_item`,

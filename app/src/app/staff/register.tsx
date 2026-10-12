@@ -9,12 +9,16 @@
 // the top and fill the form in one tap (the coordinator checks the name against the ID and takes the
 // photo); gender and the optional About-you details are asked here too; the mentor is chosen
 // automatically (a coordinator of the same gender) unless the coordinator picks one.
+// Since 0046 (docs/DECISIONS.md #263-#264): an adult's sign-up has Accept, which shows what the person gave and asks
+// the coordinator to check the name against the government ID, then registers them from it (accept_sign_up)
+// without the form; "Fill the form" stays for a change, and is the only way for anyone under 18.
 // When the server ends the login while the form is half filled, what was typed is kept for the same login and
 // filled in again next time (src/lib/form-drafts.ts, D6-20); the consent ticks must be given again.
 
 import { router, Stack } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { StyleSheet, View } from 'react-native';
 
 import type { MessageKey } from '@/auth/auth-actions';
 import { useAuth } from '@/auth/auth-provider';
@@ -37,6 +41,7 @@ import {
   emptyAboutForm,
   fetchReferrers,
   fetchWaitingSignUps,
+  formatPhone,
   saveStudentDetails,
   type AboutErrors,
   type AboutForm,
@@ -46,6 +51,7 @@ import {
 } from '@/data/about';
 import { activeSets, fetchAllOptions, type OptionSets } from '@/data/options';
 import {
+  acceptSignUp,
   ageFromForm,
   checkGuardianConsent,
   checkStudentDetails,
@@ -54,6 +60,7 @@ import {
   ID_TYPES,
   registerStudent,
   RELATIONS,
+  type Accepted,
   type LevelOption,
   type MentorOption,
   type Registered,
@@ -64,6 +71,7 @@ import { levelName } from '@/i18n/labels';
 import { classLocale } from '@/lib/class-locale';
 import { formatDateTime, formatTypedDate } from '@/lib/dates';
 import { discardDraft, peekDraft, useDraftKeeper } from '@/lib/form-drafts';
+import { spacing } from '@/theme/use-theme';
 
 /** Longest name, area and email the form takes (FS2-09; the database's bounds are 120, 100, 254). */
 const NAME_MAX_LENGTH = 100;
@@ -110,6 +118,11 @@ export default function RegisterStudentScreen() {
   const [aboutErrors, setAboutErrors] = useState<AboutErrors>({});
   // The sign-up the form was filled from: its centre goes on the record; it leaves the waiting list.
   const [fromSignUp, setFromSignUp] = useState<WaitingSignUp | null>(null);
+  // Accept (0046): the sign-up whose confirm card is open, its error, and the last one accepted.
+  const [accepting, setAccepting] = useState<WaitingSignUp | null>(null);
+  const [acceptBusy, setAcceptBusy] = useState(false);
+  const [acceptError, setAcceptError] = useState<MessageKey | null>(null);
+  const [accepted, setAccepted] = useState<Accepted | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -162,6 +175,29 @@ export default function RegisterStudentScreen() {
     setFromSignUp(person);
     setErrors({});
     setAboutErrors({});
+    setAccepting(null);
+  }
+
+  /** Opens Accept's confirm card for one sign-up. */
+  function askAccept(person: WaitingSignUp) {
+    setAccepting(person);
+    setAcceptError(null);
+    setAccepted(null);
+  }
+
+  /** Registers the sign-up from its own data (accept_sign_up); it leaves the waiting list. */
+  async function confirmAccept(person: WaitingSignUp) {
+    setAcceptBusy(true);
+    setAcceptError(null);
+    const result = await acceptSignUp(person.id);
+    setAcceptBusy(false);
+    if (!result.accepted) {
+      setAcceptError(result.errorKey ?? 'common.genericError');
+      return;
+    }
+    setAccepted(result.accepted);
+    setAccepting(null);
+    setExtras((current) => (current ? { ...current, waiting: current.waiting.filter((w) => w.id !== person.id) } : current));
   }
 
   async function save() {
@@ -256,17 +292,64 @@ export default function RegisterStudentScreen() {
         />
       ) : null}
 
+      {accepted ? (
+        <>
+          <Notice tone="success" title={t('register.doneTitle')}>
+            {[
+              t('register.doneBody', { name: accepted.fullName, rollNo: accepted.rollNo }),
+              t(accepted.repeated ? 'register.acceptedRepeated' : accepted.existing ? 'register.acceptedExisting' : 'register.acceptedLogin'),
+            ].join('\n')}
+          </Notice>
+          <Button
+            variant="secondary"
+            icon="person"
+            label={t('register.openStudent')}
+            onPress={() => router.push({ pathname: '/staff/students/[id]', params: { id: accepted.id } })}
+          />
+        </>
+      ) : null}
       {waiting.length > 0 ? (
         <Section icon="newJoiner" title={t('register.waitingTitle', { count: waiting.length })} description={t('register.waitingHint')}>
-          {waiting.slice(0, 10).map((w) => (
-            <ListRow
-              key={w.id}
-              leading="person"
-              title={w.full_name || w.email || ''}
-              details={[w.email ?? '', t('register.signedUpOn', { when: formatDateTime(w.created_at) })].filter(Boolean)}
-              action={{ label: t('register.fillFrom'), variant: 'secondary', onPress: () => fillFrom(w) }}
-            />
-          ))}
+          {waiting.slice(0, 10).map((w) => {
+            // Accept for an adult with a date of birth; under 18 (the desk with a parent) or none: the form only.
+            const age = w.dob ? ageFromForm(formatTypedDate(w.dob)) : null;
+            const canAccept = !!age && !age.minor && w.full_name.trim() !== '';
+            if (age && accepting?.id === w.id) {
+              return (
+                <View key={w.id} style={styles.confirm}>
+                  <Notice tone="info" title={t('register.acceptTitle', { name: w.full_name })}>
+                    {[
+                      t('register.acceptName', { value: w.full_name }),
+                      t('register.acceptDob', { date: formatTypedDate(w.dob ?? ''), age: age.age }),
+                      w.centre_name ? t('register.acceptCentre', { value: w.centre_name }) : '',
+                      w.phone ? t('register.acceptPhone', { value: formatPhone(w.phone) }) : '',
+                      w.email ? t('register.acceptEmail', { value: w.email }) : '',
+                    ]
+                      .filter(Boolean)
+                      .join('\n')}
+                  </Notice>
+                  <AppText variant="label">{t('register.acceptCheckId')}</AppText>
+                  {acceptError ? <Notice tone="error">{t(acceptError)}</Notice> : null}
+                  <Button icon="check" label={t('register.accept')} loading={acceptBusy} onPress={() => void confirmAccept(w)} />
+                  <Button variant="secondary" label={t('register.acceptChange')} disabled={acceptBusy} onPress={() => fillFrom(w)} />
+                  <Button variant="link" label={t('register.cancel')} disabled={acceptBusy} onPress={() => setAccepting(null)} />
+                </View>
+              );
+            }
+            return (
+              <ListRow
+                key={w.id}
+                leading="person"
+                title={w.full_name || w.email || ''}
+                details={[w.email ?? '', t('register.signedUpOn', { when: formatDateTime(w.created_at) })].filter(Boolean)}
+                action={
+                  canAccept
+                    ? { label: t('register.accept'), onPress: () => askAccept(w) }
+                    : { label: t('register.fillFrom'), variant: 'secondary', onPress: () => fillFrom(w) }
+                }
+              />
+            );
+          })}
         </Section>
       ) : null}
       {fromSignUp ? (
@@ -454,3 +537,10 @@ export default function RegisterStudentScreen() {
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  // Accept's confirm card, in place of the sign-up's row.
+  confirm: {
+    gap: spacing.sm,
+  },
+});

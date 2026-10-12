@@ -320,6 +320,8 @@ export type WaitingSignUp = SavedAbout & {
   email: string | null;
   dob: string | null;
   centre_id: number | null;
+  /** The centre's name (since 0046; undefined before). */
+  centre_name?: string | null;
   created_at: string;
 };
 

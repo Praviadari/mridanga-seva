@@ -288,3 +288,9 @@ The privacy texts of 0034 (`signUp.privacyNotice`, `signUp.under18`, `register.p
   "attendance card" హాజరు కార్డు / उपस्थिति कार्ड; "without the app" యాప్ లేనివారు / बिना ऐप वाले;
   "replace a lost card" పోయిన కార్డును మార్చండి / खोया कार्ड बदलें; "frozen" స్తంభింపజేయబడింది / जमा हुआ
   (maybe रोका गया). `qrCards.logo` ("MS") is the logo placeholder and stays as it is.
+- **Registration accept** (branch `reg-accept`, [DECISIONS.md #263-#266](DECISIONS.md), 12 Oct 2026): the Telugu and
+  Hindi `register.accept`, `acceptTitle`, `acceptCheckId`, `acceptName`, `acceptDob`, `acceptCentre`, `acceptPhone`,
+  `acceptEmail`, `acceptChange`, `cancel`, `acceptedLogin`, `acceptedExisting`, `acceptedRepeated`, every
+  `register.acceptErrors.*` and the changed `register.waitingHint` are drafts for the review. Words to check first:
+  "Accept" అంగీకరించండి / स्वीकार करें (a button on the waiting list); "government ID" ప్రభుత్వ గుర్తింపు కార్డు /
+  सरकारी पहचान पत्र; "sign-up" left as సైన్-అప్ / साइन-अप; "the desk" డెస్క్ / डेस्क as in `register.waitingTitle`.

@@ -124,7 +124,7 @@ process.on('uncaughtException', (error) => {
 // D14-10: every check is counted, and the run fails when fewer (or more) checks ran than expected,
 // so a block skipped by a renamed migration or a commented-out section cannot pass unseen.
 // Adding or removing checks? Run the suite and set this to the new total it prints.
-const EXPECTED_CHECKS = 1454; // 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
+const EXPECTED_CHECKS = 1490; // 0046 registration accept: +36;0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
 let failures = 0;
 let passes = 0;
 
@@ -4138,6 +4138,8 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
     'search_students(text,integer,boolean)',
     // 0043: parent notices, staff only inside (C8)
     'guardian_notice_status(uuid)', 'set_guardian_notices(uuid,boolean,text)', 'reissue_qr_code(uuid)',
+    // 0046: Accept on Register a student (staff only inside)
+    'accept_sign_up(uuid)',
   ];
   const runnableBy = async (role) => (await asOwner(`select p.oid::regprocedure::text as f from pg_proc p
     where p.pronamespace = 'public'::regnamespace
@@ -5183,6 +5185,141 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   let again = '';
   try { await db.exec(readFileSync(new URL('migrations/0045_qr_cards.sql', supabaseDir), 'utf8')); } catch (e) { again = String(e.message); }
   check('0045 can run a second time', again === '', again);
+}
+
+// ---------------------------------------------------------------- 0046 registration accept (DECISIONS #263-#266)
+// Accept on Register a student: an adult's sign-up becomes a record in one tap, from the person's own
+// data; and a login set to 'student' by hand without a record is linked by every path.
+{
+  const signUpWith = async (email, meta, confirmed = true) => (await db.query(
+    `insert into auth.users (email, email_confirmed_at, raw_user_meta_data) values ($1, ${confirmed ? 'now()' : 'null'}, $2) returning id`,
+    [email, JSON.stringify(meta)])).rows[0].id;
+  const accept = async (who, profile) => (await asApp('authenticated', who, 'select accept_sign_up($1) as r', [profile]))[0].r;
+  const waitingFor = async (who) => (await asApp('authenticated', who, 'select waiting_sign_ups() as r'))[0].r;
+  const studentsWith = async (email) => (await asOwner(`select id, profile_id, roll_no, full_name, dob::text as dob, phone, email,
+    home_centre_id, gender, mentor_id from students where lower(email) = lower('${email}')`));
+  const desk = await signUp('desk.accept@example.com', true);
+  const radha = await signUp('radha.accept@example.com', true);
+  await asApp('authenticated', guru, `update profiles set role = 'coordinator', full_name = 'Desk Coordinator' where id = $1`, [desk]);
+  await asApp('authenticated', guru, `update profiles set role = 'coordinator', full_name = 'Radha Accept', gender = 'female' where id = $1`, [radha]);
+  const [{ centre_id: myCentre }] = await asOwner(`select centre_id from profiles where id = '${desk}'`);
+  const [{ referral_code: radhaCode }] = await asOwner(`select referral_code from profiles where id = '${radha}'`);
+  const [{ id: otherCentre }] = await asOwner(`select id from centres where id <> ${myCentre} and active order by id limit 1`);
+  const adultDob = `${year - 25}-03-04`;
+
+  // A fresh adult sign-up with About you (a referral from a woman coordinator).
+  const asha = await signUpWith('asha.accept@example.com', { full_name: ' Asha Accept ', dob: adultDob, gender: 'female',
+    centre_id: myCentre, phone: '+91 98765 46000', learn: ['mridanga'] });
+  await asApp('authenticated', asha, 'select save_about_me($1::jsonb)', [JSON.stringify({ referral_code: radhaCode, occupation: 'working' })]);
+  const listed46 = (await waitingFor(desk)).find((r) => r.id === asha);
+  const [{ name: myCentreName }] = await asOwner(`select name from centres where id = ${myCentre}`);
+  check('0046: the sign-up waits on Register a student, with its centre\'s name for the check', listed46?.centre_name === myCentreName,
+    JSON.stringify(listed46?.centre_name));
+  await refusesWith('0046: a student cannot accept', 'not_allowed', () => accept(arjun, asha));
+  await refusesWith('0046: nor a waiting login', 'not_allowed', () => accept(stranger, asha));
+  await refusesWith('0046: nor anon', 'permission denied for function accept_sign_up', () =>
+    asApp('anon', null, 'select accept_sign_up($1)', [asha]));
+
+  const first = await accept(desk, asha);
+  const [rec] = await studentsWith('asha.accept@example.com');
+  check('0046: Accept registers the sign-up with a roll number', /^MS-\d{4}-\d{4,5}$/.test(first.roll_no) && first.repeated === false
+    && first.existing === false && first.id === rec.id, JSON.stringify(first));
+  check('0046: ... from the person\'s own name, date of birth, phone, email and centre', rec.full_name === 'Asha Accept'
+    && rec.dob === adultDob && rec.phone === '+919876546000' && rec.home_centre_id === myCentre, JSON.stringify(rec));
+  check('0046: ... the login is linked and is a student', rec.profile_id === asha && (await roleOf(asha)) === 'student'
+    && (await asApp('authenticated', asha, 'select my_role()::text as r'))[0].r === 'student');
+  const moved46 = (await asOwner(`select student_id, dob, occupation from person_details where profile_id = '${asha}'`))[0];
+  check('0046: ... About you moves to the record (the sign-up date of birth dropped)', moved46.student_id === rec.id
+    && moved46.dob === null && moved46.occupation === 'working', JSON.stringify(moved46));
+  check('0046 #165: ... the gender comes from the login and the referring coordinator mentors (Automatic)',
+    rec.gender === 'female' && rec.mentor_id === radha, `${rec.gender} ${rec.mentor_id}`);
+  check('0046: ... the record is audited as made by the coordinator', (await asOwner(`select count(*)::int as n from audit_log
+    where table_name = 'students' and row_id = '${rec.id}' and action = 'INSERT' and changed_by = '${desk}'`))[0].n === 1);
+  check('0046: ... and the person leaves the waiting list', !(await waitingFor(desk)).some((r) => r.id === asha));
+  const again46 = await accept(desk, asha);
+  const byGuru = await accept(guru, asha);
+  check('0046: Accept again (lost answer, or a second coordinator) gives the same record, repeated, no duplicate',
+    again46.repeated === true && again46.id === rec.id && byGuru.repeated === true && byGuru.roll_no === first.roll_no
+    && (await studentsWith('asha.accept@example.com')).length === 1, JSON.stringify(again46));
+
+  // Refusals.
+  await refusesWith('0046: a login already on a record (not made by Accept)', 'already_registered', () => accept(desk, arjun));
+  await refusesWith('0046: staff are never accepted', 'not_waiting', () => accept(guru, coordinator));
+  await refusesWith('0046: an unknown login', 'sign_up_not_found', () => accept(desk, '00000000-0000-4000-8000-000000000046'));
+  const unconf = await signUpWith('unconf.accept@example.com', { full_name: 'Not Yet', dob: adultDob, centre_id: myCentre }, false);
+  await refusesWith('0046: an email not confirmed', 'email_not_confirmed', () => accept(desk, unconf));
+  const noDob = await signUpWith('nodob.accept@example.com', { full_name: 'No Date', centre_id: myCentre });
+  await refusesWith('0046: a sign-up without a date of birth (Fill the form instead)', 'dob_required', () => accept(desk, noDob));
+  const young = await signUpWith('young.accept@example.com', { full_name: 'Young One', dob: adultDob, centre_id: myCentre });
+  await asOwner(`update person_details set dob = '${year - 15}-01-01' where profile_id = '${young}'`);
+  await refusesWith('0046: under 18 goes to the desk with a parent', 'minor_needs_desk', () => accept(guru, young));
+  const far46 = await signUpWith('far.accept@example.com', { full_name: 'Far Accept', dob: adultDob, centre_id: otherCentre });
+  await refusesWith('0046: a coordinator accepts only their own centre\'s sign-ups', 'not_allowed', () => accept(desk, far46));
+  check('0046: ... the Guru any centre\'s', (await accept(guru, far46)).repeated === false);
+  const off46 = await signUpWith('off.accept@example.com', { full_name: 'Switched Off', dob: adultDob, centre_id: myCentre });
+  await asOwner(`update profiles set active = false where id = '${off46}'`);
+  await refusesWith('0046: a switched-off login', 'not_waiting', () => accept(guru, off46));
+  check('0046: none of the refused made a record', (await asOwner(`select count(*)::int as n from students where profile_id in
+    ('${unconf}', '${noDob}', '${young}', '${off46}')`))[0].n === 0);
+
+  // A login set to 'student' by hand (dashboard) without a record (#96) is now linked by every path.
+  const handSet = async (email, meta = {}, confirmed = true) => {
+    const id = await signUpWith(email, { full_name: 'Hand Set', dob: adultDob, centre_id: myCentre, ...meta }, confirmed);
+    await asOwner(`update profiles set role = 'student' where id = '${id}'`);
+    return id;
+  };
+  const navy = await handSet('navy.accept@example.com');
+  check('0046: a hand-set student login without a record waits on Register a student', (await waitingFor(desk)).some((r) => r.id === navy)
+    && (await asApp('authenticated', navy, 'select my_role()::text as r'))[0].r === 'pending');
+  const navyRec = await register(desk, { p_full_name: 'Navy Hand Set', p_dob: adultDob, p_email: 'NAVY.accept@example.com' });
+  check('0046: ... a coordinator saving its email on a record links it', navyRec.linked === true
+    && (await linkOf('navy.accept@example.com')) === navy && (await roleOf(navy)) === 'student');
+  const navy2 = await handSet('navy2.accept@example.com');
+  const navy2Res = await accept(desk, navy2);
+  check('0046: ... Accept registers and links it', navy2Res.repeated === false && (await linkOf('navy2.accept@example.com')) === navy2
+    && (await asApp('authenticated', navy2, 'select my_role()::text as r'))[0].r === 'student');
+  const navy3 = await handSet('navy3.accept@example.com');
+  const [bare] = await asOwner(`insert into students (full_name, dob) values ('Navy Three', '1991-01-01') returning id`);
+  await asApp('authenticated', guru, 'select link_student_login($1, $2)', [navy3, bare.id]);
+  check('0046: ... the Guru links it on G2', (await asOwner(`select profile_id from students where id = '${bare.id}'`))[0].profile_id === navy3);
+  const navy4 = await handSet('navy4.accept@example.com', {}, false);
+  await asOwner(`insert into students (full_name, dob, email) values ('Navy Four', '1991-01-01', 'navy4.accept@example.com')`);
+  check('0046: ... unconfirmed, a record with its email does not link it', (await linkOf('navy4.accept@example.com')) === null);
+  await asOwner(`update auth.users set email_confirmed_at = now() where id = '${navy4}'`);
+  check('0046: ... confirming the email links it', (await linkOf('navy4.accept@example.com')) === navy4);
+  const navy5 = await handSet('navy5.accept@example.com');
+  await asOwner(`update profiles set active = false where id = '${navy5}'`);
+  await asOwner(`insert into students (full_name, dob, email) values ('Navy Five', '1991-01-01', 'navy5.accept@example.com')`);
+  check('0046: ... switched off, it is never linked', (await linkOf('navy5.accept@example.com')) === null
+    && !(await waitingFor(guru)).some((r) => r.id === navy5));
+  await refusesWith('0046: ... and the Guru cannot link a switched-off one', 'profile_not_pending', () =>
+    asApp('authenticated', guru, 'select link_student_login($1, $2)', [navy5, bare.id]));
+  await refusesWith('0046: a login already on a record is never linked again', 'profile_not_pending', async () => {
+    const [spare] = await asOwner(`insert into students (full_name, dob) values ('Spare 46', '1991-01-01') returning id`);
+    await asApp('authenticated', guru, 'select link_student_login($1, $2)', [navy, spare.id]);
+  });
+
+  // A record that already carries the email (made while the login was switched off): Accept links it, no second record.
+  await asOwner(`update profiles set active = true where id = '${navy5}'`);
+  check('0046: (state) switched on again, still not linked, so it waits', (await linkOf('navy5.accept@example.com')) === null
+    && (await waitingFor(guru)).some((r) => r.id === navy5));
+  const navy5Res = await accept(guru, navy5);
+  check('0046: Accept links the record already on file instead of making a second one', navy5Res.existing === true
+    && (await studentsWith('navy5.accept@example.com')).length === 1 && (await linkOf('navy5.accept@example.com')) === navy5,
+    JSON.stringify(navy5Res));
+
+  // The migration links the logins stuck today, and changes nothing on a second run.
+  const navy6 = await handSet('navy6.accept@example.com');
+  await asOwner(`update profiles set active = false where id = '${navy6}'`);
+  await asOwner(`insert into students (full_name, dob, email) values ('Navy Six', '1991-01-01', 'navy6.accept@example.com')`);
+  await asOwner(`update profiles set active = true where id = '${navy6}'`);
+  const coordinatorsBefore = (await asOwner(`select count(*)::int as n from profiles where role in ('guru', 'coordinator')`))[0].n;
+  let again = '';
+  try { await db.exec(readFileSync(new URL('migrations/0046_registration_accept.sql', supabaseDir), 'utf8')); } catch (e) { again = String(e.message); }
+  check('0046 can run a second time', again === '', again);
+  check('0046: ... and it links a stuck hand-set student login to the record with its email', (await linkOf('navy6.accept@example.com')) === navy6);
+  check('0046: ... no Guru or coordinator became a student', (await asOwner(`select count(*)::int as n from profiles
+    where role in ('guru', 'coordinator')`))[0].n === coordinatorsBefore && (await roleOf(coordinator)) === 'coordinator');
 }
 
 // ---------------------------------------------------------------- row-level security

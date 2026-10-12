@@ -1,5 +1,6 @@
 // Registering students (screens C2 + C3): the form's data, its checks, and the call to the
-// database function register_student (supabase/migrations/0003_register_student.sql).
+// database function register_student (supabase/migrations/0003_register_student.sql); and Accept,
+// which registers a waiting sign-up from its own data (accept_sign_up, 0046).
 // The database repeats every rule that matters, so a bug here cannot store a minor without
 // consent (docs/DATABASE.md "Registering a student").
 
@@ -229,6 +230,49 @@ function registerErrorKey(message: string, code: string | undefined): MessageKey
       return 'register.errors.guardianEmailOnMinor';
   }
   if (code === '23514') return 'register.errors.pincodeInvalid'; // the pincode check in the table
+  return fallbackErrorKey(message);
+}
+
+/** What Accept returns: the record of the sign-up, its name, and whether it was on file already. */
+export type Accepted = Registered & {
+  fullName: string;
+  /** A record with this email existed without a login: the login was connected to it, nothing new made. */
+  existing: boolean;
+};
+
+/**
+ * Accept on Register a student (migration 0046, docs/DECISIONS.md #263): registers an adult who signed
+ * up and waits for the desk, from what they gave, and connects their login, in one call. Accepting
+ * the same person again returns the first record (repeated). The database refuses anyone under 18.
+ */
+export async function acceptSignUp(profileId: string): Promise<{ accepted?: Accepted; errorKey?: MessageKey }> {
+  const { data, error } = await supabase.rpc('accept_sign_up', { p_profile: profileId });
+  if (error) return { errorKey: error.code === 'PGRST202' ? 'register.acceptErrors.unavailable' : acceptErrorKey(error.message) };
+  const r = data as { id: string; roll_no: string; full_name: string; linked: boolean; repeated: boolean; existing: boolean };
+  return {
+    accepted: { id: r.id, rollNo: r.roll_no, fullName: r.full_name, linked: r.linked, repeated: r.repeated, existing: r.existing },
+  };
+}
+
+/** Maps an error from accept_sign_up (migration 0046) to a message. */
+function acceptErrorKey(message: string): MessageKey {
+  switch (message) {
+    case 'not_allowed':
+      return 'register.errors.notAllowed';
+    case 'already_registered':
+      return 'register.acceptErrors.alreadyRegistered';
+    case 'not_waiting':
+    case 'sign_up_not_found':
+      return 'register.acceptErrors.notWaiting';
+    case 'email_not_confirmed':
+      return 'register.acceptErrors.emailNotConfirmed';
+    case 'dob_required':
+      return 'register.acceptErrors.noDob';
+    case 'minor_needs_desk':
+      return 'register.acceptErrors.minor';
+    case 'name_required':
+      return 'register.acceptErrors.noName';
+  }
   return fallbackErrorKey(message);
 }
 
