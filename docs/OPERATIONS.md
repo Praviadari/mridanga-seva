@@ -605,6 +605,90 @@ npx eas-cli build -p android --profile preview
   |---|---|---|---|---|---|
   | | | | | | |
 
+### Friday production build (first production APK, brief 9)
+
+Planned for **Friday 16 Oct 2026**. Branch `brief9-apk` (device hardening #236-#239, build guard #256,
+dependencies #257) is merged to `main` first, by the lead, after `back-crash`; only then does `main`'s
+fingerprint leave 185e839f (the preview APK in use). Expo SDK 57 ([DECISIONS.md #258](DECISIONS.md):
+SDK 58 is not stable yet). Praveen runs every command, from the main folder; a chat never runs
+`eas build`.
+
+**Gates: all must be true before step 1.**
+
+| # | Gate | How to know | If not |
+|---|---|---|---|
+| G1 | **LIVE has every migration the app uses.** The production APK talks to LIVE (`qeozvv…`), which is at 0011; the app needs 0013-0045. Without them most screens fail after sign-in | [GO_LIVE_CHECKLIST.md](GO_LIVE_CHECKLIST.md) A1-A4 and B done; its probe on LIVE shows `LAST IN ORDER` = `0045`, `MISSING` = `none` | Do not build production. Either run the checklist first, or build `--profile preview` (TEST) for Friday instead: same native code, and testers keep their TEST logins |
+| G2 | Push on LIVE (needed only for notifications) | GO_LIVE_CHECKLIST C1-C6 done | The APK works without; notices do not arrive. Do C before telling the class to rely on them |
+| G3 | Sign-up and reset emails on LIVE (needed only for new logins and forgotten passwords) | GO_LIVE_CHECKLIST D1, D3-D9 and E1-E2 (the live web site: email links open it) | Existing logins work; new people cannot confirm their email |
+| G4 | `main` holds back-crash and brief9-apk, and nothing native after | `git log --oneline -3` in the main folder; `git status` clean | Ask the lead chat |
+| G5 | The LIVE settings file is `app/.env.live` | In the main folder `app\.env.live` exists (on 12 Oct 2026 it was still `app\.env`; move it as in app/README.md "Settings files", [#145](DECISIONS.md)) | Move it before step 4 |
+
+**Steps on the day** (PowerShell, `cd C:\Users\praveen.a\Mridanga_Seva_App\app`):
+
+1. **Network.** The upload goes to Google's storage, which the office FortiGate re-signs:
+   ```
+   node -e "const s=require('tls').connect(443,'storage.googleapis.com',{servername:'storage.googleapis.com'},()=>{console.log(s.getPeerCertificate().issuer.O,s.authorized);s.end()}).on('error',e=>console.log('ERROR',e.message))"
+   ```
+   `Google Trust Services true` = go on. `Fortinet…`, `false` or `ERROR` = office network: switch
+   the PC to the phone hotspot and run it again.
+2. **Terminal.** `$env:Path = "$env:LOCALAPPDATA\Programs\Git\cmd;$env:Path"`;
+   `$env:NODE_OPTIONS='--use-system-ca'`; `git pull`; `git status` (clean, on main); `npm ci`;
+   `npx eas-cli --version` = `24.12.1`; `npx eas-cli whoami` = the team's Expo account.
+3. **Fingerprint.** `npx expo-updates runtimeversion:resolve --platform android`: write down the
+   `runtimeVersion` (on the brief9-apk branch, 12 Oct 2026: `0dea00a3…`; main after the merge may
+   differ only if something native was merged after it).
+4. **EAS environment.** `npx eas-cli env:list --environment production --format long`: shows
+   `EXPO_PUBLIC_SUPABASE_URL` = `https://qeozvvizcojzxcjgnaei.supabase.co` and an
+   `EXPO_PUBLIC_SUPABASE_KEY` starting `sb_publishable_`. Missing or another address:
+   `npx eas-cli env:push --environment production --path .env.live`, then list again. (The build
+   guard would stop the build anyway, after the queue; this saves the wait.)
+5. **Keystore.** `npx eas-cli credentials -p android` → profile `production` → look only: note the
+   keystore's SHA-256 and compare it with the one shown for `preview`. Same = a production APK
+   installs over the preview app. If the build in step 6 offers to **generate a new keystore**, answer
+   **no**, stop and ask a chat: a second key means every phone must uninstall the app first, and every
+   later production APK must use that key for good.
+6. **Build.** `npx eas-cli build --platform android --profile production`. In the build log, before
+   the packages install: `eas-build-guard: profile production → project qeozvvizcojzxcjgnaei,
+   publishable key.` (the first real proof that the guard runs, [#256](DECISIONS.md)). The build page
+   shows the fingerprint of step 3. Free queue: up to an hour or more.
+7. **Keep the APK** as in "Each build" above: download, `Get-FileHash … -Algorithm SHA256`, rename
+   `mridanga-seva-production-<build id first 8>.apk`, Drive folder, a row in the APK log.
+8. **Permissions in the APK.** With Android SDK build-tools (any version):
+   `& "$env:LOCALAPPDATA\Android\Sdk\build-tools\<version>\aapt.exe" dump permissions .\mridanga-seva-production-<id>.apk`.
+   Must **not** list `SYSTEM_ALERT_WINDOW`, `READ_EXTERNAL_STORAGE`, `WRITE_EXTERNAL_STORAGE`
+   ([#236](DECISIONS.md)). Expected from the app: INTERNET, VIBRATE, CAMERA, RECORD_AUDIO,
+   MODIFY_AUDIO_SETTINGS, FOREGROUND_SERVICE, FOREGROUND_SERVICE_MEDIA_PLAYBACK, ACCESS_COARSE_LOCATION,
+   ACCESS_FINE_LOCATION, plus what the libraries merge in (for example notifications and network
+   state: POST_NOTIFICATIONS, WAKE_LOCK, ACCESS_NETWORK_STATE, the c2dm RECEIVE of Firebase; not yet
+   checked on a built APK, so write the real list into this step afterwards). Anything that reads
+   personal data (contacts, SMS, call log, background location, …): do not share it; bring the list
+   to a chat. No build-tools on the PC: skip this
+   step and say so in the APK log row.
+9. **Install and smoke test** on one phone (it replaces the preview app; sign in again with a LIVE
+   login, TEST logins do not exist there):
+   - opens; under Sign out: *Version 1.0.0 · as installed*; the home of each role you can sign in
+     with loads without an error notice (this is what proves G1);
+   - Attendance (C5): scan a student QR card → the phone buzzes once ([#239](DECISIONS.md));
+   - an announcement with a photo and a PDF; the metronome; a practice recording (R8, "Keeping the
+     APK small");
+   - G2 done: a test announcement arrives as a notification (OPERATIONS "Push notifications" step 12);
+   - airplane mode, close and open the app: after 10 s *This is taking long…* with Try again
+     ([#237](DECISIONS.md)); airplane mode off → Try again → the app opens;
+   - backup off ([#236](DECISIONS.md)), with the phone on USB debugging:
+     `adb shell bmgr backupnow org.mridangaseva.app` must not back the app up (it reports the
+     package as not eligible / skipped).
+   Anything fails: do not share; a new build after the fix (or keep the preview APK in use).
+10. **Share** the Drive link only after step 9. Tell the class: install over the old app, sign in
+    again. From now on `npm run update:production` reaches these phones; `update:preview` reaches only
+    preview APKs.
+
+**What waits for the domain** (`app.mridangaseva.com`, GO_LIVE_CHECKLIST ⏳ DOMAIN): asset labels
+printed from the production app carry `https://app.mridangaseva.com/i/…` (`ASSET_LINK_ORIGIN`), so
+print real labels only after E3 (the app's own scanner reads them before that; a phone camera
+opens a dead address); email links use `mridanga-seva.pages.dev` until E3-E5; Android App Links,
+which would open a label in the app instead of the browser, need the domain and a new APK
+([#259](DECISIONS.md)). None of these blocks the Friday build.
+
 **Keeping the APK small** ([DECISIONS.md #38](DECISIONS.md)). The `expo-build-properties` plugin
 in `app/app.json` builds the APK for phone processors only (`buildArchs`: `armeabi-v7a`, the old
 32-bit phones, and `arm64-v8a`, all newer ones), not for `x86`/`x86_64` (emulators, some

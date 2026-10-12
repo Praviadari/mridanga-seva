@@ -135,7 +135,7 @@ a second paste. So pasting a file twice by mistake is harmless; still, never do 
 | M0031 | `0031_push_fixes.sql` | Praveen · dashboard | No rows; probe `0031` | **The corrected version** (main since `7573c4b`, 6 Oct 2026). Before Run, Ctrl+F `update push_status` in the editor: both lines end in `where id;`. Without it Supabase's safeupdate refuses the push job's updates and phones get a notice three times (happened on TEST). The old Edge Function keeps working until C4 |
 | M0032 | `0032_auth_fixes.sql` | Praveen · dashboard | No rows; probe `0032` | |
 | M0033 | `0033_time_zones.sql` | Praveen · dashboard | `schedule` table, one row; probe `0033` | Re-schedules `mridanga-close-visits` hourly |
-| M0034 | `0034_access_log.sql` | Praveen · dashboard | `schedule` table, one row; probe `0034` | **Run once** (its header does not say so; a second paste is refused with `relation "access_log" already exists`). **The same day as the app update** ([OPERATIONS.md](OPERATIONS.md#releasing-a-change-database-first), [#146](DECISIONS.md)): an app from before it shows students with no parent, consent or calls. On go-live day the only LIVE app is the live web site (no production APK exists yet, brief 9), so part E1 follows this part the same day. If a production APK exists by then, also `npm run update:production` straight after B |
+| M0034 | `0034_access_log.sql` | Praveen · dashboard | `schedule` table, one row; probe `0034` | **Run once** (its header does not say so; a second paste is refused with `relation "access_log" already exists`). **The same day as the app update** ([OPERATIONS.md](OPERATIONS.md#releasing-a-change-database-first), [#146](DECISIONS.md)): an app from before it shows students with no parent, consent or calls. On go-live day the only LIVE app is the live web site (no production APK exists yet, brief 9), so part E1 follows this part the same day. If a production APK exists by then, also `npm run update:production` straight after B. The first production APK (planned 16 Oct 2026, [OPERATIONS.md "Friday production build"](OPERATIONS.md#friday-production-build-first-production-apk-brief-9)) is built from main after 0045, so it needs all of part B first (its gate G1): built before B, it signs in but its screens fail on LIVE |
 | M0035 | `0035_asset_labels.sql` | Praveen · dashboard | No rows; probe `0035` | |
 | M0036 | `0036_account_creation.sql` | Praveen · dashboard | No rows; probe `0036` | |
 | M0037 | `0037_db_backlog.sql` | Praveen · dashboard | No rows; probe `0037` | |
@@ -181,7 +181,10 @@ select (select count(*) from pg_extension where extname = 'pg_net') as pg_net,
 | C7 | Praveen · terminal | Parent emails' function, same folder and commit as C4: `npx supabase@latest functions deploy notify-parents --project-ref qeozvvizcojzxcjgnaei --no-verify-jwt --use-api`, then `functions list` | `notify-parents` ACTIVE, version 1 | As C4. It needs no secret of its own to deploy: without `BREVO_API_KEY` / `NOTICE_FROM` it only does dry runs ([OPERATIONS.md "Parent notices by email"](OPERATIONS.md#parent-notices-by-email)) |
 | C8 | Praveen · terminal | `curl.exe -s -X POST https://qeozvvizcojzxcjgnaei.supabase.co/functions/v1/notify-parents` | `{"error":"not_allowed"}` | As C5. Brevo secrets and switching the emails on are later steps (OPERATIONS "On LIVE"), not go-live |
 
-The real push test needs the production APK (brief 9): OPERATIONS step 12 with it, then.
+The real push test needs the production APK (brief 9): OPERATIONS step 12 with it, then (step 9 of
+[OPERATIONS.md "Friday production build"](OPERATIONS.md#friday-production-build-first-production-apk-brief-9)).
+For the production APK, parts A and B are required (gate G1); C (notifications) and D1, D3-D9 + E1-E2
+(new logins, reset mails) are needed before the class relies on those; the ⏳ DOMAIN steps are not.
 
 ## D. Email: Brevo, auth settings, real sign-up and reset
 
