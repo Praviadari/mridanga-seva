@@ -4716,8 +4716,31 @@ at the start, at most 15 digits), with the phone keyboard and `inputMode="tel"`;
 #164 still decide whether the number is real. The email check (`src/lib/email.ts`, one for every form)
 now also refuses a domain without a dot and two letters at the end, spaces, commas and double dots.
 
-**Why.** Students self-register on LIVE from 16 Oct 2026; a digit in a name reaches roll lists, QR
-cards and certificates. No database check yet: a DB-side name check can follow from the audit.
+**The exact rule** (for the SQL `clean_person_name` of migration 0047 to match; `checkPersonName`):
+1. Clean: Unicode **NFC**, trim, every run of white space → one space (U+0020). Saved names are this text.
+2. Empty → `required` (optional boxes: fine).
+3. Any digit → `digits`: `[0-9०-९০-৯੦-੯૦-૯୦-୯௦-௯`
+   `౦-౯೦-೯൦-൯０-９]` (ASCII, Devanagari, Bengali, Gurmukhi, Gujarati, Odia,
+   Tamil, Telugu, Kannada, Malayalam, full-width).
+4. Each character is a **letter** `[\p{L}\p{M}‌‍]` (letters, combining marks = matras, virama,
+   anusvara, nukta; ZWNJ, ZWJ) or a **separator** `[ .'’-]` (space, full stop, apostrophe U+0027, right
+   single quote U+2019, hyphen-minus U+002D); anything else → `symbols` (Telugu/Hindi danda ।, comma, @, _,
+   emoji ...).
+5. The first character is a letter; two separators never stand together, except `.`, `'` or `’` followed by
+   a space ("K. Rama"); the name does not end in `-`, `'` or `’` (a final `.` is allowed: "Rao Jr.") →
+   else `symbols`.
+6. Fewer than 2 letters → `tooShort`; more than `max` characters → `tooLong` (max 80; 100 on Register a
+   student and the Excel import, the database bound is 120; JS counts UTF-16 units).
+Fallback when an engine lacks `\p{…}` (not expected on Hermes or browsers): letters =
+`[A-Za-zÀ-ÖØ-öø-ɏ̀-ͯͰ-ϿЀ-ӿऀ-ॣ॰-৥`
+`ৰ-੥ੰ-૥૰-୥୰-௥௰-౥౰-೥೰-൥൰-෿‌‍]`.
+The Excel import's preview (`data/student-import.ts`) gives the same answer as row problems
+`name_required`, `name_too_long`, `name_digits`, `name_signs`. The audit's staff-name clash and
+invisible-character check stay server-side (My profile keeps its own hidden-character check too).
+
+**Why.** Students self-register on LIVE from 16 Oct 2026 (launch Tue 20 Oct); a digit in a name reaches
+roll lists, QR cards and certificates. The server half is the audit's P1-08 (migration 0047,
+`form-rules-sql`); the sign-up insert path skipped the server rules until then.
 
 **Consequences.** Names typed before this stay as they are until edited. A name with a digit in it
 (none expected) cannot be saved from these forms.
@@ -4735,6 +4758,11 @@ a date or choice field gets the focus of its first control on the web. `componen
 (`useFormFocus`: `target(key)` refs, `focusFirst(order, errors)`, `focusField(key)`); Screen provides the
 scroll view and one View around the page to measure against. The keyboard's Next button moves through
 the text boxes in page order (the date of birth is a tap, so Next skips it).
+
+The sign-up also refuses Create while the centre list is loading or failed to load (audit P1-05: the
+account would otherwise get no centre and the server would pick the lowest-id one): the message "Your
+centre is needed …" shows on the failed-list notice, the page goes to its Try again button, and the
+message clears when the list arrives.
 
 **Why.** Praveen's test: with the messages far up the page, people pressed Save again and nothing seemed
 to happen.
@@ -4757,7 +4785,9 @@ once around the app (`components/keyboard.tsx` `KeyboardRoot`, in `src/app/_layo
 ScrollView replaced by `KeyboardAwareScrollView` (`bottomOffset` 96: the focused box and its hint stay
 above the keyboard; the page gets room under it, so the last field and the button can be scrolled up).
 Every screen uses Screen, so one change covers every form. The web keeps a plain ScrollView
-(`keyboard.web.tsx`): the browser moves the page for its keyboard. KeyboardAvoidingView is gone.
+(`keyboard.web.tsx`): the browser moves the page for its keyboard; `app/public/index.html` adds
+`interactive-widget=resizes-content` to the viewport so Chrome on Android shrinks the page for it.
+KeyboardAvoidingView is gone (its Android `behavior` was undefined: the root cause in the audit, F5 §4).
 
 **Consequences.** New native code: fingerprint 0dea00a3 (brief9-apk) → **40e5832c**. Only an APK can
 prove it: see the phone test list in NOTES.md "12-10-2026 — Forms fix".

@@ -58,9 +58,14 @@ test('names: required, too short, too long, optional', () => {
   assert.equal(checkPersonName('a'.repeat(100), { max: 100 }), null);
 });
 
-test('names: kept trimmed with single spaces', () => {
+test('names: kept trimmed with single spaces, in Unicode NFC', () => {
   assert.equal(cleanName('  Praveen   Kumar  '), 'Praveen Kumar');
   assert.equal(checkPersonName('  Praveen   Kumar  '), null);
+  // e + combining acute (two codes) is kept as é (one code), as the SQL clean_person_name does.
+  assert.equal(cleanName('José'), 'José');
+  assert.equal(cleanName('José').length, 4);
+  // Devanagari क + nukta is composed where Unicode allows; the name stays valid either way.
+  assert.equal(checkPersonName('क़ारिम'), null);
 });
 
 test('names: the fallback letter ranges (engines without \\p{L}) agree on common scripts', () => {
@@ -130,4 +135,6 @@ test('every person-name box uses the name rules', () => {
   assert.match(read('app/join-ishtagoshti.tsx'), /checkPersonName\(parentName\)/);
   assert.match(read('data/students.ts'), /nameError\(form\.fullName/);
   assert.match(read('data/students.ts'), /nameError\(form\.guardianName/);
+  // The Excel import's preview (Guru) refuses the same names.
+  assert.match(read('data/student-import.ts'), /checkPersonName\(fullName, \{ max: 100 \}\)/);
 });
