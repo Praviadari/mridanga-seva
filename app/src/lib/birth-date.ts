@@ -1,5 +1,6 @@
-// A date of birth picked as three drop-downs (day, month, year) on the sign-up (A1, docs/DECISIONS.md
-// #162): no native date picker until the next APK (docs/I18N.md P6). Pure functions, unit-tested.
+// A date of birth: picked on the phone's calendar (Android) or as three drop-downs (day, month, year)
+// on the web (docs/DECISIONS.md #162, #270; components/birth-date-field.tsx). Used by the sign-up and by
+// Register a student. Pure functions, unit-tested.
 
 import { ageOn, isMinorOn, parseDayMonthYear, todayLocal } from './dates';
 
@@ -39,4 +40,31 @@ export function birthCheck(parts: BirthParts, today: string = todayLocal()): 'mi
   const iso = birthDateOf(parts);
   if (!iso || iso > today || ageOn(iso, today) > OLDEST) return 'invalid';
   return isMinorOn(iso, today) ? 'minor' : 'adult';
+}
+
+/** The calendar's limits and where it opens: today, 100 years ago, and startAge years ago when nothing is picked. */
+export function pickerRange(startAge: number, today: string = todayLocal()): { min: BirthParts; max: BirthParts; start: BirthParts } {
+  const [year, month, day] = today.split('-').map(Number);
+  // 29 February in a year without it opens on 28 February.
+  const sameDay = (y: number): BirthParts => ({ year: y, month, day: month === 2 && day === 29 && !isLeap(y) ? 28 : day });
+  return { min: sameDay(year - OLDEST), max: sameDay(year), start: sameDay(year - startAge) };
+}
+
+function isLeap(year: number): boolean {
+  return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+}
+
+/** The parts as a typed date for a form that keeps text ('15-6-2012'); missing parts stay empty ('-6-2012'). */
+export function typedOfParts(parts: BirthParts): string {
+  if (parts.day === null && parts.month === null && parts.year === null) return '';
+  return [parts.day, parts.month, parts.year].map((p) => (p === null ? '' : String(p))).join('-');
+}
+
+/** The parts of a typed date (day-month-year or YYYY-MM-DD; empty parts allowed), for the date field. */
+export function partsOfTyped(text: string): BirthParts {
+  const iso = parseDayMonthYear(text);
+  if (iso) return partsOf(iso);
+  const match = /^\s*(\d{0,2})-(\d{0,2})-(\d{0,4})\s*$/.exec(text);
+  const part = (p: string | undefined) => (p ? Number(p) : null);
+  return match ? { day: part(match[1]), month: part(match[2]), year: part(match[3]) } : NO_BIRTH_PARTS;
 }

@@ -26,6 +26,7 @@ import { VersionLine } from '@/components/update-notice';
 import { fetchMyReferralCode } from '@/data/about';
 import { checkMyDetails, fetchMyPhone, NAME_MAX, saveMyDetails, type MyDetailsErrors } from '@/data/my-profile';
 import { fetchMyStudent, type MyStudent } from '@/data/visits';
+import { typedPhone } from '@/lib/phone';
 
 /** My profile. */
 export function MyProfileScreen() {
@@ -112,6 +113,9 @@ export function MyProfileScreen() {
               value={fullName}
               onChangeText={setFullName}
               autoComplete="name"
+              textContentType="name"
+              autoCapitalize="words"
+              autoCorrect={false}
               maxLength={NAME_MAX + 10}
               error={errors.fullName ? t(errors.fullName) : undefined}
             />
@@ -119,9 +123,13 @@ export function MyProfileScreen() {
               label={t('myProfile.phoneLabel')}
               hint={t('myProfile.phoneHint')}
               value={phone}
-              onChangeText={setPhone}
+              // Digits only, + at the start for the country code (#267).
+              onChangeText={(text) => setPhone(typedPhone(text))}
               keyboardType="phone-pad"
+              inputMode="tel"
+              maxLength={16}
               autoComplete="tel"
+              textContentType="telephoneNumber"
               error={errors.phone ? t(errors.phone) : undefined}
             />
             {message ? <Notice tone={message.tone}>{message.text}</Notice> : null}

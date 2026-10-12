@@ -23,6 +23,7 @@ import { useTranslation } from 'react-i18next';
 
 import { AuthProvider, useAuth } from '@/auth/auth-provider';
 import { CrashScreen } from '@/components/crash-screen';
+import { KeyboardRoot } from '@/components/keyboard';
 import { SetupNeeded } from '@/components/setup-needed';
 import { useUpdateChecks } from '@/lib/app-update';
 import { documentTitleLayout } from '@/lib/document-title';
@@ -62,19 +63,22 @@ export default function RootLayout() {
     },
   };
   return (
-    <ThemeProvider value={navigationTheme}>
-      <StatusBar style="auto" />
-      {supabaseConfigProblem ? (
-        <>
-          <HideSplash when />
-          <SetupNeeded problem={supabaseConfigProblem} />
-        </>
-      ) : (
-        <AuthProvider>
-          <RootNavigator />
-        </AuthProvider>
-      )}
-    </ThemeProvider>
+    // Follows the phone keyboard for every page (components/keyboard.tsx, docs/DECISIONS.md #269).
+    <KeyboardRoot>
+      <ThemeProvider value={navigationTheme}>
+        <StatusBar style="auto" />
+        {supabaseConfigProblem ? (
+          <>
+            <HideSplash when />
+            <SetupNeeded problem={supabaseConfigProblem} />
+          </>
+        ) : (
+          <AuthProvider>
+            <RootNavigator />
+          </AuthProvider>
+        )}
+      </ThemeProvider>
+    </KeyboardRoot>
   );
 }
 
