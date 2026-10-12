@@ -9,12 +9,23 @@ import { test } from 'node:test';
 const repo = new URL('../../', import.meta.url);
 const read = (path) => readFileSync(new URL(path, repo), 'utf8');
 
-test('package.json has no script that EAS Build would run (the fingerprint ignores scripts, D11-09)', () => {
-  const scripts = Object.keys(JSON.parse(read('app/package.json')).scripts ?? {});
-  const hooks = scripts.filter((name) =>
+test('package.json has no script that EAS Build would run but the settings guard (the fingerprint ignores scripts, D11-09)', () => {
+  const scripts = JSON.parse(read('app/package.json')).scripts ?? {};
+  const hooks = Object.keys(scripts).filter((name) =>
     /^(pre|post)?install$|^prepare$|^prepublish$|^eas-build-/.test(name),
   );
-  assert.deepEqual(hooks, [], 'a build hook can change the APK unseen: build a new APK, see app/fingerprint.config.js');
+  // The one allowed hook only reads the build's settings and stops a wrong build; it changes no file (#256).
+  assert.deepEqual(hooks, ['eas-build-pre-install'], 'a build hook can change the APK unseen: build a new APK, see app/fingerprint.config.js');
+  assert.equal(scripts['eas-build-pre-install'], 'node scripts/eas-build-guard.mjs');
+});
+
+test('the build guard imports nothing but Node and its project list (it runs before npm install)', () => {
+  for (const file of ['app/scripts/eas-build-guard.mjs', 'app/scripts/lib/supabase-projects.mjs']) {
+    const imports = [...read(file).matchAll(/^import .* from '([^']+)';$/gm)].map((m) => m[1]);
+    for (const name of imports) {
+      assert.match(name, /^node:|^\.\/lib\/supabase-projects\.mjs$/, `${file} imports ${name}`);
+    }
+  }
 });
 
 test('tracked agent settings only switch plugins on: no hooks, permissions or environment (D11-20)', () => {
