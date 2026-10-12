@@ -1,7 +1,8 @@
 // Waiting room for people who are signed in but cannot use the app yet: a new account with no
 // role, an account the Guru switched off, a door-tablet login (Phase 2), or a profile that
 // could not be loaded. Explains which case it is and lets them check again. A login without a class
-// role may also join Ishtagoshti for free here (I14, docs/DECISIONS.md #88), or finish joining.
+// role may also join Ishtagoshti for free here (I14, docs/DECISIONS.md #88) once its real terms are in (off until then:
+// lib/ishtagoshti-terms.ts, audit S4-08), or finish a join already started.
 
 import { router } from 'expo-router';
 import { useState } from 'react';
@@ -17,6 +18,7 @@ import { SignOutButton } from '@/components/sign-out-button';
 import { UpdateNotice } from '@/components/update-notice';
 import { Section } from '@/components/section';
 import { useAboutPrompt } from '@/lib/about-prompt';
+import { IG_JOIN_FOR_WAITING } from '@/lib/ishtagoshti-terms';
 
 /** Pending-access screen with "Check again" and "Sign out". */
 export default function PendingScreen() {
@@ -70,7 +72,7 @@ export default function PendingScreen() {
           />
         </Section>
       ) : null}
-      {profile?.active && profile.role === 'pending' && (profile.ig_state === 'none' || profile.ig_state === 'awaiting_parent') ? (
+      {profile?.active && profile.role === 'pending' && ((IG_JOIN_FOR_WAITING && profile.ig_state === 'none') || profile.ig_state === 'awaiting_parent') ? (
         <Section icon="ishtagoshti" title={t('pending.igTitle')} description={t('pending.igHint')}>
           <Button
             icon="ishtagoshti"
