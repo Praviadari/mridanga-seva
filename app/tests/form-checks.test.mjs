@@ -137,4 +137,6 @@ test('every person-name box uses the name rules', () => {
   assert.match(read('data/students.ts'), /nameError\(form\.guardianName/);
   // The Excel import's preview (Guru) refuses the same names.
   assert.match(read('data/student-import.ts'), /checkPersonName\(fullName, \{ max: 100 \}\)/);
+  // Accept (0046) only for a sign-up whose name passes; others go through the form.
+  assert.match(read('app/staff/register.tsx'), /canAccept = [^;]*checkPersonName\(w\.full_name/);
 });
