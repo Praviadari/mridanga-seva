@@ -561,6 +561,12 @@ npx eas-cli build -p android --profile preview
 
 - Build from a clean, committed `main`: the APK's fingerprint (see "Updating the Android app")
   is computed from what is uploaded, and later updates must match it.
+- **The settings guard** ([DECISIONS.md #256](DECISIONS.md)): before `npm install`, EAS runs
+  `app/scripts/eas-build-guard.mjs` (the `eas-build-pre-install` script). It stops the build unless
+  the profile's EAS environment has a publishable key and the URL of that profile's project
+  (`preview` = test `fhuqyk…`, `production` = live `qeozvv…`, in `app/scripts/lib/supabase-projects.mjs`).
+  The build log shows `eas-build-guard: profile … → project …` before the install of the packages,
+  never the key. If it stops: fix the environment with `env:push` (above) and build again.
 - EAS needs `git` in the terminal. If it says *git command not found*, Git is installed but not
   on the terminal's path; add it for that window, for example
   `$env:Path = "$env:LOCALAPPDATA\Programs\Git\cmd;$env:Path"` in PowerShell. Do not use the
@@ -642,9 +648,10 @@ the screens use, and JavaScript-only packages.
 Expo works this out itself: it computes a **fingerprint** (a hash) of all of these, and an update
 reaches only the APKs with the same fingerprint. `app/fingerprint.config.js` leaves out the npm
 scripts and `.gitignore`. EAS Build does run npm's install hooks (`preinstall`, `postinstall`,
-`prepare`) and its own `eas-build-*` hooks; `app/package.json` has none, and `app/tests/repo-guards.test.mjs`
-fails if one is added, because the fingerprint would not see what it changes: such a hook means a
-new APK, decided first ([DECISIONS.md #198](DECISIONS.md)). When unsure, just run the
+`prepare`) and its own `eas-build-*` hooks. `app/package.json` has exactly one, the settings guard
+`eas-build-pre-install` (below, [DECISIONS.md #256](DECISIONS.md)), which changes no file;
+`app/tests/repo-guards.test.mjs` fails if another is added, because the fingerprint would not see
+what it changes: such a hook means a new APK, decided first ([DECISIONS.md #198](DECISIONS.md)). When unsure, just run the
 publish command: it stops with *no finished … APK has fingerprint …* when a new APK is needed.
 
 **Publishing an update** (from `app/`, logged in to Expo, with the change committed to `main`):
