@@ -69,7 +69,8 @@
     "choicesFailed": "Could not load the centres.",
     "fixFields": "Please correct the fields that show a message under them.",
     "nextStep": "After you sign in, the app asks a few optional questions about you. Then come to the class desk: a coordinator checks your name against your ID and registers you.",
-    "phoneRequired": "Enter your mobile number."
+    "phoneRequired": "Enter your mobile number.",
+    "choicesNeeded": "Your centre is needed before the account can be made. Check the internet connection, tap Try again, then Create account."
   },
   "forgotPassword": {
     "title": "Reset your password",
@@ -1269,7 +1270,9 @@
       "old_excel": "This is an old Excel file (.xls). Open it in Excel and save it as .xlsx or CSV.",
       "empty": "The file has no rows.",
       "too_big": "The file is larger than 5 MB."
-    }
+    },
+    "name_digits": "The name has numbers in it.",
+    "name_signs": "The name has signs other than letters, spaces, . ' and -, or fewer than two letters."
   },
   "settings": {
     "title": "Settings",

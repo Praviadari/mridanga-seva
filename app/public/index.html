@@ -15,12 +15,16 @@
   the browser bars with the header colour. text-size-adjust stops Safari enlarging text when the
   phone is turned sideways. The app sets <html lang> to its own language (src/i18n/index.ts), so
   VoiceOver reads Telugu and Hindi with the right voice.
+
+  Keyboard (forms fix, docs/DECISIONS.md #269): interactive-widget=resizes-content makes Chrome on
+  Android shrink the page for its keyboard (its default only moves the view), so a form's last box and
+  its button can be scrolled above the keyboard. Other browsers ignore it.
 -->
 <html lang="%LANG_ISO_CODE%">
   <head>
     <meta charset="utf-8" />
     <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no, viewport-fit=cover, interactive-widget=resizes-content" />
     <title>%WEB_TITLE%</title>
     <link rel="manifest" href="/manifest.json" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
