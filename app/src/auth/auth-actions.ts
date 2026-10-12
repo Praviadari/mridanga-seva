@@ -112,6 +112,11 @@ export type SignUpDetails = {
   dikshaName?: string | null;
   /** Instrument option codes the person wants to learn. */
   learn?: string[];
+  /**
+   * The privacy notice version the person ticked as read (PRIVACY_NOTICE_VERSION, #150; audit S4-02).
+   * handle_new_user keeps it from 0047; a database before 0047 ignores it.
+   */
+  noticeVersion?: string | null;
 };
 
 /**
@@ -143,6 +148,7 @@ export async function signUp(
         ...(details.phone ? { phone: details.phone } : {}),
         ...(details.dikshaName ? { diksha_name: details.dikshaName } : {}),
         ...(details.learn && details.learn.length > 0 ? { learn: details.learn } : {}),
+        ...(details.noticeVersion ? { notice_version: details.noticeVersion } : {}),
       },
       emailRedirectTo: emailLinkTarget(),
     },

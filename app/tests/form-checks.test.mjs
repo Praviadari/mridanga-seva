@@ -140,3 +140,24 @@ test('every person-name box uses the name rules', () => {
   // Accept (0046) only for a sign-up whose name passes; others go through the form.
   assert.match(read('app/staff/register.tsx'), /canAccept = [^;]*checkPersonName\(w\.full_name/);
 });
+
+test('sign-up: the privacy notice tick is required and its version goes with the sign-up (audit S4-02)', () => {
+  const read = (path) => readFileSync(new URL(`../src/${path}`, import.meta.url), 'utf8');
+  const signUp = read('app/sign-up.tsx');
+  assert.match(signUp, /if \(!noticeRead\) errors\.notice = 'signUp\.noticeRequired'/);
+  assert.match(signUp, /noticeVersion: PRIVACY_NOTICE_VERSION/);
+  // The link sits with the tick, before the Create button.
+  assert.ok(signUp.indexOf("<PrivacyNoticeLink label={t('signUp.privacyNotice')} />") < signUp.indexOf("label={t('signUp.submit')}"));
+  assert.match(read('auth/auth-actions.ts'), /notice_version: details\.noticeVersion/);
+});
+
+test('Join Ishtagoshti stays hidden for waiting logins while the terms are placeholders (audit S4-08)', async () => {
+  const { IG_JOIN_FOR_WAITING } = await import('../src/lib/ishtagoshti-terms.ts');
+  const placeholder = ['en', 'te', 'hi'].some((lang) => {
+    const ig = JSON.parse(readFileSync(new URL(`../src/i18n/locales/${lang}.json`, import.meta.url), 'utf8')).ishtagoshtiJoin;
+    return [ig.termsBody, ig.parentTerms].some((text) => /^\s*TEST\b/.test(text));
+  });
+  assert.ok(!(IG_JOIN_FOR_WAITING && placeholder), 'IG_JOIN_FOR_WAITING is on while a language still has the TEST terms');
+  const pending = readFileSync(new URL('../src/app/pending.tsx', import.meta.url), 'utf8');
+  assert.match(pending, /IG_JOIN_FOR_WAITING && profile\.ig_state === 'none'/);
+});

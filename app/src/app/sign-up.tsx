@@ -6,8 +6,8 @@
 // the person wants to learn. A new login has no access
 // until the database links it to a student record with the same email, or the Guru gives it a
 // role (docs/DATABASE.md "Linking a login to a student"). Step 2, About you, follows the first
-// sign-in (src/screens/about-you.tsx). The privacy notice is linked under the button (docs/DECISIONS.md
-// #150); the under-18 rule shows on the date of birth itself. Names take letters of any script only, each box is
+// sign-in (src/screens/about-you.tsx). The privacy notice is linked above the button with a required
+// "I have read" tick; its version goes with the sign-up as notice_version (docs/DECISIONS.md #150, #268); the under-18 rule shows on the date of birth itself. Names take letters of any script only, each box is
 // checked when it is left and again on Create, and Create takes the person to the first box with a problem
 // (docs/DECISIONS.md #267, #268).
 
@@ -27,6 +27,7 @@ import { BirthDateField } from '@/components/birth-date-field';
 import { BrandHeader } from '@/components/brand';
 import { Button } from '@/components/button';
 import { InstrumentChecks, PhoneField } from '@/components/about-fields';
+import { Checkbox } from '@/components/checkbox';
 import { ChoiceGroup } from '@/components/choice-group';
 import { useFormFocus } from '@/components/form-focus';
 import { LanguagePicker } from '@/components/language-picker';
@@ -47,11 +48,12 @@ import { optionLabel } from '@/data/options';
 import { birthCheck, birthDateOf, NO_BIRTH_PARTS, type BirthParts } from '@/lib/birth-date';
 import { cleanName, nameError } from '@/lib/person-name';
 import { countryName, isPhoneCountry, toE164, type CountryCode } from '@/lib/phone';
+import { PRIVACY_NOTICE_VERSION } from '@/lib/privacy-notice';
 import { spacing } from '@/theme/use-theme';
 
-type Field = 'name' | 'diksha' | 'email' | 'password' | 'confirm' | 'dob' | 'gender' | 'centre' | 'phone';
+type Field = 'name' | 'diksha' | 'email' | 'password' | 'confirm' | 'dob' | 'gender' | 'centre' | 'phone' | 'notice';
 /** The fields in the order they are on the page: Create goes to the first one with a problem. */
-const ORDER: readonly Field[] = ['name', 'diksha', 'email', 'password', 'confirm', 'dob', 'phone', 'gender', 'centre'];
+const ORDER: readonly Field[] = ['name', 'diksha', 'email', 'password', 'confirm', 'dob', 'phone', 'gender', 'centre', 'notice'];
 
 /** Sign-up form. Shows "check your email" when Supabase needs the email confirmed first. */
 export default function SignUpScreen() {
@@ -62,6 +64,8 @@ export default function SignUpScreen() {
   // Picked by the person; until then the country of the chosen centre (India when none yet).
   const [phoneCountryPicked, setPhoneCountry] = useState<CountryCode | null>(null);
   const [learn, setLearn] = useState<string[]>([]);
+  // The privacy notice ticked as read (audit S4-02): required; its version goes with the sign-up.
+  const [noticeRead, setNoticeRead] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -126,6 +130,7 @@ export default function SignUpScreen() {
     if (lists && lists.centres.length > 0 && !centreId) errors.centre = 'signUp.choose';
     // No centre list (still loading or failed): the account would get no centre (audit P1-05).
     if (choices === null || choices === undefined) errors.centre = 'signUp.choicesNeeded';
+    if (!noticeRead) errors.notice = 'signUp.noticeRequired';
     return errors;
   }
 
@@ -164,6 +169,7 @@ export default function SignUpScreen() {
       phone: toE164(phone, phoneCountry),
       dikshaName: cleanName(diksha) || null,
       learn,
+      noticeVersion: PRIVACY_NOTICE_VERSION,
     });
     setBusy(false);
     if (result.errorKey) setFormError(result.errorKey);
@@ -369,9 +375,21 @@ export default function SignUpScreen() {
 
         {lists ? <InstrumentChecks options={lists.instruments} value={learn} onChange={setLearn} /> : null}
 
+        {/* The notice next to its tick, above the button (audit S4-02; #150). */}
+        <View ref={target('notice')} collapsable={false} style={styles.group}>
+          <PrivacyNoticeLink label={t('signUp.privacyNotice')} />
+          <Checkbox
+            label={t('signUp.noticeRead')}
+            checked={noticeRead}
+            onChange={(on) => {
+              setNoticeRead(on);
+              if (on && fieldErrors.notice) setFieldErrors((current) => ({ ...current, notice: undefined }));
+            }}
+            error={fieldError('notice')}
+          />
+        </View>
         {formError ? <Notice tone="error">{t(formError)}</Notice> : null}
         <Button label={t('signUp.submit')} onPress={submit} loading={busy} />
-        <PrivacyNoticeLink label={t('signUp.privacyNotice')} />
       </Section>
       <Button
         variant="link"

@@ -27,7 +27,11 @@ function reveal(node: FieldNode, target: ScrollTarget | null) {
     // An instant jump: a smooth scroll does not run in a page that is not drawing, and suits reduced motion.
     element.scrollIntoView?.({ block: 'center' });
     // A text box takes the cursor; another field takes the screen reader's focus when it can.
-    const focusable = isTextBox ? element : element.querySelector<HTMLElement>('[tabindex="0"], button, input, select');
+    // A tick, choice or box before a link (the privacy notice's link sits above its tick).
+    const focusable = isTextBox
+      ? element
+      : (element.querySelector<HTMLElement>('[role="checkbox"], [role="radio"][tabindex="0"], input, select') ??
+        element.querySelector<HTMLElement>('[tabindex="0"], button'));
     focusable?.focus({ preventScroll: true });
     return;
   }
