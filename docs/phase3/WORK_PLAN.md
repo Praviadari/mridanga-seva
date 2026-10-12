@@ -24,7 +24,7 @@ A/B there are dropped), [MODEL_OPTIONS.md](MODEL_OPTIONS.md), [DPIA_DRAFT.md](DP
 |---|---|---|---|---|---|---|---|
 | P3-1 | Printed QR cards for students without phones | `p3-qr-cards` | — | **now** | 1.5 | No (OTA) | MERGED 40dbe19 (10-10-2026), published 56792c14 — migration 0045 (TEST done; LIVE after 0044), DECISIONS #249-#252 |
 | P3-8 | DPIA, consent and privacy notice revised for self-scan | `p3-privacy-docs` | — | **now** | 2 | No (docs) | MERGED f19dc8a (10-10-2026) — waits on lawyer review + te/hi native review; DECISIONS #253-#255; pack: [LAWYER_PACK.md](LAWYER_PACK.md) |
-| P3-0 | Native spike: camera → detect → embed → match on a cheap phone | `p3-spike` (never merged) | brief 9 APK merged | Jan 2027 | 5 | Throwaway dev build | open |
+| P3-0 | Native spike: camera → detect → embed → match on a cheap phone | `p3-spike` (never merged) | brief 9 APK merged | Jan 2027 | 5 | Throwaway dev build | taken — spike worker (lead chat 7), 12-10-2026; started early on Praveen's ask, from brief9-apk; face stays OFF for everyone until fully tested |
 | P3-2 | Data layer: face templates, enrol/withdraw, visit columns | `p3-data` | Guru answers (15 Nov); P3-8 reviewed | Feb 2027 | 3 | No (migration) | open |
 | P3-3 | Native foundation for the Phase 3 APK | `p3-native` | P3-0 result | 1 Mar 2027 | 3 | **Yes** | open |
 | P3-4 | Enrolment at the desk + "face on/off" | `p3-enrol` | P3-2, P3-3 | Mar wk 2 | 4 | on P3-3 | open |
