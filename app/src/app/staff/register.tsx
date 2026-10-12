@@ -77,6 +77,7 @@ import { classLocale } from '@/lib/class-locale';
 import { formatDateTime, formatTypedDate } from '@/lib/dates';
 import { asciiDigits } from '@/lib/digits';
 import { discardDraft, peekDraft, useDraftKeeper } from '@/lib/form-drafts';
+import { checkPersonName } from '@/lib/person-name';
 import { typedPhone } from '@/lib/phone';
 import { spacing } from '@/theme/use-theme';
 
@@ -383,7 +384,8 @@ export default function RegisterStudentScreen() {
           {waiting.slice(0, 10).map((w) => {
             // Accept for an adult with a date of birth; under 18 (the desk with a parent) or none: the form only.
             const age = w.dob ? ageFromForm(formatTypedDate(w.dob)) : null;
-            const canAccept = !!age && !age.minor && w.full_name.trim() !== '';
+            // A name that breaks the name rule (a sign-up from before #267): the form, where Save says what to correct.
+            const canAccept = !!age && !age.minor && checkPersonName(w.full_name, { max: 100 }) === null;
             if (age && accepting?.id === w.id) {
               return (
                 <View key={w.id} style={styles.confirm}>
