@@ -3,9 +3,11 @@
 // means a new APK when it changes, so leave out what cannot change the native app:
 // - PackageJsonScriptsAll: the npm scripts in package.json. This app has no android/ or ios/
 //   folder in git (they are generated at build time). EAS Build does run npm's install hooks
-//   (preinstall, postinstall, prepare) and its own eas-build-* hooks; package.json has none of
-//   them, so no script takes part in a build. Adding one that can change the native side means a
-//   new APK by hand, since the fingerprint would not notice (audit D11-09, docs/DECISIONS.md #198).
+//   (preinstall, postinstall, prepare) and its own eas-build-* hooks. package.json has one:
+//   eas-build-pre-install = scripts/eas-build-guard.mjs, which only reads the build's settings and
+//   stops a build with the wrong Supabase project; it changes no file (docs/DECISIONS.md #256).
+//   Adding one that can change the native side means a new APK by hand, since the fingerprint would
+//   not notice (audit D11-09, docs/DECISIONS.md #198; tests/repo-guards.test.mjs refuses others).
 // - GitIgnore: .gitignore, counted by Expo only for apps that keep those native folders in git.
 // Packages, app.json, plugins, icons, eas.json and google-services.json stay counted.
 

@@ -38,18 +38,10 @@ import { createInterface } from 'node:readline/promises';
 import { connect } from 'node:tls';
 
 import { listFiles, secretIn, SETTING_NAMES, settingsProblem, supabaseSettingsFrom } from './bundle-checks.mjs';
+// Supabase project of each channel, shared with the APK build guard (scripts/eas-build-guard.mjs).
+import { PROJECTS } from './lib/supabase-projects.mjs';
 
 const OUT = 'dist-update';
-
-/**
- * Supabase project of each channel. A channel's APKs and updates must always use the same one:
- * `preview` = the test project (dummy data), `production` = the live project. Change these only
- * together with the EAS environments (docs/OPERATIONS.md "Building the Android app").
- */
-const PROJECTS = {
-  preview: 'fhuqykssenuhczdqbafu',
-  production: 'qeozvvizcojzxcjgnaei',
-};
 
 /** Files of the bundle that can hold the settings. Android bundles are Hermes bytecode (.hbc). */
 const BUNDLE_FILES = new Set(['.hbc', '.js', '.json', '.map']);
