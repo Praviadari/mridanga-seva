@@ -2963,6 +2963,8 @@ notes read), `update:preview -- --check-only`, commit both files and the version
 If npx ever offers to *install* eas-cli, `npm ci` was not run: answer no. Dependabot PRs for
 eas-cli are reviewed like any upgrade. Closes D11-02.
 
+*Replaced in part by #257: the pinned version is 24.12.1 (12 Oct 2026).*
+
 ## 154. Release scripts read .env files with Expo's own parser and check the settings' shape — 7 Oct 2026
 
 **Context.** The scripts read EXPO_PUBLIC_SUPABASE_URL and _KEY with a regex of their own: an
@@ -4472,6 +4474,50 @@ log's pre-install step shows `eas-build-guard: profile production → project qe
 the Friday build (OPERATIONS "Friday production build"); the docs do not say in words that a failing
 npm hook fails the build, so that first log is also the proof. Replaces in part #198 (one eas-build
 hook is now allowed). Closes D3-11 (with #191).
+
+## 257. Dependencies for the production APK: SDK 57 patches, EAS CLI 24.12.1, three scoped overrides — 12 Oct 2026
+
+**Status: branch `brief9-apk` (audit brief 9); goes to main with the production APK. Native change:
+fingerprint 835f9adb → 0dea00a3.**
+
+**Context.** `npm audit` in `app/` gave 55 advisories (31 high, 23 moderate, 1 low) on 12 Oct 2026,
+all in build tools except query-string / decode-uri-component in expo-router (#199). The triage of
+10 Oct (NOTES.md "Device hardening") expected an EAS CLI upgrade to fix the EAS CLI ones. It does
+not: eas-cli 24.12.1 (newest, 8 Oct 2026) still pins exactly tar 7.5.19, minimatch 5.1.2, nanoid
+3.3.8, joi 17.11.0.
+
+**Decision.**
+- `npx expo install --fix`: expo 57.0.27, expo-image-manipulator 57.0.21, expo-linking 57.0.12,
+  expo-notifications 57.0.22, expo-router 57.0.25, expo-sqlite 57.0.4, expo-updates 57.0.25 (the
+  lockfile also takes expo-asset 57.0.19, expo-constants 57.0.21 and @expo/metro-file-map 57.0.4).
+  Same SDK, patch releases only; `expo install --check` then reports nothing.
+- `eas-cli` 24.12.1, exact (#153). Release notes 24.11.0 → 24.12.1: simulator and custom-build
+  features, no breaking change. It was 4 days old on 12 Oct, under the "at least a week" rule;
+  accepted because nothing in it touches Android builds or updates and it is 8 days old on the
+  Friday build. Replaces in part #153 (the version).
+- `package.json` `overrides`, under eas-cli and keyed by the exact vulnerable version, for the three
+  the triage marked safe: `tar@7.5.19` → 7.5.22, `minimatch@5.1.2` → 5.1.9, `nanoid@3.3.8` → 3.3.19
+  (patch versions of the same minor; minimatch 5.1.9 and nanoid 3.3.19 were already in the tree for
+  other packages). **Gotcha:** a plain `"minimatch": "5.1.9"` under eas-cli also replaced the
+  minimatch 9 and 10 that @oclif/core and glob need, and `eas build:list` then failed with
+  *minimatch_1.minimatch is not a function*; after changing overrides, regenerate the lockfile from
+  the committed one (`git checkout HEAD -- package-lock.json`, `npm install`), check `npm ls
+  minimatch nanoid tar` shows no *invalid*, and run `npm run update:preview -- --check-only
+  --message x`. joi is left (17.11 → 17.13 is a minor inside @expo/eas-json; the triage did not mark
+  it safe).
+- Never `npm audit fix --force` (it offers expo 44 and eas-cli 0.52, majors backwards).
+
+**Result.** 51 advisories (27 high, 23 moderate, 1 low). Left, none in the APK or web bundle except
+the last: node-forge (no patched release; build-time signing), braces (no patched release; Metro),
+joi, ajv, yaml, uuid, sprintf-js, ts-deepmerge, diff (EAS CLI / Expo tooling), decode-uri-component
+(expo-router 57; fixed only by expo-router 58 = SDK 58, #258). `npx expo-doctor`: 20/21, the one
+failure is "EAS CLI should not be installed in your project", which #153 decided on purpose.
+
+**Consequences.** The fingerprint moves (expo and expo-* native packages), so this goes only with a
+new APK; tsc, lint and every test passed on it. Until an APK with 0dea00a3 exists,
+`update:preview -- --check-only` on this branch stops at its first check (*no finished preview APK
+has fingerprint 0dea00a3…*), which is the expected answer. On the built APK the usual smoke steps
+cover the patched modules (notifications, router, SQLite, updates, image manipulator).
 
 ## 260. Leaving a screen never reads an expo-audio object its hook has released — 12 Oct 2026
 
