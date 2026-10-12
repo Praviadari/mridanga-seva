@@ -522,9 +522,9 @@ The app belongs to the Expo project `@mridanga-seva/mridanga-seva`, in the Expo 
 The id is not a secret.
 
 **EAS CLI is pinned** ([DECISIONS.md #153](DECISIONS.md)): `app/package.json` holds an exact
-version (`"eas-cli": "24.11.0"` in devDependencies), so every computer runs the same, checked
-copy. Run `npm ci` in `app/` first; then `npx eas-cli …` runs that copy and `npx eas-cli
---version` prints 24.11.0. If npx asks *Need to install the following packages*, answer no and
+version (`"eas-cli": "24.12.1"` in devDependencies since 12 Oct 2026, [DECISIONS.md #257](DECISIONS.md)),
+so every computer runs the same, checked copy. Run `npm ci` in `app/` first; then `npx eas-cli …`
+runs that copy and `npx eas-cli --version` prints 24.12.1. If npx asks *Need to install the following packages*, answer no and
 run `npm ci`: it is about to download whatever version is newest. Never add `@latest`.
 **Upgrading** it is a change like any other: `npm install --save-dev --save-exact eas-cli@<version>`
 in `app/` (a version at least a week old, after reading its release notes), check
@@ -1676,8 +1676,14 @@ A security alert comes as a Dependabot pull request too; treat it first.
 EAS while building (eas-cli, the Expo CLI, Metro, config plugins: node-forge, tar, minimatch, braces,
 joi, yaml …); none of their code is in the app. The one in the app is query-string /
 decode-uri-component under expo-router: a malformed address slows only the phone that opens it.
-They are fixed by the Expo SDK upgrade that comes with the production APK (brief 9), then
-`npm audit` again. **Never** `npm audit fix --force` (it installs versions Expo does not support
+**12 Oct 2026 (brief 9, [DECISIONS.md #257](DECISIONS.md)): 51** (1 low, 23 moderate, 27 high) after
+`npx expo install --fix` (SDK 57 patches), eas-cli 24.12.1 and the `overrides` in `app/package.json`
+(tar, minimatch, nanoid, scoped to eas-cli: eas-cli pins old exact versions, so upgrading it alone
+fixed nothing). Left: node-forge and braces (no patched release yet), joi, ajv, yaml, uuid,
+sprintf-js, ts-deepmerge, diff (EAS CLI / Expo tooling) and decode-uri-component, which needs
+expo-router 58, i.e. the Expo SDK 58 upgrade ([DECISIONS.md #258](DECISIONS.md)). When eas-cli
+releases with newer pins, drop the matching override (`npm ls tar minimatch nanoid` shows
+"overridden"). **Never** `npm audit fix --force` (it installs versions Expo does not support
 and moves the fingerprint). Re-run the triage after each SDK upgrade and write the date here.
 
 ## Handing over
