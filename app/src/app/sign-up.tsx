@@ -86,6 +86,8 @@ export default function SignUpScreen() {
       setChoices(result);
       // One country, one city, one centre: chosen already.
       if (result && result !== 'missing') {
+        // The list is here now: "the centre list is needed" no longer applies.
+        setFieldErrors((current) => (current.centre === 'signUp.choicesNeeded' ? { ...current, centre: undefined } : current));
         const countries = centreCountries(result.centres);
         if (countries.length === 1) setCountry(countries[0]);
         if (result.centres.length === 1) {
@@ -122,6 +124,8 @@ export default function SignUpScreen() {
     else if (age === 'minor') errors.dob = 'signUp.under18Desk';
     if (lists && lists.genders.length > 0 && !gender) errors.gender = 'signUp.choose';
     if (lists && lists.centres.length > 0 && !centreId) errors.centre = 'signUp.choose';
+    // No centre list (still loading or failed): the account would get no centre (audit P1-05).
+    if (choices === null || choices === undefined) errors.centre = 'signUp.choicesNeeded';
     return errors;
   }
 
@@ -298,12 +302,12 @@ export default function SignUpScreen() {
 
         {choices === undefined ? <AppText tone="muted">{t('common.loading')}</AppText> : null}
         {choices === null ? (
-          <Notice tone="error" title={t('signUp.choicesFailed')}>
-            {t('common.networkError')}
-          </Notice>
-        ) : null}
-        {choices === null ? (
-          <Button variant="secondary" icon="refresh" label={t('common.tryAgain')} onPress={() => setLoadAttempt(loadAttempt + 1)} />
+          <View ref={target('centre')} collapsable={false} style={styles.group}>
+            <Notice tone="error" title={t('signUp.choicesFailed')}>
+              {fieldErrors.centre === 'signUp.choicesNeeded' ? t('signUp.choicesNeeded') : t('common.networkError')}
+            </Notice>
+            <Button variant="secondary" icon="refresh" label={t('common.tryAgain')} onPress={() => setLoadAttempt(loadAttempt + 1)} />
+          </View>
         ) : null}
         {lists && lists.genders.length > 0 ? (
           <View ref={target('gender')} collapsable={false}>

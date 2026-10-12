@@ -50,9 +50,19 @@ export function isNameLetter(char: string, useFallback = false): boolean {
 const DIGIT = /[0-9०-९০-৯੦-੯૦-૯୦-୯௦-௯౦-౯೦-೯൦-൯０-９]/;
 const SEPARATOR = new RegExp(`^[${SEPARATORS}]$`);
 
-/** The name as it is kept: no spaces at the ends, one space between words. */
+/**
+ * The name as it is kept: Unicode NFC (one code for a letter with its accent or vowel sign, so the same
+ * name typed on two keyboards is the same text; the SQL clean_person_name does the same), no spaces at
+ * the ends, one space between words.
+ */
 export function cleanName(text: string): string {
-  return text.trim().replace(/\s+/g, ' ');
+  let name = text;
+  try {
+    name = name.normalize('NFC');
+  } catch {
+    // An engine without normalize keeps the text as typed.
+  }
+  return name.trim().replace(/\s+/g, ' ');
 }
 
 /**

@@ -11,6 +11,7 @@ import { File } from 'expo-file-system';
 import { Platform } from 'react-native';
 
 import { ageOn, parseDayMonthYear, todayLocal } from '@/lib/dates';
+import { checkPersonName, cleanName } from '@/lib/person-name';
 import { MAX_SHEET_BYTES, readSheet, type SheetError, type SheetRows } from '@/lib/sheet-reader';
 import { supabase } from '@/lib/supabase';
 
@@ -126,6 +127,8 @@ export type ImportValues = {
 export const ROW_PROBLEMS = [
   'name_required',
   'name_too_long',
+  'name_digits',
+  'name_signs',
   'dob_required',
   'dob_invalid',
   'minor_use_form',
@@ -182,7 +185,7 @@ export function checkRows(rows: SheetRows, columns: ColumnMap, existing: Existin
     if (index === 0 || row.every((c) => c.trim() === '')) return;
     const line = index + 1;
     const problems: RowProblem[] = [];
-    const fullName = cell(row, 'fullName').replace(/\s+/g, ' ');
+    const fullName = cleanName(cell(row, 'fullName'));
     const dobText = cell(row, 'dob');
     const dob = dobText ? parseImportDate(dobText) : null;
     const joinedText = cell(row, 'joinedOn');
@@ -193,8 +196,12 @@ export function checkRows(rows: SheetRows, columns: ColumnMap, existing: Existin
     const levelId = parseLevel(cell(row, 'level'));
     const rollNo = cell(row, 'rollNo');
 
-    if (!fullName) problems.push('name_required');
-    else if (fullName.length > 100) problems.push('name_too_long');
+    // The same name rule as the forms (#267): letters of any script, no digits.
+    const nameProblem = checkPersonName(fullName, { max: 100 });
+    if (nameProblem === 'required') problems.push('name_required');
+    else if (nameProblem === 'tooLong') problems.push('name_too_long');
+    else if (nameProblem === 'digits') problems.push('name_digits');
+    else if (nameProblem) problems.push('name_signs');
     if (!dobText) problems.push('dob_required');
     else if (!dob || dob > today || ageOn(dob, today) > 100) problems.push('dob_invalid');
     else if (ageOn(dob, today) < 18) problems.push('minor_use_form');
