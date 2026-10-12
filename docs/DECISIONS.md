@@ -4362,3 +4362,31 @@ pasted in only after the lawyer's review, with the Phase 3 APK (P3-7). Each past
 
 **Why.** A notice must describe what the app does now: describing face scan before it exists would
 mislead, and the parent emails need their notice line before they are switched on.
+
+## 260. Leaving a screen never reads an expo-audio object its hook has released — 12 Oct 2026
+
+**Context.** Praveen, 12-10-2026, on the preview APK (update 01a12699): Back from Practice tools showed the
+crash screen (#216) with "The 1st argument cannot be cast to type class expo.modules.audio.AudioRecorder
+(received class java.lang.Integer)". The recorder panel (`components/audio-recorder.tsx`, used by S5 Record
+myself, S7, C14 and the sloka editor) stopped a running recording in a `useEffect` cleanup by reading
+`recorder.isRecording`. expo-audio's `useAudioRecorder` releases the native recorder in its own effect
+cleanup, and React runs a component's effect cleanups in hook order, so on unmount the recorder was already
+released; on Android the property getter then receives a bare id and throws, and a throw in an unmount
+cleanup reaches the root ErrorBoundary. The web keeps working (its recorder is not a native object), which
+is why the browser walks of every screen with Back found nothing.
+
+**Decision.** The panel stops the recording in a `useLayoutEffect` cleanup, which React runs during the
+unmount itself, before any `useEffect` cleanup and so before the release; and the stop goes through
+`stopRecorderOnLeave` (`components/recorder-leave.ts`), which never throws and ignores a failed stop. Rule
+for the app: a cleanup that touches an object made by `useAudioRecorder` / `useAudioPlayer` (or another
+releasing hook) uses `useLayoutEffect`; `tests/back-crash.test.mjs` fails on a `useEffect` cleanup that does.
+JavaScript only (fingerprint 185e839f unchanged), so it reaches the installed APK as an update.
+
+**Why.** Reordering hooks cannot put our cleanup before expo-audio's (the recorder must exist first), and a
+`try` alone would leave the microphone to be freed only by the release. A layout-effect cleanup keeps
+"leaving stops the recording" and runs while the recorder is still alive.
+
+**Consequences.** If a screen with the panel is ever hidden without being removed (React `Activity`, a
+frozen screen), the layout cleanup stops a running recording then too, which is what leaving should do.
+Expo's own listener removal after the release is harmless on Android: the AudioRecorder class declares no
+events, so no native stop-listening call is made. #261 and #262 were reserved for this bug and are unused.

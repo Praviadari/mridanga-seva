@@ -7,7 +7,7 @@
 // expo-audio (next planned APK); in the browser it records through MediaRecorder.
 
 import { useAudioPlayer, useAudioPlayerStatus, useAudioRecorder, useAudioRecorderState } from 'expo-audio';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
@@ -17,6 +17,7 @@ import { radius, spacing, useTheme } from '@/theme/use-theme';
 import { AppText } from './app-text';
 import { Button } from './button';
 import { Notice } from './notice';
+import { stopRecorderOnLeave } from './recorder-leave';
 
 /** 83 400 ms → "1:23". */
 export function durationText(ms: number): string {
@@ -103,13 +104,10 @@ export function AudioRecorderPanel({ mode, maxSeconds, onTake, onStart, onStop, 
     if (recording && state.durationMillis >= maxSeconds * 1000) void stopRef.current();
   }, [recording, state.durationMillis, maxSeconds]);
 
-  // Leaving the screen while recording stops it (and gives the microphone back).
-  useEffect(
-    () => () => {
-      if (recorder.isRecording) void recorder.stop().catch(() => undefined);
-    },
-    [recorder],
-  );
+  // Leaving the screen while recording stops it (and gives the microphone back). A layout effect: its
+  // cleanup runs before useAudioRecorder releases the recorder; reading a released recorder crashed
+  // Back on Android (recorder-leave.ts, docs/DECISIONS.md #260).
+  useLayoutEffect(() => () => stopRecorderOnLeave(recorder), [recorder]);
 
   if (take && mode === 'review') {
     return (
