@@ -82,6 +82,9 @@ export function ScanScreen({ kind, code, attack, settings, onFinished, onCancel 
   const lastUi = useRef(0);
   const lastFrame = useRef<FrameReport | null>(null);
   const captureMode = useRef(settings.capture);
+  // Set while a frame capture has been asked for and has not arrived yet (for the 3 s photo fallback).
+  const waitingFrame = useRef(0);
+  const captureSeq = useRef(0);
 
   const note = useCallback((line: string) => setLog((l) => [...l.slice(-6), line]), []);
 
@@ -144,6 +147,7 @@ export function ScanScreen({ kind, code, attack, settings, onFinished, onCancel 
 
   const onCaptured = useCallback(
     async (c: Captured) => {
+      if (c.source === 'frame') waitingFrame.current = 0;
       try {
         const fast = settings.fastPath && kind !== 'enrol' && c.source === 'frame';
         const a = await analyse(c.image, c.live, fast);
@@ -176,10 +180,13 @@ export function ScanScreen({ kind, code, attack, settings, onFinished, onCancel 
     if (capturing.current || finished.current) return;
     capturing.current = true;
     if (captureMode.current === 'frame') {
+      const seq = ++captureSeq.current;
+      waitingFrame.current = seq;
       cam.current?.requestFrameCapture();
-      // If no frame comes back within 3 s, fall back to a photo.
+      // If this request's frame does not come back within 3 s, fall back to a photo.
       setTimeout(() => {
-        if (capturing.current && captureMode.current === 'frame' && !finished.current) {
+        if (waitingFrame.current === seq && captureMode.current === 'frame' && !finished.current) {
+          waitingFrame.current = 0;
           captureMode.current = 'photo';
           capturing.current = false;
           note('frame capture timed out, using photo');

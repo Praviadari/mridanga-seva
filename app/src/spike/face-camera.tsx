@@ -7,7 +7,7 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import type { Image } from 'react-native-nitro-image';
-import { NitroModules } from 'react-native-nitro-modules';
+import type { NitroModules } from 'react-native-nitro-modules';
 import {
   Camera,
   CommonResolutions,
@@ -114,9 +114,12 @@ export const FaceCamera = forwardRef<FaceCameraHandle, Props>(function FaceCamer
           wanted.setBlocking(0);
           const t1 = Date.now();
           const image = HybridFrameConverter.convertFrameToImage(frame);
-          let handOver: Boxed | Image;
+          // Box the picture so the React runtime can unbox it. The proxy is read from this worklet runtime's
+          // own global (Nitro installs it per runtime) rather than captured from the React runtime.
+          let handOver: Boxed | Image = image;
           try {
-            handOver = NitroModules.box(image) as unknown as Boxed;
+            const proxy = (globalThis as unknown as { NitroModulesProxy?: typeof NitroModules }).NitroModulesProxy;
+            if (proxy) handOver = proxy.box(image) as unknown as Boxed;
           } catch {
             handOver = image;
           }
