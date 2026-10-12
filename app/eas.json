@@ -21,6 +21,15 @@
         "buildType": "apk"
       },
       "channel": "production"
+    },
+    "spike": {
+      "distribution": "internal",
+      "environment": "development",
+      "autoIncrement": true,
+      "android": {
+        "buildType": "apk"
+      },
+      "channel": "spike"
     }
   }
 }

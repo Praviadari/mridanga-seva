@@ -40,6 +40,12 @@ test('a missing profile, unknown profile, missing setting, odd URL or secret key
   assert.match(buildSettingsProblem({ ...base, EXPO_PUBLIC_SUPABASE_KEY: jwt('service_role') }), /neither a publishable/);
 });
 
+test('p3-spike branch: the spike profile passes with no server or TEST, never LIVE', () => {
+  assert.equal(buildSettingsProblem({ EAS_BUILD_PROFILE: 'spike' }), null);
+  assert.equal(buildSettingsProblem({ EAS_BUILD_PROFILE: 'spike', EXPO_PUBLIC_SUPABASE_URL: TEST_URL }), null);
+  assert.match(buildSettingsProblem({ EAS_BUILD_PROFILE: 'spike', EXPO_PUBLIC_SUPABASE_URL: LIVE_URL }), /must not name/);
+});
+
 test('projectRefOf reads only an exact Supabase address', () => {
   assert.equal(projectRefOf(` ${TEST_URL} `), PROJECTS.preview);
   assert.equal(projectRefOf('http://' + PROJECTS.preview + '.supabase.co'), null);

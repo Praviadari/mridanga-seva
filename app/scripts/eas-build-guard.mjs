@@ -30,6 +30,15 @@ function jwtRole(token) {
 export function buildSettingsProblem(env) {
   const profile = env.EAS_BUILD_PROFILE;
   if (!profile) return 'EAS_BUILD_PROFILE is not set (this runs on EAS Build).';
+  // BRANCH p3-spike ONLY: the face spike APK uses no server. It may carry no Supabase settings at all or
+  // the TEST ones (if the EAS "development" environment has them), never the live project's.
+  if (profile === 'spike') {
+    const spikeUrl = env.EXPO_PUBLIC_SUPABASE_URL;
+    if (spikeUrl && projectRefOf(spikeUrl) !== PROJECTS.preview) {
+      return 'the spike profile must not name any Supabase project but the test one.';
+    }
+    return null;
+  }
   if (!Object.hasOwn(PROJECTS, profile)) {
     return `build profile "${profile}" has no Supabase project in scripts/lib/supabase-projects.mjs.`;
   }
