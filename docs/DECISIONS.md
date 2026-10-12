@@ -3671,6 +3671,8 @@ names `app/.claude/` and `app/AGENTS.md`.
 **Consequences.** Adding such a hook, or agent hooks and permissions in git, needs this decision
 changed first. CODEOWNERS only enforces review once `main` has a ruleset (Praveen, GitHub settings).
 
+*Replaced in part by #256: the settings guard `eas-build-pre-install` is the one allowed build hook.*
+
 ## 199. Operations trade-offs accepted — 9 Oct 2026
 
 **Context.** The rest of the operations and build backlog of audit brief 16 (dimensions 10, 11).
@@ -4438,3 +4440,35 @@ pasted in only after the lawyer's review, with the Phase 3 APK (P3-7). Each past
 
 **Why.** A notice must describe what the app does now: describing face scan before it exists would
 mislead, and the parent emails need their notice line before they are switched on.
+
+## 256. An APK build stops when its Supabase settings belong to the other project — 12 Oct 2026
+
+**Status: branch `brief9-apk` (audit brief 9, D3-11); goes to main with the production APK.**
+
+**Context.** An APK takes its Supabase URL and key from the EAS environment of its profile
+(`eas.json` "environment"). Updates were already checked (`publish-update.mjs`, #152-#155), APK
+builds were not: a production APK built while the `production` environment still held the test
+settings would cut the class off from its data, and a preview APK with the live settings would send
+testers into the class's real data. #191 left D3-11's build-time guard for brief 9 because it needs
+an `eas-build-pre-install` script, which #198 forbade.
+
+**Decision.** `app/package.json` gets one hook, `"eas-build-pre-install": "node
+scripts/eas-build-guard.mjs"`. EAS Build runs it before `npm install` with the profile's EAS
+environment and `EAS_BUILD_PROFILE` set. It fails the build (exit 1) unless the profile is in
+`scripts/lib/supabase-projects.mjs` (`preview` = TEST `fhuqyk…`, `production` = LIVE `qeozvv…`), the
+URL is exactly `https://<that ref>.supabase.co` and the key is a publishable key or an anon JWT. It
+prints the profile and the ref, never the key. Plain Node, no packages (node_modules does not exist
+yet). `publish-update.mjs` reads the same project list. `tests/build-guard.test.mjs` covers it;
+`tests/repo-guards.test.mjs` now allows exactly this hook with exactly this command, and checks the
+guard imports nothing but `node:` modules and the project list.
+
+**Why.** The guard changes no file, so the fingerprint not counting npm scripts (#198) is harmless
+here: the APK is the same with or without it; a wrong build simply does not finish. Comparing only
+refs keeps keys out of build logs.
+
+**Consequences.** Fingerprint unchanged by this (835f9adb on the branch). A new profile (a
+development build, say) must be added to `supabase-projects.mjs` first or its builds stop. The build
+log's pre-install step shows `eas-build-guard: profile production → project qeozvv…`; check it once on
+the Friday build (OPERATIONS "Friday production build"); the docs do not say in words that a failing
+npm hook fails the build, so that first log is also the proof. Replaces in part #198 (one eas-build
+hook is now allowed). Closes D3-11 (with #191).
