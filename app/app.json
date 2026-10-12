@@ -99,7 +99,8 @@
       ],
       "expo-sharing",
       "expo-screen-orientation",
-      "expo-asset"
+      "expo-asset",
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": true,

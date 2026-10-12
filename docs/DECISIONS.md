@@ -4694,6 +4694,94 @@ sign-up should not exist; if one does, "Fill the form" with the parent, the ID c
 **Why.** A minor's data needs the parent's written consent before it is stored (#16); a one-tap path must
 not reach around it. An adult's registration needs no consent row (as on the desk).
 
+## 267. Person names take letters of any script only; phone boxes keep digits only — 12 Oct 2026
+
+**Status: decided by the lead's brief (forms fix, Praveen's test of 12 Oct 2026); in the 16 Oct 2026 APK.**
+
+**Context.** Praveen's test of the forms found that name boxes took digits and signs ("Ram 2"). Names
+are written in Telugu, Hindi and English, so a Latin-only rule is wrong.
+
+**Decision.** One rule for every person-name box (sign-up full name and Diksha name, About you's Diksha
+name and emergency contact, Register a student's student and parent names, My profile's name, the
+Ishtagoshti parent's name): `src/lib/person-name.ts` `checkPersonName`. A name is letters of any script
+plus their vowel signs (`\p{L}\p{M}`, with the zero-width joiner and non-joiner of Indic keyboards),
+with a single space, dot, apostrophe (' or ’) or hyphen between letters; it starts with a letter, ends
+with a letter or a dot, has at least 2 letters and at most 80 characters (100 on Register a student,
+the database bound is 120). Digits of any script (0-9, Telugu ౦-౯, Devanagari ०-९ ...) give "A name has
+letters only, no numbers."; any other sign gives the "Use letters only ..." message (`validation.name*`,
+en/te/hi). Names are saved trimmed with single spaces (`cleanName`). An engine without Unicode property
+classes falls back to explicit Latin, Greek, Cyrillic and Indic ranges (tested). Phone boxes drop
+everything but digits as they are typed (`typedPhone`: other scripts' digits read as 0-9, a + kept only
+at the start, at most 15 digits), with the phone keyboard and `inputMode="tel"`; the country rules of
+#164 still decide whether the number is real. The email check (`src/lib/email.ts`, one for every form)
+now also refuses a domain without a dot and two letters at the end, spaces, commas and double dots.
+
+**Why.** Students self-register on LIVE from 16 Oct 2026; a digit in a name reaches roll lists, QR
+cards and certificates. No database check yet: a DB-side name check can follow from the audit.
+
+**Consequences.** Names typed before this stay as they are until edited. A name with a digit in it
+(none expected) cannot be saved from these forms.
+
+## 268. Forms check each box when it is left, and Save goes to the first box with a problem — 12 Oct 2026
+
+**Status: decided by the lead's brief (forms fix); in the 16 Oct 2026 APK.**
+
+**Decision.** On the sign-up and Register a student: a box is checked when the person leaves it (a
+problem shows at once, a fixed one goes away; an empty box says nothing until Save unless it showed a
+problem already); a new date of birth updates its message at once. Save / Create checks everything,
+shows every message, and takes the person to the first field with a problem in page order: the page
+scrolls it to the middle of the screen and a text box gets the cursor (the keyboard opens on a phone);
+a date or choice field gets the focus of its first control on the web. `components/form-focus.tsx`
+(`useFormFocus`: `target(key)` refs, `focusFirst(order, errors)`, `focusField(key)`); Screen provides the
+scroll view and one View around the page to measure against. The keyboard's Next button moves through
+the text boxes in page order (the date of birth is a tap, so Next skips it).
+
+**Why.** Praveen's test: with the messages far up the page, people pressed Save again and nothing seemed
+to happen.
+
+**Consequences.** The web scroll is an instant jump (a smooth scroll does not run in a page that is not
+drawing, and suits reduced motion); the reveal waits one `setTimeout`, not `requestAnimationFrame`, which
+never fires in a background tab.
+
+## 269. The page follows the phone keyboard with react-native-keyboard-controller — 12 Oct 2026
+
+**Status: decided by the lead's brief (forms fix); native: in the 16 Oct 2026 APK.**
+
+**Context.** Android draws the app edge to edge on SDK 57, so the window no longer shrinks for the
+keyboard (`adjustResize` does nothing); Screen's KeyboardAvoidingView had no Android behaviour, and a
+focused box low on the page stayed behind the keyboard with no way to scroll to it (Praveen's test).
+
+**Decision.** `react-native-keyboard-controller` 1.21.9 (`npx expo install`, SDK 57's version; needs
+reanimated, already in), as the Expo keyboard-handling guide shows for long forms: `KeyboardProvider`
+once around the app (`components/keyboard.tsx` `KeyboardRoot`, in `src/app/_layout.tsx`) and Screen's
+ScrollView replaced by `KeyboardAwareScrollView` (`bottomOffset` 96: the focused box and its hint stay
+above the keyboard; the page gets room under it, so the last field and the button can be scrolled up).
+Every screen uses Screen, so one change covers every form. The web keeps a plain ScrollView
+(`keyboard.web.tsx`): the browser moves the page for its keyboard. KeyboardAvoidingView is gone.
+
+**Consequences.** New native code: fingerprint 0dea00a3 (brief9-apk) → **40e5832c**. Only an APK can
+prove it: see the phone test list in NOTES.md "12-10-2026 — Forms fix".
+
+## 270. Date of birth opens the phone's calendar; the web keeps the drop-downs — 12 Oct 2026
+
+**Status: decided by the lead's brief (forms fix; docs/I18N.md P6); native: in the 16 Oct 2026 APK.**
+
+**Decision.** `@react-native-community/datetimepicker` 9.1.0 (`npx expo install`, with its config
+plugin). On Android the date-of-birth box shows the picked date ("15 June 2012") or "Tap to choose the
+date"; a tap opens the phone's own calendar dialog (`DateTimePickerAndroid.open`, `display: 'calendar'`)
+between 100 years ago and today, at the picked date or 18 years back when empty
+(`pickerRange`, `startAge` prop). iPhone: the inline calendar under the box. The web keeps the day /
+month / year drop-downs of #162 (`birth-date-field.web.tsx`). Used by the sign-up and Register a student;
+the stored format and the under-18 rules are unchanged: the sign-up keeps day/month/year parts, Register a
+student keeps its typed text ('15-6-2012', `typedOfParts` / `partsOfTyped`), so drafts and "Fill the form"
+work as before. Register a student's empty date now says "Choose the day, month and year."; a wrong one
+"Choose a real date of birth, not in the future."
+
+**Why.** Praveen's test: no calendar on the date of birth. Typing a date on a phone keyboard was the
+slowest box of the desk form.
+
+**Consequences.** Other date boxes (events, visits, fund) stay typed until a later round (I18N P6).
+
 ## 275. Register a student: one request id per person, details on a repeat, a fresh waiting list — 12 Oct 2026
 
 **Context.** Audit phase 1 (12 Oct 2026, P1-04, P1-06, F2-02, F2-03, F2-05, F2-13, F2-16) found that the desk form kept

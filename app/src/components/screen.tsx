@@ -1,16 +1,19 @@
 // Page frame used by every screen: keeps content clear of the notch and system bars, scrolls
-// when the content is taller than the screen, moves up for the keyboard on iPhones, and keeps
+// when the content is taller than the screen, keeps the focused box above the phone keyboard
+// (components/keyboard.tsx, docs/DECISIONS.md #269), lets forms scroll to a field (components/form-focus.tsx), and keeps
 // forms to a readable width on tablets and computers. Home screens put a full-width header band
 // (components/home-header.tsx) above the content and use a wider column. On staff screens a downloaded app
 // update is offered at the top (UpdateNoticeOnScreens, FLOW-06); home screens place it themselves.
 
 import { BottomTabBarHeightContext } from 'expo-router/tabs';
-import { use, useCallback, useContext, useState, type PropsWithChildren, type ReactNode } from 'react';
-import { KeyboardAvoidingView, Platform, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { use, useCallback, useContext, useMemo, useRef, useState, type PropsWithChildren, type ReactNode } from 'react';
+import { Platform, RefreshControl, StyleSheet, View, type ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { maxContentWidth, maxDashboardWidth, spacing, useTheme } from '@/theme/use-theme';
 
+import { FormScrollContext } from './form-focus';
+import { KeyboardScrollView } from './keyboard';
 import { UpdateNotice, UpdateNoticeOnScreens } from './update-notice';
 
 /** Props for Screen. */
@@ -44,6 +47,9 @@ export function Screen({ centred, underHeader, header, wide, onRefresh, children
   // Pages with a header band are homes, which show the notice under their greeting.
   const updateNotice = use(UpdateNoticeOnScreens) && !header;
   const [refreshing, setRefreshing] = useState(false);
+  const scroll = useRef<ScrollView>(null);
+  const content = useRef<View>(null);
+  const scrollTarget = useMemo(() => ({ scroll, content }), []);
   const refresh = useCallback(async () => {
     if (!onRefresh) return;
     setRefreshing(true);
@@ -64,11 +70,10 @@ export function Screen({ centred, underHeader, header, wide, onRefresh, children
     <SafeAreaView
       edges={edges}
       style={[styles.fill, { backgroundColor: colors.background }]}>
-      <KeyboardAvoidingView
-        // Android resizes the window for the keyboard by itself; iOS needs the padding.
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.fill}>
-        <ScrollView
+      <FormScrollContext value={scrollTarget}>
+        <KeyboardScrollView
+          ref={scroll}
+          style={styles.fill}
           // Lets a tap on a button work at the first try while the keyboard is open.
           keyboardShouldPersistTaps="handled"
           // Pull to refresh on Android and iPhone; on the web the browser reloads.
@@ -84,16 +89,19 @@ export function Screen({ centred, underHeader, header, wide, onRefresh, children
             ) : undefined
           }
           // With a header band the band stays at the top; only the content below it is centred.
-          contentContainerStyle={[styles.scroll, centred && !header && styles.centred]}>
-          {header}
-          <View style={[styles.content, centred && styles.centred]}>
-            <View style={[styles.column, { maxWidth: wide ? maxDashboardWidth : maxContentWidth }]}>
-              {updateNotice ? <UpdateNotice /> : null}
-              {children}
+          contentContainerStyle={styles.scroll}>
+          {/* One View around the page: forms measure a field's place against it (form-focus.tsx). */}
+          <View ref={content} collapsable={false} style={[styles.scroll, centred && !header && styles.centred]}>
+            {header}
+            <View style={[styles.content, centred && styles.centred]}>
+              <View style={[styles.column, { maxWidth: wide ? maxDashboardWidth : maxContentWidth }]}>
+                {updateNotice ? <UpdateNotice /> : null}
+                {children}
+              </View>
             </View>
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+        </KeyboardScrollView>
+      </FormScrollContext>
     </SafeAreaView>
   );
 }

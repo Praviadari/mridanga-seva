@@ -87,10 +87,8 @@ export function authErrorKey(error: unknown): MessageKey {
   return 'common.genericError';
 }
 
-/** Loose check that catches typing mistakes; the server does the real check. */
-export function isValidEmail(email: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
-}
+/** Kept here for the screens that import it from auth-actions; the check is in src/lib/email.ts. */
+export { isValidEmail } from '@/lib/email';
 
 /**
  * Signs in with email and password. On success the auth provider notices the new session and
