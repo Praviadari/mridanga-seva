@@ -5,8 +5,9 @@
 > without a phone and volunteers is settled below, with numbers; the rows marked **⏳ phone** are filled
 > in after the test day ([§9](#9-test-day-for-praveen-after-wed-21-10-2026)). Face scanning stays **off
 > for everyone** in the real app until Praveen says it is fully tested (WORK_PLAN rule).
-> Go / no-go today: **GO for the native path** (packages, models, pipeline, storage, integrity route);
-> **the feature's go / no-go** comes from the phone numbers against the targets in §1.
+> Go / no-go today: **GO for the native path** (the release APK builds; models, pipeline, storage settled);
+> **the feature's go / no-go** comes from the phone: first **Gate 1** (§0) — if a Play Integrity verdict cannot be
+> bound to each check-in on our link-installed APK, the answer is **no self-scan for anyone** — then the numbers in §1.
 
 ## 0. Acceptance gates (security audit phase 3, 12-10-2026 — binding, not optional)
 
@@ -41,7 +42,7 @@ Background: [WORK_PLAN.md](WORK_PLAN.md) § P3-0, [MODEL_OPTIONS.md](MODEL_OPTIO
 | False accept / false reject | FAR ≈ 1 in 10,000 at the chosen threshold; FRR low enough that most check-ins pass first time | 4 public portraits: same person 0.81, different 0.11-0.31 (threshold 0.363) — sanity only | ⏳ 5-10 adults: genuine vs impostor scores |
 | Printed photo | refused | challenge (blink + turn) cannot be done by a photo | ⏳ attacks logged |
 | Phone-screen replay | refused | a video can blink/turn → relies on MiniFASNet + integrity | ⏳ attacks logged |
-| APK size increase | known | §6 | — |
+| APK size increase | known | **+65.9 MB** (72.1 → 138.0 MB, both ABIs); ≈ +50 MB without SQLCipher + GPU delegate, ≈ +35 MB arm64-only (§6) | — |
 | Memory | known | — | ⏳ peak MB |
 | Local template storage | encrypted on the phone | expo-secure-store (Keystore) chosen; SQLCipher built in for comparison (§7) | ⏳ timings |
 | **Gate 1**: integrity verdict bound to each check-in, link-installed APK | all 8 server checks pass (§0) | documented possible: package + certificate digest are filled for UNRECOGNIZED_VERSION; device verdict default; free 10,000/day, no raise off Play (§8) | ⏳ gate1-server.mjs PASS on the test phone + device verdict on 3 budget phones |
@@ -143,8 +144,38 @@ SQLCipher and every module of the class app (reanimated 4.5.1, expo-camera, expo
 together on Expo SDK 57 / RN 0.86 / AGP 8.12 (several libraries declare AGP 9.x in their own buildscript; Gradle uses
 the app's AGP and that works). Runtime behaviour on a phone: ⏳.
 
-APK (both ABIs in one file, as the class app ships): spike artifact zip 68.8 MB. Size increase against the same
-build of brief9-apk without the face packages: ⏳ (baseline job added in 8999b60).
+**APK size** (run 38272364374 on 8999b60, 12-10-2026; release, both ABIs in one APK as the class app ships; native
+libraries are stored uncompressed, so APK size ≈ download size):
+
+| | Bytes | MB |
+|---|---|---|
+| Baseline: brief9-apk 3a5dcc0, same build, no face packages | 72,106,180 | 72.1 |
+| Spike (8999b60) | 137,979,446 | 138.0 |
+| **Increase** | 65,873,266 | **+65.9** |
+
+Where the +65.9 MB goes (arm64-v8a libraries listed by the build; armeabi-v7a is the remainder):
+
+| Part | arm64 MB | Needed for face? |
+|---|---|---|
+| ML Kit face detection (`libface_detector_v2_jni.so`) | 8.5 | yes |
+| VisionCamera (`libVisionCamera.so` + worklets 0.1) | 6.0 | yes |
+| SQLCipher's `libcrypto.so` | 5.0 | **no** (#278: SecureStore instead) |
+| LiteRT CPU (`libtensorflowlite_jni.so` + `libNitroTflite.so` 0.4) | 4.7 | yes |
+| LiteRT GPU delegate (`libtensorflowlite_gpu_jni.so`) | 2.5 | **no** (CPU only) |
+| Nitro runtime + NitroImage + face-detector glue | 3.0 | yes |
+| expo-sqlite grew with SQLCipher | 0.1 | no |
+| **arm64 total** | **29.8** | 22.2 needed |
+| armeabi-v7a libraries (remainder) | ≈ 22 | ≈ 17 needed (estimate, same ratio) |
+| Our three models (SFace 9.9 + MiniFASNet 2×0.6) | 11.0 | yes |
+| ML Kit's bundled face models (`fssd_*`) | 1.7 | yes |
+| Java/Kotlin code (dex, compressed) + JS bundle | ≈ 0.6 | yes |
+
+So the Phase 3 APK needs about **+50 MB** with both ABIs (dropping SQLCipher and the GPU delegate, both P3-3 items), or
+about **+35 MB** for an **arm64-only** APK — every ₹10-15k phone sold since ~2019 is 64-bit; a separate 32-bit APK
+could stay available for old phones (P3-3 decides). fp16 SFace instead of int8 would add 9.4 MB for no measurable
+accuracy gain (§4). Peak RAM and cold start: ⏳ phone.
+
+The GitHub artifact of each push is kept 30 days (from 673bd8b); re-run the workflow for a fresh one.
 
 ## 7. Keeping the template on the phone
 
@@ -268,7 +299,8 @@ npx eas-cli build --platform android --profile spike
 - At the end it prints an install link/QR for the APK. Paste the last ~30 lines of the output to the spike chat.
 
 **Alternative with no EAS build at all:** GitHub builds the same APK on every push to `p3-spike`
-(Actions → "Spike APK (p3-spike)" → artifact `face-spike-apk`, kept 7 days, debug-signed). Fine for a throwaway
+(Actions → "Spike APK (p3-spike)" → artifact `face-spike-apk`, kept 30 days, debug-signed; the run's annotations
+show its signing-certificate SHA-256, which Gate 1 then pins instead of the EAS one). Fine for a throwaway
 test app; an EAS build is needed only if we want updates on the `spike` channel.
 
 ## 11. Deleting the volunteers' data
@@ -296,7 +328,7 @@ test app; an EAS build is needed only if we want updates on the `spike` channel.
    pilot data and the Guru's minimum-age answer (DECISIONS_FOR_GURU 3).
 4. **Alpha / young packages:** `@expo/app-integrity` is alpha; VisionCamera 5 and Nitro move fast — pin exact
    versions (done), re-test on every SDK upgrade (SDK 58 waits, #258).
-5. **APK size** grows by the models (~11 MB) and native libraries (§6) — acceptable for a link-installed APK.
+5. **APK size** +65.9 MB as built (§6): a 138 MB download on students' mobile data is heavy. Trim to ≈ +35-50 MB in P3-3 (no SQLCipher, no GPU delegate, arm64-only APK) and keep the APK link on Wi-Fi at the desk.
 6. **Licence of SFace training data** — lawyer question stays open.
 
 ## 13. What P3-3 (native foundation) must include
@@ -310,7 +342,8 @@ test app; an EAS build is needed only if we want updates on the `spike` channel.
   reach only that APK (WORK_PLAN P3-3).
 - `src/spike/face-math.ts` and `liveness.ts` with their tests as the starting point of the real code
   (they are pure and tested); the screens are throwaway.
-- Do not ship SQLCipher; do ship `@expo/app-integrity` only with P3-6.
+- Do not ship SQLCipher; exclude `libtensorflowlite_gpu_jni.so` (Gradle packaging exclude via a small config plugin);
+  consider an arm64-only APK (`buildArchs`) — together ≈ 30 MB less (§6). Ship `@expo/app-integrity` only with P3-6.
 - A hidden dev screen (WORK_PLAN) can be a cut-down Phone tab + one scan.
 
 ## 14. Decisions (proposed; numbers reserved #277-#279, final after the test day)
