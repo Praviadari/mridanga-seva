@@ -300,7 +300,8 @@ npx eas-cli build --platform android --profile spike
 
 **Alternative with no EAS build at all:** GitHub builds the same APK on every push to `p3-spike`
 (Actions → "Spike APK (p3-spike)" → artifact `face-spike-apk`, kept 30 days, debug-signed; the run's annotations
-show its signing-certificate SHA-256, which Gate 1 then pins instead of the EAS one). Fine for a throwaway
+show its signing-certificate SHA-256, which Gate 1 then pins instead of the EAS one: run 38276340855 on 4fd24ef, 137,982,258 B,
+V2 signer SHA-256 `fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c`, the debug key — fine for a test, never for real). Fine for a throwaway
 test app; an EAS build is needed only if we want updates on the `spike` channel.
 
 ## 11. Deleting the volunteers' data
