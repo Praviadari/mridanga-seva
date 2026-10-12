@@ -4460,3 +4460,23 @@ sign-up should not exist; if one does, "Fill the form" with the parent, the ID c
 
 **Why.** A minor's data needs the parent's written consent before it is stored (#16); a one-tap path must
 not reach around it. An adult's registration needs no consent row (as on the desk).
+
+## 275. Register a student: one request id per person, details on a repeat, a fresh waiting list — 12 Oct 2026
+
+**Context.** Audit phase 1 (12 Oct 2026, P1-04, P1-06, F2-02, F2-03, F2-05, F2-13, F2-16) found that the desk form kept
+its request id (#126) when it was filled from another sign-up or retyped for another person: after a Save whose
+answer was lost but which was stored, the next person's Save returned the first person's record, so the next person
+was not saved and the screen showed their name with the first one's roll number. A repeated Save also skipped the
+details (gender, centre, About you), and each desk's waiting list was loaded once. Students sign up on LIVE on
+16-18 Oct 2026 and several desks register at once.
+
+**Decision.** (1) The form gets a new request id when it is filled from a sign-up and whenever the name or date of
+birth changes; only a retry of the same person repeats. (2) On a repeat the app reads the stored record's name; when it
+is another person's, the screen says "{{name}} was NOT saved" with the other record's name and roll number, keeps
+the form with a new id and writes no details. (3) The details are sent after a repeated Save too (the keys overwrite).
+(4) The waiting list reloads when the screen comes into focus and after each Save and Accept. (5) `mentor_not_staff`
+has its own message (the mentor was switched off while the form was open), and only the pincode's own check gets the
+pincode message. (6) Editing a field clears its message; phone fields take at most 16 characters.
+
+**Not here.** The desk's centre picker and a duplicate-person check need a migration (the `form-rules-sql` worker,
+0047); sign-up.tsx belongs to the `forms-fix` worker; the error summary, leave guard and autofill fixes are audit B4.

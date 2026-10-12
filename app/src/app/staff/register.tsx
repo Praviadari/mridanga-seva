@@ -15,8 +15,8 @@
 // When the server ends the login while the form is half filled, what was typed is kept for the same login and
 // filled in again next time (src/lib/form-drafts.ts, D6-20); the consent ticks must be given again.
 
-import { router, Stack } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { router, Stack, useFocusEffect } from 'expo-router';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
@@ -58,8 +58,10 @@ import {
   emptyRegistration,
   fetchRegistrationChoices,
   ID_TYPES,
+  newRequestId,
   registerStudent,
   RELATIONS,
+  repeatedOtherPerson,
   type Accepted,
   type LevelOption,
   type MentorOption,
@@ -77,6 +79,8 @@ import { spacing } from '@/theme/use-theme';
 const NAME_MAX_LENGTH = 100;
 const AREA_MAX_LENGTH = 100;
 const EMAIL_MAX_LENGTH = 254;
+/** Longest phone as typed ('+91 98765 43210' with spaces; audit F2-16). */
+const PHONE_MAX_LENGTH = 16;
 
 type Choices = { levels: LevelOption[]; mentors: MentorOption[] };
 /** The 0036 parts: option lists, staff who bring people, sign-ups waiting. Null before 0036 or when not loaded. */
@@ -123,6 +127,19 @@ export default function RegisterStudentScreen() {
   const [acceptBusy, setAcceptBusy] = useState(false);
   const [acceptError, setAcceptError] = useState<MessageKey | null>(null);
   const [accepted, setAccepted] = useState<Accepted | null>(null);
+  // A Save that returned the record of an earlier person (lost answer, then another person typed): shown, not hidden.
+  const [otherSaved, setOtherSaved] = useState<Registered | null>(null);
+
+  /** Reloads the waiting sign-ups (other desks accept and register too, audit P1-06); keeps the list when offline. */
+  const refreshWaiting = useCallback(async () => {
+    const list = await fetchWaitingSignUps();
+    if (list) setExtras((current) => (current ? { ...current, waiting: list } : current));
+  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      void refreshWaiting();
+    }, [refreshWaiting]),
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -143,9 +160,19 @@ export default function RegisterStudentScreen() {
   const typed = [form.fullName, form.dob, form.phone, form.email, form.guardianName, form.guardianPhone].some((v) => v.trim() !== '');
   useDraftKeeper(DRAFT_KEY, owner, typed && !saved ? ({ form, about } satisfies RegisterDraft) : null);
 
-  /** Returns a change handler for one form field. */
+  /**
+   * Returns a change handler for one form field. Editing a field clears its message (audit F2-16); a
+   * new name or date of birth is a new person, so the form gets a new request id (P1-04).
+   */
   function field<K extends keyof RegistrationForm>(key: K) {
-    return (value: RegistrationForm[K]) => setForm((current) => ({ ...current, [key]: value }));
+    return (value: RegistrationForm[K]) => {
+      setForm((current) => ({
+        ...current,
+        [key]: value,
+        ...((key === 'fullName' || key === 'dob') && current[key] !== value ? { requestId: newRequestId() } : {}),
+      }));
+      setErrors((current) => (current[key] ? { ...current, [key]: undefined } : current));
+    };
   }
   /** The translated error for one field, if any. */
   function errorFor(key: keyof RegistrationForm): string | undefined {
@@ -170,6 +197,8 @@ export default function RegisterStudentScreen() {
       dob: person.dob ? formatTypedDate(person.dob) : current.dob,
       email: person.email ?? current.email,
       phone: person.phone ?? current.phone,
+      // A new person: never the id of a Save made for someone else (P1-04).
+      requestId: newRequestId(),
     }));
     setAbout(aboutFormFrom(person, classLocale().country));
     setFromSignUp(person);
@@ -198,6 +227,7 @@ export default function RegisterStudentScreen() {
     setAccepted(result.accepted);
     setAccepting(null);
     setExtras((current) => (current ? { ...current, waiting: current.waiting.filter((w) => w.id !== person.id) } : current));
+    void refreshWaiting();
   }
 
   async function save() {
@@ -210,19 +240,32 @@ export default function RegisterStudentScreen() {
       return;
     }
     setFormError(null);
+    setOtherSaved(null);
     setBusy(true);
     const result = await registerStudent(form, serverMinor);
+    // A repeat that came back with another person's record: this person was not saved (P1-04).
+    const otherPerson = !!result.registered && repeatedOtherPerson(result.registered, form.fullName);
     let detailsFailed = false;
-    if (result.registered && extras && !result.registered.repeated) {
-      // The details go after the record (#165: a gender set here gives the mentor). A failure here
-      // keeps the student; C8 offers the details again.
+    if (result.registered && extras && !otherPerson) {
+      // The details go after the record (#165: a gender set here gives the mentor), also on a repeat:
+      // the first Save's answer may have been lost before they were sent (audit F2-03; the keys
+      // overwrite, so sending them twice is harmless). A failure keeps the student; C8 offers them again.
       const patch = { ...aboutPatch(about, aboutParts, aboutContext), ...(fromSignUp?.centre_id ? { centre: fromSignUp.centre_id } : {}) };
       const details = await saveStudentDetails(result.registered.id, patch);
       detailsFailed = !!details.errorKey;
     }
     setBusy(false);
-    if (result.registered) setSaved({ registered: result.registered, name: form.fullName.trim(), detailsFailed });
-    else if (result.errorKey === 'register.errors.minorNeedsConsent' && !minor) {
+    if (result.registered && otherPerson) {
+      // Keep the form; a new id so the next Save stores this person.
+      setForm((current) => ({ ...current, requestId: newRequestId() }));
+      setFormError(null);
+      setOtherSaved(result.registered);
+      return;
+    }
+    if (result.registered) {
+      setSaved({ registered: result.registered, name: result.registered.fullName, detailsFailed });
+      void refreshWaiting();
+    } else if (result.errorKey === 'register.errors.minorNeedsConsent' && !minor) {
       setServerMinor(true);
       setFormError('register.errors.minorByServer');
     } else setFormError(result.errorKey ?? 'common.genericError');
@@ -238,6 +281,7 @@ export default function RegisterStudentScreen() {
     if (fromSignUp) setExtras((current) => (current ? { ...current, waiting: current.waiting.filter((w) => w.id !== fromSignUp.id) } : current));
     setFromSignUp(null);
     setSaved(null);
+    setOtherSaved(null);
   }
 
   const header = <Stack.Screen options={{ title: t('register.title') }} />;
@@ -394,6 +438,7 @@ export default function RegisterStudentScreen() {
           onChangeText={field('phone')}
           error={errorFor('phone')}
           keyboardType="phone-pad"
+          maxLength={PHONE_MAX_LENGTH}
           autoComplete="off"
         />
         <TextField
@@ -471,6 +516,7 @@ export default function RegisterStudentScreen() {
             onChangeText={field('guardianPhone')}
             error={errorFor('guardianPhone')}
             keyboardType="phone-pad"
+            maxLength={PHONE_MAX_LENGTH}
             autoComplete="off"
           />
           <TextField
@@ -532,6 +578,11 @@ export default function RegisterStudentScreen() {
         </Section>
       ) : null}
 
+      {otherSaved ? (
+        <Notice tone="error" title={t('register.otherSavedTitle', { name: form.fullName.trim() })}>
+          {t('register.otherSavedBody', { other: otherSaved.fullName, rollNo: otherSaved.rollNo })}
+        </Notice>
+      ) : null}
       {formError ? <Notice tone="error">{t(formError)}</Notice> : null}
       <Button icon="register" label={t('register.submit')} onPress={save} loading={busy} disabled={!choices} />
     </Screen>

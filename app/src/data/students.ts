@@ -52,6 +52,15 @@ export type RegistrationForm = {
   requestId: string;
 };
 
+/**
+ * A new random id for a form (#126). One per person: the form gets a new one when it is filled from
+ * a sign-up or the name or date of birth changes, so only a retry of the same person repeats (audit
+ * P1-04: after a stored-but-"failed" Save, the next person reused the id and got the first one's record).
+ */
+export function newRequestId(): string {
+  return Crypto.randomUUID().toLowerCase();
+}
+
 /** An empty form. The mentor starts as the person registering, if they are a coordinator. */
 export function emptyRegistration(mentorId: string | null): RegistrationForm {
   return {
@@ -70,7 +79,7 @@ export function emptyRegistration(mentorId: string | null): RegistrationForm {
     idType: null,
     photoConsent: false,
     writtenConsent: false,
-    requestId: Crypto.randomUUID().toLowerCase(),
+    requestId: newRequestId(),
   };
 }
 
@@ -158,7 +167,18 @@ export type Registered = {
    * this is the student saved then, with the details of that first Save.
    */
   repeated: boolean;
+  /**
+   * The name on the stored record: the typed one, or on a repeat the first Save's (read back), so the
+   * screen never shows one person's name with another's roll number (audit F2-02).
+   */
+  fullName: string;
 };
+
+/** True when a repeated Save returned a record of another name: the typed person was NOT saved. */
+export function repeatedOtherPerson(registered: Registered, typedName: string): boolean {
+  const fold = (name: string) => name.trim().replace(/\s+/g, ' ').toLocaleLowerCase();
+  return registered.repeated && fold(registered.fullName) !== fold(typedName);
+}
 
 /**
  * Saves the student, and for a minor the guardian and consent, in one step (all or nothing).
@@ -203,8 +223,14 @@ export async function registerStudent(
   if (error?.code === 'PGRST202') ({ data, error } = await supabase.rpc('register_student', args));
   if (error) return { errorKey: registerErrorKey(error.message, error.code) };
   const result = data as { id: string; roll_no: string; linked: boolean; repeated?: boolean };
+  let fullName = form.fullName.trim();
+  if (result.repeated === true) {
+    // register_student returns no name: read the stored one (staff read students).
+    const stored = await supabase.from('students').select('full_name').eq('id', result.id).maybeSingle();
+    if (stored.data) fullName = (stored.data as { full_name: string }).full_name;
+  }
   return {
-    registered: { id: result.id, rollNo: result.roll_no, linked: result.linked, repeated: result.repeated === true },
+    registered: { id: result.id, rollNo: result.roll_no, linked: result.linked, repeated: result.repeated === true, fullName },
   };
 }
 
@@ -228,14 +254,16 @@ function registerErrorKey(message: string, code: string | undefined): MessageKey
       return 'register.errors.minorNeedsConsent';
     case 'guardian_email_on_minor': // the email is a parent's of this or another child (0038)
       return 'register.errors.guardianEmailOnMinor';
+    case 'mentor_not_staff': // the mentor picked was switched off while the form was open (0014; audit F2-13)
+      return 'register.errors.mentorInactive';
   }
-  if (code === '23514') return 'register.errors.pincodeInvalid'; // the pincode check in the table
+  // Only the pincode's own check gets the pincode message; another check is a general error (F2-13).
+  if (code === '23514' && message.includes('pincode')) return 'register.errors.pincodeInvalid';
   return fallbackErrorKey(message);
 }
 
 /** What Accept returns: the record of the sign-up, its name, and whether it was on file already. */
 export type Accepted = Registered & {
-  fullName: string;
   /** A record with this email existed without a login: the login was connected to it, nothing new made. */
   existing: boolean;
 };

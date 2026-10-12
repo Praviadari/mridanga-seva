@@ -378,7 +378,8 @@
       "notAllowed": "Only coordinators and the facilitator can register students.",
       "fixFields": "Please correct the fields that show a message under them.",
       "minorByServer": "By the server's date this student is under 18. Fill in the parent's part below and save again.",
-      "guardianEmailOnMinor": "This is a parent's email. A child's record keeps the child's own email, or none: a login with a parent's email would be linked as the child."
+      "guardianEmailOnMinor": "This is a parent's email. A child's record keeps the child's own email, or none: a login with a parent's email would be linked as the child.",
+      "mentorInactive": "That mentor is no longer active. Choose another mentor, or Automatic."
     },
     "privacyNotice": "Privacy notice for parents",
     "privacyNoticeHint": "Show it to the parent before they sign the consent form.",
@@ -416,7 +417,9 @@
       "minor": "Under 18: register at the desk with a parent. Use Fill the form.",
       "noName": "The sign-up has no name. Use Fill the form.",
       "unavailable": "Accept is not available on this server yet. Use Fill the form."
-    }
+    },
+    "otherSavedTitle": "{{name}} was NOT saved",
+    "otherSavedBody": "This form had already saved {{other}} ({{rollNo}}) before its answer was lost. Check the details and tap Save again: {{name}} is then saved as a new student."
   },
   "statuses": {
     "new": "New",

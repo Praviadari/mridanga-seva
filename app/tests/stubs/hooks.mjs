@@ -10,6 +10,9 @@ const stubs = {
   'expo-sqlite/localStorage/install': stub('./empty.mjs'),
   // src/components/qr-code.tsx draws with react-native-svg; the label and card sheets only need its qrShape.
   '@/components/qr-code': stub('./qr-code.mjs'),
+  // src/data/students.ts (the desk's request ids, reg-accept): a random UUID, and a client that is never called.
+  'expo-crypto': stub('./expo-crypto.mjs'),
+  '@/lib/supabase': stub('./supabase.mjs'),
 };
 
 /** Node module hook: resolves a stubbed package or app module to its stand-in file. */
