@@ -5,6 +5,7 @@
 // consent (docs/DATABASE.md "Registering a student").
 
 import * as Crypto from 'expo-crypto';
+import { partsOfTyped } from '@/lib/birth-date';
 import { ageOn, isMinorOn, parseDayMonthYear, todayLocal } from '@/lib/dates';
 import { asciiDigits } from '@/lib/digits';
 import { isValidEmail } from '@/lib/email';
@@ -129,7 +130,9 @@ export function checkStudentDetails(form: RegistrationForm): RegistrationErrors 
   const today = todayLocal();
   const iso = parseDayMonthYear(form.dob);
   // Not a real date, in the future, or an obvious typing slip (over 100 years old).
-  if (!form.dob.trim()) errors.dob = 'signUp.dobRequired';
+  // Nothing picked yet, or only the day and month (the web's drop-downs): ask for all three.
+  const parts = partsOfTyped(form.dob);
+  if (!form.dob.trim() || (!iso && (parts.day === null || parts.month === null || parts.year === null))) errors.dob = 'signUp.dobRequired';
   else if (!iso || iso > today || ageOn(iso, today) > 100) errors.dob = 'register.errors.dobInvalid';
   if (form.phone.trim() && !isValidPhone(cleanPhone(form.phone))) errors.phone = 'register.errors.phoneInvalid';
   if (form.email.trim() && !isValidEmail(form.email)) errors.email = 'validation.emailInvalid';
