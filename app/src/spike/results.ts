@@ -40,7 +40,7 @@ export function summary(rows: ResultRow[], liveThreshold: number): string[] {
   out.push(`  of which challenge failed ${challengeFails}; real-face below ${liveThreshold}: ${scored.filter((r) => (r.realScore ?? 0) < liveThreshold).length}`);
   const live = scored.map((r) => r.realScore!);
   out.push(`Real-face score on genuine attempts: ${JSON.stringify(stats(live), (_, v) => (typeof v === 'number' ? +v.toFixed(3) : v))}`);
-  const kinds = ['printed photo', 'screen photo', 'screen video', 'other'] as const;
+  const kinds = ['printed photo', 'screen photo', 'screen video', 'video call relay', 'mask or cut-out', 'other'] as const;
   for (const k of kinds) {
     const a = rows.filter((r) => r.kind === 'attack' && r.attack === k);
     if (a.length === 0) continue;
@@ -64,7 +64,7 @@ export function summary(rows: ResultRow[], liveThreshold: number): string[] {
     .filter(Boolean);
   if (parts.length) out.push(`Median step ms: ${parts.join(' · ')}`);
   const ch = rows.map((r) => r.challengeMs).filter((x): x is number => typeof x === 'number');
-  if (ch.length) out.push(`Challenge time ms: ${JSON.stringify(stats(ch))}`);
+  if (ch.length) out.push(`Challenge time ms: ${JSON.stringify(stats(ch))}; done within 4 s (audit S4F-04 pass rule): ${ch.filter((x) => x <= 4000).length}/${ch.length}`);
   const rss = rows.map((r) => r.rssMb).filter((x): x is number => typeof x === 'number');
   if (rss.length) out.push(`Memory during scans (MB): max ${Math.max(...rss)}`);
   return out;

@@ -57,7 +57,7 @@ export type ResultRow = {
   at: string;
   kind: 'enrol' | 'check' | 'attack';
   code: string; // the volunteer claimed (check/attack) or enrolled
-  attack?: 'printed photo' | 'screen photo' | 'screen video' | 'other';
+  attack?: 'printed photo' | 'screen photo' | 'screen video' | 'video call relay' | 'mask or cut-out' | 'other';
   challenge: 'passed' | 'failed' | 'skipped';
   challengeMs?: number;
   failReason?: string;

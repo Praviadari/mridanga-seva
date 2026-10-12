@@ -8,6 +8,27 @@
 > Go / no-go today: **GO for the native path** (packages, models, pipeline, storage, integrity route);
 > **the feature's go / no-go** comes from the phone numbers against the targets in §1.
 
+## 0. Acceptance gates (security audit phase 3, 12-10-2026 — binding, not optional)
+
+From the audit's face review (private audit repo, `2026-10-12/find/phase3/S4-face.md`, findings S4F-01…11), sent by
+the lead chat on 12-10-2026:
+
+| Gate | What must be shown | If it fails |
+|---|---|---|
+| **Gate 1 — request-bound integrity** | On a **link-installed** APK (not from Play): the server issues a single-use challenge (≤ 60 s); the app gets a Play Integrity token whose `requestHash` = hash(login, action, challenge, location result); the token is decoded by Google and checked **server-side**: hash, package name, **pinned signing-certificate digest**, `MEETS_DEVICE_INTEGRITY`, single use. Device verdict seen on 3 budget phones. | **No self-scan for anyone** (not "minors wait"); Phase 3 = QR, coordinator and parent emails (Plan B). Recorded in DECISIONS. |
+| **Gate 2 — device-only face codes** | The design and every measurement use **no server copy** of any face code (no `my_face_template()`); the server would keep only an enrolment record (who approved, when, model version). Adults first; minors only after the lawyer's answers and the Guru's minimum age. | Not a pass/fail test: a design rule the spike follows (it has no server at all) and P3-2 must adopt. |
+| Own-phone fingerprint | **Not an attendance factor** (it shows only who unlocked the phone). Measured only as a possible add-on to a future rotating My QR; never in Friday's APK. | — |
+| Centre fingerprint reader | **No** (children's fingerprints stored by the class, hardware, conflicts with #248). | — |
+| Also asked (S4F-04/07/08) | Attacks incl. **live video-call relay** and mask/cut-out; pass = passive score ≥ t **and** 2-step challenge within 4 s **and** face never leaves the frame. Developer-verification status and Play fee. Model files with SHA-256 and licence text, APK delta per ABI, peak RAM, cold start on the cheapest phone. | Recorded as measured. |
+
+**Gate status 12-10-2026:** Gate 1 — **documented YES on paper, ⏳ proof on the phone.** Google's verdict reference
+says `appIntegrity.packageName`, `certificateSha256Digest` and `versionCode` are filled "iff appRecognitionVerdict !=
+UNEVALUATED" — i.e. also for **UNRECOGNIZED_VERSION**, which is what a non-Play APK gets — so a server *can* pin our
+certificate. The spike app, a PC "server" (`spike-tools/gate1-server.mjs`) and a Cloud Shell decoder
+(`spike-tools/gate1-decode.py`) are ready to prove it in one sitting (§8 "Gate 1 steps"); the checker was tested
+on made-up verdicts (valid → PASS; replayed challenge, wrong certificate, wrong hash → FAIL). Gate 2 — met by the spike
+(templates only in the phone's Keystore-encrypted store, nothing on any server).
+
 Background: [WORK_PLAN.md](WORK_PLAN.md) § P3-0, [MODEL_OPTIONS.md](MODEL_OPTIONS.md),
 [DPIA_DRAFT.md](DPIA_DRAFT.md), [CONSENT_DRAFT.md](CONSENT_DRAFT.md), DECISIONS #212-#213, #248, #253-#255.
 
@@ -23,8 +44,10 @@ Background: [WORK_PLAN.md](WORK_PLAN.md) § P3-0, [MODEL_OPTIONS.md](MODEL_OPTIO
 | APK size increase | known | §6 | — |
 | Memory | known | — | ⏳ peak MB |
 | Local template storage | encrypted on the phone | expo-secure-store (Keystore) chosen; SQLCipher built in for comparison (§7) | ⏳ timings |
-| Play Integrity on a link-installed APK | usable? cost? | device verdict yes, app/licence verdict no; free 10,000/day, no raise off Play (§8) | ⏳ token on the phone |
-| Phone fingerprint (optional) | UX only | proves "an enrolled finger on this phone", not identity (§8) | ⏳ prompt time |
+| **Gate 1**: integrity verdict bound to each check-in, link-installed APK | all 8 server checks pass (§0) | documented possible: package + certificate digest are filled for UNRECOGNIZED_VERSION; device verdict default; free 10,000/day, no raise off Play (§8) | ⏳ gate1-server.mjs PASS on the test phone + device verdict on 3 budget phones |
+| Key attestation (alternative / second check) | chain to Google root, challenge, locked + verified boot, our package + certificate | verifier written and tested on Google's sample chain (§8) | ⏳ chain from the test phone |
+| **Gate 2**: no server copy of face codes | none | spike has no server; templates only in the phone's Keystore store | — |
+| Phone fingerprint | UX only, **not attendance** | proves who unlocked the phone, not identity (§8) | ⏳ prompt time |
 
 ## 2. What was built
 
@@ -112,7 +135,16 @@ the app's crop differs from upstream's by 0.2/255 per pixel on average.
 
 ## 6. APK size, build and New Architecture
 
-⏳ filled from the GitHub Actions build of 2cb1d44 (release, minified, arm64-v8a + armeabi-v7a).
+**The release APK builds.** GitHub Actions run 38268132141 on 2cb1d44 (12-10-2026): `npm ci`, lint, tsc,
+98 unit tests, `expo prebuild`, then `./gradlew :app:assembleRelease` (minified, arm64-v8a + armeabi-v7a, New
+Architecture, Hermes) — **all green on the first try**, Gradle 31 min on GitHub's 4-core runner. So VisionCamera 5.2.3,
+Nitro 0.37.1 (fast-tflite's code was generated with nitrogen 0.35 and still compiles), worklets 0.10.1, ML Kit, LiteRT,
+SQLCipher and every module of the class app (reanimated 4.5.1, expo-camera, expo-audio, expo-notifications…) build
+together on Expo SDK 57 / RN 0.86 / AGP 8.12 (several libraries declare AGP 9.x in their own buildscript; Gradle uses
+the app's AGP and that works). Runtime behaviour on a phone: ⏳.
+
+APK (both ABIs in one file, as the class app ships): spike artifact zip 68.8 MB. Size increase against the same
+build of brief9-apk without the face packages: ⏳ (baseline job added in 8999b60).
 
 ## 7. Keeping the template on the phone
 
@@ -124,6 +156,10 @@ the app's crop differs from upstream's by 0.2/255 per pixel on average.
 - **SQLCipher** (`expo-sqlite` `useSQLCipher`) works for a whole encrypted database but is more than one
   template needs, changes the class app's existing SQLite build for everyone, and still needs its key kept
   in the Keystore — so it adds nothing for P3-4. Measured anyway (Phone tab: cipher_version, wrong key refused).
+- **Gate 2 (device-only):** this is the only copy. P3-2 keeps a server *enrolment record* (student, device key /
+  attestation id, model version, approved by, dates, revoked) and **no face code**; `my_face_template()` is dropped; a
+  re-install or new phone means a supervised re-enrolment at the desk; the phone wipes its template on every
+  sign-out path and whenever the server says the enrolment is no longer current (audit S4F-02/03/06).
 - No picture is ever stored; the "exact" path's temporary JPEG lives in the app's cache for the few
   milliseconds ML Kit needs and is deleted in a `finally`.
 
@@ -134,26 +170,55 @@ the app's crop differs from upstream's by 0.2/255 per pixel on average.
 - Tokens are decrypted **on Google's servers** (self-managed keys need a Play listing) → a backend call with a
   service account (an Edge Function in P3-6).
 - Verdicts: **device integrity** (MEETS_DEVICE_INTEGRITY, or empty on rooted / emulated / hooked phones) is
-  available; **app recognition = UNRECOGNIZED_VERSION** and **licensing = UNLICENSED** for any APK not from Play,
-  so they cannot be used. Stronger labels (STRONG / BASIC) need Play Console.
+  available; **app recognition = UNRECOGNIZED_VERSION** and **licensing = UNLICENSED** for any APK not from Play, so
+  those two verdicts cannot be used — but the same reference says packageName and certificateSha256Digest are
+  still filled for UNRECOGNIZED_VERSION, which is what certificate pinning needs (Gate 1). Stronger labels (STRONG /
+  BASIC) are returned on Android 13+ only for apps installed or updated by Play.
 - **Quota:** 10,000 token requests and 10,000 decryptions per day per Cloud project, free; raises are only for
   apps on Play. Class need: ~200 students × 2 scans × a few days a week ≪ 10,000/day.
 
 **Hardware key attestation** (`generateHardwareAttestedKeyAsync` + certificate chain, same package): free, no
 Google account, verified on our own server against Google's attestation root and revocation list. It proves the
 key lives in the phone's secure hardware (TEE/StrongBox), the **bootloader is locked and verified boot is green**,
-and — unlike Play Integrity off Play — **which app (package + signing certificate) asked**. Proposed for P3-6 as
-the primary check, Play Integrity's device verdict as an optional second ⏳ phone: supported? chain length?
+and — unlike Play Integrity off Play — **which app (package + signing certificate) asked**. It can be bound to a check-in too (the server's challenge goes into the
+attested key). Offered as a **second check**, or as a stand-in only if the audit agrees — the gate rule is Play Integrity.
+Verifier: spike-tools/attest-verify.py (tested on Google's own sample chain). ⏳ phone: supported? chain?
 
-**Phone fingerprint** (Praveen's "biometric thumb", lead chat 7): `expo-local-authentication` with
+**Gate 1 steps (Praveen + this chat, one sitting, ~30 min after the volunteers' session; ₹0):**
+1. Google Cloud console (personal Google account): create project "mridanga-seva-spike", note its **project number**,
+   enable **Play Integrity API**; IAM → Service accounts → create "integrity-decoder" → Keys → add JSON key (stays in
+   Cloud Shell).
+2. PC, this worktree: `node docs/phase3/spike-tools/gate1-server.mjs issue` → challenge (16 hex, valid 60 s).
+3. Phone, Phone tab: project number, challenge, code V01 → **Gate 1: Play Integrity for this check-in** → Share the raw
+   result (to the PC, as `shared.json`). Same challenge → **Gate 1: key attestation** → share (`attest.json`).
+4. Cloud Shell: upload `shared.json` + `gate1-decode.py` → `python3 gate1-decode.py key.json shared.json > decoded.json`
+   → download `decoded.json`; then delete the key (`gcloud iam service-accounts keys delete …`).
+5. PC: `node gate1-server.mjs check shared.json decoded.json --cert <SHA-256 from npx eas-cli credentials -p android>`
+   and `python -I attest-verify.py attest.json <roots dir> --cert <same SHA-256>`. Run the first check twice: the
+   second must FAIL (single use). Repeat step 2-5 on two more budget phones for the device verdict.
+6. Paste all outputs to the spike chat. Gate 1 passes only if every rule says PASS on the test phone.
+
+If decodeIntegrityToken refuses an unlinked project, or the payload has no certificate digest for our APK, Gate 1
+**fails → no self-scan for anyone** (unless the Guru decides to publish the app on Play, US$25 one-time — a ₹0 conflict).
+Key attestation alone does not change that rule: it is the audit's call whether it can stand in for Play Integrity.
+
+**Developer verification (S4F-07):** Google's Android developer verification applies to apps installed outside Play
+on certified phones from 30-09-2026 in Brazil, Indonesia, Singapore and Thailand, "globally in 2027 and beyond"; India has
+no date yet. Registration in the Android Developer Console needs ID documents and a one-time US$25 (waived for
+"limited distribution" accounts) — the class app itself will need this before 2027 whatever happens to face scan
+(source: support.google.com/android-developer-console/answer/16561738, read 12-10-2026).
+
+**Phone fingerprint** (Praveen's "biometric thumb", lead chat 7; audit S4F-10: **not an attendance factor**): `expo-local-authentication` with
 `biometricsSecurityLevel: 'strong'` shows Android's own prompt; the app gets only success / failure, never the
 fingerprint. It proves **an enrolled finger on this phone**, which may be a parent's or a friend's — **owner
-presence, not identity**. It cannot replace the face match; at most a second factor before the QR/face self-scan.
+presence, not identity**. It is not an attendance factor (audit S4F-10); the only use worth measuring is unlocking a future **rotating My QR**
+(stops screenshot sharing) in the Phase 3 APK — never Friday's APK. A **centre fingerprint reader: No** (S4F-11).
 ⏳ phone: prompt time, how many volunteers have a fingerprint set up.
 
 ## 9. Test day (for Praveen, after Wed 21-10-2026)
 
-**People and phones.** 5-10 **adult** volunteers (18+; **no children** at all), each signs the consent sheet
+**People and phones.** A **dedicated test phone** (no class login, TEST only; **factory reset** at the end, with a
+deletion log line). 5-10 **adult** volunteers (18+; **no children** at all), each signs the consent sheet
 (appendix A) first; give each a code V01…V10 and write code + name **only on the paper**. One test phone of the
 ₹10-15k class (note model and Android version), plus one other phone or tablet for screen replays, plus a colour
 print of one volunteer's face (A4, normal printer) — that volunteer consents to it in the sheet; shred it after.
@@ -168,12 +233,15 @@ print of one volunteer's face (A4, normal printer) — that volunteer consents t
    glasses on/off or hair changed, 2 holding the phone lower. Every check also scores against all the others
    (impostor scores) — no extra work.
 4. **Attack**, for 3 volunteers: 3× printed photo, 3× photo on the other phone's screen, 3× a short video of
-   the volunteer (blinking, turning) played on the other phone. Pick the attacked volunteer's code each time.
+   the volunteer (blinking, turning) played on the other phone, 2× **live video-call relay** (the volunteer on a
+   video call doing the blink/turn, the call screen held to the test phone), and a paper mask/cut-out if at hand.
+   Pick the attacked volunteer's code each time.
 5. Settings → turn **Fast path** off, do 5 more checks (exact-path timing); turn **photo** on, do 3 checks.
 6. **Results tab** → "Save scores as CSV" (to Downloads) and "Share this summary"; send both to the spike chat.
    The CSV has codes and scores only — no names, no pictures.
 7. **Delete**: Start tab → "Delete all face data" (the message lists what was removed, with the time) →
-   **uninstall** the app → shred the printed photo → delete the replay photo/video from the other phone.
+   **uninstall** the app → **factory reset** the test phone → shred the printed photo → delete the replay
+   photo/video from the other phone.
    Note the date and time in §11.
 
 **What decides go / no-go:** frame → result median < 500 ms on the test phone; at the threshold where no
@@ -251,9 +319,10 @@ test app; an EAS build is needed only if we want updates on the `spike` channel.
   MiniFASNet V2/V1SE int8 (models converted by us, parity ≥ 0.999 with OpenCV). ⏳ confirm with phone timings.
 - **#278** The local template lives in `expo-secure-store` (Keystore), not in SQLCipher; no pictures kept, the
   temporary JPEG of the exact path deleted in the same call.
-- **#279** Integrity for the link-installed APK = Android hardware key attestation verified on our server
-  (package + signing cert + verified boot), Play Integrity device verdict optional (Cloud project, 10,000/day);
-  app-recognition / licensing verdicts are not usable off Play. ⏳ confirm with phone results.
+- **#279** Gate rule (audit S4F-01): self-scan exists only if a Play Integrity verdict bound to each check-in
+  (single-use server challenge, requestHash, pinned certificate, MEETS_DEVICE_INTEGRITY, decoded by Google, checked
+  server-side) works for the link-installed APK; otherwise **no self-scan for anyone**. Face codes device-only (S4F-02).
+  Own-phone fingerprint is not an attendance factor; centre reader rejected. ⏳ pass/fail from the Gate 1 steps.
 
 ## Appendix A — Consent sheet for spike volunteers (adults only; print one per person)
 

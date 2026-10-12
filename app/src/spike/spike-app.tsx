@@ -25,7 +25,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: 'phone', label: 'Phone' },
   { key: 'settings', label: 'Settings' },
 ];
-const ATTACKS: AttackType[] = ['printed photo', 'screen photo', 'screen video', 'other'];
+const ATTACKS: AttackType[] = ['printed photo', 'screen photo', 'screen video', 'video call relay', 'mask or cut-out', 'other'];
 
 function Button({ label, onPress, kind = 'main', disabled }: { label: string; onPress: () => void; kind?: 'main' | 'plain' | 'danger'; disabled?: boolean }) {
   return (

@@ -101,32 +101,59 @@ async function modelSpeed(): Promise<string> {
   return `load ${m.loadMs} ms; SFace ${sMs.toFixed(1)} ms/run (${shape(m.sface)}); MiniFASNet pair ${fMs.toFixed(1)} ms/run (${shape(m.fasA)}); delegates [${m.sface.delegates.join(',') || 'cpu'}]`;
 }
 
-async function playIntegrity(projectNumber: string): Promise<{ line: string; share?: string }> {
+/**
+ * Gate 1 (audit S4F-01): the request hash that binds one integrity verdict to one check-in. The "server"
+ * (docs/phase3/spike-tools/gate1-server.mjs on the PC in the spike, an Edge Function in P3-6) issues a
+ * single-use challenge, recomputes this hash and compares it with the decoded verdict's requestHash.
+ */
+export function selfScanRequestText(code: string, action: 'checkin' | 'checkout', challenge: string, location: 'inside' | 'outside') {
+  return `mrdg-selfscan-v1|${code}|${action}|${challenge}|${location}`;
+}
+
+type Gate1Input = { projectNumber: string; challenge: string; code: string };
+
+let preparedFor: string | null = null;
+
+async function playIntegrity({ projectNumber, challenge, code }: Gate1Input): Promise<{ line: string; share?: string }> {
   if (!/^\d{6,20}$/.test(projectNumber)) return { line: 'Type the Google Cloud project number first (digits only).' };
+  if (!/^[0-9a-f]{16,64}$/.test(challenge)) return { line: 'Type the server challenge from the PC (gate1-server.mjs issue) — hex, 16+ characters.' };
   const t0 = Date.now();
-  await AppIntegrity.prepareIntegrityTokenProviderAsync(projectNumber);
+  let prepareMs = 0;
+  if (preparedFor !== projectNumber) {
+    await AppIntegrity.prepareIntegrityTokenProviderAsync(projectNumber);
+    preparedFor = projectNumber;
+    prepareMs = Date.now() - t0;
+  }
+  const text = selfScanRequestText(code, 'checkin', challenge, 'inside');
+  const requestHash = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, text);
   const t1 = Date.now();
-  const nonce = hex(Crypto.getRandomBytes(16));
-  const hash = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, `spike:${nonce}`);
-  const token = await AppIntegrity.requestIntegrityCheckAsync(hash);
+  let token: string;
+  try {
+    token = await AppIntegrity.requestIntegrityCheckAsync(requestHash);
+  } catch (e) {
+    // ERR_APP_INTEGRITY_PROVIDER_INVALID = the prepared provider expired: prepare again on the next tap.
+    preparedFor = null;
+    throw e;
+  }
   const t2 = Date.now();
   return {
-    line: `prepare ${t1 - t0} ms, token ${t2 - t1} ms, token length ${token.length}; requestHash ${hash.slice(0, 12)}… — share the token to decode it with Google`,
-    share: JSON.stringify({ requestHash: hash, token }),
+    line: `prepare ${prepareMs ? `${prepareMs} ms` : 'reused'}, token ${t2 - t1} ms (length ${token.length}); bound to "${text}" → requestHash ${requestHash.slice(0, 12)}… — share it to the PC now (the challenge expires 60 s after it was issued)`,
+    share: JSON.stringify({ kind: 'play-integrity', code, challenge, requestText: text, requestHash, tokenAt: t2, token }),
   };
 }
 
-async function keyAttestation(): Promise<{ line: string; share?: string }> {
+async function keyAttestation({ challenge, code }: Gate1Input): Promise<{ line: string; share?: string }> {
   const supported = await AppIntegrity.isHardwareAttestationSupportedAsync();
   if (!supported) return { line: 'hardware key attestation: NOT supported on this phone' };
-  const challenge = hex(Crypto.getRandomBytes(16));
+  // The server challenge when one is typed (binds the attestation to this check-in too), else a random one.
+  const usedChallenge = /^[0-9a-f]{16,64}$/.test(challenge) ? challenge : hex(Crypto.getRandomBytes(16));
   const alias = `spike-${Date.now()}`;
   const t0 = Date.now();
-  await AppIntegrity.generateHardwareAttestedKeyAsync(alias, challenge);
+  await AppIntegrity.generateHardwareAttestedKeyAsync(alias, usedChallenge);
   const chain = await AppIntegrity.getAttestationCertificateChainAsync(alias);
   return {
-    line: `hardware key attestation: supported; chain of ${chain.length} certificates in ${Date.now() - t0} ms — share it for the PC check`,
-    share: JSON.stringify({ challenge, chain }),
+    line: `hardware key attestation: supported; chain of ${chain.length} certificates in ${Date.now() - t0} ms (challenge ${usedChallenge === challenge ? 'from the server' : 'random'}) — share it to the PC`,
+    share: JSON.stringify({ kind: 'key-attestation', code, challenge: usedChallenge, chain }),
   };
 }
 
@@ -137,16 +164,19 @@ export function PhoneChecks() {
   const [shares, setShares] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<string | null>(null);
   const [project, setProject] = useState('');
+  const [challenge, setChallenge] = useState('');
+  const [code, setCode] = useState('V01');
+  const gate1 = { projectNumber: project.trim(), challenge: challenge.trim().toLowerCase(), code: code.trim().toUpperCase() };
 
   const rows: Row[] = [
     { label: 'Phone and memory', run: async () => `${deviceLine()}; memory now ${readRssMb() ?? '?'} MB, peak ${readPeakMb() ?? '?'} MB` },
     { label: 'Model speed (20 runs)', run: modelSpeed },
-    { label: 'Fingerprint prompt', run: fingerprintCheck },
+    { label: 'Fingerprint prompt (UX only — not attendance)', run: fingerprintCheck },
     { label: 'Keystore storage', run: () => secureStoreCheck(false) },
     { label: 'Keystore + fingerprint lock', run: () => secureStoreCheck(true) },
     { label: 'SQLCipher database', run: sqlcipherCheck },
-    { label: 'Key attestation', run: keyAttestation },
-    { label: 'Play Integrity', run: () => playIntegrity(project.trim()) },
+    { label: 'Gate 1: Play Integrity for this check-in', run: () => playIntegrity(gate1) },
+    { label: 'Gate 1: key attestation for this check-in', run: () => keyAttestation(gate1) },
   ];
 
   async function run(r: Row) {
@@ -167,8 +197,11 @@ export function PhoneChecks() {
 
   return (
     <View style={styles.wrap}>
-      <Text style={styles.note}>Google Cloud project number (only for Play Integrity; leave empty otherwise):</Text>
-      <TextInput value={project} onChangeText={setProject} keyboardType="number-pad" placeholder="e.g. 123456789012" style={styles.input} />
+      <Text style={styles.note}>Gate 1 (one check-in): Google Cloud project number, the challenge the PC just issued (valid 60 s), and the volunteer code.</Text>
+      <TextInput value={project} onChangeText={setProject} keyboardType="number-pad" placeholder="Cloud project number, e.g. 123456789012" style={styles.input} />
+      <TextInput value={challenge} onChangeText={setChallenge} autoCapitalize="none" autoCorrect={false} placeholder="Server challenge (16 hex characters)" style={styles.input} />
+      <TextInput value={code} onChangeText={setCode} autoCapitalize="characters" placeholder="Volunteer code" style={styles.input} />
+      <Text style={styles.note}>The fingerprint prompt is measured only as a possible add-on to a rotating My QR; it proves who unlocked this phone, not who is checking in.</Text>
       {rows.map((r) => (
         <View key={r.label} style={styles.row}>
           <Pressable style={styles.button} disabled={busy !== null} onPress={() => run(r)} accessibilityRole="button">
