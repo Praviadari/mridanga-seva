@@ -52,6 +52,7 @@
 import { PGlite } from '@electric-sql/pglite';
 import { pgcrypto } from '@electric-sql/pglite/contrib/pgcrypto';
 import { randomUUID } from 'node:crypto';
+import { symbolBracket } from './name-symbols.mjs';
 import { readdirSync, readFileSync } from 'node:fs';
 
 import { runPush } from '../functions/notify-announcements/send.ts';
@@ -125,7 +126,7 @@ process.on('uncaughtException', (error) => {
 // D14-10: every check is counted, and the run fails when fewer (or more) checks ran than expected,
 // so a block skipped by a renamed migration or a commented-out section cannot pass unseen.
 // Adding or removing checks? Run the suite and set this to the new total it prints.
-const EXPECTED_CHECKS = 1553; // 0047 form rules: +63; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
+const EXPECTED_CHECKS = 1599; // 0047 form rules: +109; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
 let failures = 0;
 let passes = 0;
 
@@ -2923,6 +2924,8 @@ const minor = await register(coordinator, { p_full_name: 'Sec Minor Child', p_do
   p_guardian_name: 'Sec Parent', p_guardian_phone: '9000012345', p_guardian_email: 'sec.parent@example.com',
   p_guardian_relation: 'mother', p_id_type_checked: 'aadhaar', p_written_consent: true });
 const minorLogin = await signUp('sec.minor@example.com', true);
+// 0047 (#276): a minor's record is never linked by email; the Guru links it explicitly.
+await asApp('authenticated', guru, 'select link_student_login($1, $2)', [minorLogin, minor.id]);
 check('a registered minor\'s consent records the signed-form tick', (await asOwner(
   `select signed_form from consents where student_id = '${minor.id}'`)).every((r) => r.signed_form === true));
 await registerToken(minorLogin, 'ExponentPushToken[secminor]');
@@ -3102,7 +3105,7 @@ await refusesWith('a minor cannot skip the parent by changing the year of birth'
   igJoin(pubMinor, { year: 1990 }));
 const turning18 = await signUp('pub.turning18@example.com', true);
 check('in the year one turns 18, "not yet had the birthday" counts as under 18',
-  (await igJoin(turning18, { year: thisYear - 18, parent: 'P', parentEmail: 'p18@example.com' })).minor === true);
+  (await igJoin(turning18, { year: thisYear - 18, parent: 'Padma', parentEmail: 'p18@example.com' })).minor === true);
 const had18 = await signUp('pub.had18@example.com', true);
 check('... and "had the birthday" as 18', (await igJoin(had18, { year: thisYear - 18, turned18: true })).minor === false);
 const sendCode = async (userId) => (await asApp('authenticated', userId, 'select ig_send_parent_code() as r'))[0].r;
@@ -3257,7 +3260,7 @@ const mayAnswer = new Set(['my_role', 'today_ist', 'my_time_zone', 'centre_tz', 
   'practice_weeks', // empty weeks with 0 minutes for a null student
   'scan_qr', // {action: unknown} for a null code
   'my_about', 'sign_up_choices', // 0036: the caller's own About you; the public sign-up lists (#163)
-  'person_name_chars', 'default_home_centre']); // 0047: the name rule's character list (the app mirrors it, #271); a new record's default centre id (#274)
+  'person_name_symbols', 'default_home_centre']); // 0047: the name rule's list of refused signs (#271); a new record's default centre id (#274)
 const answered = [];
 for (const fn of fns) {
   if (skip.has(fn.name)) continue;
@@ -3301,8 +3304,9 @@ await refusesWith('... nor a student', 'name_taken', () =>
   asApp('authenticated', arjun, `update profiles set full_name = 'Guru Maharaj' where id = $1`, [arjun]));
 await refusesWith('a name with a zero-width space is refused', 'name_invalid', () =>
   asApp('authenticated', coordinator2, `update profiles set full_name = 'Guru' || chr(8203) || ' Maharaj' where id = $1`, [coordinator2]));
-await refusesWith('... and one with a line break inside', 'name_invalid', () =>
-  asApp('authenticated', coordinator2, `update profiles set full_name = 'Ravi' || chr(10) || 'Kumar' where id = $1`, [coordinator2]));
+// 0047 (#271): a line break inside becomes one space, as the app's rule cleans it.
+const [lineBreak] = await asApp('authenticated', coordinator2, `update profiles set full_name = 'Ravi' || chr(10) || 'Kumar' where id = $1 returning full_name`, [coordinator2]);
+check('... and a line break inside becomes one space', lineBreak?.full_name === 'Ravi Kumar', lineBreak?.full_name);
 const [teluguName] = await asApp('authenticated', coordinator2,
   `update profiles set full_name = 'శ్రీ' || chr(8204) || 'నివాస్' where id = $1 returning full_name`, [coordinator2]);
 check('... while a Telugu name with a zero-width non-joiner is kept', teluguName?.full_name?.includes(String.fromCharCode(0x200c)));
@@ -3994,13 +3998,14 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   const minorRec = (await register(fem1, { p_full_name: 'Minor With Login', p_dob: minorDob, p_email: 'minor.ac@example.com',
     p_guardian_name: 'Minor Parent', p_guardian_phone: '9876511111', p_guardian_relation: 'father', p_id_type_checked: 'aadhaar',
     p_written_consent: true })).id;
+  await asApp('authenticated', guru, 'select link_student_login($1, $2)', [minorLogin, minorRec]); // 0047 #276: a minor is linked by the Guru
   const mm = await myAbout(minorLogin);
   check('0036: a minor\'s About you knows the guardian is on record', mm.minor === true && mm.has_guardian === true && mm.has_record === true);
   check('0036: ... so the minor can finish About you', (await about(minorLogin, { occupation: 'school_student', about_state: 'done' })).about_state === 'done');
   await refusesWith('0036: a minor\'s emergency contact is a parent or guardian', 'minor_contact_relation', () =>
     about(minorLogin, { emergency_relation: 'spouse', emergency_name: 'Not A Parent', emergency_phone: '+919876522222' }));
   check('0036: a guardian with a phone counts as the minor\'s emergency contact (helper)', (await asOwner(`select minor_without_contact('${minorRec}',
-    row(null, null, null, null, null, null, null, null, null, null, null, null, '{}', null, null, '{}', null, now(), now(), null)::person_details) as a`))[0].a === false);
+    row(null, null, null, null, null, null, null, null, null, null, null, null, '{}', null, null, '{}', null, now(), now(), null, null, null)::person_details) as a`))[0].a === false);
 
   // Report: by source and by coordinator, Guru only.
   const today = (await asOwner(`select today_ist()::text as d`))[0].d;
@@ -4143,7 +4148,7 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
     // 0046: Accept on Register a student (staff only inside)
     'accept_sign_up(uuid)',
     // 0047: the name rule (runs as the person saving), the desk's default centre, duplicates (staff only inside)
-    'clean_person_name(text,integer)', 'person_name_chars()', 'default_home_centre()', 'possible_duplicates(text,date,text)',
+    'clean_person_name(text,integer)', 'person_name_symbols()', 'default_home_centre()', 'possible_duplicates(text,date,text)',
   ];
   const runnableBy = async (role) => (await asOwner(`select p.oid::regprocedure::text as f from pg_proc p
     where p.pronamespace = 'public'::regnamespace
@@ -5197,7 +5202,7 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
 {
   const signUpWith = async (email, meta, confirmed = true) => (await db.query(
     `insert into auth.users (email, email_confirmed_at, raw_user_meta_data) values ($1, ${confirmed ? 'now()' : 'null'}, $2) returning id`,
-    [email, JSON.stringify(meta)])).rows[0].id;
+    [email, JSON.stringify({ notice_version: 'v1', ...meta })])).rows[0].id; // 0047 (#280): the app sends the ticked notice
   const accept = async (who, profile) => (await asApp('authenticated', who, 'select accept_sign_up($1) as r', [profile]))[0].r;
   const waitingFor = async (who) => (await asApp('authenticated', who, 'select waiting_sign_ups() as r'))[0].r;
   const studentsWith = async (email) => (await asOwner(`select id, profile_id, roll_no, full_name, dob::text as dob, phone, email,
@@ -5326,8 +5331,10 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
     where role in ('guru', 'coordinator')`))[0].n === coordinatorsBefore && (await roleOf(coordinator)) === 'coordinator');
 }
 
-// ---------------------------------------------------------------- 0047 form rules in SQL (DECISIONS #271-#274)
+// ---------------------------------------------------------------- 0047 form rules in SQL (DECISIONS #271-#274, #276, #280)
 {
+  // The checks above ran 0046 a second time, which put its own link functions and Accept back: 0047 again.
+  await db.exec(readFileSync(new URL('migrations/0047_form_rules.sql', supabaseDir), 'utf8'));
   const adultDob47 = `${year - 30}-03-03`;
   const minorDob47 = `${year - 10}-03-03`;
 
@@ -5363,28 +5370,38 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   // P1-08: one name rule (#271) on every path an app user writes a name through.
   const reg47 = (name, extra = {}) => register(coordinator, { p_full_name: name, p_dob: adultDob47, ...extra });
   const nameOf = async (id) => (await asOwner(`select full_name from students where id = '${id}'`))[0].full_name;
-  for (const [label, name] of [['ASCII', 'Ravi Kumar 2'], ['Telugu', 'రవి ౨'], ['Devanagari', 'राम १'],
-    ['Telugu fraction', 'రవి౸'], ['Tamil', 'ராம ௧'], ['full-width', 'Ravi １']]) {
-    await refusesWith(`0047 P1-08: a name with ${label} digits is refused (register_student)`, 'name_invalid', () => reg47(name));
+  // Parity with the app (forms-fix app/tests/form-checks.test.mjs, checkPersonName): the same cases.
+  const digitsJs = ['Praveen 2', 'R2D2', 'ప్రవీణ్ ౩', 'प्रवीण ३', '१२३', 'Ram１', 'రవి౸', 'ராம ௧'];
+  for (const name of digitsJs) {
+    await refusesWith(`0047 P1-08: digits refused as in the app: ${JSON.stringify(name)}`, 'name_invalid', () => reg47(name));
   }
-  for (const [label, name] of [['an emoji', 'Ravi 🙏'], ['@', 'ravi@home'], ['a zero-width space', 'Ravi​Kumar'],
-    ['a line break', 'Ravi\nKumar'], ['a danda', 'राम।'], ['only dots', '. .'], ['a joiner first', '‌Ravi'], ['a joiner before a space', 'శ్రీ‌ నివాస్']]) {
-    await refusesWith(`0047 P1-08: a name with ${label} is refused`, 'name_invalid', () => reg47(name));
+  const symbolsJs = ['Praveen@home', 'Ram_Das', 'Ram!', 'Ram 🙏', '-Ram', '.Ram', 'Ram--Das', "Ram''", 'Ram-', 'Ram, Das', 'Ram।',
+    'Ravi​Kumar', 'Ravi‐Kumar', 'Ram ‘Das', 'Ram ©'];
+  for (const name of symbolsJs) {
+    await refusesWith(`0047 P1-08: signs refused as in the app: ${JSON.stringify(name)}`, 'name_invalid', () => reg47(name));
   }
+  for (const name of ['A', 'A.', ' ‍ ']) {
+    await refusesWith(`0047 P1-08: fewer than two letters refused as in the app: ${JSON.stringify(name)}`, 'name_invalid', () => reg47(name));
+  }
+  await refusesWith('0047 P1-08: only spaces is name_required', 'name_required', () => reg47('   '));
   const accepted = [
-    ['Telugu with virama and ZWNJ', 'శ్రీ‌నివాస్ రావు', 'శ్రీ‌నివాస్ రావు'],
-    ['Telugu with vowel signs', 'లక్ష్మీ ప్రసన్న', 'లక్ష్మీ ప్రసన్న'],
-    ['Devanagari with matras and nukta', 'राधा कृष्ण ज़ैदी', 'राधा कृष्ण ज़ैदी'],
-    ['Devanagari with ZWJ', 'क्‍ष', 'क्‍ष'],
-    ['IAST', 'Kṛṣṇa Dāsa', 'Kṛṣṇa Dāsa'],
-    ['dot, apostrophe, hyphen; spaces cleaned', '  D.  O’Brien-Rao  ', "D. O'Brien-Rao"],
-    ['decomposed accents (stored NFC)', 'José Niño', 'José Niño'],
-    ['Cyrillic', 'Гопи Дас', 'Гопи Дас'],
+    ...['Praveen Kumar', 'K. Rama-Krishna', "D'Souza", 'D’Souza', 'Rao Jr.', 'José Ñúñez', 'ప్రవీణ్ కుమార్', 'శ్రీనివాస్',
+      'प्रवीण कुमार', 'श्री राधा-कृष्ण दास', 'க்ருஷ்ணா', 'Gaura‌Das', 'क़ारिम', 'Ab', 'a'.repeat(100), 'Ka. Rama', "O' Neil"]
+      .map((n) => [n, n.normalize('NFC')]),
+    ['  Praveen   Kumar  ', 'Praveen Kumar'],
+    ['Ravi\nKumar', 'Ravi Kumar'], // a line break inside is white space, as in the app
+    ['Ravi  Kumar', 'Ravi Kumar'],
+    ['José Niño', 'José Niño'], // stored NFC
+    ['శ్రీ‌నివాస్ రావు', 'శ్రీ‌నివాస్ రావు'],
+    ['क्‍ष राव', 'क्‍ष राव'],
+    ['Kṛṣṇa Dāsa', 'Kṛṣṇa Dāsa'],
+    ['Гопи Дас', 'Гопи Дас'],
+    ['‌Ravi', '‌Ravi'], // a joiner is a letter in the app's rule too
   ];
-  for (const [label, name, stored] of accepted) {
+  for (const [name, stored] of accepted) {
     let got = null;
     try { got = await nameOf((await reg47(name)).id); } catch (e) { got = `refused: ${e.message}`; }
-    check(`0047 P1-08: ${label} is accepted and stored as expected`, got === stored, JSON.stringify(got));
+    check(`0047 P1-08: accepted as in the app and stored cleaned: ${JSON.stringify(name).slice(0, 40)}`, got === stored, JSON.stringify(got));
   }
   await refusesWith('0047 P1-08: a minor\'s guardian name with digits is refused', 'name_invalid', () =>
     register(coordinator, { p_full_name: 'Guarded Child', p_dob: minorDob47, p_guardian_name: 'Parent 2',
@@ -5432,9 +5449,9 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   await asApp('authenticated', coordinator, `update students set area = 'Abids' where id = $1`, [legacy]);
   check('0047 P1-08: a stored name the rule would refuse is not re-checked when other fields change', (await nameOf(legacy)) === 'Legacy Name 9');
   await asOwner(`delete from students where id = '${legacy}'`);
-  check('0047 P1-08: clean_person_name answers as documented (person_name_chars is the published class list)',
+  check('0047 P1-08: clean_person_name answers as documented, and person_name_symbols() is exactly the list from the Unicode tables of JavaScript (name-symbols.mjs)',
     (await asOwner(`select clean_person_name(E' Sri\\u00a0 Rama ') as n`))[0].n === 'Sri Rama'
-    && (await asOwner(`select person_name_chars() as c`))[0].c.startsWith("A-Za-z .'"));
+    && (await asOwner(`select person_name_symbols() as c`))[0].c === symbolBracket());
 
   // P1-12: About you keeps a gender already on the student's record (#273).
   const arjunRec = (await asOwner(`select id from students where profile_id = '${arjun}'`))[0].id;
@@ -5486,6 +5503,68 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   await refusesWith('0047 P1-06: a student cannot ask', 'not_allowed', () => dup(arjun, 'Adult Learner', '1990-01-01', null));
   await refusesWith('0047 P1-06: nor anon', 'permission denied for function possible_duplicates', () =>
     asApp('anon', null, 'select possible_duplicates($1, $2, $3)', ['Adult Learner', '1990-01-01', null]));
+
+  // P1-18/S1-04, S2-01 (#276): no automatic link onto a minor's record.
+  const kid276 = (email, name) => register(coordinator, { p_full_name: name, p_dob: minorDob47, p_email: email,
+    p_guardian_name: 'Parent Of Kid', p_guardian_phone: '9876547276', p_guardian_relation: 'mother',
+    p_id_type_checked: 'aadhaar', p_written_consent: true });
+  const loginOf = async (id) => (await asOwner(`select profile_id from students where id = '${id}'`))[0].profile_id;
+  const kidA = await kid276('kid.a.276@example.com', 'Kid Aone');
+  const kidALogin = await signUp('kid.a.276@example.com', true);
+  check('0047 P1-18: a confirmed sign-up with a child\'s record email is NOT linked to the child (confirm path)',
+    (await loginOf(kidA.id)) === null && (await roleOf(kidALogin)) === 'pending', `${await loginOf(kidA.id)} ${await roleOf(kidALogin)}`);
+  const kidBLogin = await signUp('kid.b.276@example.com', true);
+  const kidB = await kid276(null, 'Kid Btwo');
+  await asApp('authenticated', coordinator, `update students set email = 'kid.b.276@example.com' where id = $1`, [kidB.id]);
+  check('0047 P1-18: an email saved on a child\'s record does NOT link the waiting login with that email (email path)',
+    (await loginOf(kidB.id)) === null && (await roleOf(kidBLogin)) === 'pending');
+  const parent276 = await signUpWith47('parent.276@example.com', { full_name: 'Parent Twoseventysix', dob: adultDob47,
+    centre_id: 1, notice_version: 'v1' });
+  const kidC = await kid276(null, 'Kid Cthree');
+  await asApp('authenticated', coordinator, `update students set email = 'parent.276@example.com' where id = $1`, [kidC.id]);
+  check('0047 S2-01: a parent\'s email typed as a child\'s email does not make the parent\'s login the child',
+    (await loginOf(kidC.id)) === null && (await roleOf(parent276)) === 'pending');
+  const accepted276 = (await asApp('authenticated', coordinator, 'select accept_sign_up($1) as r', [parent276]))[0].r;
+  check('0047 S2-01: ... and Accept makes the parent their own adult record, never the child\'s',
+    accepted276.existing === false && accepted276.id !== kidC.id && (await loginOf(kidC.id)) === null, JSON.stringify(accepted276));
+  await asApp('authenticated', guru, 'select link_student_login($1, $2)', [kidALogin, kidA.id]);
+  check('0047 P1-18: the Guru still links a child\'s record explicitly', (await loginOf(kidA.id)) === kidALogin
+    && (await roleOf(kidALogin)) === 'student');
+  const adultLogin276 = await signUp('adult.276@example.com', true);
+  const adult276 = await reg47('Adult Twoseventysix', { p_email: 'adult.276@example.com' });
+  check('0047 P1-18: (control) an adult\'s record still links by email (#96)', (await loginOf(adult276.id)) === adultLogin276);
+  await refusesWith('0047 S2-01: a guardian email that is another child\'s record email is refused', 'guardian_email_on_minor', () =>
+    asApp('authenticated', coordinator, `insert into guardians (id, student_id, full_name, phone, email, relation)
+      values ($2, $1, 'Other Parent', '9876547277', 'kid.b.276@example.com', 'father')`, [kidC.id, randomUUID()]));
+
+  // S2-03: a student inserted by an app user gets no login, a fresh code, the inserter as creator.
+  const sneakyQr = randomUUID();
+  const [sneaky] = await asApp('authenticated', coordinator, `insert into students (full_name, dob, profile_id, qr_token, created_by)
+    values ('Sneaky Insert', $1, $2, $3, $2) returning id`, [adultDob47, guru, sneakyQr]);
+  const [sneakyRow] = await asOwner(`select profile_id, qr_token, created_by from students where id = '${sneaky.id}'`);
+  check('0047 S2-03: an app user\'s insert cannot attach a login (even the Guru\'s), pick the QR code or the creator',
+    sneakyRow.profile_id === null && sneakyRow.qr_token !== sneakyQr && sneakyRow.created_by === coordinator, JSON.stringify(sneakyRow));
+  check('0047 S2-03: ... the Guru is still the Guru', (await roleOf(guru)) === 'guru');
+
+  // S2-04: no email-code consent from an app user (no code flow exists).
+  await refusesWith('0047 S2-04: an app user cannot insert an email-code consent', 'consent_method_not_allowed', () =>
+    asApp('authenticated', coordinator, `insert into consents (student_id, scope, method) values ($1, 'photo', 'email_code')`, [adult276.id]));
+
+  // S4-02 (#280): the notice ticked at sign-up is kept; Accept needs it.
+  const noticeOf = async (id) => (await asOwner(`select notice_version, notice_accepted_at from person_details where profile_id = '${id}'`))[0];
+  const ticked = await signUpWith47('ticked.280@example.com', { full_name: 'Ticked Notice', dob: adultDob47, centre_id: 1, notice_version: 'v2026-10' });
+  const tickedRow = await noticeOf(ticked);
+  check('0047 S4-02: the notice version ticked at sign-up is kept, with the time', tickedRow?.notice_version === 'v2026-10' && !!tickedRow.notice_accepted_at);
+  const unticked = await signUpWith47('unticked.280@example.com', { full_name: 'Unticked Notice', dob: adultDob47, centre_id: 1 });
+  const odd280 = await signUpWith47('odd.280@example.com', { full_name: 'Odd Notice', dob: adultDob47, centre_id: 1, notice_version: 'v1; drop' });
+  check('0047 S4-02: a sign-up without one, or with a malformed one, still succeeds (none kept)',
+    !!unticked && !!odd280 && (await noticeOf(odd280))?.notice_version === null);
+  const waiting280 = (await asApp('authenticated', coordinator, 'select waiting_sign_ups() as r'))[0].r;
+  check('0047 S4-02: the waiting list shows the notice version (null: not ticked)',
+    waiting280.find((r) => r.id === ticked)?.notice_version === 'v2026-10' && waiting280.find((r) => r.id === unticked)?.notice_version === null);
+  await refusesWith('0047 S4-02: Accept refuses a sign-up that did not tick the notice', 'notice_not_accepted', () =>
+    asApp('authenticated', coordinator, 'select accept_sign_up($1) as r', [unticked]));
+  check('0047 S4-02: ... and accepts one that did', (await asApp('authenticated', coordinator, 'select accept_sign_up($1) as r', [ticked]))[0].r.existing === false);
 
   let again = '';
   try { await db.exec(readFileSync(new URL('migrations/0047_form_rules.sql', supabaseDir), 'utf8')); } catch (e) { again = String(e.message); }

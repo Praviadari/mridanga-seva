@@ -47,7 +47,7 @@ in number order:
 | `0043_parent_notices.sql` | Check-in / check-out emails to a minor's parent: settings (off by default), per-guardian stop and language, the `parent_notices` queue filled by a trigger on `visits`, the every-minute job and the functions of the Edge Function `notify-parents`, the C8 status and switch ([DECISIONS.md #224-#231](DECISIONS.md)). See "Parent notices (0043)" |
 | `0044_parent_checkout_only.sql` | Parent emails only for a check-out recorded in the app: settings `parent_notices_check_in` and `parent_notices_no_checkout` (both off), `guard_setting` with them, the visits trigger honouring each switch ([DECISIONS.md #246-#247](DECISIONS.md)). See "Parent notices (0043)" |
 | `0045_qr_cards.sql` | Printed QR cards for students without a phone (Phase 3 P3-1): `reissue_qr_code(student)`, the Guru gives a student a new `qr_token` when a card is lost, so the old card scans as unknown ([DECISIONS.md #249-#252](DECISIONS.md)). The cards carry the My QR code and need no table. See "Attendance" |
-| `0047_form_rules.sql` | Form rules in SQL (audit phase 1, [DECISIONS.md #271-#274](DECISIONS.md)): one name rule `clean_person_name` on every person's name an app user writes (no digits of any script, Telugu/Hindi vowel signs and joiners kept, NFC), a minor needs a guardian with a phone and that guardian's own consent (also when the date of birth changes), About you keeps a student's gender once set, a desk registration gets the coordinator's centre, `possible_duplicates` for the desk. See "Form rules (0047)" |
+| `0047_form_rules.sql` | Form rules in SQL (audit phase 1, [DECISIONS.md #271-#274](DECISIONS.md)): one name rule `clean_person_name` on every person's name an app user writes (no digits of any script, Telugu/Hindi vowel signs and joiners kept, NFC), a minor needs a guardian with a phone and that guardian's own consent (also when the date of birth changes), About you keeps a student's gender once set, a desk registration gets the coordinator's centre, `possible_duplicates` for the desk; a minor's record is never linked to a login by email (the Guru links it), a student inserted by an app user gets no login, the notice ticked at sign-up is kept and Accept needs it ([#276](DECISIONS.md), [#280](DECISIONS.md)). See "Form rules (0047)" |
 
 The Phase 2 files were renumbered when they merged into main (#55). TEST ran some under their
 branch numbers (0012, 0014_promotion, 0016_practice, 0017_media, 0021_events_polls), so it skips
@@ -1416,41 +1416,67 @@ yet" on a database without it.
 Tests: section "0046 registration accept" in `supabase/tests/smoke-test.mjs`.
 ## Form rules (0047)
 
-[DECISIONS.md #271-#274](DECISIONS.md); audit phase 1 of 12-10-2026 (P1-01, P1-05, P1-06, P1-08, P1-12).
+[DECISIONS.md #271-#274, #276, #280](DECISIONS.md); audit phase 1 of 12-10-2026 (P1-01, P1-05, P1-06, P1-08, P1-12)
+and the early phase 3 findings P1-18/S1-04, S2-01, S2-03, S2-04, S4-02.
 Nothing stored is changed or re-checked: each rule runs when the value is written or changed.
 
 **Names (#271).** `clean_person_name(name, max)` cleans and checks one person's name and returns the
-name to store. Cleaning: Unicode NFC; the apostrophes U+2018 U+2019 U+02BC become `'`; runs of spaces
-(also the no-break spaces U+00A0 U+2007 U+202F) become one space; spaces, tabs and line breaks at the
-ends go. Then: empty `name_required`; longer than `max` `name_too_long`; any character outside
-`person_name_chars()` `name_invalid`; a ZWJ/ZWNJ at the start or end of a word, or two in a row,
-`name_invalid`; no letter at all `name_invalid`. The allowed characters (`person_name_chars()`, the
-class list the app mirrors):
+name to store. It is the app's `checkPersonName` (`app/src/lib/person-name.ts`, [#267](DECISIONS.md)),
+step for step:
 
-| Group | Code points |
-|---|---|
-| Punctuation | space, `.` `'` `-` |
-| Latin | `A-Z a-z`, U+00C0-U+00D6, U+00D8-U+00F6, U+00F8-U+024F, U+1E00-U+1EFF (IAST), combining accents U+0300-U+036F |
-| Cyrillic | U+0400-U+0481, U+048A-U+04FF |
-| Devanagari | U+0900-U+0963, U+0971-U+097F (not ।॥ U+0964-0965, digits U+0966-096F, ॰ U+0970) |
-| Telugu | U+0C00-U+0C65 (not digits U+0C66-0C6F, U+0C77-0C7F signs and fraction digits) |
-| Other Indian scripts | Bengali U+0980-09E5, 09F0-09F1, 09FC, 09FE; Gurmukhi U+0A00-0A65, 0A70-0A75; Gujarati U+0A80-0AE5, 0AF9-0AFF; Oriya U+0B00-0B65, 0B71; Tamil U+0B80-0BE5; Kannada U+0C80-0C83, 0C85-0CE5, 0CF1-0CF3; Malayalam U+0D00-0D4E, 0D54-0D57, 0D5F-0D63, 0D7A-0D7F; Sinhala U+0D80-0DE5, 0DF0-0DF3 |
-| Joiners | U+200C ZWNJ, U+200D ZWJ (only inside a word) |
+1. Unicode NFC; every run of white space (JavaScript's `\s`: space, tab, line breaks, no-break and
+   other Unicode spaces, U+FEFF) becomes one space; spaces at both ends go. Empty: `name_required`.
+2. A digit `[0-9०-९০-৯੦-੯૦-૯୦-୯௦-௯౦-౯೦-೯൦-൯０-９]`: `name_invalid` (the app's "digits").
+3. A character of `person_name_symbols()`; a separator (space `.` `'` `’` `-`) first; a separator after
+   a separator, unless it is a space after `.` `'` `’` or `-`; a name ending in `-` `'` `’`:
+   `name_invalid` (the app's "symbols"). `person_name_symbols()` is everything that is not a Unicode
+   letter or mark (`\p{L}`, `\p{M}`: vowel signs, viramas, accents), ZWNJ/ZWJ, a separator or white
+   space, as 765 code-point ranges **generated** from JavaScript's Unicode 17 tables by
+   `supabase/tests/name-symbols.mjs` (PostgreSQL's regular expressions have no `\p{…}`, and
+   `[[:alpha:]]` depends on the server's locale). The smoke test fails if the two differ.
+4. Fewer than 2 letters (every character that is not a separator, joiners included, as in the app):
+   `name_invalid` (the app's "tooShort").
+5. Longer than `max` characters: `name_too_long`. Limits as in the app: 80 for a login, the emergency
+   contact and the initiated name; 100 for a student record, a guardian, the Excel import and the
+   Ishtagoshti parent.
 
-Everything else is refused: digits of every script above (ASCII, Telugu, Devanagari, ...) and
-full-width ones, symbols and emoji, control and invisible characters (U+200B, bidi marks, BOM),
-other scripts (a later migration adds one when a student needs it).
+Parity was checked on 12-10-2026 by running both functions on 190,487 names (every BMP character at
+the start, inside and at the end of a name, the app's own test cases, emoji and other astral samples):
+no difference. Known differences: the app counts the length in UTF-16 units, the database in characters,
+so a name with a character beyond U+FFFF (rare scripts, emoji are refused anyway) may be 1 shorter in
+the database's count; the phone's JavaScript engine may use an older Unicode version than Node 24, so a
+letter added to Unicode after it is refused by the app and accepted here. The app's error kinds map to
+the database's codes: required → `name_required`, digits / symbols / tooShort → `name_invalid` (the
+`detail` says which), tooLong → `name_too_long`.
 
 Where it runs:
 - a login's name: at sign-up (`handle_new_user`, 80; a refused name refuses the sign-up; a login made
-  without a name, in the dashboard, keeps an empty one) and on a change (`profiles_details_guard`,
-  80); both also refuse the Guru's or a coordinator's name (`name_taken`);
-- `students.full_name`, `guardians.full_name` (100), `person_details.emergency_name` (80),
-  `ig_subscribers.parent_name` (100, error `parent_name_invalid`): trigger `clean_name_column` on insert
-  and on a change of the name, when an app user writes (auth.uid() is set, also inside the app's own
-  functions: `register_student`, `import_students`, `save_about_me`, `save_student_details`, `ig_join`,
-  0046's `accept_sign_up`). The dashboard and pg_cron are not checked;
+  without a name, in the dashboard, keeps an empty one; a refused initiated name is dropped) and on a
+  change (`profiles_details_guard`, 80); both also refuse the Guru's or a coordinator's name (`name_taken`);
+- `students.full_name`, `guardians.full_name` (100), `person_details.emergency_name` and `diksha_name`
+  (80), `ig_subscribers.parent_name` (100, error `parent_name_invalid`): trigger `clean_name_column` on
+  insert and on a change of the name, when an app user writes (auth.uid() is set, also inside the app's
+  own functions: `register_student`, `import_students`, `save_about_me`, `save_student_details`,
+  `ig_join`, `accept_sign_up`). The dashboard and pg_cron are not checked;
 - `import_students` cleans first, so its "same name and date of birth" check compares cleaned names.
+
+**Linking and emails (#276).** A minor's record is never linked to a login automatically: neither
+when the login confirms its email (`link_login_to_student`, also Accept's "already registered" step)
+nor when an email is saved on the record (`link_student_email`). The Guru links one explicitly
+(`link_student_login`, G2). Adults link as before (#96). A guardian's email may not be the email of
+any child's record (`guardian_email_on_minor`; before, only their own child's), checked when it is set
+or changed; a child's record may not hold any guardian's email (0038). An adult student may share a
+guardian's email (a parent learning too, D1a-15). A student record inserted by an app user gets no
+login, a fresh QR code and the inserting user as `created_by`, whatever the request said (S2-03). An
+app user cannot insert an `email_code` consent (`consent_method_not_allowed`; no code flow exists).
+
+**Notice at sign-up (#280).** The app sends `notice_version` (the privacy notice the person ticked) in
+the sign-up's metadata; `handle_new_user` keeps it in `person_details.notice_version` with
+`notice_accepted_at` (a missing or malformed one is left out; the sign-up never fails for it). The
+details row moves to the student record when the login is linked. `waiting_sign_ups` shows it;
+`accept_sign_up` refuses a sign-up without one (`notice_not_accepted`): the desk uses Fill the form.
+Open: for an ADULT registered at the desk, `register_student` stores no notice version (only a
+minor's consent carries one, 0034).
 
 **Minor rule (#272).** See "Registering a student", since 0047.
 
@@ -1495,6 +1521,10 @@ Server code holding the service key bypasses the role guard; only the Edge Funct
 Linking before confirmation would let anyone claim a record by typing its email
 ([DECISIONS.md #13](DECISIONS.md)).
 
+**Since 0047** ([DECISIONS.md #276](DECISIONS.md)) neither automatic path links a record of someone under
+18: a login with a child's record email stays `pending` until the Guru links it (`link_student_login`).
+See "Form rules (0047)".
+
 Roles other than `student` are given by the Guru in the app (G2, see "Coordinators and roles"), or for the very first Guru, in the
 Supabase dashboard (OPERATIONS.md). The Guru can also link a pending login to a student record
 that has no login (`link_student_login`), for a student whose record carries another email or none. The trigger `profiles_guard` stops app users other than the
@@ -1529,7 +1559,7 @@ switched-off login is refused like a stranger.
 | `mark_visit(student, action, device)` | Guru, coordinator | Checks the student in (`action = 'in'`) or out (`'out'`), or returns `already_in` / `already_out` and changes nothing. See "Attendance" |
 | `reissue_qr_code(student)` | Guru | Gives the student a new `qr_token` (a lost printed card, 0045): the old card and old My QR codes stop scanning. Refuses a withdrawn record. See "Attendance" |
 | `possible_duplicates(full_name, dob, phone)` | Guru, coordinator | Student records and waiting sign-ups that may be the person typed in at the desk (same name and date of birth, or same phone). See "Form rules (0047)" |
-| `clean_person_name(name, max)` | anyone signed in | The name rule: returns the cleaned name or raises `name_required` / `name_too_long` / `name_invalid`. `person_name_chars()` gives the allowed characters. See "Form rules (0047)" |
+| `clean_person_name(name, max)` | anyone signed in | The name rule (the app's checkPersonName): returns the cleaned name or raises `name_required` / `name_too_long` / `name_invalid`. `person_name_symbols()` gives the refused characters. See "Form rules (0047)" |
 | `check_out_all(centre)` | Guru, coordinator | Closes every open visit, at one centre or all (`null`, the default). Returns how many |
 | `log_call(student, outcome, reason, comment, next_date)` | Guru, coordinator | Records a follow-up call and applies its outcome (pause, leave, new call task, retry). See "Follow-up calls" |
 | `get_guardians(student)`, `get_consents(student)`, `get_call_notes(student, limit)` | Guru, coordinator | A student's guardians, consents or call notes; each call writes one `access_log` row. See "Access log (0034)" |

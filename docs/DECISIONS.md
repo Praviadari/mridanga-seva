@@ -4480,35 +4480,42 @@ pincode message. (6) Editing a field clears its message; phone fields take at mo
 
 **Not here.** The desk's centre picker and a duplicate-person check need a migration (the `form-rules-sql` worker,
 0047); sign-up.tsx belongs to the `forms-fix` worker; the error summary, leave guard and autofill fixes are audit B4.
-## 271. One name rule, in SQL, for every person's name — 12 Oct 2026
+## 271. One name rule, the app's, in SQL for every person's name — 12 Oct 2026
 
 **Context.** Audit phase 1 (12-10-2026), P1-08: the sign-up only trimmed the name (0036), the other
 paths refused control and invisible characters only, so "Ravi 2", "రవి ౨" or "राम १" were stored; Praveen
-found names accepting digits in his own test. The client rule is being rebuilt by the forms-fix branch.
+found names accepting digits in his own test. forms-fix wrote the app's rule (`checkPersonName`,
+app/src/lib/person-name.ts, #267); the lead asked that the database never disagree with it.
 
-**Decision.** `clean_person_name(name, max)` (0047) is the one rule: NFC; ‘ ’ ʼ become `'`; runs of spaces
-(also no-break spaces) become one; ends trimmed; then only the characters of `person_name_chars()` —
-space `. ' -`, Latin letters with IAST and combining accents, Cyrillic, the Indian scripts of
-U+0900-U+0DFF with their vowel signs and viramas but **without** their digits, fraction and number signs,
-dandas and abbreviation signs, and ZWJ/ZWNJ only inside a word; at least one letter. Errors stay the
-known codes `name_required`, `name_too_long`, `name_invalid` (Ishtagoshti's parent: `parent_name_invalid`).
-It runs at sign-up, on a login's name change (with the staff-name clash `name_taken`, now also at sign-up),
-and by trigger on `students`, `guardians`, the emergency contact and the Ishtagoshti parent whenever an
-app user writes a name (inside the app's functions too). Limits unchanged: 80 for a login and the
-emergency contact, 100 for a student record and a parent. The exact code-point list is in
-docs/DATABASE.md "Form rules (0047)"; the app's mirror (lib, forms-fix) uses the same list.
+**Decision.** `clean_person_name(name, max)` (0047) is `checkPersonName` step for step: NFC; white
+space (JavaScript's `\s`) made one space and trimmed; digits of ASCII, the nine Indian scripts and
+full-width refused; every character must be a Unicode letter or mark, ZWNJ/ZWJ, or a separator
+(space . ' ’ -); no separator first, none after another except a space after . ' ’ -; no name ending in
+- ' ’; at least 2 letters; at most 80 characters (100 for a student record, a guardian, the import and
+the Ishtagoshti parent). The app's kinds map to the codes the app knows: required `name_required`,
+digits/symbols/tooShort `name_invalid` (the detail says which), tooLong `name_too_long`. It runs at
+sign-up and on a login's name change (with the staff-name clash `name_taken`, now also at sign-up), and
+by trigger on `students`, `guardians`, the emergency contact, the initiated name and the Ishtagoshti
+parent whenever an app user writes a name (inside the app's functions too).
 
-**Why.** An explicit list, not "any letter": PostgreSQL's regular expressions have no Unicode letter class
-that behaves the same on Supabase and in the PGlite tests, and the app and the server must accept exactly
-the same names. The scripts listed cover the class's students (Telugu, Hindi, English with IAST, other
-Indian languages, Russian devotees); another script is one line in a later migration. A trigger rather
-than edits to each function catches every path, including direct API writes and 0046's Accept.
+**Why.** PostgreSQL's regular expressions have no `\p{L}`, and `[[:alpha:]]` follows the server's
+locale (PGlite and Supabase may differ), so "is a letter" is written out the other way round: the
+refused characters, `person_name_symbols()`, are 765 code-point ranges generated from JavaScript's own
+Unicode tables (supabase/tests/name-symbols.mjs, Unicode 17); the smoke test fails when they differ. A
+run of both functions over 190,487 names (every BMP character at the start, inside and at the end of a
+name, the app's test cases, astral samples) on 12-10-2026 found no difference. A trigger rather than
+edits to each function catches every path, including direct API writes and Accept. (0047's first
+draft used a short list of allowed scripts; it refused Greek, Arabic and other letters the app takes.)
 
-**Consequences.** Names already stored are not touched or re-checked; one is checked again only when
-it is edited. A sign-up with a refused name (only possible past the app's own check) or with the Guru's
-or a coordinator's name fails with Supabase's generic "Database error saving new user"; the app shows
-its general error, so the sign-up form's hint should say "add a surname or initial" (lead to align
-with forms-fix). The dashboard is not checked.
+**Consequences.** Known differences, both tiny: the app counts length in UTF-16 units and the
+database in characters (a character beyond U+FFFF counts 2 in the app); a phone whose JavaScript has an
+older Unicode than 17 refuses a newly added letter the database takes. The app's rule lets a joiner
+count as a letter ("‌Ravi", or two joiners alone, pass) and a line break inside a name become a space;
+the database follows it, so 0028's "a line break inside is refused" no longer holds. Names already
+stored are not touched or re-checked; one is checked again only when edited. A sign-up with a refused
+name or with the Guru's or a coordinator's name fails with Supabase's generic "Database error saving new
+user" (the app checks the same rule first; the staff-name clash only the database knows). The dashboard
+is not checked.
 
 ## 272. A minor needs their own guardian with a phone, and that guardian's consent, at every check — 12 Oct 2026
 
@@ -4558,3 +4565,55 @@ list failed (forms-fix), and refusing in the database would fail the sign-up wit
 **Why.** A column default covers the desk form, the import and the API without changing
 `register_student`'s signature, which the desk form calls. Name and date of birth together (or a
 phone) keep false alarms rare: siblings share a parent's phone, not their own.
+
+## 276. A minor's record is linked to a login only by the Guru; no shared parent/child email — 12 Oct 2026
+
+**Context.** Audit phase 3, early findings (Notes audit chat, confirmed in PGlite on 0001-0046):
+P1-18/S1-04 (High) a coordinator saving an email on a 16-year-old's record linked any confirmed waiting
+login with that email at once, and that login then read the child's date of birth, area, PIN code,
+roll number, QR code, visits and the parent's emergency contact (About you); S2-01 the reverse: a
+parent's email typed on a child's record linked the parent's own adult sign-up to the child (role
+student, writes the child's row through About you); S2-03 a coordinator's direct insert could set a
+student's `profile_id` to any login, even the Guru's; S2-04 an app user could insert an `email_code`
+consent although no code flow exists.
+
+**Decision (0047).** Neither automatic link path (`link_login_to_student` on confirming an email or in
+Accept; `link_student_email` when an email is saved on a record) links a record of someone under 18.
+The Guru links one explicitly (`link_student_login`, G2); coordinators get no confirm step of their own
+for now (a child's login is rare: children use the parent's phone or a printed QR card, #248-#252).
+A guardian's email may not be any child's record email (`guardian_email_on_minor`), as a child's record
+already may not hold any guardian's email (0038). An adult student may still share a guardian's email
+(D1a-15, a parent learning too): without automatic links onto minors, that email can only link the
+adult's own record. A student inserted by an app user gets no login, a fresh QR code and the inserting
+user as creator, whatever the request said. An app user's `email_code` consent is refused
+(`consent_method_not_allowed`).
+
+**Why.** Linking by email trusts that the email is the student's own; for a child it is very often the
+parent's, and a wrong link hands a child's data to another adult. The Guru's explicit link is rare
+enough to do by hand.
+
+**Consequences.** A child who signs up with the email on their record stays `pending` ("waiting") until
+the Guru links them; a record that turns 18 is not linked by itself either, until its email is saved
+again or the Guru links it. Withdrawn records and the rest of the S2-02 linking rules follow in 0048.
+The lead may still decide to refuse an adult's email equal to a guardian's (one line in the guard).
+
+## 280. The privacy notice ticked at sign-up is kept; Accept needs it — 12 Oct 2026
+
+**Context.** Audit phase 3 S4-02 (High): an adult's own sign-up recorded no acceptance of the privacy
+notice, while the desk records one with a minor's consent (`consents.notice_version`, 0034, #150).
+forms-fix now sends `notice_version` in the sign-up's metadata after a required tick.
+
+**Decision (0047).** `handle_new_user` keeps it in `person_details.notice_version` with
+`notice_accepted_at` (same shape as the consent's: a short version code); a missing or malformed one is
+left out and never fails the sign-up. The row moves to the student record with the other sign-up
+details when the login is linked. `waiting_sign_ups` shows it; `accept_sign_up` refuses a sign-up
+without one (`notice_not_accepted`), so the desk uses Fill the form.
+
+**Why.** A consent row needs a student record, which a sign-up does not have yet; the details row is the
+person's own data from sign-up on, and travels with them.
+
+**Consequences.** Sign-ups made before the app sends the tick (TEST, and any LIVE sign-up from an old
+app) cannot be accepted with one tap. Open: an adult registered at the desk by Fill the form has no
+notice version stored (`register_student` records one only on a minor's consent); and if the student
+record already has a details row when the login is linked, 0036's merge keeps the record's row and the
+sign-up's notice is not copied (rare: a record that got About-you answers at the desk before the link).
