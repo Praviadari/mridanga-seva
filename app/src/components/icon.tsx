@@ -21,6 +21,8 @@ const SHAPES = {
   groups: 'people-outline',
   register: 'person-add-outline',
   visits: 'calendar-outline',
+  // A date field that opens the calendar (date of birth).
+  date: 'calendar-clear-outline',
   time: 'time-outline',
   newJoiner: 'sparkles-outline',
   level: 'ribbon-outline',

@@ -5,6 +5,7 @@
 // Before 0036 is on the database the functions are missing (PGRST202): the screens then hide the
 // new parts, so a new app works with an old database.
 
+import { cleanName, nameError } from '@/lib/person-name';
 import { formatPhone, isPhoneCountry, splitE164, toE164, type CountryCode } from '@/lib/phone';
 import { supabase } from '@/lib/supabase';
 
@@ -133,7 +134,11 @@ export function checkAbout(form: AboutForm, parts: readonly AboutPart[], context
   if (parts.includes('you') && form.phone.trim() && !toE164(form.phone, form.phoneCountry)) {
     errors.phone = 'about.errors.phoneInvalid';
   }
-  if (parts.includes('you') && form.dikshaName.trim().length > 80) errors.dikshaName = 'about.errors.tooLong';
+  if (parts.includes('you')) {
+    // Letters, spaces, . ' - only (#267); optional.
+    const diksha = nameError(form.dikshaName, { required: false });
+    if (diksha) errors.dikshaName = diksha;
+  }
   if (parts.includes('emergency')) {
     const any = !!(form.emergencyRelation || form.emergencyName.trim() || form.emergencyPhone.trim());
     const needed = context.minor && !context.hasGuardian;
@@ -142,8 +147,8 @@ export function checkAbout(form: AboutForm, parts: readonly AboutPart[], context
       else if (context.minor && !MINOR_RELATIONS.includes(form.emergencyRelation)) {
         errors.emergencyRelation = 'about.errors.minorRelation';
       }
-      if (!form.emergencyName.trim()) errors.emergencyName = 'about.errors.nameRequired';
-      else if (form.emergencyName.trim().length > 80) errors.emergencyName = 'about.errors.tooLong';
+      const name = nameError(form.emergencyName, {}, 'about.errors.nameRequired');
+      if (name) errors.emergencyName = name;
       if (!toE164(form.emergencyPhone, form.emergencyCountry)) errors.emergencyPhone = 'about.errors.phoneInvalid';
     }
   }
@@ -170,14 +175,14 @@ export function aboutPatch(form: AboutForm, parts: readonly AboutPart[], context
   const patch: Record<string, unknown> = {};
   if (parts.includes('you')) {
     if (form.gender) patch.gender = form.gender;
-    patch.diksha_name = form.dikshaName.trim() || null;
+    patch.diksha_name = cleanName(form.dikshaName) || null;
     patch.learn_interests = form.learnInterests;
     if (!context.staff) patch.phone = form.phone.trim() ? toE164(form.phone, form.phoneCountry) : null;
   }
   if (parts.includes('emergency')) {
     const filled = !!(form.emergencyRelation && form.emergencyName.trim() && form.emergencyPhone.trim());
     patch.emergency_relation = filled ? form.emergencyRelation : null;
-    patch.emergency_name = filled ? form.emergencyName.trim() : null;
+    patch.emergency_name = filled ? cleanName(form.emergencyName) : null;
     patch.emergency_phone = filled ? toE164(form.emergencyPhone, form.emergencyCountry) : null;
   }
   if (parts.includes('heard')) {

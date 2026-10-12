@@ -32,6 +32,9 @@ import {
   type MySubscription,
 } from '@/data/ig-subscribers';
 import { todayLocal } from '@/lib/dates';
+import { isValidEmail } from '@/lib/email';
+import { checkPersonName, cleanName, nameMessage } from '@/lib/person-name';
+import { typedPhone } from '@/lib/phone';
 
 type Field = 'year' | 'phone' | 'terms' | 'parentName' | 'parentEmail' | 'parentConsent';
 
@@ -126,8 +129,10 @@ function JoinForm({ mine, onJoined }: { mine: MySubscription; onJoined: (state: 
     if (phone.trim() && !/^\+?[0-9][0-9 -]{5,18}[0-9]$/.test(phone.trim())) found.phone = 'ishtagoshtiJoin.errors.phone_invalid';
     if (!terms) found.terms = 'ishtagoshtiJoin.errors.terms_required';
     if (minor) {
-      if (!parentName.trim()) found.parentName = 'ishtagoshtiJoin.errors.parent_name_invalid';
-      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(parentEmail.trim())) found.parentEmail = 'ishtagoshtiJoin.errors.parent_email_invalid';
+      // Letters, spaces, . ' - only (#267); empty keeps this form's own message.
+      const nameProblem = checkPersonName(parentName);
+      if (nameProblem) found.parentName = nameProblem === 'required' ? 'ishtagoshtiJoin.errors.parent_name_invalid' : nameMessage(nameProblem);
+      if (!isValidEmail(parentEmail)) found.parentEmail = 'ishtagoshtiJoin.errors.parent_email_invalid';
       if (!parentConsent) found.parentConsent = 'ishtagoshtiJoin.errors.parent_consent_required';
     }
     setErrors(found);
@@ -138,7 +143,7 @@ function JoinForm({ mine, onJoined }: { mine: MySubscription; onJoined: (state: 
       birthYear: yearNumber,
       turned18,
       phone,
-      parentName: minor ? parentName : '',
+      parentName: minor ? cleanName(parentName) : '',
       parentEmail: minor ? parentEmail : '',
       parentRelation: minor ? relation : '',
     });
@@ -173,9 +178,11 @@ function JoinForm({ mine, onJoined }: { mine: MySubscription; onJoined: (state: 
           label={t('ishtagoshtiJoin.phone')}
           hint={t('ishtagoshtiJoin.phoneHint')}
           value={phone}
-          onChangeText={setPhone}
+          onChangeText={(text) => setPhone(typedPhone(text))}
           error={errors.phone && t(errors.phone)}
           keyboardType="phone-pad"
+          inputMode="tel"
+          maxLength={16}
           autoComplete="tel"
           textContentType="telephoneNumber"
         />
@@ -189,6 +196,9 @@ function JoinForm({ mine, onJoined }: { mine: MySubscription; onJoined: (state: 
             onChangeText={setParentName}
             error={errors.parentName && t(errors.parentName)}
             autoComplete="off"
+            autoCapitalize="words"
+            autoCorrect={false}
+            maxLength={80}
           />
           <TextField
             label={t('ishtagoshtiJoin.parentEmail')}
@@ -196,7 +206,10 @@ function JoinForm({ mine, onJoined }: { mine: MySubscription; onJoined: (state: 
             onChangeText={setParentEmail}
             error={errors.parentEmail && t(errors.parentEmail)}
             autoCapitalize="none"
+            autoCorrect={false}
             keyboardType="email-address"
+            inputMode="email"
+            maxLength={254}
             autoComplete="off"
           />
           <TextField label={t('ishtagoshtiJoin.parentRelation')} hint={t('ishtagoshtiJoin.parentRelationHint')} value={relation} onChangeText={setRelation} />

@@ -297,3 +297,8 @@ The privacy texts of 0034 (`signUp.privacyNotice`, `signUp.under18`, `register.p
 - **Device hardening** (branch `device-hardening`, [DECISIONS.md #237](DECISIONS.md), 10 Oct 2026): new line `app.slowStart`
   (the splash after 10 s of starting: "This is taking long. Check your internet connection, then try again."); its Telugu and
   Hindi are drafts. Words to check: Telugu "ఇంటర్నెట్ కనెక్షన్", Hindi "जाँचें".
+- **Forms fix** (branch `forms-fix`, [DECISIONS.md #267-#270](DECISIONS.md), 12 Oct 2026): new lines `validation.nameDigits`,
+  `nameSymbols`, `nameTooShort`, `nameTooLong` (the one name rule of every form), `birthDate.pick` and `birthDate.opensCalendar`
+  (the calendar box on the phone), and the changed `register.dobHint` and `register.errors.dobInvalid`; their Telugu and Hindi
+  are drafts. Words to check: "apostrophe" అపాస్ట్రఫీ / अपॉस्ट्रॉफ़ी and "hyphen" హైఫన్ / हाइफ़न (maybe show only the signs),
+  "Tap" నొక్కండి / दबाएँ.

@@ -7,6 +7,8 @@
 import * as Crypto from 'expo-crypto';
 import { ageOn, isMinorOn, parseDayMonthYear, todayLocal } from '@/lib/dates';
 import { asciiDigits } from '@/lib/digits';
+import { isValidEmail } from '@/lib/email';
+import { cleanName, nameError } from '@/lib/person-name';
 import { toE164 } from '@/lib/phone';
 import { PRIVACY_NOTICE_VERSION } from '@/lib/privacy-notice';
 import { supabase } from '@/lib/supabase';
@@ -104,10 +106,6 @@ function isValidPhone(phone: string): boolean {
 /** An Indian PIN code: six digits, never starting with 0 (D6-21; the database checks the same, 0038). */
 const PINCODE = /^[1-9][0-9]{5}$/;
 
-function isValidEmail(email: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
-}
-
 /**
  * Age today and whether the student is a minor, from the typed date of birth.
  * Returns null while the date is empty or not a real date.
@@ -125,11 +123,14 @@ export function ageFromForm(dob: string): { age: number; minor: boolean } | null
  */
 export function checkStudentDetails(form: RegistrationForm): RegistrationErrors {
   const errors: RegistrationErrors = {};
-  if (!form.fullName.trim()) errors.fullName = 'register.errors.nameRequired';
+  // Letters of any script, spaces, . ' - only (#267).
+  const name = nameError(form.fullName, { max: 100 }, 'register.errors.nameRequired');
+  if (name) errors.fullName = name;
   const today = todayLocal();
   const iso = parseDayMonthYear(form.dob);
   // Not a real date, in the future, or an obvious typing slip (over 100 years old).
-  if (!iso || iso > today || ageOn(iso, today) > 100) errors.dob = 'register.errors.dobInvalid';
+  if (!form.dob.trim()) errors.dob = 'signUp.dobRequired';
+  else if (!iso || iso > today || ageOn(iso, today) > 100) errors.dob = 'register.errors.dobInvalid';
   if (form.phone.trim() && !isValidPhone(cleanPhone(form.phone))) errors.phone = 'register.errors.phoneInvalid';
   if (form.email.trim() && !isValidEmail(form.email)) errors.email = 'validation.emailInvalid';
   if (form.pincode.trim() && !PINCODE.test(form.pincode.trim())) {
@@ -141,7 +142,8 @@ export function checkStudentDetails(form: RegistrationForm): RegistrationErrors 
 /** Checks the guardian and consent part (screen C3), needed only for a minor. */
 export function checkGuardianConsent(form: RegistrationForm): RegistrationErrors {
   const errors: RegistrationErrors = {};
-  if (!form.guardianName.trim()) errors.guardianName = 'register.errors.nameRequired';
+  const guardianName = nameError(form.guardianName, { max: 100 }, 'register.errors.nameRequired');
+  if (guardianName) errors.guardianName = guardianName;
   if (!isValidPhone(cleanPhone(form.guardianPhone))) errors.guardianPhone = 'register.errors.phoneInvalid';
   if (form.guardianEmail.trim() && !isValidEmail(form.guardianEmail)) {
     errors.guardianEmail = 'validation.emailInvalid';
@@ -192,7 +194,7 @@ export async function registerStudent(
 ): Promise<{ registered?: Registered; errorKey?: MessageKey }> {
   const minor = minorByServer || (ageFromForm(form.dob)?.minor ?? false);
   const args = {
-    p_full_name: form.fullName.trim(),
+    p_full_name: cleanName(form.fullName),
     p_dob: parseDayMonthYear(form.dob),
     p_phone: cleanPhone(form.phone) || null,
     p_email: form.email.trim() || null,
@@ -201,7 +203,7 @@ export async function registerStudent(
     p_level: form.levelId,
     p_mentor: form.mentorId,
     // Guardian and consent go to the database only for a minor.
-    p_guardian_name: minor ? form.guardianName.trim() : null,
+    p_guardian_name: minor ? cleanName(form.guardianName) : null,
     p_guardian_phone: minor ? cleanPhone(form.guardianPhone) : null,
     p_guardian_email: minor ? form.guardianEmail.trim() || null : null,
     p_guardian_relation: minor ? form.relation : null,

@@ -24,16 +24,18 @@ import type { MessageKey } from '@/auth/auth-actions';
 import { useAuth } from '@/auth/auth-provider';
 import { EmergencyPart, HeardPart, OccupationPart, YouPart } from '@/components/about-fields';
 import { AppText } from '@/components/app-text';
+import { BirthDateField } from '@/components/birth-date-field';
 import { Button } from '@/components/button';
 import { Checkbox } from '@/components/checkbox';
 import { ListRow } from '@/components/list-row';
 import { ChoiceGroup } from '@/components/choice-group';
 import { DraftNotice } from '@/components/draft-notice';
+import { useFormFocus } from '@/components/form-focus';
 import { Notice } from '@/components/notice';
 import { PrivacyNoticeLink } from '@/components/privacy-notice-link';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
-import { DATE_KEYBOARD, TextField } from '@/components/text-field';
+import { TextField } from '@/components/text-field';
 import {
   aboutFormFrom,
   aboutPatch,
@@ -70,9 +72,12 @@ import {
   type RegistrationForm,
 } from '@/data/students';
 import { levelName } from '@/i18n/labels';
+import { partsOfTyped, typedOfParts } from '@/lib/birth-date';
 import { classLocale } from '@/lib/class-locale';
 import { formatDateTime, formatTypedDate } from '@/lib/dates';
+import { asciiDigits } from '@/lib/digits';
 import { discardDraft, peekDraft, useDraftKeeper } from '@/lib/form-drafts';
+import { typedPhone } from '@/lib/phone';
 import { spacing } from '@/theme/use-theme';
 
 /** Longest name, area and email the form takes (FS2-09; the database's bounds are 120, 100, 254). */
@@ -89,6 +94,10 @@ type Extras = { options: OptionSets; referrers: Referrer[]; waiting: WaitingSign
 type RegisterDraft = { form: RegistrationForm; about: AboutForm };
 /** The key of this form's draft. */
 const DRAFT_KEY = 'register';
+/** The fields in page order (the About-you parts as two blocks): Save goes to the first one with a problem (#268). */
+type Field = keyof RegistrationForm | 'aboutYou' | 'aboutMore';
+const ORDER: readonly Field[] = ['fullName', 'dob', 'phone', 'email', 'pincode', 'aboutYou', 'guardianName', 'guardianPhone',
+  'guardianEmail', 'relation', 'idType', 'writtenConsent', 'aboutMore'];
 
 /** Registration form, then a confirmation with the new roll number. */
 export default function RegisterStudentScreen() {
@@ -140,6 +149,7 @@ export default function RegisterStudentScreen() {
       void refreshWaiting();
     }, [refreshWaiting]),
   );
+  const { target, focusFirst, focusField } = useFormFocus<Field>();
 
   useEffect(() => {
     let cancelled = false;
@@ -178,6 +188,18 @@ export default function RegisterStudentScreen() {
   function errorFor(key: keyof RegistrationForm): string | undefined {
     const messageKey = errors[key];
     return messageKey ? t(messageKey) : undefined;
+  }
+  /**
+   * Checks one box when it is left (#268): a problem shows at once, a fixed one goes away. An empty box
+   * shows nothing until Save, unless it showed a problem already. `next` is the form after a change
+   * that is not drawn yet (the date of birth).
+   */
+  function checkOnLeave(key: keyof RegistrationForm, next: RegistrationForm = form) {
+    const typed = next[key];
+    if (typeof typed === 'string' && !typed.trim() && !errors[key]) return;
+    const minorNow = (ageFromForm(next.dob)?.minor ?? false) || serverMinor;
+    const problem = { ...checkStudentDetails(next), ...(minorNow ? checkGuardianConsent(next) : {}) }[key];
+    setErrors((current) => ({ ...current, [key]: problem }));
   }
 
   const age = ageFromForm(form.dob);
@@ -237,6 +259,10 @@ export default function RegisterStudentScreen() {
     setAboutErrors(foundAbout);
     if (Object.keys(found).length > 0 || Object.keys(foundAbout).length > 0) {
       setFormError('register.errors.fixFields');
+      // About you: the gender and Diksha name are in its first block, the rest in "More about the student".
+      const youKeys: (keyof AboutForm)[] = ['dikshaName', 'gender'];
+      const aboutYou = youKeys.some((k) => foundAbout[k]);
+      focusFirst(ORDER, { ...found, aboutYou, aboutMore: !aboutYou && Object.keys(foundAbout).length > 0 });
       return;
     }
     setFormError(null);
@@ -404,68 +430,96 @@ export default function RegisterStudentScreen() {
 
       <Section icon="person" title={t('register.studentSection')}>
         <TextField
+          ref={target('fullName')}
           label={t('register.fullName')}
           value={form.fullName}
           onChangeText={field('fullName')}
+          onBlur={() => checkOnLeave('fullName')}
           error={errorFor('fullName')}
           maxLength={NAME_MAX_LENGTH}
           autoComplete="off"
           autoCapitalize="words"
+          autoCorrect={false}
           hint={t('register.fullNameHint')}
+          // The date of birth is a tap on the calendar; Next goes on to the phone.
+          returnKeyType="next"
+          onSubmitEditing={() => focusField('phone')}
+          submitBehavior="submit"
         />
-        <TextField
+        <BirthDateField
+          ref={target('dob')}
           label={t('register.dob')}
-          value={form.dob}
-          onChangeText={(dob) => {
-            field('dob')(dob);
+          // The form keeps the date as typed text (drafts, filled from a sign-up): '15-6-2012'.
+          value={partsOfTyped(form.dob)}
+          onChange={(parts) => {
+            const next = { ...form, dob: typedOfParts(parts) };
+            setForm(next);
             setServerMinor(false);
+            if (errors.dob) checkOnLeave('dob', next);
           }}
           error={errorFor('dob')}
-          // Once a real date is typed, the hint shows the age, so the coordinator sees at once
+          // Once a real date is picked, the hint shows the age, so the coordinator sees at once
           // whether the parent's consent will be needed.
           hint={
             age
               ? t(age.minor ? 'register.ageMinor' : 'register.age', { age: age.age })
               : t('register.dobHint')
           }
-          placeholder="15-06-2012"
-          keyboardType={DATE_KEYBOARD}
-          maxLength={10}
         />
         <TextField
+          ref={target('phone')}
           label={t('register.phone')}
           value={form.phone}
-          onChangeText={field('phone')}
+          onChangeText={(text) => field('phone')(typedPhone(text))}
+          onBlur={() => checkOnLeave('phone')}
           error={errorFor('phone')}
           keyboardType="phone-pad"
+          inputMode="tel"
           maxLength={PHONE_MAX_LENGTH}
           autoComplete="off"
+          returnKeyType="next"
+          onSubmitEditing={() => focusField('email')}
+          submitBehavior="submit"
         />
         <TextField
+          ref={target('email')}
           label={t('register.email')}
           hint={t('register.emailHint')}
           value={form.email}
           onChangeText={field('email')}
+          onBlur={() => checkOnLeave('email')}
           error={errorFor('email')}
           maxLength={EMAIL_MAX_LENGTH}
           keyboardType="email-address"
+          inputMode="email"
           autoCapitalize="none"
+          autoCorrect={false}
           autoComplete="off"
+          returnKeyType="next"
+          onSubmitEditing={() => focusField('area')}
+          submitBehavior="submit"
         />
         <TextField
+          ref={target('area')}
           label={t('register.area')}
           hint={t('register.areaHint')}
           value={form.area}
           onChangeText={field('area')}
           maxLength={AREA_MAX_LENGTH}
           autoComplete="off"
+          returnKeyType="next"
+          onSubmitEditing={() => focusField('pincode')}
+          submitBehavior="submit"
         />
         <TextField
+          ref={target('pincode')}
           label={t('register.pincode')}
           value={form.pincode}
-          onChangeText={field('pincode')}
+          onChangeText={(text) => field('pincode')(asciiDigits(text).replace(/\D/g, ''))}
+          onBlur={() => checkOnLeave('pincode')}
           error={errorFor('pincode')}
           keyboardType="number-pad"
+          inputMode="numeric"
           maxLength={6}
         />
         {choices ? (
@@ -480,7 +534,9 @@ export default function RegisterStudentScreen() {
               onChange={field('levelId')}
             />
             {extras ? (
-              <YouPart form={about} set={setAboutField} errors={aboutErrors} options={extras.options} context={aboutContext} />
+              <View ref={target('aboutYou')} collapsable={false} style={styles.part}>
+                <YouPart form={about} set={setAboutField} errors={aboutErrors} options={extras.options} context={aboutContext} />
+              </View>
             ) : null}
             <ChoiceGroup<string>
               label={t('register.mentor')}
@@ -502,47 +558,67 @@ export default function RegisterStudentScreen() {
       {minor ? (
         <Section icon="guardian" title={t('register.guardianSection')} description={t('register.guardianIntro')}>
           <TextField
+            ref={target('guardianName')}
             label={t('register.guardianName')}
             value={form.guardianName}
             onChangeText={field('guardianName')}
+            onBlur={() => checkOnLeave('guardianName')}
             error={errorFor('guardianName')}
             maxLength={NAME_MAX_LENGTH}
             autoComplete="off"
             autoCapitalize="words"
+            autoCorrect={false}
+            returnKeyType="next"
+            onSubmitEditing={() => focusField('guardianPhone')}
+            submitBehavior="submit"
           />
           <TextField
+            ref={target('guardianPhone')}
             label={t('register.guardianPhone')}
             value={form.guardianPhone}
-            onChangeText={field('guardianPhone')}
+            onChangeText={(text) => field('guardianPhone')(typedPhone(text))}
+            onBlur={() => checkOnLeave('guardianPhone')}
             error={errorFor('guardianPhone')}
             keyboardType="phone-pad"
+            inputMode="tel"
             maxLength={PHONE_MAX_LENGTH}
             autoComplete="off"
+            returnKeyType="next"
+            onSubmitEditing={() => focusField('guardianEmail')}
+            submitBehavior="submit"
           />
           <TextField
+            ref={target('guardianEmail')}
             label={t('register.guardianEmail')}
             value={form.guardianEmail}
             onChangeText={field('guardianEmail')}
+            onBlur={() => checkOnLeave('guardianEmail')}
             error={errorFor('guardianEmail')}
             maxLength={EMAIL_MAX_LENGTH}
             keyboardType="email-address"
+            inputMode="email"
             autoCapitalize="none"
+            autoCorrect={false}
             autoComplete="off"
           />
-          <ChoiceGroup
-            label={t('register.relation')}
-            choices={RELATIONS.map((r) => ({ value: r, label: t(`relations.${r}`) }))}
-            value={form.relation}
-            onChange={field('relation')}
-            error={errorFor('relation')}
-          />
-          <ChoiceGroup
-            label={t('register.idChecked')}
-            choices={ID_TYPES.map((id) => ({ value: id, label: t(`idTypes.${id}`) }))}
-            value={form.idType}
-            onChange={field('idType')}
-            error={errorFor('idType')}
-          />
+          <View ref={target('relation')} collapsable={false}>
+            <ChoiceGroup
+              label={t('register.relation')}
+              choices={RELATIONS.map((r) => ({ value: r, label: t(`relations.${r}`) }))}
+              value={form.relation}
+              onChange={field('relation')}
+              error={errorFor('relation')}
+            />
+          </View>
+          <View ref={target('idType')} collapsable={false}>
+            <ChoiceGroup
+              label={t('register.idChecked')}
+              choices={ID_TYPES.map((id) => ({ value: id, label: t(`idTypes.${id}`) }))}
+              value={form.idType}
+              onChange={field('idType')}
+              error={errorFor('idType')}
+            />
+          </View>
           <AppText variant="small" tone="muted">
             {t('register.idCheckedHint')}
           </AppText>
@@ -555,27 +631,31 @@ export default function RegisterStudentScreen() {
             checked={form.photoConsent}
             onChange={field('photoConsent')}
           />
-          <Checkbox
-            label={t('register.writtenConsent')}
-            checked={form.writtenConsent}
-            onChange={field('writtenConsent')}
-            error={errorFor('writtenConsent')}
-          />
+          <View ref={target('writtenConsent')} collapsable={false}>
+            <Checkbox
+              label={t('register.writtenConsent')}
+              checked={form.writtenConsent}
+              onChange={field('writtenConsent')}
+              error={errorFor('writtenConsent')}
+            />
+          </View>
         </Section>
       ) : null}
 
       {extras ? (
-        <Section icon="about" title={t('register.moreTitle')} description={t('register.moreHint')}>
-          {minor ? null : (
-            <>
-              <AppText variant="label">{t('about.stepEmergency')}</AppText>
-              <EmergencyPart form={about} set={setAboutField} errors={aboutErrors} options={extras.options} context={aboutContext} />
-            </>
-          )}
-          <HeardPart form={about} set={setAboutField} errors={aboutErrors} options={extras.options} context={aboutContext}
-            referrers={extras.referrers} />
-          <OccupationPart form={about} set={setAboutField} errors={aboutErrors} options={extras.options} context={aboutContext} />
-        </Section>
+        <View ref={target('aboutMore')} collapsable={false}>
+          <Section icon="about" title={t('register.moreTitle')} description={t('register.moreHint')}>
+            {minor ? null : (
+              <>
+                <AppText variant="label">{t('about.stepEmergency')}</AppText>
+                <EmergencyPart form={about} set={setAboutField} errors={aboutErrors} options={extras.options} context={aboutContext} />
+              </>
+            )}
+            <HeardPart form={about} set={setAboutField} errors={aboutErrors} options={extras.options} context={aboutContext}
+              referrers={extras.referrers} />
+            <OccupationPart form={about} set={setAboutField} errors={aboutErrors} options={extras.options} context={aboutContext} />
+          </Section>
+        </View>
       ) : null}
 
       {otherSaved ? (
@@ -593,5 +673,9 @@ const styles = StyleSheet.create({
   // Accept's confirm card, in place of the sign-up's row.
   confirm: {
     gap: spacing.sm,
+  },
+  // About you's fields keep the Section's space between them inside their wrapper.
+  part: {
+    gap: spacing.md,
   },
 });

@@ -61,3 +61,14 @@ export function countryName(code: string, language: string): string {
     return code;
   }
 }
+
+/**
+ * What a phone box keeps of the typed text: digits only (other scripts' digits read as 0-9), and a +
+ * at the start for a number pasted with its country code (docs/DECISIONS.md #267). Spaces, dashes,
+ * brackets and letters are dropped as they are typed.
+ */
+export function typedPhone(text: string): string {
+  const plain = asciiDigits(text).trim();
+  const digits = plain.replace(/\D/g, '').slice(0, 15);
+  return plain.startsWith('+') ? `+${digits}` : digits;
+}

@@ -3,14 +3,14 @@
 // from the Guru's option lists (src/data/options.ts); "Other" opens a text box. Each optional part
 // says why it is asked (the privacy notice states the same purposes).
 
-import { useMemo } from 'react';
+import { useMemo, type Ref } from 'react';
 import { useTranslation } from 'react-i18next';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, type TextInput } from 'react-native';
 
 import type { AboutContext, AboutErrors, AboutForm, Referrer } from '@/data/about';
 import { MINOR_RELATIONS } from '@/data/about';
 import { optionLabel, OTHER, type Option, type OptionSets } from '@/data/options';
-import { callingCode, countryName, PHONE_COUNTRIES, type CountryCode } from '@/lib/phone';
+import { callingCode, countryName, PHONE_COUNTRIES, typedPhone, type CountryCode } from '@/lib/phone';
 import { spacing } from '@/theme/use-theme';
 
 import { AppText } from './app-text';
@@ -55,24 +55,34 @@ type PhoneFieldProps = {
   onNumber: (number: string) => void;
   error?: string;
   hint?: string;
+  /** The person's own number: the phone may offer to fill it in. Not for someone else's number. */
+  own?: boolean;
+  /** The number box, for a form's focus (components/form-focus.tsx). */
+  ref?: Ref<TextInput>;
+  /** Called when the number box loses focus, e.g. to check it. */
+  onBlur?: () => void;
 };
 
-/** A phone number: the country (calling code) and the number as dialled there. */
-export function PhoneField({ label, country, onCountry, number, onNumber, error, hint }: PhoneFieldProps) {
+/** A phone number: the country (calling code) and the number as dialled there, digits only. */
+export function PhoneField({ label, country, onCountry, number, onNumber, error, hint, own, ref, onBlur }: PhoneFieldProps) {
   const { t } = useTranslation();
   const countries = useCountryOptions();
   return (
     <View style={styles.group} role="group" accessibilityLabel={label}>
       <SelectField label={t('about.phoneCountry', { label })} options={countries} value={country} onChange={onCountry} />
       <TextField
+        ref={ref}
         label={label}
         value={number}
-        onChangeText={onNumber}
+        onChangeText={(text) => onNumber(typedPhone(text))}
+        onBlur={onBlur}
         error={error}
         hint={hint ?? t('about.phoneHint', { code: callingCode(country) })}
         keyboardType="phone-pad"
-        autoComplete="tel"
-        textContentType="telephoneNumber"
+        inputMode="tel"
+        maxLength={16}
+        autoComplete={own ? 'tel' : 'off'}
+        textContentType={own ? 'telephoneNumber' : 'none'}
       />
     </View>
   );
@@ -121,6 +131,7 @@ export function YouPart({ form, set, errors, options, context }: PartProps) {
           number={form.phone}
           onNumber={(n) => set('phone', n)}
           error={errors.phone && t(errors.phone)}
+          own
         />
       )}
       {context.staff ? null : <AppText variant="small" tone="muted">{t('about.phonePurpose')}</AppText>}

@@ -6,6 +6,7 @@
 // coordinators' record and stays as registered. The person's language is saved here too (saveMyLanguage, D13-12).
 
 import type { Language } from '@/i18n';
+import { checkPersonName, cleanName, nameMessage } from '@/lib/person-name';
 import { supabase } from '@/lib/supabase';
 
 import { isNetworkError, type MessageKey } from './errors';
@@ -29,9 +30,12 @@ export type MyDetailsErrors = Partial<Record<'fullName' | 'phone', MessageKey>>;
 export function checkMyDetails(details: MyDetails): MyDetailsErrors {
   const errors: MyDetailsErrors = {};
   const name = details.fullName.trim();
-  if (!name) errors.fullName = 'myProfile.errors.nameRequired';
-  else if (name.length > NAME_MAX) errors.fullName = 'myProfile.errors.nameTooLong';
+  // Letters of any script, spaces, . ' - only (#267).
+  const problem = checkPersonName(name, { max: NAME_MAX });
+  if (problem === 'required') errors.fullName = 'myProfile.errors.nameRequired';
+  else if (problem === 'tooLong') errors.fullName = 'myProfile.errors.nameTooLong';
   else if (HIDDEN_CHARACTER.test(name)) errors.fullName = 'myProfile.errors.nameInvalid';
+  else if (problem) errors.fullName = nameMessage(problem);
   const phone = details.phone.trim();
   const digits = phone.replace(/[^0-9]/g, '').length;
   if (phone && (!/^\+?[0-9 ]+$/.test(phone) || digits < 7 || digits > 15)) errors.phone = 'myProfile.errors.phoneInvalid';
@@ -53,7 +57,7 @@ export async function fetchMyPhone(profileId: string): Promise<string | null | u
 export async function saveMyDetails(profileId: string, details: MyDetails): Promise<{ errorKey?: MessageKey }> {
   const { data, error } = await supabase
     .from('profiles')
-    .update({ full_name: details.fullName.trim(), phone: details.phone.trim() || null })
+    .update({ full_name: cleanName(details.fullName), phone: details.phone.trim() || null })
     .eq('id', profileId)
     .select('id');
   if (error) {

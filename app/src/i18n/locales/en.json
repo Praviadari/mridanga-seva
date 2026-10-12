@@ -92,7 +92,11 @@
     "passwordRequired": "Enter your password.",
     "passwordTooShort": "Use at least 8 characters.",
     "passwordsDontMatch": "The two passwords are not the same.",
-    "nameRequired": "Enter your name."
+    "nameRequired": "Enter your name.",
+    "nameDigits": "A name has letters only, no numbers.",
+    "nameSymbols": "Use letters only. A space, dot (.), apostrophe (') or hyphen (-) may go between them.",
+    "nameTooShort": "Enter at least two letters.",
+    "nameTooLong": "This name is too long."
   },
   "authErrors": {
     "invalidCredentials": "Email or password is wrong.",
@@ -338,7 +342,7 @@
     "studentSection": "Student",
     "fullName": "Full name",
     "dob": "Date of birth",
-    "dobHint": "Day-month-year, e.g. 15-06-2012",
+    "dobHint": "It decides whether a parent's consent is needed.",
     "age": "Age {{age}}",
     "ageMinor": "Age {{age}} — under 18, a parent's consent is needed",
     "phone": "Phone",
@@ -370,7 +374,7 @@
     "loadFailed": "Could not load levels and coordinators.",
     "errors": {
       "nameRequired": "Enter the full name.",
-      "dobInvalid": "Enter the date of birth as day-month-year, e.g. 15-06-2012.",
+      "dobInvalid": "Choose a real date of birth, not in the future.",
       "phoneInvalid": "Enter a 10-digit mobile number starting with 6, 7, 8 or 9, or a number with + and the country code.",
       "pincodeInvalid": "A pincode has 6 digits and does not start with 0.",
       "choose": "Choose one.",
@@ -3240,7 +3244,9 @@
   "birthDate": {
     "day": "Day",
     "month": "Month",
-    "year": "Year"
+    "year": "Year",
+    "pick": "Tap to choose the date",
+    "opensCalendar": "Opens a calendar."
   },
   "about": {
     "title": "About you",
