@@ -4519,6 +4519,82 @@ new APK; tsc, lint and every test passed on it. Until an APK with 0dea00a3 exist
 has fingerprint 0dea00a3…*), which is the expected answer. On the built APK the usual smoke steps
 cover the patched modules (notifications, router, SQLite, updates, image manipulator).
 
+## 258. The first production APK stays on Expo SDK 57; SDK 58 waits for its stable release — 12 Oct 2026
+
+**Status: worker recommendation (audit brief 9); the lead and Praveen decide. Default per the brief:
+ship Friday 16 Oct 2026 on SDK 57.**
+
+**Context.** The only advisory in the app itself (decode-uri-component under expo-router 57, #199)
+is fixed only by expo-router 58, i.e. Expo SDK 58. Assessed on 12 Oct 2026 on a local branch
+`brief9-sdk58` (commit 470af73, not pushed): `npx expo install expo@^58`, then `--fix`.
+
+**Findings.**
+- SDK 58 is **not released**: on npm `expo@latest` = 57.0.27, SDK 58 is the `next` tag (58.0.7, 9 Oct
+  2026); its React Native is **0.88.0-rc.4**, a release candidate. The beta post (expo.dev/changelog/
+  sdk-58-beta, 15 Sep 2026) says SDK 58 ships "shortly after" React Native 0.88 stable; no date.
+- `expo install --fix` **fails** with npm ERESOLVE: react-native-reanimated 4.7.0 (SDK 58's pick)
+  asks for react-native "0.86 - 0.88", which does not admit 0.88.0-rc.4. Only `--legacy-peer-deps`
+  installs it.
+- With it installed: `tsc` **10 errors** (React Native 0.88's strict TypeScript API: TextInput refs
+  `.focus()` in sign-in, sign-up, reset-password and text-field; a colour type in icon.tsx;
+  react-native-webview 14's onMessage in lesson-video-frame.tsx). Lint 0, app tests 86/86, expo-doctor
+  20 of 21 checks (the eas-cli one, #153). Fingerprint 31ba10a3. npm audit 51 → 47 (decode-uri-component
+  gone).
+- Breaking changes that hit this code (beta post + "Migrate Expo Router from SDK 57 to SDK 58"):
+  `File.write()` becomes async (4 calls: save-csv, practice-audio, my-recordings, calendar-file →
+  `writeSync()`); the module-level `router` "throws before the first render" and `useRouter()` is
+  preferred (85 files import `router`); navigation dispatch is queued after the commit; tabs show
+  only declared screens; ancestor params no longer copied; react-native-gesture-handler 3,
+  react-native-webview 14, worklets 0.13 majors; R8 on by default (already on here). Every screen
+  and the back behaviour would need re-testing on a phone.
+
+**Decision (recommended).** No-go for 16 Oct 2026: build the first production APK on SDK 57 (#257).
+Upgrade to SDK 58 as its own branch and its own APK once SDK 58 and React Native 0.88 are stable,
+`expo install --fix` succeeds without `--legacy-peer-deps`, and a week has passed; then the
+Dependabot expo-router branches close with it.
+
+**Why.** A release-candidate React Native under the class's first production APK, a dependency tree
+that only installs by overriding peer checks, ten type errors and a navigation rework, for one
+moderate advisory whose worst case is a slow phone on a malformed address (#199).
+
+**Consequences.** decode-uri-component stays open in the production APK until SDK 58 (OPERATIONS
+"Dependabot"). The SDK 58 APK will change the fingerprint again: the class installs a second APK
+then.
+
+## 259. Android App Links for asset labels wait for app.mridangaseva.com — 12 Oct 2026
+
+**Status: decided by the lead's brief (audit brief 9); not in the first production APK.**
+
+**Context.** #157 left opening a label link (`https://app.mridangaseva.com/i/<token>`) in the app
+instead of the browser to brief 9 (D3-13 in #192). Android only opens an https link in an app after
+it has verified the domain: the app declares the domain with `autoVerify`, and the domain serves
+`/.well-known/assetlinks.json` naming the app's package and signing key. app.mridangaseva.com is not
+live (the domain move is not done, GO_LIVE_CHECKLIST E3).
+
+**Decision.** No App Links in the 16 Oct 2026 APK. They are added in one later APK, after E3, with:
+1. `app.json` → `android.intentFilters`: one filter, `action` `VIEW`, `autoVerify: true`, `data`
+   `[{ scheme: 'https', host: 'app.mridangaseva.com', pathPrefix: '/i/' }]`, `category`
+   `['BROWSABLE', 'DEFAULT']` (Expo docs "Android App Links"). Only `/i/`: every other address of the
+   site stays in the browser. Native change: a new APK.
+2. `app/public/.well-known/assetlinks.json`, so `npm run export:web -- --site live` puts it on the
+   site: `[{"relation":["delegate_permission/common.handle_all_urls"],"target":{"namespace":
+   "android_app","package_name":"org.mridangaseva.app","sha256_cert_fingerprints":["<production
+   keystore SHA-256>"]}}]`, the SHA-256 from `npx eas-cli credentials -p android` (production). Served
+   over https as `application/json` with no redirect (add a rule for it to `app/public/_headers` and
+   check the header after the upload). If preview APKs use another key, list both, or leave TEST out (the TEST site is
+   pages.dev and is not in the filter).
+3. `src/app/i/[token].tsx` already handles the path in the app (staff sign-in, then the item), and
+   `assetTokenFromScan` reads the link.
+4. Check on a phone: `adb shell pm get-app-links org.mridangaseva.app` shows `app.mridangaseva.com:
+   verified`; a camera scan of a label opens the app.
+
+**Why.** Without the domain, `assetlinks.json` has nowhere to live and Android would never verify the
+filter; adding the filter alone changes nothing for the user but still moves the fingerprint.
+
+**Consequences.** Until then a phone camera opens labels in the browser (the web app, sign-in, then
+the item) and the app's own scanner reads them directly. Real labels are printed only after E3
+(#157).
+
 ## 260. Leaving a screen never reads an expo-audio object its hook has released — 12 Oct 2026
 
 **Context.** Praveen, 12-10-2026, on the preview APK (update 01a12699): Back from Practice tools showed the
