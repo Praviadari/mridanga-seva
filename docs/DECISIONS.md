@@ -4521,12 +4521,13 @@ cover the patched modules (notifications, router, SQLite, updates, image manipul
 
 ## 258. The first production APK stays on Expo SDK 57; SDK 58 waits for its stable release — 12 Oct 2026
 
-**Status: worker recommendation (audit brief 9); the lead and Praveen decide. Default per the brief:
-ship Friday 16 Oct 2026 on SDK 57.**
+**Status: decided by Praveen, 12 Oct 2026 ("SDK 58 waits"), on the worker's recommendation (audit
+brief 9). The first production APK is built on SDK 57.**
 
 **Context.** The only advisory in the app itself (decode-uri-component under expo-router 57, #199)
 is fixed only by expo-router 58, i.e. Expo SDK 58. Assessed on 12 Oct 2026 on a local branch
-`brief9-sdk58` (commit 470af73, not pushed): `npx expo install expo@^58`, then `--fix`.
+`brief9-sdk58` (commit 470af73, never pushed, deleted after this decision): `npx expo install
+expo@^58`, then `--fix`.
 
 **Findings.**
 - SDK 58 is **not released**: on npm `expo@latest` = 57.0.27, SDK 58 is the `next` tag (58.0.7, 9 Oct
@@ -4548,7 +4549,7 @@ is fixed only by expo-router 58, i.e. Expo SDK 58. Assessed on 12 Oct 2026 on a 
   react-native-webview 14, worklets 0.13 majors; R8 on by default (already on here). Every screen
   and the back behaviour would need re-testing on a phone.
 
-**Decision (recommended).** No-go for 16 Oct 2026: build the first production APK on SDK 57 (#257).
+**Decision.** No-go for 16 Oct 2026: build the first production APK on SDK 57 (#257).
 Upgrade to SDK 58 as its own branch and its own APK once SDK 58 and React Native 0.88 are stable,
 `expo install --fix` succeeds without `--legacy-peer-deps`, and a week has passed; then the
 Dependabot expo-router branches close with it.
