@@ -161,9 +161,15 @@ export async function signUp(
  * The message for a failed sign-up. When the database refuses the new login (handle_new_user raises, e.g.
  * name_taken: the name of the Guru or a coordinator, 0028/0047), Supabase Auth hides the reason behind
  * "Database error saving new user" (HTTP 500), so the person gets the likely cause as a hint (R2-03, #292).
+ * supabase-js reports a 500 as a retryable fetch error (like no internet) but keeps that message, so the
+ * message decides, not the error's kind.
  */
 export function signUpErrorKey(error: unknown): MessageKey {
-  if (isAuthApiError(error) && error.status === 500 && /database error saving new user/i.test(error.message)) {
+  if (
+    (isAuthApiError(error) || isAuthRetryableFetchError(error)) &&
+    error.status === 500 &&
+    /database error saving new user/i.test(error.message)
+  ) {
     return 'authErrors.signUpRefused';
   }
   return authErrorKey(error);
