@@ -16,6 +16,7 @@ import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
+import { QuickTimes } from '@/components/quick-times';
 import { DATE_KEYBOARD, TextField } from '@/components/text-field';
 import { AUDIENCES, fetchComposeOptions, type ComposeOptions } from '@/data/announcements';
 import {
@@ -33,6 +34,8 @@ import {
   type EventForm,
   type EventFormErrors,
 } from '@/data/events';
+import { todayLocal } from '@/lib/dates';
+import { eventDates } from '@/lib/quick-times';
 
 type Loaded = {
   options: ComposeOptions;
@@ -157,6 +160,7 @@ export function EventFormScreen({ eventId }: { eventId?: number }) {
         maxLength={EVENT_TITLE_MAX}
       />
       <Section icon="time" title={t('events.form.when')}>
+        <QuickTimes choices={eventDates(todayLocal())} onPick={(choice) => update({ date: choice.date })} />
         <TextField
           label={t('events.form.date')}
           hint={t('announcements.compose.dateHint')}

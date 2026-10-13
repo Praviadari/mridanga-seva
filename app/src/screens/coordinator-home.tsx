@@ -5,8 +5,9 @@
 // (NewJoinersList below, staff/new-joiners.tsx), promotions on C22/C23. What waits for the
 // coordinator is a count on its circle: calls due for my students, feedback asked of me. Only
 // notices stay on the home: "A new version is ready" on the Android app, notifications off (#305), and could not load.
-// Mark attendance, Students, Calls and Announcements are the bottom tabs. Numbers:
-// coordinator_dashboard() through src/data/home.ts. It loads again each time it comes back into view.
+// Above the circles (#339, #340): the Today line, Scan at the door and Waiting for you (components/staff-today.tsx).
+// Mark attendance, Students, Calls and Announcements are the bottom tabs. Numbers: staff_dashboard() (one request)
+// through src/data/home.ts. It loads again each time it comes back into view.
 
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
@@ -22,11 +23,11 @@ import { PromotionHomeCard } from '@/components/promotion-parts';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { StaffModules } from '@/components/staff-shortcuts';
+import { StaffToday } from '@/components/staff-today';
 import { StatGrid, StatTile } from '@/components/stat-tile';
 import { PushNotice } from '@/components/push-notice';
 import { UpdateNotice } from '@/components/update-notice';
-import { fetchCoordinatorDashboard, type CoordinatorDashboard } from '@/data/home';
-import { fetchPromotionHome } from '@/data/promotion';
+import { fetchStaffDashboard, type CoordinatorDashboard, type StaffDashboard } from '@/data/home';
 import { formatDate } from '@/lib/dates';
 
 /** Coordinator home screen, shown by the staff Home tab (app/staff/(tabs)/index.tsx). */
@@ -35,13 +36,10 @@ export function CoordinatorHome() {
   const { profile } = useAuth();
   const name = profile?.full_name.trim();
   // undefined = loading, null = could not load.
-  const [board, setBoard] = useState<CoordinatorDashboard | null | undefined>(undefined);
-  const [toAnswer, setToAnswer] = useState(0);
+  const [board, setBoard] = useState<StaffDashboard | null | undefined>(undefined);
 
   const load = useCallback(async () => {
-    const [loaded, promotions] = await Promise.all([fetchCoordinatorDashboard(), fetchPromotionHome()]);
-    setBoard(loaded);
-    setToAnswer(promotions ? promotions.toAnswer : 0);
+    setBoard(await fetchStaffDashboard(false));
   }, []);
 
   useFocusEffect(
@@ -62,7 +60,8 @@ export function CoordinatorHome() {
           <Button variant="secondary" icon="refresh" label={t('common.tryAgain')} onPress={() => void load()} />
         </>
       ) : null}
-      <StaffModules guru={false} callsDue={board ? board.myCallsDue : 0} promotionsWaiting={toAnswer} />
+      {board === null ? null : <StaffToday guru={false} board={board} />}
+      <StaffModules guru={false} callsDue={board ? board.callsDue : 0} promotionsWaiting={board ? board.promotions : 0} />
     </Screen>
   );
 }

@@ -199,6 +199,34 @@
       "overview": "Overview",
       "newJoiners": "New joiners",
       "promotions": "Promotions"
+    },
+    "today": {
+      "hereNow": "here now",
+      "visitsToday_one": "visit today",
+      "visitsToday_other": "visits today",
+      "cameThisWeek_one": "came this week",
+      "cameThisWeek_other": "came this week",
+      "scan": "Scan at the door"
+    },
+    "waiting": {
+      "title": "Waiting for you",
+      "nothing": "Nothing is waiting. Thank you for your seva.",
+      "signups_one": "{{count}} person waiting at the desk",
+      "signups_other": "{{count}} people waiting at the desk",
+      "calls_one": "{{count}} call due for your students",
+      "calls_other": "{{count}} calls due for your students",
+      "callsGuru_one": "{{count}} follow-up overdue or with you",
+      "callsGuru_other": "{{count}} follow-ups overdue or with you",
+      "promotions_one": "{{count}} promotion asks your feedback",
+      "promotions_other": "{{count}} promotions ask your feedback",
+      "promotionsGuru_one": "{{count}} promotion to decide",
+      "promotionsGuru_other": "{{count}} promotions to decide",
+      "fund_one": "{{count}} fund entry to approve",
+      "fund_other": "{{count}} fund entries to approve",
+      "toReview_one": "{{count}} recording to review",
+      "toReview_other": "{{count}} recordings to review",
+      "suggestions_one": "{{count}} material suggestion to review",
+      "suggestions_other": "{{count}} material suggestions to review"
     }
   },
   "tabs": {
@@ -324,7 +352,10 @@
     "savedCopy": "No internet right now. This is the copy saved on your phone; it can still be scanned.",
     "loadFailed": "Could not load your QR card",
     "noRecordTitle": "No student record found",
-    "noRecordBody": "Your login is not connected to a student record. Please speak to a coordinator."
+    "noRecordBody": "Your login is not connected to a student record. Please speak to a coordinator.",
+    "statusNone": "Not checked in yet today",
+    "statusIn": "Checked in at {{time}}",
+    "statusOut": "Checked out. Today's visit began at {{time}}."
   },
   "levels": {
     "1": "Beginner",
@@ -449,7 +480,8 @@
     "waitingMore": "Show more ({{shown}} of {{total}} shown)",
     "emailHintMinor": "Optional: the child's own email, never a parent's. A child's record is not linked to an app login: the child checks in with the printed QR card (Print QR cards).",
     "adultNoticeFromSignUp": "They ticked the privacy notice at sign-up; it is kept on the record.",
-    "adultNoticeShown": "I showed them the privacy notice (kept on the record)."
+    "adultNoticeShown": "I showed them the privacy notice (kept on the record).",
+    "checkInNow": "Check {{name}} in now"
   },
   "statuses": {
     "new": "New",
@@ -3550,5 +3582,22 @@
       "student_not_found": "This student record is gone. Pull down to refresh.",
       "student_not_linked": "This record has no app login any more. Pull down to refresh."
     }
+  },
+  "welcome": {
+    "title": "Hare Krishna, {{name}}. Welcome to the class.",
+    "rollNo": "Your roll number",
+    "entryCard": "Your QR card is your entry card. Show it at the door when you arrive and when you leave. It works without internet.",
+    "level": "Your level: {{level}}. See what you will learn in My progress.",
+    "showQr": "Show my QR card",
+    "goHome": "Go to my home"
+  },
+  "quickTime": {
+    "tonight": "Tonight {{time}}",
+    "tomorrow": "Tomorrow {{time}}",
+    "sunday": "Sunday {{time}}",
+    "inDays_one": "In {{count}} day",
+    "inDays_other": "In {{count}} days",
+    "thisSunday": "This Sunday",
+    "nextSunday": "Next Sunday"
   }
 }

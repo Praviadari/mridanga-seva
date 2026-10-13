@@ -17,6 +17,7 @@
 // Since #291 (audit R2-01) the whole waiting list can be searched by name, email or phone and is shown ten at a
 // time with Show more; it reloads on focus, on pull-down and with Refresh list. A sign-up without the privacy
 // tick has no Accept (FF-01): Fill the form, where an adult's notice is shown and ticked (#292).
+// After Accept or Save the card's first button checks the new student in (#341, audit U2-01).
 
 import { router, Stack, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -29,6 +30,7 @@ import { EmergencyPart, HeardPart, OccupationPart, YouPart } from '@/components/
 import { AppText } from '@/components/app-text';
 import { BirthDateField } from '@/components/birth-date-field';
 import { Button } from '@/components/button';
+import { CheckInNow } from '@/components/check-in-now';
 import { Checkbox } from '@/components/checkbox';
 import { ListRow } from '@/components/list-row';
 import { ChoiceGroup } from '@/components/choice-group';
@@ -352,15 +354,17 @@ export default function RegisterStudentScreen() {
         {saved.registered.repeated ? <AppText>{t('register.alreadySaved')}</AppText> : null}
         {saved.registered.linked ? <AppText>{t('register.linked')}</AppText> : null}
         {saved.detailsFailed ? <Notice tone="error">{t('register.detailsFailed')}</Notice> : null}
+        {/* The new student is at the desk: their first visit, now (#341). */}
+        <CheckInNow studentId={saved.registered.id} name={saved.name} />
+        <Button variant="secondary" icon="add" label={t('register.another')} onPress={registerAnother} />
         <Button
-          variant="secondary"
+          variant="link"
           icon="person"
           label={t('register.openStudent')}
           onPress={() => router.push({ pathname: '/staff/students/[id]', params: { id: saved.registered.id } })}
         />
-        <Button icon="add" label={t('register.another')} onPress={registerAnother} />
         <Button
-          variant="secondary"
+          variant="link"
           label={t('register.done')}
           onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
         />
@@ -400,8 +404,9 @@ export default function RegisterStudentScreen() {
               t(accepted.repeated ? 'register.acceptedRepeated' : accepted.existing ? 'register.acceptedExisting' : 'register.acceptedLogin'),
             ].join('\n')}
           </Notice>
+          <CheckInNow key={accepted.id} studentId={accepted.id} name={accepted.fullName} />
           <Button
-            variant="secondary"
+            variant="link"
             icon="person"
             label={t('register.openStudent')}
             onPress={() => router.push({ pathname: '/staff/students/[id]', params: { id: accepted.id } })}

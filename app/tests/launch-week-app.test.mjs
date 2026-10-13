@@ -46,9 +46,10 @@ function tabAddresses() {
 
 /**
  * Files shown only inside the tabs, where opening a tab's address switches the tab: the tab screens
- * themselves and the circles on the staff home tab.
+ * themselves, and the circles and the Today / Waiting for you block on the staff home tab (#339, #340).
  */
-const insideTabs = (path) => /^app\/[^/]+\/\(tabs\)\//.test(path) || path === 'components/staff-shortcuts.tsx';
+const insideTabs = (path) =>
+  /^app\/[^/]+\/\(tabs\)\//.test(path) || path === 'components/staff-shortcuts.tsx' || path === 'components/staff-today.tsx';
 
 /** Every router.push / navigate / replace in a file outside the tabs whose target is a tab's address. */
 function tabLinksOutsideTabs() {

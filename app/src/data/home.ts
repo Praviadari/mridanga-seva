@@ -11,6 +11,7 @@
 
 import { supabase } from '@/lib/supabase';
 
+import { fetchPromotionHome } from './promotion';
 import { fetchWeekStarts, type WeekStarts } from './settings';
 
 import type { StudentStatus } from './student-overview';
@@ -217,5 +218,87 @@ export async function fetchGuruDashboard(): Promise<GuruDashboard | null> {
       escalated: f.escalated,
     })),
     weekStarts,
+  };
+}
+
+// ---------------------------------------------------------------- C1 / G1: today and waiting (0063)
+
+/** What the staff homes show above their circles (docs/DECISIONS.md #339, #340). */
+export type StaffDashboard = {
+  role: 'guru' | 'coordinator';
+  /** Open visits now, as on "Who is here now" (C6). */
+  hereNow: number;
+  /** Check-ins since midnight at the class (C5). */
+  visitsToday: number;
+  /** Students who came at least once this week, each once. */
+  cameThisWeek: number;
+  /** Confirmed sign-ups waiting at the desk (Register a student). */
+  signupsWaiting: number;
+  /** A coordinator's calls due (C1's count); the Guru's follow-ups overdue or escalated. */
+  callsDue: number;
+  /** Feedback asked of me (coordinator); nominations to decide (Guru). */
+  promotions: number;
+  /** Recordings sent and not yet reviewed. */
+  toReview: number;
+  /** Fund entries waiting for my decision (the Guru, or a treasurer for the Guru's). */
+  fundToApprove: number;
+  /** Material suggestions waiting (the Guru). */
+  suggestions: number;
+};
+
+type StaffDashboardRow = {
+  role: 'guru' | 'coordinator';
+  here_now: number;
+  visits_today: number;
+  came_this_week: number;
+  signups_waiting: number;
+  calls_due: number;
+  promotions: number;
+  to_review: number;
+  fund_to_approve: number;
+  suggestions: number;
+};
+
+/**
+ * Loads the staff home's numbers in one request (staff_dashboard, migration 0063). On a project where 0063
+ * has not run yet (PostgREST PGRST202, "no such function") it falls back to the older functions, so an
+ * update reaching phones before the migration still shows the circles' counts; the new rows stay 0.
+ * Returns null when nothing could be loaded (usually no internet).
+ */
+export async function fetchStaffDashboard(guru: boolean): Promise<StaffDashboard | null> {
+  const { data, error } = await supabase.rpc('staff_dashboard');
+  if (!error && data) {
+    const row = data as StaffDashboardRow;
+    return {
+      role: row.role,
+      hereNow: row.here_now,
+      visitsToday: row.visits_today,
+      cameThisWeek: row.came_this_week,
+      signupsWaiting: row.signups_waiting,
+      callsDue: row.calls_due,
+      promotions: row.promotions,
+      toReview: row.to_review,
+      fundToApprove: row.fund_to_approve,
+      suggestions: row.suggestions,
+    };
+  }
+  if (error?.code !== 'PGRST202') return null;
+  const [board, guruBoard, promotions] = await Promise.all([
+    fetchCoordinatorDashboard(),
+    guru ? fetchGuruDashboard() : Promise.resolve(null),
+    fetchPromotionHome(),
+  ]);
+  if (!board || (guru && !guruBoard)) return null;
+  return {
+    role: guru ? 'guru' : 'coordinator',
+    hereNow: board.hereNow,
+    visitsToday: board.visitsToday,
+    cameThisWeek: guruBoard ? guruBoard.cameThisWeek : 0,
+    signupsWaiting: 0,
+    callsDue: guruBoard ? guruBoard.followUps.reduce((n, f) => n + f.overdue + f.escalated, 0) : board.myCallsDue,
+    promotions: promotions ? (guru ? promotions.toDecide : promotions.toAnswer) : 0,
+    toReview: 0,
+    fundToApprove: 0,
+    suggestions: 0,
   };
 }

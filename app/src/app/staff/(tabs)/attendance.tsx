@@ -13,7 +13,7 @@
 // A tap on a name changes "here now" at once from the answer and loads the list again behind it; other names
 // can be tapped meanwhile (audit P5-04, #313).
 
-import { router, Stack, useFocusEffect } from 'expo-router';
+import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator } from 'react-native';
@@ -71,6 +71,14 @@ export default function MarkAttendanceScreen() {
   const [tappedId, setTappedId] = useState<string | null>(null);
 
   const [cameraOpen, setCameraOpen] = useState(false);
+  // "Scan at the door" on the staff home opens this tab with ?scan=<a new value each time>: the camera
+  // opens once per press (#339).
+  const params = useLocalSearchParams<{ scan?: string }>();
+  const [seenScan, setSeenScan] = useState<string | undefined>(undefined);
+  if (params.scan && params.scan !== seenScan) {
+    setSeenScan(params.scan);
+    setCameraOpen(true);
+  }
   // After each scan the camera stops reading until the coordinator asks for the next student.
   const [scanPaused, setScanPaused] = useState(false);
   // Refs, not state: the camera can report the same code again before the screen re-renders.
