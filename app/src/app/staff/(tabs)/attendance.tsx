@@ -149,6 +149,7 @@ export default function MarkAttendanceScreen() {
     setTappedId(null);
     setOutcome(scanned);
     setChecking(false);
+    setDroppedScan(false);
     // A buzz for the result, so the door need not watch the screen (D7-20, docs/DECISIONS.md #239).
     scanFeedback(scanned.result !== undefined && scanned.result.action !== 'unknown');
     working.current = false;
