@@ -13,6 +13,12 @@ design (#248): face scan is **only the student's own phone checking that the fac
 template cache. The tablet "modes A/B" of v1 are history (FACE_ATTENDANCE_PLAN.md, UPDATE box).
 Summary for the lawyer: [LAWYER_PACK.md](LAWYER_PACK.md). Build plan: [WORK_PLAN.md](WORK_PLAN.md).
 
+**v2.1 (13-10-2026, Gate 2 — audit S4F-02, DECISIONS #295-#299; branch `p3-server`)**: there is **no server copy of the
+face code**. The server keeps an enrolment record only (who, which phone, model, which coordinator confirmed it,
+when, until when, how it ended); a new phone or a reinstall means a supervised re-enrolment at the desk. The match
+score is kept 60 days (calibration) in a table of its own, then deleted. Rows §1, §5, §6 (R1, R12, R13) and §7 below are
+updated; the te/hi consent and notice drafts still need the same change in their native review.
+
 Closes (when reviewed): audit **D4-18** ("Face recognition of children planned without an
 impact-assessment step"). Related: D4-12 (processors abroad), D4-07 (retention), DECISIONS #8, #16,
 #55, #70, #74, #75, #76, #131, #146, #150, #167, #212, #213, #224-#231 (parent emails; check-out only
@@ -27,7 +33,7 @@ since 0044), #248.
 | Data subjects | Students (~200, **many under 18**) at Abids (Hyderabad) first; parents/guardians of minors (email); coordinators (enrolment confirmation) |
 | Data | (a) **Face template** of the student (numbers computed on the phone; no image kept); (b) the face consent record; (c) per visit: method `face`, match score, liveness pass, location **result** inside/outside + distance in metres (never the position, #70); (d) the guardian's email for the check-out notice (#227) |
 | Not collected | Face images or video; location coordinates; continuous, periodic or background location; location history; any location outside a check-in/out action; emotion, attention or behaviour analysis; any face data of anyone except the enrolled student |
-| Where | The **student's own phone** (their own template, encrypted with the Android Keystore); Supabase Postgres in Mumbai (ap-south-1) — encrypted server copy of the template (for re-install and deletion proof) and the visits; Brevo (EU) sends the parent email (processor — D4-12 register) |
+| Where | The **student's own phone** (their own template, encrypted with the Android Keystore); Supabase Postgres in Mumbai (ap-south-1) — the **enrolment record** (no face code: Gate 2, #295), the visits and, for 60 days, each face check-in's match score; Brevo (EU) sends the parent email (processor — D4-12 register) |
 | Who sees | Templates: no person; only the student's own app reads its own template, through a logged function. Visits: as today (#70). Check-out email: the guardian on record |
 | Retention | §7 |
 | Scale | ~200 people, one centre; more centres and abroad later |
@@ -69,7 +75,7 @@ queues the parent email (0043/0044).
 | Verifiable consent of the parent before processing a child's data | **s.9(1), Rule 10** | The parent signs the face consent **in person at the desk**; the coordinator sees an ID document and notes only its type (#8, #16, #74). We read this as Rule 10(1)(b)(i): identity and age details voluntarily provided by an identifiable adult. Lawyer to confirm (§9 Q3) |
 | No processing likely to harm a child's well-being | s.9(2) | No profiling, no ranking, no disadvantage or reminders for opting out, nothing public; false accept managed (§6 R3) |
 | **No tracking or behavioural monitoring of children** | **s.9(3)** | **§4.** One foreground location reading at the moment of the student's own check-in/out tap, result only (#212); no live location, no history, no map; no behaviour or emotion analysis |
-| Reasonable security safeguards: encryption, access control, logs + review, continuity, contracts with processors | s.8(5), **Rule 6** | Template encrypted on the phone (Keystore) and on the server (Vault key); no direct table access; only one's own template through a logged function (`access_log`, 0034); Play Integrity; processor terms (D4-12) |
+| Reasonable security safeguards: encryption, access control, logs + review, continuity, contracts with processors | s.8(5), **Rule 6** | Template encrypted on the phone only (Keystore; no server copy, #295); enrolment records with no direct table access, staff reads through a logged function (`access_log`, 0034); Play Integrity bound to each check-in (#296); processor terms (D4-12) |
 | Breach notice to the Board and each affected person | s.8(6), **Rule 7** | The breach runbook (OPERATIONS) gains "template exposure": tell the people affected without delay; detailed report to the Board within 72 hours of becoming aware (Rule 7(2)) |
 | Erase when consent is withdrawn or the purpose ends | s.8(7) | §7 |
 | Grievance, rights (access, correction, erasure, nomination) | s.11-14 | The privacy contact and erasure (#76) cover templates |
@@ -160,7 +166,7 @@ Scale: likelihood L/M/H × impact L/M/H, after mitigation.
 
 | # | Risk | Before | Mitigation | After |
 |---|---|---|---|---|
-| R1 | Server template table leaked or stolen | M×H | Templates encrypted with a Vault key; no direct table access for any role; a student's app can fetch only its own template, logged; no images exist; no centre-wide copy exists on any device | L×M |
+| R1 | Server template table leaked or stolen | M×H | **Removed by design (Gate 2, #295): the server holds no face code.** A leak of the enrolment table shows who uses face scan and when, not a face. No images exist; no centre-wide copy exists on any device | L×L |
 | R2 | Templates reused for another purpose (surveillance, marketing, police without legal process) | L×H | 1:1 design has no search function to misuse; purpose limited in consent and notice; a new purpose needs new consent and a DECISIONS entry; legal requests via the privacy contact only | L×M |
 | R3 | **Wrong child marked present** (false accept) → parent told of a check-out that was someone else | M×H | Conservative threshold (prefer "use your QR"); active + passive liveness; the match is only against the logged-in student's own template, so another child must also have the phone and login; supervised enrolment; parents can query; pattern review | L×M |
 | R4 | Child repeatedly not recognised (false reject), embarrassment | M×M | After a failure the screen offers the coordinator path; three failures → suggest the coordinator; re-enrol; no public display | L×L |
@@ -171,8 +177,8 @@ Scale: likelihood L/M/H × impact L/M/H, after mitigation.
 | R9 | Parent email to the wrong person (stale guardian email) | L×M | Only the guardian on record; one-click Unsubscribe (#227); minimal content (full name, centre, time, check-out); never location | L×L |
 | R10 | Processor exposure (Brevo emails; Google Play Integrity sees device/app attributes) | M×M | No face data and no location reach any processor; Play Integrity added to the processor register and notice; a cloud face API is **not** planned and would need this DPIA redone | L×L |
 | R11 | Model licence / training-data provenance challenge | M×M | Apache-licensed weights; lawyer opinion on training data (MODEL_OPTIONS §6) | L×M |
-| R12 | Lost / stolen / shared student phone | M×M | Template encrypted in the Keystore, unusable off that phone; sign-out wipes it; self-scan also needs the login and a live face; the desk can turn face off for the student at once (server copy deleted, self-scan refused server-side) | L×L |
-| R13 | Templates kept after a child leaves | M×M | Server copy deleted at Left + 30 days, yearly expiry for minors, in withdraw/erase (#75, #76); the phone copy is wiped when the app next sees no server template | L×L |
+| R12 | Lost / stolen / shared student phone | M×M | Template encrypted in the Keystore, unusable off that phone; sign-out wipes it; self-scan also needs the login and a live face; the desk can turn face off for the student at once (enrolment ended, self-scan refused server-side; the phone wipes its code at its next start online) | L×L |
+| R13 | Templates kept after a child leaves | M×M | Enrolment ended at Left + 30 days, yearly expiry for minors, in withdraw/erase (#75, #76) and on a revoked consent, a login change or a model change (#299); the phone copy is wiped when the app next sees no current enrolment | L×L |
 
 **Open technical caveat on R8 (for P3-0 / P3-6, not the lawyer):** the app is today an APK installed
 from a link, not from Google Play (OPERATIONS "Android app"). Play Integrity needs the app linked to
@@ -185,8 +191,10 @@ app is on Play. The spike must check this.
 
 | Data | Kept | Deleted |
 |---|---|---|
-| Face template — **server copy** (encrypted) | While the face consent is current | **At once** on switch-off, withdrawal (#75), erasure (#76); 30 days after status Left; 12 months after enrolment (minors) / 24 months (adults); on a model change |
-| Face template — **phone copy** (Keystore-encrypted) | While face scan is on for that login on that phone | At once on "Turn face scan off" and on sign-out; with the app's data on uninstall; when the app, at its next start online, finds no current server template (withdrawn at the desk, expired, erased) — and until then the server refuses any self-scan without a current consent and template |
+| Face template — **server copy** | **None** (Gate 2, #295) | — |
+| Enrolment record (no face data) | While enrolled, then as proof | Ended at once on switch-off, withdrawal (#75), a revoked consent, a login change; 30 days after status Left; 12 months after enrolment (minors) / 24 months (adults); on a model change; the ended record deleted after 400 days; with the student on erasure (#76) |
+| Match score of a face check-in | 60 days (calibration and pilot) | Deleted after `face_score_days` (#299); the visit keeps only method face and the liveness result |
+| Face template — **phone copy** (Keystore-encrypted) | While face scan is on for that login on that phone | At once on "Turn face scan off" and on sign-out; with the app's data on uninstall; when the app, at its next start online, finds no current enrolment for that phone (ended at the desk, expired, erased, enrolled on another phone) — and until then the server refuses any self-scan without a current consent and enrolment |
 | Images / video frames | Never stored (processed in memory) | — |
 | Face consent record (who, when, notice version, revoked when) | As long as the class keeps consent proof (D4-07) | With the student's erasure (#76) |
 | Visit method / score / liveness / location result | Visit retention (D4-07) | As visits |

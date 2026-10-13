@@ -6,6 +6,9 @@
 > **When to paste (#255):** part **N1** (parent emails) before the Guru switches parent emails on at
 > LIVE (#230); parts **N2-N4** (face, self-scan location, Play Integrity) only after the lawyer's review
 > and with the Phase 3 APK (P3-7). Each paste raises `privacyNotice.version` and `date`.
+> **Gate 2 (13-10-2026, DECISIONS #295, #299):** N2 in English now says the face code stays on the phone only and
+> the match score is kept 60 days; the Telugu and Hindi N2 still say otherwise — correct them in the native review.
+>
 > **Telugu and Hindi: NATIVE REVIEW NEEDED** (machine-assisted, words matched to the existing te/hi
 > notice).
 
@@ -38,7 +41,7 @@ Brevo row, "What it does": `Sends sign-up and password-reset emails, and attenda
 **N2 — face scan**
 
 ```html
-<tr><th scope="row">Face scan (optional)</th><td>Only for a student who chose it, with a separate written consent (a parent's for a student under 18): a <strong>face code</strong>, a list of numbers made from a few pictures of the student's face on the student's own phone. The pictures are deleted at once; no face photo is kept for this. The face code is kept encrypted on the student's phone and, encrypted, on the class's server in India. At each check-in and check-out the phone compares the face only with that student's own face code — it never searches among other people — and checks that the face is live. Each visit then records that it was marked by face scan, the match score and whether the live-face check passed.</td></tr>
+<tr><th scope="row">Face scan (optional)</th><td>Only for a student who chose it, with a separate written consent (a parent's for a student under 18): a <strong>face code</strong>, a list of numbers made from a few pictures of the student's face on the student's own phone. The pictures are deleted at once; no face photo is kept for this. The face code is kept only on the student's phone, encrypted; the class's server keeps no face code, only a record that face scan was set up (when, confirmed by which coordinator, until when). At each check-in and check-out the phone compares the face only with that student's own face code — it never searches among other people — and checks that the face is live. Each visit then records that it was marked by face scan and whether the live-face check passed; the match score is kept for 60 days only, to tune the check, then deleted.</td></tr>
 ```
 
 **N3 — location (replaces the current paragraph)**

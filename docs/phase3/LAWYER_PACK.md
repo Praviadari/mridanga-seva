@@ -20,8 +20,10 @@ design, the consent forms and the notice text, and answer the questions below.
    student's own face code** (a list of numbers; no photo kept). It never searches among other
    people. No class tablet, no camera at the door.
 3. **Supervised set-up.** The face code is made once at the desk on the student's phone, with a
-   coordinator confirming it is the right student. Kept encrypted on the phone and, encrypted, on
-   our server in Mumbai.
+   coordinator confirming it is the right student (they type a code shown on the student's phone). Kept
+   **only on the phone**, encrypted (Android Keystore); our server in Mumbai keeps an enrolment record
+   (who confirmed it, when, until when) and **no face code** (Gate 2, DECISIONS #295). A new phone means
+   setting it up again at the desk.
 4. **Anti-spoofing.** Live-face check (blink / turn + a passive model), Android's fake-location flag,
    Google Play Integrity (phone/app not tampered with). Refused offline or outside the class window.
 5. **Location, once.** At the student's check-in / check-out tap only, the phone reads its location

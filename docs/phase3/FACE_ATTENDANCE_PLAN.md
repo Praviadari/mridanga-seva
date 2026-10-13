@@ -9,6 +9,11 @@
 > plan that replaces §9 is **[WORK_PLAN.md](WORK_PLAN.md)**. Privacy papers for self-scan (P3-8):
 > [DPIA_DRAFT.md](DPIA_DRAFT.md), [CONSENT_DRAFT.md](CONSENT_DRAFT.md),
 > [PRIVACY_NOTICE_DRAFT.md](PRIVACY_NOTICE_DRAFT.md), [LAWYER_PACK.md](LAWYER_PACK.md).
+>
+> **UPDATE 13-10-2026 — the audit's gates (DECISIONS #295-#300):** Gate 2: the face code stays **on the phone
+> only** — every "server copy", `face_templates` table and Vault key below is history; the server keeps an
+> enrolment record. Gate 1: each self-scan carries a Play Integrity verdict bound to that check-in, checked on the
+> server (no self-scan for anyone if a link-installed APK cannot get one). Face scan has one server switch, off.
 
 **Status:** preparation only. Nothing here is built or decided, except DECISIONS #212 (Praveen,
 09-10-2026: **no live or continuous location tracking at all** — GPS read only at the moment of
