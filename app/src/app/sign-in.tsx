@@ -39,6 +39,8 @@ export default function SignInScreen() {
   useEffect(clearSessionEnded, []);
   const [resentTo, setResentTo] = useState<string | null>(null);
   const [resending, setResending] = useState(false);
+  // P1-14 (#329): an unconfirmed email gets the Send again button too, not only an expired link.
+  const [unconfirmed, setUnconfirmed] = useState(false);
 
   /** Sends a new confirmation email to the email typed above. */
   async function resend() {
@@ -69,6 +71,7 @@ export default function SignInScreen() {
     setBusy(true);
     const { errorKey } = await signIn(email, password);
     setBusy(false);
+    setUnconfirmed(errorKey === 'authErrors.emailNotConfirmed');
     if (errorKey) setFormError(errorKey);
   }
 
@@ -100,6 +103,12 @@ export default function SignInScreen() {
       <Section title={t('signIn.title')} description={t('signIn.subtitle')}>
         {ended ? <Notice tone="info" title={t('signIn.endedTitle')}>{t('signIn.endedBody')}</Notice> : null}
         {formError ? <Notice tone="error">{t(formError)}</Notice> : null}
+        {unconfirmed && !linkProblem ? (
+          <>
+            {resentTo ? <Notice tone="success">{t('signIn.resent', { email: resentTo })}</Notice> : null}
+            <Button variant="secondary" icon="send" label={t('signIn.resendConfirmation')} onPress={resend} loading={resending} />
+          </>
+        ) : null}
 
         <TextField
           ref={emailRef}

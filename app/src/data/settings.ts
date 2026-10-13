@@ -203,9 +203,10 @@ function errorKeyOf(message: string): MessageKey {
       return 'settings.errors.inactiveAfter';
     case 'window_invalid':
       return 'settings.errors.window';
+    // F3-09 (#325): the server's refusal has no numbers to fill in "from {{min}} to {{max}}".
     case 'setting_invalid':
     case 'setting_unknown':
-      return 'settings.errors.range';
+      return 'settings.errors.serverRefused';
   }
   return fallbackErrorKey(message);
 }
