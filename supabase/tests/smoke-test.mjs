@@ -128,7 +128,7 @@ process.on('uncaughtException', (error) => {
 // D14-10: every check is counted, and the run fails when fewer (or more) checks ran than expected,
 // so a block skipped by a renamed migration or a commented-out section cannot pass unseen.
 // Adding or removing checks? Run the suite and set this to the new total it prints.
-const EXPECTED_CHECKS = 1772; // 0060 face scan server side (branch p3-server): +123; 0048 withdrawn records and leaks: +50; 0047 form rules: +109; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
+const EXPECTED_CHECKS = 1830; // 0064 face self-scan (branch p3-selfscan): +58; 0060 face scan server side (branch p3-server): +123; 0048 withdrawn records and leaks: +50; 0047 form rules: +109; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
 let failures = 0;
 let passes = 0;
 
@@ -4158,6 +4158,8 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
     'approve_face_enrolment(uuid,text)', 'enrol_face(bigint,text)', 'face_use_counts(date,date)', 'get_face_enrolments(uuid)',
     'issue_integrity_challenge(text)', 'my_face_enrolment(text)', 'record_face_consent(uuid,boolean,uuid,text,boolean,text)',
     'remove_face(uuid,text)', 'start_face_enrolment(text,text)',
+    // 0064: the face self-scan (the student's phone; each checks the caller and the switch inside)
+    'note_self_scan_failure(text,text)', 'self_scan(text,jsonb,text,text,boolean,real)', 'self_scan_state(text)',
   ];
   const runnableBy = async (role) => (await asOwner(`select p.oid::regprocedure::text as f from pg_proc p
     where p.pronamespace = 'public'::regnamespace
@@ -6175,6 +6177,268 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   try { await db.exec(file60); } catch (e) { again60 = String(e.message); }
   check('0060 can run again and changes nothing (settings kept as set)', again60 === '' && JSON.stringify(await counts60b()) === JSON.stringify(before60),
     `${again60} ${JSON.stringify(before60)}`);
+}
+
+// ---------------------------------------------------------------- 0064 face self-scan (DECISIONS #344-#349)
+// Phase 3 P3-5, branch p3-selfscan (placeholder number). The student's own check-in / check-out:
+// every rule the server re-checks, the check-out flag, the counts, the parent's check-out email.
+{
+  const file64 = readFileSync(new URL('migrations/0064_face_selfscan.sql', supabaseDir), 'utf8');
+  await db.exec(file64); // the 0060 re-run above replaced guard_setting and guard_face_visit: 0064's again
+  const MODEL = 'sface-2021dec-int8';
+  const DEV_A = 'selfscanA-0123456789abcd';
+  const DEV_B = 'selfscanB-0123456789abcd';
+  const setting64 = (key, json) => asOwner(`update settings set value = '${json}' where key = '${key}'`);
+  const one = async (who, sql, params) => (await asApp('authenticated', who, sql, params))[0];
+  const [centreBefore] = await asOwner(`select lat, lng, radius_m, opens_at::text as o, closes_at::text as c from centres where id = 1`);
+  const area64 = (lat, lng) => asOwner(`update centres set lat = ${lat}, lng = ${lng}, radius_m = 100 where id = 1`);
+  const openAllDay = () => asOwner(`update centres set opens_at = '00:00', closes_at = '23:59:59' where id = 1`);
+  const closeNow = async () => {
+    const [{ am }] = await asOwner(`select (now() at time zone time_zone)::time < '12:00' as am from centres where id = 1`);
+    await asOwner(`update centres set opens_at = '${am ? '13:00' : '01:00'}', closes_at = '${am ? '14:00' : '02:00'}' where id = 1`);
+  };
+  await area64(17.385, 78.4867);
+  await openAllDay();
+  await setting64('qr_rescan_minutes', '10');
+  await setting64('face_min_age', '18');
+  await setting64('face_enabled', 'true');
+  const adultDob64 = `${year - 30}-04-04`;
+  const person64 = async (tag, fields = {}) => {
+    const email = `self64.${tag}@example.com`;
+    const login = (await db.query(`insert into auth.users (email, email_confirmed_at, raw_user_meta_data) values ($1, now(), $2) returning id`,
+      [email, JSON.stringify({ notice_version: 'v1', dob: adultDob64, centre_id: 1, full_name: `Self Scan ${tag}` })])).rows[0].id;
+    const rec = await register(coordinator, { p_full_name: `Self Scan ${tag}`, p_dob: adultDob64, p_email: email, ...fields.register });
+    return { login, id: rec.id };
+  };
+  const enrol64 = async (p, consent = {}) => {
+    await asApp('authenticated', coordinator, `select record_face_consent(p_student => $1, p_signed_form => true, p_guardian => $2,
+      p_id_type_checked => $3, p_child_assent => $4, p_notice_version => 'v0.3')`, [p.id, consent.guardian ?? null, consent.idType ?? null, consent.assent ?? null]);
+    const s = (await one(p.login, 'select start_face_enrolment($1, $2) as r', [DEV_A, MODEL])).r;
+    await one(coordinator, 'select approve_face_enrolment($1, $2)', [p.id, s.code]);
+    await one(p.login, 'select enrol_face($1, $2)', [s.request, DEV_A]);
+  };
+  /** Gate 1 as the Edge Function does it: a challenge, spent, a passed verdict, the one-time pass. */
+  const pass64 = async (login, action, location) => {
+    await asOwner(`update integrity_challenges set issued_at = now() - interval '11 minutes' where profile_id = '${login}'`);
+    const ch = (await one(login, 'select issue_integrity_challenge($1) as r', [action])).r;
+    await asApp('service_role', null, 'select begin_integrity_check($1, $2, $3, $4)', [ch.challenge, login, action, location]);
+    const pass = `p64-${randomUUID()}`;
+    const [{ h }] = await asOwner(`select encode(sha256(convert_to('${pass}', 'UTF8')), 'hex') as h`);
+    await asApp('service_role', null, 'select finish_integrity_check($1, $2, $3)', [ch.challenge, 'pass', h]);
+    return pass;
+  };
+  const AT = { status: 'fix', lat: 17.385, lng: 78.4867, accuracy: 12, mocked: false };
+  const FAR = { ...AT, lat: 17.395 }; // about 1.1 km north
+  const NEAR150 = { ...AT, lat: 17.385 + 150 / 111195 }; // 150 m north
+  const scan64 = async (p, action, loc, pass, extra = {}) => (await one(p.login, 'select self_scan($1, $2::jsonb, $3, $4, $5, $6) as r',
+    [action, JSON.stringify(loc), pass, extra.device ?? DEV_A, extra.live ?? true, extra.score ?? 0.8])).r;
+  const state64 = async (p, device = DEV_A) => (await one(p.login, 'select self_scan_state($1) as r', [device])).r;
+  const [{ n: failStart }] = await asOwner('select coalesce(max(id), 0)::int as n from face_scan_failures');
+  const fails64 = async () => Object.fromEntries((await asOwner(`select reason || coalesce(':' || detail, '') as k, count(*)::int as n
+    from face_scan_failures where id > ${failStart} group by 1`)).map((r) => [r.k, r.n]));
+  const visits64 = (p) => asOwner(`select v.id, v.method::text as method, v.marked_by, v.liveness_ok, v.location_check, v.location_distance_m,
+    v.check_out, v.check_out_location, v.check_out_distance_m, v.check_out_method::text as check_out_method, f.match_score
+    from visits v left join visit_face_scores f on f.visit_id = v.id where v.student_id = '${p.id}' order by v.id`);
+
+  // #348: the threshold, SQL editor only.
+  check('0064 #348: the match threshold is 55 (cosine 0.55) by default',
+    (await asOwner(`select value from settings where key = 'face_match_percent'`))[0]?.value === 55);
+  await refusesWith('0064 #348: the Guru cannot change it from the app', 'setting_owner_only', () =>
+    asApp('authenticated', guru, 'select save_settings($1::jsonb)', [JSON.stringify({ face_match_percent: 40 })]));
+  await refusesWith('0064 #348: the SQL editor gets 30-95 only', 'setting_invalid', () => setting64('face_match_percent', '96'));
+
+  const p = await person64('Adult');
+  await enrol64(p);
+  // #344: the home's state.
+  await setting64('face_enabled', 'false');
+  const off64 = await state64(p);
+  check('0064 #344: while face scan is off the home shows nothing (no circle)', off64.face_enabled === false && off64.action === null, JSON.stringify(off64));
+  await refusesWith('0064 #345: while off, no self-scan', 'face_off', () => scan64(p, 'check_in', AT, 'x'));
+  await refusesWith('0064 #346: while off, no failure count from the phone', 'face_off', () => one(p.login, `select note_self_scan_failure('liveness')`));
+  await setting64('face_enabled', 'true');
+  await refusesWith('0064 #344: staff have no self-scan state', 'not_allowed', () => one(coordinator, 'select self_scan_state($1)', [DEV_A]));
+  const on64 = await state64(p);
+  check('0064 #344: open hours, enrolled phone, not checked in: Check in, with the centre\'s point, radius and threshold',
+    on64.action === 'check_in' && on64.enrolled === true && on64.open_now === true && on64.blocked === null
+    && on64.centre?.radius_m === 100 && Number(on64.centre?.lat) === 17.385 && Number(on64.match_min) === 0.55, JSON.stringify(on64));
+  const otherPhone = await state64(p, DEV_B);
+  check('0064 #344: another phone of the same login is not enrolled: no circle', otherPhone.enrolled === false && otherPhone.action === null, JSON.stringify(otherPhone));
+  await closeNow();
+  const shut64 = await state64(p);
+  check('0064 #344: outside the open hours no Check in circle', shut64.action === null && shut64.open_now === false, JSON.stringify(shut64));
+  await openAllDay();
+
+  // #345: refusals raised (not a failed scan).
+  await refusesWith('0064 #345: the action is check_in or check_out', 'action_invalid', () => scan64(p, 'enter', AT, 'x'));
+  await refusesWith('0064 #345: staff cannot self-scan', 'not_allowed', () =>
+    one(coordinator, 'select self_scan($1, $2::jsonb, $3, $4, $5, $6)', ['check_in', JSON.stringify(AT), 'x', DEV_A, true, 0.8]));
+  await refusesWith('0064 #345: a position in its shape only', 'bad_location', () => scan64(p, 'check_in', { status: 'fix', lat: 'north' }, 'x'));
+
+  // #345: refusals answered and counted (Gate 1 first, then the rest).
+  const noPass = await scan64(p, 'check_in', AT, null);
+  check('0064 #345 Gate 1: no integrity pass, no check-in (answered, counted)', noPass.ok === false && noPass.reason === 'integrity'
+    && noPass.detail === 'integrity_required', JSON.stringify(noPass));
+  const wrongLoc = await scan64(p, 'check_in', AT, await pass64(p.login, 'check_in', 'outside'));
+  check('0064 #345 Gate 1: a pass bound to another location result than the server finds', wrongLoc.reason === 'integrity'
+    && wrongLoc.detail === 'integrity_pass_mismatch', JSON.stringify(wrongLoc));
+  const wrongAct = await scan64(p, 'check_in', AT, await pass64(p.login, 'check_out', 'inside'));
+  check('0064 #345 Gate 1: ... or to the other action', wrongAct.detail === 'integrity_pass_mismatch', JSON.stringify(wrongAct));
+  const spent = await pass64(p.login, 'check_in', 'inside');
+  const otherDev = await scan64(p, 'check_in', AT, spent, { device: DEV_B });
+  check('0064 #345: the enrolment must be THIS phone\'s', otherDev.ok === false && otherDev.reason === 'not_enrolled', JSON.stringify(otherDev));
+  const reused = await scan64(p, 'check_in', AT, spent);
+  check('0064 #345: a refused attempt spent its pass (one pass, one attempt)', reused.detail === 'integrity_pass_used', JSON.stringify(reused));
+  const noLive = await scan64(p, 'check_in', AT, await pass64(p.login, 'check_in', 'inside'), { live: false });
+  check('0064 #345: liveness not passed, no check-in', noLive.reason === 'liveness', JSON.stringify(noLive));
+  const low = await scan64(p, 'check_in', AT, await pass64(p.login, 'check_in', 'inside'), { score: 0.5 });
+  check('0064 #345/#348: a score under the threshold is no match (never a guess)', low.reason === 'no_match', JSON.stringify(low));
+  const odd = await scan64(p, 'check_in', AT, await pass64(p.login, 'check_in', 'inside'), { score: 1.5 });
+  check('0064 #345: ... and a score that cannot be is refused too', odd.reason === 'no_match', JSON.stringify(odd));
+  await closeNow();
+  const shutScan = await scan64(p, 'check_in', AT, await pass64(p.login, 'check_in', 'inside'));
+  await openAllDay();
+  check('0064 #345: outside the open hours, no check-in', shutScan.reason === 'window', JSON.stringify(shutScan));
+  const far = await scan64(p, 'check_in', FAR, await pass64(p.login, 'check_in', 'outside'));
+  check('0064 #345: outside the area, no check-in', far.reason === 'outside' && far.detail === 'outside', JSON.stringify(far));
+  const mocked = await scan64(p, 'check_in', { ...AT, mocked: true }, await pass64(p.login, 'check_in', 'mocked'));
+  check('0064 #345: a mocked position, no check-in', mocked.reason === 'mocked', JSON.stringify(mocked));
+  const vague = await scan64(p, 'check_in', { ...AT, accuracy: 150 }, await pass64(p.login, 'check_in', 'inaccurate'));
+  check('0064 #345: accuracy over 100 m, no check-in', vague.reason === 'outside' && vague.detail === 'inaccurate', JSON.stringify(vague));
+  const noAcc = await scan64(p, 'check_in', { ...AT, accuracy: null }, await pass64(p.login, 'check_in', 'inaccurate'));
+  check('0064 #345: ... nor without an accuracy', noAcc.detail === 'inaccurate', JSON.stringify(noAcc));
+  const noFix = await scan64(p, 'check_in', { status: 'no_fix' }, await pass64(p.login, 'check_in', 'no_fix'));
+  check('0064 #345: no position in time, no check-in', noFix.reason === 'outside' && noFix.detail === 'no_fix', JSON.stringify(noFix));
+  const edgeOut = await scan64(p, 'check_in', { ...NEAR150, accuracy: 40 }, await pass64(p.login, 'check_in', 'outside'));
+  check('0064 #345: 150 m away with 40 m accuracy is outside (radius 100 + 40)', edgeOut.detail === 'outside', JSON.stringify(edgeOut));
+  await asOwner('update centres set lat = null, lng = null where id = 1');
+  const noArea = await scan64(p, 'check_in', AT, await pass64(p.login, 'check_in', 'no_area'));
+  await area64(17.385, 78.4867);
+  check('0064 #345: a centre without its point refuses (nothing to compare with)', noArea.detail === 'no_area', JSON.stringify(noArea));
+  check('0064 #345: nothing above saved a visit', (await visits64(p)).length === 0);
+  const f1 = await fails64();
+  check('0064 #346: each failed self-scan is counted per reason, no student id',
+    f1['integrity:integrity_required'] === 1 && f1['integrity:integrity_pass_mismatch'] === 2 && f1['integrity:integrity_pass_used'] === 1
+    && f1.not_enrolled === 1 && f1.liveness === 1 && f1.no_match === 2 && f1.window === 1 && f1['outside:outside'] === 2
+    && f1.mocked === 1 && f1['outside:inaccurate'] === 2 && f1['outside:no_fix'] === 1 && f1['outside:no_area'] === 1, JSON.stringify(f1));
+
+  // #345: the check-in.
+  await asOwner(`insert into visits (student_id, centre_id, method, check_in) values ('${p.id}', 1, 'qr', now() - interval '2 days')`);
+  const inside = await scan64(p, 'check_in', { ...NEAR150, accuracy: 60 }, await pass64(p.login, 'check_in', 'inside'));
+  const v1 = await visits64(p);
+  const fresh = v1[v1.length - 1];
+  check('0064 #345: inside (150 m, accuracy 60: radius 100 + 60) and everything right: checked in', inside.ok === true && inside.action === 'in'
+    && inside.full_name === 'Self Scan Adult' && inside.flagged === false, JSON.stringify(inside));
+  check('0064 #345: the visit: method face, marked by the student, liveness kept, location inside with the distance, score kept apart',
+    fresh.method === 'face' && fresh.marked_by === p.login && fresh.liveness_ok === true && fresh.location_check === 'inside'
+    && fresh.location_distance_m === 150 && Math.abs(fresh.match_score - 0.8) < 1e-6 && fresh.check_out === null, JSON.stringify(fresh));
+  check('0064 #345: an earlier day\'s open visit was closed first (as at the desk)', v1.length === 2 && v1[0].check_out !== null);
+  const st2 = await state64(p);
+  check('0064 #344: checked in: the circle says Check out', st2.action === 'check_out' && !!st2.checked_in_at, JSON.stringify(st2));
+  const again = await scan64(p, 'check_in', AT, await pass64(p.login, 'check_in', 'inside'));
+  check('0064 #345 (0048): checking in again answers already_in and saves nothing', again.ok === true && again.action === 'already_in'
+    && (await visits64(p)).length === 2, JSON.stringify(again));
+  const soon = await scan64(p, 'check_out', AT, await pass64(p.login, 'check_out', 'inside'));
+  check('0064 #345 (0048 #289): a check-out within qr_rescan_minutes of the check-in is not taken (the desk can)',
+    soon.ok === false && soon.reason === 'too_soon' && soon.minutes === 10 && (await visits64(p))[1].check_out === null, JSON.stringify(soon));
+
+  // #345, #347: the check-out, never refused for the place.
+  await asOwner(`update visits set check_in = now() - interval '40 minutes' where id = ${fresh.id}`);
+  const out = await scan64(p, 'check_out', FAR, await pass64(p.login, 'check_out', 'outside'));
+  const vOut = (await visits64(p))[1];
+  check('0064 #345: a check-out outside the area is saved, and flagged', out.ok === true && out.action === 'out' && out.flagged === true
+    && out.location === 'outside' && out.minutes === 40, JSON.stringify(out));
+  check('0064 #347: the visit keeps the check-out\'s own result, distance and method',
+    vOut.check_out !== null && vOut.check_out_location === 'outside' && vOut.check_out_distance_m > 1000 && vOut.check_out_method === 'face'
+    && vOut.location_check === 'inside', JSON.stringify(vOut));
+  const outAgain = await scan64(p, 'check_out', AT, await pass64(p.login, 'check_out', 'inside'));
+  check('0064 #345: a repeated check-out within 30 s answers already_out', outAgain.ok === true && outAgain.action === 'already_out', JSON.stringify(outAgain));
+  await asOwner(`update visits set check_out = now() - interval '2 minutes', check_in = now() - interval '50 minutes' where id = ${fresh.id}`);
+  const notIn = await scan64(p, 'check_out', AT, await pass64(p.login, 'check_out', 'inside'));
+  check('0064 #345: no open visit, nothing to check out', notIn.ok === false && notIn.reason === 'not_checked_in', JSON.stringify(notIn));
+  await refusesWith('0064 #347: staff cannot change a check-out\'s location result', 'location_locked', () =>
+    asApp('authenticated', coordinator, `update visits set check_out_location = 'inside' where id = $1`, [fresh.id]));
+  await refusesWith('0064 #347: ... nor how it was recorded', 'location_locked', () =>
+    asApp('authenticated', coordinator, `update visits set check_out_method = 'manual' where id = $1`, [fresh.id]));
+  await refusesWith('0064 S4F-01: the dashboard cannot claim a face check-out', 'face_visit_reserved', () =>
+    asOwner(`update visits set check_out_method = 'face' where student_id = '${p.id}' and id <> ${fresh.id}`));
+
+  // A desk check-in (QR) closed by the student's own scan: mocked position = saved, flagged.
+  await asApp('authenticated', coordinator, `select toggle_visit($1, 'qr')`, [p.id]);
+  await asOwner(`update visits set check_in = now() - interval '30 minutes' where student_id = '${p.id}' and check_out is null`);
+  const mockOut = await scan64(p, 'check_out', { ...AT, mocked: true }, await pass64(p.login, 'check_out', 'mocked'));
+  const vDesk = (await visits64(p))[2];
+  check('0064 #345: a desk (QR) visit checked out by the self-scan with a mocked position: saved, flagged, method qr kept',
+    mockOut.ok === true && mockOut.flagged === true && vDesk.method === 'qr' && vDesk.check_out_location === 'mocked'
+    && vDesk.check_out_method === 'face' && vDesk.check_out_distance_m === null, JSON.stringify(vDesk));
+  const noLiveOut = await (async () => {
+    await asApp('authenticated', coordinator, `select toggle_visit($1, 'manual')`, [p.id]);
+    await asOwner(`update visits set check_in = now() - interval '30 minutes' where student_id = '${p.id}' and check_out is null`);
+    return scan64(p, 'check_out', AT, await pass64(p.login, 'check_out', 'inside'), { score: 0.3 });
+  })();
+  check('0064 #345: a check-out still needs the face match (no match = the desk checks out)', noLiveOut.reason === 'no_match'
+    && (await asOwner(`select count(*)::int as n from visits where student_id = '${p.id}' and check_out is null`))[0].n === 1, JSON.stringify(noLiveOut));
+  await asApp('authenticated', coordinator, `select mark_visit($1, 'out')`, [p.id]);
+
+  // The consent and the record are re-checked at the moment of saving.
+  const before = await pass64(p.login, 'check_in', 'inside');
+  await asApp('authenticated', guru, `update consents set revoked_at = now() where student_id = $1 and scope = 'face' and revoked_at is null`, [p.id]);
+  await refusesWith('0064 #345: a face consent revoked after the pass: no check-in', 'no_face_consent', () => scan64(p, 'check_in', AT, before));
+  const q = await person64('Withdrawn');
+  await enrol64(q);
+  const qPass = await pass64(q.login, 'check_in', 'inside');
+  await asApp('authenticated', guru, `select withdraw_consent($1, 'by phone')`, [q.id]);
+  await refusesWith('0064 #345: a withdrawn record gets nothing (0048: its login is switched off)', 'not_allowed', () => scan64(q, 'check_in', AT, qPass));
+
+  // #346: failures seen on the phone.
+  const r = await person64('Reporter');
+  await enrol64(r);
+  await refusesWith('0064 #346: staff do not report self-scan failures', 'not_allowed', () => one(coordinator, `select note_self_scan_failure('liveness')`));
+  await refusesWith('0064 #346: a known reason only', 'reason_invalid', () => one(r.login, `select note_self_scan_failure('integrity')`));
+  await refusesWith('0064 #346: a detail in its shape only', 'reason_invalid', () => one(r.login, `select note_self_scan_failure('outside', '17.38,78.48')`));
+  const counted = (await one(r.login, `select note_self_scan_failure('outside', 'inaccurate') as r`)).r;
+  const f2 = await fails64();
+  check('0064 #346: the phone counts a failure before the server is asked (outside: inaccurate)', counted === true && f2['outside:inaccurate'] === 3, JSON.stringify(f2));
+  check('0064 #346: a student whose enrolment ended is not counted', (await one(p.login, `select note_self_scan_failure('liveness') as r`)).r === false);
+  await asOwner(`insert into face_scan_failures (centre_id, reason) select 1, 'other' from generate_series(1, 200)`);
+  check('0064 #346: at most 200 counts a centre an hour from phones', (await one(r.login, `select note_self_scan_failure('liveness') as r`)).r === false);
+  await asOwner(`delete from face_scan_failures where id > ${failStart} and reason = 'other'`);
+  const view64 = (await one(coordinator, 'select face_use_counts(current_date - 1, current_date + 1) as r')).r.find((c) => c.centre_id === 1);
+  check('0064 P3-6: the staff counts show the self-scan reasons; no student named',
+    view64.failures.liveness >= 1 && view64.failures.no_match >= 3 && view64.failures.outside >= 7 && view64.failures.mocked >= 1
+    && view64.failures.window >= 1 && !JSON.stringify(view64).includes('Self Scan'), JSON.stringify(view64));
+
+  // The parent's check-out email (0043/0044), for a minor once the Guru lowers face_min_age.
+  await setting64('face_min_age', '13');
+  await asOwner(`update settings set value = 'true' where key in ('parent_notices_enabled', 'parent_notices_check_out')`);
+  await asOwner(`update settings set value = 'false' where key = 'parent_notices_check_in'`);
+  const kid = await person64('Child', { register: { p_dob: `${year - 15}-02-02`, p_email: null,
+    p_guardian_name: 'Parent Sixtyfour', p_guardian_phone: '9876543264', p_guardian_email: 'parent.64@example.com',
+    p_guardian_relation: 'mother', p_id_type_checked: 'aadhaar', p_written_consent: true } });
+  await asApp('authenticated', guru, 'select link_student_login($1, $2)', [kid.login, kid.id]);
+  const [{ id: g64 }] = await asOwner(`select id from guardians where student_id = '${kid.id}'`);
+  await enrol64(kid, { guardian: g64, idType: 'aadhaar', assent: true });
+  const kidIn = await scan64(kid, 'check_in', AT, await pass64(kid.login, 'check_in', 'inside'));
+  await asOwner(`update visits set check_in = now() - interval '45 minutes' where student_id = '${kid.id}' and check_out is null`);
+  const kidOut = await scan64(kid, 'check_out', AT, await pass64(kid.login, 'check_out', 'inside'));
+  const notices = await asOwner(`select p.kind from parent_notices p join visits v on v.id = p.visit_id where v.student_id = '${kid.id}'`);
+  check('0064 #345: a minor\'s self-scan check-out queues the parent\'s check-out email (and the check-in none)',
+    kidIn.action === 'in' && kidOut.action === 'out' && kidOut.flagged === false && notices.length === 1 && notices[0].kind === 'out', JSON.stringify(notices));
+  await asOwner(`update settings set value = 'false' where key = 'parent_notices_enabled'`);
+  await setting64('face_min_age', '18');
+  const kidState = await state64(kid);
+  check('0064 #344: back at 18, the minor\'s home shows no circle and says why', kidState.action === null && kidState.blocked === 'face_too_young', JSON.stringify(kidState));
+
+  // Safe to run twice.
+  const snap64 = async () => (await asOwner(`select (select count(*) from visits)::int as v, (select count(*) from face_scan_failures)::int as f,
+    (select string_agg(key || '=' || value::text, ',' order by key) from settings where key like 'face%') as s`))[0];
+  await setting64('face_enabled', 'false');
+  const before64 = await snap64();
+  let again64 = '';
+  try { await db.exec(file64); } catch (e) { again64 = String(e.message); }
+  check('0064 can run again and changes nothing (settings kept as set)', again64 === '' && JSON.stringify(await snap64()) === JSON.stringify(before64),
+    `${again64} ${JSON.stringify(before64)}`);
+  await asOwner(`update centres set lat = ${centreBefore.lat ?? 'null'}, lng = ${centreBefore.lng ?? 'null'}, radius_m = ${centreBefore.radius_m},
+    opens_at = '${centreBefore.o}', closes_at = '${centreBefore.c}' where id = 1`);
 }
 
 // ---------------------------------------------------------------- row-level security

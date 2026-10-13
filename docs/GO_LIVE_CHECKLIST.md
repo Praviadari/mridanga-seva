@@ -86,7 +86,8 @@ with m(migration, present) as (values
   ('0046', exists (select 1 from pg_proc where proname = 'accept_sign_up' and pronamespace = 'public'::regnamespace)),
   ('0047', exists (select 1 from pg_proc where proname = 'clean_person_name' and pronamespace = 'public'::regnamespace)),
   ('0048', exists (select 1 from pg_proc where proname = 'in_audience' and pronamespace = 'public'::regnamespace)),
-  ('0060', to_regclass('public.face_enrolments') is not null)
+  ('0060', to_regclass('public.face_enrolments') is not null),
+  ('0064', exists (select 1 from pg_proc where proname = 'self_scan' and pronamespace = 'public'::regnamespace))
 )
 select migration, case when present then 'yes' else 'no' end as present from m
 union all
@@ -151,6 +152,7 @@ a second paste. So pasting a file twice by mistake is harmless; still, never do 
 | M0047 | `0047_form_rules.sql` | Praveen · dashboard | No rows; probe `0047`, `MISSING` `none` | Form rules in SQL (audit phase 1 and early phase 3, [#271-#274, #276, #280](DECISIONS.md)): the app's name rule on every name an app user writes (no digits, letters and vowel signs of any script), a minor needs a guardian with a phone and that guardian's consent also when the date of birth changes, **a child's record is never linked to a login by email (the Guru links it)**, a student inserted by an app user gets no login, About you keeps a student's gender once set, the desk's new students get the coordinator's centre, `possible_duplicates`, the privacy-notice tick at sign-up is kept and Accept needs it. Checks only what is written from now on: stored rows are not changed or re-checked. **Before the students sign up on LIVE** |
 | M0048 | `0048_withdrawn_and_leaks.sql` | Praveen · dashboard | No rows; probe `0048`, `MISSING` `none` | Withdrawn records and leaks ([#281, #288-#290](DECISIONS.md)): **a record whose consent was withdrawn is never linked to a login again** and its login stays off; nothing new is recorded about the student (practice, phones, promotion, loans; events and assessments leave them out), error `student_withdrawn`; `audience_profiles` closed to app users, `event_visible_to` and `staff_name_taken` answer for the caller only; a QR re-scan within 10 minutes of the check-in answers "already in" (setting `qr_rescan_minutes`, no parent "left" email); the sign-up's privacy-notice tick is kept when the login joins a record with About-you details, and Fill the form keeps an adult's. Switches off any login already on a withdrawn record (none expected on LIVE). Planned as its own run on **Sat 17-10**, after 0047 |
 | M0060 | `0060_face_enrolment.sql` | Praveen · dashboard | `schedule` table (one job); probe `0060`, `MISSING` `none` | **Phase 3, NOT for the launch.** Placeholder number (branch `p3-server`; the lead renumbers it at merge, after the launch files). Runs on TEST after the phone test day, on LIVE only after Praveen says face scan is fully tested ([#295-#300](DECISIONS.md)). Face scan server side: setting `face_enabled` **false** (SQL editor only), face consent with the child's own yes, `face_enrolments` (an enrolment record, **no face code**), the desk-confirmed enrolment, the integrity challenge and pass for the Edge Function `verify-integrity` (deployed separately, [OPERATIONS.md "Face scan: integrity check"](OPERATIONS.md#face-scan-integrity-check)), `visits.liveness_ok`, the staff counts. Adds `mridanga-face-housekeeping` |
+| M0064 | `0064_face_selfscan.sql` | Praveen · dashboard | No rows; probe `0064`, `MISSING` `none` | **Phase 3, NOT for the launch.** Placeholder number (branch `p3-selfscan`; the lead renumbers it at merge, after 0060). Same conditions as M0060 ([#344-#349](DECISIONS.md)). The student's own face check-in / check-out: `self_scan_state` (the home's circle), `self_scan` (re-checks the integrity pass, consent, this phone's enrolment, location, open hours, liveness and score), `note_self_scan_failure` (counts only); `visits.check_out_location` / `check_out_distance_m` / `check_out_method` (a check-out outside is saved and flagged); setting `face_match_percent` 55 (SQL editor only). Nothing changes while `face_enabled` is false |
 
 **A file newer than 0048 on main:** the replay's first check fails until this table lists it. Add it
 here, with its own steps, then run it last.
@@ -272,7 +274,8 @@ with m(migration, present) as (values
   ('0046', exists (select 1 from pg_proc where proname = 'accept_sign_up' and pronamespace = 'public'::regnamespace)),
   ('0047', exists (select 1 from pg_proc where proname = 'clean_person_name' and pronamespace = 'public'::regnamespace)),
   ('0048', exists (select 1 from pg_proc where proname = 'in_audience' and pronamespace = 'public'::regnamespace)),
-  ('0060', to_regclass('public.face_enrolments') is not null)
+  ('0060', to_regclass('public.face_enrolments') is not null),
+  ('0064', exists (select 1 from pg_proc where proname = 'self_scan' and pronamespace = 'public'::regnamespace))
 ),
 last_in_order as (select coalesce(max(a.migration), 'before 0010') as v from m a
   where a.present and not exists (select 1 from m b where b.migration <= a.migration and not b.present)),
@@ -282,7 +285,7 @@ jobs(name) as (values ('mridanga-status-refresh'), ('mridanga-close-visits'), ('
   ('mridanga-assessments'), ('mridanga-events-polls'), ('mridanga-duty'), ('mridanga-access-log-purge'),
   ('mridanga-cron-history-purge'), ('mridanga-orphan-files'), ('mridanga-parent-notices'), ('mridanga-face-housekeeping')),
 checks(sort, check_name, ok, found, expected) as (
-  select 1, 'last migration', (select v from last_in_order) = '0060', (select v from last_in_order), '0060'
+  select 1, 'last migration', (select v from last_in_order) = '0064', (select v from last_in_order), '0064'
   union all select 2, 'migrations missing', (select v from missing) = 'none', (select v from missing), 'none'
   union all select 3, 'scheduled jobs',
     (select count(*) from jobs j join cron.job c on c.jobname = j.name and c.active) = 12,

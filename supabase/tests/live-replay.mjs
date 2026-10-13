@@ -42,8 +42,8 @@ const LIVE_LAST = 11;
 const GO_LIVE = ['0013', '0014', '0015', '0016', '0017', '0018', '0019', '0020', '0021', '0022', '0023', '0024',
   '0025', '0026', '0027', '0028', '0029', '0030', '0031', '0032', '0033', '0034', '0035', '0036', '0037', '0038',
   '0039', '0040', '0042', '0043', '0044', '0045', '0046', '0047', '0048',
-  // Phase 3 face scan (branch p3-server, placeholder number; the lead renumbers it at merge)
-  '0060'];
+  // Phase 3 face scan (branches p3-server, p3-selfscan; placeholder numbers, the lead renumbers them at merge)
+  '0060', '0064'];
 
 let failures = 0;
 let passes = 0;
