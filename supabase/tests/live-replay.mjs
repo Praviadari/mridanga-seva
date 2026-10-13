@@ -41,7 +41,9 @@ const checklist = readFileSync(new URL('../../docs/GO_LIVE_CHECKLIST.md', import
 const LIVE_LAST = 11;
 const GO_LIVE = ['0013', '0014', '0015', '0016', '0017', '0018', '0019', '0020', '0021', '0022', '0023', '0024',
   '0025', '0026', '0027', '0028', '0029', '0030', '0031', '0032', '0033', '0034', '0035', '0036', '0037', '0038',
-  '0039', '0040', '0042', '0043', '0044', '0045', '0046', '0047', '0048'];
+  '0039', '0040', '0042', '0043', '0044', '0045', '0046', '0047', '0048',
+  // Phase 3 face scan (branch p3-server, placeholder number; the lead renumbers it at merge)
+  '0060'];
 
 let failures = 0;
 let passes = 0;
@@ -291,8 +293,8 @@ const row = (name) => verify.find((r) => r.check_name === name);
 const expectOk = ['last migration', 'migrations missing', 'tables without row-level security',
   'anon table rights', 'anon function rights', 'update/delete without where', 'roll numbers missing'];
 for (const name of expectOk) check(`verification SQL: "${name}" is ok on the replayed LIVE`, row(name)?.ok === true, JSON.stringify(row(name)));
-check('verification SQL: "scheduled jobs" counts the eleven jobs of 0001-0044',
-  row('scheduled jobs')?.found === '11 of 11', JSON.stringify(row('scheduled jobs')));
+check('verification SQL: "scheduled jobs" counts the twelve jobs of 0001-0044 and 0060',
+  row('scheduled jobs')?.found === '12 of 12', JSON.stringify(row('scheduled jobs')));
 check('verification SQL: Vault and pg_net are reported missing here (PGlite has neither), not hidden',
   row('vault secrets')?.ok === false && row('pg_net')?.ok === false);
 check('verification SQL: the three sample logins confirmed at sign-up are flagged (what auto-confirm would leave)',
