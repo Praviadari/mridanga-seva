@@ -6,13 +6,16 @@
 // - this app's notifications in the phone's list (src/lib/push.ts; FLOW-04);
 // - photos kept by the image cache, often of children (expo-image's memory and disk cache; D3-09);
 // - copies made while picking files for an upload: shrunk photos and picked PDFs, which the
-//   pickers leave in the app's cache folder (D3-09, D4-16).
+//   pickers leave in the app's cache folder (D3-09, D4-16);
+// - the student's face code, if face scan was on (src/face/face-status.ts; audit S4F-06, #310): the
+//   server's enrolment stays, so the next sign-in on this phone asks for a new supervised enrolment.
 
 import { Directory, Paths } from 'expo-file-system';
 import { Image } from 'expo-image';
 import { Platform } from 'react-native';
 
 import { clearSavedCard } from '@/data/my-student';
+import { forgetFace } from '@/face/face-status';
 
 import { dismissNotifications } from './push';
 
@@ -26,6 +29,7 @@ export async function clearDeviceTraces(): Promise<void> {
     dismissNotifications(),
     Image.clearMemoryCache().catch(() => false),
     Image.clearDiskCache().catch(() => false),
+    forgetFace().catch(() => undefined),
   ]);
   if (Platform.OS === 'web') return;
   for (const name of PICKED_FILE_FOLDERS) {

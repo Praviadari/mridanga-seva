@@ -4,6 +4,8 @@
 // coordinators' record and changes only through them. Shown by two routes: student/profile.tsx
 // (from the ring on S1) and staff/profile.tsx (from "My profile" at the foot of the staff homes).
 // A student also opens About you here (0036); staff see the referral code they give to people they bring.
+// Face scan (Phase 3, #307-#312): a student's Face scan row and, on a TEST build, staff's developer row —
+// both only while the server's switch is on (components/face-entries.tsx).
 // Data: src/data/my-profile.ts; the check is in the database too (0013, docs/DECISIONS.md #44).
 
 import { router, Stack } from 'expo-router';
@@ -14,6 +16,7 @@ import { useAuth } from '@/auth/auth-provider';
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { DetailGrid } from '@/components/detail-grid';
+import { FaceDevSection, FaceProfileSection } from '@/components/face-entries';
 import { HeldItemsPanel } from '@/components/held-items';
 import { LanguagePicker } from '@/components/language-picker';
 import { LoadingCards } from '@/components/loading-cards';
@@ -164,6 +167,8 @@ export function MyProfileScreen() {
         </Section>
       ) : null}
 
+      {isStudent && myId ? <FaceProfileSection profileId={myId} /> : null}
+
       {referralCode ? (
         <Section icon="link" title={t('about.myCodeTitle')} description={t('about.myCodeHint')}>
           <AppText variant="title" selectable accessibilityLabel={t('about.myCodeSpoken', { code: referralCode.split('').join(' ') })}>
@@ -171,6 +176,8 @@ export function MyProfileScreen() {
           </AppText>
         </Section>
       ) : null}
+
+      {isStaff ? <FaceDevSection /> : null}
 
       {/* Phase 2 slice 8 (C19): instruments I hold now. */}
       {myId ? <HeldItemsPanel by={isStudent ? 'mine' : { profileId: myId }} openable={!isStudent} /> : null}
