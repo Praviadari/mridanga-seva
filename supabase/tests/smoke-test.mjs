@@ -126,7 +126,7 @@ process.on('uncaughtException', (error) => {
 // D14-10: every check is counted, and the run fails when fewer (or more) checks ran than expected,
 // so a block skipped by a renamed migration or a commented-out section cannot pass unseen.
 // Adding or removing checks? Run the suite and set this to the new total it prints.
-const EXPECTED_CHECKS = 1664; // 0050 staff dashboard: +15; 0048 withdrawn records and leaks: +50; 0047 form rules: +109; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
+const EXPECTED_CHECKS = 1694; // 0050 staff dashboard: +15; 0049 launch clean-up: +30; 0048 withdrawn records and leaks: +50; 0047 form rules: +109; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
 let failures = 0;
 let passes = 0;
 
@@ -4151,7 +4151,11 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
     // 0047: the name rule (runs as the person saving), the desk's default centre, duplicates (staff only inside)
     'clean_person_name(text,integer)', 'person_name_symbols()', 'default_home_centre()', 'possible_duplicates(text,date,text)',
     // 0048: the caller's own audience (polls rule, #288; audience_profiles closed); the desk's notice for an adult (#290)
-    'in_audience(text,smallint,bigint,uuid)', 'record_desk_notice(uuid,text)', 'staff_dashboard()',
+    'in_audience(text,smallint,bigint,uuid)', 'record_desk_notice(uuid,text)',
+    // 0049: the Guru erases a waiting sign-up (privacy_caller_ok inside)
+    'erase_login(uuid,text,text)',
+    // 0050: the staff homes' numbers (staff only inside)
+    'staff_dashboard()',
   ];
   const runnableBy = async (role) => (await asOwner(`select p.oid::regprocedure::text as f from pg_proc p
     where p.pronamespace = 'public'::regnamespace
@@ -5747,6 +5751,165 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   const c1 = await counts48();
   try { await db.exec(file48); } catch (e) { again = String(e.message); }
   check('0048: a second run changes nothing', again === '' && JSON.stringify(await counts48()) === JSON.stringify(c1), `${again} ${JSON.stringify(c1)}`);
+}
+
+// ---------------------------------------------------------------- 0049 launch clean-up (DECISIONS #286-#287)
+// Audit phase 3, brief L8: email matching in erasure (S2-06), unlisted assessment files (S3-02), a daily upload
+// cap (S3-03), notices about an erased child (S4-05), erasing a waiting sign-up (S4-06).
+{
+  const signUpWith = async (email, meta) => (await db.query(
+    `insert into auth.users (email, email_confirmed_at, raw_user_meta_data) values ($1, now(), $2) returning id`,
+    [email, JSON.stringify(meta)])).rows[0].id;
+  const fullAuditRows = async (rowId) => (await asOwner(`select count(*)::int as n from audit_log
+    where row_id = '${rowId}' and (old_row is not null or new_row is not null)`))[0].n;
+  const objectAt = async (userId, ext, size, age = '0 days') => {
+    const path = await filePath(userId, ext);
+    await asOwner(`insert into storage.objects (bucket_id, name, metadata, created_at)
+      values ('assessment-files', '${path}', '{"size": ${size}}', now() - interval '${age}')`);
+    return path;
+  };
+  const [{ centre_id: centre49 }] = await asOwner(`select centre_id from profiles where id = '${coordinator}'`);
+
+  // Two adults whose emails are one inside the other.
+  const ramLogin = await signUp('ram.49@example.com', true);
+  const ram = await register(coordinator, { p_full_name: 'Ram Fortynine', p_dob: '1990-04-09', p_email: 'ram.49@example.com' });
+  const sriram = await register(coordinator, { p_full_name: 'Sriram Fortynine', p_dob: '1990-04-10', p_email: 'sriram.49@example.com' });
+  check('0049: (state) Ram\'s login is on his record', (await linkOf('ram.49@example.com')) === ramLogin);
+  await asOwner(`update students set phone = '9000000049' where id = '${sriram.id}'`);
+  const sriramRows = await fullAuditRows(sriram.id);
+
+  // S4-05: notices about Ram in the Guru's inbox and the push outbox; others that must stay.
+  await asOwner(`insert into notifications (profile_id, kind, title, body, url) values
+    ('${guru}', 'notice', 'New mentee', 'You are now the mentor of Ram Fortynine.', '/staff/students/${ram.id}'),
+    ('${guru}', 'notice', 'Recording', 'RAM FORTYNINE sent a recording.', '/staff/assessments'),
+    ('${guru}', 'notice', 'Recording', 'Sriram Fortynine sent a recording.', '/staff/assessments')`);
+  await asOwner(`insert into push_outbox (profile_id, title, body, url) values
+    ('${coordinator}', 'Assessment 49', 'Ram Fortynine sent a recording.', '/staff/assessments'),
+    ('${coordinator}', 'Assessment 49', 'Sriram Fortynine sent a recording.', '/staff/assessments')`);
+  const [{ id: post49 }] = await asOwner(`insert into announcements (title, body, audience, created_by)
+    values ('Ram Fortynine day', 'A festival.', 'all', '${guru}') returning id`);
+  // Everyone's notice of it but Ram's own (his goes with his login).
+  const annNotices = async () => (await asOwner(`select count(*)::int as n from notifications
+    where announcement_id = ${post49} and profile_id <> '${ramLogin}'`))[0].n;
+  const annBefore = await annNotices();
+
+  // S3-02: a recording Ram uploaded and never submitted.
+  const ramUnsent = await objectAt(ramLogin, 'm4a', 4096, '3 days');
+  const [{ r: erased49 }] = await asApp('authenticated', guru, `select erase_student($1, 'asked by email', 'REQ-49') as r`, [ram.id]);
+  check('S3-02: erasure lists the recordings in the child\'s folder that were never submitted', erased49.files.includes(ramUnsent),
+    JSON.stringify(erased49.files));
+  check('S2-06: erasing ram.49@ leaves the audit trail of sriram.49@ whole', (await fullAuditRows(sriram.id)) === sriramRows && sriramRows > 0,
+    `${sriramRows} -> ${await fullAuditRows(sriram.id)}`);
+  check('S2-06: ... while Ram\'s own rows keep no values', (await fullAuditRows(ram.id)) === 0 && (await asOwner(`select count(*)::int as n
+    from audit_log where position('ram.49@example.com' in lower(coalesce(old_row::text, '') || coalesce(new_row::text, ''))) > 0
+      and position('sriram.49@example.com' in lower(coalesce(old_row::text, '') || coalesce(new_row::text, ''))) = 0`))[0].n === 0);
+  const left49 = await asOwner(`select body from notifications where body ilike '%fortynine%' and announcement_id is null order by body`);
+  check('S4-05: the notices naming the erased child, or opening his record, are gone; another child\'s stay',
+    // Sriram's: the Guru's notice and the coordinator's inbox copy of the queued push.
+    left49.length === 2 && left49.every((r) => r.body.startsWith('Sriram')) && erased49.notices_deleted >= 3, JSON.stringify({ left49, n: erased49.notices_deleted }));
+  check('S4-05: ... his queued pushes too', (await asOwner(`select body from push_outbox where body ilike '%fortynine%'`))
+    .map((r) => r.body).join() === 'Sriram Fortynine sent a recording.');
+  check('S4-05: ... an announcement that only resembles his name stays in every inbox', (await annNotices()) === annBefore && annBefore > 0,
+    `${annBefore} -> ${await annNotices()}`);
+
+  // S4-05: push_outbox keeps 30 days (the inbox has its own copy).
+  await asOwner(`insert into push_outbox (profile_id, title, body, url, created_at) values
+    ('${coordinator}', 'Old 49', 'old', '/staff/assessments', now() - interval '40 days'),
+    ('${coordinator}', 'New 49', 'new', '/staff/assessments', now() - interval '2 days')`);
+  await asOwner('select inbox_cleanup()');
+  check('S4-05: the daily inbox clean-up deletes push_outbox rows older than 30 days, keeps newer ones',
+    (await asOwner(`select title from push_outbox where title in ('Old 49', 'New 49')`)).map((r) => r.title).join() === 'New 49');
+
+  // S3-02: files in assessment-files that no assessment or submission lists, over a day old.
+  const [listedSub] = await asOwner(`select file ->> 'path' as path from assessment_submissions where file is not null limit 1`);
+  await asOwner(`insert into storage.objects (bucket_id, name, created_at) values ('assessment-files', '${listedSub.path}', now() - interval '2 days')
+    on conflict (bucket_id, name) do update set created_at = excluded.created_at`);
+  const oldOrphan = await objectAt(arjun, 'm4a', 4096, '2 days');
+  const newOrphan = await objectAt(arjun, 'm4a', 4096);
+  const mine49 = [oldOrphan, newOrphan, listedSub.path, ramUnsent];
+  const orphans49 = async () => (await asApp('service_role', null, 'select * from orphan_assessment_files() as name'))
+    .map((r) => r.name).filter((n) => mine49.includes(n)).sort();
+  check('S3-02: an unlisted assessment file over a day old is an orphan (the erased child\'s too); a new one and a submitted one are not',
+    JSON.stringify(await orphans49()) === JSON.stringify([oldOrphan, ramUnsent].sort()), JSON.stringify(await orphans49()));
+  await refusesWith('S3-02: signed-in people cannot list them', 'permission denied for function orphan_assessment_files',
+    () => asApp('authenticated', guru, 'select * from orphan_assessment_files()'));
+  await db.exec('begin');
+  await asOwner('truncate assessments cascade');
+  const whileEmpty49 = await orphans49();
+  await db.exec('rollback');
+  check('S3-02: with no assessments at all (a half-done restore) nothing is an orphan', whileEmpty49.length === 0, JSON.stringify(whileEmpty49));
+  const claimed49 = (await asApp('service_role', null, 'select * from claim_expired_submission_files()')).filter((r) => mine49.includes(r.path));
+  check('S3-02: the daily clean-up\'s claim hands them to the Edge Function (no submission id)',
+    claimed49.length === 2 && claimed49.every((r) => r.submission_id === null), JSON.stringify(claimed49));
+  await asOwner(`select release_submission_files(array[null]::bigint[])`);
+  await asOwner('select orphan_files_daily()');
+  check('S3-02: the daily job runs (unchanged schedule)', (await asOwner(`select schedule from cron.job where jobname = 'mridanga-orphan-files'`))[0]?.schedule === '0 2 * * *');
+  await asOwner(`delete from storage.objects where name in ('${oldOrphan}', '${newOrphan}', '${ramUnsent}')`);
+
+  // S3-03: 150 MB a day per login (students and coordinators), besides 10 files.
+  const [open49] = await asOwner(`select s.profile_id as id from assessment_assignments a join students s on s.id = a.student_id
+    join profiles p on p.id = s.profile_id where a.status in ('assigned', 'seen', 'redo') and p.active and s.withdrawn_at is null limit 1`);
+  const shifted = (await asOwner(`update storage.objects set created_at = created_at - interval '3 days'
+    where bucket_id = 'assessment-files' and created_at > now() - interval '1 day'
+      and split_part(name, '/', 1) in ('${open49.id}', '${coordinator}', '${guru}') returning id`)).map((r) => `'${r.id}'`);
+  const big = [];
+  for (const who of [open49.id, coordinator, guru]) for (let i = 0; i < 3; i++) big.push(await objectAt(who, 'm4a', 52428800));
+  await refusesWith('S3-03: a student who stored 150 MB today cannot upload more', 'new row violates row-level security policy for table "objects"',
+    async () => aUpload(open49.id, await filePath(open49.id, 'm4a')));
+  await refusesWith('S3-03: ... nor a coordinator (voice notes)', 'new row violates row-level security policy for table "objects"',
+    async () => aUpload(coordinator, await filePath(coordinator, 'm4a')));
+  const guruFile = await filePath(guru, 'mp3');
+  await aUpload(guru, guruFile);
+  check('S3-03: ... the Guru (assessment files for everyone) has no cap', await aCanOpen(guru, guruFile));
+  await asOwner(`delete from storage.objects where name in ('${big[0]}', '${big[3]}')`);
+  const underCap = [await filePath(open49.id, 'm4a'), await filePath(coordinator, 'm4a')];
+  await aUpload(open49.id, underCap[0]);
+  await aUpload(coordinator, underCap[1]);
+  check('S3-03: ... 100 MB today still leaves room (control)', (await aCanOpen(open49.id, underCap[0])) && (await aCanOpen(coordinator, underCap[1])));
+  await asOwner(`delete from storage.objects where name in (${[...big, guruFile, ...underCap].map((n) => `'${n}'`).join(', ')})`);
+  if (shifted.length) await asOwner(`update storage.objects set created_at = created_at + interval '3 days' where id in (${shifted.join(', ')})`);
+
+  // S4-06: a waiting sign-up erased on request; joann.49@ contains ann.49@ (S2-06).
+  const ann = await signUpWith('ann.49@example.com', { full_name: 'Ann Fortynine', dob: '1991-02-03', gender: 'female',
+    centre_id: centre49, phone: '+91 98765 49000' });
+  await asApp('authenticated', ann, 'select save_about_me($1::jsonb)', [JSON.stringify({ occupation: 'working' })]);
+  const joann = await signUpWith('joann.49@example.com', { full_name: 'Joann Fortynine', centre_id: centre49 });
+  const joannRows = await fullAuditRows(joann);
+  const erase = (who, id, reason = 'asked by email') => asApp('authenticated', who, `select erase_login($1, $2, 'REQ-49L') as r`, [id, reason]);
+  await refusesWith('S4-06: a coordinator cannot erase a sign-up', 'not_allowed', () => erase(coordinator, ann));
+  await refusesWith('S4-06: nor the sign-up itself (only the Guru)', 'not_allowed', () => erase(ann, ann));
+  await refusesWith('S4-06: nor anon', 'permission denied for function erase_login', () =>
+    asApp('anon', null, `select erase_login($1, 'x')`, [ann]));
+  await refusesWith('S4-06: a reason is needed', 'reason_required', () => erase(guru, ann, ' '));
+  await refusesWith('S4-06: a student login is erased with erase_student', 'not_pending', () => erase(guru, arjun));
+  await refusesWith('S4-06: a staff login with anonymise_staff', 'not_pending', () => erase(guru, coordinator));
+  await refusesWith('S4-06: an unknown login', 'profile_not_found', () => erase(guru, '00000000-0000-4000-8000-000000000049'));
+  const [{ r: annGone }] = await erase(guru, ann);
+  check('S4-06: the Guru erases a waiting sign-up: login and details go', annGone.login_deleted === true && annGone.audit_rows_redacted > 0
+    && (await asOwner(`select count(*)::int as n from auth.users where id = '${ann}'`))[0].n === 0, JSON.stringify(annGone));
+  const needles49 = ['ann.49@example.com', '+919876549000', 'Ann Fortynine'];
+  const holding49 = [];
+  for (const table of (await asOwner(`select c.relname from pg_class c where c.relnamespace = 'public'::regnamespace and c.relkind = 'r'`)).map((r) => r.relname)) {
+    const text = table === 'audit_log' ? "coalesce(t.old_row::text, '') || coalesce(t.new_row::text, '')" : 't::text';
+    const [{ n }] = (await db.query(`select count(*)::int as n from public.${table} t where exists (select 1 from unnest($1::text[]) x
+      where position(lower(x) in lower(${text})) > 0 and position('joann.49' in lower(${text})) = 0)`,
+      [table === 'erasures' ? needles49 : [...needles49, ann]])).rows;
+    if (n > 0) holding49.push(`${table}:${n}`);
+  }
+  check('S4-06: ... no table, audit_log included, holds its email, phone, name or id (the tombstone keeps the id)', holding49.length === 0, holding49.join(' '));
+  check('S4-06: ... a tombstone the Guru reads', (await asApp('authenticated', guru,
+    `select request_ref from erasures where login_profile = $1`, [ann]))[0]?.request_ref === 'REQ-49L');
+  check('S2-06: ... and joann.49@\'s audit trail stays whole', (await fullAuditRows(joann)) === joannRows && joannRows > 0, `${joannRows}`);
+  await asOwner(`select set_config('request.jwt.claim.sub', '', false)`);
+  check('S4-06: the owner (SQL editor) can erase one too', (await asOwner(`select erase_login('${joann}', 'asked by phone') as r`))[0].r.login_deleted === true);
+
+  let again49 = '';
+  try { await db.exec(readFileSync(new URL('migrations/0049_launch_cleanup.sql', supabaseDir), 'utf8')); } catch (e) { again49 = String(e.message); }
+  check('0049 can run a second time', again49 === '', again49);
+  await asOwner(`delete from announcements where id = ${post49}`);
+  await asOwner(`delete from students where id = '${sriram.id}'`);
+  await asOwner(`delete from notifications where body = 'Sriram Fortynine sent a recording.'`);
+  await asOwner(`delete from push_outbox where title in ('Assessment 49', 'New 49')`);
 }
 
 // ---------------------------------------------------------------- 0050 staff dashboard (DECISIONS #340)

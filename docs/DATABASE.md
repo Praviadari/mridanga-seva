@@ -48,6 +48,7 @@ in number order:
 | `0044_parent_checkout_only.sql` | Parent emails only for a check-out recorded in the app: settings `parent_notices_check_in` and `parent_notices_no_checkout` (both off), `guard_setting` with them, the visits trigger honouring each switch ([DECISIONS.md #246-#247](DECISIONS.md)). See "Parent notices (0043)" |
 | `0045_qr_cards.sql` | Printed QR cards for students without a phone (Phase 3 P3-1): `reissue_qr_code(student)`, the Guru gives a student a new `qr_token` when a card is lost, so the old card scans as unknown ([DECISIONS.md #249-#252](DECISIONS.md)). The cards carry the My QR code and need no table. See "Attendance" |
 | `0047_form_rules.sql` | Form rules in SQL (audit phase 1, [DECISIONS.md #271-#274](DECISIONS.md)): one name rule `clean_person_name` on every person's name an app user writes (no digits of any script, Telugu/Hindi vowel signs and joiners kept, NFC), a minor needs a guardian with a phone and that guardian's own consent (also when the date of birth changes), About you keeps a student's gender once set, a desk registration gets the coordinator's centre, `possible_duplicates` for the desk; a minor's record is never linked to a login by email (the Guru links it), a student inserted by an app user gets no login, the notice ticked at sign-up is kept and Accept needs it ([#276](DECISIONS.md), [#280](DECISIONS.md)). See "Form rules (0047)" |
+| `0049_launch_cleanup.sql` | Launch clean-up (audit phase 3, brief L8): `erase_login` for a waiting sign-up; erasure matches emails as whole values (`audit_redact`), lists every file in the child's folder and deletes the staff notices about the child (`forget_notices_about`); unlisted assessment files over a day old deleted by the daily clean-up; 150 MB a day per login in `assessment-files`; `push_outbox` kept 30 days ([DECISIONS.md #286-#287](DECISIONS.md)). No new job. See "Launch clean-up (0049)" |
 | `0050_staff_dashboard.sql` | Launch range (placeholder 0063 on branch `after-launch-design`, renumbered 14-10-2026): `staff_dashboard()`, the staff homes' Today numbers and what waits for the caller in one request ([DECISIONS.md #339, #340](DECISIONS.md)). See "Staff home: today and waiting (0050)" |
 
 The Phase 2 files were renumbered when they merged into main (#55). TEST ran some under their
@@ -668,7 +669,7 @@ the push opens: `/staff/announcements/N` for staff, `/student/announcements/N` f
   number on the home header's bell.
 - **Housekeeping.** 0015 filled the inbox with the announcements of the last 30 days (and the
   scheduled ones), read where a receipt existed. The daily job `mridanga-inbox-cleanup` deletes
-  notices older than a year.
+  notices older than a year, and (since 0049) `push_outbox` rows older than 30 days.
 - **Phase 2's notices** (0019, [DECISIONS.md #55](DECISIONS.md)): the trigger `push_outbox_inbox`
   (`inbox_on_push_outbox`) copies every new `push_outbox` row (assessments, promotion) into
   `notifications`, same person, title, line (300 characters) and screen, `visible_at` = when it was
@@ -764,7 +765,7 @@ MP3, M4A, AAC, WAV, OGG, AMR, MP4, MOV, 3GP, WebM, MKV. A path is
 | Action | Allowed for | Rule function |
 |---|---|---|
 | Open, or make a signed link | The Guru; anyone who may read an assessment or a submission that lists the file; one's own folder | `assessment_file_readable` |
-| Upload | The Guru, any kind, own folder; a student audio or video into their own folder, only while an assessment waits for them, at most 10 files in a day | `assessment_file_uploadable` |
+| Upload | The Guru, any kind, own folder; a student audio or video into their own folder, only while an assessment waits for them, at most 10 files and (since 0049) under 150 MB stored in the last 24 hours | `assessment_file_uploadable` |
 | Delete | The Guru any; anyone else their own upload while no submission lists it | `assessment_file_deletable` |
 
 **Keeping files.** A recording is deleted 30 days after its review (`file_removed_at` is set; the
@@ -1078,6 +1079,12 @@ roll number, time, who erased, reason, request reference and how many audit rows
 the Storage paths (photo, recordings and voice notes) that must be deleted by hand. Errors
 `reason_required`, `reason_too_long`, `student_not_found`, `open_loan`.
 
+**Since 0049** (see "Launch clean-up (0049)"): an email matches an audit row only as a whole value
+(S2-06); `files` lists every file in the child's own folder of `assessment-files`, also recordings
+never submitted, and the daily clean-up deletes them within a day or two (S3-02); the staff inbox
+notices and queued pushes about the child go (`notices_deleted`, S4-05). **`erase_login(profile,
+reason, request_ref)`** erases a waiting sign-up the same way (S4-06).
+
 ## Security round 2 (0028)
 
 [DECISIONS.md #96-#100](DECISIONS.md). Audit brief 5.
@@ -1360,6 +1367,22 @@ Tests: section "0037 database and performance backlog" in `supabase/tests/smoke-
 | Staff who leave (#196) | `anonymise_staff(profile, reason, request_ref)` for a switched-off coordinator or Guru login, not the caller's: deletes an idle login; otherwise sign-in email `<id>@former-staff.invalid`, profile "Former staff" without email, phone, duty hours, gender, referral code or extra roles, phones forgotten, the profile's audit rows and rows holding its email redacted; tombstone in `erasures.staff_profile`. Returns `{login_deleted, login_scrubbed, audit_rows_redacted}`. Errors `not_allowed`, `reason_required`, `reason_too_long`, `profile_not_found`, `not_staff`, `not_yourself`, `switch_off_first` | The owner in the SQL editor only (OPERATIONS "Staff who leave") |
 
 Tests: section "0040 operations backlog" in `supabase/tests/smoke-test.mjs`.
+
+## Launch clean-up (0049)
+
+[DECISIONS.md #286-#287](DECISIONS.md). Audit phase 3, brief L8. Run after 0048. Nothing changes for the
+app; no new pg_cron job and no Edge Function deploy.
+
+| What | How | Who may run it |
+|---|---|---|
+| Erase a waiting sign-up (S4-06) | `erase_login(profile, reason, request_ref)` for a `pending` login on no student record, not the caller's: phones forgotten, login deleted (profile, About you details, Ishtagoshti rows and notices with it; if the owner may not delete from `auth.users` only the profile goes, `login_deleted` false), then `audit_redact` with its id and emails, tombstone in `erasures.login_profile`. Returns `{login_deleted, audit_rows_redacted}`. Errors `not_allowed`, `reason_required`, `reason_too_long`, `profile_not_found`, `not_pending` (a student: `erase_student`; staff: `anonymise_staff`), `has_student_record`, `not_yourself` | The Guru in the app, or the owner in the SQL editor (`privacy_caller_ok`) |
+| Audit redaction (S2-06) | `audit_redact(ids, emails)`: blanks `old_row`/`new_row` of rows whose row id is one of the ids, whose values contain one of the ids, or hold one of the emails as a whole JSON value (`"ram@x.org"` never matches `"sriram@x.org"`). Used by `erase_student`, `erase_login` and `anonymise_staff` | Internal |
+| Notices about an erased child (S4-05) | `forget_notices_about(record, name, urls)`: deletes inbox notices and `push_outbox` rows whose `url` holds the record id or is one of the given screens (her assessments to review, her nominations), and notices (not announcements) and pushes whose title or text holds her full name as whole words. `erase_student` calls it | Internal |
+| Unlisted assessment files (S3-02) | `orphan_assessment_files()`: up to 200 files in `assessment-files`, over a day old, listed by no `assessments.media` and no submission's `file` or `voice_note`, oldest first; nothing while `assessments` is empty. `claim_expired_submission_files()` also returns them (`submission_id` null), so the Edge Function's daily clean-up deletes them unchanged; `orphan_files_daily()` asks for the clean-up when there are any | The list: the Edge Function (service role); the job: pg_cron |
+| Daily upload cap (S3-03) | `assessment_file_uploadable`: a student's or coordinator's files in their folder of the last 24 hours must total under 150 MB (`metadata.size`) before another upload, besides 10 files; the Guru has no cap | Storage rule |
+| `push_outbox` keep time (S4-05) | `inbox_cleanup()` also deletes `push_outbox` rows older than 30 days | pg_cron (`mridanga-inbox-cleanup`) |
+
+Tests: section "0049 launch clean-up" in `supabase/tests/smoke-test.mjs` (finding IDs in the names).
 
 ## App leftovers (0042)
 
@@ -1680,6 +1703,7 @@ and the triggers `guard_material_suggestion`, `notify_material_suggestion`, `gua
 the security-round triggers `guard_student_frozen`, `note_level_change`, `release_student_login`,
 `guard_consent`, `recheck_minor_consent`, `refuse_withdrawn` and the check `privacy_caller_ok` (0025),
 `orphan_files_daily` and the owner-only `anonymise_staff` (0040),
+`audit_redact` and `forget_notices_about` (0049; `orphan_assessment_files` for the Edge Function only),
 and the helpers `my_role`, `is_guru`, `is_staff`,
 `setting_int`, `today_ist`.
 
@@ -1690,12 +1714,12 @@ and the helpers `my_role`, `is_guru`, `is_staff`,
 | `mridanga-status-refresh` | 00:30 UTC = 06:00 IST | `refresh_student_statuses()` — ends expired pauses (with a call task), moves quiet students to Irregular (with a call task) or Inactive, and escalates the due open tasks of Inactive students (0033:147-192); escalation after too many failed calls is `log_call`'s, not the job's |
 | `mridanga-close-visits` | Every hour at :30 (since 0033; was 15:30 UTC = 21:00 IST) | `close_open_visits()` — closes visits left open at their centre's closing time, once that centre has been closed an hour (21:00 IST for Abids) |
 | `mridanga-push` | Every minute | `send_due_push()` — calls the Edge Function `notify-announcements` when a published announcement waits for its push notification; does nothing while push is not set up (0011); since 0016 also when an assessment or promotion notification of the last day waits in `push_outbox`; since 0031 also when a `push_queue` row waits for its next try |
-| `mridanga-inbox-cleanup` | 01:00 UTC = 06:30 IST | `inbox_cleanup()` — deletes inbox notices older than a year (0015) |
+| `mridanga-inbox-cleanup` | 01:00 UTC = 06:30 IST | `inbox_cleanup()` — deletes inbox notices older than a year (0015) and push_outbox rows older than 30 days (0049) |
 | `mridanga-access-log-purge` | 01:45 UTC = 07:15 IST | `purge_access_log()` — deletes access-log rows older than 400 days (0034) |
 | `mridanga-assessments` | 03:30 UTC = 09:00 IST | `assessment_daily()` — reminders for assessments due today or tomorrow that are not sent yet; asks the Edge Function (`{"cleanup": true}`) to delete recordings 30 days past their review (0016); level-up ones 30 days after the promotion decision (0017) |
 | `mridanga-duty` | 12:30 UTC = 18:00 IST | `duty_daily()` — reminds everyone on tomorrow's duty shifts, once (0023) |
 | `mridanga-events-polls` | 03:30 UTC = 09:00 IST | `events_polls_daily()` — reminds those going or maybe of an event tomorrow, and those who have not voted on a poll closing within 24 hours; each once (0022) |
-| `mridanga-orphan-files` | 02:00 UTC = 07:30 IST | `orphan_files_daily()` — asks the Edge Function (`{"cleanup": true}`) to delete announcement files no announcement lists (0040) |
+| `mridanga-orphan-files` | 02:00 UTC = 07:30 IST | `orphan_files_daily()` — asks the Edge Function (`{"cleanup": true}`) to delete announcement files no announcement lists (0040), and assessment files nothing lists (0049) |
 | `mridanga-cron-history-purge` | 02:15 UTC = 07:45 IST | Deletes pg_cron's run details older than 7 days (0040) |
 | `mridanga-parent-notices` | Every minute | `send_parent_notices()` — calls the Edge Function `notify-parents` when a parent email waits; nothing while switched off (0043) |
 

@@ -222,15 +222,38 @@ request first.
 3. Supabase → SQL editor, find the student (`select id, roll_no, full_name from students where
    roll_no = '...';`), then run:
    `select erase_student('<id>', 'parent asked to delete the data', 'ER-2026-01');`
-4. It answers `{ roll_no, login_deleted, audit_rows_redacted, files }`:
-   - `files`: Storage paths still to delete. Supabase → Storage → the bucket in the path
-     (`assessment-files`, or the photo's bucket) → find each path → Delete.
+4. It answers `{ roll_no, login_deleted, audit_rows_redacted, notices_deleted, files }`:
+   - `files`: the Storage paths of the child (every file in her folder of `assessment-files`, since
+     0049). The daily clean-up deletes them within two days, as nothing lists them any more
+     ([DECISIONS.md #286](DECISIONS.md)). Two days later check, in the SQL editor, with the paths
+     pasted: `select count(*) from storage.objects where name in ('<path 1>', '<path 2>');` must be
+     `0`. If not (the clean-up is not set up yet, part C of the go-live): Supabase → Storage →
+     `assessment-files` → find each path → Delete.
+   - `notices_deleted`: the staff inbox notices about the child that went with her (since 0049).
    - `login_deleted: false`: the login could not be deleted from the SQL editor. Supabase →
      Authentication → Users → find the email the parent gave → Delete user.
 5. Destroy the paper consent form as agreed with the parent, or keep it only as long as the team's
    retention rule says (to be agreed).
 6. The tombstone (roll number, date, who, reason, reference) stays in `erasures`:
    `select * from erasures order by erased_at desc;` This is the proof that the request was met.
+
+### A sign-up that never became a student
+
+Someone who signed up (and waits on Register a student, or only reads Ishtagoshti) and asks to be
+deleted ([DECISIONS.md #287](DECISIONS.md), since 0049). Do not use Authentication → Users → Delete
+user for this: it leaves the name, phone and email in the audit log.
+
+1. Check who asks, as in step 1 above, and write down the reference (e.g. `ER-2026-02`).
+2. Supabase → SQL editor, find the login: `select id, full_name, email, role from profiles where email = '...';`
+   The role must be `pending`. A student is erased with `erase_student` (above), staff with
+   `anonymise_staff` (below).
+3. Run: `select erase_login('<id>', 'asked to delete the sign-up', 'ER-2026-02');`
+4. It answers `{ login_deleted, audit_rows_redacted }`. `login_deleted: false`: Supabase →
+   Authentication → Users → find the email → Delete user (the details are erased already).
+5. The tombstone stays: `select erased_at, reason, request_ref from erasures where login_profile is not null;`
+
+Errors: `not_pending` (a student or staff login), `has_student_record` (use `erase_student`),
+`profile_not_found`, `reason_required`.
 
 ## Staff who leave
 
@@ -1281,6 +1304,14 @@ select o.name, o.created_at, (o.metadata ->> 'size')::bigint as bytes
 
 Before 0040, delete them by hand in **Storage → announcement-files** (open the folder, tick the files, **Delete**).
 **Never** `delete from storage.objects` in SQL: that forgets the file but leaves it taking space.
+
+**Assessment files (since 0049, [DECISIONS.md #286](DECISIONS.md)).** The same job also has the
+Edge Function delete files in `assessment-files` that no assessment and no submission lists, once
+they are a day old, up to 200 a day: a recording uploaded but never submitted, and an erased
+child's files. No deploy was needed (the function deletes what `claim_expired_submission_files()`
+returns). To see what is waiting: `select * from orphan_assessment_files();`. A student or a
+coordinator can store at most 150 MB (and 10 files) in that bucket in 24 hours; an upload past that
+fails like any refused upload, and works again the next day.
 How much of the free 1 GB is used: **Project Settings → Usage**, or
 `select sum((metadata ->> 'size')::bigint) / 1048576 as mb from storage.objects;`.
 
