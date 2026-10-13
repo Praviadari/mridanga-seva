@@ -29,7 +29,7 @@ import { saveMyLanguage } from '@/data/my-profile';
 import { applyProfileLanguage, currentLanguage, hasUnsavedChoice, markLanguageSaved, type Language } from '@/i18n';
 import { loadClassLocale } from '@/lib/class-locale';
 import { clearDeviceTraces } from '@/lib/device-traces';
-import { dropOtherOwnersDrafts } from '@/lib/form-drafts';
+import { dropOtherOwnersDrafts, purgeExpiredDrafts } from '@/lib/form-drafts';
 import {
   setRefusedListener,
   storedLoginUserId,
@@ -129,6 +129,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }, []);
 
   useEffect(() => {
+    // At app start a form draft kept after a forced sign-out goes once it is too old, even when nobody
+    // signs in again (src/lib/form-drafts.ts; audit S5-03).
+    purgeExpiredDrafts();
     if (supabaseConfigProblem) return;
     // Fires once at start with the saved login (INITIAL_SESSION), then on every change.
     // Supabase warns against awaiting other Supabase calls inside this callback (it can lock
@@ -139,8 +142,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
       // A remembered profile must never open someone's area after they signed out.
       if (event === 'SIGNED_OUT') {
         forgetSavedProfile();
-        // Also when the server ended the login: the QR card, notifications and cached photos go
-        // (src/lib/device-traces.ts; D3-05, D3-09, FLOW-04).
+        // Also when the server ended the login: the QR card, notifications, cached photos and audio
+        // recordings go (src/lib/device-traces.ts; D3-05, D3-09, FLOW-04, S5-02).
         void clearDeviceTraces();
         // The sign-in screen says so when the person did not sign out themselves (D6-20).
         noteSignedOut();
