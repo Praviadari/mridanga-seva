@@ -136,7 +136,12 @@ function FundEntryScreenContent() {
 
   // ---------------------------------------------------------------- the form
   if (isNew) {
-    const update = (patch: Partial<EntryForm>) => setForm((current) => ({ ...current, ...patch }));
+    const update = (patch: Partial<EntryForm>) => {
+      setForm((current) => ({ ...current, ...patch }));
+      // F1-11: a field's message goes once the field is changed (the summary follows).
+      const changed = new Set(Object.keys(patch).map((key) => (key === 'categoryId' ? 'category' : key)));
+      setErrors((current) => Object.fromEntries(Object.entries(current).filter(([key]) => !changed.has(key))));
+    };
     const paise = parseRupees(form.amount);
     const choices = book.categories.filter((c) => c.direction === form.direction && !c.retired);
     const needsBill = form.direction === 'expense' && paise !== null && paise > book.billLimitPaise;
@@ -251,6 +256,7 @@ function FundEntryScreenContent() {
             onChangeText={(text) => update({ note: text })}
             multiline
             maxLength={NOTE_MAX + 20}
+            counter={NOTE_MAX}
             error={errors.note ? t(errors.note) : undefined}
           />
         </Section>

@@ -323,6 +323,7 @@ function MaterialScreenContent() {
           onChangeText={(note) => update({ note })}
           multiline
           maxLength={MATERIAL_NOTE_MAX + 50}
+          counter={MATERIAL_NOTE_MAX}
           error={errors.note ? t(errors.note) : undefined}
         />
         {suggesting ? (

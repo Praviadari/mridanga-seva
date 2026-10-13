@@ -398,6 +398,7 @@ function InventoryItemScreenContent() {
             onChangeText={(notes) => update({ notes })}
             multiline
             maxLength={NOTES_MAX + 20}
+            counter={NOTES_MAX}
             error={errors.notes ? t(errors.notes) : undefined}
           />
           {isNew ? (

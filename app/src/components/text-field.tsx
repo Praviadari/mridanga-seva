@@ -40,6 +40,11 @@ export type TextFieldProps = TextInputProps & {
   ref?: Ref<TextInput>;
   /** What the box holds: sets its keyboard, autocorrect and length (#323). */
   kind?: FieldKind;
+  /**
+   * The real limit to count against, when maxLength lets a few more characters in so the form can say
+   * "too long" (F5-15). Without it a box with maxLength of COUNTER_FROM or more counts against maxLength.
+   */
+  counter?: number;
 };
 
 /**
@@ -90,7 +95,7 @@ export function readsDigits(kind: FieldKind | undefined, keyboardType: KeyboardT
 }
 
 /** Labelled text input in the app's style. */
-export function TextField({ label, hint, error, secret, ref, style, kind, ...inputProps }: TextFieldProps) {
+export function TextField({ label, hint, error, secret, ref, style, kind, counter, ...inputProps }: TextFieldProps) {
   const { colors } = useTheme();
   const { t } = useTranslation();
   const [revealed, setRevealed] = useState(false);
@@ -103,7 +108,8 @@ export function TextField({ label, hint, error, secret, ref, style, kind, ...inp
   const { onChangeText, onFocus, onBlur, editable, multiline, maxLength, value } = props;
   const readOnly = editable === false;
   const digits = readsDigits(kind, props.keyboardType);
-  const counted = typeof maxLength === 'number' && maxLength >= COUNTER_FROM && typeof value === 'string';
+  const countTo = counter ?? (typeof maxLength === 'number' && maxLength >= COUNTER_FROM ? maxLength : undefined);
+  const counted = countTo !== undefined && typeof value === 'string';
   const described = [hint ? hintId : null, error ? errorId : null].filter(Boolean).join(' ');
 
   return (
@@ -163,8 +169,8 @@ export function TextField({ label, hint, error, secret, ref, style, kind, ...inp
         </AppText>
       ) : null}
       {counted ? (
-        <AppText variant="small" tone={value.length >= maxLength ? 'danger' : 'muted'} style={styles.counter}>
-          {t('common.charactersUsed', { used: value.length, max: maxLength })}
+        <AppText variant="small" tone={value.length > countTo ? 'danger' : 'muted'} style={styles.counter}>
+          {t('common.charactersUsed', { used: value.length, max: countTo })}
         </AppText>
       ) : null}
     </View>
