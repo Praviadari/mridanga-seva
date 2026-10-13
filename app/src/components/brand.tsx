@@ -5,11 +5,11 @@
 // splash, with Try again (src/lib/slow-start.ts, docs/DECISIONS.md #237).
 
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Image, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { restartApp } from '@/lib/slow-start';
 import { brand, onBrand } from '@/theme/colors';
-import { maxContentWidth, radius, spacing, useTheme } from '@/theme/use-theme';
+import { maxContentWidth, radius, spacing, useLargeText, useTheme } from '@/theme/use-theme';
 
 import { AppText } from './app-text';
 import { MridangaMark } from './mridanga-mark';
@@ -22,14 +22,18 @@ const drum = require('@/assets/images/splash-icon.png');
  * screen (app.json, expo-splash-screen), so the change from one to the other cannot be seen.
  * Also the only splash on the web version, where there is no native one.
  * @param slow true when the start takes long (src/lib/slow-start.ts): the splash then says so and offers
- *        Try again, which starts the app again.
+ *        Try again, which starts the app again. It scrolls, with a smaller drum at large text, so Try again
+ *        stays reachable at 200 % on a small screen (audit P3-04, #315).
  */
 export function BrandSplash({ slow }: { slow?: boolean }) {
   const { t } = useTranslation();
+  const large = useLargeText();
   if (slow) {
     return (
-      <View style={[styles.splash, { backgroundColor: brand }]}>
-        <Image source={drum} style={styles.splashImage} resizeMode="contain" />
+      <ScrollView
+        style={{ backgroundColor: brand }}
+        contentContainerStyle={styles.slowSplash}>
+        <Image source={drum} style={large ? styles.splashImageSmall : styles.splashImage} resizeMode="contain" />
         <AppText variant="title" style={styles.splashText}>
           {t('app.name')}
         </AppText>
@@ -43,7 +47,7 @@ export function BrandSplash({ slow }: { slow?: boolean }) {
           style={({ pressed }) => [styles.retry, { opacity: pressed ? 0.8 : 1 }]}>
           <AppText style={styles.retryText}>{t('common.tryAgain')}</AppText>
         </Pressable>
-      </View>
+      </ScrollView>
     );
   }
   return (
@@ -112,6 +116,19 @@ const styles = StyleSheet.create({
   splashImage: {
     width: 200,
     height: 200,
+  },
+  splashImageSmall: {
+    width: 120,
+    height: 120,
+  },
+  // A scroll view's content: at least the screen's height, so it stays centred when it fits (not flex: 1,
+  // which would hold it to the screen's height and stop the scrolling).
+  slowSplash: {
+    flexGrow: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.lg,
+    paddingVertical: spacing.xl,
   },
   splashText: {
     color: onBrand,

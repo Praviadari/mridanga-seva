@@ -16,7 +16,9 @@
     "studentWithdrawn": "Consent for this student was withdrawn. Nothing new can be recorded for them; ask the Guru.",
     "networkError": "Could not reach the server, or it did not answer. Check your internet connection and try again; if it keeps happening, tell a coordinator.",
     "fixFieldsAbove": "Some fields need a fix ({{count}}). Each has its message under it, above.",
-    "linkOpensInBrowser": "The link opens in your web browser. When you are done there, come back to this app and sign in."
+    "linkOpensInBrowser": "The link opens in your web browser. When you are done there, come back to this app and sign in.",
+    "foundCount_one": "{{count}} found",
+    "foundCount_other": "{{count}} found"
   },
   "password": {
     "show": "Show",

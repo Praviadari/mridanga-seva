@@ -19,6 +19,10 @@
   Keyboard (forms fix, docs/DECISIONS.md #269): interactive-widget=resizes-content makes Chrome on
   Android shrink the page for its keyboard (its default only moves the view), so a form's last box and
   its button can be scrolled above the keyboard. Other browsers ignore it.
+
+  First visit (audit P4-02, docs/DECISIONS.md #315): the app's script is ~0.8-1 MB and takes 15-60 s on slow data,
+  so #root holds a plain saffron splash (name in en/te/hi, a CSS spinner, still for reduced motion) until React
+  draws the app over it. No script: the site's policy allows none inline.
 -->
 <html lang="%LANG_ISO_CODE%">
   <head>
@@ -60,6 +64,54 @@
         flex: 1;
       }
     </style>
+    <style id="first-splash">
+      .first-splash {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;
+        background: #b45309;
+        color: #ffffff;
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans Telugu", "Noto Sans Devanagari", sans-serif;
+        text-align: center;
+        padding: 24px;
+      }
+      .first-splash img {
+        width: 96px;
+        height: 96px;
+        border-radius: 24px;
+      }
+      .first-splash h1 {
+        margin: 0;
+        font-size: 28px;
+        font-weight: 700;
+      }
+      .first-splash p {
+        margin: 0;
+        font-size: 16px;
+        line-height: 1.6;
+      }
+      .first-splash .spinner {
+        width: 32px;
+        height: 32px;
+        border: 3px solid rgba(255, 255, 255, 0.35);
+        border-top-color: #ffffff;
+        border-radius: 50%;
+        animation: first-splash-turn 0.9s linear infinite;
+      }
+      @keyframes first-splash-turn {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .first-splash .spinner {
+          animation: none;
+        }
+      }
+    </style>
   </head>
 
   <body>
@@ -69,6 +121,15 @@
       <p lang="hi">यह ऐप चलाने के लिए JavaScript चालू करना होगा।</p>
     </noscript>
     <!-- The root element for your Expo app. -->
-    <div id="root"></div>
+    <div id="root">
+      <!-- Shown until the app's script has loaded; React replaces it (P4-02). -->
+      <div class="first-splash" role="progressbar" aria-busy="true" aria-label="Loading">
+        <img src="/icon-192.png" alt="" />
+        <h1>Mridanga Seva</h1>
+        <p><span lang="te">మృదంగ సేవ</span> · <span lang="hi">मृदंग सेवा</span></p>
+        <div class="spinner"></div>
+        <p>Loading… · <span lang="te">లోడ్ అవుతోంది…</span> · <span lang="hi">लोड हो रहा है…</span></p>
+      </div>
+    </div>
   </body>
 </html>

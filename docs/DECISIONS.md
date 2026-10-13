@@ -5267,3 +5267,56 @@ only values that are record ids (UUIDs), at most 300. Nothing else of any query 
 **Why.** A coordinator printing one child's card from the phone must not have to find the child again.
 
 **Consequences.** A remembered push target still keeps no query.
+## 313. Attendance by name answers at once; long people lists are drawn 50 at a time — 13 Oct 2026
+
+**Context.** Audit phase 4 P5-04: a tap on a name on Mark attendance waited for the check-in and then for a full
+reload of today's list, and every other name was locked meanwhile; on weak data each check-in took seconds.
+P5-01: an announcement to everyone opened with ~600 "not seen yet" rows drawn at once; the Students tab drew the
+whole class (D9-08).
+
+**Decision (JS).** The tap's answer changes "here now" on the screen at once (`withMarked`,
+data/attendance.ts: a check-in adds the student and counts a visit, a check-out takes them off), the list loads
+again behind it (an older load answering late is dropped), and other names stay tappable (mark_visit changes
+nothing when the student already is in that state). The seen / not-seen lists of an announcement and the
+Students tab draw 50 rows, with "Show more (n left)"; the Students tab starts again at 50 when a filter or the
+search changes.
+
+**Why.** The door must keep moving; low-end phones stall on hundreds of rows.
+
+**Consequences.** For a moment the screen shows the answer before the server's list; the reload then
+corrects it if anything differs. Measured in the browser on TEST (answer faked, reload held 6 s): the button
+became Check out after ~0.1 s.
+
+## 314. TalkBack hears confirm questions and search counts — 13 Oct 2026
+
+**Context.** Audit phase 4 P2-01: confirm questions (desk "Accept <name>?", delete an announcement, check out
+everyone and 9 more) were info notices, which are not announced; four confirms only changed a button's words.
+P2-03: count lines used role="status", a live region on the web only; the attendance name search said
+nothing about how many were found.
+
+**Decision (JS).** The 12 confirm notices are `announced`; the four label-swap confirms call `announce()` with
+the new button words. A `StatusText` (accessibilityLiveRegion polite + role status) carries the count lines of
+Students, Database, Reports and the inbox, the attendance search ("n found", "No student found", "Showing the
+first n") and the desk's waiting-list search ("n found"). One new key, `common.foundCount` (en, te, hi).
+
+**Why.** Name search is the non-visual way to check in; a confirm nobody hears looks like a broken button.
+
+**Consequences.** Phone check with TalkBack only (the web reads role="status" already).
+
+## 315. Large text on the core screens; a splash while the web app loads — 13 Oct 2026
+
+**Context.** Audit phase 4 P3-01..P3-04 and P4-02: at large text a row's button squeezed the name to a few
+pixels; the "taking long" start screen could not scroll, so Try again fell off at 200 %; the home's large-text
+grid capped its names at 1.2x; tab names were one line ("Atten…" from ~115 %, Telugu earlier, a 320 dp phone
+even at 100 %). On the web the first visit showed a blank white page while ~0.8-1 MB of script loaded.
+
+**Decision.** (JS) From ~130 % text a list row puts its button under the name; the slow start screen scrolls
+and shows a smaller drum at large text; grid tiles let the name grow (up to three lines); tab names may take
+two lines (`components/tab-label.tsx`) and the bar grows for the second line from 115 %. (Web upload only)
+`app/public/index.html` holds a static saffron splash inside #root (name in en/te/hi, a CSS spinner that stands
+still for reduced motion, no script: the site policy allows none inline); React draws the app over it.
+
+**Why.** Many students use the phone's large text; slow data is common.
+
+**Consequences.** Large-text checks are phone-only (the web reports text size 100 %). The splash reaches users
+with the next web upload, not the OTA.

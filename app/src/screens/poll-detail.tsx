@@ -262,7 +262,7 @@ export function PollDetailScreen({ id, area }: { id: number; area: 'student' | '
       ) : null}
       {confirming ? (
         <>
-          <Notice tone="info" title={confirming === 'close' ? t('polls.closeTitle') : t('polls.deleteTitle')}>
+          <Notice tone="info" title={confirming === 'close' ? t('polls.closeTitle') : t('polls.deleteTitle')} announced>
             {confirming === 'close' ? t('polls.closeBody') : t('polls.deleteBody')}
           </Notice>
           <Button

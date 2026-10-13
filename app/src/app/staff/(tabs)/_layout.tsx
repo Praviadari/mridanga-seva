@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next';
 import { useWindowDimensions } from 'react-native';
 
 import { tabIcon } from '@/components/icon';
+import { tabLabel } from '@/components/tab-label';
 import { documentTitleLayout } from '@/lib/document-title';
 import { tabsScreenOptions, useTheme } from '@/theme/use-theme';
 
@@ -30,29 +31,29 @@ export default function StaffTabsLayout() {
       {/* The home has its own saffron header band instead of a header bar. */}
       <Tabs.Screen
         name="index"
-        options={{ title: t('tabs.home'), headerShown: false, tabBarIcon: tabIcon('home') }}
+        options={{ title: t('tabs.home'), tabBarLabel: tabLabel(t('tabs.home')), headerShown: false, tabBarIcon: tabIcon('home') }}
       />
       <Tabs.Screen
         name="attendance"
-        options={{ title: t('attendance.title'), tabBarLabel: t('tabs.attendance'), tabBarIcon: tabIcon('attendance') }}
+        options={{ title: t('attendance.title'), tabBarLabel: tabLabel(t('tabs.attendance')), tabBarIcon: tabIcon('attendance') }}
       />
       <Tabs.Screen
         name="students"
-        options={{ title: t('staff.students'), tabBarLabel: t('tabs.students'), tabBarIcon: tabIcon('students') }}
+        options={{ title: t('staff.students'), tabBarLabel: tabLabel(t('tabs.students')), tabBarIcon: tabIcon('students') }}
       />
       <Tabs.Screen
         name="follow-up"
-        options={{ title: t('staff.followUp'), tabBarLabel: t('tabs.calls'), tabBarIcon: tabIcon('calls') }}
+        options={{ title: t('staff.followUp'), tabBarLabel: tabLabel(t('tabs.calls')), tabBarIcon: tabIcon('calls') }}
       />
       <Tabs.Screen
         name="announcements"
-        options={{ title: t('announcements.title'), tabBarLabel: t('tabs.news'), tabBarIcon: tabIcon('news') }}
+        options={{ title: t('announcements.title'), tabBarLabel: tabLabel(t('tabs.news')), tabBarIcon: tabIcon('news') }}
       />
       <Tabs.Screen
         name="ishtagoshti"
         options={{
           title: t('ishtagoshti.title'),
-          tabBarLabel: t('tabs.ishtagoshti'),
+          tabBarLabel: tabLabel(t('tabs.ishtagoshti')),
           tabBarIcon: tabIcon('ishtagoshti'),
           // null hides the button only; /staff/ishtagoshti still opens, with the tabs under it.
           href: width >= SIDEBAR_FROM ? undefined : null,

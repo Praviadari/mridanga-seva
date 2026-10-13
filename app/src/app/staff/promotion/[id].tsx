@@ -360,7 +360,7 @@ function NominationScreenContent() {
             />
           ) : null}
           {confirm === 'promote' ? (
-            <Notice tone="info" title={t('promotion.decide.confirmTitle', { name: item.fullName, level: levelName(t, item.toLevel) })}>
+            <Notice tone="info" title={t('promotion.decide.confirmTitle', { name: item.fullName, level: levelName(t, item.toLevel) })} announced>
               {t('promotion.decide.confirmBody')}
             </Notice>
           ) : null}
@@ -387,7 +387,7 @@ function NominationScreenContent() {
       {canWithdraw ? (
         <>
           {confirm === 'withdraw' ? (
-            <Notice tone="info" title={t('promotion.withdraw.ask')}>
+            <Notice tone="info" title={t('promotion.withdraw.ask')} announced>
               {t('promotion.withdraw.note')}
             </Notice>
           ) : null}

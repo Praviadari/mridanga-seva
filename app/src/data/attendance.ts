@@ -182,6 +182,40 @@ export type OpenVisit = {
   distanceM: number | null;
 };
 
+/**
+ * Today's list with one tap's answer applied at once (audit P5-04, docs/DECISIONS.md #313): a check-in adds
+ * the student to "here now" and counts a visit, a check-out (or "already out") takes them off. Mark
+ * attendance shows this while the full list loads again behind it, so the next name can be tapped at once.
+ * "Already in" with the student missing from the list waits for that reload (the check-in time is not known).
+ * @param today the list on screen.
+ * @param student the student tapped.
+ * @param result the database's answer.
+ */
+export function withMarked(
+  today: AttendanceToday,
+  student: { id: string; fullName: string; rollNo: string; levelId: number },
+  result: VisitResult,
+): AttendanceToday {
+  const others = today.hereNow.filter((visit) => visit.studentId !== student.id);
+  if (result.action === 'in') {
+    if (others.length !== today.hereNow.length) return today;
+    const visit: OpenVisit = {
+      // Not known until the reload; no screen uses it from this list.
+      visitId: -1,
+      checkIn: result.at,
+      studentId: student.id,
+      fullName: student.fullName,
+      rollNo: student.rollNo,
+      levelId: student.levelId,
+      locationCheck: result.locationCheck,
+      distanceM: result.distanceM,
+    };
+    return { ...today, hereNow: [...today.hereNow, visit], visitsToday: today.visitsToday + 1 };
+  }
+  if (result.action === 'out' || result.action === 'already_out') return { ...today, hereNow: others };
+  return today;
+}
+
 /** What the attendance screens show at the top: who is here, and how many visits today. */
 export type AttendanceToday = {
   /** Open visits, the earliest check-in first. */

@@ -16,6 +16,7 @@ import { EmptyState } from '@/components/empty-state';
 import { LoadingCards } from '@/components/loading-cards';
 import { Notice as NoticeBox } from '@/components/notice';
 import { Screen } from '@/components/screen';
+import { StatusText } from '@/components/status-text';
 import {
   fetchInbox,
   markNoticesRead,
@@ -91,9 +92,9 @@ export function NotificationsScreen() {
       {loaded === undefined ? <LoadingCards /> : null}
       {loaded ? (
         <>
-          <AppText variant="label" role="status">
+          <StatusText variant="label">
             {unread > 0 ? t('inbox.unreadCount', { count: unread }) : t('inbox.allRead')}
-          </AppText>
+          </StatusText>
           {unread > 0 ? (
             <Button variant="secondary" icon="check" label={t('inbox.markAll')} loading={busy} onPress={() => void markAll()} />
           ) : null}

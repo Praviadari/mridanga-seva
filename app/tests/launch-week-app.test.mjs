@@ -351,3 +351,105 @@ test('every new text is worded in en, te and hi', () => {
   ];
   for (const key of keys) for (const lang of ['en', 'te', 'hi']) assert.ok(text(lang, key), `${lang}: ${key}`);
 });
+// ---------------------------------------------------------------- audit phase 4 B4-1 / B4-2 (#313-#315)
+
+const { withMarked } = await import('../src/data/attendance.ts');
+
+test('P5-04: a tap\'s answer changes "here now" at once, without waiting for the reload', () => {
+  const today = {
+    hereNow: [{ visitId: 1, checkIn: '2026-10-20T12:00:00Z', studentId: 'b', fullName: 'B', rollNo: 'R2', levelId: 1, locationCheck: 'inside', distanceM: 5 }],
+    visitsToday: 3,
+    readAt: 0,
+  };
+  const asha = { id: 'a', fullName: 'Asha', rollNo: 'R1', levelId: 2 };
+  const inResult = { action: 'in', fullName: 'Asha', rollNo: 'R1', at: '2026-10-20T12:30:00Z', locationCheck: 'inside', distanceM: 3 };
+  const afterIn = withMarked(today, asha, inResult);
+  assert.deepEqual(afterIn.hereNow.map((v) => v.studentId), ['b', 'a']);
+  assert.equal(afterIn.visitsToday, 4);
+  assert.equal(afterIn.hereNow[1].checkIn, inResult.at);
+  assert.equal(withMarked(afterIn, asha, inResult), afterIn, 'a second "in" for someone listed changes nothing');
+  const afterOut = withMarked(afterIn, asha, { action: 'out', fullName: 'Asha', rollNo: 'R1', at: 'x', minutes: 30 });
+  assert.deepEqual(afterOut.hereNow.map((v) => v.studentId), ['b']);
+  assert.equal(afterOut.visitsToday, 4, 'a check-out is still a visit today');
+  assert.deepEqual(withMarked(today, { ...asha, id: 'b' }, { action: 'already_out', fullName: 'B', rollNo: 'R2' }).hereNow, []);
+  assert.equal(withMarked(today, asha, { action: 'already_in', fullName: 'Asha', rollNo: 'R1' }), today, 'unknown time: wait for the reload');
+  const screen = src('app/staff/(tabs)/attendance.tsx');
+  assert.ok(screen.includes('withMarked(current, student, result)'));
+  assert.ok(!screen.includes('await loadToday();\n    setMarking'), 'the tap no longer waits for the reload');
+  assert.ok(screen.includes('disabled: today === undefined || markingIds.has(student.id)'), 'other names stay tappable');
+});
+
+test('P2-01: every confirm question is announced; label-swap confirms call announce()', () => {
+  const sites = {
+    'app/staff/register.tsx': "register.acceptTitle",
+    'app/staff/announcements/[id].tsx': "announcements.detail.deleteTitle",
+    'app/staff/here-now.tsx': "hereNow.confirmTitle",
+    'app/staff/syllabus/[id].tsx': "syllabus.untickTitle",
+    'app/staff/database/import.tsx': "importStudents.askTitle",
+    'app/staff/coordinators/[id].tsx': "coordinators.linkAsk",
+    'app/staff/levels/item/[id].tsx': "syllabusEditor.retireAsk",
+    'screens/event-detail.tsx': "events.detail.deleteTitle",
+    'screens/poll-detail.tsx': "polls.deleteTitle",
+  };
+  for (const [file, key] of Object.entries(sites)) {
+    const line = src(file).split('\n').find((l) => l.includes(key) && l.includes('<Notice'));
+    assert.ok(line && /announced>/.test(line), `${file}: ${key}`);
+  }
+  assert.equal((src('app/staff/promotion/[id].tsx').match(/<Notice tone="info" title=\{t\('promotion\.(decide\.confirmTitle|withdraw\.ask)'.*announced>/g) ?? []).length, 2);
+  for (const [file, key] of [
+    ['app/student/practice-log.tsx', 'practiceLog.confirmDelete'],
+    ['app/staff/assessments/[id].tsx', 'assessments.detail.deleteYes'],
+    ['app/staff/announcements/[id].tsx', 'announcements.replies.deleteYes'],
+    ['components/record-myself.tsx', 'recordMyself.deleteSure'],
+  ]) {
+    assert.ok(src(file).includes(`announce(t('${key}'))`), file);
+  }
+});
+
+test('P2-03: count lines are live regions on Android too, and searches say how many were found', () => {
+  assert.match(src('components/status-text.tsx'), /accessibilityLiveRegion="polite"/);
+  for (const file of ['app/staff/(tabs)/students.tsx', 'app/staff/database/index.tsx', 'app/staff/reports.tsx', 'screens/notifications.tsx']) {
+    assert.ok(!src(file).includes('role="status"'), `${file} uses StatusText`);
+    assert.ok(src(file).includes('<StatusText'), file);
+  }
+  assert.ok(src('app/staff/(tabs)/attendance.tsx').includes("t('common.foundCount', { count: shown.length })"));
+  assert.ok(src('app/staff/register.tsx').includes("t('common.foundCount', { count: waitingMatches.length })"));
+  const locales = Object.fromEntries(['en', 'te', 'hi'].map((l) => [l, JSON.parse(src(`i18n/locales/${l}.json`))]));
+  for (const lang of ['en', 'te', 'hi']) {
+    assert.ok(locales[lang].common.foundCount_one && locales[lang].common.foundCount_other.includes('{{count}}'), lang);
+  }
+});
+
+test('P3-01..04: large text — row buttons wrap, slow splash scrolls, grid names grow, tab names take two lines', () => {
+  const row = src('components/list-row.tsx');
+  assert.ok(row.includes('large && action ? styles.wrap : null') && row.includes("flexBasis: '100%'"));
+  const splash = src('components/brand.tsx');
+  assert.ok(splash.includes('<ScrollView') && splash.includes('contentContainerStyle={styles.slowSplash}'));
+  assert.ok(splash.includes('flexGrow: 1'));
+  const ring = src('components/module-ring.tsx');
+  assert.ok(ring.includes('maxFontSizeMultiplier={inGrid ? undefined : 1.2}') && ring.includes('module={module} inGrid'));
+  assert.match(src('components/tab-label.tsx'), /numberOfLines=\{2\}/);
+  for (const file of ['app/staff/(tabs)/_layout.tsx', 'app/student/(tabs)/_layout.tsx']) {
+    const layout = src(file);
+    assert.ok(!/tabBarLabel: t\(/.test(layout), `${file}: every label is a tabLabel`);
+    assert.ok(layout.includes("tabBarLabel: tabLabel(t('tabs.home'))"), file);
+  }
+  assert.ok(src('theme/use-theme.ts').includes('fontScale >= 1.15 ? Math.round(18 * fontScale) : 0'));
+});
+
+test('P5-01: long people lists are drawn 50 at a time', () => {
+  const post = src('app/staff/announcements/[id].tsx');
+  assert.ok(post.includes('notSeen.slice(0, notSeenShown)') && post.includes('seen.slice(0, seenShown)'));
+  assert.ok(post.includes('const PEOPLE_PAGE = 50;'));
+  const list = src('app/staff/(tabs)/students.tsx');
+  assert.ok(list.includes('shown.slice(0, limit)') && list.includes('const STUDENT_PAGE = 50;'));
+});
+
+test('P4-02: the web page shows a splash in #root before the script loads, without any inline script', () => {
+  const html = readFileSync(new URL('../public/index.html', import.meta.url), 'utf8');
+  const root = html.slice(html.indexOf('<div id="root">'));
+  assert.ok(root.includes('class="first-splash"') && root.includes('Mridanga Seva'));
+  assert.ok(root.includes('మృదంగ సేవ') && root.includes('मृदंग सेवा'));
+  assert.ok(html.includes('prefers-reduced-motion: reduce'));
+  assert.ok(!/<script/i.test(html), 'the site policy allows no inline script');
+});

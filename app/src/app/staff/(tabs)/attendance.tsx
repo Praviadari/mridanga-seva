@@ -10,6 +10,8 @@
 // From the moment a code is read until the answer (location at most 8 s, the call at most 15 s), the screen
 // says "Checking…" and offers no "Scan the next student", so no next code is read and lost (audit R2-04 /
 // R5-03, docs/DECISIONS.md #293).
+// A tap on a name changes "here now" at once from the answer and loads the list again behind it; other names
+// can be tapped meanwhile (audit P5-04, #313).
 
 import { router, Stack, useFocusEffect } from 'expo-router';
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
@@ -23,6 +25,7 @@ import { Notice } from '@/components/notice';
 import { QrScanner } from '@/components/qr-scanner';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
+import { StatusText } from '@/components/status-text';
 import { TextField } from '@/components/text-field';
 import { VisitResultNotice } from '@/components/visit-result-notice';
 import {
@@ -32,6 +35,7 @@ import {
   qrTokenFromScan,
   scanStudentQr,
   searchStudents,
+  withMarked,
   type AttendanceToday,
   type FoundStudent,
   type MarkOutcome,
@@ -41,6 +45,7 @@ import { assetTokenFromScan } from '@/lib/asset-link';
 import { locationForCheckIn, locationRefused, warmUpLocation } from '@/lib/attendance-location';
 import { localDate, formatDate, localTime, todayLocal } from '@/lib/dates';
 import { scanFeedback } from '@/lib/haptics';
+import { useLatestLoad } from '@/lib/latest-load';
 import { useTheme } from '@/theme/use-theme';
 
 /**
@@ -79,13 +84,18 @@ export default function MarkAttendanceScreen() {
   const [query, setQuery] = useState('');
   // undefined = nothing searched yet, null = the search failed.
   const [found, setFound] = useState<SearchResult | null | undefined>(undefined);
-  const [markingId, setMarkingId] = useState<string | null>(null);
+  // Students whose tap is waiting for its answer; other names stay tappable (P5-04).
+  const [markingIds, setMarkingIds] = useState<ReadonlySet<string>>(new Set());
   // True when location was refused for good on this phone: check-ins are flagged, say how to allow it.
   const [noLocation, setNoLocation] = useState(false);
 
+  const beginLoad = useLatestLoad();
   const loadToday = useCallback(async () => {
-    setToday(await fetchAttendanceToday());
-  }, []);
+    const isNewest = beginLoad();
+    const loaded = await fetchAttendanceToday();
+    // An older load answering after a newer one (or after a tap's change) is dropped (D6-19).
+    if (isNewest()) setToday(loaded);
+  }, [beginLoad]);
 
   // Reload whenever the screen comes back into view, e.g. after "Who is here now".
   useFocusEffect(
@@ -158,13 +168,23 @@ export default function MarkAttendanceScreen() {
   }
 
   async function onTap(student: FoundStudent, action: 'in' | 'out') {
-    setMarkingId(student.id);
+    setMarkingIds((current) => new Set(current).add(student.id));
     const marked = await markVisit(student.id, action, action === 'in' ? await locationForCheckIn() : undefined);
     setTappedId(student.id);
     setOutcome(marked);
-    // Keep the spinner until the list is fresh, so the button never shows the old meaning.
-    await loadToday();
-    setMarkingId(null);
+    // The answer changes the list at once, so the button shows its new meaning without waiting for the
+    // reload (mark_visit changes nothing when the student already is in that state, so a stale tap is safe).
+    const { result } = marked;
+    if (result) {
+      beginLoad(); // a reload already on its way would put the old list back
+      setToday((current) => (current ? withMarked(current, student, result) : current));
+    }
+    setMarkingIds((current) => {
+      const next = new Set(current);
+      next.delete(student.id);
+      return next;
+    });
+    void loadToday();
     void locationRefused().then(setNoLocation);
   }
 
@@ -273,8 +293,10 @@ export default function MarkAttendanceScreen() {
           returnKeyType="search"
         />
         {shown === null ? <Notice tone="error">{t('attendance.searchFailed')}</Notice> : null}
-        {shown?.length === 0 ? <AppText tone="muted">{t('attendance.noMatch')}</AppText> : null}
-        {result?.more ? <AppText tone="muted">{t('attendance.moreMatches', { number: result.students.length })}</AppText> : null}
+        {/* How many were found, spoken by TalkBack (P2-03, #314); "no student found" is a status line too. */}
+        {shown && shown.length > 0 && !result?.more ? <StatusText tone="muted">{t('common.foundCount', { count: shown.length })}</StatusText> : null}
+        {shown?.length === 0 ? <StatusText tone="muted">{t('attendance.noMatch')}</StatusText> : null}
+        {result?.more ? <StatusText tone="muted">{t('attendance.moreMatches', { number: result.students.length })}</StatusText> : null}
         {shown?.map((student) => {
           const since = hereSince.get(student.id);
           return (
@@ -292,11 +314,11 @@ export default function MarkAttendanceScreen() {
                 action={{
                   label: since ? t('attendance.checkOut') : t('attendance.checkIn'),
                   variant: since ? 'secondary' : 'primary',
-                  loading: markingId === student.id,
-                  // Wait while today's list loads, so the button's meaning (in / out) is known. If it
+                  loading: markingIds.has(student.id),
+                  // Wait while today's list first loads, so the button's meaning (in / out) is known. If it
                   // could not load, the button says Check in: the database answers "already in" when
-                  // they are, and the list is fetched again after every tap.
-                  disabled: today === undefined || (markingId !== null && markingId !== student.id),
+                  // they are, and the list is fetched again after every tap. Other names stay tappable.
+                  disabled: today === undefined || markingIds.has(student.id),
                   onPress: () => void onTap(student, since ? 'out' : 'in'),
                 }}
               />

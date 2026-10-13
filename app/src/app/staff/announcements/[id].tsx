@@ -36,9 +36,13 @@ import {
   type Reply,
   type StaffAnnouncementDetail,
 } from '@/data/announcements';
+import { announce } from '@/lib/announce';
 import { audienceName } from '@/i18n/labels';
 import { withMyReceipt } from '@/lib/announcement-receipt';
 import { formatDateTime } from '@/lib/dates';
+
+/** People drawn at a time in the seen / not-seen lists; "Show more" adds as many (P5-01). */
+const PEOPLE_PAGE = 50;
 
 /** The announcement, its seen list, and the author's actions. */
 function StaffAnnouncementScreenContent() {
@@ -50,6 +54,9 @@ function StaffAnnouncementScreenContent() {
   // undefined = loading, null = could not load, 'not_found' = deleted or never there.
   const [loaded, setLoaded] = useState<StaffAnnouncementDetail | 'not_found' | null | undefined>(undefined);
   const [showSeen, setShowSeen] = useState(false);
+  // Rows drawn of the "not seen yet" and "seen" lists: a post to everyone has hundreds (audit P5-01, #313).
+  const [notSeenShown, setNotSeenShown] = useState(PEOPLE_PAGE);
+  const [seenShown, setSeenShown] = useState(PEOPLE_PAGE);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -150,6 +157,8 @@ function StaffAnnouncementScreenContent() {
           onPress: () => {
             setReplyError(null);
             setConfirmingReply(r.id);
+            // The reply's buttons change in place; TalkBack does not read them by itself (P2-01, #314).
+            announce(t('announcements.replies.deleteYes'));
           },
         },
       ];
@@ -225,9 +234,16 @@ function StaffAnnouncementScreenContent() {
         {notSeen.length > 0 ? (
           <>
             <AppText variant="label">{t('announcements.detail.notSeenList', { number: notSeen.length })}</AppText>
-            {notSeen.map((m) => (
+            {notSeen.slice(0, notSeenShown).map((m) => (
               <ListRow key={m.profileId} title={m.fullName} details={personLine(m)} />
             ))}
+            {notSeen.length > notSeenShown ? (
+              <Button
+                variant="secondary"
+                label={t('database.showMore', { count: notSeen.length - notSeenShown })}
+                onPress={() => setNotSeenShown(notSeenShown + PEOPLE_PAGE)}
+              />
+            ) : null}
           </>
         ) : null}
 
@@ -241,7 +257,7 @@ function StaffAnnouncementScreenContent() {
         {showSeen && seen.length > 0 ? (
           <>
             <AppText variant="label">{t('announcements.detail.seenList', { number: seen.length })}</AppText>
-            {seen.map((m) => (
+            {seen.slice(0, seenShown).map((m) => (
               <ListRow
                 key={m.profileId}
                 title={m.fullName}
@@ -252,6 +268,13 @@ function StaffAnnouncementScreenContent() {
                 ]}
               />
             ))}
+            {seen.length > seenShown ? (
+              <Button
+                variant="secondary"
+                label={t('database.showMore', { count: seen.length - seenShown })}
+                onPress={() => setSeenShown(seenShown + PEOPLE_PAGE)}
+              />
+            ) : null}
           </>
         ) : null}
       </Section>
@@ -331,7 +354,7 @@ function StaffAnnouncementScreenContent() {
       ) : null}
       {confirmingDelete ? (
         <>
-          <Notice tone="info" title={t('announcements.detail.deleteTitle', { title: a.title })}>
+          <Notice tone="info" title={t('announcements.detail.deleteTitle', { title: a.title })} announced>
             {t('announcements.detail.deleteBody')}
           </Notice>
           <Button

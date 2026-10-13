@@ -22,6 +22,7 @@ import { Notice } from '@/components/notice';
 import { ProgressBar } from '@/components/progress-bar';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
+import { StatusText } from '@/components/status-text';
 import { StatGrid, StatTile } from '@/components/stat-tile';
 import { TextField } from '@/components/text-field';
 import {
@@ -168,9 +169,9 @@ export default function ReportsScreen() {
         {isGuru && staff.length > 0 ? (
           <ChoiceGroup chips label={t('reports.whose')} choices={mentorChoices} value={mentor} onChange={setMentor} />
         ) : null}
-        <AppText variant="small" tone="muted" role="status">
+        <StatusText variant="small" tone="muted">
           {t('reports.rangeLine', { from: formatDate(range.from), to: formatDate(range.to) })}
-        </AppText>
+        </StatusText>
       </Section>
 
       {error ? (

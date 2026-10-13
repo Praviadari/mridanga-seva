@@ -20,6 +20,7 @@ import { practiceTime, WeeklyPractice } from '@/components/practice-parts';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { TextField } from '@/components/text-field';
+import { announce } from '@/lib/announce';
 import { deletePractice, fetchMyPracticeLog, fetchTaals, logPractice, type PracticeLog } from '@/data/practice';
 import { formatDate, todayLocal } from '@/lib/dates';
 
@@ -78,6 +79,8 @@ export default function PracticeLogScreen() {
   const remove = async (id: number) => {
     if (confirming !== id) {
       setConfirming(id);
+      // Only the button's words change; TalkBack does not read them again by itself (P2-01, #314).
+      announce(t('practiceLog.confirmDelete'));
       return;
     }
     setConfirming(null);

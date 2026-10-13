@@ -19,6 +19,7 @@ import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
+import { StatusText } from '@/components/status-text';
 import { TextField } from '@/components/text-field';
 import {
   areasOf,
@@ -149,9 +150,9 @@ export default function StudentDatabaseScreen() {
       {loaded === undefined ? (
         <LoadingCards />
       ) : (
-        <AppText variant="label" role="status">
+        <StatusText variant="label">
           {t('students.count', { shown: shown.length, total: loaded.rows.length })}
-        </AppText>
+        </StatusText>
       )}
       {loaded && shown.length === 0 ? <EmptyState icon="search" title={t('students.empty')} /> : null}
 

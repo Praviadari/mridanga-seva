@@ -1,12 +1,13 @@
 // One row in a list of people, e.g. a student in the attendance search or in "Who is here now":
 // the name, a line or two of details, and optionally one button on the right. A row can also
 // open something when tapped, e.g. the student's profile from the student list; it then ends in
-// an arrow. A row about a person can start with their initials in a circle.
+// an arrow. A row about a person can start with their initials in a circle. With large text (about 130 % or more)
+// the button goes under the name instead of beside it, so the name keeps the row's width (audit P3-01, #315).
 
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { cardLook, spacing, useTheme } from '@/theme/use-theme';
+import { cardLook, spacing, useLargeText, useTheme } from '@/theme/use-theme';
 
 import { AppText } from './app-text';
 import { Button, type ButtonProps } from './button';
@@ -49,9 +50,12 @@ export type ListRowProps = {
 export function ListRow({ title, details = [], highlighted, action, onPress, leading, chips, warning }: ListRowProps) {
   const { colors } = useTheme();
   const { t } = useTranslation();
+  const large = useLargeText();
   const look = [
     cardLook(colors),
     highlighted ? { backgroundColor: colors.successSurface, borderColor: colors.success } : null,
+    // Room for the button on a line of its own (RowContent).
+    large && action ? styles.wrap : null,
   ];
   if (onPress) {
     return (
@@ -82,6 +86,8 @@ function RowContent({
   warning,
 }: Pick<ListRowProps, 'title' | 'details' | 'action' | 'leading' | 'chips' | 'warning'>) {
   const { colors } = useTheme();
+  const large = useLargeText();
+  const button = action ? <Button {...action} accessibilityLabel={action.accessibilityLabel ?? `${action.label}, ${title}`} /> : null;
   return (
     <>
       {leading === 'initials' ? <Initials name={title} /> : leading ? <IconBadge name={leading} size={40} /> : null}
@@ -102,7 +108,7 @@ function RowContent({
           </View>
         ) : null}
       </View>
-      {action ? <Button {...action} accessibilityLabel={action.accessibilityLabel ?? `${action.label}, ${title}`} /> : null}
+      {button && large ? <View style={styles.actionUnder}>{button}</View> : button}
     </>
   );
 }
@@ -145,6 +151,14 @@ const styles = StyleSheet.create({
   text: {
     flex: 1,
     gap: spacing.xs,
+  },
+  wrap: {
+    flexWrap: 'wrap',
+  },
+  // The whole width, so the button starts a new line under the name.
+  actionUnder: {
+    flexBasis: '100%',
+    alignItems: 'flex-start',
   },
   warning: {
     flexDirection: 'row',

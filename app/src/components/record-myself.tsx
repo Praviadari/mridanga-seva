@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next';
 import { Platform, StyleSheet, View } from 'react-native';
 
 import { useAuth } from '@/auth/auth-provider';
+import { announce } from '@/lib/announce';
 import { fetchMyAssessments, OPEN_STATUSES, type MyAssessmentItem } from '@/data/assessments';
 import { formatDateTime, formatDate } from '@/lib/dates';
 import {
@@ -219,7 +220,13 @@ function RecordingRow({
             <Button variant="link" label={t('syllabusEditor.cancel')} onPress={() => setAsking(false)} />
           </>
         ) : (
-          <Button variant="link" icon="delete" label={t('recordMyself.delete')} onPress={() => setAsking(true)} />
+          <Button variant="link" icon="delete" label={t('recordMyself.delete')}
+            onPress={() => {
+              setAsking(true);
+              // The question appears where the button was; TalkBack does not read it by itself (P2-01, #314).
+              announce(t('recordMyself.deleteSure'));
+            }}
+          />
         )}
       </View>
       {openWork === null ? <Notice tone="error">{t('common.networkError')}</Notice> : null}
