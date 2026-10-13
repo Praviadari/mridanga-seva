@@ -257,6 +257,47 @@ work cannot simply be deleted: the records say who registered, marked or called.
 Errors: `switch_off_first` (step 1), `not_staff` (a student: "Erasure request"; a subscriber leaves
 in the app), `not_yourself`, `reason_required`.
 
+## A coordinator's own student record
+
+"Coordinators are students too" (Praveen, 13 Oct 2026; [DECISIONS.md #316-#321](DECISIONS.md), migration 0061 after the
+launch). **Until 0061 runs:** each coordinator gets a student record at the desk **without a login** (Register a student,
+their own name and date of birth; email optional). Colleagues check them in by name or their printed QR card and tick their
+syllabus; nobody checks themselves in.
+
+**After 0061 (LIVE: its own run, the TEST-run pack in NOTES.md "13-10-2026 — Coordinators are students too"):** the Guru links
+each of those records to the coordinator's login, one by one:
+
+1. Guru: Running the class → Coordinators → the coordinator → **Own student record** → type 2+ letters of the name or the roll
+   number → **Link** on the right record → read the question → **Link as own record**.
+2. The coordinator pulls down on their home: a **Me** circle comes first (My QR, My progress, My attendance, Practice). Their
+   role and everything else stay as they were.
+3. A wrong record: the same section → **Take the login off this record** (the record keeps its visits and ticks; only Me goes),
+   then link the right one.
+
+**The Guru's own record** is linked in the SQL editor (the app refuses the Guru's own login, `own_record`):
+
+```sql
+select id, full_name from profiles where role = 'guru' and active;
+select id, roll_no, full_name from students where profile_id is null and full_name ilike '%<part of the name>%';
+select link_staff_record('<guru profile id>', '<record id>');
+select s.roll_no, s.full_name, p.role from students s join profiles p on p.id = s.profile_id where s.profile_id = '<guru profile id>';
+```
+
+The last line shows one row with role `guru`. Errors: `profile_not_staff` (not an active coordinator or Guru),
+`staff_has_record` (already linked: take it off first), `student_already_linked` (the record has a login),
+`student_withdrawn`.
+
+**Rules the database keeps** (error `own_record`, one message in the app): nobody checks themselves in or out (name, QR,
+Mark attendance, a time edit), ticks their own syllabus, nominates, answers or decides their own promotion, changes their own
+level or mentor, logs a call to themselves. "Check out everyone" also closes one's own visit. The door tablet checks a
+coordinator in like any student. Nobody is their own mentor (`own_mentor`).
+
+**A student who becomes a coordinator:** on their student page the Guru takes the login off the record (it waits for a role),
+makes it a coordinator on Coordinators (typing the name), then links the record as their own (step 1).
+
+**Withdrawal or erasure of a coordinator's own record:** refused while the login is on it (`staff_login_linked`): take the
+login off first (step 3), then "Consent withdrawal" / "Erasure request" as for any record. A coordinator who leaves for good
+("Staff who leave"): the record stays without a login.
 ## Requests from parents
 
 A parent (for a child) or an adult student may ask what we keep about them, have it corrected or

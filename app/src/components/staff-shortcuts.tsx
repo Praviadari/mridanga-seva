@@ -11,6 +11,9 @@
 // polls (C16, C17), My reports (C21) for a coordinator or Running the class (G2, G3, G8-G13,
 // staff/running-the-class.tsx) for the Guru. My profile (A3: language, Sign out, version) is the
 // person button beside the bell in the header.
+// Me (0061, docs/DECISIONS.md #316, #319) comes first on the ring when the Guru has linked the person's login to their
+// own student record: My QR, My progress, My attendance and Practice as a student sees them (staff/me). Hidden
+// otherwise. The ring then holds nine (module-ring.tsx draws nine smaller).
 // Rows: Syllabus and lessons (G4, G5), Groups, Practice tools (S5), Ishtagoshti (I1; on a phone the
 // Slokas tab does not fit the staff bottom bar), Instruments (C19), Duty roster (C20), Material
 // suggestions (C18) and the Class fund (#80).
@@ -27,12 +30,15 @@ export type StaffModulesProps = {
   callsDue: number;
   /** Feedback asked of me (coordinator), or nominations to decide (Guru). */
   promotionsWaiting: number;
+  /** The login has its own student record (0061): show Me. */
+  me?: boolean;
 };
 
 /** The circles of a staff home. */
-export function StaffModules({ guru, callsDue, promotionsWaiting }: StaffModulesProps) {
+export function StaffModules({ guru, callsDue, promotionsWaiting, me = false }: StaffModulesProps) {
   const { t } = useTranslation();
   const ring: Module[] = [
+    ...(me ? [{ key: 'me', icon: 'person', tone: 'orange', label: t('me.title'), onPress: () => router.push('/staff/me') } satisfies Module] : []),
     { key: 'overview', icon: 'status', tone: 'blue', label: t('home.modules.overview'), onPress: () => router.push('/staff/overview') },
     {
       key: 'calls',

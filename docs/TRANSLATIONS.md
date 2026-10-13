@@ -303,3 +303,10 @@ The privacy texts of 0034 (`signUp.privacyNotice`, `signUp.under18`, `register.p
   are drafts. Words to check: "apostrophe" అపాస్ట్రఫీ / अपॉस्ट्रॉफ़ी and "hyphen" హైఫన్ / हाइफ़न (maybe show only the signs),
   "Tap" నొక్కండి / दबाएँ. Added the same day: `signUp.choicesNeeded`, `signUp.noticeRead`, `signUp.noticeRequired`,
   `importErrors.name_digits`, `importErrors.name_signs` (drafts); "privacy notice" follows `signUp.privacyNotice` (గోప్యతా ప్రకటన / गोपनीयता सूचना).
+- **Coordinators are students too** (branch `staff-own-record`, migration 0061, [DECISIONS.md #316-#321](DECISIONS.md), 13 Oct 2026):
+  new lines, drafts in Telugu and Hindi: `me.*` (the Me circle and its page), `common.ownRecord`, `common.ownMentor`,
+  `common.staffLoginLinked`, `coordinators.own*` (G2's "Own student record"), `coordinators.errors.profile_not_staff`,
+  `staff_has_record`, `profile.ownTitle`, `ownBody`, `staffLogin` (C8) and `studentTools.unlinkStaffBody`,
+  `unlinkedStaff`. Words to check first: "Me" as నేను / मैं (a one-word circle label; maybe నా రికార్డు / मेरा रिकॉर्ड
+  reads better), "own record" స్వంత రికార్డు / अपना रिकॉर्ड, "colleague" సహచరులు / सहकर्मी, "staff member" సిబ్బంది సభ్యుడు /
+  स्टाफ़ सदस्य.

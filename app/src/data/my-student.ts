@@ -80,6 +80,18 @@ export async function keepMyCardSaved(profileId: string): Promise<void> {
 }
 
 /**
+ * Whether a staff login has a student record of its own (migration 0061, docs/DECISIONS.md #316, #319): the staff
+ * home shows Me then. Asks the server each time the home comes into view (the Guru may link the record while the
+ * app runs) and saves the My QR card on the phone on the way (fetchMyCard). Without an answer (no internet) the
+ * card saved on this phone decides, so Me and My QR stay at the door without signal.
+ * @param profileId the signed-in login's id.
+ */
+export async function hasOwnRecord(profileId: string): Promise<boolean> {
+  if (!profileId) return false;
+  return (await fetchMyCard(profileId)).state === 'ok';
+}
+
+/**
  * Deletes the card saved on this device. Called on sign-out, because a family may share one
  * phone and the next person must not find this student's code.
  */

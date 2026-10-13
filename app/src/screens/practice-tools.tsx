@@ -7,7 +7,7 @@
 //   two-head view V1 (components/two-head-view.tsx) lit in time with the sound.
 // - Record myself (slice 4, components/record-myself.tsx): record one's own playing with the
 //   metronome or taal started from its first beat, keep it on the phone, play it back beside the sound.
-// - Practice timer (students only): starts with the first sound or by hand, logs itself on Stop when
+// - Practice timer (students, and Me > Practice of a staff member's own record, 0061 #319): starts with the first sound or by hand, logs itself on Stop when
 //   it ran at least a minute (S6; lib/practice-timer.ts, data/practice.ts).
 // Sound: lib/practice-audio(.web).ts; timing is kept by the audio clock, not by JavaScript timers.
 // The Guru sees "Edit taals" (staff/taals). The sound stops when the screen is left.
@@ -48,14 +48,18 @@ import { radius, spacing, useTheme } from '@/theme/use-theme';
 type Mode = 'metronome' | 'taal';
 
 /** Props for PracticeTools. */
-export type PracticeToolsProps = { area: 'student' | 'staff' };
+export type PracticeToolsProps = {
+  /** student: S5 of a student; staff: the tools only; me: Me > Practice, a staff member's own record (0061, #319). */
+  area: 'student' | 'staff' | 'me';
+};
 
 /** The practice tools screen. */
 export function PracticeTools({ area }: PracticeToolsProps) {
   const { t } = useTranslation();
   const { profile } = useAuth();
   const profileId = profile?.id ?? '';
-  const isStudent = area === 'student' && profile?.role === 'student';
+  // Logs practice on the person's own record: a student's, or a staff member's own (log_practice, 0061 #317).
+  const isStudent = (area === 'student' && profile?.role === 'student') || area === 'me';
   const isGuru = profile?.role === 'guru';
 
   const [player] = useState(createPracticePlayer);
@@ -301,7 +305,7 @@ export function PracticeTools({ area }: PracticeToolsProps) {
       />
 
       {isStudent ? (
-        <Button variant="link" icon="time" label={t('practiceLog.open')} onPress={() => router.push('/student/practice-log')} />
+        <Button variant="link" icon="time" label={t('practiceLog.open')} onPress={() => router.push(area === 'me' ? '/staff/me/practice-log' : '/student/practice-log')} />
       ) : null}
       {isGuru ? <Button variant="secondary" icon="edit" label={t('taals.edit')} onPress={() => router.push('/staff/taals')} /> : null}
     </Screen>

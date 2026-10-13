@@ -10,11 +10,15 @@
 // At the end: print the student's QR card, or (the Guru) replace a lost one (0045, P3-1).
 // Under the details, for the Guru: choose the mentor, set the level and joining date, take a wrong login off
 // (components/guru-student-tools.tsx, docs/DECISIONS.md #302).
+// A staff member's own record (0061, docs/DECISIONS.md #316, #318): on their own page a note says a colleague checks
+// them in, ticks and nominates them, and those buttons are not shown (the database refuses them anyway, own_record);
+// the app-login line names the colleague whose own record it is.
 
 import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Fragment, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { useAuth } from '@/auth/auth-provider';
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { DetailGrid } from '@/components/detail-grid';
@@ -54,6 +58,7 @@ type Loaded = { profile: StudentProfile; staff: StaffMember[]; staffNames: Map<s
 function StudentProfileScreenContent() {
   const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { profile: signedIn } = useAuth();
   // undefined = loading, null = could not load, 'not_found' = no such student.
   const [loaded, setLoaded] = useState<Loaded | 'not_found' | null | undefined>(undefined);
   const [marking, setMarking] = useState(false);
@@ -101,6 +106,9 @@ function StudentProfileScreenContent() {
   const nameOf = (profileId: string | null) =>
     (profileId && staffNames.get(profileId)) || t('profile.unknownPerson');
   const today = todayLocal();
+  // The signed-in person's own record (0061): a colleague marks it, not they.
+  const ownRecord = student.loginId !== null && student.loginId === signedIn?.id;
+  const staffLoginName = student.loginId ? staffNames.get(student.loginId) : undefined;
 
   async function toggleAttendance() {
     setMarking(true);
@@ -127,18 +135,26 @@ function StudentProfileScreenContent() {
       ) : null}
       <AppText tone={student.hereNow ? 'success' : 'default'}>{lastVisitText(t, student)}</AppText>
 
-      <Button
-        icon="calls"
-        label={t('profile.logCall')}
-        onPress={() => router.push({ pathname: '/staff/call/[id]', params: { id: student.id, from: 'profile' } })}
-      />
-      <Button
-        variant="secondary"
-        icon="attendance"
-        label={student.hereNow ? t('attendance.checkOut') : t('attendance.checkIn')}
-        loading={marking}
-        onPress={() => void toggleAttendance()}
-      />
+      {ownRecord ? (
+        <Notice tone="info" title={t('profile.ownTitle')}>
+          {t('profile.ownBody')}
+        </Notice>
+      ) : (
+        <>
+          <Button
+            icon="calls"
+            label={t('profile.logCall')}
+            onPress={() => router.push({ pathname: '/staff/call/[id]', params: { id: student.id, from: 'profile' } })}
+          />
+          <Button
+            variant="secondary"
+            icon="attendance"
+            label={student.hereNow ? t('attendance.checkOut') : t('attendance.checkIn')}
+            loading={marking}
+            onPress={() => void toggleAttendance()}
+          />
+        </>
+      )}
       {markOutcome?.result ? <VisitResultNotice result={markOutcome.result} /> : null}
       {markOutcome?.errorKey ? <Notice tone="error">{t(markOutcome.errorKey)}</Notice> : null}
 
@@ -159,7 +175,14 @@ function StudentProfileScreenContent() {
               value: [student.area, student.pincode].filter(Boolean).join(' · ') || t('profile.notGiven'),
             },
             { label: t('register.mentor'), value: student.mentorId ? nameOf(student.mentorId) : t('register.noMentor') },
-            { label: t('profile.appLogin'), value: student.hasLogin ? t('profile.yes') : t('profile.no') },
+            {
+              label: t('profile.appLogin'),
+              value: staffLoginName
+                ? t('profile.staffLogin', { name: staffLoginName })
+                : student.hasLogin
+                  ? t('profile.yes')
+                  : t('profile.no'),
+            },
           ]}
         />
       </Section>
@@ -282,12 +305,14 @@ function StudentProfileScreenContent() {
             {item.remark ? ` · ${item.remark}` : ''}
           </AppText>
         ))}
-        <Button
-          variant="secondary"
-          icon="check"
-          label={t('profile.tickSyllabus')}
-          onPress={() => router.push({ pathname: '/staff/syllabus/[id]', params: { id: student.id } })}
-        />
+        {ownRecord ? null : (
+          <Button
+            variant="secondary"
+            icon="check"
+            label={t('profile.tickSyllabus')}
+            onPress={() => router.push({ pathname: '/staff/syllabus/[id]', params: { id: student.id } })}
+          />
+        )}
       </Section>
 
       <Section icon="level" title={t('profile.levelSection')}>

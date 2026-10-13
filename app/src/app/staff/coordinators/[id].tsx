@@ -9,9 +9,12 @@
 // docs/DECISIONS.md #57).
 // Staff also get a gender (the Guru sets it; students are matched with a coordinator of the same gender)
 // and show their referral code (migration 0036, docs/DECISIONS.md #165).
+// Coordinators are students too (0061, docs/DECISIONS.md #316): a coordinator's own student record is linked to
+// their login here (the role stays; their app then shows Me), or taken off again. The Guru's own record is linked
+// in the SQL editor (docs/OPERATIONS.md), so their own page only shows it.
 // Data: src/data/coordinators.ts; rules: migration 0014 (docs/DECISIONS.md #45).
 
-import { Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -32,9 +35,11 @@ import { Section } from '@/components/section';
 import { TextField } from '@/components/text-field';
 import {
   fetchPerson,
+  linkOwnRecord,
   linkToStudent,
   makeCoordinator,
   moveMentees,
+  ownRecordOf,
   saveDutyHours,
   setActive,
   setGender,
@@ -45,6 +50,7 @@ import {
   type Person,
 } from '@/data/coordinators';
 import { fetchAllOptions, optionLabel, type OptionRow } from '@/data/options';
+import { unlinkLogin } from '@/data/student-admin';
 import { levelName, statusName } from '@/i18n/labels';
 import { formatDateTime } from '@/lib/dates';
 import { nameTypedRight } from '@/lib/guru-tools';
@@ -52,7 +58,7 @@ import { searchFold } from '@/lib/search-text';
 
 type Loaded = { person: Person; board: CoordinatorsBoard };
 /** What the page is asking to confirm. */
-type Asking = 'coordinator' | 'off' | 'on' | { link: MenteeRow } | null;
+type Asking = 'coordinator' | 'off' | 'on' | 'unlinkOwn' | { link: MenteeRow } | { own: MenteeRow } | null;
 
 /** One person's page. */
 function PersonScreenContent() {
@@ -127,6 +133,8 @@ function PersonScreenContent() {
   const isStaff = person.role === 'guru' || person.role === 'coordinator';
   const isMe = person.id === profile.id;
   const others = board.staff.filter((s) => s.active && s.id !== person.id);
+  // The person's own student record (0061, #316), when their login is on one.
+  const own = ownRecordOf(board, person.id);
 
   /** Runs a change, shows its result and loads the page again. */
   async function run(change: () => Promise<{ errorKey?: string }>, done: string) {
@@ -205,6 +213,71 @@ function PersonScreenContent() {
           {person.referralCode ? (
             <AppText>{t('coordinators.referralCode', { code: person.referralCode })}</AppText>
           ) : null}
+        </Section>
+      ) : null}
+
+      {/* Coordinators are students too (0061, #316): the person's own student record. */}
+      {isStaff && person.active ? (
+        <Section icon="students" title={t('coordinators.ownTitle')} description={t('coordinators.ownHint')}>
+          {own ? (
+            <>
+              <ListRow
+                title={own.fullName}
+                details={[` ·  · `]}
+                onPress={() => router.push({ pathname: '/staff/students/[id]', params: { id: own.id } })}
+              />
+              {asking === 'unlinkOwn' ? (
+                <>
+                  <Notice tone="error" title={t('coordinators.ownUnlinkAsk', { name: own.fullName })} announced>
+                    {t('coordinators.ownUnlinkBody')}
+                  </Notice>
+                  <Button
+                    label={t('coordinators.ownUnlink')}
+                    loading={busy}
+                    onPress={() => void run(() => unlinkLogin(own.id), t('coordinators.ownUnlinked'))}
+                  />
+                  <Button variant="link" label={t('syllabusEditor.cancel')} onPress={() => setAsking(null)} />
+                </>
+              ) : asking === null ? (
+                <Button variant="link" icon="signOut" label={t('coordinators.ownUnlink')} onPress={() => setAsking('unlinkOwn')} />
+              ) : null}
+            </>
+          ) : isMe ? (
+            <AppText tone="muted">{t('coordinators.ownSelf')}</AppText>
+          ) : typeof asking === 'object' && asking !== null && 'own' in asking ? (
+            <>
+              <Notice tone="info" title={t('coordinators.ownAsk', { student: asking.own.fullName, roll: asking.own.rollNo })} announced>
+                {t('coordinators.ownAskBody', { person: person.fullName || person.email || '' })}
+              </Notice>
+              <Button
+                label={t('coordinators.ownLink')}
+                loading={busy}
+                onPress={() => void run(() => linkOwnRecord(person.id, asking.own.id), t('coordinators.ownLinked'))}
+              />
+              <Button variant="link" label={t('syllabusEditor.cancel')} onPress={() => setAsking(null)} />
+            </>
+          ) : (
+            <>
+              <TextField
+                label={t('coordinators.linkSearch')}
+                value={search}
+                onChangeText={setSearch}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              {search.trim().length >= 2 && unlinked.length === 0 ? (
+                <AppText tone="muted">{t('coordinators.linkNone')}</AppText>
+              ) : null}
+              {unlinked.map((s) => (
+                <ListRow
+                  key={s.id}
+                  title={s.fullName}
+                  details={[` ·  · `]}
+                  action={{ label: t('coordinators.linkChoose'), variant: 'secondary', onPress: () => setAsking({ own: s }) }}
+                />
+              ))}
+            </>
+          )}
         </Section>
       ) : null}
 
@@ -351,7 +424,7 @@ function PersonScreenContent() {
           {search.trim().length >= 2 && unlinked.length === 0 ? (
             <AppText tone="muted">{t('coordinators.linkNone')}</AppText>
           ) : null}
-          {typeof asking === 'object' && asking !== null ? (
+          {typeof asking === 'object' && asking !== null && 'link' in asking ? (
             <>
               <Notice tone="info" title={t('coordinators.linkAsk', { student: asking.link.fullName, roll: asking.link.rollNo })} announced>
                 {t('coordinators.linkAskBody', { person: person.email ?? person.fullName })}

@@ -2,7 +2,7 @@
 // time in words, the weekly practice (this week large, the weeks before as bars), and the Practice
 // block that S4 (the student's own) and C8 (staff, any student) show.
 
-import { router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect, usePathname } from 'expo-router';
 import type { TFunction } from 'i18next';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -10,6 +10,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { fetchMyStudentId, fetchPracticeWeeks, type PracticeWeek } from '@/data/practice';
 import { formatDate } from '@/lib/dates';
+import { ownAreaOf } from '@/lib/own-area';
 import { radius, spacing, useTheme } from '@/theme/use-theme';
 
 import { AppText } from './app-text';
@@ -76,6 +77,8 @@ const PANEL_WEEKS = 4;
 export function PracticePanel(props: PracticePanelProps) {
   const { t } = useTranslation();
   const own = 'profileId' in props;
+  // S4 of a student, or Me > My progress of a staff member's own record (0061, #319).
+  const area = ownAreaOf(usePathname());
   const key = own ? props.profileId : props.studentId;
   // undefined = loading, null = could not load, 'none' = no student record for this login.
   const [weeks, setWeeks] = useState<PracticeWeek[] | 'none' | null | undefined>(undefined);
@@ -102,7 +105,7 @@ export function PracticePanel(props: PracticePanelProps) {
       {weeks === null ? <AppText tone="muted">{t('practiceLog.loadFailed')}</AppText> : null}
       {weeks ? <WeeklyPractice weeks={weeks} /> : null}
       {own ? (
-        <Button variant="link" icon="time" label={t('practiceLog.open')} onPress={() => router.push('/student/practice-log')} />
+        <Button variant="link" icon="time" label={t('practiceLog.open')} onPress={() => router.push(area === 'me' ? '/staff/me/practice-log' : '/student/practice-log')} />
       ) : null}
     </Section>
   );

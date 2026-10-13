@@ -2,8 +2,9 @@
 // shared history (src/screens/visit-history.tsx). Opened from the ring on the student home (S1).
 // Since the simple home (docs/DECISIONS.md #240) this week's visits and the days since the last
 // visit, once on the home, are at the top (student_home() through src/data/home.ts).
+// Also Me > My attendance in the staff app, for a staff member's own record (0061, #319; staff/me/visits.tsx).
 
-import { router, Stack } from 'expo-router';
+import { router, Stack, usePathname } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -17,6 +18,7 @@ import { StatGrid, StatTile } from '@/components/stat-tile';
 import { fetchStudentHome, type StudentHome } from '@/data/home';
 import { fetchMyStudent, type MyStudent } from '@/data/visits';
 import { lastVisitText } from '@/i18n/labels';
+import { ownAreaOf } from '@/lib/own-area';
 import { VisitHistoryScreen } from '@/screens/visit-history';
 
 /** My visits by month. */
@@ -24,6 +26,7 @@ export default function MyVisitsScreen() {
   const { t } = useTranslation();
   const { profile } = useAuth();
   const myId = profile?.id ?? '';
+  const area = ownAreaOf(usePathname());
   const [me, setMe] = useState<MyStudent | 'not_found' | null | undefined>(undefined);
   // The week's numbers; left out when they do not load (the months below still show).
   const [week, setWeek] = useState<StudentHome | null>(null);
@@ -67,7 +70,7 @@ export default function MyVisitsScreen() {
           <Button icon="refresh" label={t('common.tryAgain')} onPress={() => setAttempt((n) => n + 1)} />
         </>
       ) : null}
-      <Button variant="link" icon="home" label={t('comingSoon.back')} onPress={() => router.dismissTo('/student')} />
+      <Button variant="link" icon="home" label={t('comingSoon.back')} onPress={() => router.dismissTo(area === 'me' ? '/staff/me' : '/student')} />
     </Screen>
   );
 }

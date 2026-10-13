@@ -26,6 +26,8 @@ export type StudentDetails = StudentSummary & {
   pincode: string | null;
   /** True when an app login is connected to the record. */
   hasLogin: boolean;
+  /** The login on the record, or null; a staff member's login on their own record (0061, #316). */
+  loginId: string | null;
 };
 
 /** One visit: ISO timestamps; `checkOut` is null while the student is still here. */
@@ -191,6 +193,7 @@ export async function fetchStudentProfile(studentId: string): Promise<StudentPro
       area: details.area,
       pincode: details.pincode,
       hasLogin: details.profile_id !== null,
+      loginId: details.profile_id,
     },
     minor: details.dob !== null && isMinorOn(details.dob, todayLocal()),
     recentVisits: (visits.data as { id: number; check_in: string; check_out: string | null; method: string }[]).map(

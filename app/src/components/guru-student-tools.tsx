@@ -1,7 +1,8 @@
 // The Guru's tools on a student's profile (C8; audit R3-01..03, docs/DECISIONS.md #302), for week 1 after
 // the registration weekend: choose or change the mentor ("Mentor needed" notices open this page), set the
 // real level and joining date (Accept and the desk start everyone as Beginner, joined today), and take a
-// wrong app login off the record. The Guru only; the database checks each change again
+// wrong app login off the record. A coordinator's own record (0061, #316, #319): never their own mentor; the Guru's own
+// record: no Set level (nobody changes their own level), and taking a staff login off keeps its role. The Guru only; the database checks each change again
 // (src/data/student-admin.ts). Taking a login off asks first, in place, as the other destructive actions do.
 
 import { useState } from 'react';
@@ -31,6 +32,8 @@ export type ToolsStudent = {
   joinedOn: string;
   mentorId: string | null;
   hasLogin: boolean;
+  /** The login on the record, or null (a staff member's own record has theirs, 0061). */
+  loginId: string | null;
 };
 
 /** Which tool is open. */
@@ -50,7 +53,11 @@ export function GuruStudentTools({ student, staff, onChanged }: { student: Tools
 
   if (profile?.role !== 'guru') return null;
 
-  const choices = mentorChoices(staff, student.mentorId);
+  const choices = mentorChoices(staff, student.mentorId, student.loginId);
+  // The Guru's own record (0061): the level is a colleague's decision, not theirs.
+  const ownRecord = student.loginId !== null && student.loginId === profile.id;
+  // A staff member's own record: taking the login off keeps the role (it only takes Me away).
+  const staffLogin = student.loginId !== null && staff.some((s) => s.id === student.loginId);
 
   function show(tool: Open) {
     setMessage(null);
@@ -103,7 +110,9 @@ export function GuruStudentTools({ student, staff, onChanged }: { student: Tools
             label={student.mentorId ? t('studentTools.changeMentor') : t('studentTools.chooseMentor')}
             onPress={() => show('mentor')}
           />
-          <Button variant="secondary" icon="level" label={t('studentTools.setLevel')} onPress={() => show('level')} />
+          {ownRecord ? null : (
+            <Button variant="secondary" icon="level" label={t('studentTools.setLevel')} onPress={() => show('level')} />
+          )}
           {student.hasLogin ? (
             <Button variant="link" icon="signOut" label={t('studentTools.unlink')} onPress={() => show('unlink')} />
           ) : null}
@@ -171,7 +180,7 @@ export function GuruStudentTools({ student, staff, onChanged }: { student: Tools
       {open === 'unlink' ? (
         <>
           <Notice tone="error" title={t('studentTools.unlinkAsk', { name: student.fullName })}>
-            {t('studentTools.unlinkBody')}
+            {staffLogin ? t('studentTools.unlinkStaffBody') : t('studentTools.unlinkBody')}
           </Notice>
           <View style={styles.row}>
             <Button
@@ -179,7 +188,9 @@ export function GuruStudentTools({ student, staff, onChanged }: { student: Tools
               label={t('studentTools.unlinkYes')}
               loading={busy}
               disabled={busy}
-              onPress={() => void run(() => unlinkLogin(student.id), t('studentTools.unlinked'))}
+              onPress={() =>
+                void run(() => unlinkLogin(student.id), staffLogin ? t('studentTools.unlinkedStaff') : t('studentTools.unlinked'))
+              }
             />
             <Button variant="link" label={t('qrCards.cancel')} disabled={busy} onPress={() => setOpen(null)} />
           </View>

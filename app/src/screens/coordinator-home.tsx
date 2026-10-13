@@ -26,6 +26,7 @@ import { StatGrid, StatTile } from '@/components/stat-tile';
 import { PushNotice } from '@/components/push-notice';
 import { UpdateNotice } from '@/components/update-notice';
 import { fetchCoordinatorDashboard, type CoordinatorDashboard } from '@/data/home';
+import { hasOwnRecord } from '@/data/my-student';
 import { fetchPromotionHome } from '@/data/promotion';
 import { formatDate } from '@/lib/dates';
 
@@ -37,12 +38,16 @@ export function CoordinatorHome() {
   // undefined = loading, null = could not load.
   const [board, setBoard] = useState<CoordinatorDashboard | null | undefined>(undefined);
   const [toAnswer, setToAnswer] = useState(0);
+  // The coordinator's own student record (0061, #316, #319): Me on the ring.
+  const [me, setMe] = useState(false);
+  const myId = profile?.id ?? '';
 
   const load = useCallback(async () => {
-    const [loaded, promotions] = await Promise.all([fetchCoordinatorDashboard(), fetchPromotionHome()]);
+    const [loaded, promotions, own] = await Promise.all([fetchCoordinatorDashboard(), fetchPromotionHome(), hasOwnRecord(myId)]);
     setBoard(loaded);
     setToAnswer(promotions ? promotions.toAnswer : 0);
-  }, []);
+    setMe(own);
+  }, [myId]);
 
   useFocusEffect(
     useCallback(() => {
@@ -62,7 +67,7 @@ export function CoordinatorHome() {
           <Button variant="secondary" icon="refresh" label={t('common.tryAgain')} onPress={() => void load()} />
         </>
       ) : null}
-      <StaffModules guru={false} callsDue={board ? board.myCallsDue : 0} promotionsWaiting={toAnswer} />
+      <StaffModules guru={false} callsDue={board ? board.myCallsDue : 0} promotionsWaiting={toAnswer} me={me} />
     </Screen>
   );
 }

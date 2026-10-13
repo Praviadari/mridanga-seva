@@ -29,6 +29,7 @@ import { StatGrid, StatTile } from '@/components/stat-tile';
 import { PushNotice } from '@/components/push-notice';
 import { UpdateNotice } from '@/components/update-notice';
 import { fetchGuruDashboard, type GuruDashboard } from '@/data/home';
+import { hasOwnRecord } from '@/data/my-student';
 import { fetchPromotionHome } from '@/data/promotion';
 import { levelName, statusName } from '@/i18n/labels';
 import { formatDate } from '@/lib/dates';
@@ -46,12 +47,16 @@ export function GuruHome() {
   // undefined = loading, null = could not load.
   const [board, setBoard] = useState<GuruDashboard | null | undefined>(undefined);
   const [toDecide, setToDecide] = useState(0);
+  // The Guru's own student record (0061, #316, #319): Me on the ring.
+  const [me, setMe] = useState(false);
+  const myId = profile?.id ?? '';
 
   const load = useCallback(async () => {
-    const [loaded, promotions] = await Promise.all([fetchGuruDashboard(), fetchPromotionHome()]);
+    const [loaded, promotions, own] = await Promise.all([fetchGuruDashboard(), fetchPromotionHome(), hasOwnRecord(myId)]);
     setBoard(loaded);
     setToDecide(promotions ? promotions.toDecide : 0);
-  }, []);
+    setMe(own);
+  }, [myId]);
 
   useFocusEffect(
     useCallback(() => {
@@ -71,7 +76,7 @@ export function GuruHome() {
           <Button variant="secondary" icon="refresh" label={t('common.tryAgain')} onPress={() => void load()} />
         </>
       ) : null}
-      <StaffModules guru callsDue={board ? followUpsNeedingAttention(board) : 0} promotionsWaiting={toDecide} />
+      <StaffModules guru callsDue={board ? followUpsNeedingAttention(board) : 0} promotionsWaiting={toDecide} me={me} />
     </Screen>
   );
 }
