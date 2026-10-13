@@ -136,16 +136,16 @@ export async function decideSuggestion(id: number, approve: boolean, reason: str
 }
 
 /**
- * The coordinator takes back a waiting suggestion or removes a declined one, with its file. The
- * file goes first: if that fails nothing is deleted.
+ * The coordinator takes back a waiting suggestion or removes a declined one, with its file. The row goes
+ * first (P1-22, #325): when the Guru approved it meanwhile the delete is refused and the file stays with
+ * the lesson. A file whose removal fails after that is left unused (docs/OPERATIONS.md cleans it up).
  */
 export async function removeSuggestion(material: Material): Promise<{ errorKey?: ParseKeys }> {
-  if (material.storagePath && !(await removeFiles([material.storagePath], MATERIALS_BUCKET))) {
-    return { errorKey: 'materials.errors.removeFailed' };
-  }
   const { data, error } = await supabase.from('materials').delete().eq('id', material.id).select('id');
   if (error) return { errorKey: suggestionErrorKey(error.message, error.code) };
-  return data.length === 0 ? { errorKey: 'suggestions.errors.already_decided' } : {};
+  if (data.length === 0) return { errorKey: 'suggestions.errors.already_decided' };
+  if (material.storagePath) await removeFiles([material.storagePath], MATERIALS_BUCKET);
+  return {};
 }
 
 const KNOWN = ['reason_required', 'reason_too_long', 'already_decided', 'too_many_suggestions', 'material_not_found', 'suggestion_frozen'] as const;

@@ -122,9 +122,13 @@ function StocktakeScreenContent() {
         {loaded === undefined ? <LoadingCards /> : null}
         {loaded === 'not_found' ? <EmptyState icon="stocktake" title={t('stocktake.notFound')} /> : null}
         {loaded === null ? (
-          <Notice tone="error" title={t('stocktake.loadFailed')}>
-            {t('common.networkError')}
-          </Notice>
+          <>
+            <Notice tone="error" title={t('stocktake.loadFailed')}>
+              {t('common.networkError')}
+            </Notice>
+            {/* R3-09 (#327): not a dead end on a weak signal. */}
+            <Button icon="refresh" label={t('common.tryAgain')} onPress={() => void load()} />
+          </>
         ) : null}
       </Screen>
     );
@@ -179,7 +183,7 @@ function StocktakeScreenContent() {
 
       <Section icon="check" title={t('stocktake.finishTitle')} description={t('stocktake.finishHint')}>
         <TextField label={t('inventory.noteLabel')} value={note} onChangeText={setNote} multiline maxLength={NOTES_MAX} />
-        {/* P1-23 (#327): both act at once and cannot be undone, so each asks first; Delete sits apart from Finish. */}
+        {/* P1-23 (#325): both act at once and cannot be undone, so each asks first; Delete sits apart from Finish. */}
         {asking === 'finish' ? (
           <>
             <Notice tone="info" title={t('stocktake.finishAsk')} announced>

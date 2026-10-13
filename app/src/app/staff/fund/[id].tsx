@@ -107,9 +107,13 @@ function FundEntryScreenContent() {
         {header}
         {book === undefined ? <LoadingCards /> : null}
         {book === null ? (
-          <Notice tone="error" title={t('fund.loadFailed')}>
-            {t('common.networkError')}
-          </Notice>
+          <>
+            <Notice tone="error" title={t('fund.loadFailed')}>
+              {t('common.networkError')}
+            </Notice>
+            {/* R3-09 (#327): not a dead end on a weak signal. */}
+            <Button icon="refresh" label={t('common.tryAgain')} onPress={() => void load()} />
+          </>
         ) : null}
         {book && isNew && !book.isKeeper ? <Notice tone="info">{t('fund.keeperOnly')}</Notice> : null}
         {book && !isNew && !entry ? <EmptyState icon="fund" title={t('fund.notFound')} /> : null}
