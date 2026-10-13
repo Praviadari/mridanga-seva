@@ -41,7 +41,7 @@
   },
   "signUp": {
     "title": "New student registration",
-    "subtitle": "Students: use the email you gave the coordinator, so your record is linked. Everyone else may join Ishtagoshti, the free sloka study, after signing in.",
+    "subtitle": "Students: use the email you gave the coordinator, so your record is linked.",
     "fullName": "Full name",
     "confirmPassword": "Type the password again",
     "passwordHint": "At least 8 characters.",
