@@ -33,3 +33,24 @@ export const CONFIRM_POLL_MS = 4000;
  * server ends an unfinished request after an hour anyway (face_housekeeping).
  */
 export const PENDING_MAX_MS = 60 * 60 * 1000;
+
+// ---------------------------------------------------------------- the self-scan (P3-5, #344-#349)
+
+/** Pictures taken for one check-in / check-out after the blink/turn challenge. */
+export const VERIFY_FRAMES = 3;
+/**
+ * The 1:1 threshold (cosine of the scan with the phone's face code). The server's face_match_percent (0064,
+ * 55) is used when stricter. Spike: same person 0.81, different people 0.11-0.31, OpenCV's own 0.363 — 0.55
+ * prefers "use your QR card" over a wrong check-in. The test day and the pilot tune it (P3-7).
+ */
+export const MATCH_MIN = 0.55;
+/** Failed tries in a day after which only the coordinator's way is offered. */
+export const MAX_SELF_SCAN_TRIES = 3;
+/** The one location read waits at most this long (WORK_PLAN P3-5: one foreground fix, 8 s). */
+export const LOCATION_TIMEOUT_MS = 8000;
+/**
+ * The Google Cloud project number Play Integrity tokens are made for (OPERATIONS "Face scan: integrity
+ * check" step 1; not a secret: it is inside every APK). Empty until Praveen makes the project (after the test
+ * day): the self-scan then says "Ask a coordinator" (not_configured) and nothing else changes.
+ */
+export const PLAY_INTEGRITY_CLOUD_PROJECT = '';

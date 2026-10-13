@@ -12,6 +12,8 @@ export type FaceScannerProps = {
   frames: number;
   onDone: (samples: EnrolSample[]) => void;
   onCancel: () => void;
+  onFailed?: () => void;
+  canRetry?: boolean;
 };
 
 export function FaceScanner({ onCancel }: FaceScannerProps) {

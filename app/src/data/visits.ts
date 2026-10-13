@@ -18,6 +18,8 @@ export type HistoryVisit = {
   /** The location check at check-in (staff only see it). */
   locationCheck: LocationCheck;
   distanceM: number | null;
+  /** A face self-scan check-out's own location result (0064, #347; staff only see it); null for every other. */
+  checkOutLocation: string | null;
 };
 
 /** The visits of one month at the class, newest first. */
@@ -55,7 +57,8 @@ export async function fetchVisitHistory(studentId: string, months: number): Prom
   const [visits, earlier] = await Promise.all([
     supabase
       .from('visits')
-      .select('id, check_in, check_out, location_check, location_distance_m')
+      // Every column, so check_out_location (0064) is read where it exists and the list still loads where it does not.
+      .select('*')
       .eq('student_id', studentId)
       .gte('check_in', since)
       .order('check_in', { ascending: false }),
@@ -70,6 +73,7 @@ export async function fetchVisitHistory(studentId: string, months: number): Prom
     check_out: string | null;
     location_check: LocationCheck;
     location_distance_m: number | null;
+    check_out_location?: string | null;
   }[]) {
     const month = localDate(row.check_in).slice(0, 7);
     const entry = byMonth.get(month) ?? { month, visits: [], minutes: 0 };
@@ -79,6 +83,7 @@ export async function fetchVisitHistory(studentId: string, months: number): Prom
       checkOut: row.check_out,
       locationCheck: row.location_check,
       distanceM: row.location_distance_m,
+      checkOutLocation: row.check_out_location ?? null,
     });
     if (row.check_out) entry.minutes += Math.round((Date.parse(row.check_out) - Date.parse(row.check_in)) / 60_000);
     byMonth.set(month, entry);
