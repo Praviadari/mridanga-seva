@@ -127,10 +127,14 @@ export function isMine(entry: QueueEntry, myId: string | null): boolean {
   return entry.task?.assigneeId === myId || entry.student.mentorId === myId;
 }
 
-/** Loads the follow-up queue. Returns null when it could not be loaded (usually no internet). */
-export async function fetchFollowUpQueue(): Promise<FollowUpQueue | null> {
+/**
+ * Loads the follow-up queue. Returns null when it could not be loaded (usually no internet).
+ * `keepFor` / `fresh`: the class part may come from the minute-long copy the Students tab shares
+ * (fetchStudentSummaries); the open calls are always loaded.
+ */
+export async function fetchFollowUpQueue(options: { keepFor?: string; fresh?: boolean } = {}): Promise<FollowUpQueue | null> {
   const [students, staff, tasks] = await Promise.all([
-    fetchStudentSummaries(),
+    fetchStudentSummaries(options),
     fetchStaff(),
     supabase
       .from('follow_up_tasks')

@@ -7,7 +7,7 @@ import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
-import { firstLine, inLanguage, type Sloka } from '@/data/ishtagoshti';
+import { firstLine, inLanguage, type Sloka, type SlokaListItem } from '@/data/ishtagoshti';
 import { spacing } from '@/theme/use-theme';
 
 import { AppText } from './app-text';
@@ -55,7 +55,7 @@ export function IgMarks({ sample, published }: { sample: boolean; published: boo
 }
 
 /** The words under a sloka in a list: its first line, the start of the translation, its marks. */
-export function slokaDetails(t: TFunction, sloka: Sloka, language: string, memorised?: boolean): string[] {
+export function slokaDetails(t: TFunction, sloka: SlokaListItem, language: string, memorised?: boolean): string[] {
   const translation = inLanguage(sloka.translation, language)?.text ?? '';
   return [
     firstLine(sloka),
@@ -67,7 +67,7 @@ export function slokaDetails(t: TFunction, sloka: Sloka, language: string, memor
 }
 
 /** One sloka in a list; opens I3. */
-export function SlokaRow({ area, sloka, language, memorised }: { area: IgArea; sloka: Sloka; language: string; memorised?: boolean }) {
+export function SlokaRow({ area, sloka, language, memorised }: { area: IgArea; sloka: SlokaListItem; language: string; memorised?: boolean }) {
   const { t } = useTranslation();
   return (
     <ListRow leading="sloka" title={sloka.ref} details={slokaDetails(t, sloka, language, memorised)} onPress={() => openIg.sloka(area, sloka.id)} />

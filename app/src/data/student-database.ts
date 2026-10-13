@@ -3,6 +3,7 @@
 // filtered by level, status, mentor and area on the device. C7 stays the everyday list; G3 is for
 // checking and cleaning the records, and is where the Excel import starts (student-import.ts).
 
+import { readAllPages } from '@/lib/read-all';
 import { searchFold } from '@/lib/search-text';
 import { supabase } from '@/lib/supabase';
 
@@ -26,11 +27,16 @@ export type DatabaseRow = {
 
 /** Loads every student record, by roll number. Null = could not load. */
 export async function fetchStudentDatabase(): Promise<DatabaseRow[] | null> {
-  const { data, error } = await supabase
-    .from('students')
-    .select('id, roll_no, full_name, level_id, status, mentor_id, area, pincode, phone, email, joined_on, profile_id')
-    .order('roll_no');
-  if (error) return null;
+  // Page by page past Supabase's 1,000 rows per request (D9-04, #330).
+  const data = await readAllPages((from, to) =>
+    supabase
+      .from('students')
+      .select('id, roll_no, full_name, level_id, status, mentor_id, area, pincode, phone, email, joined_on, profile_id')
+      .order('roll_no')
+      .order('id')
+      .range(from, to),
+  );
+  if (!data) return null;
   return (
     data as {
       id: string;

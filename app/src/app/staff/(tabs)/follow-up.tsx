@@ -54,11 +54,17 @@ export default function FollowUpScreen() {
   const assignee = params.assignee || null;
 
   const beginLoad = useLatestLoad();
-  const load = useCallback(async () => {
-    const isNewest = beginLoad();
-    const loaded = await fetchFollowUpQueue();
-    if (isNewest()) setQueue(loaded); // not an older load answering late (D6-19)
-  }, [beginLoad, setQueue]);
+  // The class is shared with the Students tab for a minute; a logged call is a save, so the queue after a call
+  // is always loaded again (P5-05, #330). Pull to refresh and the buttons always load.
+  const load = useCallback(
+    async (fresh = false) => {
+      const isNewest = beginLoad();
+      const loaded = await fetchFollowUpQueue({ keepFor: myId ?? undefined, fresh });
+      if (isNewest()) setQueue(loaded); // not an older load answering late (D6-19)
+    },
+    [beginLoad, myId, setQueue],
+  );
+  const reload = useCallback(() => load(true), [load]);
 
   // Reload when coming back from the call screen: the student moves group or leaves the queue.
   // F9 / R4-04 (#327): back after a while (a phone that slept), the screen loads again.
@@ -110,15 +116,15 @@ export default function FollowUpScreen() {
         <Notice tone="error" title={t('followUp.loadFailed')}>
           {t('common.networkError')}
         </Notice>
-        <Button icon="refresh" label={t('common.tryAgain')} onPress={() => void load()} />
+        <Button icon="refresh" label={t('common.tryAgain')} onPress={() => void reload()} />
       </Screen>
     );
   }
 
   return (
-    <Screen underHeader wide onRefresh={load}>
+    <Screen underHeader wide onRefresh={reload}>
       {/* F9 (#327): a failed refresh keeps what is shown and says so. */}
-      <RefreshFailed at={refreshFailed} onRetry={() => load()} />
+      <RefreshFailed at={refreshFailed} onRetry={() => reload()} />
       {header}
       <ScreenIntro text={t('followUp.intro')} />
       {haveMine ? (
@@ -173,7 +179,7 @@ export default function FollowUpScreen() {
         ];
       })}
 
-      <Button variant="secondary" icon="refresh" label={t('hereNow.refresh')} onPress={() => void load()} />
+      <Button variant="secondary" icon="refresh" label={t('hereNow.refresh')} onPress={() => void reload()} />
     </Screen>
   );
 }

@@ -468,7 +468,8 @@ export default function RegisterStudentScreen() {
     return (
       <Screen underHeader>
         {header}
-        <Notice tone="success" title={t('register.doneTitle')}>
+        {/* The row pressed is gone: TalkBack's focus goes to the result (P2-02). */}
+          <Notice tone="success" title={t('register.doneTitle')} focused>
           {t('register.doneBody', { name: saved.name, rollNo: saved.registered.rollNo })}
         </Notice>
         {saved.registered.repeated ? <AppText>{t('register.alreadySaved')}</AppText> : null}
@@ -598,7 +599,7 @@ export default function RegisterStudentScreen() {
                 if (age && accepting?.id === w.id) {
                   return (
                     <View key={w.id} style={styles.confirm}>
-                      <Notice tone="info" title={t('register.acceptTitle', { name: w.full_name })} announced>
+                      <Notice tone="info" title={t('register.acceptTitle', { name: w.full_name })} focused announced>
                         {[
                           t('register.acceptName', { value: w.full_name }),
                           t('register.acceptDob', { date: formatTypedDate(w.dob ?? ''), age: age.age }),

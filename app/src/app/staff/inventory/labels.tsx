@@ -81,11 +81,14 @@ export default function LabelsScreen() {
   const [printed, setPrinted] = useState(false);
   const [message, setMessage] = useState<{ tone: 'error' | 'success'; text: string } | null>(null);
 
+  const profileId = profile?.id;
+
+  // On the id, not the profile object, which is replaced at start (audit phase 4 P4-04).
   const load = useCallback(async () => {
-    const [all, mine] = await Promise.all([fetchInventory(), profile ? fetchMyCentreId(profile.id) : Promise.resolve(null)]);
+    const [all, mine] = await Promise.all([fetchInventory(), profileId ? fetchMyCentreId(profileId) : Promise.resolve(null)]);
     setItems(all);
     if (all) setCentre((current) => current ?? mine ?? all[0]?.centreId ?? null);
-  }, [profile]);
+  }, [profileId]);
 
   useFocusEffect(
     useCallback(() => {

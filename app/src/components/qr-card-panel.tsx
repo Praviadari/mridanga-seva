@@ -56,7 +56,7 @@ export function QrCardPanel({ studentId }: { studentId: string }) {
       </View>
       {asking ? (
         <>
-          <Notice tone="error" title={t('qrCards.replaceAsk')}>
+          <Notice tone="error" title={t('qrCards.replaceAsk')} focused>
             {t('qrCards.replaceAskBody')}
           </Notice>
           <View style={styles.row}>

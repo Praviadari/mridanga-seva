@@ -63,6 +63,33 @@ type SlokaRow = {
 const SLOKA_COLUMNS =
   'id, ref, devanagari, transliteration, word_meanings, translation_en, translation_te, translation_hi, purport_en, purport_te, purport_hi, translator, own_text, audio_path, audio_name, sample, published, sort';
 
+/**
+ * A sloka in a list: what a row shows and what the search looks in. The purports (up to 20,000
+ * characters each, three languages) and the word meanings are read only on the sloka's own page
+ * (audit phase 4 P5-03, docs/DECISIONS.md #330).
+ */
+export type SlokaListItem = Pick<Sloka, 'id' | 'ref' | 'devanagari' | 'transliteration' | 'translation' | 'sample' | 'published' | 'sort'>;
+
+type SlokaListRow = Pick<
+  SlokaRow,
+  'id' | 'ref' | 'devanagari' | 'transliteration' | 'translation_en' | 'translation_te' | 'translation_hi' | 'sample' | 'published' | 'sort'
+>;
+
+const SLOKA_LIST_COLUMNS = 'id, ref, devanagari, transliteration, translation_en, translation_te, translation_hi, sample, published, sort';
+
+function slokaListItemOf(row: SlokaListRow): SlokaListItem {
+  return {
+    id: row.id,
+    ref: row.ref,
+    devanagari: row.devanagari,
+    transliteration: row.transliteration,
+    translation: byLanguage(row.translation_en, row.translation_te, row.translation_hi),
+    sample: row.sample,
+    published: row.published,
+    sort: row.sort,
+  };
+}
+
 function byLanguage(en: string | null, te: string | null, hi: string | null): ByLanguage {
   const out: ByLanguage = {};
   if (en) out.en = en;
@@ -138,10 +165,10 @@ export async function fetchCanEdit(): Promise<boolean> {
   return !error && data === true;
 }
 
-/** Every sloka the person can see (editors: drafts too), in order. Null = could not load. */
-export async function fetchSlokas(): Promise<Sloka[] | null> {
-  const { data, error } = await supabase.from('ig_slokas').select(SLOKA_COLUMNS).order('sort').order('id');
-  return error ? null : (data as SlokaRow[]).map(slokaOf);
+/** Every sloka the person can see (editors: drafts too), in order, as list items. Null = could not load. */
+export async function fetchSlokas(): Promise<SlokaListItem[] | null> {
+  const { data, error } = await supabase.from('ig_slokas').select(SLOKA_LIST_COLUMNS).order('sort').order('id');
+  return error ? null : (data as SlokaListRow[]).map(slokaListItemOf);
 }
 
 /** Every theme the person can see, in order, with its slokas. Null = could not load. */
@@ -167,18 +194,18 @@ export async function fetchThemes(): Promise<Theme[] | null> {
   }));
 }
 
-/** What I1 shows. */
+/** What the themes and slokas lists (I2) show. */
 export type IshtagoshtiHome = {
   /** The sloka of the day; null when no sloka is published yet. */
-  today: Sloka | null;
+  today: SlokaListItem | null;
   themes: Theme[];
-  slokas: Sloka[];
+  slokas: SlokaListItem[];
   /** The slokas the person has ticked as memorised. */
   memorised: Set<number>;
   canEdit: boolean;
 };
 
-/** Loads I1. Null = could not load (usually no internet). */
+/** Loads the lists of I2. Null = could not load (usually no internet). */
 export async function fetchIshtagoshtiHome(profileId: string): Promise<IshtagoshtiHome | null> {
   const [today, themes, slokas, memorised, canEdit] = await Promise.all([
     supabase.rpc('ig_sloka_of_day'),
@@ -194,6 +221,33 @@ export async function fetchIshtagoshtiHome(profileId: string): Promise<Ishtagosh
     themes,
     slokas,
     memorised: new Set((memorised.data as { sloka_id: number }[]).map((m) => m.sloka_id)),
+    canEdit,
+  };
+}
+
+/** What the I1 home shows: counts and the sloka of the day's id, no sloka text (P5-03). */
+export type IshtagoshtiCounts = {
+  todayId: number | null;
+  published: number;
+  memorised: number;
+  canEdit: boolean;
+};
+
+/** Loads I1. Null = could not load (usually no internet). */
+export async function fetchIshtagoshtiCounts(profileId: string): Promise<IshtagoshtiCounts | null> {
+  const [today, slokas, memorised, canEdit] = await Promise.all([
+    supabase.rpc('ig_sloka_of_day'),
+    supabase.from('ig_slokas').select('id, published'),
+    supabase.from('ig_memorised').select('sloka_id').eq('profile_id', profileId),
+    fetchCanEdit(),
+  ]);
+  if (today.error || slokas.error || memorised.error) return null;
+  const rows = slokas.data as { id: number; published: boolean }[];
+  const todayId = typeof today.data === 'number' && rows.some((s) => s.id === today.data) ? today.data : null;
+  return {
+    todayId,
+    published: rows.filter((s) => s.published).length,
+    memorised: (memorised.data as unknown[]).length,
     canEdit,
   };
 }

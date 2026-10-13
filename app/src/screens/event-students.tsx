@@ -39,6 +39,9 @@ import { searchFold } from '@/lib/search-text';
 /** The parts offered as chips; any other can be typed. */
 const PARTS = ['mridanga', 'kartal', 'leadSinger', 'harmonium'] as const;
 
+/** Rows drawn at a time: "everyone" lists the whole class (audit phase 4 P5-09, docs/DECISIONS.md #330). */
+const ROW_PAGE = 50;
+
 /** The screen. `mode` picks performers or attendance. */
 export function EventStudentsScreen({ id, mode }: { id: number; mode: 'performers' | 'attendance' }) {
   const { t } = useTranslation();
@@ -77,6 +80,13 @@ export function EventStudentsScreen({ id, mode }: { id: number; mode: 'performer
     const q = searchFold(search);
     return (students ?? []).filter((s) => !q || searchFold(s.fullName).includes(q) || s.rollNo.toLowerCase().includes(q));
   }, [students, search]);
+  // 50 rows at a time, from the top again when the search or "everyone" changes; a tick re-draws only those.
+  const [limit, setLimit] = useState(ROW_PAGE);
+  const [limitFor, setLimitFor] = useState({ search, everyone });
+  if (limitFor.search !== search || limitFor.everyone !== everyone) {
+    setLimitFor({ search, everyone });
+    setLimit(ROW_PAGE);
+  }
 
   const title = mode === 'performers' ? t('events.performers.title') : t('events.attendance.title');
   const header = <Stack.Screen options={{ title }} />;
@@ -185,7 +195,7 @@ export function EventStudentsScreen({ id, mode }: { id: number; mode: 'performer
       <TextField label={t('events.performers.search')} value={search} onChangeText={setSearch} />
       <Checkbox label={t('events.performers.everyone')} checked={everyone} onChange={setEveryone} />
       {shown.length === 0 ? <AppText tone="muted">{t('events.performers.noStudents')}</AppText> : null}
-      {shown.map((s) =>
+      {shown.slice(0, limit).map((s) =>
         mode === 'performers' ? (
           <ListRow
             key={s.studentId}
@@ -210,6 +220,9 @@ export function EventStudentsScreen({ id, mode }: { id: number; mode: 'performer
           />
         ),
       )}
+      {shown.length > limit ? (
+        <Button variant="secondary" label={t('database.showMore', { count: shown.length - limit })} onPress={() => setLimit(limit + ROW_PAGE)} />
+      ) : null}
 
       {message ? <Notice tone={message.tone}>{message.text}</Notice> : null}
       <Button label={t('events.performers.save')} loading={saving} onPress={() => void save()} />

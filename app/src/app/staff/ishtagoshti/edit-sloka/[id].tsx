@@ -72,8 +72,11 @@ function EditSlokaScreenContent() {
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
+  // On the id, not the profile object: the profile is fetched again when the app comes back to the
+  // front, and a new object here would reload the sloka over the editor's unsaved changes (P4-04).
+  const profileId = profile?.id;
   useEffect(() => {
-    if (!profile) return;
+    if (!profileId) return;
     void (async () => {
       if (!(await fetchCanEdit())) {
         setReady(false);
@@ -83,7 +86,7 @@ function EditSlokaScreenContent() {
         setReady(true);
         return;
       }
-      const page = await fetchSlokaPage(slokaId, profile.id);
+      const page = await fetchSlokaPage(slokaId, profileId);
       if (!page || page === 'not_found') {
         setReady(null);
         return;
@@ -106,7 +109,7 @@ function EditSlokaScreenContent() {
       }
       setReady(true);
     })();
-  }, [profile, slokaId]);
+  }, [profileId, slokaId]);
 
   const title = isNew ? t('ishtagoshti.newSlokaTitle') : t('ishtagoshti.editSlokaTitle');
   const header = <Stack.Screen options={{ title }} />;

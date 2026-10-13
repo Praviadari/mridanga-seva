@@ -4,8 +4,9 @@
 
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FlatList, Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { FlatList, Modal, Platform, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 
+import { useReducedMotion } from '@/lib/reduced-motion';
 import { useRadioKeys } from '@/lib/space-key';
 import { cardRadius, maxContentWidth, radius, spacing, useTheme } from '@/theme/use-theme';
 
@@ -52,6 +53,11 @@ export function SelectField<T extends string | number>({
   const { colors } = useTheme();
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
+  const still = useReducedMotion();
+  // Rows grow with the phone's text size: room for two lines of the scaled text, so a long name wraps
+  // inside its row instead of running into the next one (audit P3-05, docs/DECISIONS.md #333).
+  const { fontScale } = useWindowDimensions();
+  const rowHeight = rowHeightFor(fontScale);
   const chosen = options.find((o) => o.value === value) ?? null;
   const shown = chosen?.label ?? placeholder ?? t('select.choose');
   const startIndex = Math.max(0, options.findIndex((o) => o.value === (value ?? startAt)));
@@ -74,7 +80,7 @@ export function SelectField<T extends string | number>({
         accessibilityHint={error ?? hint ?? t('select.opensList')}
         onPress={() => setOpen(true)}
         style={[styles.box, { backgroundColor: colors.surface, borderColor: error || invalid ? colors.danger : colors.controlBorder }]}>
-        <AppText style={styles.value} tone={chosen ? undefined : 'muted'} numberOfLines={1}>
+        <AppText style={styles.value} tone={chosen ? undefined : 'muted'}>
           {shown}
         </AppText>
         <Icon name="dropdown" size={18} color={colors.textMuted} />
@@ -91,7 +97,7 @@ export function SelectField<T extends string | number>({
 
       {/* No fade on the web: react-native-web waits for the animation's end to hide the dialog, which a
           background tab never fires. */}
-      <Modal visible={open} transparent animationType={Platform.OS === 'web' ? 'none' : 'fade'} onRequestClose={() => setOpen(false)}>
+      <Modal visible={open} transparent animationType={Platform.OS === 'web' || still ? 'none' : 'fade'} onRequestClose={() => setOpen(false)}>
         <View style={[styles.backdrop, { backgroundColor: 'rgba(0,0,0,0.45)' }]}>
           <View
             role="dialog"
@@ -117,7 +123,7 @@ export function SelectField<T extends string | number>({
               initialScrollIndex={options.length > 12 ? startIndex : undefined}
               // Short lists (days, months, years) are drawn whole, so every entry is there at once.
               initialNumToRender={Math.min(options.length, 120)}
-              getItemLayout={(_, index) => ({ length: ROW, offset: ROW * index, index })}
+              getItemLayout={(_, index) => ({ length: rowHeight, offset: rowHeight * index, index })}
               role="radiogroup"
               renderItem={({ item, index }) => {
                 const selected = item.value === value;
@@ -128,8 +134,10 @@ export function SelectField<T extends string | number>({
                     accessibilityLabel={item.label}
                     onPress={() => pick(index)}
                     {...keys(index)}
-                    style={[styles.row, selected && { backgroundColor: colors.primarySoft }]}>
-                    <AppText style={[styles.value, selected && { color: colors.onPrimarySoft }]}>{item.label}</AppText>
+                    style={[styles.row, { height: rowHeight }, selected && { backgroundColor: colors.primarySoft }]}>
+                    <AppText style={[styles.value, selected && { color: colors.onPrimarySoft }]} numberOfLines={fontScale > 1 ? 2 : undefined}>
+                      {item.label}
+                    </AppText>
                     {selected ? <Icon name="tick" size={18} color={colors.onPrimarySoft} /> : null}
                   </Pressable>
                 );
@@ -142,8 +150,13 @@ export function SelectField<T extends string | number>({
   );
 }
 
-/** Height of one row of the list (also tells FlatList where to start). */
+/** Height of one row of the list at normal text size (also tells FlatList where to start). */
 const ROW = 48;
+
+/** A row's height at the phone's text size: 48, or two lines of body text (24 px a line) and padding. */
+export function rowHeightFor(fontScale: number): number {
+  return fontScale > 1 ? Math.max(ROW, Math.ceil(24 * fontScale * 2 + 16)) : ROW;
+}
 
 const styles = StyleSheet.create({
   wrapper: {
@@ -196,7 +209,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   row: {
-    height: ROW,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: spacing.md,

@@ -30,10 +30,13 @@ export function IshtagoshtiSlokas({ area }: { area: IgArea }) {
   const [home, setHome] = useState<IshtagoshtiHome | null | undefined>(undefined);
   const [search, setSearch] = useState('');
 
+  const profileId = profile?.id;
+
+  // On the id, not the profile object, which is replaced at start (audit phase 4 P4-04).
   const load = useCallback(async () => {
-    if (!profile) return;
-    setHome(await fetchIshtagoshtiHome(profile.id));
-  }, [profile]);
+    if (!profileId) return;
+    setHome(await fetchIshtagoshtiHome(profileId));
+  }, [profileId]);
 
   useFocusEffect(
     useCallback(() => {

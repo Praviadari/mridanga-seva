@@ -55,10 +55,23 @@ function toLocation(position: Location.LocationObject): PhoneLocation {
 const NO_FIX_RETRY_MS = 60_000;
 let lastNoFix = 0;
 
+/**
+ * The reading under way, if any: the warm-up on "Scan the next student" starts one, and the scan a few
+ * seconds later joins it and waits only the time it has left, instead of starting a second reading
+ * with a fresh 8 s limit (audit phase 4 P5-10, docs/DECISIONS.md #330).
+ */
+let inFlight: { reading: Promise<PhoneLocation | null>; startedAt: number } | null = null;
+
 /** A fresh position (or a recent one the phone already has); null when none came in time. */
 async function readPosition(): Promise<PhoneLocation | null> {
   if (lastFix && Date.now() - lastFix.at < FIX_MAX_AGE_MS) return lastFix.location;
   if (Date.now() - lastNoFix < NO_FIX_RETRY_MS) return null;
+  if (inFlight) {
+    const left = FIX_TIMEOUT_MS - (Date.now() - inFlight.startedAt);
+    const location = left > 0 ? await Promise.race([inFlight.reading, timeout(left)]) : null;
+    if (!location) lastNoFix = Date.now();
+    return location;
+  }
   const reading = (async () => {
     const known = await Location.getLastKnownPositionAsync({ maxAge: FIX_MAX_AGE_MS, requiredAccuracy: 200 }).catch(() => null);
     return known ?? (await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }));
@@ -70,7 +83,11 @@ async function readPosition(): Promise<PhoneLocation | null> {
       lastNoFix = 0;
       return location;
     })
-    .catch(() => null);
+    .catch(() => null)
+    .finally(() => {
+      if (inFlight?.reading === reading) inFlight = null;
+    });
+  inFlight = { reading, startedAt: Date.now() };
   const location = await Promise.race([reading, timeout(FIX_TIMEOUT_MS)]);
   if (!location) lastNoFix = Date.now();
   return location;

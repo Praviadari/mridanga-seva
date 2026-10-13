@@ -3,6 +3,8 @@
 // filters. Reads the student_overview view (supabase/migrations/0005_students_follow_up.sql),
 // which works out the last visit in the database; row-level security still applies to it.
 
+import { dataVersion, keptList } from '@/lib/data-version';
+import { readAllPages } from '@/lib/read-all';
 import { searchFold } from '@/lib/search-text';
 import { supabase } from '@/lib/supabase';
 
@@ -74,16 +76,33 @@ export function toStudentSummary(row: OverviewRow): StudentSummary {
  * Loads every student the signed-in person may see, by name. Returns null when it could not be
  * loaded (usually no internet).
  *
- * All students come in one request and are filtered on the phone, so typing in the search box
- * answers at once, without waiting for the network. That suits a class of a few hundred; Supabase
- * returns at most 1,000 rows per request, so a much bigger class would need the filters sent to
- * the database instead.
+ * All students come in and are filtered on the phone, so typing in the search box answers at once,
+ * without waiting for the network. Supabase sends at most 1,000 rows per request, so they are read
+ * page by page (D9-04, #330).
+ *
+ * With `keepFor` (the signed-in person's id) the answer is kept for a minute and shared by the
+ * Students and Calls tabs: Back from a student's profile or a switch between the tabs then uses it
+ * instead of downloading the class again (P5-05). Any save made from this phone drops it
+ * (src/lib/data-version.ts); `fresh` (pull to refresh, Try again) always loads.
  */
-export async function fetchStudentSummaries(): Promise<StudentSummary[] | null> {
-  const { data, error } = await supabase.from('student_overview').select(OVERVIEW_COLUMNS).order('full_name');
-  if (error) return null;
-  return (data as OverviewRow[]).map(toStudentSummary);
+export async function fetchStudentSummaries(options: { keepFor?: string; fresh?: boolean } = {}): Promise<StudentSummary[] | null> {
+  const { keepFor, fresh } = options;
+  if (keepFor && !fresh) {
+    const kept = keptSummaries.get(keepFor);
+    if (kept) return kept;
+  }
+  const version = dataVersion();
+  const rows = await readAllPages<OverviewRow>((from, to) =>
+    supabase.from('student_overview').select(OVERVIEW_COLUMNS).order('full_name').order('id').range(from, to),
+  );
+  if (!rows) return null;
+  const summaries = rows.map(toStudentSummary);
+  if (keepFor) keptSummaries.put(keepFor, summaries, Date.now(), version);
+  return summaries;
 }
+
+/** The class as last loaded for the Students and Calls tabs (P5-05). */
+const keptSummaries = keptList<StudentSummary[]>();
 
 // ---------------------------------------------------------------- staff names
 
