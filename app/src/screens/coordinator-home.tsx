@@ -27,6 +27,7 @@ import { StatGrid, StatTile } from '@/components/stat-tile';
 import { PushNotice } from '@/components/push-notice';
 import { UpdateNotice } from '@/components/update-notice';
 import { fetchStaffDashboard, type CoordinatorDashboard, type StaffDashboard } from '@/data/home';
+import { hasOwnRecord } from '@/data/my-student';
 import { formatDate } from '@/lib/dates';
 
 /** Coordinator home screen, shown by the staff Home tab (app/staff/(tabs)/index.tsx). */
@@ -36,10 +37,15 @@ export function CoordinatorHome() {
   const name = profile?.full_name.trim();
   // undefined = loading, null = could not load.
   const [board, setBoard] = useState<StaffDashboard | null | undefined>(undefined);
+  // The coordinator's own student record (0053, #316, #319): Me on the ring.
+  const [me, setMe] = useState(false);
+  const myId = profile?.id ?? '';
 
   const load = useCallback(async () => {
-    setBoard(await fetchStaffDashboard(false));
-  }, []);
+    const [loaded, own] = await Promise.all([fetchStaffDashboard(false), hasOwnRecord(myId)]);
+    setBoard(loaded);
+    setMe(own);
+  }, [myId]);
 
   useFocusEffect(
     useCallback(() => {
@@ -60,7 +66,7 @@ export function CoordinatorHome() {
         </>
       ) : null}
       {board === null ? null : <StaffToday guru={false} board={board} />}
-      <StaffModules guru={false} promotionsWaiting={board ? board.promotions : 0} />
+      <StaffModules guru={false} promotionsWaiting={board ? board.promotions : 0} me={me} />
       {/* Under the ring, as on the student home (#242; Praveen 14-10-2026): a fact about the mṛdaṅga a day. */}
       <FactCard />
     </Screen>

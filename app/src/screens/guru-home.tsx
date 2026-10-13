@@ -29,6 +29,7 @@ import { StatGrid, StatTile } from '@/components/stat-tile';
 import { PushNotice } from '@/components/push-notice';
 import { UpdateNotice } from '@/components/update-notice';
 import { fetchStaffDashboard, type GuruDashboard, type StaffDashboard } from '@/data/home';
+import { hasOwnRecord } from '@/data/my-student';
 import { levelName, statusName } from '@/i18n/labels';
 import { formatDate } from '@/lib/dates';
 
@@ -44,10 +45,15 @@ export function GuruHome() {
   const name = profile?.full_name.trim();
   // undefined = loading, null = could not load.
   const [board, setBoard] = useState<StaffDashboard | null | undefined>(undefined);
+  // The Guru's own student record (0053, #316, #319): Me on the ring.
+  const [me, setMe] = useState(false);
+  const myId = profile?.id ?? '';
 
   const load = useCallback(async () => {
-    setBoard(await fetchStaffDashboard(true));
-  }, []);
+    const [loaded, own] = await Promise.all([fetchStaffDashboard(true), hasOwnRecord(myId)]);
+    setBoard(loaded);
+    setMe(own);
+  }, [myId]);
 
   useFocusEffect(
     useCallback(() => {
@@ -68,7 +74,7 @@ export function GuruHome() {
         </>
       ) : null}
       {board === null ? null : <StaffToday guru board={board} />}
-      <StaffModules guru promotionsWaiting={board ? board.promotions : 0} />
+      <StaffModules guru promotionsWaiting={board ? board.promotions : 0} me={me} />
       {/* Under the ring, as on the student home (#242; Praveen 14-10-2026): a fact about the mṛdaṅga a day. */}
       <FactCard />
     </Screen>

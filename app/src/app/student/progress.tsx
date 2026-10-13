@@ -6,8 +6,9 @@
 // or the browser, PDFs and photos in the browser; components/material-row.tsx), and the lessons for
 // the whole level come first. An item the facilitator retired shows only when it was ticked, and
 // does not count (docs/DECISIONS.md #44).
+// Also Me > My progress in the staff app, for a staff member's own record (0061, #319; staff/me/progress.tsx).
 
-import { router, Stack, useFocusEffect } from 'expo-router';
+import { router, Stack, useFocusEffect, usePathname } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
@@ -27,6 +28,7 @@ import { Section } from '@/components/section';
 import { fetchMyProgress, type MyProgress } from '@/data/syllabus';
 import { levelName } from '@/i18n/labels';
 import { formatDate } from '@/lib/dates';
+import { ownAreaOf } from '@/lib/own-area';
 import { spacing } from '@/theme/use-theme';
 
 /** The student's level with its progress bar and one row per syllabus item. */
@@ -34,6 +36,7 @@ export default function MyProgressScreen() {
   const { t } = useTranslation();
   const { profile } = useAuth();
   const myId = profile?.id ?? '';
+  const area = ownAreaOf(usePathname());
   // undefined = loading, null = could not load, 'not_found' = no student record for this login.
   const [loaded, setLoaded] = useState<MyProgress | 'not_found' | null | undefined>(undefined);
 
@@ -68,7 +71,7 @@ export default function MyProgressScreen() {
             <Button icon="refresh" label={t('common.tryAgain')} onPress={() => void load()} />
           </>
         ) : null}
-        <Button variant="link" icon="home" label={t('comingSoon.back')} onPress={() => router.dismissTo('/student')} />
+        <Button variant="link" icon="home" label={t('comingSoon.back')} onPress={() => router.dismissTo(area === 'me' ? '/staff/me' : '/student')} />
       </Screen>
     );
   }

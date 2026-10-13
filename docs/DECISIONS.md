@@ -5461,6 +5461,103 @@ still for reduced motion, no script: the site policy allows none inline); React 
 **Consequences.** Large-text checks are phone-only (the web reports text size 100 %). The splash reaches users
 with the next web upload, not the OTA.
 
+## 316. A coordinator's login can have its own student record; the Guru links it — 13 Oct 2026
+
+**Status: built on branch `staff-own-record` (migration 0061, placeholder number); merged after the launch of 20 Oct 2026.**
+
+**Context.** Praveen (13 Oct 2026): "Coordinators are students too, with more experience — that's it." Until now one login
+had one role, and every link path needs a login that waits for a record (`pending`; #13, #96, #265), so a coordinator's or
+the Guru's login could never be on a student record: no My QR, My progress, My attendance, practice or face scan in their
+own app. For the launch each coordinator gets a student record at the desk **without a login**; colleagues check them in by
+name or the printed card.
+
+**Decision.** `link_staff_record(profile, student)` (security definer): the Guru links an active coordinator's (or Guru's)
+login to ONE student record without a login, as their **own record**; the role stays. Never a withdrawn record
+(`student_withdrawn`, #281), never a second one (`staff_has_record`). The Guru does it on Coordinators (G2), on the
+person's page, section "Own student record"; the launch-time records made without a login are linked that way. **The Guru's
+own record** is linked by Praveen in the SQL editor with the same function (`own_record` from the app): one person does
+not give themselves a second kind of access. Unlinking is the student's `unlink_student_login` (G2 or the student
+profile); it resets only a `student` role, so the staff login keeps its role and only loses Me.
+
+**Not Accept, not the email link.** Neither the automatic email paths (a confirmed email, an email saved on a record) nor
+Accept link a staff login. Desk records of coordinators often carry their email (the smoke test has one since 0002), and a
+silent link would change what a staff login does without anyone deciding it; an existing coordinator never has a waiting
+sign-up, so Accept has nothing to accept. The Guru checks the person and links on purpose (#13's reasoning).
+
+**Consequences.** 0046-0048's link rules are untouched (`login_awaits_record`, minors never auto-linked, guardian email
+rules). A student who becomes a coordinator: the Guru takes the login off the record (it waits), makes it a coordinator,
+then links the record as their own (OPERATIONS.md). Tests: "0061 staff own record" in smoke-test.mjs.
+
+## 317. The own record works like a student's for what the person does themselves — 13 Oct 2026
+
+**Decision.** `my_student_id()` (0016) returns the caller's own record for coordinators and the Guru too (before: students
+only). Practice (`log_practice`, `delete_practice`), the student's assessment functions, `event_counts` (my part, I
+attended) and Phase 3's face enrolment (p3-server's functions use `my_student_id`) act on it with no change of their own.
+`student_home()` already reads the caller's own record for any role. Row-level security gave staff every row before.
+
+**Consequences.** **Face scan (P3):** once linked, a coordinator enrols like any student (start, a colleague approves:
+p3-server's `approve_face_enrolment` already refuses one's own record, today with `not_allowed`; at merge it may answer
+`own_record`). p3-native's Face scan screen opens from the student's My profile: for a staff member it needs a Me entry
+(the p3 branches add it on their rebase). The future face self check-in RPC is a student's own proof, not a staff mark:
+it must set `app.self_check_in` and `refuse_own_record` must let that through (one line) when it is built.
+
+## 318. Nobody records about their own record — 13 Oct 2026
+
+**Decision.** For a signed-in staff caller, the database refuses with `own_record` anything recorded about the caller's
+own record, whatever the path: a check-in or check-out (the desk's name check-in, Mark attendance, a QR scan of one's own
+code, `toggle_visit`, a visit time edit), a syllabus tick, remark or untick, a level change (`level_history`; the Guru's
+"Set level" and "promote" alike), a promotion nomination, answer, withdrawal or decision, an assessment review, a call log.
+One trigger function, `refuse_own_record`, on each table, so a new function writing these tables is covered too. An
+event's attendance list leaves the caller's own row as it is, without an error (a list is saved at once). "Check out
+everyone" closes the caller's own visit too: it is the end of the day, not a mark. The door tablet (its own kiosk login)
+checks a coordinator in like any student. Students and the dashboard are not affected (students are refused by
+row-level security first, as before).
+
+**App.** One message for every screen (`fallbackErrorKey`): "This is your own student record: a colleague records it…".
+On their own Student profile a staff member sees a note instead of Log a call, Check in / out and Tick the syllabus;
+the Guru sees no Set level on their own record.
+
+**Why.** Attendance, ticks and the level are the class's record of a student's learning, given by someone else. Praveen's
+launch rule is the same: "check in each other, not yourself".
+
+## 319. Me in the staff app; nobody is their own mentor — 13 Oct 2026
+
+**Decision.** When the login has an own record, the staff home (Guru and coordinator) shows a **Me** circle first on the
+ring (nine circles, drawn smaller, as module-ring.tsx allows). Me opens a ring of four: **My QR**, **My progress**, **My
+attendance**, **Practice**, the student's own screens opened under `/staff/me` (no copies: the routes re-export
+student/…; `lib/own-area.ts` sends their Back-home and practice-log links to Me). The home asks the server each time it
+comes into view (the Guru may link while the app runs) and saves the My QR card on the phone; without internet the card
+saved on the phone keeps Me and My QR at the door. Hidden without an own record. Assessments, events and announcements
+stay in the staff screens (see #321).
+
+**Mentors.** Nobody is their own mentor (`own_mentor`, whoever sets it, also through the Guru's mentor move) and nobody
+changes their own record's mentor or level (`own_record`). The mentor rule (`assign_mentor`, #165: the referral first,
+else the same-gender coordinator of the centre with the fewest students) never picks the record's own login; the link
+takes off a mentor that is the login itself (the desk's rule could pick the coordinator while the record had no login)
+and gives another; nobody of that gender = the Guru's "Mentor needed" notice. The Guru's mentor picker leaves out the
+record's own login.
+
+## 320. A record with a staff login is not withdrawn or erased while linked — 13 Oct 2026
+
+**Decision.** `withdraw_consent` switches the record's login off and `erase_student` deletes it: for a coordinator's own
+record that would switch off or delete their staff access. Both (and a delete in the dashboard) are refused with
+`staff_login_linked` while a staff login is on the record; the Guru unlinks first, then withdraws or erases (the record
+alone). When a coordinator leaves, `anonymise_staff` (0040) deletes the staff login and the record stays without one.
+
+## 321. Coordinator-students count as students everywhere — 13 Oct 2026
+
+**Decision.** An own record is a student record like any other, so it counts wherever students count, with no special case:
+Overview and the dashboards (in class, came this week, by level and status, new joiners), reports, the class list, Here now,
+follow-up calls (an irregular coordinator-student gets a call task for their mentor, another coordinator), promotion
+("ready" lists), events' and assessments' audiences by level. Praveen's rule ("coordinators are students too … that's it")
+and one number for "how many learn at level 2" both say so; leaving them out would need a flag on every count.
+
+**Consequences (after launch, not built).** An assessment given to a coordinator-student's level makes an assignment they
+cannot open yet (no Me > Assessments; its push opens a /student address, which the staff app does not have). Announcements
+and polls "to students" reach student logins only (`audience_profiles`); a coordinator sees them as staff anyway. Asks for
+Praveen (after 21 Oct): the Guru's own record (default: allowed, linked in the SQL editor, nobody self-marks); Me >
+Assessments; whether follow-up calls should skip coordinators.
+
 ## 336. Design tokens from one file; option A palette by default, switchable — 13 Oct 2026
 
 **Status: built on branch `after-launch-design` (merge after launch); the palette is a team decision (audit phase

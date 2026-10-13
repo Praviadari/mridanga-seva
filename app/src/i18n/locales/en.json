@@ -19,6 +19,9 @@
     "linkOpensInBrowser": "The link opens in your web browser. When you are done there, come back to this app and sign in.",
     "foundCount_one": "{{count}} found",
     "foundCount_other": "{{count}} found",
+    "ownRecord": "This is your own student record: a colleague records it (check-in, ticks, level, calls). Ask another coordinator.",
+    "ownMentor": "A student is never their own mentor. Choose another coordinator of the same gender.",
+    "staffLoginLinked": "This record is a staff member's own. Take the app login off it first (Coordinators), then withdraw or erase.",
     "more": "More",
     "less": "Less"
   },
@@ -382,6 +385,12 @@
     "statusInBody": "Hare Krishna! Your visit is recorded.",
     "statusOut": "Checked out. Today's visit began at {{time}}."
   },
+  "me": {
+    "title": "Me",
+    "intro": "Your own student record: your QR card, progress, attendance and practice, as a student sees them. A colleague checks you in and ticks your syllabus.",
+    "noRecordTitle": "No own student record",
+    "noRecordBody": "Your login is not linked to a student record of your own. The Guru links it on Coordinators."
+  },
   "levels": {
     "1": "Beginner",
     "2": "Intermediate",
@@ -640,7 +649,10 @@
     "noLevelChanges": "No level changes yet.",
     "levelChange": "{{from}} → {{to}}",
     "approvedBy": "approved by {{name}}",
-    "tickSyllabus": "Tick syllabus items"
+    "tickSyllabus": "Tick syllabus items",
+    "ownTitle": "This is your own student record",
+    "ownBody": "A colleague checks you in and out, ticks your syllabus, logs calls and nominates you; the Guru decides your level. Your QR card and progress are under Me on your home.",
+    "staffLogin": "Yes: {{name}}'s own record"
   },
   "syllabus": {
     "title": "Mark progress",
@@ -1301,7 +1313,9 @@
       "mentor_not_staff": "A mentor must be an active coordinator or the facilitator.",
       "ig_editor_coordinator_only": "Only a coordinator can be made an Ishtagoshti editor.",
       "treasurer_coordinator_only": "Only a coordinator can be a treasurer.",
-      "gender_unknown": "This gender is not in the form choices."
+      "gender_unknown": "This gender is not in the form choices.",
+      "profile_not_staff": "Only an active coordinator's login gets an own record. Pull down to refresh.",
+      "staff_has_record": "This login already has its own record. Take it off that one first."
     },
     "igEditorTitle": "Ishtagoshti editor",
     "igEditorHint": "An editor adds and edits slokas and themes, and pins the sloka of the day. The facilitator always can.",
@@ -1322,7 +1336,18 @@
     "waitingSearchHint": "At least 2 letters of the name or email, or 3 digits of the phone.",
     "waitingNoMatch": "Nobody waiting matches this.",
     "typeNameLabel": "Type their name to confirm",
-    "typeNameHint": "Type: {{name}}"
+    "typeNameHint": "Type: {{name}}",
+    "ownTitle": "Own student record",
+    "ownHint": "Coordinators are students too. Link this person's login to their own student record: their app then shows Me (My QR, progress, attendance, practice). The role stays. Search the name or roll number; only records without a login are shown.",
+    "ownSelf": "Your own student record is linked in the database's SQL editor, not here: ask the person who runs the database.",
+    "ownAsk": "Link {{student}} ({{roll}}) as their own record?",
+    "ownAskBody": "{{person}} keeps their role and also gets this record's QR card, progress and attendance under Me. Colleagues check them in and tick their syllabus; they never do it for themselves.",
+    "ownLink": "Link as own record",
+    "ownLinked": "Linked. The person now sees Me in their app.",
+    "ownUnlink": "Take the login off this record",
+    "ownUnlinkAsk": "Take {{name}}'s login off their own record?",
+    "ownUnlinkBody": "The record stays, with its visits and progress. The person keeps their role; only Me goes from their app.",
+    "ownUnlinked": "The login is off the record. The role stays."
   },
   "database": {
     "title": "All students",
@@ -3829,7 +3854,9 @@
       "mentor_not_staff": "A mentor must be an active coordinator or the facilitator.",
       "student_not_found": "This student record is gone. Pull down to refresh.",
       "student_not_linked": "This record has no app login any more. Pull down to refresh."
-    }
+    },
+    "unlinkStaffBody": "This record is a coordinator's own. The login keeps its role; only Me goes from their app.",
+    "unlinkedStaff": "The login is off this record. The role stays."
   },
   "welcome": {
     "title": "Hare Krishna, {{name}}. Welcome to the class.",

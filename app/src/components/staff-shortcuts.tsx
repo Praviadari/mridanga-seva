@@ -15,6 +15,9 @@
 // Guru ring: Overview, Level-ups (to decide), Assessments, Lessons, Events & polls, Ishtagoshti, Welcome desk,
 // Newcomers; Follow-ups by coordinator is in the side menu (the Follow-ups tab and the To do box cover the calls).
 // In class now and today's check-ins are the Today line above the ring (components/staff-today.tsx).
+// Me (0053, docs/DECISIONS.md #316, #319) comes first on the ring when the Guru has linked the person's login to their
+// own student record: My QR, My progress, My attendance and Practice as a student sees them (staff/me). Hidden
+// otherwise. The ring then holds nine (module-ring.tsx draws nine smaller).
 
 import { router, type Href } from 'expo-router';
 import type { TFunction } from 'i18next';
@@ -28,10 +31,12 @@ export type StaffModulesProps = {
   guru: boolean;
   /** Feedback asked of me (coordinator), or nominations to decide (Guru). */
   promotionsWaiting: number;
+  /** The login has its own student record (0053): show Me. */
+  me?: boolean;
 };
 
 /** The ring of a staff home. */
-export function StaffModules({ guru, promotionsWaiting }: StaffModulesProps) {
+export function StaffModules({ guru, promotionsWaiting, me = false }: StaffModulesProps) {
   const { t } = useTranslation();
   const shared = {
     newJoiners: { key: 'newJoiners', icon: 'newJoiner', tone: 'green', label: t('home.modules.newJoiners'), onPress: () => router.push('/staff/new-joiners') },
@@ -49,6 +54,7 @@ export function StaffModules({ guru, promotionsWaiting }: StaffModulesProps) {
   // Colour by family (UI audit fix 9, docs/DECISIONS.md #368; lib/module-tone.ts), and the circles of a family side by
   // side, so the ring reads as a few coloured arcs: blue the class at a glance, green people, purple learning, teal
   // seva, orange community.
+  const own: Module[] = me ? [{ key: 'me', icon: 'person', tone: 'green', label: t('me.title'), onPress: () => router.push('/staff/me') }] : [];
   const ring: Module[] = guru
     ? [
         { key: 'overview', icon: 'status', tone: 'blue', label: t('home.modules.overview'), onPress: () => router.push('/staff/overview') },
@@ -79,7 +85,7 @@ export function StaffModules({ guru, promotionsWaiting }: StaffModulesProps) {
         shared.events,
         shared.ishtagoshti,
       ];
-  return <ModuleRing modules={ring} />;
+  return <ModuleRing modules={[...own, ...ring]} />;
 }
 
 /** One line of the side menu. */

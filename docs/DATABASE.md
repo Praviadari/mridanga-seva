@@ -1639,6 +1639,48 @@ level's lesson titles stay unseen); anon reads nothing. The policies wrap `is_st
 
 Tests: section "0052 more practice" in `supabase/tests/smoke-test.mjs`.
 
+## Own record (0061)
+
+[DECISIONS.md #316-#321](DECISIONS.md). Migration `0061_staff_own_record.sql` (**placeholder number**, renumbered at
+merge after the launch). Praveen, 13-10-2026: "Coordinators are students too, with more experience — that's it."
+
+**The link (#316).** `link_staff_record(profile, student)`: the Guru (or the SQL editor, nobody signed in) links an
+active coordinator's or Guru's login to one student record without a login; `students.profile_id` is the staff login,
+the role stays. Errors: `not_allowed`, `own_record` (the Guru's own login from the app: the SQL editor links it,
+OPERATIONS.md), `profile_not_staff` (not an active coordinator / Guru: a waiting login goes through
+`link_student_login`), `staff_has_record` (one own record per login), `student_not_found`, `student_withdrawn`,
+`student_already_linked`. The automatic paths (a confirmed email, an email saved on a record, Accept) never link a
+staff login (`login_awaits_record` is unchanged). The login's About-you row joins the record (0048's
+`attach_person_details`), and a mentor that is the login itself is taken off and given again (`assign_mentor`).
+Unlinking is `unlink_student_login`: it resets only a `student` role, so a staff login keeps its role.
+
+**The own record works like a student's (#317).** `my_student_id()` is the caller's own record for students, coordinators
+and the Guru: `log_practice` / `delete_practice`, `submit_assessment`, `mark_assessment_seen`, `event_counts`
+(my part, attended) and Phase 3's face enrolment act on it. Row-level security already gave staff every row.
+`student_home()` reads the caller's own record for any role.
+
+**Nobody records about their own record (#318).** Trigger function `refuse_own_record` (security definer; only
+for a signed-in staff caller: students are refused by row-level security first, the dashboard and pg_cron are not
+checked): error `own_record` on `visits` (insert, update, delete: `toggle_visit`, `scan_qr`, `mark_visit`,
+a visit edit), `student_progress` (tick, remark, untick), `level_history` (insert), `promotion_nominations`
+(insert, update: nominate, withdraw, decide), `promotion_feedback` (the nomination's student), `assessment_submissions`
+(only the review: `reviewed_at` changes), `call_logs` (insert). `event_attendance` (insert, delete) leaves the
+caller's own row as it is, without an error (a list saved at once). `check_out_all` sets `app.check_out_all` for its
+run, so "Check out everyone" closes the caller's own visit too. The door tablet has its own kiosk login: it checks a
+coordinator in like any student. Trigger `students_own_guard` (`guard_own_student`, before update of level or
+mentor): `own_mentor` when the mentor would be the record's own login (any signed-in caller), `own_record` when the
+caller changes their own record's level or mentor (`assign_mentor` sets `app.auto_mentor` for its own update).
+
+**Mentors (#319).** `assign_mentor` (0036) never picks the record's own login, in the referral branch or the
+same-gender least-loaded branch; nobody left = the Gurus' "Mentor needed" notice, as before.
+
+**A staff member's record stays (#320).** Trigger `students_staff_record_kept` (`guard_staff_record`, before
+update of `withdrawn_at` or delete, also in the dashboard): `staff_login_linked` while a coordinator's or Guru's
+login is on the record (`withdraw_consent` would switch the staff login off, `erase_student` would delete it).
+Unlink first. `anonymise_staff` (0040) deletes a leaving staff login; the record then has no login and stays.
+
+Tests: section "0061 staff own record" in `supabase/tests/smoke-test.mjs` (55 checks).
+
 ## Linking a login to a student
 
 A student record can exist without a login (many students never install the app). When a person
@@ -1663,6 +1705,7 @@ Linking before confirmation would let anyone claim a record by typing its email
 **Since 0047** ([DECISIONS.md #276](DECISIONS.md)) neither automatic path links a record of someone under
 18: a login with a child's record email stays `pending` until the Guru links it (`link_student_login`).
 See "Form rules (0047)". **Since 0048** ([#281](DECISIONS.md)) no path links a withdrawn record, the Guru's included (`student_withdrawn`); see "Withdrawn records and leaks (0048)".
+**Since 0061** ([#316](DECISIONS.md)) a coordinator's or the Guru's login can also be on ONE student record, its own: only the Guru links it (`link_staff_record`), the role stays; no automatic path links a staff login. See "Own record (0061)".
 
 Roles other than `student` are given by the Guru in the app (G2, see "Coordinators and roles"), or for the very first Guru, in the
 Supabase dashboard (OPERATIONS.md). The Guru can also link a pending login to a student record
@@ -1716,7 +1759,8 @@ switched-off login is refused like a stranger.
 | `week_start_ist()` | Anyone signed in | First day of "this week" at the caller's centre (Monday, or 6 days ago with `week_starts` = `rolling7`); used by the functions above |
 | `link_student_login(profile, student)` | Guru | Links a pending login (since 0046 also a `student` login without a record) to a student record without a login; the person becomes that student. Security definer. See "Coordinators and roles" |
 | `reassign_mentees(students, to)` | Guru | Moves the students to another mentor (an active coordinator or the Guru); returns how many. See "Coordinators and roles" |
-| `unlink_student_login(student)` | Guru | Takes the login off a student record; the login goes back to `pending`. Security definer. See "Linking a login to a student" |
+| `unlink_student_login(student)` | Guru | Takes the login off a student record; a `student` login goes back to `pending`, a staff login keeps its role (0061). Security definer. See "Linking a login to a student" |
+| `link_staff_record(profile, student)` | Guru (SQL editor: also the Guru's own) | Links an active coordinator's or Guru's login to one student record without a login as their own record; the role stays (0061, #316). Security definer. See "Own record (0061)" |
 | `withdraw_consent(student, note)` | Guru (or the owner in the SQL editor) | Records a withdrawal of consent and freezes the record. See "Withdrawal and erasure (0025)" |
 | `erase_student(student, reason, request_ref)` | Guru (or the owner in the SQL editor) | Erases the student, the login and the audit copies; leaves a tombstone. See "Withdrawal and erasure (0025)" |
 | `import_students(rows)` | Guru | Saves up to 500 adult students, each row on its own; returns the roll number or the error per row. See "Importing students" |
