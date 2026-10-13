@@ -167,7 +167,7 @@ export function MyProfileScreen() {
 
       {referralCode ? (
         <Section icon="link" title={t('about.myCodeTitle')} description={t('about.myCodeHint')}>
-          <AppText variant="title" selectable accessibilityLabel={t('about.myCodeSpoken', { code: referralCode.split('').join(' ') })}>
+          <AppText variant="title" family="sans" selectable accessibilityLabel={t('about.myCodeSpoken', { code: referralCode.split('').join(' ') })}>
             {referralCode}
           </AppText>
         </Section>

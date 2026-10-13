@@ -8,18 +8,18 @@ import { StyleSheet } from 'react-native';
 import { AppText } from './app-text';
 
 /** Props the tab bar hands to a tabBarLabel function. */
-type LabelProps = { color: ColorValue; position: 'beside-icon' | 'below-icon' };
+type LabelProps = { color: ColorValue; position: 'beside-icon' | 'below-icon'; focused: boolean };
 
 /**
  * A tabBarLabel for a tab: the name in up to two lines, centred under the icon (or beside it in the
- * wide-screen sidebar), in the tab bar's colour for open / not open.
+ * wide-screen sidebar), in the tab bar's colour for open / not open; the open tab's name is bold (#338).
  * @param text the tab's name, already translated.
  */
 export function tabLabel(text: string) {
-  function TabLabel({ color, position }: LabelProps) {
+  function TabLabel({ color, position, focused }: LabelProps) {
     const beside = position === 'beside-icon';
     return (
-      <AppText numberOfLines={2} style={[beside ? styles.beside : styles.below, { color }]}>
+      <AppText numberOfLines={2} style={[beside ? styles.beside : styles.below, { color }, focused ? styles.open : null]}>
         {text}
       </AppText>
     );
@@ -34,6 +34,9 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     fontWeight: '600',
     textAlign: 'center',
+  },
+  open: {
+    fontWeight: '700',
   },
   beside: {
     fontSize: 15,

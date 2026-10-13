@@ -139,7 +139,7 @@ export function EventStudentsScreen({ id, mode }: { id: number; mode: 'performer
   return (
     <Screen underHeader wide onRefresh={load}>
       {header}
-      <AppText variant="title">{event.title}</AppText>
+      <AppText variant="title" family="sans">{event.title}</AppText>
       <AppText tone="muted">{whenText(event)}</AppText>
       <AppText tone="muted">{mode === 'performers' ? t('events.performers.intro') : t('events.attendance.intro')}</AppText>
 

@@ -39,7 +39,7 @@ export function WeeklyPractice({ weeks }: WeeklyPracticeProps) {
   return (
     <View style={styles.wrap}>
       <View>
-        <AppText variant="title">{practiceTime(t, thisWeek.minutes)}</AppText>
+        <AppText variant="title" family="sans">{practiceTime(t, thisWeek.minutes)}</AppText>
         <AppText tone="muted">{t('practice.thisWeek', { date: formatDate(thisWeek.weekStart) })}</AppText>
       </View>
       {earlier.map((week) => (

@@ -69,7 +69,7 @@ export function VisitHistoryScreen({ studentId, subtitle, top }: VisitHistoryScr
   return (
     <Screen underHeader onRefresh={load}>
       <Stack.Screen options={{ title: t('visitHistory.title') }} />
-      {subtitle ? <AppText variant="subtitle">{subtitle}</AppText> : null}
+      {subtitle ? <AppText variant="subtitle" family="sans">{subtitle}</AppText> : null}
       {top}
       <AppText tone="muted">{t('visitHistory.intro')}</AppText>
 

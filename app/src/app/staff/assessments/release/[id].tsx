@@ -126,7 +126,7 @@ function ReleaseAssessmentScreenContent() {
   return (
     <Screen underHeader>
       {header}
-      <AppText variant="subtitle">{loaded.assessment.title}</AppText>
+      <AppText variant="subtitle" family="sans">{loaded.assessment.title}</AppText>
       <Section title={t('assessments.release.forStudents')}>
         <TextField
           label={t('assessments.release.notes')}

@@ -50,7 +50,7 @@ export function HeldItemsPanel({ by, openable }: HeldItemsPanelProps) {
         <ListRow
           key={item.loanId}
           leading="instruments"
-          highlighted={item.dueOn !== null && item.dueOn < today}
+          highlight={item.dueOn !== null && item.dueOn < today ? 'attention' : undefined}
           title={item.label}
           details={[
             [

@@ -41,7 +41,7 @@ export function AnnouncementDetail({ title, body, pinned, attachments, facts }: 
         </View>
       ) : null}
       <View style={styles.inside}>
-        <AppText variant="title">{title}</AppText>
+        <AppText variant="title" family="sans">{title}</AppText>
         <AppText selectable>{body}</AppText>
         <AttachmentList attachments={attachments} />
         <View style={[styles.facts, { borderTopColor: colors.cardBorder }]}>

@@ -43,7 +43,7 @@ export function HomeHeader({ name, role }: HomeHeaderProps) {
               <AppText variant="label" style={{ color: colors.onHeaderMuted }}>
                 {t('home.greetingNoName')}
               </AppText>
-              <AppText variant="title" style={[styles.name, { color: colors.onHeader }]} numberOfLines={2}>
+              <AppText variant="title" family="sans" style={[styles.name, { color: colors.onHeader }]} numberOfLines={2}>
                 {name}
               </AppText>
             </>

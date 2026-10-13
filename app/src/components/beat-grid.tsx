@@ -34,7 +34,7 @@ export function BeatGrid({ bols, divisions, marks, current }: BeatGridProps) {
       {rows.map((row) => (
         <View key={row.index} style={styles.row}>
           <View style={styles.mark} accessibilityLabel={t('practice.markLabel', { mark: markName(t, row.mark) })}>
-            <AppText variant="subtitle" tone="primary">
+            <AppText variant="subtitle" family="sans" tone="primary">
               {row.mark}
             </AppText>
           </View>

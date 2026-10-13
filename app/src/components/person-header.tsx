@@ -25,7 +25,7 @@ export function PersonHeader({ name, details = [], chips }: PersonHeaderProps) {
     <View style={styles.row}>
       <Initials name={name} size={64} />
       <View style={styles.text}>
-        <AppText variant="title">{name}</AppText>
+        <AppText variant="title" family="sans">{name}</AppText>
         {chips ? <StudentChips {...chips} /> : null}
         {details.map((line) => (
           <AppText key={line} tone="muted">

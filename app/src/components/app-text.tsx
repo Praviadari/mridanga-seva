@@ -3,6 +3,8 @@
 
 import { Text, type TextProps } from 'react-native';
 
+import { useHeadingFont } from '@/theme/fonts';
+import { serifType } from '@/theme/tokens.generated';
 import { typography, useTheme } from '@/theme/use-theme';
 
 /** Props for AppText: every <Text> prop, plus a size and a colour. */
@@ -11,6 +13,12 @@ export type AppTextProps = TextProps & {
   variant?: keyof typeof typography;
   /** Colour role. Default 'default' (main text colour). */
   tone?: 'default' | 'muted' | 'primary' | 'danger' | 'success';
+  /**
+   * 'sans' keeps a title or subtitle in the plain font: person names, titles staff typed, numbers and bols
+   * (the serif is for the app's own English headings, docs/DECISIONS.md #337). Default: serif for titles and
+   * subtitles in English once the font is loaded.
+   */
+  family?: 'serif' | 'sans';
 };
 
 /**
@@ -18,8 +26,9 @@ export type AppTextProps = TextProps & {
  * the web a title is a level-1 heading and a subtitle level 2 (without a level every heading
  * became an h1). Numbers use the 'number' variant, not a heading.
  */
-export function AppText({ variant = 'body', tone = 'default', style, ...rest }: AppTextProps) {
+export function AppText({ variant = 'body', tone = 'default', family, style, ...rest }: AppTextProps) {
   const { colors } = useTheme();
+  const serif = useHeadingFont();
   const colour = {
     default: colors.text,
     muted: colors.textMuted,
@@ -27,11 +36,14 @@ export function AppText({ variant = 'body', tone = 'default', style, ...rest }: 
     danger: colors.danger,
     success: colors.success,
   }[tone];
+  const heading = variant === 'title' || variant === 'subtitle';
+  // One family per weight: with a custom font Android must not also get a fontWeight.
+  const face = heading && serif && family !== 'sans' ? { ...serifType[variant], fontFamily: serif, fontWeight: 'normal' as const } : null;
   return (
     <Text
-      accessibilityRole={variant === 'title' || variant === 'subtitle' ? 'header' : undefined}
+      accessibilityRole={heading ? 'header' : undefined}
       aria-level={variant === 'title' ? 1 : variant === 'subtitle' ? 2 : undefined}
-      style={[typography[variant], { color: colour }, style]}
+      style={[typography[variant], face, { color: colour }, style]}
       {...rest}
     />
   );
