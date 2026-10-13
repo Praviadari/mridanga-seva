@@ -655,6 +655,8 @@
     "levelChange": "{{from}} → {{to}}",
     "approvedBy": "approved by {{name}}",
     "tickSyllabus": "Tick syllabus items",
+    "withdrawnTitle": "Consent withdrawn on {{date}}",
+    "withdrawnBody": "Nothing new is recorded for this student (visits, calls, practice, loans); the record stays as it is. Erasing it is a separate step for the app team.",
     "ownTitle": "This is your own student record",
     "ownBody": "A colleague checks you in and out, ticks your syllabus, logs calls and nominates you; the Guru decides your level. Your QR card and progress are under Me on your home.",
     "staffLogin": "Yes: {{name}}'s own record"
@@ -896,7 +898,8 @@
       "replyGone": "This announcement is no longer there, or no longer for you.",
       "changedMeanwhile": "Not saved: someone else changed this announcement while you were editing. Load the latest version and make your change again.",
       "maybeSaved": "No answer from the server, so it is not known whether this was saved. Check the announcements list before you try again.",
-      "dateTooFar": "Choose a date at most 6 months ahead."
+      "dateTooFar": "Choose a date at most 6 months ahead.",
+      "groupInactive": "This group is switched off. Switch it on in Groups, or choose another audience."
     },
     "files": {
       "sectionTitle": "Photos and PDFs",
@@ -975,7 +978,8 @@
       "nameTaken": "Another group already has this name.",
       "notAllowed": "Only coordinators and the facilitator can change groups.",
       "cannotChange": "Not changed: the group is no longer there.",
-      "changedMeanwhile": "Not saved: someone else changed this group meanwhile. Their version is shown now; make your change again."
+      "changedMeanwhile": "Not saved: someone else changed this group meanwhile. Their version is shown now; make your change again.",
+      "memberNotAllowed": "Only switched-on staff and students with a student record can join a group."
     }
   },
   "push": {
@@ -1512,6 +1516,7 @@
     },
     "errors": {
       "range": "Enter a whole number from {{min}} to {{max}}.",
+      "serverRefused": "A value was refused. Pull down to reload, check the numbers and save again.",
       "inactiveAfter": "Inactive must come after Irregular: give it more days.",
       "time": "Enter a time like 14:30.",
       "window": "The class must open before it closes.",

@@ -39,9 +39,10 @@ import { fetchStaff, type StaffMember } from '@/data/student-overview';
 import { levelName, monthName, outcomeName, statusName } from '@/i18n/labels';
 import { FLAG_REASONS, type FlagReason } from '@/i18n/location-flag';
 import { toCsv } from '@/lib/csv';
-import { formatDate, parseDayMonthYear } from '@/lib/dates';
+import { addDays, formatDate, parseDayMonthYear } from '@/lib/dates';
 import { CSV_WAYS, downloadCsv, saveCsvToFolder, shareCsv, type CsvResult } from '@/lib/save-csv';
 import { useWide } from '@/theme/use-theme';
+import { useLatestLoad } from '@/lib/latest-load';
 
 /** Student lines drawn at first; "Show more" adds as many again. */
 const PAGE = 50;
@@ -63,17 +64,23 @@ export default function ReportsScreen() {
   const [error, setError] = useState<string | null>(null);
   const [limit, setLimit] = useState(PAGE);
   const [exportMessage, setExportMessage] = useState<{ tone: 'success' | 'error'; text: string } | null>(null);
+  // F3-13 (#325): the custom range's problems at its fields, checked before asking the server.
+  const [rangeErrors, setRangeErrors] = useState<{ from?: string; to?: string }>({});
+  // R3-08: only the newest load's answer is shown (a slow older one would put another range's numbers back).
+  const beginLoad = useLatestLoad();
   const title = isGuru ? t('reports.titleGuru') : t('reports.titleCoordinator');
 
   const load = useCallback(async () => {
     setError(null);
     setReport(undefined);
     setExportMessage(null);
+    const isNewest = beginLoad();
     const result = await fetchReport(range.from, range.to, isGuru && mentor !== 'all' ? mentor : null);
+    if (!isNewest()) return;
     if (result.errorKey) setError(t(result.errorKey));
     setReport(result.report);
     setLimit(PAGE);
-  }, [range, mentor, isGuru, t]);
+  }, [range, mentor, isGuru, t, beginLoad]);
 
   useFocusEffect(
     useCallback(() => {
@@ -99,10 +106,13 @@ export default function ReportsScreen() {
   function showCustom() {
     const from = parseDayMonthYear(customFrom);
     const to = parseDayMonthYear(customTo);
-    if (!from || !to) {
-      setError(t('reports.errors.dates'));
-      return;
-    }
+    const problems: { from?: string; to?: string } = {};
+    if (!from) problems.from = t('reports.errors.dates');
+    if (!to) problems.to = t('reports.errors.dates');
+    else if (from && from > to) problems.to = t('reports.errors.range');
+    else if (from && to > addDays(from, 366)) problems.to = t('reports.errors.tooLong');
+    setRangeErrors(problems);
+    if (!from || !to || problems.from || problems.to) return;
     setRange({ from, to });
   }
 
@@ -162,8 +172,8 @@ export default function ReportsScreen() {
         />
         {choice === 'custom' ? (
           <>
-            <TextField kind="date" label={t('reports.from')} hint={t('reports.dateHint')} value={customFrom} onChangeText={setCustomFrom} maxLength={10} />
-            <TextField kind="date" label={t('reports.to')} hint={t('reports.dateHint')} value={customTo} onChangeText={setCustomTo} maxLength={10} />
+            <TextField kind="date" label={t('reports.from')} hint={t('reports.dateHint')} value={customFrom} onChangeText={setCustomFrom} maxLength={10} error={rangeErrors.from} />
+            <TextField kind="date" label={t('reports.to')} hint={t('reports.dateHint')} value={customTo} onChangeText={setCustomTo} maxLength={10} error={rangeErrors.to} />
             <Button variant="secondary" icon="search" label={t('reports.show')} onPress={showCustom} />
           </>
         ) : null}

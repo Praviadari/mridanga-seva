@@ -795,6 +795,9 @@ function announcementErrorKey(message: string, code: string | undefined): Messag
     case 'level_required':
     case 'group_required':
       return 'announcements.errors.choose';
+    // F5-09 (#329): the group was switched off while the form was open.
+    case 'group_inactive':
+      return 'announcements.errors.groupInactive';
     case 'already_published':
       return 'announcements.errors.alreadyPublished';
     case 'publish_too_far':

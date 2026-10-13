@@ -49,7 +49,7 @@ import {
   relationName,
 } from '@/i18n/labels';
 import { locationForCheckIn } from '@/lib/attendance-location';
-import { ageOn, localDate, formatDate, localTime, todayLocal } from '@/lib/dates';
+import { ageOn, localDate, formatDate, formatDateTime, localTime, todayLocal } from '@/lib/dates';
 import { goBackOr } from '@/lib/go-back';
 import { RefreshFailed } from '@/components/refresh-failed';
 import { useKeptLoad } from '@/lib/kept-load';
@@ -135,6 +135,12 @@ function StudentProfileScreenContent() {
         chips={{ levelId: student.levelId, status: student.status }}
         details={[student.rollNo]}
       />
+      {/* F12 / R3-06 (#328): a withdrawn record says so, not only through a refused action. */}
+      {student.withdrawnAt ? (
+        <Notice tone="info" title={t('profile.withdrawnTitle', { date: formatDateTime(student.withdrawnAt) })}>
+          {t('profile.withdrawnBody')}
+        </Notice>
+      ) : null}
       {student.status === 'paused' && student.pausedUntil ? (
         <AppText>{t('profile.pausedUntil', { date: formatDate(student.pausedUntil) })}</AppText>
       ) : null}

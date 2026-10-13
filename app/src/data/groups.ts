@@ -227,6 +227,9 @@ function groupErrorKey(message: string, code: string | undefined): MessageKey {
       return 'groups.errors.nameTooLong';
     case 'group_purpose_too_long':
       return 'groups.errors.purposeTooLong';
+    // F5-09 (#329): only switched-on staff and students with a record join a group.
+    case 'member_not_allowed':
+      return 'groups.errors.memberNotAllowed';
   }
   // 23505 = another group already has this name (the capitals do not matter).
   if (code === '23505') return 'groups.errors.nameTaken';
