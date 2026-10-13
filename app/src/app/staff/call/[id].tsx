@@ -35,6 +35,7 @@ import {
 import { callReasonName, lastVisitText, outcomeName, relationName } from '@/i18n/labels';
 import { localDate, formatDate, parseDayMonthYear, todayLocal } from '@/lib/dates';
 import { goBackOr } from '@/lib/go-back';
+import { useRequestId } from '@/lib/use-request-id';
 
 /** A phone number to dial: whose it is (already translated) and the number. */
 type Dial = { who: string; phone: string };
@@ -70,6 +71,8 @@ function CallLogScreenContent() {
   const [saved, setSaved] = useState<CallForm | null>(null);
   // The number that could not be opened in a dialler, shown to dial by hand.
   const [dialFailed, setDialFailed] = useState<string | null>(null);
+  // #322: one id for this call note, so Save again after a lost answer records it once.
+  const { requestId } = useRequestId();
 
   const load = useCallback(async () => {
     setContext(await fetchCallContext(id));
@@ -138,7 +141,7 @@ function CallLogScreenContent() {
       return;
     }
     setSaving(true);
-    const result = await logCall(studentId, form);
+    const result = await logCall(studentId, form, requestId());
     setSaving(false);
     setConfirmingLeft(false);
     if (result.errorKey) setServerError(t(result.errorKey));

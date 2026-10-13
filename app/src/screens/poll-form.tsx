@@ -39,6 +39,7 @@ import {
   type ResultsWhen,
 } from '@/data/polls';
 import { formatTypedDate, todayLocal } from '@/lib/dates';
+import { useRequestId } from '@/lib/use-request-id';
 
 type Loaded = { options: ComposeOptions; original: { poll: Poll; voted: boolean } | null };
 
@@ -58,6 +59,8 @@ export function PollFormScreen({ pollId }: { pollId?: number }) {
   const [errors, setErrors] = useState<PollFormErrors>({});
   const [serverError, setServerError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  // #322: one id for a new poll, so Create again after a lost answer does not tell everyone twice.
+  const { requestId } = useRequestId();
   const filled = useRef(false);
 
   const load = useCallback(async () => {
@@ -132,7 +135,7 @@ export function PollFormScreen({ pollId }: { pollId?: number }) {
       if (result.errorKey) setServerError(t(result.errorKey));
       else router.back();
     } else {
-      const result = await createPoll(form);
+      const result = await createPoll(form, requestId());
       setSaving(false);
       if (result.errorKey || result.id === undefined) setServerError(t(result.errorKey ?? 'common.genericError'));
       else router.replace({ pathname: '/staff/polls/[id]', params: { id: String(result.id) } });

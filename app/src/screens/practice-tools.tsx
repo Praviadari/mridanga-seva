@@ -43,6 +43,7 @@ import {
   usePracticeTimer,
 } from '@/lib/practice-timer';
 import { usePlayhead } from '@/lib/use-playhead';
+import { useRequestId } from '@/lib/use-request-id';
 import { radius, spacing, useTheme } from '@/theme/use-theme';
 
 type Mode = 'metronome' | 'taal';
@@ -374,6 +375,8 @@ function BeatDots({ count, current }: { count: number; current: number | null })
 
 /** Students: the practice timer, and what happened when it was stopped. */
 function PracticeTimerCard({ profileId }: { profileId: string }) {
+  // #322: one id per timed session, so Stop tapped again after a lost answer logs it once.
+  const { requestId, renew: renewRequestId } = useRequestId();
   const { t } = useTranslation();
   const timer = usePracticeTimer(profileId);
   const [now, setNow] = useState(() => Date.now());
@@ -405,7 +408,7 @@ function PracticeTimerCard({ profileId }: { profileId: string }) {
     }
     setBusy(true);
     const logged = Math.min(done, MAX_ENTRY_MINUTES);
-    const errorKey = await logPractice({ minutes: logged, source: 'timer', startedAt: timer.startedAt, taalId: timer.taalId });
+    const errorKey = await logPractice({ minutes: logged, source: 'timer', startedAt: timer.startedAt, taalId: timer.taalId }, requestId());
     setBusy(false);
     if (errorKey) {
       // Kept running, so nothing is lost; the student can try again or type it in S6.
@@ -413,6 +416,7 @@ function PracticeTimerCard({ profileId }: { profileId: string }) {
       return;
     }
     clearPracticeTimer();
+    renewRequestId();
     setResult({ tone: 'success', text: t('practice.timerLogged', { time: practiceTime(t, logged) }) });
   };
 

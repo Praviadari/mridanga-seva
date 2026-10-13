@@ -21,6 +21,7 @@ import { Section } from '@/components/section';
 import { TextField } from '@/components/text-field';
 import { deleteTheme, fetchCanEdit, fetchSlokas, fetchThemes, firstLine, saveTheme, type Sloka } from '@/data/ishtagoshti';
 import { spacing } from '@/theme/use-theme';
+import { useRequestId } from '@/lib/use-request-id';
 
 /** Add or edit one theme. */
 function EditThemeScreenContent() {
@@ -38,6 +39,8 @@ function EditThemeScreenContent() {
   const [published, setPublished] = useState(false);
   const [sample, setSample] = useState(false);
   const [sort, setSort] = useState('0');
+  // #322: one id for a new theme, so Save again after a lost answer saves it once.
+  const { requestId } = useRequestId();
   const [chosen, setChosen] = useState<number[]>([]);
   const [search, setSearch] = useState('');
   const [saving, setSaving] = useState(false);
@@ -121,7 +124,7 @@ function EditThemeScreenContent() {
       sample,
       sort: Number.isInteger(Number(sort)) ? Number(sort) : 0,
       slokaIds: chosen,
-    });
+    }, requestId());
     setSaving(false);
     if ('errorKey' in result) {
       setError(t(result.errorKey));

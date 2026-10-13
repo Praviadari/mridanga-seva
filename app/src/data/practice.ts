@@ -10,6 +10,7 @@
 import { readLocal, writeLocal } from '@/lib/local-storage';
 import { supabase } from '@/lib/supabase';
 
+import { rpcOnce } from './create-once';
 import { fallbackErrorKey, isNetworkError, type MessageKey } from './errors';
 
 /** One taal (table taals). */
@@ -209,9 +210,13 @@ export type PracticeInput = {
   note?: string;
 };
 
-/** Logs practice for the signed-in student. null = saved, else the message to show. */
-export async function logPractice(input: PracticeInput): Promise<MessageKey | null> {
-  const { error } = await supabase.rpc('log_practice', {
+/**
+ * Logs practice for the signed-in student. null = saved, else the message to show. equestId: the
+ * entry's own id (#322), so Stop or Save tapped again after a lost answer logs it once.
+ */
+export async function logPractice(input: PracticeInput, requestId: string): Promise<MessageKey | null> {
+  const { error } = await rpcOnce('log_practice', {
+    p_request_id: requestId,
     p_minutes: input.minutes,
     p_source: input.source,
     p_practised_on: input.practisedOn ?? null,

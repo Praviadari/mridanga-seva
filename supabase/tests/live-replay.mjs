@@ -41,7 +41,8 @@ const checklist = readFileSync(new URL('../../docs/GO_LIVE_CHECKLIST.md', import
 const LIVE_LAST = 11;
 const GO_LIVE = ['0013', '0014', '0015', '0016', '0017', '0018', '0019', '0020', '0021', '0022', '0023', '0024',
   '0025', '0026', '0027', '0028', '0029', '0030', '0031', '0032', '0033', '0034', '0035', '0036', '0037', '0038',
-  '0039', '0040', '0042', '0043', '0044', '0045', '0046', '0047', '0048'];
+  '0039', '0040', '0042', '0043', '0044', '0045', '0046', '0047', '0048',
+  '0062']; // 0062 = after-launch forms, a placeholder number the lead renumbers at the merge
 
 let failures = 0;
 let passes = 0;

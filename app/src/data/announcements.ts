@@ -15,6 +15,7 @@
 import { formatTypedDate, localDate, localMoment, localTime, parseDayMonthYear, parseTimeOfDay } from '@/lib/dates';
 import { supabase } from '@/lib/supabase';
 
+import { insertOnce } from './create-once';
 import {
   formFilesOf,
   isPicked,
@@ -758,11 +759,13 @@ export function checkReply(body: string): MessageKey | undefined {
 
 /**
  * Sends a private reply to an announcement the signed-in person can see. The database records
- * who wrote it and when. Call only after checkReply found no problem.
+ * who wrote it and when. Call only after checkReply found no problem. `requestId` is the reply box's
+ * (#322): Send again after a lost answer sends the reply once.
  */
-export async function sendReply(announcementId: number, body: string): Promise<ChangeOutcome> {
-  const { error } = await supabase.from('announcement_replies').insert({ announcement_id: announcementId, body: body.trim() });
-  if (!error) return {};
+export async function sendReply(announcementId: number, body: string, requestId: string): Promise<ChangeOutcome> {
+  const saved = await insertOnce('announcement_replies', { announcement_id: announcementId, body: body.trim() }, requestId);
+  if (!('error' in saved)) return {};
+  const { error } = saved;
   // 42501 = row-level security: the announcement is no longer addressed to this person;
   // 23503 = it was deleted meanwhile.
   if (error.code === '42501' || error.code === '23503') return { errorKey: 'announcements.errors.replyGone' };

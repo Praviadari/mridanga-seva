@@ -78,8 +78,8 @@ function MyAnnouncementScreenContent() {
 
   const { announcement: a, groupName, authorName, myReplies } = loaded;
 
-  async function reply(body: string) {
-    const outcome = await sendReply(a.id, body);
+  async function reply(body: string, requestId: string) {
+    const outcome = await sendReply(a.id, body, requestId);
     if (!outcome.errorKey) await load();
     return outcome.errorKey;
   }

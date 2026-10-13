@@ -49,6 +49,7 @@ import {
 } from '@/data/fund';
 import { fileSizeText } from '@/i18n/labels';
 import { formatDate, formatDateTime, formatTypedDate, parseDayMonthYear, todayLocal } from '@/lib/dates';
+import { useRequestId } from '@/lib/use-request-id';
 import { spacing } from '@/theme/use-theme';
 
 type Mode = 'decline' | 'withdraw' | 'reverse' | null;
@@ -74,6 +75,8 @@ function FundEntryScreenContent() {
   const [mode, setMode] = useState<Mode>(null);
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
+  // #322: one id for this new entry, so Save again after a lost answer records it once.
+  const { requestId } = useRequestId();
   const [message, setMessage] = useState<{ tone: 'error' | 'success'; text: string } | null>(null);
 
   const load = useCallback(async () => {
@@ -150,7 +153,7 @@ function FundEntryScreenContent() {
       }
       setBusy(true);
       setMessage(null);
-      const outcome = await recordEntry(profile.id, form, isoDate);
+      const outcome = await recordEntry(profile.id, form, isoDate, requestId());
       setBusy(false);
       if (outcome.errorKey) setMessage({ tone: 'error', text: t(outcome.errorKey) });
       else if (outcome.id) router.replace({ pathname: '/staff/fund/[id]', params: { id: String(outcome.id) } });
