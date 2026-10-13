@@ -157,7 +157,7 @@ const nameDobKey = (name: string, dob: string) => `${name.toLowerCase()}|${dob}`
 
 /** Loads phones, emails, names with dates of birth and roll numbers of the students already saved. */
 export async function fetchExistingStudents(): Promise<ExistingStudents | null> {
-  // Page by page: a .limit(5000) still stopped at Supabase's 1,000 rows (D9-04, #330).
+  // Page by page: the earlier limit of 5000 still stopped at Supabase's 1,000 rows (D9-04, #330).
   const rows = await readAllPages<{ full_name: string; dob: string | null; phone: string | null; email: string | null; roll_no: string }>(
     (from, to) => supabase.from('students').select('full_name, dob, phone, email, roll_no').order('id').range(from, to),
   );
