@@ -10,7 +10,6 @@ import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
 import { useAuth } from '@/auth/auth-provider';
-import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { ChoiceGroup, type Choice } from '@/components/choice-group';
 import { Columns } from '@/components/columns';
@@ -20,6 +19,7 @@ import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
+import { StatusText } from '@/components/status-text';
 import { TextField } from '@/components/text-field';
 import {
   ABSENT_DAY_CHOICES,
@@ -35,6 +35,9 @@ import {
 } from '@/data/student-overview';
 import { lastVisitText, LEVEL_IDS, levelName, statusName } from '@/i18n/labels';
 import { spacing, useWide } from '@/theme/use-theme';
+
+/** Students drawn at a time; "Show more" adds as many. */
+const STUDENT_PAGE = 50;
 
 /** What the screen loaded: the students and the staff, for mentor names. */
 type Loaded = { students: StudentSummary[]; staff: StaffMember[] };
@@ -57,6 +60,14 @@ export default function StudentListScreen() {
   }
   // Closed at first: on a phone the filters would push the list off the screen.
   const [showFilters, setShowFilters] = useState(false);
+  // Rows drawn: a class of hundreds is drawn 50 at a time, again from the top when a filter or the search
+  // changes (audit P5-01 / D9-08, docs/DECISIONS.md #313).
+  const [limit, setLimit] = useState(STUDENT_PAGE);
+  const [limitFor, setLimitFor] = useState(filters);
+  if (limitFor !== filters) {
+    setLimitFor(filters);
+    setLimit(STUDENT_PAGE);
+  }
 
   const load = useCallback(async () => {
     const [students, staff] = await Promise.all([fetchStudentSummaries(), fetchStaff()]);
@@ -216,16 +227,16 @@ export default function StudentListScreen() {
       ) : null}
 
       {loaded ? (
-        <AppText variant="label" role="status">
+        <StatusText variant="label">
           {t('students.count', { shown: shown.length, total: loaded.students.length })}
-        </AppText>
+        </StatusText>
       ) : (
         <LoadingCards />
       )}
 
       {loaded && shown.length === 0 ? <EmptyState icon="search" title={t('students.empty')} /> : null}
       <Columns>
-        {shown.map((student) => (
+        {shown.slice(0, limit).map((student) => (
           <ListRow
             key={student.id}
             leading="initials"
@@ -243,6 +254,13 @@ export default function StudentListScreen() {
           />
         ))}
       </Columns>
+      {shown.length > limit ? (
+        <Button
+          variant="secondary"
+          label={t('database.showMore', { count: shown.length - limit })}
+          onPress={() => setLimit(limit + STUDENT_PAGE)}
+        />
+      ) : null}
     </Screen>
   );
 }

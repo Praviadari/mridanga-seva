@@ -192,7 +192,7 @@ function ModuleGrid({ modules }: { modules: readonly Module[] }) {
   return (
     <View style={styles.grid}>
       {modules.map((module) => (
-        <ModuleButton key={module.key} module={module} style={[styles.tile, cardLook(colors)]} />
+        <ModuleButton key={module.key} module={module} inGrid style={[styles.tile, cardLook(colors)]} />
       ))}
     </View>
   );
@@ -207,10 +207,13 @@ function ModuleButton({
   style,
   labelWidth,
   circle = CIRCLE,
+  inGrid = false,
 }: {
   module: Module;
   style: StyleProp<ViewStyle>;
   labelWidth?: number;
+  /** A tile of the large-text grid: the name grows with the phone's text size. */
+  inGrid?: boolean;
   /** Diameter of the circle (smaller on a ring of nine). */
   circle?: number;
 }) {
@@ -248,7 +251,13 @@ function ModuleButton({
         ) : null}
       </View>
       <View style={labelWidth ? { width: labelWidth } : styles.labelInTile}>
-        <AppText variant="small" numberOfLines={2} maxFontSizeMultiplier={1.2} style={styles.label}>
+        {/* Capped only on the ring and its rows, where the slots are fixed; a tile of the large-text grid lets
+            the name grow with the phone's text size (audit P3-02, #315). */}
+        <AppText
+          variant="small"
+          numberOfLines={inGrid ? 3 : 2}
+          maxFontSizeMultiplier={inGrid ? undefined : 1.2}
+          style={styles.label}>
           {module.label}
         </AppText>
       </View>

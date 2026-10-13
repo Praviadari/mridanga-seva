@@ -202,7 +202,7 @@ function SyllabusTickOffScreenContent() {
 
             {isOpen === 'untick' ? (
               <>
-                <Notice tone="info" title={t('syllabus.untickTitle', { item: item.title })}>
+                <Notice tone="info" title={t('syllabus.untickTitle', { item: item.title })} announced>
                   {t('syllabus.untickBody')}
                 </Notice>
                 <Button

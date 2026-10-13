@@ -259,7 +259,7 @@ function SyllabusItemScreenContent() {
               }
             />
           ) : asking === 'retire' ? (
-            <Notice tone="info" title={t('syllabusEditor.retireAsk')}>
+            <Notice tone="info" title={t('syllabusEditor.retireAsk')} announced>
               {t('syllabusEditor.retireAskBody', { count: item.ticks })}
             </Notice>
           ) : null}

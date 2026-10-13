@@ -100,10 +100,12 @@ export function headerBarOptions(colors: Palette) {
  * bar in the surface colour with the open tab in saffron. `sidebar` puts the tabs on the left
  * with the label beside the icon, for wide screens. Tabs are at least 56 px tall (48 px minimum).
  * `fontScale` is the phone's text size setting (1 = normal): the bottom bar grows with it, so a
- * label at 200 % is not cut off under the icon.
+ * label at 200 % is not cut off under the icon. From about 115 % a label may take two lines
+ * (components/tab-label.tsx, audit P3-03, docs/DECISIONS.md #315), so the bar has room for the second line.
  */
 export function tabsScreenOptions(colors: Palette, sidebar: boolean, fontScale = 1) {
-  const extra = Math.round(Math.max(0, fontScale - 1) * 24);
+  const secondLine = fontScale >= 1.15 ? Math.round(18 * fontScale) : 0;
+  const extra = Math.round(Math.max(0, fontScale - 1) * 24) + secondLine;
   return {
     headerStyle: { backgroundColor: colors.headerTop },
     headerTintColor: colors.onHeader,

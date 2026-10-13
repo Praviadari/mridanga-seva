@@ -33,6 +33,7 @@ import {
   type StaffAssessment,
   type TrackerRow,
 } from '@/data/assessments';
+import { announce } from '@/lib/announce';
 import { levelName } from '@/i18n/labels';
 import { formatDateTime, formatDate } from '@/lib/dates';
 import { spacing } from '@/theme/use-theme';
@@ -264,7 +265,12 @@ function StaffAssessmentScreenContent() {
             icon="delete"
             label={confirmDelete ? t('assessments.detail.deleteYes') : t('assessments.detail.delete')}
             loading={busy === 'delete'}
-            onPress={() => (confirmDelete ? void remove() : setConfirmDelete(true))}
+            onPress={() => {
+              if (confirmDelete) return void remove();
+              setConfirmDelete(true);
+              // Only the button's words change; TalkBack does not read them again by itself (P2-01, #314).
+              announce(t('assessments.detail.deleteYes'));
+            }}
           />
           {confirmDelete ? (
             <Button variant="link" label={t('assessments.detail.deleteNo')} onPress={() => setConfirmDelete(false)} />

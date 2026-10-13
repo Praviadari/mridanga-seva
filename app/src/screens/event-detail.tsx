@@ -302,7 +302,7 @@ export function EventDetailScreen({ id, area }: { id: number; area: 'student' | 
 
       {confirming === 'cancel' ? (
         <>
-          <Notice tone="info" title={t('events.detail.cancelTitle')}>
+          <Notice tone="info" title={t('events.detail.cancelTitle')} announced>
             {t('events.detail.cancelBody')}
           </Notice>
           <TextField
@@ -318,7 +318,7 @@ export function EventDetailScreen({ id, area }: { id: number; area: 'student' | 
       ) : null}
       {confirming === 'delete' ? (
         <>
-          <Notice tone="info" title={t('events.detail.deleteTitle')}>
+          <Notice tone="info" title={t('events.detail.deleteTitle')} announced>
             {t('events.detail.deleteBody')}
           </Notice>
           <Button variant="secondary" label={t('events.detail.deleteYes')} loading={busy === 'delete'} onPress={() => void confirm()} />

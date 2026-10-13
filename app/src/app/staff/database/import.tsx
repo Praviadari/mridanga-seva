@@ -198,7 +198,7 @@ export default function ImportScreen() {
           {missingRequired.length === 0 && good.length > 0 ? (
             asking ? (
               <>
-                <Notice tone="info" title={t('importStudents.askTitle', { count: good.length })}>
+                <Notice tone="info" title={t('importStudents.askTitle', { count: good.length })} announced>
                   {t('importStudents.askBody')}
                 </Notice>
                 <Button icon="send" label={t('importStudents.importButton', { count: good.length })} loading={busy} onPress={() => void runImport()} />

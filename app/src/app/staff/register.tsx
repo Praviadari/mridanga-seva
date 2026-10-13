@@ -38,6 +38,7 @@ import { Notice } from '@/components/notice';
 import { PrivacyNoticeLink } from '@/components/privacy-notice-link';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
+import { StatusText } from '@/components/status-text';
 import { TextField } from '@/components/text-field';
 import {
   aboutFormFrom,
@@ -434,6 +435,10 @@ export default function RegisterStudentScreen() {
             returnKeyType="search"
           />
           {waitingMatches.length === 0 ? <AppText tone="muted">{t('register.waitingNoMatch')}</AppText> : null}
+          {/* Spoken by TalkBack as the search narrows the list (P2-03, #314). */}
+          {waitingQuery.trim() !== '' && waitingMatches.length > 0 ? (
+            <StatusText tone="muted">{t('common.foundCount', { count: waitingMatches.length })}</StatusText>
+          ) : null}
           {waitingMatches.slice(0, waitingShown).map((w) => {
             // Accept for an adult with a date of birth, a name that passes and the privacy tick; otherwise the
             // form only: under 18 (the desk with a parent), no date, a name from before #267 (Save says what to
@@ -444,7 +449,7 @@ export default function RegisterStudentScreen() {
             if (age && accepting?.id === w.id) {
               return (
                 <View key={w.id} style={styles.confirm}>
-                  <Notice tone="info" title={t('register.acceptTitle', { name: w.full_name })}>
+                  <Notice tone="info" title={t('register.acceptTitle', { name: w.full_name })} announced>
                     {[
                       t('register.acceptName', { value: w.full_name }),
                       t('register.acceptDob', { date: formatTypedDate(w.dob ?? ''), age: age.age }),

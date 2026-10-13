@@ -353,7 +353,7 @@ function PersonScreenContent() {
           ) : null}
           {typeof asking === 'object' && asking !== null ? (
             <>
-              <Notice tone="info" title={t('coordinators.linkAsk', { student: asking.link.fullName, roll: asking.link.rollNo })}>
+              <Notice tone="info" title={t('coordinators.linkAsk', { student: asking.link.fullName, roll: asking.link.rollNo })} announced>
                 {t('coordinators.linkAskBody', { person: person.email ?? person.fullName })}
               </Notice>
               <Button

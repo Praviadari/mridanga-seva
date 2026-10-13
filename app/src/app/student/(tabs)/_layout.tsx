@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next';
 import { useWindowDimensions } from 'react-native';
 
 import { tabIcon } from '@/components/icon';
+import { tabLabel } from '@/components/tab-label';
 import { documentTitleLayout } from '@/lib/document-title';
 import { tabsScreenOptions, useTheme } from '@/theme/use-theme';
 
@@ -20,18 +21,18 @@ export default function StudentTabsLayout() {
   return (
     <Tabs screenLayout={documentTitleLayout} screenOptions={tabsScreenOptions(colors, false, fontScale)}>
       {/* The home has its own saffron header band instead of a header bar. */}
-      <Tabs.Screen name="index" options={{ title: t('tabs.home'), headerShown: false, tabBarIcon: tabIcon('home') }} />
+      <Tabs.Screen name="index" options={{ title: t('tabs.home'), tabBarLabel: tabLabel(t('tabs.home')), headerShown: false, tabBarIcon: tabIcon('home') }} />
       <Tabs.Screen
         name="my-qr"
-        options={{ title: t('myQr.title'), tabBarLabel: t('tabs.myQr'), tabBarIcon: tabIcon('qr') }}
+        options={{ title: t('myQr.title'), tabBarLabel: tabLabel(t('tabs.myQr')), tabBarIcon: tabIcon('qr') }}
       />
       <Tabs.Screen
         name="announcements"
-        options={{ title: t('announcements.title'), tabBarLabel: t('tabs.news'), tabBarIcon: tabIcon('news') }}
+        options={{ title: t('announcements.title'), tabBarLabel: tabLabel(t('tabs.news')), tabBarIcon: tabIcon('news') }}
       />
       <Tabs.Screen
         name="ishtagoshti"
-        options={{ title: t('ishtagoshti.title'), tabBarLabel: t('tabs.ishtagoshti'), tabBarIcon: tabIcon('ishtagoshti') }}
+        options={{ title: t('ishtagoshti.title'), tabBarLabel: tabLabel(t('tabs.ishtagoshti')), tabBarIcon: tabIcon('ishtagoshti') }}
       />
     </Tabs>
   );
