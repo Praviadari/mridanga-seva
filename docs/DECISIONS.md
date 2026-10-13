@@ -2720,6 +2720,9 @@ in a srcdoc frame that inherits the site's policy and only a fixed text can be a
 export-web hashes it with Node (type stripping) and stops if the bundle does not hold it word for
 word. Every outside host and why is listed at the top of `_headers`.
 
+**Addendum 13 Oct 2026 (#282).** YouTube's scripts no longer run in the site's origin: a YouTube lesson plays in YouTube's
+own embed frame, driven by messages, and `https://www.youtube.com` left `script-src` (it stays in `frame-src`).
+
 **Why.** A hash keeps `'unsafe-inline'` out of script-src without moving the player to a separate
 page, which phones (a WebView loaded from a string) could not share. Per-site placeholders keep the
 TEST site from being allowed to talk to LIVE and the other way round. `'unsafe-inline'` for styles
@@ -3505,6 +3508,8 @@ still arrives is not shown while the app is open.
 
 **Consequences.** Photos stay in the disk cache while the person is signed in, so a screen opens
 them without downloading again (D9-06); they go at sign-out, not when an announcement is deleted.
+
+**Addendum 13 Oct 2026 (#283).** Recordings too: the "Record myself" takes and expo-audio's cache folders.
 The OS still shows a notice that arrives while the app is closed and nobody is signed in: that needs
 the token delete to have failed (no internet at sign-out) and nobody to have signed in since.
 
@@ -3865,6 +3870,8 @@ The sign-in notice (endedBody) now says a registration or announcement being wri
 **Consequences.** A minor's registration draft can sit on the coordinator's phone for up to 7 days after a
 forced sign-out (in the app's local storage, like the login itself). Other forms (call notes, events, polls,
 assessments) are not kept; add them to the same module when needed.
+
+**Addendum 13 Oct 2026 (#284).** The limit is now 3 days, and an old draft is deleted at every app start.
 
 ## 219. The last English-sentence errors become codes; roll_no is NOT NULL — 10 Oct 2026
 
@@ -5072,6 +5079,139 @@ the new staff function `record_desk_notice(student, version)` (set once: a notic
 sign-up whose email the desk typed differently is not linked, so its notice stays with the login.
 
 **Update 13 Oct 2026 (#292):** the app now sends it for an adult too (weekend-app).
+
+## 282. A YouTube lesson in the browser plays in YouTube's own frame, driven by messages — 13 Oct 2026
+
+**Status: decided by the lead's brief L7 (audit phase 3, S5-01); branch `launch-cleanup`. Web upload only.**
+
+**Context.** The web lesson player (#56, #142) was a srcdoc iframe without `sandbox`, so it had the app's origin, and
+it loaded YouTube's IFrame Player API script (`www.youtube.com/iframe_api`) into it. Code served from www.youtube.com
+therefore ran with the app's reach: it could read the stored Supabase session (refresh token) of a Guru, coordinator
+or student who opened a YouTube lesson on the web. The brief asked to sandbox the frame. A sandbox without
+`allow-same-origin` is inherited by the YouTube frame inside it, so YouTube's player would run without storage and
+very likely fail; the audit's own fallback was a separate origin or driving YouTube's embed by messages.
+
+**Decision.** On the web a YouTube lesson shows YouTube's embed page itself
+(`https://www.youtube.com/embed/<id>?enablejsapi=1&origin=<app>`) in an iframe with
+`sandbox="allow-scripts allow-same-origin allow-presentation allow-popups allow-popups-to-escape-sandbox"` (the origin is
+YouTube's, not the app's; no top navigation, forms or downloads). The app drives it with the messages the IFrame API
+itself uses (`listening`, then `infoDelivery` / `onReady` / `onError` from the embed; `command` with `playVideo`,
+`pauseVideo`, `seekTo`, `setPlaybackRate`), as other players do (vidstack). `src/lib/youtube-embed.ts` holds the
+protocol and the bookkeeping (speeds from the embed's list, time counted on between reports, the A-B loop, state 10
+times a second, "no internet" after 15 s of silence), so the lesson screen and its events are unchanged. Messages are
+accepted only from `https://www.youtube.com` and that frame; commands go only to that origin. `https://www.youtube.com`
+left `script-src` in `app/public/_headers` (it stays in `frame-src`). A video FILE keeps the srcdoc player page: it
+runs only its hash-pinned script and a `<video>`, no third-party code. Phones keep the WebView page with the API
+script: the WebView is not the app's origin (S5-06, #285 locks its navigation).
+
+**Why.** It removes the third-party script from the origin that holds the login, keeps YouTube's player working (it
+keeps its own storage), and needs no extra host or DNS (a `player.` subdomain waits for the domain move).
+
+**Consequences.** Not checked against real YouTube from the office: the network resets connections to youtube.com
+(as in #56). Unit tests cover the protocol (`app/tests/youtube-embed.test.mjs`, 6 tests). **Before the web upload a
+real check is needed** on a phone hotspot or a home network: open a YouTube lesson on the TEST web build at 375 px,
+press Play / Pause, change speed, set A and B, go fullscreen and back. If YouTube does not answer the messages, revert
+this commit alone (the frame then has the app's origin again, as before) and keep S5-01 open.
+
+## 283. Every sign-out deletes the recordings on the device — 13 Oct 2026
+
+**Status: decided by the lead's brief L7 (audit phase 3, S5-02); branch `launch-cleanup`. JS (OTA + web).**
+
+**Context.** #186 says every sign-out clears what the person left, but recordings were not covered: "Record myself"
+keeps up to 30 takes in the app's own `recordings/` folder with no owner, listed to whoever signs in next on a shared
+family phone (and attachable to that person's assessment); expo-audio leaves every recording (assessment answers,
+coordinators' voice notes) in the cache (`Audio/` on Android, `ExpoAudio/` on iOS). In the browser the takes stay in
+the open tab's memory after Sign out.
+
+**Decision.** `clearDeviceTraces` (every SIGNED_OUT, also a forced one) calls `forgetMyRecordings()` (phones: deletes
+`recordings/`; browser: revokes the blob addresses and empties the list) and deletes the cache folders `Audio` and
+`ExpoAudio` besides the pickers' (`TRACE_FOLDERS`). A folder still in use does not stop the rest; the next sign-out
+tries again. Takes stay on the phone while the same person is signed in, as before.
+
+**Consequences.** A student who signs out loses their kept takes (they were never uploaded, #56); the screen already
+says they stay on this phone only. Tests: `app/tests/launch-cleanup.test.mjs` (S5-02).
+
+## 284. Form drafts expire after 3 days, checked at every app start — 13 Oct 2026
+
+**Status: decided by the lead's brief L7 (audit phase 3, S5-03); branch `launch-cleanup`. JS (OTA + web).**
+
+**Context.** A draft kept after a forced sign-out (#218) was deleted only when it was read: when a form opened, at the
+next sign-in or at Sign out. On a phone or browser where nobody signed in again, a minor's name, date of birth and
+guardian's phone stayed past the "7 days" of #218.
+
+**Decision.** `purgeExpiredDrafts()` runs once at app start (the auth provider's first effect, before the login is
+read) and deletes a draft that is too old or unreadable. The age limit is now **3 days** (`DRAFT_DAYS`): the person
+whose login ended usually signs in again the same day, and 3 days still cover a class weekend.
+
+**Consequences.** #218's "7 days" now reads 3 days. A device that is never opened again still keeps its draft (nothing
+can run then); that is the login's own storage, cleared with the app's data. Tests: `launch-cleanup.test.mjs` (S5-03).
+
+## 285. The phone's lesson WebView stays on its page, under our own domain — 13 Oct 2026
+
+**Status: decided by the lead's brief L7 (audit phase 3, S5-06); branch `launch-cleanup`. JS (OTA).**
+
+**Context.** The Android lesson WebView (#56) allowed any navigation (`originWhitelist={['*']}`, no
+`onShouldStartLoadWithRequest`), so a tap on YouTube's logo could put another site where the player page was, with the
+app's message bridge. Its base URL (the Referer YouTube sees) was `https://mridanga-seva.app`, a domain the team does
+not own.
+
+**Decision.** `src/lib/lesson-navigation.ts` decides each load: the player page (its base URL) and `about:` / `data:` /
+`blob:` stay; YouTube's player frame (`/embed/`) stays; any other YouTube page (watch, channel, logo) opens outside
+the app (`Linking.openURL`); everything else is stopped. Frames inside the page (iOS reports them) may load any https
+address: they are another origin. The base URL is now `https://app.mridangaseva.com` (the team's domain, as the asset
+labels' links, #161).
+
+**Consequences.** If Android ever reports an ad frame inside YouTube's player as a page load, it is stopped (the
+player still plays, as with an ad blocker). Phone check with the next OTA on the production APK: a YouTube lesson
+plays; tapping the YouTube logo opens the YouTube app or browser, not a page inside the lesson. Tests:
+`launch-cleanup.test.mjs` (S5-06).
+
+## 286. Unlisted assessment files go daily; one login stores at most 150 MB a day — 13 Oct 2026
+
+**Status: decided by the lead's brief L8 (audit phase 3, S3-02, S3-03); migration 0049, branch `launch-cleanup`.**
+
+**Context.** S3-02: a recording uploaded for an assessment but never submitted (app killed, offline, a failed
+clean-up) stayed in `assessment-files` for ever, and `erase_student` listed only submitted files, so an erasure left
+a child's recordings in Storage. S3-03: a student with one open assessment could store 10 files of 50 MB a day and
+fill the free plan's 1 GB in two days.
+
+**Decision.** `orphan_assessment_files()`: files in `assessment-files` over a day old that no `assessments.media` and
+no submission's `file` / `voice_note` lists, at most 200, none while `assessments` is empty (a half-done restore).
+`claim_expired_submission_files()` also returns them with `submission_id` null, so the Edge Function's existing daily
+clean-up deletes them through the Storage API **without a deploy**; `orphan_files_daily()` (job `mridanga-orphan-files`)
+asks for the clean-up when there are any. No new job. `erase_student` lists every file in the child's folder. Upload:
+a student's or coordinator's files of the last 24 hours must total under 150 MB before another upload (besides the 10
+files); the Guru has no cap.
+
+**Why.** Reusing the claim and the job keeps the launch free of an Edge Function deploy and of a new job in the
+checklist. 150 MB is about 3.5 hours of the app's audio a day per login.
+
+**Consequences.** An erased child's files go within about two days without the runbook's hand step (OPERATIONS
+"Erasure request" checks the count). The cap is counted from `storage.objects.metadata.size`; the file being uploaded
+is not counted until it is stored, so the most is about 200 MB a day.
+
+## 287. Erasure matches emails whole, takes the notices, and covers waiting sign-ups — 13 Oct 2026
+
+**Status: decided by the lead's brief L8 (audit phase 3, S2-06, S4-05, S4-06); migration 0049, branch `launch-cleanup`.**
+
+**Context.** S2-06: erasure blanked every audit row whose text contained the erased email, so erasing ram@ also blanked
+the history of sriram@. S4-05: the mentor's inbox kept "You are now the mentor of <child>" (and other staff notices
+naming the child) for a year, and `push_outbox` kept them for ever. S4-06: a sign-up that never became a student
+could only be deleted in Authentication → Users, which left its name, phone, email and date of birth in `audit_log`.
+
+**Decision.** One internal helper `audit_redact(ids, emails)`: an id (uuid) matches anywhere, an email only as a whole
+JSON value (`"x@y.z"`); `erase_student`, `anonymise_staff` and the new function use it. `forget_notices_about(record,
+name, urls)` deletes inbox notices and `push_outbox` rows whose url holds the record id or names her assessments to
+review or her nominations, and notices (not announcements) and pushes whose title or text holds her full name as
+whole words; `erase_student` calls it and returns `notices_deleted`. `inbox_cleanup()` also deletes `push_outbox` rows
+older than 30 days. `erase_login(profile, reason, request_ref)`: the Guru (app) or the owner (SQL editor) erases a
+`pending` login on no student record: phones, login (with its profile, About you details and Ishtagoshti rows),
+audit values, tombstone in `erasures.login_profile`.
+
+**Consequences.** An email written inside a longer text (a call note) is no longer matched; the row's ids still are.
+A notice about another person with exactly the same full name goes too (inbox only). No app screen calls
+`erase_login` yet: the runbook is OPERATIONS "A sign-up that never became a student". Tests: smoke-test section "0049
+launch clean-up" (30 checks, finding IDs in the names).
 
 ## 291. Register a student shows every waiting sign-up, searchable — 13 Oct 2026
 
