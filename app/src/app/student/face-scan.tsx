@@ -1,4 +1,4 @@
-// S14 Face scan (Phase 3 P3-4, docs/DECISIONS.md #307-#312): the student turns face scan on, once, at the class
+// S15 Face scan (Phase 3 P3-4, docs/DECISIONS.md #307-#312): the student turns face scan on, once, at the class
 // desk, on their own phone, with a coordinator beside them; or turns it off with one tap. Shown only when the
 // server's switch is on (face_enabled) or this phone still keeps a face code (so it can always be turned off);
 // opened from My profile. The web app has no face scan: the row is hidden there, and this page only says so.
