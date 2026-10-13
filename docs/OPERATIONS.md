@@ -682,10 +682,12 @@ SDK 58 is not stable yet). Praveen runs every command, from the main folder; a c
     again. From now on `npm run update:production` reaches these phones; `update:preview` reaches only
     preview APKs.
 
-**What waits for the domain** (`app.mridangaseva.com`, GO_LIVE_CHECKLIST ⏳ DOMAIN): asset labels
-printed from the production app carry `https://app.mridangaseva.com/i/…` (`ASSET_LINK_ORIGIN`), so
-print real labels only after E3 (the app's own scanner reads them before that; a phone camera
-opens a dead address); email links use `mridanga-seva.pages.dev` until E3-E5; Android App Links,
+**What waits for the domain** (`app.mridangaseva.com`, GO_LIVE_CHECKLIST ⏳ DOMAIN): until E3 the
+production app opens "Print QR cards" on `https://mridanga-seva.pages.dev` and labels carry that
+address; the app's scanner reads labels from both addresses (`LIVE_WEB_ORIGINS` in
+`app/src/lib/asset-link.ts`, [#294](DECISIONS.md)). **At the domain move, swap its two lines** (JS,
+an update) so new labels carry the domain; old pages.dev labels keep scanning as long as the pages.dev
+site stays up. Email links use `mridanga-seva.pages.dev` until E3-E5; Android App Links,
 which would open a label in the app instead of the browser, need the domain and a new APK
 ([#259](DECISIONS.md)). None of these blocks the Friday build.
 
@@ -794,9 +796,11 @@ way they get an update. A fix published later replaces it.
 rollback or fix downloads it in the background and still runs what it had; the second runs it. So
 tell staff (the door phone first) and testers: *close the app fully (swipe it away from recent
 apps) and open it again, twice*, or tap **Restart now** when the home screen offers it. Check the
-version line under Sign out shows the new update. If the app crashes before any screen shows,
-Expo itself goes back to the update that came with the APK on the next start; then the same two
-starts bring the fix.
+version line under Sign out shows the new update. From the APK of 16 Oct 2026 on ([#294](DECISIONS.md)):
+the "Something went wrong" screen itself looks for a fix at once, offers **Restart now** when it is
+downloaded, and always has **Restart the app**; and a crash in the first seconds of a new update is
+handed to Expo, which goes back to the last update that worked (once per update; if the same update
+crashes at start again, the crash screen shows). The same two starts then bring the fix.
 
 **What exists on EAS:** `npx eas-cli update:list --all` (updates), `channel:list`
 (channels and the branch each one serves). The free plan covers 1,000 people a month who
