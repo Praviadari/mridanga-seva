@@ -200,6 +200,7 @@ function SyllabusItemScreenContent() {
             onChangeText={setDescription}
             multiline
             maxLength={ITEM_DESCRIPTION_MAX + 50}
+            counter={ITEM_DESCRIPTION_MAX}
             error={errors.description ? t(errors.description) : undefined}
           />
           {item && item.ticks > 0 ? <AppText variant="small" tone="muted">{t('syllabusEditor.ticksKept', { count: item.ticks })}</AppText> : null}
