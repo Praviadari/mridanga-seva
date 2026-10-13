@@ -92,19 +92,17 @@ function TodayChip({ item }: { item: TodayItem }) {
 /** What waits for this person, most urgent first; one quiet line when nothing does. */
 function WaitingForYou({ guru, board }: { guru: boolean; board: StaffDashboard }) {
   const { t } = useTranslation();
-  const all: { key: string; count: number; title: string; icon: IconName; open: () => void }[] = [
+  const all: { key: string; count: number; title: string; open: () => void }[] = [
     {
       key: 'signups',
       count: board.signupsWaiting,
       title: t('home.waiting.signups', { count: board.signupsWaiting }),
-      icon: 'register',
       open: () => router.push('/staff/register'),
     },
     {
       key: 'calls',
       count: board.callsDue,
       title: t(guru ? 'home.waiting.callsGuru' : 'home.waiting.calls', { count: board.callsDue }),
-      icon: 'calls',
       open: () =>
         guru
           ? router.push('/staff/follow-ups-by-coordinator')
@@ -114,28 +112,24 @@ function WaitingForYou({ guru, board }: { guru: boolean; board: StaffDashboard }
       key: 'promotions',
       count: board.promotions,
       title: t(guru ? 'home.waiting.promotionsGuru' : 'home.waiting.promotions', { count: board.promotions }),
-      icon: 'promote',
       open: () => router.push('/staff/promotion'),
     },
     {
       key: 'fund',
       count: board.fundToApprove,
       title: t('home.waiting.fund', { count: board.fundToApprove }),
-      icon: 'fund',
       open: () => router.push('/staff/fund'),
     },
     {
       key: 'review',
       count: board.toReview,
       title: t('home.waiting.toReview', { count: board.toReview }),
-      icon: 'assessment',
       open: () => router.push('/staff/assessments'),
     },
     {
       key: 'suggestions',
       count: board.suggestions,
       title: t('home.waiting.suggestions', { count: board.suggestions }),
-      icon: 'feedback',
       open: () => router.push('/staff/suggestions'),
     },
   ];
@@ -147,7 +141,8 @@ function WaitingForYou({ guru, board }: { guru: boolean; board: StaffDashboard }
       {rows.length === 0 ? (
         <AppText tone="muted">{t('home.waiting.nothing')}</AppText>
       ) : (
-        rows.map((row) => <ListRow key={row.key} leading={row.icon} title={row.title} highlight="attention" onPress={row.open} />)
+        // The amber row and its sign say "waits for you"; no icon circle, so the circles stay near the top.
+        rows.map((row) => <ListRow key={row.key} title={row.title} highlight="attention" onPress={row.open} />)
       )}
     </View>
   );
