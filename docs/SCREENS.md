@@ -203,7 +203,7 @@ change. A "Class fund" row under the staff homes' buttons opens it; G2 has the t
 ## Phase 3 (branch `face-scan`, was `p3-native`; not merged: face scan is off for everyone)
 
 Face scan, P3-3 and P3-4 ([DECISIONS.md #307-#312](DECISIONS.md), server: 0070 #295-#300). **Native**: the Phase 3 APK
-(fingerprint 0dfc4d5f) carries the camera and model packages; nothing here reaches today's phones. Every entry shows only
+(fingerprint 3571a39a on p3-native, +53 MB; new on face-scan) carries the camera and model packages; nothing here reaches today's phones. Every entry shows only
 while the server's switch `face_enabled` is on (default off), and the student's camera screens only in the Android app.
 
 | # | Screen | Who | Status | Code |

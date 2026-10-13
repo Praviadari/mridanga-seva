@@ -294,6 +294,11 @@ test('app.json: camera text names the face scan, GPU library left out, no SQLCip
   assert.deepEqual(plugin('expo-build-properties')[1].android.packagingOptions.exclude, ['**/libtensorflowlite_gpu_jni.so']);
   assert.deepEqual(plugin('expo-build-properties')[1].android.buildArchs, ['armeabi-v7a', 'arm64-v8a']);
   assert.equal(plugin('expo-sqlite'), 'expo-sqlite');
+  // The APK's merged manifest (Actions run 38404377388) had these from androidx.biometric (expo-secure-store) and an
+  // implied READ_PHONE_STATE (LiteRT); the class uses none of them (#307).
+  for (const permission of ['READ_PHONE_STATE', 'USE_BIOMETRIC', 'USE_FINGERPRINT']) {
+    assert.ok(expo.android.blockedPermissions.includes(`android.permission.${permission}`), permission);
+  }
   for (const lang of ['te', 'hi']) assert.ok(JSON.parse(read(expo.locales[lang])).ios.NSCameraUsageDescription.length > 20);
   const pkg = JSON.parse(read('package.json'));
   assert.equal(pkg.dependencies['expo-local-authentication'], undefined);

@@ -5574,12 +5574,17 @@ V1SE int8; README with the full SHA-256 of each), Metro `tflite` assets (app/met
 (expo-sqlite stays plain), LiteRT's GPU delegate library left out (`packagingOptions.exclude`), no
 `expo-local-authentication` (the phone's fingerprint is not an attendance factor, audit S4F-10). Both ABIs in one APK
 (arm64-v8a + armeabi-v7a), as the class app ships today. Camera permission text names the face scan (te/hi for iOS in
-app/locales); brief 9's `blockedPermissions` and `allowBackup: false` unchanged. Fingerprint **0dfc4d5f** (was 40e5832c).
+app/locales); `allowBackup: false` unchanged; brief 9's `blockedPermissions` kept and three added, which the first Actions build's
+merged manifest showed: `USE_BIOMETRIC` and `USE_FINGERPRINT` (androidx.biometric, pulled in by expo-secure-store; its
+fingerprint lock is not used) and `READ_PHONE_STATE` (implied by a LiteRT library, like the storage permissions brief 9
+blocked); the workflow fails if any blocked permission comes back. Fingerprint **3571a39a** on p3-native (was 40e5832c);
+on branch face-scan (rebuilt on main 22-10-2026) see NOTES_face_scan.md for the current one.
 A branch-only GitHub Actions workflow (.github/workflows/face-scan-android.yml; was p3-native-android.yml) builds the
 release APK on every push to `face-scan`, with its size against main 4b522f9 and the permissions it asks for.
 
 **Why.** Pinned versions: VisionCamera 5 and Nitro move fast and `@expo/app-integrity` is alpha (SPIKE_RESULT §12). The
-trims take off what the class does not use (≈ 7.5 MB arm64 + the 32-bit share). An arm64-only APK would save ≈ 15 MB more
+trims take off what the class does not use: the first build measured **+53.3 MB** (127,192,669 B vs 73,940,799 B for weekend-app
+421980f, both ABIs; the spike was +65.9 MB). An arm64-only APK would save ≈ 15 MB more
 but shut out old 32-bit phones; decided at P3-7 with the measured size.
 
 **Consequences.** From the merge on, main's updates reach only APKs built with this code (WORK_PLAN P3-3): the branch
