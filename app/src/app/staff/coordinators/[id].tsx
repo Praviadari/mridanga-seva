@@ -223,7 +223,7 @@ function PersonScreenContent() {
             <>
               <ListRow
                 title={own.fullName}
-                details={[` ·  · `]}
+                details={[`${own.rollNo} · ${levelName(t, own.levelId)} · ${statusName(t, own.status)}`]}
                 onPress={() => router.push({ pathname: '/staff/students/[id]', params: { id: own.id } })}
               />
               {asking === 'unlinkOwn' ? (
@@ -272,7 +272,7 @@ function PersonScreenContent() {
                 <ListRow
                   key={s.id}
                   title={s.fullName}
-                  details={[` ·  · `]}
+                  details={[`${s.rollNo} · ${levelName(t, s.levelId)} · ${statusName(t, s.status)}`]}
                   action={{ label: t('coordinators.linkChoose'), variant: 'secondary', onPress: () => setAsking({ own: s }) }}
                 />
               ))}
