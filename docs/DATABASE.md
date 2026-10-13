@@ -1639,6 +1639,88 @@ level's lesson titles stay unseen); anon reads nothing. The policies wrap `is_st
 
 Tests: section "0052 more practice" in `supabase/tests/smoke-test.mjs`.
 
+## Face scan (0070)
+
+[DECISIONS.md #295-#300](DECISIONS.md). Migration `0070_face_enrolment.sql` — **Phase 3, branch
+`face-scan`, placeholder number** (was 0060 on `p3-server`; renumbered at the merge into main, right before the next production APK); not on TEST or LIVE before the phone
+test day and Praveen's go. Plans: [phase3/WORK_PLAN.md](phase3/WORK_PLAN.md) P3-2, P3-6.
+
+**The switch (#300).** Settings `face_enabled` (false), `face_min_age` (18: adults only until the Guru and
+the lawyer answer; 5-18), `face_expiry_months_minor` (12; 1-24), `face_expiry_months_adult` (24; 1-36),
+`face_score_days` (60; 1-365), `face_model_version` (`sface-2021dec-int8`). App users (G10 too) cannot change
+any `face_*` value: `setting_owner_only`; the SQL editor can. While `face_enabled` is false, every face
+function that starts or records something answers `face_off`; `remove_face`, `my_face_enrolment`,
+`face_use_counts` and the night job always work.
+
+**Face consent (#298).** `consents` (scope `face`) has `child_assent`, `assent_read_by` (only on face
+consents: check `consents_assent_face_only`) and, for every consent, `revoked_by` (filled with the reviser's
+login by trigger `consents_revoked_by` when the function did not name one). App users add a face consent
+only through `record_face_consent(student, signed_form, guardian, id_type_checked, child_assent,
+notice_version)` (staff; trigger `consents_face_at_desk`, error `face_consent_at_desk`): an adult's own; a
+minor's parent (guardian of that student, 0047), ID type, signed form and the child's yes. Errors:
+`not_allowed`, `face_off`, `student_not_found`, `student_withdrawn`, `written_consent_required`,
+`notice_version_invalid`, `dob_required`, `face_too_young`, `minor_needs_guardian`, `minor_needs_id_check`,
+`child_assent_required`, `face_consent_exists`, `consent_guardian_mismatch`.
+
+**Enrolments, no face code (#295, #297).** `face_enrolments`: `student_id`, `profile_id` (the login whose
+phone holds the code), `device_key` (16-100 of `A-Za-z0-9_-`), `model_version`, `consent_id`, `code_hash`
+(SHA-256 of the 6-digit desk code while it waits), `code_tries`, `requested_at`, `approved_by` /
+`approved_at`, `enrolled_at`, `expires_at`, `revoked_at` / `revoked_by` / `revoke_reason`. One current and one
+waiting row per student (partial unique indexes). Row-level security on, **no policy, no grant**: nobody
+reads or writes it directly.
+- `start_face_enrolment(device_key, model_version)` — the student's phone → `{ request, code, expires_at }`
+  (10 minutes; 5 an hour). Errors `not_allowed`, `face_off`, `device_key_invalid`, `face_model_outdated`,
+  `too_many_requests` and the student checks: `student_withdrawn`, `student_left`, `dob_required`,
+  `face_too_young`, `no_face_consent` (no current face consent; a minor's without the parent or the child's yes).
+- `approve_face_enrolment(student, code)` — staff, never for their own record → `{ ok, roll_no, full_name,
+  repeated }` or `{ ok: false, reason: 'code_wrong', tries_left }` (the fifth wrong code ends the request,
+  `code_failed`). Errors `no_face_request`, `face_request_expired` (10 minutes) and the student checks.
+- `enrol_face(request, device_key)` — the same phone, within 10 minutes of the confirmation →
+  `{ enrolled_at, expires_at, repeated }`; the student's earlier enrolment ends (`replaced`). Errors
+  `no_face_request`, `device_mismatch`, `face_not_confirmed`, `face_confirmation_expired`, `face_model_outdated`.
+- `my_face_enrolment(device_key)` — the student's phone → `{ face_enabled, model_version, enrolled,
+  expires_at, waiting_request, confirmed }`; `enrolled` false = wipe the face code.
+- `remove_face(student, reason)` — the student (own, `student_off`) or staff (`desk`, `lost_phone`) →
+  `{ removed, consent_revoked }`; `student_off` and `desk` also revoke the face consent. Errors `not_allowed`,
+  `student_required`, `reason_invalid`, `student_not_found`.
+- `get_face_enrolments(student)` — staff; rows with `state` (`waiting_code`, `confirmed`, `current`,
+  `expired`, `ended`), no device key; one `access_log` row per call.
+
+**Ends (#299).** Triggers: `consents_end_face` (a face or data consent revoked or deleted:
+`consent_withdrawn`), `students_end_face` (`withdrawn`; `login_changed` when `profile_id` changes),
+`profiles_end_face` (`login_off`), `settings_face_model` (`model_changed`). `refuse_withdrawn` (0025/0048)
+guards inserts. `erase_student` removes everything with the record. Night job `face_housekeeping()`:
+`expired`, `not_completed` (a request older than an hour), `left` (status Left for 30 days); deletes
+`visit_face_scores` older than `face_score_days`, ended enrolments and failure counts older than 400 days,
+challenges older than a day.
+
+**Visits.** `visits.liveness_ok` (face check-ins only). The match score lives in `visit_face_scores`
+(`visit_id`, `match_score` -1..1, `scored_at`; no access for app users; no audit trigger, so `audit_log`
+never copies it). Trigger `visits_face_guard` (`guard_face_visit`): `method = 'face'` or a liveness result
+only when the transaction set `app.face_visit` = `on` (the self-scan RPC, P3-5) and face scan is on, else
+`face_visit_reserved`.
+
+**Integrity check (#296).** `integrity_challenges` (`challenge` 32 hex, `profile_id`, `student_id`,
+`action` check_in / check_out, `issued_at`, `expires_at` +60 s, `used_at`, `location` result code,
+`result`, `pass_hash`, `pass_expires_at` +120 s, `pass_used_at`); no access for app users.
+- `issue_integrity_challenge(action)` — the student's phone, with a current enrolment → `{ challenge,
+  expires_at, login }`; 10 per 10 minutes. Errors `face_off`, `action_invalid`, `face_not_enrolled`,
+  `too_many_requests` and the student checks.
+- `begin_integrity_check(challenge, profile, action, location)` and `finish_integrity_check(challenge,
+  result, pass_hash)` — **service role only** (the Edge Function `verify-integrity`); they answer
+  `{ ok: false, reason }` rather than raise, so a spent challenge stays spent.
+- `use_integrity_pass(pass, action, location)` — internal, for the self-scan RPC: the caller's own pass →
+  the student id; errors `integrity_required`, `integrity_pass_used`, `integrity_pass_expired`,
+  `integrity_pass_mismatch`.
+- `face_scan_failures` (`centre_id`, `reason`: outside, mocked, offline, window, integrity, liveness,
+  no_match, not_enrolled, other; `detail` = the rule) — **no student id**. `face_use_counts(from, to)` (staff:
+  a coordinator their centre, the Guru every active centre) → `[{ centre_id, centre, enrolled, failures: {
+  reason: n }, integrity: { rule: n } }]`; errors `range_invalid`, `range_too_long`.
+
+The Edge Function: `supabase/functions/verify-integrity` (verdict rules in `verdict.ts`); set-up in
+OPERATIONS.md "Face scan: integrity check". Tests: section "0070 face scan" in
+`supabase/tests/smoke-test.mjs` and `supabase/tests/integrity-verdict.test.mjs`.
+
 ## Linking a login to a student
 
 A student record can exist without a login (many students never install the app). When a person
@@ -1766,6 +1848,10 @@ the security-round triggers `guard_student_frozen`, `note_level_change`, `releas
 `guard_consent`, `recheck_minor_consent`, `refuse_withdrawn` and the check `privacy_caller_ok` (0025),
 `orphan_files_daily` and the owner-only `anonymise_staff` (0040),
 `audit_redact` and `forget_notices_about` (0049; `orphan_assessment_files` for the Edge Function only),
+the face-scan helpers and triggers `face_on`, `face_require_on`, `face_model_version`, `face_block_reason`,
+`revoke_face_enrolments`, `note_face_failure`, `use_integrity_pass` (for the self-scan RPC), `face_housekeeping`,
+`guard_face_consent`, `fill_consent_revoked_by`, `end_face_on_consent`, `end_face_on_student`, `end_face_on_login_off`,
+`end_face_on_model_change`, `guard_face_visit`; `begin_integrity_check` / `finish_integrity_check` are the Edge Function's (service role) (0070),
 and the helpers `my_role`, `is_guru`, `is_staff`,
 `setting_int`, `today_ist`.
 
@@ -1785,6 +1871,7 @@ and the helpers `my_role`, `is_guru`, `is_staff`,
 | `mridanga-cron-history-purge` | 02:15 UTC = 07:45 IST | Deletes pg_cron's run details older than 7 days (0040) |
 | `mridanga-parent-notices` | Every minute | `send_parent_notices()` — calls the Edge Function `notify-parents` when a parent email waits; nothing while switched off (0043); since 0051 also when a consent email to a child's parent waits, switched off or not |
 | `mridanga-minor-signups` | 20:45 UTC = 02:15 IST | `expire_minor_signups()` — erases (`erase_login`) a child's sign-up whose parent did not consent within 30 days, or that the desk did not accept within 180 days (0051) |
+| `mridanga-face-housekeeping` | 01:55 UTC = 07:25 IST | `face_housekeeping()` — ends expired, unfinished and Left-for-30-days face enrolments; deletes old match scores, challenges, failure counts and ended enrolments (0070, Phase 3 branch) |
 
 ## Who can see what
 
@@ -1816,6 +1903,7 @@ and the helpers `my_role`, `is_guru`, `is_staff`,
 | Roles, switching a login off, duty hours of others | — | — | Write (not their own role; Guru role only in the dashboard) |
 | Audit log | — | — | Read through `get_audit_log` (each page logged) |
 | Access log (`access_log`) | — | — | Read |
+| Face enrolments, integrity challenges, match scores (0070, Phase 3 branch) | Own state only, through `my_face_enrolment`; turn own off (`remove_face`) | Through `get_face_enrolments` (logged); confirm an enrolment; record face consent; remove at the desk; counts per centre (`face_use_counts`) | Same as coordinator, counts for every centre. Nobody reads the tables; no face code exists on the server |
 | Own About-you answers (`person_details`, 0036) | Read / write own (through `my_about`, `save_about_me`) | Read through `get_student_details`, `waiting_sign_ups` (own centre); write through `save_student_details` | Read all; write through `save_student_details`; G13 report |
 | Option lists (`choice_options`, 0036) | Read | Read | Read / write (G12) |
 | Assessments (Phase 2) | Those given to them, with the release notes and files | Sent ones; create none | All, drafts too; create, send, delete unreleased |

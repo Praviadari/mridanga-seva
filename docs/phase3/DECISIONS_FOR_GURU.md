@@ -26,6 +26,8 @@ check-out only (#231 answers). Still open for the Guru: items 1, 3 (minimum age)
 3. **Face for minors.** Self-scan is open to minors with parental face consent (#248). *Still for
    the Guru:* face only from age **13** (recommended — younger children by QR; faces change fast and
    errors are higher). Re-enrol minors every 12 months.
+   *Built (13-10-2026, #298, branch only):* the server setting `face_min_age` is **18** (adults first, as the audit
+   requires) until the Guru answers and the lawyer has reviewed; then it is set to the Guru's age in the SQL editor.
 
 4. **Geofence radius at Abids.** *Recommended:* **100 m** for self-scan (blocked outside, with
    "ask a coordinator"), **150 m** kept for staff check-ins (saved and flagged, #70). Fine-tune from
@@ -46,7 +48,8 @@ check-out only (#231 answers). Still open for the Guru: items 1, 3 (minimum age)
    student's phone), with Apache-licensed open models (SFace + MiniFASNet, ML Kit detection). Not
    InsightFace's free models (non-commercial only). Cloud (AWS Rekognition, Mumbai) only as Plan B.
 
-8. **Data location and keeping.** *Recommended:* face codes encrypted on the class's Supabase server
+8. **Data location and keeping.** **Changed by the audit (Gate 2, 13-10-2026, #295): face codes on the student's own phone only — no server copy;
+   a new phone means setting it up again at the desk.** Original recommendation, for history: face codes encrypted on the class's Supabase server
    in Mumbai and on the student's own phone only (no class device holds face codes, #248); no photos kept; deleted at once on withdrawal, 30 days
    after a student leaves, after 12 months (minors) / 24 months (adults), or on a model change.
 

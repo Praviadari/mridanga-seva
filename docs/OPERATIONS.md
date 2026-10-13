@@ -44,6 +44,7 @@ s.16), so a processor abroad is allowed, but it must be recorded and named in th
 | Cloudflare (Pages) | Serves the web version of the app and the public website | Visitors' IP addresses and request details in its logs; the app's data goes from the browser straight to Supabase, not through Cloudflare | Worldwide edge | [[TEAM]] |
 | Zoho Mail | The team's mail: privacy@ and info@ | Whatever parents write to us: requests, complaints, their contact details | **[[TEAM]]:** the account's data centre (zoho.in = India, zoho.com = USA) | [[TEAM]] |
 | YouTube (Google) | Lesson videos shown in the app | The viewer's IP address and device, and YouTube's own cookies on the web; the app sends it no names | Google's regions | YouTube's terms |
+| Google Play Integrity (**planned**, Phase 3 face scan, only when face scan is switched on: [#296](DECISIONS.md)) | Decodes the phone's integrity token for each self-scan check-in or check-out (Edge Function `verify-integrity`) | The token: our app's package and signing certificate, the phone's integrity labels, a request hash (SHA-256 of the login id, action, challenge and inside/outside: not readable back), time. **No face data, no location, no name** | Google's regions | [[TEAM]] |
 | GitHub | Source code (public) | None: no personal data is kept in the repository | USA | — |
 
 jsDelivr is no longer one: since brief 13 the web QR reader is served from our own site ([DECISIONS.md #143](DECISIONS.md)).
@@ -1396,6 +1397,82 @@ on again `select cron.schedule('mridanga-parent-notices', '* * * * *', 'select s
 **A parent asks to stop:** C8 → under the parent → "Stop emails to this parent" (or they use the
 email's Unsubscribe). Rows are kept 30 days and hold no text; the parent's email is read from the
 guardian row at sending time.
+## Face scan: integrity check
+
+**Phase 3 — branch `face-scan` (was `p3-server`), not merged. Nothing here runs before the phone test day (after Wed
+21-10-2026) has passed Gate 1 (docs/phase3/SPIKE_RESULT.md §0, §8) and Praveen says go. LIVE only after
+Praveen says face scan is fully tested.** [DECISIONS.md #295-#300](DECISIONS.md); DATABASE.md "Face scan
+(0070)".
+
+Before each self-scan the student's phone gets a challenge from the database, asks Google Play Integrity for a
+token bound to that check-in, and sends it to the Edge Function `verify-integrity`. The function has Google
+decode the token with a **service account**, checks package, signing certificate, request hash, time and
+`MEETS_DEVICE_INTEGRITY`, and gives the phone a one-time pass for the self-scan (120 s). Google charges
+nothing up to 10,000 decodes a day per Cloud project.
+
+**1. Google Cloud project (Praveen, about 15 minutes, ₹0).** Use the class's Google account with 2-step
+verification on (audit: every owner account has 2FA and a second owner), not a personal one.
+1. console.cloud.google.com → project picker → **New project** → name `mridanga-seva` → Create. Note the
+   **project number** (Dashboard → Project info): the app sends it with every integrity request (P3-5 puts
+   it in the app's settings; it is not a secret).
+2. **APIs & Services → Library** → search "Google Play Integrity API" → **Enable**.
+3. **IAM & Admin → Service accounts → Create service account**: name `integrity-decoder-test` (one per
+   Supabase project: `-test` now, `-live` later, so a leaked TEST key is deleted alone) → Create and
+   continue → skip the optional role and user steps → Done.
+4. Open it → **Keys → Add key → Create new key → JSON** → a file downloads. It is a password: never in
+   chat, email, git or the app.
+5. Supabase **TEST** (`fhuqykssenuhczdqbafu`) → **Edge Functions → Secrets → Add new secret**:
+   `GOOGLE_SERVICE_ACCOUNT_JSON` = the whole content of that file (open it in Notepad, select all, copy,
+   paste). Save, then **delete the downloaded file** (Shift+Delete). The key now exists only in Supabase and
+   Google.
+6. Same place, `PLAY_INTEGRITY_CERT_SHA256` = the APK's signing-certificate SHA-256: in a terminal in `app\`,
+   `npx eas-cli credentials -p android` → the build profile of the APK the phones have → **SHA256
+   Fingerprint** (with colons is fine; several may be listed, separated by commas). Without it the function
+   answers `not_configured` (it never lets "any certificate" through).
+7. Optional: `PLAY_INTEGRITY_PACKAGE` (default `org.mridangaseva.app`), `PLAY_INTEGRITY_MIN_VERSION_CODE`
+   (the oldest app build accepted).
+
+**2. Database (TEST).** SQL editor: run `0070_face_enrolment.sql` (its final number on main may differ:
+the lead renumbers it at merge), then the check in the TEST-run pack (NOTES.md "13-10-2026 — Phase 3 P3-2 +
+P3-6 server"). Face scan stays **off** (`face_enabled` false) after it.
+
+**3. Deploy the function (TEST ref only; the CLI on Praveen's PC is logged in and really deploys).** From
+the repository folder, on the branch that has the function:
+```bash
+npx supabase@latest functions deploy verify-integrity --project-ref fhuqykssenuhczdqbafu --use-api
+```
+No `--no-verify-jwt`: the gateway checks the student's sign-in (`supabase/config.toml` says
+`verify_jwt = true`). `functions list` must show `verify-integrity` ACTIVE.
+
+**4. Check it without a phone.** In **Edge Functions → verify-integrity → Logs** after each call:
+- a call with no sign-in → `401` (the gateway);
+- a signed-in call with an empty body → `400 {"ok":false,"reason":"bad_request"}`;
+- with a real challenge (a TEST student login, face switched on for the test, `issue_integrity_challenge`) and
+  a made-up token → `{"ok":false,"reason":"integrity_failed","rule":"decode_failed"}`; the log line says
+  `decode error decode 400` (Google refused the made-up token: the key works) — `decode error token 4xx`
+  instead means the service account could not sign in (key or project wrong). The real pass comes only from
+  a phone with the Phase 3 app (P3-5).
+
+**Switching face scan on or off (SQL editor only; G10 cannot):**
+```sql
+update settings set value = 'true'  where key = 'face_enabled';  -- on: TEST for tests; LIVE only after Praveen's go
+update settings set value = 'false' where key = 'face_enabled';  -- off for everyone at once (enrolments are kept)
+```
+Other face settings, same way: `face_min_age` (18 until the Guru and the lawyer answer), `face_expiry_months_minor`
+(12), `face_expiry_months_adult` (24), `face_score_days` (60), `face_model_version` (changing it ends every
+enrolment made with another model: everyone re-enrols at the desk).
+
+**Counts for staff:** `select face_use_counts(current_date - 30, current_date);` signed in as staff in the app
+(a screen comes with P3-6's app half); in the SQL editor read `face_scan_failures` directly (no student ids in it).
+
+**If the service-account key leaks:** Google Cloud → IAM & Admin → Service accounts → `integrity-decoder-…` →
+Keys → delete it; make a new key (step 4) and replace the secret (step 5). A leaked key lets someone decode
+tokens of our package, nothing more; it cannot read the database.
+
+**On LIVE (later):** a second service account `integrity-decoder-live`, its key and the certificate secret in
+the LIVE project, `0070` in the go-live order (GO_LIVE_CHECKLIST row M0070), the same deploy with the LIVE
+ref, Google added to the processor register as a live processor and to the privacy notice (N4, after the
+lawyer), then `face_enabled` true only on Praveen's word.
 ## Files no announcement uses
 
 Photos and PDFs are removed from Storage by the app when an announcement or one of its files is

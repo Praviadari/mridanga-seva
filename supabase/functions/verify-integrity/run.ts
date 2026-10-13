@@ -73,7 +73,10 @@ export async function runVerify(request: VerifyRequest, deps: VerifyDeps): Promi
       nowMs: deps.now(),
     });
     result = verdict.ok ? 'pass' : (verdict.failed as string);
-  } catch {
+  } catch (e) {
+    // 'token <status>' = the service account could not sign in (key, project); 'decode <status>' =
+    // Google refused the token itself. Status codes only.
+    log(`verify-integrity: decode error ${e instanceof Error ? e.message : 'unknown'}`);
     result = 'decode_failed';
   }
 
