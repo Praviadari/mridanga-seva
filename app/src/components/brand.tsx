@@ -34,7 +34,7 @@ export function BrandSplash({ slow }: { slow?: boolean }) {
         style={{ backgroundColor: brand }}
         contentContainerStyle={styles.slowSplash}>
         <Image source={drum} style={large ? styles.splashImageSmall : styles.splashImage} resizeMode="contain" />
-        <AppText variant="title" style={styles.splashText}>
+        <AppText variant="title" family="sans" style={styles.splashText}>
           {t('app.name')}
         </AppText>
         {/* Read out as soon as it appears. */}
@@ -60,7 +60,7 @@ export function BrandSplash({ slow }: { slow?: boolean }) {
       aria-busy
       accessibilityLabel={t('common.loading')}>
       <Image source={drum} style={styles.splashImage} resizeMode="contain" />
-      <AppText variant="title" style={styles.splashText}>
+      <AppText variant="title" family="sans" style={styles.splashText}>
         {t('app.name')}
       </AppText>
       <ActivityIndicator color={onBrand} />

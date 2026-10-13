@@ -89,7 +89,7 @@ export function EventsHomeScreen({ area }: { area: 'student' | 'staff' }) {
         leading="poll"
         title={p.question}
         details={details}
-        highlighted={state.canVote && !state.closed && state.myChoice === null}
+        highlight={state.canVote && !state.closed && state.myChoice === null ? 'attention' : undefined}
         onPress={() =>
           isStaff
             ? router.push({ pathname: '/staff/polls/[id]', params: { id: String(p.id) } })

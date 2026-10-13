@@ -12,10 +12,10 @@ import { Icon } from './icon';
 /** Props for Notice. */
 export type NoticeProps = PropsWithChildren<{
   /**
-   * 'error' is red; 'success' is green; 'info' is plain, for news that is neither, e.g. "already
-   * checked in, nothing changed".
+   * 'error' is red; 'success' is green; 'warning' is amber, for something that needs someone to act
+   * (docs/DECISIONS.md #338); 'info' is plain, for news that is neither, e.g. "already checked in, nothing changed".
    */
-  tone: 'error' | 'success' | 'info';
+  tone: 'error' | 'success' | 'warning' | 'info';
   /** Optional bold first line, already translated. */
   title?: string;
   /**
@@ -34,6 +34,7 @@ export function Notice({ tone, title, announced = tone !== 'info', children }: N
   const look = {
     error: { background: colors.dangerSurface, border: colors.danger, titleTone: 'danger', icon: 'alert', iconColour: colors.danger },
     success: { background: colors.successSurface, border: colors.success, titleTone: 'success', icon: 'check', iconColour: colors.success },
+    warning: { background: colors.warningSurface, border: colors.warningBorder, titleTone: 'default', icon: 'alert', iconColour: colors.warning },
     info: { background: colors.surface, border: colors.border, titleTone: 'default', icon: 'info', iconColour: colors.primary },
   } as const;
   return (
@@ -43,7 +44,7 @@ export function Notice({ tone, title, announced = tone !== 'info', children }: N
       <Icon name={look[tone].icon} size={22} color={look[tone].iconColour} />
       <View style={styles.text}>
         {title ? (
-          <AppText variant="label" tone={look[tone].titleTone}>
+          <AppText variant="label" tone={look[tone].titleTone} style={tone === 'warning' ? { color: colors.warning } : undefined}>
             {title}
           </AppText>
         ) : null}

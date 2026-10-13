@@ -32,6 +32,7 @@ import { registerForPush, usePushTaps } from '@/lib/push';
 import { pushNeedsRetry } from '@/lib/push-state';
 import { useTakingLong } from '@/lib/slow-start';
 import { supabaseConfigProblem } from '@/lib/supabase';
+import { HeadingFontProvider } from '@/theme/fonts';
 import { useTheme } from '@/theme/use-theme';
 
 // Keep the native splash screen until we know where to send the person. Must run at the top
@@ -67,22 +68,25 @@ export default function RootLayout() {
     },
   };
   return (
-    // Follows the phone keyboard for every page (components/keyboard.tsx, docs/DECISIONS.md #269).
-    <KeyboardRoot>
-      <ThemeProvider value={navigationTheme}>
-        <StatusBar style="auto" />
-        {supabaseConfigProblem ? (
-          <>
-            <HideSplash when />
-            <SetupNeeded problem={supabaseConfigProblem} />
-          </>
-        ) : (
-          <AuthProvider>
-            <RootNavigator />
-          </AuthProvider>
-        )}
-      </ThemeProvider>
-    </KeyboardRoot>
+    // Follows the phone keyboard for every page (components/keyboard.tsx, docs/DECISIONS.md #269). The heading
+    // font loads at run time and never holds the splash (theme/fonts.tsx, #337).
+    <HeadingFontProvider>
+      <KeyboardRoot>
+        <ThemeProvider value={navigationTheme}>
+          <StatusBar style="auto" />
+          {supabaseConfigProblem ? (
+            <>
+              <HideSplash when />
+              <SetupNeeded problem={supabaseConfigProblem} />
+            </>
+          ) : (
+            <AuthProvider>
+              <RootNavigator />
+            </AuthProvider>
+          )}
+        </ThemeProvider>
+      </KeyboardRoot>
+    </HeadingFontProvider>
   );
 }
 

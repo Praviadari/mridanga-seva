@@ -83,7 +83,7 @@ export default function StocktakesScreen() {
         <ListRow
           key={count.id}
           leading="stocktake"
-          highlighted={count.finishedAt === null}
+          highlight={count.finishedAt === null ? 'attention' : undefined}
           title={`${count.centreName} · ${formatDateTime(count.startedAt)}`}
           details={[
             count.finishedAt === null

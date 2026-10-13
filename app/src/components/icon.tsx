@@ -127,14 +127,16 @@ export type IconProps = {
   size?: number;
   /** Default: the main text colour. */
   color?: ColorValue;
+  /** The filled shape instead of the outline (the open tab, docs/DECISIONS.md #338). */
+  filled?: boolean;
 };
 
 /** One icon, hidden from screen readers (the text next to it says the same). */
-export function Icon({ name, size = 22, color }: IconProps) {
+export function Icon({ name, size = 22, color, filled }: IconProps) {
   const { colors } = useTheme();
   return (
     <Ionicons
-      name={SHAPES[name]}
+      name={filled ? filledShape(name) : SHAPES[name]}
       size={size}
       color={color ?? colors.text}
       aria-hidden
@@ -142,12 +144,28 @@ export function Icon({ name, size = 22, color }: IconProps) {
   );
 }
 
-/** For a tab's `tabBarIcon`: the icon in the colour (saffron when open) and size the tab bar gives. */
+/** The filled twin of an icon's outline shape (Ionicons names it without `-outline`). */
+export function filledShape(name: IconName) {
+  return SHAPES[name].replace(/-outline$/, '') as keyof typeof Ionicons.glyphMap;
+}
+
+/**
+ * For a tab's `tabBarIcon`: the open tab shows its filled icon in a pale pill, the others the outline, so the
+ * open tab is told by shape, not only by colour (audit P3-06/P3-07, docs/DECISIONS.md #338). Colour and size
+ * come from the tab bar.
+ */
 export function tabIcon(name: IconName) {
-  return function TabIcon({ color, size }: { color: ColorValue; size: number }) {
-    return <Icon name={name} color={color} size={size} />;
+  return function TabIcon({ color, size, focused }: { color: ColorValue; size: number; focused: boolean }) {
+    const { colors } = useTheme();
+    return (
+      <View style={[tabPill, focused ? { backgroundColor: colors.tabActiveIndicator } : null]}>
+        <Icon name={name} color={color} size={size} filled={focused} />
+      </View>
+    );
   };
 }
+
+const tabPill = { width: 56, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' } as const;
 
 /** Props for IconBadge. */
 export type IconBadgeProps = {

@@ -255,7 +255,8 @@ const languages = loadLanguages();
   mkdirSync(out, { recursive: true });
   cpSync(join(root, 'static'), out, { recursive: true });
 
-  const css = readFileSync(join(root, 'src', 'styles.css'));
+  // The colours come from design/tokens.json (tokens.css, written by design/build-tokens.mjs; DECISIONS #336).
+  const css = Buffer.concat([readFileSync(join(root, 'src', 'tokens.css')), Buffer.from('\n'), readFileSync(join(root, 'src', 'styles.css'))]);
   const cssName = `site.${createHash('sha256').update(css).digest('hex').slice(0, 10)}.css`;
   mkdirSync(join(out, 'assets'), { recursive: true });
   writeFileSync(join(out, 'assets', cssName), css);

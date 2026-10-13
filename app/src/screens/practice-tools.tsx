@@ -323,7 +323,7 @@ function TempoControl({ bpm, onChange }: { bpm: number; onChange: (bpm: number) 
   return (
     <View style={styles.tempo}>
       <View style={styles.tempoValue} accessible accessibilityLabel={t('practice.bpmLabel', { bpm })}>
-        <AppText variant="title">{bpm}</AppText>
+        <AppText variant="title" family="sans">{bpm}</AppText>
         <AppText tone="muted">{t('practice.bpm', { min: MIN_BPM, max: MAX_BPM })}</AppText>
       </View>
       <View style={styles.steps}>
@@ -419,7 +419,7 @@ function PracticeTimerCard({ profileId }: { profileId: string }) {
   return (
     <Section icon="time" title={t('practice.timerTitle')} description={timer ? undefined : t('practice.timerIntro')}>
       {timer ? (
-        <AppText variant="subtitle">
+        <AppText variant="subtitle" family="sans">
           {t('practice.timerRunning', { time: practiceTime(t, minutes) })}
         </AppText>
       ) : null}

@@ -145,7 +145,7 @@ function ReviewScreenContent() {
         <PersonHeader name={student.fullName} details={[student.rollNo, levelName(t, student.levelId)]} />
       ) : null}
       <AssignmentChips status={status} dueOn={release.dueOn} />
-      <AppText variant="subtitle">{a.title}</AppText>
+      <AppText variant="subtitle" family="sans">{a.title}</AppText>
       <AppText tone="muted">
         {[
           t('assessments.dueOn', { date: formatDate(release.dueOn) }),

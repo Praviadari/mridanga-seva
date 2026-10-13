@@ -22,9 +22,15 @@ export type ListRowProps = {
   details?: string[];
   /**
    * Draws the row in the "confirmed" green, e.g. for a student who is checked in, so the state
-   * can be seen at a glance without reading.
+   * can be seen at a glance without reading. The same as highlight="confirmed".
    */
   highlighted?: boolean;
+  /**
+   * 'confirmed' = green with a tick: done, present, approved. 'attention' = amber with an alert sign:
+   * something waits for someone to act (overdue, to approve, still open; audit P3-09, docs/DECISIONS.md #338).
+   * The row's words still say the state; colour and sign only help.
+   */
+  highlight?: 'confirmed' | 'attention';
   /**
    * One button at the right end of the row. Screen readers hear its label with the row's title,
    * e.g. "Check in, Arjun Rao", so the many same buttons of a list can be told apart.
@@ -47,13 +53,15 @@ export type ListRowProps = {
 };
 
 /** A card-like row with a title, details and an optional button; tappable when `onPress` is given. */
-export function ListRow({ title, details = [], highlighted, action, onPress, leading, chips, warning }: ListRowProps) {
+export function ListRow({ title, details = [], highlighted, highlight, action, onPress, leading, chips, warning }: ListRowProps) {
   const { colors } = useTheme();
   const { t } = useTranslation();
   const large = useLargeText();
+  const mark = highlight ?? (highlighted ? 'confirmed' : undefined);
   const look = [
     cardLook(colors),
-    highlighted ? { backgroundColor: colors.successSurface, borderColor: colors.success } : null,
+    mark === 'confirmed' ? { backgroundColor: colors.successSurface, borderColor: colors.success, borderLeftWidth: 4 } : null,
+    mark === 'attention' ? { backgroundColor: colors.warningSurface, borderColor: colors.warningBorder, borderLeftWidth: 4 } : null,
     // Room for the button on a line of its own (RowContent).
     large && action ? styles.wrap : null,
   ];
@@ -64,14 +72,14 @@ export function ListRow({ title, details = [], highlighted, action, onPress, lea
         accessibilityLabel={[title, ...(chips ? studentChipsText(t, chips) : []), ...details, ...(warning ? [warning] : [])].join(', ')}
         onPress={onPress}
         style={({ pressed }) => [styles.row, look, pressed && styles.pressed]}>
-        <RowContent title={title} details={details} action={action} leading={leading} chips={chips} warning={warning} />
+        <RowContent title={title} details={details} action={action} leading={leading} chips={chips} warning={warning} mark={mark} />
         {action ? null : <Icon name="chevron" size={18} color={colors.textMuted} />}
       </Pressable>
     );
   }
   return (
     <View style={[styles.row, look]}>
-      <RowContent title={title} details={details} action={action} leading={leading} chips={chips} warning={warning} />
+      <RowContent title={title} details={details} action={action} leading={leading} chips={chips} warning={warning} mark={mark} />
     </View>
   );
 }
@@ -84,7 +92,8 @@ function RowContent({
   leading,
   chips,
   warning,
-}: Pick<ListRowProps, 'title' | 'details' | 'action' | 'leading' | 'chips' | 'warning'>) {
+  mark,
+}: Pick<ListRowProps, 'title' | 'details' | 'action' | 'leading' | 'chips' | 'warning'> & { mark?: ListRowProps['highlight'] }) {
   const { colors } = useTheme();
   const large = useLargeText();
   const button = action ? <Button {...action} accessibilityLabel={action.accessibilityLabel ?? `${action.label}, ${title}`} /> : null;
@@ -92,7 +101,16 @@ function RowContent({
     <>
       {leading === 'initials' ? <Initials name={title} /> : leading ? <IconBadge name={leading} size={40} /> : null}
       <View style={styles.text}>
-        <AppText variant="label">{title}</AppText>
+        {mark ? (
+          <View style={styles.titleLine}>
+            <Icon name={mark === 'confirmed' ? 'check' : 'alert'} size={18} color={mark === 'confirmed' ? colors.success : colors.warning} />
+            <AppText variant="label" style={styles.titleText}>
+              {title}
+            </AppText>
+          </View>
+        ) : (
+          <AppText variant="label">{title}</AppText>
+        )}
         {chips ? <StudentChips {...chips} /> : null}
         {details.map((line) => (
           <AppText key={line} variant="small" tone="muted">
@@ -159,6 +177,14 @@ const styles = StyleSheet.create({
   actionUnder: {
     flexBasis: '100%',
     alignItems: 'flex-start',
+  },
+  titleLine: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  titleText: {
+    flexShrink: 1,
   },
   warning: {
     flexDirection: 'row',

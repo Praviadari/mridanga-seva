@@ -200,7 +200,7 @@ export default function FundScreen() {
             <ListRow
               key={e.id}
               leading={e.direction}
-              highlighted={e.status === 'waiting'}
+              highlight={e.status === 'waiting' ? 'attention' : undefined}
               title={`${amountText(e)} · ${categoryName(t, category.get(e.categoryId))}`}
               details={[
                 [formatDate(e.onDate), kindLine(e), statusText(e)].filter(Boolean).join(' · '),

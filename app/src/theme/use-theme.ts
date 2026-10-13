@@ -96,8 +96,8 @@ export function headerBarOptions(colors: Palette) {
 }
 
 /**
- * Tabs of a role (staff/(tabs), student/(tabs)): the same saffron header bar as above, and a tab
- * bar in the surface colour with the open tab in saffron. `sidebar` puts the tabs on the left
+ * Tabs of a role (staff/(tabs), student/(tabs)): the same header bar as above, and a tab bar in the surface
+ * colour; the open tab has a filled icon in a pill and a bold label (components/icon.tsx tabIcon, #338). `sidebar` puts the tabs on the left
  * with the label beside the icon, for wide screens. Tabs are at least 56 px tall (48 px minimum).
  * `fontScale` is the phone's text size setting (1 = normal): the bottom bar grows with it, so a
  * label at 200 % is not cut off under the icon. From about 115 % a label may take two lines
@@ -111,10 +111,10 @@ export function tabsScreenOptions(colors: Palette, sidebar: boolean, fontScale =
     headerTintColor: colors.onHeader,
     headerTitleStyle: { color: colors.onHeader },
     sceneStyle: { backgroundColor: colors.background },
-    tabBarActiveTintColor: colors.primary,
-    tabBarInactiveTintColor: colors.textMuted,
+    tabBarActiveTintColor: colors.tabActive,
+    tabBarInactiveTintColor: colors.tabInactive,
     // The open tab's pill in the sidebar.
-    tabBarActiveBackgroundColor: sidebar ? colors.primarySoft : undefined,
+    tabBarActiveBackgroundColor: sidebar ? colors.tabActiveIndicator : undefined,
     tabBarStyle: {
       backgroundColor: colors.surface,
       borderColor: colors.cardBorder,

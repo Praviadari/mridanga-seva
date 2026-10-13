@@ -1,10 +1,14 @@
 // Colour palette for the whole app, in a light and a dark version.
 // Screens never use raw colour codes; they take colours from useTheme() (src/theme/use-theme.ts),
-// so a change here restyles every screen.
+// so a change here restyles every screen. The values come from design/tokens.json through
+// tokens.generated.ts (docs/DECISIONS.md #336): change a colour there, run node design/build-tokens.mjs,
+// and the app's tests check every text colour for 4.5:1 in both schemes.
+
+import { chips, modules, semantic } from './tokens.generated';
 
 /**
- * Saffron brand colour. Also used by the splash screen and icons (app.json and
- * scripts/make-placeholder-icons.mjs), so change it in all three places together.
+ * Saffron of the native splash screen and the app icon (app.json and scripts/make-placeholder-icons.mjs):
+ * those change only with a new APK (audit phase 5 step 4), so the JS splash keeps this colour until then.
  */
 export const brand = '#B45309';
 
@@ -17,6 +21,10 @@ export type Palette = {
   background: string;
   /** Cards, text fields and other raised surfaces. */
   surface: string;
+  /** Text fields, sheets and menus: a step above `surface`. */
+  surfaceRaised: string;
+  /** A quiet box sunk into the page (the end of a home, a skeleton). */
+  surfaceSunken: string;
   /** Main text. */
   text: string;
   /** Less important text: hints, captions. */
@@ -30,16 +38,46 @@ export type Palette = {
   controlBorder: string;
   /** Main buttons and links. */
   primary: string;
+  /** A main button while it is pressed. */
+  primaryPressed: string;
   /** Text and icons drawn on top of `primary`. */
   onPrimary: string;
+  /** Text links. */
+  link: string;
+  /** Marigold: a mark on the header band, never text on a light page. */
+  accent: string;
+  /** Text on `accent`. */
+  onAccent: string;
+  /** Gold, decoration only. */
+  ornament: string;
+  /** The keyboard focus ring (web). */
+  focus: string;
   /** Errors and destructive actions. */
   danger: string;
   /** Light background behind an error message. */
   dangerSurface: string;
-  /** Confirmation messages. */
+  /** Confirmation messages: done, present, approved. */
   success: string;
   /** Light background behind a confirmation message. */
   successSurface: string;
+  /** "Needs attention": something waits for someone to act (overdue, to approve; #338). */
+  warning: string;
+  /** Background of a "needs attention" row or notice. */
+  warningSurface: string;
+  /** Edge of a "needs attention" row or notice. */
+  warningBorder: string;
+  /** News and information (indigo). */
+  info: string;
+  infoSurface: string;
+  infoBorder: string;
+  /** A button or field that cannot be used now: text, and its background. */
+  disabled: string;
+  disabledSurface: string;
+  /** The open tab: its icon and label, and the pill behind its icon (#338). */
+  tabActive: string;
+  tabActiveIndicator: string;
+  /** The other tabs. */
+  tabInactive: string;
   /** Pale saffron behind an icon or a badge; an icon on it uses `primary`. */
   primarySoft: string;
   /** Text on `primarySoft`, e.g. a person's initials: darker than `primary` for contrast. */
@@ -50,13 +88,22 @@ export type Palette = {
   shadow: string;
   /** The grey shapes shown while a screen loads. */
   skeleton: string;
-  /** Top and bottom colours of the saffron band at the top of the home screens and header bars. */
+  /** Behind a sheet or a full-screen card. */
+  overlay: string;
+  /** A row or tile while it is pressed. */
+  pressedOverlay: string;
+  /**
+   * Top and bottom colours of the band at the top of the home screens and header bars: night indigo
+   * (option A) or saffron, the team's choice in design/tokens.json.
+   */
   headerTop: string;
   headerBottom: string;
-  /** Text and icons on the saffron band. */
+  /** Text and icons on the band. */
   onHeader: string;
-  /** Less important text on the saffron band. */
+  /** Less important text on the band. */
   onHeaderMuted: string;
+  /** A marigold word on the band (indigo) or a pale one (saffron). */
+  headerAccent: string;
   /**
    * Small status labels (components/status-chip.tsx): text and background per kind. `info` new,
    * `success` active, `warning` irregular, `neutral` inactive, `paused` paused, `danger` left.
@@ -79,52 +126,20 @@ export type ChipTone = 'info' | 'success' | 'warning' | 'neutral' | 'paused' | '
  */
 export type ModuleTone = 'green' | 'blue' | 'purple' | 'orange' | 'pink' | 'teal' | 'indigo';
 
-// Contrast was checked against WCAG AA (4.5:1 for normal text) for text on background and
-// surface, onPrimary on primary, onPrimarySoft on primarySoft (icons on it need 3:1), and
-// onHeader / onHeaderMuted on both header colours, in both schemes (1 Oct 2026, DECISIONS #36).
-export const lightPalette: Palette = {
-  background: '#FFF8F1',
-  surface: '#FFFFFF',
-  text: '#1F1A17',
-  textMuted: '#645A52',
-  border: '#E3D6C9',
-  controlBorder: '#8C7B6C',
-  primary: brand,
-  onPrimary: '#FFFFFF',
-  danger: '#B42318',
-  dangerSurface: '#FEF3F2',
-  success: '#067647',
-  successSurface: '#ECFDF3',
-  primarySoft: '#FDEBD3',
-  onPrimarySoft: '#8A3A0E',
-  cardBorder: '#F1E6DA',
-  shadow: 'rgba(120, 64, 20, 0.14)',
-  skeleton: '#F1E6DA',
-  // A deeper saffron than the brand colour, so the paler header text keeps 4.5:1.
-  headerTop: '#9A4307',
-  headerBottom: '#742C0B',
-  onHeader: '#FFFFFF',
-  onHeaderMuted: '#FDE7CF',
-  chips: {
-    info: { text: '#075985', background: '#E0F2FE' },
-    success: { text: '#067647', background: '#ECFDF3' },
-    warning: { text: '#92400E', background: '#FEF3C7' },
-    neutral: { text: '#57534E', background: '#F1EBE4' },
-    paused: { text: '#6B21A8', background: '#F3E8FF' },
-    danger: { text: '#B42318', background: '#FEF3F2' },
-    level: { text: '#8A3A0E', background: '#FDEBD3' },
-  },
-  // Icon on tint 4.5-6.0:1 in light mode, 6.2-9.9:1 in dark mode (checked 2 Oct 2026, round 4).
-  modules: {
-    green: { background: '#DCFCE7', icon: '#15803D' },
-    blue: { background: '#DBEAFE', icon: '#1D4ED8' },
-    purple: { background: '#EDE9FE', icon: '#6D28D9' },
-    orange: { background: '#FFEDD5', icon: '#C2410C' },
-    pink: { background: '#FCE7F3', icon: '#BE185D' },
-    teal: { background: '#CCFBF1', icon: '#0F766E' },
-    indigo: { background: '#E0E7FF', icon: '#4338CA' },
-  },
-};
+function fromTokens(scheme: 'light' | 'dark'): Palette {
+  const s = semantic[scheme];
+  return {
+    ...s,
+    headerTop: s.header,
+    headerBottom: s.headerDeep,
+    chips: chips[scheme],
+    modules: modules[scheme],
+  };
+}
+
+// Contrast: every text colour 4.5:1 or more on its background, controls and icons 3:1, in both schemes and
+// for every palette choice — checked by app/tests/design-tokens.test.mjs (pairs in design/tokens.json).
+export const lightPalette: Palette = fromTokens('light');
 
 /**
  * Colours of a QR code, the same in light and dark mode. Scanners look for dark squares on a
@@ -136,45 +151,5 @@ export const qrColours = {
   light: '#FFFFFF',
 } as const;
 
-/** The same colour names for the phone's dark mode, checked for contrast like lightPalette. */
-export const darkPalette: Palette = {
-  background: '#16120F',
-  surface: '#221C18',
-  text: '#F5EFE9',
-  textMuted: '#B8ADA3',
-  border: '#3F352E',
-  controlBorder: '#8A7B6E',
-  primary: '#F59E0B',
-  onPrimary: '#1F1A17',
-  danger: '#F97066',
-  dangerSurface: '#3A1A17',
-  success: '#47CD89',
-  successSurface: '#10291C',
-  primarySoft: '#3A2817',
-  onPrimarySoft: '#F59E0B',
-  cardBorder: '#3F352E',
-  shadow: 'transparent',
-  skeleton: '#2E2620',
-  headerTop: '#5C2B0C',
-  headerBottom: '#2E1609',
-  onHeader: '#FFF3E6',
-  onHeaderMuted: '#E8CDB3',
-  chips: {
-    info: { text: '#7DD3FC', background: '#0C2A3D' },
-    success: { text: '#47CD89', background: '#10291C' },
-    warning: { text: '#FBBF24', background: '#3A2A0A' },
-    neutral: { text: '#C8BFB6', background: '#2E2620' },
-    paused: { text: '#D8B4FE', background: '#2A1A3A' },
-    danger: { text: '#F97066', background: '#3A1A17' },
-    level: { text: '#F59E0B', background: '#3A2817' },
-  },
-  modules: {
-    green: { background: '#0F2E1C', icon: '#4ADE80' },
-    blue: { background: '#0F2342', icon: '#60A5FA' },
-    purple: { background: '#2A1B4A', icon: '#C4B5FD' },
-    orange: { background: '#3A1E0A', icon: '#FDBA74' },
-    pink: { background: '#3A1226', icon: '#F9A8D4' },
-    teal: { background: '#0B2E2A', icon: '#5EEAD4' },
-    indigo: { background: '#1E1B4B', icon: '#A5B4FC' },
-  },
-};
+/** The same colour names for the phone's dark mode. */
+export const darkPalette: Palette = fromTokens('dark');

@@ -61,12 +61,12 @@ export default function PromotionListScreen() {
   }
 
   const open = (item: NominationItem) => router.push({ pathname: '/staff/promotion/[id]', params: { id: String(item.id) } });
-  const row = (item: NominationItem, highlighted = false) => (
+  const row = (item: NominationItem, waitsForMe = false) => (
     <ListRow
       key={item.id}
       leading="initials"
       title={item.fullName}
-      highlighted={highlighted}
+      highlight={waitsForMe ? 'attention' : undefined}
       details={nominationDetails(t, item)}
       onPress={() => open(item)}
     />

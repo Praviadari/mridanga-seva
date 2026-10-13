@@ -117,7 +117,7 @@ export function TwoHeadView({ bol, fresh }: TwoHeadViewProps) {
 
   return (
     <View style={styles.wrap}>
-      <AppText variant="title" style={styles.bol} accessibilityLabel={t('practice.nowPlaying', { bol: bol?.text ?? '—' })}>
+      <AppText variant="title" family="sans" style={styles.bol} accessibilityLabel={t('practice.nowPlaying', { bol: bol?.text ?? '—' })}>
         {bol && bol.text !== '-' ? bol.text : ' '}
       </AppText>
       <View aria-hidden style={styles.drawing}>

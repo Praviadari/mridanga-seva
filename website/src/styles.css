@@ -42,60 +42,10 @@
 }
 
 :root {
-  color-scheme: light dark;
-  --bg: #fbf5ec;
-  --paper: #fffdf8;
-  --ink: #24170f;
-  --muted: #64544a;
-  --line: #eadccb;
-  --link: #8a3a0e;
-  --link-hover: #5c2108;
-  --accent: #9a4307;
-  --accent-ink: #ffffff;
-  --accent-hover: #742c0b;
-  --soft: #f8e6cc;
-  --soft-ink: #6e2d0b;
-  --night: #1b1e4b;
-  --night-2: #262a66;
-  --night-deep: #12143a;
-  --on-night: #fff6e8;
-  --on-night-muted: #e6d6c0;
-  --marigold: #f2a33a;
-  --marigold-ink: #24170f;
-  --gold: #e0b25c;
-  --focus: #1d4ed8;
-  --focus-night: #ffd27a;
-  --todo-bg: #fef3c7;
-  --todo-ink: #78350f;
-  --shadow: 0 1px 2px rgba(60, 30, 10, 0.06), 0 8px 24px rgba(60, 30, 10, 0.08);
-  --radius: 14px;
+  /* Colours, shadows and --radius: tokens.css (from design/tokens.json, DECISIONS #336), put before this file by build.mjs. */
   --serif: 'Cormorant Garamond', 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
   --sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', 'Helvetica Neue', Arial, 'Nirmala UI',
     'Noto Sans Telugu', 'Noto Sans Devanagari', 'Kohinoor Telugu', 'Kohinoor Devanagari', sans-serif;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #15100c;
-    --paper: #1f1813;
-    --ink: #f6eee4;
-    --muted: #c3b5a6;
-    --line: #3a2f27;
-    --link: #f6b860;
-    --link-hover: #ffd59a;
-    --accent: #f2a33a;
-    --accent-ink: #24170f;
-    --accent-hover: #f6b860;
-    --soft: #3a2817;
-    --soft-ink: #f6c27a;
-    --night: #12143a;
-    --night-2: #1c1f52;
-    --night-deep: #0b0c26;
-    --focus: #93c5fd;
-    --todo-bg: #3a2a0a;
-    --todo-ink: #fde68a;
-    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.35);
-  }
 }
 
 *,

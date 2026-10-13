@@ -108,7 +108,7 @@ export default function MyQrScreen() {
           </AppText>
         </View>
         <QrCode value={studentQrText(card.qrToken)} size={qrSize} label={t('myQr.qrLabel')} />
-        <AppText variant="subtitle" style={styles.centreText}>
+        <AppText variant="subtitle" family="sans" style={styles.centreText}>
           {card.fullName}
         </AppText>
         {card.rollNo ? (

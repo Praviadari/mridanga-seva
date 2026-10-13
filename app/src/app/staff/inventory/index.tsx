@@ -111,7 +111,7 @@ export default function InventoryScreen() {
             <ListRow
               key={item.id}
               leading="instruments"
-              highlighted={overdue || item.condition === 'damaged'}
+              highlight={overdue || item.condition === 'damaged' ? 'attention' : undefined}
               title={` · ${item.label}`}
               details={[
                 [item.category ?? t(`inventory.kinds.${item.kind}`), t(`inventory.conditions.${item.condition}`)].join(' · '),
