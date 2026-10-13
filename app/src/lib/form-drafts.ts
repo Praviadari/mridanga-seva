@@ -10,7 +10,8 @@
 // - only the same login gets it back: another user id never sees it, and the auth provider
 //   deletes it as soon as someone else signs in on this device (dropOtherOwnersDrafts);
 // - the person's own Sign out deletes every draft (dropAllDrafts): a shared phone keeps nothing;
-// - a draft older than DRAFT_DAYS is ignored and deleted.
+// - a draft older than DRAFT_DAYS is ignored and deleted, also at every app start (purgeExpiredDrafts,
+//   src/auth/auth-provider.tsx), so it does not wait for the next sign-in (audit S5-03, #284).
 
 import { useEffect, useRef } from 'react';
 
@@ -18,8 +19,12 @@ import { readLocal, removeLocal, writeLocal } from './local-storage';
 
 /** The local-storage key the drafts are kept under. */
 const STORE_KEY = 'formDrafts';
-/** A draft older than this is not offered any more: 7 days. */
-export const DRAFT_DAYS = 7;
+/**
+ * A draft older than this is not offered any more: 3 days (was 7 until DECISIONS #284). It can hold a
+ * child's name, date of birth and a guardian's phone, and the person usually signs in again the same
+ * day; 3 days still cover a class weekend.
+ */
+export const DRAFT_DAYS = 3;
 const DRAFT_MS = DRAFT_DAYS * 24 * 60 * 60 * 1000;
 
 /** What is kept on the device: one login's open forms, by form key. */
@@ -83,6 +88,11 @@ export function discardDraft(key: string): void {
   delete rest[key];
   if (Object.keys(rest).length === 0) removeLocal(STORE_KEY);
   else writeLocal(STORE_KEY, JSON.stringify({ ...stored, forms: rest }));
+}
+
+/** Deletes the drafts when they are too old or unreadable: at app start (src/auth/auth-provider.tsx). */
+export function purgeExpiredDrafts(now = Date.now()): void {
+  readStored(now);
 }
 
 /** Deletes every draft: the person's own Sign out (src/auth/auth-actions.ts). */

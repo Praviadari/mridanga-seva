@@ -31,3 +31,9 @@ export async function deleteMyRecording(id: string): Promise<void> {
   if (gone) URL.revokeObjectURL(gone.uri);
   kept = kept.filter((r) => r.id !== id);
 }
+
+/** Forgets every recording: at every sign-out, so the next login in this tab sees none (audit S5-02). */
+export async function forgetMyRecordings(): Promise<void> {
+  for (const r of kept) URL.revokeObjectURL(r.uri);
+  kept = [];
+}

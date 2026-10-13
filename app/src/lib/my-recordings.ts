@@ -86,3 +86,13 @@ export async function deleteMyRecording(id: string): Promise<void> {
   }
   writeIndex(list.filter((s) => s.id !== id));
 }
+
+/** Deletes every kept recording and the folder: at every sign-out (lib/device-traces.ts; audit S5-02). Never throws. */
+export async function forgetMyRecordings(): Promise<void> {
+  try {
+    const dir = folder();
+    if (dir.exists) dir.delete();
+  } catch {
+    // A file still open, or the folder already gone: the next sign-out tries again.
+  }
+}

@@ -6,29 +6,38 @@
 // - this app's notifications in the phone's list (src/lib/push.ts; FLOW-04);
 // - photos kept by the image cache, often of children (expo-image's memory and disk cache; D3-09);
 // - copies made while picking files for an upload: shrunk photos and picked PDFs, which the
-//   pickers leave in the app's cache folder (D3-09, D4-16).
+//   pickers leave in the app's cache folder (D3-09, D4-16);
+// - audio recordings (audit S5-02, docs/DECISIONS.md #283): the student's "Record myself" takes
+//   (lib/my-recordings.ts: the app's own recordings/ folder, or the open tab's memory in the browser,
+//   listed to whoever signs in next) and every
+//   recording expo-audio wrote to the cache (assessment answers, voice notes: Audio/ on Android,
+//   ExpoAudio/ on iOS).
 
 import { Directory, Paths } from 'expo-file-system';
 import { Image } from 'expo-image';
 import { Platform } from 'react-native';
 
 import { clearSavedCard } from '@/data/my-student';
+import { forgetMyRecordings } from '@/lib/my-recordings';
+import { dismissNotifications } from '@/lib/push';
 
-import { dismissNotifications } from './push';
-
-/** The cache folders expo-image-manipulator, expo-document-picker and expo-image-picker write to. */
-const PICKED_FILE_FOLDERS = ['ImageManipulator', 'DocumentPicker', 'ImagePicker'];
+/**
+ * The cache folders deleted at sign-out: what expo-image-manipulator, expo-document-picker,
+ * expo-image-picker and expo-audio's recorder write.
+ */
+export const TRACE_FOLDERS = ['ImageManipulator', 'DocumentPicker', 'ImagePicker', 'Audio', 'ExpoAudio'];
 
 /** Clears the traces listed at the top of this file. Never throws; each part is best effort. */
 export async function clearDeviceTraces(): Promise<void> {
   clearSavedCard();
+  await forgetMyRecordings();
   await Promise.all([
     dismissNotifications(),
     Image.clearMemoryCache().catch(() => false),
     Image.clearDiskCache().catch(() => false),
   ]);
   if (Platform.OS === 'web') return;
-  for (const name of PICKED_FILE_FOLDERS) {
+  for (const name of TRACE_FOLDERS) {
     try {
       const folder = new Directory(Paths.cache, name);
       if (folder.exists) folder.delete();

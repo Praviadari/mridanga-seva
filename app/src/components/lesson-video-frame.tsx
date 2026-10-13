@@ -7,16 +7,17 @@
 // phone's Back used to close the screen underneath and leave that black view on top, with no way
 // out but closing the app. So while the video is fullscreen, Back only leaves fullscreen, and the
 // frame leaves fullscreen when the screen closes or another screen opens over it.
+//
+// Navigation is locked to the player page (lib/lesson-navigation.ts; audit S5-06): a tap through to
+// YouTube opens it outside the app, any other page is stopped, so only this page has the bridge.
 
 import { useFocusEffect } from 'expo-router';
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
-import { BackHandler, StyleSheet } from 'react-native';
+import { BackHandler, Linking, StyleSheet } from 'react-native';
 import { WebView } from 'react-native-webview';
 
+import { lessonNavigation, PLAYER_BASE_URL } from '@/lib/lesson-navigation';
 import { lessonPlayerHtml, readPlayerEvent, type LessonSource, type PlayerCommand, type PlayerEvent } from '@/lib/lesson-player-html';
-
-/** The address the page says it comes from (the Referer YouTube sees). */
-export const PLAYER_BASE_URL = 'https://mridanga-seva.app';
 
 /** Props for LessonVideoFrame. */
 export type LessonVideoFrameProps = {
@@ -63,6 +64,11 @@ export const LessonVideoFrame = forwardRef<LessonVideoFrameHandle, LessonVideoFr
       ref={view}
       originWhitelist={['*']}
       source={{ html, baseUrl: PLAYER_BASE_URL }}
+      onShouldStartLoadWithRequest={(request) => {
+        const decision = lessonNavigation(request.url, request.isTopFrame);
+        if (decision === 'open-outside') void Linking.openURL(request.url).catch(() => undefined);
+        return decision === 'allow';
+      }}
       style={[styles.frame, { height, backgroundColor: background }]}
       onLoadEnd={() => view.current?.injectJavaScript('window.__lessonCommand && window.__lessonCommand({cmd:"hello"}); true;')}
       onMessage={(e) => {

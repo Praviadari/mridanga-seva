@@ -15,6 +15,11 @@ const stubs = {
   '@/lib/supabase': stub('./supabase.mjs'),
   // src/lib/slow-start.ts restartApp (the crash screen's Restart, #294): a counted reloadAsync.
   'expo-updates': stub('./expo-updates.mjs'),
+  // src/lib/device-traces.ts (sign-out clean-up, audit S5-02): the files, expo-image, the QR card and push.
+  'expo-file-system': stub('./expo-file-system.mjs'),
+  'expo-image': stub('./device-trace-deps.mjs'),
+  '@/data/my-student': stub('./device-trace-deps.mjs'),
+  '@/lib/push': stub('./device-trace-deps.mjs'),
 };
 
 /** Node module hook: resolves a stubbed package or app module to its stand-in file. */
