@@ -7,6 +7,9 @@
 import { createContext, use, useCallback, useRef, type RefObject } from 'react';
 import { Platform, type ScrollView, type TextInput, type View } from 'react-native';
 
+import { moveFocusTo } from '@/lib/a11y-focus';
+import { useReducedMotion } from '@/lib/reduced-motion';
+
 /** A field the page can scroll to: a text box or a View around another kind of field. */
 export type FieldNode = View | TextInput;
 
@@ -18,8 +21,11 @@ export const FormScrollContext = createContext<ScrollTarget | null>(null);
 /** Room left above the field after scrolling, so its label shows under a header. */
 const ABOVE = 96;
 
-/** Scrolls the page to `node` and focuses it when it is a text box. */
-function reveal(node: FieldNode, target: ScrollTarget | null) {
+/**
+ * Scrolls the page to `node` and focuses it: a text box takes the cursor, another field the screen reader's
+ * focus (P2-02). `still`: reduced motion is on, so the page jumps instead of scrolling smoothly (P2-09).
+ */
+function reveal(node: FieldNode, target: ScrollTarget | null, still: boolean) {
   const isTextBox = typeof (node as TextInput).isFocused === 'function';
   if (Platform.OS === 'web') {
     // react-native-web refs are the page's own elements.
@@ -40,17 +46,20 @@ function reveal(node: FieldNode, target: ScrollTarget | null) {
   if (scroll && content) {
     node.measureLayout(
       content,
-      (_x, y) => scroll.scrollTo({ y: Math.max(0, y - ABOVE), animated: true }),
+      (_x, y) => scroll.scrollTo({ y: Math.max(0, y - ABOVE), animated: !still }),
       () => undefined,
     );
   }
   // The keyboard opens; the page then keeps the box above it (components/keyboard.tsx).
   if (isTextBox) (node as TextInput).focus();
+  // A date, a choice or a tick: TalkBack's focus goes to it, so its error is read next (#332).
+  else moveFocusTo(node);
 }
 
 /** The fields of one form, and a way to take the person to the first one with a problem. */
 export function useFormFocus<F extends string>() {
   const target = use(FormScrollContext);
+  const still = useReducedMotion();
   const nodes = useRef(new Map<F, FieldNode>());
   const refs = useRef(new Map<F, (node: FieldNode | null) => void>());
 
@@ -75,10 +84,10 @@ export function useFormFocus<F extends string>() {
       if (!node) return false;
       // After the error messages are drawn, so the field is where it ends up. Not requestAnimationFrame:
       // it never fires in a page that is not drawing (a browser tab in the background).
-      setTimeout(() => reveal(node, target), 0);
+      setTimeout(() => reveal(node, target, still), 0);
       return true;
     },
-    [target],
+    [target, still],
   );
 
   /** Moves the cursor to the field `key` (the keyboard's Next button). */

@@ -22,19 +22,22 @@ import { ModuleRing, type Module } from '@/components/module-ring';
 import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
 import { StatGrid, StatTile } from '@/components/stat-tile';
-import { fetchIshtagoshtiHome, type IshtagoshtiHome as Home } from '@/data/ishtagoshti';
+import { fetchIshtagoshtiCounts, type IshtagoshtiCounts as Home } from '@/data/ishtagoshti';
 
 /** I1 for students, staff or subscribers. */
 export function IshtagoshtiHome({ area }: { area: IgArea }) {
   const { t } = useTranslation();
   const { profile } = useAuth();
+  const profileId = profile?.id;
   // undefined = loading, null = could not load.
   const [home, setHome] = useState<Home | null | undefined>(undefined);
 
+  // On the id, not the profile object: the fetched profile replacing the remembered one at start
+  // is a new object and would load the home twice (audit phase 4 P4-04).
   const load = useCallback(async () => {
-    if (!profile) return;
-    setHome(await fetchIshtagoshtiHome(profile.id));
-  }, [profile]);
+    if (!profileId) return;
+    setHome(await fetchIshtagoshtiCounts(profileId));
+  }, [profileId]);
 
   useFocusEffect(
     useCallback(() => {
@@ -42,15 +45,17 @@ export function IshtagoshtiHome({ area }: { area: IgArea }) {
     }, [load]),
   );
 
-  const today = home?.today ?? null;
-  const modules: Module[] = home
+  // Counts and the sloka of the day's id only, no sloka text (P5-03). Themes and All slokas show at
+  // once; the sloka of the day and the editors' circles join when the answer is in.
+  const todayId = home?.todayId ?? null;
+  const modules: Module[] = home !== null
     ? [
-        ...(today
-          ? [{ key: 'today', icon: 'today', tone: 'orange', label: t('ishtagoshti.today'), onPress: () => openIg.sloka(area, today.id) } satisfies Module]
+        ...(todayId !== null
+          ? [{ key: 'today', icon: 'today', tone: 'orange', label: t('ishtagoshti.today'), onPress: () => openIg.sloka(area, todayId) } satisfies Module]
           : []),
         { key: 'themes', icon: 'theme', tone: 'purple', label: t('ishtagoshti.themes'), onPress: () => openIg.themes(area) },
         { key: 'slokas', icon: 'sloka', tone: 'blue', label: t('ishtagoshti.allSlokas'), onPress: () => openIg.slokas(area) },
-        ...(home.canEdit
+        ...(home?.canEdit
           ? ([
               { key: 'addSloka', icon: 'add', tone: 'green', label: t('ishtagoshti.addSloka'), onPress: () => openIg.editSloka('new') },
               { key: 'addTheme', icon: 'add', tone: 'teal', label: t('ishtagoshti.addTheme'), onPress: () => openIg.editTheme('new') },
@@ -73,7 +78,6 @@ export function IshtagoshtiHome({ area }: { area: IgArea }) {
   return (
     <Screen underHeader onRefresh={load}>
       <AppText tone="muted">{t('ishtagoshti.intro')}</AppText>
-      {home === undefined ? <LoadingCards /> : null}
       {home === null ? (
         <>
           <Notice tone="error" title={t('ishtagoshti.loadFailed')}>
@@ -83,17 +87,16 @@ export function IshtagoshtiHome({ area }: { area: IgArea }) {
         </>
       ) : null}
 
+      {home && todayId === null ? (
+        <EmptyState icon="ishtagoshti" title={t('ishtagoshti.noSlokas')} body={home.canEdit ? t('ishtagoshti.noSlokasEditor') : undefined} />
+      ) : null}
+      {home !== null ? <ModuleRing modules={modules} /> : null}
+      {home === undefined ? <LoadingCards /> : null}
       {home ? (
-        <>
-          {!today ? (
-            <EmptyState icon="ishtagoshti" title={t('ishtagoshti.noSlokas')} body={home.canEdit ? t('ishtagoshti.noSlokasEditor') : undefined} />
-          ) : null}
-          <ModuleRing modules={modules} />
-          <StatGrid>
-            <StatTile icon="memorised" value={String(home.memorised.size)} label={t('ishtagoshti.memorisedCount')} />
-            <StatTile icon="sloka" value={String(home.slokas.filter((s) => s.published).length)} label={t('ishtagoshti.slokaCount')} onPress={() => openIg.slokas(area)} />
-          </StatGrid>
-        </>
+        <StatGrid>
+          <StatTile icon="memorised" value={String(home.memorised)} label={t('ishtagoshti.memorisedCount')} />
+          <StatTile icon="sloka" value={String(home.published)} label={t('ishtagoshti.slokaCount')} onPress={() => openIg.slokas(area)} />
+        </StatGrid>
       ) : null}
     </Screen>
   );

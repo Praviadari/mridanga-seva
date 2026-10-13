@@ -4,8 +4,9 @@
 
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Animated, StyleSheet, View } from 'react-native';
+import { Animated, Platform, StyleSheet, View } from 'react-native';
 
+import { useReducedMotion } from '@/lib/reduced-motion';
 import { cardLook, radius, spacing, useTheme } from '@/theme/use-theme';
 
 /** Props for LoadingCards. */
@@ -25,18 +26,27 @@ export function LoadingCards({ kind = 'list', rows = 3 }: LoadingCardsProps) {
   const { colors } = useTheme();
   // One animated value for the life of the component (useState keeps it, no ref read in render).
   const [fade] = useState(() => new Animated.Value(1));
+  // "Remove animations" on the phone (or reduced motion in the browser): the shapes stand still (audit P2-09).
+  const still = useReducedMotion();
 
   useEffect(() => {
-    // One slow fade for all shapes; the JS driver because the web has no native driver.
+    if (still) {
+      fade.setValue(1);
+      return;
+    }
+    // One slow fade for all shapes. On the phone the native driver runs it, so it stays smooth while the
+    // JavaScript thread reads the data it waits for (audit P4-03 / P5-08, docs/DECISIONS.md #331); the web
+    // has no native driver.
+    const useNativeDriver = Platform.OS !== 'web';
     const loop = Animated.loop(
       Animated.sequence([
-        Animated.timing(fade, { toValue: 0.45, duration: 700, useNativeDriver: false }),
-        Animated.timing(fade, { toValue: 1, duration: 700, useNativeDriver: false }),
+        Animated.timing(fade, { toValue: 0.45, duration: 700, useNativeDriver }),
+        Animated.timing(fade, { toValue: 1, duration: 700, useNativeDriver }),
       ]),
     );
     loop.start();
     return () => loop.stop();
-  }, [fade]);
+  }, [fade, still]);
 
   const bar = (width: `${number}%`, height = 12) => (
     <View style={[styles.bar, { width, height, backgroundColor: colors.skeleton }]} />

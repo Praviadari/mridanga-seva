@@ -36,8 +36,8 @@ export type StudentHome = {
   /** Ticked items of the student's current level, and how many items that level has. */
   syllabusDone: number;
   syllabusTotal: number;
-  /** What "this week" means (settings.week_starts, round 8). */
-  weekStarts: WeekStarts;
+  /** What "this week" means (settings.week_starts, round 8); null when not asked for. */
+  weekStarts: WeekStarts | null;
 };
 
 type StudentHomeRow = {
@@ -56,10 +56,15 @@ type StudentHomeRow = {
 
 /**
  * Loads the signed-in student's home numbers. Returns 'not_found' when the login is not linked to
- * a student record, null when they could not be loaded (usually no internet).
+ * a student record, null when they could not be loaded (usually no internet). weekStarts: false
+ * skips the class's week setting for screens that do not show "this week" (the home ring, P5-06):
+ * weekStarts is then null.
  */
-export async function fetchStudentHome(): Promise<StudentHome | 'not_found' | null> {
-  const [{ data, error }, weekStarts] = await Promise.all([supabase.rpc('student_home'), fetchWeekStarts()]);
+export async function fetchStudentHome(options: { weekStarts?: boolean } = {}): Promise<StudentHome | 'not_found' | null> {
+  const [{ data, error }, weekStarts] = await Promise.all([
+    supabase.rpc('student_home'),
+    options.weekStarts === false ? Promise.resolve(null) : fetchWeekStarts(),
+  ]);
   if (error) return null;
   const row = data as StudentHomeRow | null;
   if (!row) return 'not_found';

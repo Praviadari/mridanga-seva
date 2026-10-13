@@ -5,6 +5,7 @@
 // student (row-level security as before); the print screen keeps a coordinator to their own
 // centre's students (#251).
 
+import { readAllPages } from '@/lib/read-all';
 import { supabase } from '@/lib/supabase';
 
 import { studentQrText } from './attendance';
@@ -40,13 +41,18 @@ type CardRow = {
  * loaded. The codes are not read here: only for the students picked (fetchQrTexts).
  */
 export async function fetchCardStudents(): Promise<CardStudent[] | null> {
-  const { data, error } = await supabase
-    .from('students')
-    .select('id, full_name, roll_no, home_centre_id, level_id, status, profile_id, centre:centres(name)')
-    .is('withdrawn_at', null)
-    .order('full_name');
-  if (error) return null;
-  return (data as unknown as CardRow[]).map((row) => ({
+  // Page by page past Supabase's 1,000 rows per request (D9-04, #330).
+  const rows = await readAllPages<CardRow>((from, to) =>
+    supabase
+      .from('students')
+      .select('id, full_name, roll_no, home_centre_id, level_id, status, profile_id, centre:centres(name)')
+      .is('withdrawn_at', null)
+      .order('full_name')
+      .order('id')
+      .range(from, to),
+  );
+  if (!rows) return null;
+  return rows.map((row) => ({
     id: row.id,
     fullName: row.full_name,
     rollNo: row.roll_no,

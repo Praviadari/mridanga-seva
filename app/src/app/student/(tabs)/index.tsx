@@ -29,7 +29,7 @@ import { ProgressBar } from '@/components/progress-bar';
 import { Screen } from '@/components/screen';
 import { PushNotice } from '@/components/push-notice';
 import { UpdateNotice } from '@/components/update-notice';
-import { fetchMyLatestAnnouncements, type MyLatestAnnouncements } from '@/data/announcements';
+import { fetchMyUnreadCount } from '@/data/announcements';
 import { fetchStudentHome, type StudentHome } from '@/data/home';
 import { keepMyCardSaved } from '@/data/my-student';
 import { fetchPollsToVote } from '@/data/polls';
@@ -44,7 +44,8 @@ export default function StudentHomeScreen() {
   const myId = profile?.id ?? '';
   // undefined = loading, null = could not load.
   const [home, setHome] = useState<StudentHome | 'not_found' | null | undefined>(undefined);
-  const [news, setNews] = useState<MyLatestAnnouncements | null | undefined>(undefined);
+  // Unread announcements for the News badge.
+  const [unreadCount, setUnreadCount] = useState<number | null | undefined>(undefined);
   const [pollsToVote, setPollsToVote] = useState(0);
   // About you (step 2 of joining, docs/DECISIONS.md #164): opens by itself once after the first
   // sign-in; while unfinished it is a circle with a mark.
@@ -58,15 +59,15 @@ export default function StudentHomeScreen() {
     const isNewest = beginLoad();
     // My QR saved on this phone before the student needs it at the door without signal (R1-02, #303).
     void keepMyCardSaved(myId);
-    // One announcement is enough: only the unread count is shown here.
-    const [loadedHome, loadedNews, loadedPolls] = await Promise.all([
-      fetchStudentHome(),
-      fetchMyLatestAnnouncements(myId, 1),
+    // Only what the ring shows: the badge needs ids and my reads, not posts (P5-06, #330).
+    const [loadedHome, loadedUnread, loadedPolls] = await Promise.all([
+      fetchStudentHome({ weekStarts: false }),
+      fetchMyUnreadCount(myId),
       fetchPollsToVote(),
     ]);
     if (!isNewest()) return; // an older load answering late (D6-19)
     setHome(loadedHome);
-    setNews(loadedNews);
+    setUnreadCount(loadedUnread);
     setPollsToVote(loadedPolls);
   }, [myId, beginLoad]);
 
@@ -76,7 +77,7 @@ export default function StudentHomeScreen() {
     }, [load]),
   );
 
-  const unread = news ? news.unread : 0;
+  const unread = unreadCount ?? 0;
 
   // The ring of the student's screens (docs/DECISIONS.md #41, #44, #240), in reading order.
   const modules: Module[] = [
@@ -130,7 +131,7 @@ export default function StudentHomeScreen() {
       <UpdateNotice />
       <PushNotice place="home" />
 
-      {home === null || news === null ? (
+      {home === null || unreadCount === null ? (
         <>
           <Notice tone="error" title={t('home.loadFailed')}>
             {t('common.networkError')}

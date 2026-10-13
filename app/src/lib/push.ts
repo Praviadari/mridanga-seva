@@ -42,6 +42,27 @@ const CHANNEL_ID = 'announcements';
 let savedToken: string | null = null;
 const PUSH_TOKEN_KEY = 'pushToken';
 
+/**
+ * The last registration that worked on this phone: {user, token, at}. A start within a week of it for the same
+ * login and token skips Expo's token service and register_push_token (two calls at every cold start before;
+ * audit phase 4 P4-05, docs/DECISIONS.md #331). Removed at sign-out, so signing in again always registers.
+ */
+const REGISTERED_KEY = 'pushRegistered';
+const REGISTER_AGAIN_MS = 7 * 24 * 60 * 60 * 1000;
+
+/** The token registered within the week for `user` (still the one kept on the phone), or null. */
+export function recentRegistration(user: string | null, now = Date.now()): string | null {
+  if (!user) return null;
+  try {
+    const saved = JSON.parse(readLocal(REGISTERED_KEY) ?? 'null') as { user?: unknown; token?: unknown; at?: unknown } | null;
+    if (!saved || saved.user !== user || typeof saved.token !== 'string' || typeof saved.at !== 'number') return null;
+    if (saved.token !== readLocal(PUSH_TOKEN_KEY) || now - saved.at >= REGISTER_AGAIN_MS || now < saved.at) return null;
+    return saved.token;
+  } catch {
+    return null;
+  }
+}
+
 /** Notifications whose tap has been handled, so one tap never opens the screen twice. */
 const handled = new Set<string>();
 
@@ -157,11 +178,19 @@ async function register(ask: boolean): Promise<void> {
       setPushState('denied');
       return;
     }
+    const user = storedLoginUserId();
+    const recent = recentRegistration(user);
+    if (recent) {
+      savedToken = recent;
+      setPushState('on');
+      return;
+    }
     const token = (await module.getExpoPushTokenAsync({ projectId })).data;
     const { error } = await supabase.rpc('register_push_token', { p_token: token, p_platform: 'android' });
     if (!error) {
       savedToken = token;
       writeLocal(PUSH_TOKEN_KEY, token);
+      if (user) writeLocal(REGISTERED_KEY, JSON.stringify({ user, token, at: Date.now() }));
     }
     setPushState(error ? 'failed' : 'on');
   } catch {
@@ -180,6 +209,8 @@ async function register(ask: boolean): Promise<void> {
 export async function unregisterPush(): Promise<void> {
   // The next login on this phone starts with no notice; its own registration sets the state.
   setPushState('unknown');
+  // Signing in again registers at once, whoever it is (P4-05).
+  removeLocal(REGISTERED_KEY);
   const token = savedToken ?? readLocal(PUSH_TOKEN_KEY);
   if (!token) return;
   savedToken = null;

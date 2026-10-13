@@ -24,10 +24,13 @@ export function IshtagoshtiThemes({ area }: { area: IgArea }) {
   // undefined = loading, null = could not load.
   const [home, setHome] = useState<Home | null | undefined>(undefined);
 
+  const profileId = profile?.id;
+
+  // On the id, not the profile object, which is replaced at start (audit phase 4 P4-04).
   const load = useCallback(async () => {
-    if (!profile) return;
-    setHome(await fetchIshtagoshtiHome(profile.id));
-  }, [profile]);
+    if (!profileId) return;
+    setHome(await fetchIshtagoshtiHome(profileId));
+  }, [profileId]);
 
   useFocusEffect(
     useCallback(() => {

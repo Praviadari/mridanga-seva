@@ -19,7 +19,7 @@ import { RouteIdGuard } from '@/components/route-id-guard';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { TextField } from '@/components/text-field';
-import { deleteTheme, fetchCanEdit, fetchSlokas, fetchThemes, firstLine, saveTheme, type Sloka } from '@/data/ishtagoshti';
+import { deleteTheme, fetchCanEdit, fetchSlokas, fetchThemes, firstLine, saveTheme, type SlokaListItem } from '@/data/ishtagoshti';
 import { spacing } from '@/theme/use-theme';
 
 /** Add or edit one theme. */
@@ -31,7 +31,7 @@ function EditThemeScreenContent() {
 
   // undefined = loading; false = may not edit; null = could not load.
   const [ready, setReady] = useState<boolean | null | undefined>(undefined);
-  const [slokas, setSlokas] = useState<Sloka[]>([]);
+  const [slokas, setSlokas] = useState<SlokaListItem[]>([]);
   const [title, setTitle] = useState('');
   const [intro, setIntro] = useState('');
   const [questions, setQuestions] = useState('');

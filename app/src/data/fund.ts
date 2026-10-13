@@ -11,6 +11,7 @@ import type { ParseKeys, TFunction } from 'i18next';
 import * as WebBrowser from 'expo-web-browser';
 
 import { formatMoney } from '@/lib/money';
+import { readAllPages } from '@/lib/read-all';
 import { supabase } from '@/lib/supabase';
 
 import { pickPdfs, pickPhotos, removeFiles, signedLinks, uploadFiles, type PickedFile, type PickResult } from './announcement-files';
@@ -120,16 +121,19 @@ const ENTRY_COLUMNS =
 export async function fetchFundBook(myId: string | null, isGuru: boolean): Promise<FundBook | null> {
   const [categories, entries, limits, treasurer] = await Promise.all([
     supabase.from('fund_categories').select('id, direction, code, name, sort, retired_at').order('direction').order('sort').order('name'),
-    supabase.from('fund_entries').select(ENTRY_COLUMNS).order('on_date').order('id'),
+    // Every entry, page by page: past 1,000 the newest were lost (P1-19, #330).
+    readAllPages<EntryRow>((from, to) =>
+      supabase.from('fund_entries').select(ENTRY_COLUMNS).order('on_date').order('id').range(from, to),
+    ),
     supabase.from('settings').select('key, value').in('key', ['fund_approval_rupees', 'fund_bill_rupees']),
     supabase.rpc('is_treasurer'),
   ]);
-  if (categories.error || entries.error || limits.error) return null;
+  if (categories.error || !entries || limits.error) return null;
   const limit = (key: string) => {
     const value = (limits.data as { key: string; value: unknown }[]).find((r) => r.key === key)?.value;
     return typeof value === 'number' ? value * 100 : 0;
   };
-  const rows = entries.data as unknown as EntryRow[];
+  const rows = entries;
   const liveReversal = new Map<number, number>();
   for (const row of rows) {
     if (row.reverses_id !== null && (row.status === 'approved' || row.status === 'waiting')) liveReversal.set(row.reverses_id, row.id);

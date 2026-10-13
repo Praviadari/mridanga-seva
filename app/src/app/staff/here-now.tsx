@@ -142,7 +142,7 @@ export default function HereNowScreen() {
       {today && today.hereNow.length > 0 ? (
         confirming ? (
           <>
-            <Notice tone="info" title={t('hereNow.confirmTitle', { number: today.hereNow.length })} announced>
+            <Notice tone="info" title={t('hereNow.confirmTitle', { number: today.hereNow.length })} focused announced>
               {t('hereNow.confirmBody')}
             </Notice>
             <Button

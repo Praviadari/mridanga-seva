@@ -12,7 +12,7 @@
 // The database still checks every read and write (row-level security); hiding screens here is
 // for a clear interface, not for security.
 
-import '@/i18n'; // sets up translations before any screen renders
+import { useLanguageReady } from '@/i18n'; // sets up translations before any screen renders
 import '@/auth/requested-path'; // notes the address the app was opened with, before any redirect
 
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider, type ErrorBoundaryProps } from 'expo-router';
@@ -20,9 +20,10 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AppState } from 'react-native';
+import { AppState, StyleSheet, View } from 'react-native';
 
 import { AuthProvider, useAuth } from '@/auth/auth-provider';
+import { BrandSplash } from '@/components/brand';
 import { CrashScreen } from '@/components/crash-screen';
 import { KeyboardRoot } from '@/components/keyboard';
 import { SetupNeeded } from '@/components/setup-needed';
@@ -51,6 +52,8 @@ export function ErrorBoundary(props: ErrorBoundaryProps) {
 /** App root. Expo Router renders it around every screen. */
 export default function RootLayout() {
   const { colors, isDark } = useTheme();
+  // The web downloads Telugu or Hindi on its own (#331): the splash stays over the app until it is in.
+  const languageReady = useLanguageReady();
   useUpdateChecks();
   // The navigators' own colours (tab bar, sidebar, header) from our palette instead of their
   // default blue (docs/DECISIONS.md #36).
@@ -80,6 +83,11 @@ export default function RootLayout() {
           <AuthProvider>
             <RootNavigator />
           </AuthProvider>
+        )}
+        {languageReady ? null : (
+          <View style={StyleSheet.absoluteFill}>
+            <BrandSplash />
+          </View>
         )}
       </ThemeProvider>
     </KeyboardRoot>

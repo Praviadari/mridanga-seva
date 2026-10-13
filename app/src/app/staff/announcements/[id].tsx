@@ -354,7 +354,7 @@ function StaffAnnouncementScreenContent() {
       ) : null}
       {confirmingDelete ? (
         <>
-          <Notice tone="info" title={t('announcements.detail.deleteTitle', { title: a.title })} announced>
+          <Notice tone="info" title={t('announcements.detail.deleteTitle', { title: a.title })} focused announced>
             {t('announcements.detail.deleteBody')}
           </Notice>
           <Button

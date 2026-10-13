@@ -1,8 +1,9 @@
 // A coloured message box: an error from the server, or a confirmation such as "check your email".
 
-import { useEffect, type PropsWithChildren } from 'react';
+import { useEffect, useRef, type PropsWithChildren } from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import { moveFocusTo } from '@/lib/a11y-focus';
 import { announce, textOf } from '@/lib/announce';
 import { radius, spacing, useTheme } from '@/theme/use-theme';
 
@@ -24,13 +25,24 @@ export type NoticeProps = PropsWithChildren<{
    * pass true for an info box that reports a result.
    */
   announced?: boolean;
+  /**
+   * Move the screen reader's focus to the box when it appears, and read it as one stop: for a question that
+   * takes the place of the button just pressed (a confirm), so the next swipe reaches its buttons
+   * (audit P2-02, #332).
+   */
+  focused?: boolean;
 }>;
 
 /** Message box shown above or below a form. The children are the message, already translated. */
-export function Notice({ tone, title, announced = tone !== 'info', children }: NoticeProps) {
+export function Notice({ tone, title, announced = tone !== 'info', focused = false, children }: NoticeProps) {
   const { colors } = useTheme();
-  const spoken = announced ? [title, textOf(children)].filter(Boolean).join('. ') : '';
+  const message = [title, textOf(children)].filter(Boolean).join('. ');
+  const spoken = announced ? message : '';
   useEffect(() => announce(spoken), [spoken]);
+  const box = useRef<View>(null);
+  useEffect(() => {
+    if (focused) moveFocusTo(box.current);
+  }, [focused]);
   const look = {
     error: { background: colors.dangerSurface, border: colors.danger, titleTone: 'danger', icon: 'alert', iconColour: colors.danger },
     success: { background: colors.successSurface, border: colors.success, titleTone: 'success', icon: 'check', iconColour: colors.success },
@@ -38,7 +50,10 @@ export function Notice({ tone, title, announced = tone !== 'info', children }: N
   } as const;
   return (
     <View
+      ref={box}
       role={tone === 'error' ? 'alert' : 'status'}
+      accessible={focused || undefined}
+      accessibilityLabel={focused ? message : undefined}
       style={[styles.box, { backgroundColor: look[tone].background, borderColor: look[tone].border }]}>
       <Icon name={look[tone].icon} size={22} color={look[tone].iconColour} />
       <View style={styles.text}>

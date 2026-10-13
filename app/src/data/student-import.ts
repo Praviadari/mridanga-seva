@@ -12,6 +12,7 @@ import { Platform } from 'react-native';
 
 import { ageOn, parseDayMonthYear, todayLocal } from '@/lib/dates';
 import { checkPersonName, cleanName } from '@/lib/person-name';
+import { readAllPages } from '@/lib/read-all';
 import { MAX_SHEET_BYTES, readSheet, type SheetError, type SheetRows } from '@/lib/sheet-reader';
 import { supabase } from '@/lib/supabase';
 
@@ -156,9 +157,11 @@ const nameDobKey = (name: string, dob: string) => `${name.toLowerCase()}|${dob}`
 
 /** Loads phones, emails, names with dates of birth and roll numbers of the students already saved. */
 export async function fetchExistingStudents(): Promise<ExistingStudents | null> {
-  const { data, error } = await supabase.from('students').select('full_name, dob, phone, email, roll_no').limit(5000);
-  if (error) return null;
-  const rows = data as { full_name: string; dob: string | null; phone: string | null; email: string | null; roll_no: string }[];
+  // Page by page: a .limit(5000) still stopped at Supabase's 1,000 rows (D9-04, #330).
+  const rows = await readAllPages<{ full_name: string; dob: string | null; phone: string | null; email: string | null; roll_no: string }>(
+    (from, to) => supabase.from('students').select('full_name, dob, phone, email, roll_no').order('id').range(from, to),
+  );
+  if (!rows) return null;
   return {
     phones: new Set(rows.filter((r) => r.phone).map((r) => phoneKey(r.phone ?? ''))),
     emails: new Set(rows.filter((r) => r.email).map((r) => (r.email ?? '').toLowerCase())),
