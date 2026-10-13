@@ -5070,3 +5070,98 @@ the new staff function `record_desk_notice(student, version)` (set once: a notic
 **Consequences.** The app sends `p_notice_version` today only for a minor
 (app/src/data/students.ts); sending it for adults too is a one-line JS change for the app chip. A
 sign-up whose email the desk typed differently is not linked, so its notice stays with the login.
+
+**Update 13 Oct 2026 (#292):** the app now sends it for an adult too (weekend-app).
+
+## 291. Register a student shows every waiting sign-up, searchable — 13 Oct 2026
+
+**Context.** Audit phase 2 R2-01 (High): the desk drew only the 10 newest waiting sign-ups, with no search
+and no refresh, so on the registration weekend an earlier sign-up could not be found or accepted; R2-02: a
+failed side-load hid the list without a word.
+
+**Decision (JS).** The waiting list is kept apart from the option lists. Every sign-up `waiting_sign_ups`
+returns is listed, newest first, ten at a time with "Show more (N of M shown)"; a search box finds a person
+by part of the name or email, or 3 or more digits of the phone (spaces and +91 ignored). The list reloads on
+focus, on pull-down (phone) and with "Refresh list" (web too); only the newest reload's answer is used. A
+failed first load says so with Try again; a failed reload keeps the list and says it is the one from before.
+Rules in `app/src/lib/waiting-list.ts` (unit-tested).
+
+**Why.** The registration weekend's desk works from this list; a person it cannot find is re-typed by hand,
+against Praveen's "filled once" rule.
+
+**Consequences.** No SQL change; the server already returns the whole list (180 days, own centre).
+
+## 292. The desk's messages for the 0047/0048 refusals; an adult's notice at Fill the form — 13 Oct 2026
+
+**Context.** Audit phase 2 R2-03 and phase 1 FF-01: since 0047 Accept refuses a sign-up without the privacy
+tick (`notice_not_accepted`), and the app showed "Something went wrong"; 0047/0048 added `name_invalid`,
+`name_too_long`, `gender_unknown`, `consent_guardian_mismatch`, `consent_method_not_allowed` and
+`student_withdrawn` (#281) with no message; a sign-up refused for the Guru's or a coordinator's name showed
+Supabase's generic error. #290 left sending the adult's notice to the app.
+
+**Decision (JS).**
+1. A waiting sign-up with `notice_version` null has no Accept: the row says "No privacy tick at sign-up: use
+   Fill the form". If Accept still answers `notice_not_accepted`, the message says to use Fill the form and
+   show the notice, and Fill the form becomes the first button on the card.
+2. Messages (en/te/hi) for the codes above; `student_withdrawn` ("ask the Guru") in the shared
+   `fallbackErrorKey`, so Accept, the desk form, loans, practice, nominations, assessments and events all
+   word it; the Guru's link (`link_student_login`) goes through it too.
+3. An adult registered with Fill the form sends `p_notice_version`: the version the sign-up ticked, else the
+   current one when the coordinator ticks "I showed them the privacy notice" (optional; nothing is sent
+   without it). The form shows the notice link for an adult.
+4. Sign-up: Supabase Auth hides a database refusal of the new login behind "Database error saving new user"
+   (HTTP 500); the app shows "If your name is the same as the Guru's or a coordinator's, add your surname or
+   an initial…". The app does not ask `staff_name_taken` first (anon may not call it, #288).
+5. Wording: the desk's email hint for a child says a child's record is not linked to an app login and the
+   child checks in with the printed QR card (R1-01 text part; #276); the waiting screen says come to the
+   class desk with an ID, then tap Check again (R1-03). The import preview says "fewer than two letters" for a
+   one-letter name (FF-02).
+
+**Why.** Each refusal is a dead end on the weekend's main path unless the screen says the way through.
+
+**Consequences.** te/hi are drafts for native review. R1-01's policy (a child's own login) stays Praveen's.
+
+## 293. A QR scan says "Checking…" and takes no next code until its answer — 13 Oct 2026
+
+**Context.** Audit phase 2 R2-04 / R5-03: after a scan nothing showed for up to 8 s (location) plus the call
+(15 s limit since #237), "Scan the next student" was offered meanwhile, and the next student's code was read
+and silently dropped.
+
+**Decision (JS).** From the read of a code to its answer, Mark attendance shows "Checking…" with a spinner and
+no "Scan the next student"; the camera stays paused. A code read while one is checked shows "Still checking
+the last scan". A read with no position fix in 8 s answers `no_fix` at once for the next minute (a fix that
+arrives late is kept), and the position is warmed up on "Scan the next student". The 10-minute re-scan answer
+(`already_in`, #289) shows as "Already checked in".
+
+**Why.** A dropped code at the door looks like a check-in to the student and the coordinator.
+
+**Consequences.** On a phone without a fix the first check-in of each minute still waits 8 s.
+
+## 294. Restart on the crash screen; start-up crashes of an update go to expo-updates; one list of LIVE web addresses — 13 Oct 2026
+
+**Context.** Audit phase 2 R4-03: the crash screen (an error boundary, #216) caught every error, so
+expo-updates never saw a bad update crash and could not roll it back; the screen offered no Restart and no
+way into a fixed update. R2-08: the LIVE app opened "Print QR cards" on app.mridangaseva.com, which is not
+live before the domain move, and its scanner refused labels printed from mridanga-seva.pages.dev.
+
+**Decision (JS).**
+1. The crash screen has "Restart the app" (`restartApp`: `Updates.reloadAsync` on the phone, a page reload on
+   the web), looks for a newer update at once (no 30-minute wait) and shows "A new version is ready /
+   Restart now" when one is downloaded.
+2. A crash within 8 s of the start while a downloaded update runs is handed to React Native's global handler
+   as a fatal error, so expo-updates' error recovery runs (docs.expo.dev/eas-update/error-recovery: before
+   the first content shows, the update is marked failed and the app goes back to the last good one; after it,
+   expo-updates looks for a fix for 5 s, then the app closes and the next start runs the fix). Once per
+   update id (kept on the phone): if the same update crashes at start again, the crash screen shows, so a
+   crash caused by data cannot close the app on every start. The APK's own JavaScript always shows the crash
+   screen. Rule in `app/src/lib/crash-recovery.ts` (unit-tested).
+3. `LIVE_WEB_ORIGINS` in `app/src/lib/asset-link.ts`: `https://mridanga-seva.pages.dev` first (where Print QR
+   cards opens and what new labels carry), then `https://app.mridangaseva.com`; labels from both scan. The
+   domain move = swap the two lines.
+
+**Why.** Launch week will have several OTAs; a bad one must not trap students and the door phone. Cards for
+children without phones must print from the APK before the domain moves.
+
+**Consequences.** Goes in Friday's APK (fingerprint unchanged, 40e5832c), so it protects against bad updates
+published after it. Labels printed on pages.dev keep scanning after the domain move. Phone-only checks:
+NOTES.md (main folder) "13-10-2026 — Weekend app fixes".
