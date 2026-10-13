@@ -26,6 +26,8 @@ import { formatDate, todayLocal } from '@/lib/dates';
 import { asciiDigits } from '@/lib/digits';
 import { notePractisedToday } from '@/lib/practice-reminder';
 import { useRequestId } from '@/lib/use-request-id';
+import { RefreshFailed } from '@/components/refresh-failed';
+import { useKeptLoad } from '@/lib/kept-load';
 
 /** 'YYYY-MM-DD' of the day `back` days before today at the class. */
 function dayBefore(back: number): string {
@@ -38,7 +40,7 @@ export default function PracticeLogScreen() {
   const { t } = useTranslation();
   const { profile } = useAuth();
   const profileId = profile?.id ?? '';
-  const [log, setLog] = useState<PracticeLog | 'not_found' | null | undefined>(undefined);
+  const [log, setLog, refreshFailed] = useKeptLoad<PracticeLog | 'not_found' | null | undefined>();
   const [taalNames, setTaalNames] = useState<Map<number, string>>(new Map());
 
   const [day, setDay] = useState(0);
@@ -54,7 +56,7 @@ export default function PracticeLogScreen() {
     const [loaded, taals] = await Promise.all([fetchMyPracticeLog(profileId), fetchTaals()]);
     setLog(loaded);
     setTaalNames(new Map(taals.taals.map((tl) => [tl.id, tl.name])));
-  }, [profileId]);
+  }, [profileId, setLog]);
 
   useFocusEffect(
     useCallback(() => {
@@ -126,6 +128,8 @@ export default function PracticeLogScreen() {
 
   return (
     <Screen underHeader onRefresh={load}>
+      {/* F9 (#327): a failed refresh keeps what is shown and says so. */}
+      <RefreshFailed at={refreshFailed} onRetry={() => load()} />
       {header}
       <Section icon="time" title={t('practiceLog.weeks')}>
         <WeeklyPractice weeks={log.weeks} />

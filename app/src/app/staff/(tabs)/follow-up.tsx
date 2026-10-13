@@ -31,6 +31,9 @@ import {
 import { lastVisitText } from '@/i18n/labels';
 import { formatDate } from '@/lib/dates';
 import { useLatestLoad } from '@/lib/latest-load';
+import { RefreshFailed } from '@/components/refresh-failed';
+import { useKeptLoad } from '@/lib/kept-load';
+import { useReloadOnResume } from '@/lib/reload-on-resume';
 
 /** The queue in groups, with a "mine / everyone" switch and a refresh button. */
 export default function FollowUpScreen() {
@@ -38,7 +41,7 @@ export default function FollowUpScreen() {
   const { profile } = useAuth();
   const myId = profile?.id ?? null;
   // undefined = loading, null = could not load.
-  const [queue, setQueue] = useState<FollowUpQueue | null | undefined>(undefined);
+  const [queue, setQueue, refreshFailed] = useKeptLoad<FollowUpQueue | null | undefined>();
   const params = useLocalSearchParams<{ scope?: string; assignee?: string }>();
   const [scope, setScope] = useState<'everyone' | 'mine'>(params.scope === 'mine' ? 'mine' : 'everyone');
   // Opened again from the tile while the tab was open: show "Mine" once more.
@@ -55,9 +58,11 @@ export default function FollowUpScreen() {
     const isNewest = beginLoad();
     const loaded = await fetchFollowUpQueue();
     if (isNewest()) setQueue(loaded); // not an older load answering late (D6-19)
-  }, [beginLoad]);
+  }, [beginLoad, setQueue]);
 
   // Reload when coming back from the call screen: the student moves group or leaves the queue.
+  // F9 / R4-04 (#327): back after a while (a phone that slept), the screen loads again.
+  useReloadOnResume(load);
   useFocusEffect(
     useCallback(() => {
       void load();
@@ -112,6 +117,8 @@ export default function FollowUpScreen() {
 
   return (
     <Screen underHeader wide onRefresh={load}>
+      {/* F9 (#327): a failed refresh keeps what is shown and says so. */}
+      <RefreshFailed at={refreshFailed} onRetry={() => load()} />
       {header}
       <ScreenIntro text={t('followUp.intro')} />
       {haveMine ? (

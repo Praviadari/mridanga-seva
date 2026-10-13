@@ -56,6 +56,8 @@ import { formatDate, localDate } from '@/lib/dates';
 import { listMyRecordings } from '@/lib/my-recordings';
 import { takeOf } from '@/lib/recording';
 import { radius, spacing, useTheme } from '@/theme/use-theme';
+import { RefreshFailed } from '@/components/refresh-failed';
+import { useKeptLoad } from '@/lib/kept-load';
 
 /** Longest recording made in the app for an assessment: 20 minutes (about 14 MB on a phone). */
 const RECORD_SECONDS = 20 * 60;
@@ -68,7 +70,7 @@ function MyAssessmentScreenContent() {
   const myId = profile?.id ?? '';
   const { id: idParam, take: takeParam } = useLocalSearchParams<{ id: string; take?: string }>();
   const id = Number(idParam);
-  const [loaded, setLoaded] = useState<AssignmentDetail | 'not_found' | null | undefined>(undefined);
+  const [loaded, setLoaded, refreshFailed] = useKeptLoad<AssignmentDetail | 'not_found' | null | undefined>();
   const [file, setFile] = useState<PickedMedia | null>(null);
   const [link, setLink] = useState('');
   const [note, setNote] = useState('');
@@ -92,7 +94,7 @@ function MyAssessmentScreenContent() {
       // The database moved Not seen to Seen; show it without loading again.
       if (seenSent.current && result.status === 'assigned') setLoaded({ ...result, status: 'seen' });
     }
-  }, [id]);
+  }, [id, setLoaded]);
 
   useFocusEffect(
     useCallback(() => {
@@ -185,6 +187,8 @@ function MyAssessmentScreenContent() {
 
   return (
     <Screen underHeader onRefresh={load}>
+      {/* F9 (#327): a failed refresh keeps what is shown and says so. */}
+      <RefreshFailed at={refreshFailed} onRetry={() => load()} />
       {header}
       <AssignmentChips status={status} dueOn={release.dueOn} />
       {sent ? <Notice tone="success">{t('assessments.submit.sent')}</Notice> : null}

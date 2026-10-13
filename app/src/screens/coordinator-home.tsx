@@ -29,6 +29,7 @@ import { UpdateNotice } from '@/components/update-notice';
 import { fetchStaffDashboard, type CoordinatorDashboard, type StaffDashboard } from '@/data/home';
 import { hasOwnRecord } from '@/data/my-student';
 import { formatDate } from '@/lib/dates';
+import { useReloadOnResume } from '@/lib/reload-on-resume';
 
 /** Coordinator home screen, shown by the staff Home tab (app/staff/(tabs)/index.tsx). */
 export function CoordinatorHome() {
@@ -47,6 +48,8 @@ export function CoordinatorHome() {
     setMe(own);
   }, [myId]);
 
+  // F9 / R4-04 (#327): back after a while (a phone that slept), the screen loads again.
+  useReloadOnResume(load);
   useFocusEffect(
     useCallback(() => {
       void load();

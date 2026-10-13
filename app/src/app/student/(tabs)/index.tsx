@@ -40,6 +40,7 @@ import { levelName } from '@/i18n/labels';
 import { useAboutPrompt } from '@/lib/about-prompt';
 import { todayLocal } from '@/lib/dates';
 import { useLatestLoad } from '@/lib/latest-load';
+import { useReloadOnResume } from '@/lib/reload-on-resume';
 import { markWelcomeSeen, welcomeDue, welcomeSeen } from '@/lib/welcome';
 
 /** Student home screen. */
@@ -82,6 +83,8 @@ export default function StudentHomeScreen() {
     setPollsToVote(loadedPolls);
   }, [myId, beginLoad]);
 
+  // F9 / R4-04 (#327): back after a while (a phone that slept), the screen loads again.
+  useReloadOnResume(load);
   useFocusEffect(
     useCallback(() => {
       void load();

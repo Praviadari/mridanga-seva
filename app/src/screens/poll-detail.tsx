@@ -34,6 +34,8 @@ import {
 } from '@/data/polls';
 import { audienceName } from '@/i18n/labels';
 import { formatDateTime } from '@/lib/dates';
+import { RefreshFailed } from '@/components/refresh-failed';
+import { useKeptLoad } from '@/lib/kept-load';
 
 type Loaded = { item: PollItem; groupName: string | null; authorName: string | null; voters: PollVoter[] | null };
 
@@ -43,7 +45,7 @@ export function PollDetailScreen({ id, area }: { id: number; area: 'student' | '
   const { profile, area: myArea } = useAuth();
   const myId = profile?.id ?? '';
   const isStaff = area === 'staff';
-  const [loaded, setLoaded] = useState<Loaded | 'not_found' | null | undefined>(undefined);
+  const [loaded, setLoaded, refreshFailed] = useKeptLoad<Loaded | 'not_found' | null | undefined>();
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState<{ tone: 'success' | 'error'; text: string } | null>(null);
   const [confirming, setConfirming] = useState<'close' | 'delete' | null>(null);
@@ -57,7 +59,7 @@ export function PollDetailScreen({ id, area }: { id: number; area: 'student' | '
     }
     const voters = isStaff ? await fetchVoters(id) : null;
     setLoaded({ ...found, voters });
-  }, [id, isStaff]);
+  }, [id, isStaff, setLoaded]);
 
   useFocusEffect(
     useCallback(() => {
@@ -133,6 +135,8 @@ export function PollDetailScreen({ id, area }: { id: number; area: 'student' | '
 
   return (
     <Screen underHeader onRefresh={load}>
+      {/* F9 (#327): a failed refresh keeps what is shown and says so. */}
+      <RefreshFailed at={refreshFailed} onRetry={() => load()} />
       {header}
       {closed ? <Notice tone="info">{t('polls.closedNotice')}</Notice> : null}
       <AnnouncementDetail

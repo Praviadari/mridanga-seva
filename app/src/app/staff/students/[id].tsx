@@ -51,6 +51,8 @@ import {
 import { locationForCheckIn } from '@/lib/attendance-location';
 import { ageOn, localDate, formatDate, localTime, todayLocal } from '@/lib/dates';
 import { goBackOr } from '@/lib/go-back';
+import { RefreshFailed } from '@/components/refresh-failed';
+import { useKeptLoad } from '@/lib/kept-load';
 
 /** What the screen loaded: the profile, the staff (the Guru's mentor picker) and the staff names it mentions. */
 type Loaded = { profile: StudentProfile; staff: StaffMember[]; staffNames: Map<string, string> };
@@ -61,7 +63,7 @@ function StudentProfileScreenContent() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { profile: signedIn } = useAuth();
   // undefined = loading, null = could not load, 'not_found' = no such student.
-  const [loaded, setLoaded] = useState<Loaded | 'not_found' | null | undefined>(undefined);
+  const [loaded, setLoaded, refreshFailed] = useKeptLoad<Loaded | 'not_found' | null | undefined>();
   const [marking, setMarking] = useState(false);
   const [markOutcome, setMarkOutcome] = useState<MarkOutcome | null>(null);
   // Attendance emails to parents (0043): per guardian; nothing before the migration or for an adult.
@@ -73,7 +75,7 @@ function StudentProfileScreenContent() {
     if (profile === 'not_found') setLoaded('not_found');
     else if (!profile || !staff) setLoaded(null);
     else setLoaded({ profile, staff, staffNames: new Map(staff.map((s) => [s.id, s.fullName])) });
-  }, [id]);
+  }, [id, setLoaded]);
 
   // Reload when coming back from the call screen, so the new call shows at once.
   useFocusEffect(
@@ -125,6 +127,8 @@ function StudentProfileScreenContent() {
 
   return (
     <Screen underHeader onRefresh={load}>
+      {/* F9 (#327): a failed refresh keeps what is shown and says so. */}
+      <RefreshFailed at={refreshFailed} onRetry={() => load()} />
       {header}
       <PersonHeader
         name={student.fullName}

@@ -15,6 +15,7 @@
     "genericError": "Something went wrong. Please try again.",
     "studentWithdrawn": "Consent for this student was withdrawn. Nothing new can be recorded for them; ask the Guru.",
     "networkError": "Could not reach the server, or it did not answer. Check your internet connection and try again; if it keeps happening, tell a coordinator.",
+    "refreshFailed": "Could not refresh. Showing what was loaded at {{time}}.",
     "fixFieldsAbove": "Some fields need a fix ({{count}}). Each has its message under it, above.",
     "charactersUsed": "{{used}} of {{max}} characters",
     "fixFieldsTitle_one": "{{count}} field needs a fix",

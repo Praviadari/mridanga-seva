@@ -32,6 +32,7 @@ import { fetchStaffDashboard, type GuruDashboard, type StaffDashboard } from '@/
 import { hasOwnRecord } from '@/data/my-student';
 import { levelName, statusName } from '@/i18n/labels';
 import { formatDate } from '@/lib/dates';
+import { useReloadOnResume } from '@/lib/reload-on-resume';
 
 /** Follow-ups overdue or escalated, over every coordinator. */
 export function followUpsNeedingAttention(board: GuruDashboard): number {
@@ -55,6 +56,8 @@ export function GuruHome() {
     setMe(own);
   }, [myId]);
 
+  // F9 / R4-04 (#327): back after a while (a phone that slept), the screen loads again.
+  useReloadOnResume(load);
   useFocusEffect(
     useCallback(() => {
       void load();

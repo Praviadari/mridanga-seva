@@ -9,7 +9,7 @@
 // Also Me > My progress in the staff app, for a staff member's own record (0053, #319; staff/me/progress.tsx).
 
 import { router, Stack, useFocusEffect, usePathname } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
@@ -30,6 +30,8 @@ import { levelName } from '@/i18n/labels';
 import { formatDate } from '@/lib/dates';
 import { ownAreaOf } from '@/lib/own-area';
 import { spacing } from '@/theme/use-theme';
+import { RefreshFailed } from '@/components/refresh-failed';
+import { useKeptLoad } from '@/lib/kept-load';
 
 /** The student's level with its progress bar and one row per syllabus item. */
 export default function MyProgressScreen() {
@@ -38,11 +40,11 @@ export default function MyProgressScreen() {
   const myId = profile?.id ?? '';
   const area = ownAreaOf(usePathname());
   // undefined = loading, null = could not load, 'not_found' = no student record for this login.
-  const [loaded, setLoaded] = useState<MyProgress | 'not_found' | null | undefined>(undefined);
+  const [loaded, setLoaded, refreshFailed] = useKeptLoad<MyProgress | 'not_found' | null | undefined>();
 
   const load = useCallback(async () => {
     setLoaded(await fetchMyProgress(myId));
-  }, [myId]);
+  }, [myId, setLoaded]);
 
   // Reload when the screen comes back into view, so a tick made in class shows at once.
   useFocusEffect(
@@ -83,6 +85,8 @@ export default function MyProgressScreen() {
 
   return (
     <Screen underHeader onRefresh={load}>
+      {/* F9 (#327): a failed refresh keeps what is shown and says so. */}
+      <RefreshFailed at={refreshFailed} onRetry={() => load()} />
       {header}
       <Section icon="level" title={t('home.student.myLevel', { level })} description={t('progress.intro')}>
         {loaded.total > 0 ? (
