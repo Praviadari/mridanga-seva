@@ -12,13 +12,16 @@
 //   listed to whoever signs in next) and every
 //   recording expo-audio wrote to the cache (assessment answers, voice notes: Audio/ on Android,
 //   ExpoAudio/ on iOS);
-// - the daily practice reminder and its scheduled notifications (lib/practice-reminder.ts, #402).
+// - the daily practice reminder and its scheduled notifications (lib/practice-reminder.ts, #402);
+// - the student's face code, if face scan was on (src/face/face-status.ts; audit S4F-06, #310): the
+//   server's enrolment stays, so the next sign-in on this phone asks for a new supervised enrolment.
 
 import { Directory, Paths } from 'expo-file-system';
 import { Image } from 'expo-image';
 import { Platform } from 'react-native';
 
 import { clearSavedCard } from '@/data/my-student';
+import { forgetFace } from '@/face/face-status';
 import { forgetMyRecordings } from '@/lib/my-recordings';
 import { forgetPracticeReminders } from '@/lib/practice-reminder';
 import { dismissNotifications } from '@/lib/push';
@@ -38,6 +41,7 @@ export async function clearDeviceTraces(): Promise<void> {
     forgetPracticeReminders(),
     Image.clearMemoryCache().catch(() => false),
     Image.clearDiskCache().catch(() => false),
+    forgetFace().catch(() => undefined),
   ]);
   if (Platform.OS === 'web') return;
   for (const name of TRACE_FOLDERS) {

@@ -23,6 +23,7 @@ import { Pressable, StyleSheet } from 'react-native';
 
 import { useAuth } from '@/auth/auth-provider';
 import { Button } from '@/components/button';
+import { FaceReEnrolNotice } from '@/components/face-entries';
 import { FactCard } from '@/components/fact-card';
 import { HomeHeader } from '@/components/home-header';
 import { ModuleRing, type Module } from '@/components/module-ring';
@@ -144,6 +145,8 @@ export default function StudentHomeScreen() {
     <Screen wide compact header={<HomeHeader name={name} />} onRefresh={load}>
       <UpdateNotice />
       <PushNotice place="home" />
+      {/* Face scan (Phase 3): only when this phone's enrolment ends within 30 days and the switch is on. */}
+      <FaceReEnrolNotice profileId={profile?.id} />
 
       {home === null || news === null ? (
         <>

@@ -52,6 +52,8 @@ const SHAPES = {
   add: 'add',
   update: 'cloud-download-outline',
   person: 'person-outline',
+  // Phase 3: face scan (S14, C24).
+  face: 'happy-outline',
   guardian: 'shield-checkmark-outline',
   edit: 'create-outline',
   delete: 'trash-outline',
