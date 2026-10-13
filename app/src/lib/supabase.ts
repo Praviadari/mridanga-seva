@@ -103,6 +103,11 @@ export const supabase = createClient(
       flowType: 'implicit',
     },
     global: { fetch: watchedFetch },
+    // No automatic retries of a failed read (audit R5-01, docs/DECISIONS.md #304): the database library tries
+    // a read four times with waits of 1, 2 and 4 s, so a stalled read failed only after 4 x 15 + 7 = 67 s and
+    // one without internet after 7 s. Now a read fails after one time limit (READ_TIMEOUT_MS, 10 s) or at once
+    // offline, and the screen offers Try again.
+    db: { retry: false },
   },
 );
 

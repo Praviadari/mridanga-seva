@@ -68,7 +68,7 @@ export default function MyProgressScreen() {
             <Button icon="refresh" label={t('common.tryAgain')} onPress={() => void load()} />
           </>
         ) : null}
-        <Button variant="link" icon="home" label={t('comingSoon.back')} onPress={() => router.navigate('/student')} />
+        <Button variant="link" icon="home" label={t('comingSoon.back')} onPress={() => router.dismissTo('/student')} />
       </Screen>
     );
   }

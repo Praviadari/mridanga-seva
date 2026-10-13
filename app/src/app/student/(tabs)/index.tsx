@@ -7,11 +7,12 @@
 // syllabus on My progress (S4), the next event and the polls on Events & polls (S11, S12), the
 // latest announcements on Announcements (S10). What waits for the student is a count on its circle
 // (announcements not opened yet, polls to vote, About you not finished). Only notices stay on the
-// home: "A new version is ready" on the Android app (components/update-notice.tsx), could not load,
-// and no student record. Language, Sign out and the version line are on My profile (A3), opened
+// home: "A new version is ready" on the Android app (components/update-notice.tsx), notifications off
+// (components/push-notice.tsx, #305), could not load, and no student record. Language, Sign out and the version line are on My profile (A3), opened
 // by the person button beside the bell in the header.
 // Numbers: student_home() through src/data/home.ts; announcements: src/data/announcements.ts.
-// It loads again each time it comes back into view, so a count goes once the thing is done.
+// It loads again each time it comes back into view, so a count goes once the thing is done. It also
+// saves the My QR card on the phone once per run of the app (data/my-student.ts keepMyCardSaved).
 
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
@@ -26,9 +27,11 @@ import { ModuleRing, type Module } from '@/components/module-ring';
 import { Notice } from '@/components/notice';
 import { ProgressBar } from '@/components/progress-bar';
 import { Screen } from '@/components/screen';
+import { PushNotice } from '@/components/push-notice';
 import { UpdateNotice } from '@/components/update-notice';
 import { fetchMyLatestAnnouncements, type MyLatestAnnouncements } from '@/data/announcements';
 import { fetchStudentHome, type StudentHome } from '@/data/home';
+import { keepMyCardSaved } from '@/data/my-student';
 import { fetchPollsToVote } from '@/data/polls';
 import { levelName } from '@/i18n/labels';
 import { useAboutPrompt } from '@/lib/about-prompt';
@@ -53,6 +56,8 @@ export default function StudentHomeScreen() {
 
   const load = useCallback(async () => {
     const isNewest = beginLoad();
+    // My QR saved on this phone before the student needs it at the door without signal (R1-02, #303).
+    void keepMyCardSaved(myId);
     // One announcement is enough: only the unread count is shown here.
     const [loadedHome, loadedNews, loadedPolls] = await Promise.all([
       fetchStudentHome(),
@@ -123,6 +128,7 @@ export default function StudentHomeScreen() {
   return (
     <Screen wide header={<HomeHeader name={name} />} onRefresh={load}>
       <UpdateNotice />
+      <PushNotice place="home" />
 
       {home === null || news === null ? (
         <>

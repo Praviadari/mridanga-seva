@@ -1,5 +1,5 @@
-// The signed-in student's own record, for the Student screens: the My QR card (S3) now, the
-// student home (S1) later. Row-level security lets a student read only their own students row
+// The signed-in student's own record, for the Student screens: the My QR card (S3), saved ahead
+// of need by the student home (S1). Row-level security lets a student read only their own students row
 // (policy own_or_staff in supabase/migrations/0001_phase1.sql), so the app never sees anyone else's.
 //
 // My QR has to work at the door even when the phone has no signal, so the last card loaded is
@@ -63,18 +63,35 @@ export async function fetchMyCard(profileId: string): Promise<MyCardResult> {
   return { state: 'ok', card, saved: false };
 }
 
+/** The login whose card the server has already answered for in this run of the app. */
+let answeredFor: string | null = null;
+
+/**
+ * Saves the card on this device ahead of need, from the student home (audit R1-02, docs/DECISIONS.md
+ * #303): My QR then works at the door without signal even when the student never opened it online.
+ * Asks the server once per run of the app and login, and again after a failure; quiet, because the
+ * home shows its own loading and network notices.
+ * @param profileId the signed-in login's id.
+ */
+export async function keepMyCardSaved(profileId: string): Promise<void> {
+  if (!profileId || answeredFor === profileId) return;
+  const result = await fetchMyCard(profileId);
+  if (result.state === 'noRecord' || (result.state === 'ok' && !result.saved)) answeredFor = profileId;
+}
+
 /**
  * Deletes the card saved on this device. Called on sign-out, because a family may share one
  * phone and the next person must not find this student's code.
  */
 export function clearSavedCard(): void {
   removeLocal(SAVED_CARD_KEY);
+  answeredFor = null;
 }
 
 /**
  * The card saved on this device for this login, else null (also when it cannot be read). My QR
- * shows it at once while fetchMyCard asks the server, because without signal the database client
- * retries a failed request for several seconds before it gives up.
+ * shows it at once while fetchMyCard asks the server, because on a stalled connection a read waits up
+ * to its time limit (10 s, lib/timed-fetch.ts) before it gives up.
  * @param profileId the signed-in login's id; a card saved for another login is never returned.
  */
 export function savedCardFor(profileId: string): MyCard | null {

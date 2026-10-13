@@ -2,6 +2,8 @@
 // mentor and their duty hours; the people who signed up and wait for a role; logins put aside.
 // A row opens the person's page (./[id].tsx), where roles, duty hours, mentees and switching off
 // are handled. Opened from "Running the class" on the Guru home (components/admin-links.tsx).
+// Since 0046 every adult sign-up waits for a role until the desk accepts it, so the waiting people are found
+// by a search (2+ letters of a name or email, or 3+ phone digits), not listed whole (audit R3-05, #302).
 // Data: src/data/coordinators.ts.
 
 import { router, Stack, useFocusEffect } from 'expo-router';
@@ -18,8 +20,11 @@ import { ListRow } from '@/components/list-row';
 import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
+import { TextField } from '@/components/text-field';
 import { fetchCoordinatorsBoard, type CoordinatorsBoard, type Person } from '@/data/coordinators';
 import { formatDateTime } from '@/lib/dates';
+import { findWaitingPeople, MIN_WAITING_SEARCH } from '@/lib/guru-tools';
+import { searchFold } from '@/lib/search-text';
 
 /** The coordinators list with the waiting people. */
 export default function CoordinatorsScreen() {
@@ -27,6 +32,7 @@ export default function CoordinatorsScreen() {
   const { profile } = useAuth();
   // undefined = loading, null = could not load.
   const [board, setBoard] = useState<CoordinatorsBoard | null | undefined>(undefined);
+  const [search, setSearch] = useState('');
 
   const load = useCallback(async () => {
     setBoard(await fetchCoordinatorsBoard());
@@ -46,6 +52,8 @@ export default function CoordinatorsScreen() {
     return counts;
   }, [board]);
   const noMentor = (board?.students ?? []).filter((s) => !s.mentorId && s.status !== 'left').length;
+  const found = useMemo(() => findWaitingPeople(board?.waiting ?? [], search), [board, search]);
+  const searched = searchFold(search).length >= MIN_WAITING_SEARCH;
 
   if (profile?.role !== 'guru') return <GuruOnly title={t('coordinators.title')} />;
 
@@ -98,7 +106,16 @@ export default function CoordinatorsScreen() {
           ) : (
             <>
               <AppText tone="muted">{t('coordinators.waitingHelp')}</AppText>
-              <Columns>{board.waiting.map(waitingRow)}</Columns>
+              <TextField
+                label={t('coordinators.waitingSearch')}
+                hint={t('coordinators.waitingSearchHint')}
+                value={search}
+                onChangeText={setSearch}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              {searched && found.length === 0 ? <AppText tone="muted">{t('coordinators.waitingNoMatch')}</AppText> : null}
+              <Columns>{found.map(waitingRow)}</Columns>
             </>
           )}
 

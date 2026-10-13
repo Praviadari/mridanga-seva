@@ -6,7 +6,7 @@
 // staff/follow-ups-by-coordinator.tsx), the level-up queue on G7, the admin screens on Running the
 // class (staff/running-the-class.tsx). What waits for the Guru is a count on its circle: follow-ups
 // overdue or escalated, nominations to decide. Only notices stay on the home: "A new version is
-// ready" on the Android app, and could not load. Numbers: guru_dashboard() through src/data/home.ts.
+// ready" on the Android app, notifications off (#305), and could not load. Numbers: guru_dashboard() through src/data/home.ts.
 // It loads again each time it comes back into view.
 
 import { router, useFocusEffect } from 'expo-router';
@@ -26,6 +26,7 @@ import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { StaffModules } from '@/components/staff-shortcuts';
 import { StatGrid, StatTile } from '@/components/stat-tile';
+import { PushNotice } from '@/components/push-notice';
 import { UpdateNotice } from '@/components/update-notice';
 import { fetchGuruDashboard, type GuruDashboard } from '@/data/home';
 import { fetchPromotionHome } from '@/data/promotion';
@@ -61,6 +62,7 @@ export function GuruHome() {
   return (
     <Screen wide header={<HomeHeader name={name} role={t('roles.guru')} />} onRefresh={load}>
       <UpdateNotice />
+      <PushNotice place="home" />
       {board === null ? (
         <>
           <Notice tone="error" title={t('home.loadFailed')}>
@@ -90,7 +92,7 @@ export function GuruOverview({ board }: { board: GuruDashboard }) {
           icon="students"
           value={String(board.inClass)}
           label={t('home.guru.inClass')}
-          onPress={() => router.push({ pathname: '/staff/students', params: { status: 'notLeft' } })}
+          onPress={() => router.push({ pathname: '/staff/class-list', params: { status: 'notLeft' } })}
         />
         <StatTile
           icon="newJoiner"
@@ -102,7 +104,7 @@ export function GuruOverview({ board }: { board: GuruDashboard }) {
           icon="calls"
           value={String(followUpsNeedingAttention(board))}
           label={t('home.guru.followUpsToCheck')}
-          onPress={() => router.push('/staff/follow-up')}
+          onPress={() => router.push('/staff/calls')}
         />
       </StatGrid>
       <AppText variant="small" tone="muted">
@@ -156,10 +158,10 @@ export function GuruFollowUps({ board }: { board: GuruDashboard }) {
           // No assignee: the students had no mentor when their call task was made.
           title={f.assigneeId === null ? t('students.filters.noMentor') : f.fullName || t('home.guru.noName')}
           details={[t('home.guru.followUpLine', { overdue: f.overdue, escalated: f.escalated })]}
-          onPress={() => router.push({ pathname: '/staff/follow-up', params: { assignee: f.assigneeId ?? 'none' } })}
+          onPress={() => router.push({ pathname: '/staff/calls', params: { assignee: f.assigneeId ?? 'none' } })}
         />
       ))}
-      <Button variant="secondary" icon="calls" label={t('home.guru.openCalls')} onPress={() => router.push('/staff/follow-up')} />
+      <Button variant="secondary" icon="calls" label={t('home.guru.openCalls')} onPress={() => router.push('/staff/calls')} />
     </Section>
   );
 }

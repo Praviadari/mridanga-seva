@@ -67,7 +67,7 @@ export default function MyVisitsScreen() {
           <Button icon="refresh" label={t('common.tryAgain')} onPress={() => setAttempt((n) => n + 1)} />
         </>
       ) : null}
-      <Button variant="link" icon="home" label={t('comingSoon.back')} onPress={() => router.navigate('/student')} />
+      <Button variant="link" icon="home" label={t('comingSoon.back')} onPress={() => router.dismissTo('/student')} />
     </Screen>
   );
 }
