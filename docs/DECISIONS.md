@@ -4702,3 +4702,155 @@ the new staff function `record_desk_notice(student, version)` (set once: a notic
 **Consequences.** The app sends `p_notice_version` today only for a minor
 (app/src/data/students.ts); sending it for adults too is a one-line JS change for the app chip. A
 sign-up whose email the desk typed differently is not linked, so its notice stays with the login.
+
+## 295. Gate 2: face codes stay on the student's phone; the server keeps an enrolment record only — 13 Oct 2026
+
+**Status: built on branch `p3-server` (migration 0060, placeholder number), not merged; face scan stays off.**
+
+**Context.** Audit phase 3 S4F-02 (High) and the lead's binding gates of 12 Oct 2026: WORK_PLAN's P3-2 kept
+a copy of every face code on the server ("template encrypted with a Vault key") and `my_face_template()`
+handed it back for a re-install. A Vault key is readable by the project owner in the SQL editor, so the copy
+was as safe as the dashboard password; a central store of ~200 children's face codes is the most damaging
+thing the class could lose, and the re-install path let anyone with the student's password restore a face
+code without anyone looking.
+
+**Decision.** No face code on the server, ever. `face_enrolments` records who enrolled (student, login),
+which phone (`device_key`, an id the app makes per install), the model, who confirmed it at the desk, when,
+until when, and how it ended. `my_face_template()` is dropped. A new phone, a re-install, expiry or a model
+change means a fresh supervised enrolment at the desk (#297). The phone asks `my_face_enrolment(device_key)`
+at every start online and wipes its code when the answer is "not enrolled". No role reads the table
+directly; staff read through `get_face_enrolments` (logged in `access_log`). Supersedes the storage part of
+#254 (DPIA, notice and consent drafts updated to match).
+
+**Why.** Device-only removes the central biometric store and the restore-by-password path; the desk
+re-enrolment is also the safer identity rule (S4F-03). Proving deletion needs a record, not the template.
+
+**Consequences.** Ended rows stay as the proof (no face data in them) and are deleted after 400 days. A
+lost phone is "remove at the desk" (#298) plus the Keystore protecting what is left on the phone.
+
+## 296. Gate 1 on the server: a single-use challenge, Google's verdict checked by an Edge Function, a one-time pass — 13 Oct 2026
+
+**Status: built on branch `p3-server` (0060 + Edge Function `verify-integrity`), not deployed. The phone
+proof is the P3-0 test day (after 21 Oct 2026); if it fails, there is no self-scan for anyone (#279).**
+
+**Context.** Audit S4F-01 (High): in a self-scan the face match, liveness and location are all computed on
+the student's phone; the server can verify none of them. The only proof is a Play Integrity verdict bound to
+the one check-in, decoded by Google and checked on the server, with our signing certificate pinned. The spike
+(SPIKE_RESULT.md §0, §8; `spike-tools/gate1-server.mjs`) wrote the rules.
+
+**Decision.** (1) `issue_integrity_challenge(action)`: the student's phone gets a single-use challenge
+(32 hex characters), valid 60 s, bound to the login, the student and the action (check_in / check_out);
+only with a current enrolment; at most 10 per 10 minutes. (2) The phone asks Play Integrity for a token
+whose requestHash is the SHA-256 of `mrdg-selfscan-v1|<login>|<action>|<challenge>|<location result>` and
+posts it to the Edge Function `verify-integrity` with its sign-in. (3) The function spends the challenge
+first (`begin_integrity_check`, whatever happens next), has Google decode the token with a service account
+(secret `GOOGLE_SERVICE_ACCOUNT_JSON`), and requires: our package (request and app), the requestHash, a
+request time within the challenge's 60 s (5 s clock skew), a pinned signing certificate
+(`PLAY_INTEGRITY_CERT_SHA256`, one or more; none set = the function refuses to run), optionally a minimum
+versionCode, and `MEETS_DEVICE_INTEGRITY`. (4) `finish_integrity_check` records `pass` or the first failed
+rule; on a pass the phone gets a **one-time pass** (32 random bytes) whose SHA-256 the database keeps for 120
+s. (5) The future self-scan RPC (P3-5) calls `use_integrity_pass(pass, action, location result)`, which only
+the caller's own unspent, unexpired pass for that action and location result satisfies. (6) `method = 'face'`
+and `visits.liveness_ok` can be written only by that path (`face_visit_reserved` for QR scans, the desk and
+the dashboard). Failures are counted per centre and rule without a student id (`face_use_counts`).
+
+**Why an opaque pass, not a signed token.** The database is the only verifier, so a random pass held as a
+hash there is as strong as a signature, is single-use by construction, and needs no signing key shared
+between the function and the database (nothing to rotate, nothing in Vault). The web app cannot get a Play
+Integrity token, so it never gets a pass; the function sends no CORS headers.
+
+**Consequences.** Google Cloud project + service account + key, function secrets and the deploy are
+Praveen's steps (OPERATIONS.md "Face scan: integrity check"), after the test day. Free quota 10,000
+decodes a day per project ≫ the class's need. Licensing and app-recognition verdicts are not used (a
+link-installed APK is UNLICENSED / UNRECOGNIZED_VERSION).
+
+## 297. Enrolment is confirmed at the desk by a coordinator typing a code from the student's phone — 13 Oct 2026
+
+**Status: built on branch `p3-server` (0060); the screens are P3-4.**
+
+**Context.** Audit S4F-03: enrolment and every re-enrolment must be tied, server-side, to a staff member
+who saw the student; WORK_PLAN left the confirmation "to design".
+
+**Decision.** Three calls. `start_face_enrolment(device_key, model)` (the student's phone, after the
+on-device capture with liveness) returns a 6-digit code valid 10 minutes; the server keeps only its SHA-256;
+a new request replaces a waiting one; at most 5 an hour. `approve_face_enrolment(student, code)` (a
+coordinator or the Guru, on their own phone, e.g. from the student's profile): never for their own record;
+a wrong code answers `code_wrong` with the tries left, the fifth ends the request. `enrol_face(request,
+device_key)` (the same phone, within 10 minutes of the confirmation) records the enrolment; the student's
+earlier enrolment on another phone ends (`replaced`). No self-service re-enrolment of any kind.
+
+**Why.** Typing a code shown on the student's phone proves the coordinator had that phone and its owner in
+front of them, needs no camera and no QR scan, and works on every staff phone. The 10-minute windows keep a
+code from being relayed later.
+
+**Consequences.** P3-4 designs the two screens (student: "Face scan" → code; coordinator: "Confirm face
+scan" on the student's profile). `approved_by` and `approved_at` stay on the record.
+
+## 298. Face consent: the adult's own, or the parent's plus the child's own yes; adults first; withdrawal in one tap — 13 Oct 2026
+
+**Status: built on branch `p3-server` (0060). The minimum age is a Guru item (DECISIONS_FOR_GURU item 3) and
+a lawyer question; until both answer, face scan is for adults only.**
+
+**Context.** Audit S4F-05: the consents table had no place for the child's own "yes" or for an adult's face
+consent (adults have no consent rows); DPIA: "the child's own no stops face scan".
+
+**Decision.** `consents` (scope `face`) gains `child_assent`, `assent_read_by` (the staff login that read
+the child their part of the form) and `revoked_by`. `record_face_consent` (staff, at the desk) is the only
+app path (a direct insert is refused, `face_consent_at_desk`): an adult's own signed form; a minor's parent
+(guardian, ID type seen, signed form) **and** the child's yes. Refused under the setting `face_min_age`,
+**18** until the Guru and the lawyer answer (adults first, SQL editor only). `remove_face`: the student's
+one tap (`student_off`) and the desk on the parent's or adult's request (`desk`) end the enrolment **and
+revoke the face consent** (`revoked_by` = who asked; a coordinator may record this withdrawal, unlike other
+consent revocations, which stay the Guru's); `lost_phone` ends the enrolment and keeps the consent. Removal
+always works, also while face scan is switched off and for a withdrawn record. Expiry 12 months for a minor,
+24 for an adult (settings; Guru item, defaults as planned).
+
+**Why.** DPDP s.6(4): withdrawing must be as easy as giving; the child's own "no" must count. A face consent
+recorded outside the desk function would skip the age rule and the assent.
+
+**Consequences.** The paper face consent form (CONSENT_DRAFT F-P/F-A) maps to these fields. The minimum age
+and expiry are changed in the SQL editor only (#300), after the Guru's answer.
+
+## 299. Every way a face enrolment ends, and how long face data is kept — 13 Oct 2026
+
+**Status: built on branch `p3-server` (0060).**
+
+**Context.** Audit S4F-06 and WORK_PLAN P3-2: deletion inside withdrawal, erasure, Left + 30 days, expiry
+and a model change; per-visit match scores are biometric-derived data with no retention.
+
+**Decision.** An enrolment ends (with its reason) when: the face or data consent is revoked or deleted;
+`withdraw_consent` (`withdrawn`); the login is taken off or put on the record (`login_changed`) or switched
+off (`login_off`); the setting `face_model_version` changes (`model_changed`); and nightly
+(`mridanga-face-housekeeping`, 01:55 UTC): expiry, a request not completed within an hour, a student Left
+for 30 days. `erase_student` deletes everything with the record (cascade). A withdrawn record cannot start
+one (`student_withdrawn`). **The match score is not stored on `visits`**: the `audit_visits` trigger copies
+the whole visit row into `audit_log` at every check-out, so a score there would outlive any limit. It goes in
+`visit_face_scores` (no audit trigger), deleted after `face_score_days` (60) — the calibration and pilot
+window; `visits.liveness_ok` and `method = 'face'` stay with the visit. Ended enrolments and failure counts
+are deleted after 400 days, integrity challenges after a day.
+
+**Why.** Each path is a point where the purpose ends; a trigger catches every caller (the app, the
+dashboard, a later function) instead of relying on each one to remember.
+
+**Consequences.** The phone learns of every end at its next start online (#295) and wipes its code.
+`face_score_days` can be lowered after the pilot (SQL editor).
+
+## 300. Face scan has one server switch, off, changed only in the SQL editor — 13 Oct 2026
+
+**Status: built on branch `p3-server` (0060).**
+
+**Context.** Praveen (12 Oct 2026): face scan is developed now but switched on only when fully tested. The
+app must not be able to switch it on, and the switch must stop the whole chain.
+
+**Decision.** Setting `face_enabled`, **false**. While false, every face function that starts or records
+something refuses with `face_off` (face consent, the three enrolment steps, challenges, the Edge Function's
+check, a face visit). Removal (`remove_face`), the phone's status question (`my_face_enrolment`, which also
+reports the switch), the staff counts and the nightly job always work. All `face_*` settings (switch,
+minimum age, expiry months, score days, model version) are changed in the SQL editor only: G10 and any app
+user get `setting_owner_only`.
+
+**Why.** One place to switch face scan off for everyone at once (the lawyer, an incident, a bad model)
+without an app update; and the Guru's G10 cannot switch on by mistake what the lawyer has not cleared.
+
+**Consequences.** Turning it off does not end enrolments (turning it on again needs no re-enrolment).
+OPERATIONS.md "Face scan: integrity check" has the switch's SQL.
