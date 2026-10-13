@@ -101,6 +101,7 @@ import { formatDateTime, formatTypedDate, parseDayMonthYear } from '@/lib/dates'
 import { asciiDigits } from '@/lib/digits';
 import { duplicateKey, duplicateQuery, type PossibleDuplicate } from '@/lib/duplicates';
 import { discardDraft, peekDraft, useDraftKeeper } from '@/lib/form-drafts';
+import { useLeaveGuard } from '@/lib/use-leave-guard';
 import { typedPhone } from '@/lib/phone';
 import { PRIVACY_NOTICE_VERSION } from '@/lib/privacy-notice';
 import { filterWaiting, WAITING_PAGE, waitingAction } from '@/lib/waiting-list';
@@ -262,6 +263,8 @@ export default function RegisterStudentScreen() {
   // Kept only while something is typed and not saved yet (the requestId keeps a repeated Save single).
   const typed = [form.fullName, form.dob, form.phone, form.email, form.guardianName, form.guardianPhone].some((v) => v.trim() !== '');
   useDraftKeeper(DRAFT_KEY, owner, typed && !saved ? ({ form, about } satisfies RegisterDraft) : null);
+  // #327: Back asks before a half-typed registration is thrown away (the draft above covers a forced sign-out only).
+  useLeaveGuard(typed && !saved);
 
   /**
    * Returns a change handler for one form field. Editing a field clears its message (audit F2-16); a
@@ -681,7 +684,7 @@ export default function RegisterStudentScreen() {
       </StatusText>
       {step === 1 ? (
         <Section icon="person" title={t('register.stepWho')}>
-          <TextField
+          <TextField kind="name"
             ref={target('fullName')}
             label={t('register.fullName')}
             value={form.fullName}
@@ -718,7 +721,7 @@ export default function RegisterStudentScreen() {
                 : t('register.dobHint')
             }
           />
-          <TextField
+          <TextField kind="phone"
             ref={target('phone')}
             label={t('register.phone')}
             value={form.phone}
@@ -733,7 +736,7 @@ export default function RegisterStudentScreen() {
             onSubmitEditing={() => focusField('email')}
             submitBehavior="submit"
           />
-          <TextField
+          <TextField kind="email"
             ref={target('email')}
             label={t('register.email')}
             // A child's record is never linked to a login by itself (#276): children use the printed QR card (R1-01).
@@ -776,7 +779,7 @@ export default function RegisterStudentScreen() {
               onSubmitEditing={() => focusField('pincode')}
               submitBehavior="submit"
             />
-            <TextField
+            <TextField kind="number"
               ref={target('pincode')}
               label={t('register.pincode')}
               value={form.pincode}
@@ -821,7 +824,7 @@ export default function RegisterStudentScreen() {
 
           {minor ? (
             <Section icon="guardian" title={t('register.guardianSection')} description={t('register.guardianIntro')}>
-              <TextField
+              <TextField kind="name"
                 ref={target('guardianName')}
                 label={t('register.guardianName')}
                 value={form.guardianName}
@@ -836,7 +839,7 @@ export default function RegisterStudentScreen() {
                 onSubmitEditing={() => focusField('guardianPhone')}
                 submitBehavior="submit"
               />
-              <TextField
+              <TextField kind="phone"
                 ref={target('guardianPhone')}
                 label={t('register.guardianPhone')}
                 value={form.guardianPhone}
@@ -851,7 +854,7 @@ export default function RegisterStudentScreen() {
                 onSubmitEditing={() => focusField('guardianEmail')}
                 submitBehavior="submit"
               />
-              <TextField
+              <TextField kind="email"
                 ref={target('guardianEmail')}
                 label={t('register.guardianEmail')}
                 value={form.guardianEmail}

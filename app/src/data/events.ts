@@ -321,10 +321,19 @@ export async function savePerformers(
   return { notified: r.notified, noLogin: r.no_login };
 }
 
-/** Replaces the list of students who came. */
-export async function saveAttendance(id: number, studentIds: string[]): Promise<{ errorKey?: MessageKey }> {
-  const { error } = await supabase.rpc('mark_event_attendance', { p_event: id, p_students: studentIds });
-  return error ? { errorKey: errorKeyOf(error.message) } : {};
+/**
+ * Saves the ticks changed on this phone: `came` ticked, `notCame` unticked since the list was loaded (#328,
+ * audit R2-07). Every other tick stays, so two phones marking the same event no longer undo each other.
+ * Returns how many came now.
+ */
+export async function changeAttendance(id: number, came: string[], notCame: string[]): Promise<{ count?: number; errorKey?: MessageKey }> {
+  const { data, error } = await supabase.rpc('change_event_attendance', { p_event: id, p_came: came, p_not_came: notCame });
+  return error ? { errorKey: errorKeyOf(error.message) } : { count: Number(data) };
+}
+
+/** What changed between the ticks as loaded and as they are now. */
+export function attendanceChange(loaded: ReadonlySet<string>, now: ReadonlySet<string>): { came: string[]; notCame: string[] } {
+  return { came: [...now].filter((id) => !loaded.has(id)), notCame: [...loaded].filter((id) => !now.has(id)) };
 }
 
 /** Reminds those who have not answered. Returns how many were told. */

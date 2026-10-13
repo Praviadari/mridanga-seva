@@ -162,8 +162,8 @@ export default function ReportsScreen() {
         />
         {choice === 'custom' ? (
           <>
-            <TextField label={t('reports.from')} hint={t('reports.dateHint')} value={customFrom} onChangeText={setCustomFrom} maxLength={10} />
-            <TextField label={t('reports.to')} hint={t('reports.dateHint')} value={customTo} onChangeText={setCustomTo} maxLength={10} />
+            <TextField kind="date" label={t('reports.from')} hint={t('reports.dateHint')} value={customFrom} onChangeText={setCustomFrom} maxLength={10} />
+            <TextField kind="date" label={t('reports.to')} hint={t('reports.dateHint')} value={customTo} onChangeText={setCustomTo} maxLength={10} />
             <Button variant="secondary" icon="search" label={t('reports.show')} onPress={showCustom} />
           </>
         ) : null}

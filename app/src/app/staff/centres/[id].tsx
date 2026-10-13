@@ -153,7 +153,7 @@ function CentreScreenContent() {
           maxLength={60}
           error={errors.city ? t(errors.city) : undefined}
         />
-        <TextField
+        <TextField kind="time"
           label={t('centres.opensAt')}
           hint={t('settings.timeHint')}
           value={form.opensAt}
@@ -161,7 +161,7 @@ function CentreScreenContent() {
           maxLength={8}
           error={errors.opensAt ? t(errors.opensAt) : undefined}
         />
-        <TextField
+        <TextField kind="time"
           label={t('centres.closesAt')}
           hint={t('settings.timeHint')}
           value={form.closesAt}

@@ -25,7 +25,8 @@ import {
   fetchEvent,
   fetchEventStudents,
   PART_MAX,
-  saveAttendance,
+  attendanceChange,
+  changeAttendance,
   savePerformers,
   whenText,
   type ClassEvent,
@@ -48,6 +49,8 @@ export function EventStudentsScreen({ id, mode }: { id: number; mode: 'performer
   // Performers: student id → part. Attendance: the ids ticked. Filled once from the database.
   const [parts, setParts] = useState<Map<string, string> | null>(null);
   const [ticked, setTicked] = useState<Set<string> | null>(null);
+  // The ticks as last loaded: Save sends only what this phone changed (#328).
+  const [loadedTicks, setLoadedTicks] = useState<Set<string>>(new Set());
   const [newPart, setNewPart] = useState<string>(t('events.performers.parts.mridanga'));
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ tone: 'success' | 'error'; text: string } | null>(null);
@@ -58,7 +61,9 @@ export function EventStudentsScreen({ id, mode }: { id: number; mode: 'performer
     setStudents(list);
     if (list) {
       setParts((current) => current ?? new Map(list.filter((s) => s.part).map((s) => [s.studentId, s.part as string])));
-      setTicked((current) => current ?? new Set(list.filter((s) => s.attended).map((s) => s.studentId)));
+      const attended = new Set(list.filter((s) => s.attended).map((s) => s.studentId));
+      setTicked((current) => current ?? attended);
+      setLoadedTicks(attended);
     }
   }, [id, everyone]);
 
@@ -111,10 +116,17 @@ export function EventStudentsScreen({ id, mode }: { id: number; mode: 'performer
       if (result.errorKey) setMessage({ tone: 'error', text: t(result.errorKey) });
       else setMessage({ tone: 'success', text: t('events.performers.saved', { n: result.notified ?? 0 }) });
     } else {
-      const result = await saveAttendance(id, [...(ticked as Set<string>)]);
+      const change = attendanceChange(loadedTicks, ticked as Set<string>);
+      const result = await changeAttendance(id, change.came, change.notCame);
       setSaving(false);
-      if (result.errorKey) setMessage({ tone: 'error', text: t(result.errorKey) });
-      else setMessage({ tone: 'success', text: t('events.attendance.saved', { n: (ticked as Set<string>).size }) });
+      if (result.errorKey) {
+        setMessage({ tone: 'error', text: t(result.errorKey) });
+        return;
+      }
+      setMessage({ tone: 'success', text: t('events.attendance.saved', { n: result.count ?? 0 }) });
+      // Load again, with the ticks another phone saved meanwhile.
+      setTicked(null);
+      void load();
     }
   }
 

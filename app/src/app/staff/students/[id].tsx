@@ -50,6 +50,7 @@ import {
 } from '@/i18n/labels';
 import { locationForCheckIn } from '@/lib/attendance-location';
 import { ageOn, localDate, formatDate, localTime, todayLocal } from '@/lib/dates';
+import { goBackOr } from '@/lib/go-back';
 
 /** What the screen loaded: the profile, the staff (the Guru's mentor picker) and the staff names it mentions. */
 type Loaded = { profile: StudentProfile; staff: StaffMember[]; staffNames: Map<string, string> };
@@ -188,7 +189,7 @@ function StudentProfileScreenContent() {
       </Section>
 
       {/* The Guru: mentor, level and joining date, a wrong login (#302). */}
-      <GuruStudentTools student={student} staff={staff} onChanged={() => void load()} />
+      <GuruStudentTools student={student} staff={staff} onChanged={() => void load()} onDeleted={() => goBackOr('/staff/class-list')} />
 
       {/* About you / the desk's details (0036). */}
       <StudentDetailsPanel studentId={student.id} minor={profile.minor} />

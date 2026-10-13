@@ -7,6 +7,8 @@
 
 import type { IgState } from '@/auth/types';
 import { supabase } from '@/lib/supabase';
+import { classLocale } from '@/lib/class-locale';
+import { phoneCountryOf, toE164 } from '@/lib/phone';
 
 import { isNetworkError, type MessageKey } from './errors';
 
@@ -85,7 +87,8 @@ export async function joinIshtagoshti(input: JoinInput): Promise<MySubscription 
     p_birth_year: input.birthYear,
     p_terms_version: IG_TERMS_VERSION,
     p_turned_18: input.turned18,
-    p_phone: input.phone.trim() || null,
+    // Kept as E.164 (#324).
+    p_phone: input.phone.trim() ? (toE164(input.phone, phoneCountryOf(classLocale().country)) ?? input.phone.trim()) : null,
     p_parent_name: input.parentName.trim() || null,
     p_parent_email: input.parentEmail.trim() || null,
     p_parent_relation: input.parentRelation.trim() || null,
@@ -219,6 +222,7 @@ const KNOWN_ERRORS = [
   'not_awaiting_parent',
   'code_too_soon',
   'code_limit',
+  'code_parent_limit',
   'code_daily_cap',
   'not_subscriber',
   'not_allowed',

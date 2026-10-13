@@ -116,7 +116,7 @@ export function YouPart({ form, set, errors, options, context }: PartProps) {
   return (
     <>
       {/* No name field above here (it is on the sign-up form), so the hint does not say "the name above" (#382). */}
-      <TextField label={t('about.dikshaName')} hint={t('about.dikshaHintNoName')} value={form.dikshaName}
+      <TextField kind="name" label={t('about.dikshaName')} hint={t('about.dikshaHintNoName')} value={form.dikshaName}
         onChangeText={(v) => set('dikshaName', v)} error={errors.dikshaName && t(errors.dikshaName)}
         autoComplete="off" autoCapitalize="words" maxLength={80} />
       <InstrumentChecks options={options.instrument} value={form.learnInterests} onChange={(codes) => set('learnInterests', codes)} />
@@ -152,7 +152,7 @@ export function EmergencyPart({ form, set, errors, options, context }: PartProps
       </AppText>
       <ChoiceGroup label={t('about.relation')} choices={relations} value={form.emergencyRelation}
         onChange={(r) => set('emergencyRelation', r)} error={errors.emergencyRelation && t(errors.emergencyRelation)} />
-      <TextField label={t('about.emergencyName')} value={form.emergencyName} onChangeText={(v) => set('emergencyName', v)}
+      <TextField kind="name" label={t('about.emergencyName')} value={form.emergencyName} onChangeText={(v) => set('emergencyName', v)}
         error={errors.emergencyName && t(errors.emergencyName)} autoComplete="off" autoCapitalize="words" maxLength={80} />
       <PhoneField
         label={t('about.emergencyPhone')}

@@ -4,6 +4,8 @@
 // wrong app login off the record. A coordinator's own record (0053, #316, #319): never their own mentor; the Guru's own
 // record: no Set level (nobody changes their own level), and taking a staff login off keeps its role. The Guru only; the database checks each change again
 // (src/data/student-admin.ts). Taking a login off asks first, in place, as the other destructive actions do.
+// Delete this record (#326, audit R3-04): a record entered by mistake (a second copy), with a reason and the
+// name typed again; the database keeps any record with a login, a visit or anything recorded.
 
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -16,11 +18,11 @@ import { ChoiceGroup } from '@/components/choice-group';
 import { Notice } from '@/components/notice';
 import { Section } from '@/components/section';
 import { TextField } from '@/components/text-field';
-import { setLevel, setMentor, unlinkLogin, type AdminResult } from '@/data/student-admin';
+import { deleteStudentRecord, setLevel, setMentor, unlinkLogin, type AdminResult } from '@/data/student-admin';
 import type { StaffMember } from '@/data/student-overview';
 import { LEVEL_IDS, levelName } from '@/i18n/labels';
 import { formatTypedDate, todayLocal } from '@/lib/dates';
-import { levelPatch, mentorChoices } from '@/lib/guru-tools';
+import { levelPatch, mentorChoices, nameTypedRight } from '@/lib/guru-tools';
 import { spacing } from '@/theme/use-theme';
 
 /** The part of the student record the tools change. */
@@ -37,10 +39,20 @@ export type ToolsStudent = {
 };
 
 /** Which tool is open. */
-type Open = 'mentor' | 'level' | 'unlink' | null;
+type Open = 'mentor' | 'level' | 'unlink' | 'delete' | null;
 
-/** Mentor, level and app login of one student, for the Guru. Nothing for anyone else. */
-export function GuruStudentTools({ student, staff, onChanged }: { student: ToolsStudent; staff: readonly StaffMember[]; onChanged: () => void }) {
+/** Mentor, level and app login of one student, for the Guru. Nothing for anyone else. `onDeleted`: the record is gone. */
+export function GuruStudentTools({
+  student,
+  staff,
+  onChanged,
+  onDeleted,
+}: {
+  student: ToolsStudent;
+  staff: readonly StaffMember[];
+  onChanged: () => void;
+  onDeleted: () => void;
+}) {
   const { t } = useTranslation();
   const { profile } = useAuth();
   const [open, setOpen] = useState<Open>(null);
@@ -48,6 +60,8 @@ export function GuruStudentTools({ student, staff, onChanged }: { student: Tools
   const [level, setLevelPick] = useState<number>(student.levelId);
   const [joined, setJoined] = useState('');
   const [dateError, setDateError] = useState<string | undefined>(undefined);
+  const [reason, setReason] = useState('');
+  const [typedName, setTypedName] = useState('');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ tone: 'error' | 'success'; text: string } | null>(null);
 
@@ -66,6 +80,20 @@ export function GuruStudentTools({ student, staff, onChanged }: { student: Tools
     setMentorPick(null);
     setLevelPick(student.levelId);
     setJoined(formatTypedDate(student.joinedOn));
+    setReason('');
+    setTypedName('');
+  }
+
+  async function remove() {
+    setBusy(true);
+    setMessage(null);
+    const result = await deleteStudentRecord(student.id, reason);
+    setBusy(false);
+    if (result.errorKey) {
+      setMessage({ tone: 'error', text: t(result.errorKey) });
+      return;
+    }
+    onDeleted();
   }
 
   async function run(change: () => Promise<AdminResult>, done: string) {
@@ -115,7 +143,9 @@ export function GuruStudentTools({ student, staff, onChanged }: { student: Tools
           )}
           {student.hasLogin ? (
             <Button variant="link" icon="signOut" label={t('studentTools.unlink')} onPress={() => show('unlink')} />
-          ) : null}
+          ) : (
+            <Button variant="link" icon="delete" label={t('studentTools.delete')} onPress={() => show('delete')} />
+          )}
         </View>
       ) : null}
 
@@ -191,6 +221,38 @@ export function GuruStudentTools({ student, staff, onChanged }: { student: Tools
               onPress={() =>
                 void run(() => unlinkLogin(student.id), staffLogin ? t('studentTools.unlinkedStaff') : t('studentTools.unlinked'))
               }
+            />
+            <Button variant="link" label={t('qrCards.cancel')} disabled={busy} onPress={() => setOpen(null)} />
+          </View>
+        </>
+      ) : null}
+
+      {open === 'delete' ? (
+        <>
+          <Notice tone="error" title={t('studentTools.deleteAsk', { name: student.fullName })}>
+            {t('studentTools.deleteBody')}
+          </Notice>
+          <TextField
+            label={t('studentTools.deleteReason')}
+            hint={t('studentTools.deleteReasonHint')}
+            value={reason}
+            onChangeText={setReason}
+            maxLength={500}
+          />
+          <TextField
+            label={t('studentTools.deleteTypeName', { name: student.fullName })}
+            value={typedName}
+            onChangeText={setTypedName}
+            autoCorrect={false}
+            autoCapitalize="none"
+          />
+          <View style={styles.row}>
+            <Button
+              icon="delete"
+              label={t('studentTools.deleteYes')}
+              loading={busy}
+              disabled={busy || reason.trim().length < 3 || !nameTypedRight(typedName, student.fullName)}
+              onPress={() => void remove()}
             />
             <Button variant="link" label={t('qrCards.cancel')} disabled={busy} onPress={() => setOpen(null)} />
           </View>

@@ -160,7 +160,7 @@ export function MyProfileScreen() {
         />
         {editing ? (
           <>
-            <TextField
+            <TextField kind="name"
               label={t('myProfile.nameLabel')}
               value={fullName}
               onChangeText={setFullName}
@@ -172,7 +172,7 @@ export function MyProfileScreen() {
               error={errors.fullName ? t(errors.fullName) : undefined}
             />
             {isStudent ? null : (
-              <TextField
+              <TextField kind="phone"
                 label={t('myProfile.phoneLabel')}
                 hint={t('myProfile.phoneHint')}
                 value={phone ?? ''}
