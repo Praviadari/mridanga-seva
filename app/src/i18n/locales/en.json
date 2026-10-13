@@ -1589,7 +1589,13 @@
       "ig_slokas": "Sloka",
       "ig_themes": "Ishtagoshti theme",
       "consents": "Consent",
-      "guardians": "Parent or guardian"
+      "guardians": "Parent or guardian",
+      "fund_entries": "Fund entry",
+      "fund_categories": "Fund category",
+      "inventory_items": "Instrument or item",
+      "inventory_stocktakes": "Stocktake",
+      "events": "Event",
+      "polls": "Poll"
     },
     "show": "Show",
     "views": {
