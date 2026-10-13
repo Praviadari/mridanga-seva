@@ -5320,3 +5320,115 @@ still for reduced motion, no script: the site policy allows none inline); React 
 
 **Consequences.** Large-text checks are phone-only (the web reports text size 100 %). The splash reaches users
 with the next web upload, not the OTA.
+
+## 336. Design tokens from one file; option A palette by default, switchable — 13 Oct 2026
+
+**Status: built on branch `after-launch-design` (merge after launch); the palette is a team decision (audit phase
+5 question 1), answered after 21 Oct 2026.**
+
+**Context.** Audit phase 5 (U3-01): the app and the website looked like two products — saffron band and
+#B45309 in the app, night indigo, marigold and #9A4307 on the website (#128) — and the app's colours lived in
+hand-written tables with "checked on <date>" comments.
+
+**Decision.** `design/tokens.json` holds every colour (primitives, then semantic names per scheme), the spaces,
+radii, the heading font and the contrast pairs to check. `node design/build-tokens.mjs` writes
+`app/src/theme/tokens.generated.ts` (read by `theme/colors.ts`; `useTheme()` and `Palette` keep their names, with
+new ones: surfaceRaised/Sunken, primaryPressed, link, accent, focus, warning*, info*, disabled*, tab*, overlay)
+and `website/src/tokens.css` (the site's own variable names, same values as before; `build.mjs` puts it before
+`styles.css`). Two switches stay one line away: `choices.header` indigo (option A, the website's night band) or
+saffron (as before), and `choices.primary` deep (#9A4307, the website's accent) or bright (#B45309, as before).
+Default: option A (indigo + deep). `app/tests/design-tokens.test.mjs` fails when a generated file is stale or any
+declared pair is below 4.5:1 (text) or 3:1 (controls, icons), in light and dark, for all four combinations
+(560 pairs on 13 Oct, lowest 4.52). The native splash, icon and the web splash stay #B45309 until the next APK
+(audit step 4, prepared only). Note to #36: most members now use Android (Praveen, 13 Oct 2026).
+
+**Why.** One source keeps app and website alike; the check replaces the dated comments.
+
+**Consequences.** A colour is added in tokens.json only, then the build is run. Phone check in sunlight.
+
+## 337. English headings in Cormorant Garamond, loaded at run time — 13 Oct 2026
+
+**Status: branch `after-launch-design`.**
+
+**Decision.** `app/assets/fonts/CormorantGaramond-SemiBold.ttf` (the website's heading font, OFL, Latin + Latin
+Extended subset with the IAST letters and ₹, 164 KB; licence beside it) is loaded with expo-font `useFonts` in
+the root layout (`theme/fonts.tsx`), never holding the splash; it travels in the update, no APK. AppText's
+title and subtitle use it in English only (28/36 and 22/30, no fontWeight with the custom family); Telugu and
+Hindi keep the phone's bold sans. `family="sans"` keeps person names, titles staff typed, bols and numbers in
+sans. Header bars stay sans. The italic was left out (not needed for headings).
+
+**Consequences.** A heading shows in sans for a moment on the very first start after the update.
+
+## 338. "Needs attention" amber, and the open tab told by shape — 13 Oct 2026
+
+**Status: branch `after-launch-design`.**
+
+**Context.** Audit P3-09: ListRow had one green highlight, used for "confirmed" and for overdue or waiting
+things alike. P3-06/P3-07: the open tab differed from the others by colour only (1.02:1 in dark mode).
+
+**Decision.** ListRow `highlight="attention"`: amber surface, amber left bar and an alert sign; `"confirmed"`
+(= `highlighted`): green with a tick. Amber now on fund entries waiting, overdue loans, damaged items, an open
+stocktake, promotions waiting for me, a poll still to vote. Notice gains tone `warning`. The open tab shows the
+filled icon in a pale pill and a bold label (`tabIcon`, `tabLabel`); colours `tabActive` / `tabInactive`.
+
+**Why.** Traffic-light meaning; WCAG 1.4.1 (not colour alone).
+
+## 339. "Today" line and "Scan at the door" on the staff homes — 13 Oct 2026
+
+**Status: branch `after-launch-design`; adds to #240 (circles unchanged).**
+
+**Decision.** Between the header and the circles of the coordinator and Guru homes (`components/staff-today.tsx`):
+tappable numbers — here now, visits today, and for the Guru came this week ("–" while loading) — and one large
+"Scan at the door" button that opens the Mark attendance tab (navigate, not a second copy, R4-01) with
+`?scan=<new value>`, which opens the camera once per press.
+
+**Why.** The desk's first question and most frequent action, in one look and one tap (audit U1-01).
+
+## 340. "Waiting for you" from one request: staff_dashboard() — 13 Oct 2026
+
+**Status: branch `after-launch-design`; placeholder migration 0063_staff_dashboard.sql (renumber at merge).**
+
+**Decision.** `staff_dashboard()` (read-only, security invoker, staff only) returns the Today numbers and what
+waits for the caller: sign-ups waiting at the desk (= Register a student's list), calls due (coordinator: C1's
+my_calls_due; Guru: the Follow-ups circle's count), promotions (feedback asked / to decide), recordings to review,
+fund entries to approve (never one's own; the Guru, or a treasurer for the Guru's), material suggestions (Guru).
+Each count uses the rule of the screen it opens. Both homes now make this ONE request instead of two or three; the
+circles' counts come from it too. Under the Today line, "Waiting for you": one amber row per non-zero count, most
+urgent first, or "Nothing is waiting. Thank you for your seva." If 0063 has not run (PGRST202) the app falls back
+to the old functions, so an update can reach phones before the migration.
+
+**Consequences.** A "Me" entry for staff (#316-#321, staff-own-record) sits with the circles, not in this block.
+
+## 341. "Check {name} in now" after Accept or Save — 13 Oct 2026
+
+**Status: branch `after-launch-design`.**
+
+**Decision.** The card after the desk accepts a sign-up or saves a new student starts with "Check {name} in now"
+(mark_visit, idempotent #18, with the phone's position #70; the same result card as Mark attendance). Register
+another is secondary; Open the student's page and Done are links.
+
+**Why.** The new student is at the desk; a first visit is otherwise easily never recorded (audit U2-01).
+
+## 342. My QR at the door, and a welcome when an account becomes a student — 13 Oct 2026
+
+**Status: branch `after-launch-design`.**
+
+**Decision.** My QR keeps the screen awake while it is in view (expo-keep-awake, already in the APK; on focus,
+not mount) and shows above the card "Not checked in yet today" / "Checked in at 16:05" (green) / "Checked out.
+Today's visit began at 16:05.", from student_home() every 5 s for up to 10 minutes while in view, read out by
+TalkBack. Name 22 px, roll number 18 px. Brightness: next APK (expo-brightness). A student who joined in the last
+30 days sees, once per login on the phone, a welcome card in place of the circles (name, roll number, what the QR
+card is for, level; Show my QR card / Go to my home); About you does not push itself over it in that run.
+
+**Why.** The student sees that the scan worked; the first open confirms the account is ready (audit U2-02, U2-04).
+
+## 343. One-tap dates and times on forms — 13 Oct 2026
+
+**Status: branch `after-launch-design`.**
+
+**Decision.** Quick buttons above the typed date and time fill them (still editable): an announcement sent later
+— Tonight 19:00 (before 19:00 only), Tomorrow 07:00, Sunday 07:00; a poll's closing — in 1, 3, 7 days at 21:00;
+an event's day — This Sunday, Next Sunday (`lib/quick-times.ts`). "Next class day" needs the centre's days and is
+left for later.
+
+**Why.** Typing 18-10-2026 on a phone keyboard is the slowest, most error-prone entry (audit U4-05).
