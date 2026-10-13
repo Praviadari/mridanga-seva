@@ -14,7 +14,12 @@ import * as Updates from 'expo-updates';
 import { useEffect, useRef } from 'react';
 import { AppState } from 'react-native';
 
+import { handOverToUpdates, HANDED_OVER_KEY } from './crash-recovery';
 import { formatDateTime } from './dates';
+import { readLocal, writeLocal } from './local-storage';
+
+/** When this JavaScript started (the root layout imports this file first thing): see handOverStartupCrash. */
+const startedAt = Date.now();
 
 /** Least time between two checks when the app comes back to the front: 30 minutes. */
 const CHECK_EVERY_MS = 30 * 60 * 1000;
@@ -37,9 +42,9 @@ let checking = false;
  * Looks for a newer update and downloads it; useUpdates() then reports it as pending. Never throws.
  * startupCheck: when expo-updates' own check at start-up got an answer (undefined when it did not).
  */
-async function checkAndDownload(startupCheck: Date | undefined): Promise<void> {
+async function checkAndDownload(startupCheck: Date | undefined, now = false): Promise<void> {
   const last = Math.max(lastCheck, startupCheck?.getTime() ?? 0);
-  if (!canUpdate || checking || Date.now() - last < CHECK_EVERY_MS) return;
+  if (!canUpdate || checking || (!now && Date.now() - last < CHECK_EVERY_MS)) return;
   checking = true;
   try {
     const result = await Updates.checkForUpdateAsync();
@@ -76,6 +81,62 @@ export function useUpdateChecks(): void {
       clearInterval(timer);
     };
   }, []);
+}
+
+/**
+ * Looks for a newer update and downloads it now, without the 30-minute wait: the crash screen does this once,
+ * so a fixed update is offered (Restart) as soon as it is published (audit R4-03). Never throws.
+ */
+export function checkForUpdateNow(): Promise<void> {
+  return checkAndDownload(undefined, true);
+}
+
+/** React Native's handler for uncaught errors (the same one an error outside any boundary reaches). */
+type GlobalErrorHandler = (error: unknown, isFatal?: boolean) => void;
+
+/** React Native's handler for uncaught errors, or null where there is none. */
+function globalErrorHandler(): GlobalErrorHandler | null {
+  return (globalThis as { ErrorUtils?: { getGlobalHandler?: () => GlobalErrorHandler } }).ErrorUtils?.getGlobalHandler?.() ?? null;
+}
+
+/**
+ * True when a crash now should go to expo-updates' error recovery (src/lib/crash-recovery.ts: a downloaded
+ * update crashing in its first seconds, once per update). Reads only; never throws.
+ */
+export function startupCrashGoesToUpdates(): boolean {
+  try {
+    return (
+      !!globalErrorHandler() &&
+      handOverToUpdates({
+        updatesOn: canUpdate,
+        embeddedLaunch: Updates.isEmbeddedLaunch,
+        updateId: Updates.updateId ?? null,
+        msSinceStart: Date.now() - startedAt,
+        handedOverFor: readLocal(HANDED_OVER_KEY),
+      })
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Hands the crash to expo-updates as a fatal error (only after startupCrashGoesToUpdates said so) and returns
+ * true: the app then goes back to the last update that worked, or starts a fix, or closes. Returns false when
+ * it could not; the crash screen then shows. Never throws.
+ */
+export function handOverStartupCrash(error: unknown): boolean {
+  try {
+    const updateId = Updates.updateId;
+    const handler = globalErrorHandler();
+    if (!updateId || !handler) return false;
+    // Written first: if the same update crashes at the next start too, the crash screen shows instead.
+    writeLocal(HANDED_OVER_KEY, updateId);
+    handler(error instanceof Error ? error : new Error(String(error)), true);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /** How long Restart waits for the app to reload before it says it could not: 10 seconds. */

@@ -128,6 +128,7 @@ export const ROW_PROBLEMS = [
   'name_required',
   'name_too_long',
   'name_digits',
+  'name_too_short',
   'name_signs',
   'dob_required',
   'dob_invalid',
@@ -201,6 +202,8 @@ export function checkRows(rows: SheetRows, columns: ColumnMap, existing: Existin
     if (nameProblem === 'required') problems.push('name_required');
     else if (nameProblem === 'tooLong') problems.push('name_too_long');
     else if (nameProblem === 'digits') problems.push('name_digits');
+    // One letter is too short, not a wrong sign (audit FF-02).
+    else if (nameProblem === 'tooShort') problems.push('name_too_short');
     else if (nameProblem) problems.push('name_signs');
     if (!dobText) problems.push('dob_required');
     else if (!dob || dob > today || ageOn(dob, today) > 100) problems.push('dob_invalid');

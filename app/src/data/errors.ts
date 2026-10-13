@@ -21,9 +21,12 @@ export function isNetworkError(message: string): boolean {
 }
 
 /**
- * The message for an error that a data file's own code list does not know: no internet, or the
- * general "something went wrong". The error mappers end with this, so both are worded once.
+ * The message for an error that a data file's own code list does not know: no internet, a withdrawn
+ * student, or the general "something went wrong". The error mappers end with this, so these are worded
+ * once. student_withdrawn: since 0048 (#281) nothing new is recorded about a student whose consent was
+ * withdrawn — Accept, a desk Save, a loan, a practice log, a nomination all refuse it (#292).
  */
 export function fallbackErrorKey(message: string): MessageKey {
+  if (message === 'student_withdrawn') return 'common.studentWithdrawn';
   return isNetworkError(message) ? 'common.networkError' : 'common.genericError';
 }

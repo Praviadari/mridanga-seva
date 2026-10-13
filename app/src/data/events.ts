@@ -11,7 +11,7 @@ import { formatDate, formatTypedDate, localDate, localMoment, localTime, parseDa
 import { supabase } from '@/lib/supabase';
 
 import type { Audience } from './announcements';
-import { isNetworkError, type MessageKey } from './errors';
+import { fallbackErrorKey, isNetworkError, type MessageKey } from './errors';
 
 /** Longest texts of the event forms (C16); the database checks them too. */
 export const EVENT_TITLE_MAX = 120;
@@ -128,7 +128,7 @@ function errorKeyOf(message: string): MessageKey {
   const code = EVENT_ERROR_CODES.find((c) => message === c);
   if (code) return `events.errors.${code}` as MessageKey;
   if (/row-level security|permission denied/i.test(message)) return 'events.errors.not_allowed';
-  return 'common.genericError';
+  return fallbackErrorKey(message);
 }
 
 const EVENT_ERROR_CODES = [

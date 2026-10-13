@@ -14,9 +14,12 @@
 // without the form; "Fill the form" stays for a change, and is the only way for anyone under 18.
 // When the server ends the login while the form is half filled, what was typed is kept for the same login and
 // filled in again next time (src/lib/form-drafts.ts, D6-20); the consent ticks must be given again.
+// Since #291 (audit R2-01) the whole waiting list can be searched by name, email or phone and is shown ten at a
+// time with Show more; it reloads on focus, on pull-down and with Refresh list. A sign-up without the privacy
+// tick has no Accept (FF-01): Fill the form, where an adult's notice is shown and ticked (#292).
 
 import { router, Stack, useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
@@ -77,8 +80,9 @@ import { classLocale } from '@/lib/class-locale';
 import { formatDateTime, formatTypedDate } from '@/lib/dates';
 import { asciiDigits } from '@/lib/digits';
 import { discardDraft, peekDraft, useDraftKeeper } from '@/lib/form-drafts';
-import { checkPersonName } from '@/lib/person-name';
 import { typedPhone } from '@/lib/phone';
+import { PRIVACY_NOTICE_VERSION } from '@/lib/privacy-notice';
+import { filterWaiting, WAITING_PAGE, waitingAction } from '@/lib/waiting-list';
 import { spacing } from '@/theme/use-theme';
 
 /** Longest name, area and email the form takes (FS2-09; the database's bounds are 120, 100, 254). */
@@ -89,8 +93,8 @@ const EMAIL_MAX_LENGTH = 254;
 const PHONE_MAX_LENGTH = 16;
 
 type Choices = { levels: LevelOption[]; mentors: MentorOption[] };
-/** The 0036 parts: option lists, staff who bring people, sign-ups waiting. Null before 0036 or when not loaded. */
-type Extras = { options: OptionSets; referrers: Referrer[]; waiting: WaitingSignUp[] };
+/** The 0036 parts: option lists, staff who bring people. Null before 0036 or when not loaded. */
+type Extras = { options: OptionSets; referrers: Referrer[] };
 /** What is kept of this form when the server ends the login (src/lib/form-drafts.ts). */
 type RegisterDraft = { form: RegistrationForm; about: AboutForm };
 /** The key of this form's draft. */
@@ -139,11 +143,29 @@ export default function RegisterStudentScreen() {
   const [accepted, setAccepted] = useState<Accepted | null>(null);
   // A Save that returned the record of an earlier person (lost answer, then another person typed): shown, not hidden.
   const [otherSaved, setOtherSaved] = useState<Registered | null>(null);
+  // An adult filled in by hand: the coordinator showed them the privacy notice (#290, #292).
+  const [adultNoticeShown, setAdultNoticeShown] = useState(false);
+
+  // The sign-ups waiting for the desk, kept apart from the option lists so that one failing never hides
+  // the other (audit R2-02). undefined = loading, null = the first load failed.
+  const [waitingList, setWaitingList] = useState<WaitingSignUp[] | null | undefined>(undefined);
+  // True when the last reload failed and the list shown is the one from before.
+  const [waitingStale, setWaitingStale] = useState(false);
+  const [waitingBusy, setWaitingBusy] = useState(false);
+  const [waitingQuery, setWaitingQuery] = useState('');
+  const [waitingShown, setWaitingShown] = useState(WAITING_PAGE);
+  // Only the newest reload's answer is used (a slow older one must not bring back an accepted person).
+  const waitingLoad = useRef(0);
 
   /** Reloads the waiting sign-ups (other desks accept and register too, audit P1-06); keeps the list when offline. */
   const refreshWaiting = useCallback(async () => {
+    const mine = ++waitingLoad.current;
+    setWaitingBusy(true);
     const list = await fetchWaitingSignUps();
-    if (list) setExtras((current) => (current ? { ...current, waiting: list } : current));
+    if (mine !== waitingLoad.current) return;
+    setWaitingBusy(false);
+    setWaitingStale(list === null);
+    setWaitingList((current) => list ?? current ?? null);
   }, []);
   useFocusEffect(
     useCallback(() => {
@@ -157,10 +179,11 @@ export default function RegisterStudentScreen() {
     fetchRegistrationChoices().then((result) => {
       if (!cancelled) setChoices(result);
     });
-    // Asked apart: the form still works on a database without 0036 (then without these parts).
-    void Promise.all([fetchAllOptions(), fetchReferrers(), fetchWaitingSignUps()]).then(([rows, referrers, waiting]) => {
+    // Asked apart: the form still works on a database without 0036 (then without these parts). The waiting
+    // list is loaded on focus (refreshWaiting).
+    void Promise.all([fetchAllOptions(), fetchReferrers()]).then(([rows, referrers]) => {
       if (cancelled) return;
-      setExtras(rows && rows.length > 0 ? { options: activeSets(rows), referrers: referrers ?? [], waiting: waiting ?? [] } : null);
+      setExtras(rows && rows.length > 0 ? { options: activeSets(rows), referrers: referrers ?? [] } : null);
     });
     return () => {
       cancelled = true;
@@ -210,7 +233,8 @@ export default function RegisterStudentScreen() {
   const aboutParts: AboutPart[] = minor ? ['you', 'heard', 'occupation'] : ['you', 'emergency', 'heard', 'occupation'];
   const aboutContext = { minor, hasGuardian: minor, staff: true };
   const setAboutField = <K extends keyof AboutForm>(key: K, value: AboutForm[K]) => setAbout((current) => ({ ...current, [key]: value }));
-  const waiting = useMemo(() => (extras?.waiting ?? []).filter((w) => w.id !== fromSignUp?.id), [extras, fromSignUp]);
+  const waiting = useMemo(() => (waitingList ?? []).filter((w) => w.id !== fromSignUp?.id), [waitingList, fromSignUp]);
+  const waitingMatches = useMemo(() => filterWaiting(waiting, waitingQuery), [waiting, waitingQuery]);
 
   /** Fills the form from a sign-up waiting for the desk. */
   function fillFrom(person: WaitingSignUp) {
@@ -225,6 +249,7 @@ export default function RegisterStudentScreen() {
     }));
     setAbout(aboutFormFrom(person, classLocale().country));
     setFromSignUp(person);
+    setAdultNoticeShown(false);
     setErrors({});
     setAboutErrors({});
     setAccepting(null);
@@ -249,7 +274,7 @@ export default function RegisterStudentScreen() {
     }
     setAccepted(result.accepted);
     setAccepting(null);
-    setExtras((current) => (current ? { ...current, waiting: current.waiting.filter((w) => w.id !== person.id) } : current));
+    setWaitingList((current) => current?.filter((w) => w.id !== person.id) ?? current);
     void refreshWaiting();
   }
 
@@ -269,7 +294,9 @@ export default function RegisterStudentScreen() {
     setFormError(null);
     setOtherSaved(null);
     setBusy(true);
-    const result = await registerStudent(form, serverMinor);
+    // An adult's privacy notice: the one ticked at sign-up, else the one the desk showed (#290, #292).
+    const adultNotice = fromSignUp?.notice_version ?? (adultNoticeShown ? PRIVACY_NOTICE_VERSION : null);
+    const result = await registerStudent(form, serverMinor, adultNotice);
     // A repeat that came back with another person's record: this person was not saved (P1-04).
     const otherPerson = !!result.registered && repeatedOtherPerson(result.registered, form.fullName);
     let detailsFailed = false;
@@ -305,7 +332,8 @@ export default function RegisterStudentScreen() {
     setAbout(emptyAboutForm(classLocale().country));
     setErrors({});
     setAboutErrors({});
-    if (fromSignUp) setExtras((current) => (current ? { ...current, waiting: current.waiting.filter((w) => w.id !== fromSignUp.id) } : current));
+    setAdultNoticeShown(false);
+    if (fromSignUp) setWaitingList((current) => current?.filter((w) => w.id !== fromSignUp.id) ?? current);
     setFromSignUp(null);
     setSaved(null);
     setOtherSaved(null);
@@ -352,7 +380,7 @@ export default function RegisterStudentScreen() {
   }
 
   return (
-    <Screen underHeader>
+    <Screen underHeader onRefresh={refreshWaiting}>
       {header}
       <AppText tone="muted">{t('register.intro')}</AppText>
       {showRestored ? (
@@ -379,13 +407,40 @@ export default function RegisterStudentScreen() {
           />
         </>
       ) : null}
+      {waitingList === null ? (
+        // The first load failed: say so, so the desk does not think nobody is waiting (R2-02).
+        <>
+          <Notice tone="error" title={t('register.waitingLoadFailed')}>
+            {t('common.networkError')}
+          </Notice>
+          <Button variant="secondary" icon="refresh" label={t('common.tryAgain')} loading={waitingBusy} onPress={() => void refreshWaiting()} />
+        </>
+      ) : null}
       {waiting.length > 0 ? (
         <Section icon="newJoiner" title={t('register.waitingTitle', { count: waiting.length })} description={t('register.waitingHint')}>
-          {waiting.slice(0, 10).map((w) => {
-            // Accept for an adult with a date of birth; under 18 (the desk with a parent) or none: the form only.
+          <Button variant="secondary" icon="refresh" label={t('register.waitingRefresh')} loading={waitingBusy} onPress={() => void refreshWaiting()} />
+          {waitingStale ? <Notice tone="info">{t('register.waitingStale')}</Notice> : null}
+          <TextField
+            label={t('register.waitingSearch')}
+            hint={t('register.waitingSearchHint')}
+            value={waitingQuery}
+            onChangeText={(text) => {
+              setWaitingQuery(text);
+              setWaitingShown(WAITING_PAGE);
+            }}
+            autoComplete="off"
+            autoCapitalize="none"
+            autoCorrect={false}
+            returnKeyType="search"
+          />
+          {waitingMatches.length === 0 ? <AppText tone="muted">{t('register.waitingNoMatch')}</AppText> : null}
+          {waitingMatches.slice(0, waitingShown).map((w) => {
+            // Accept for an adult with a date of birth, a name that passes and the privacy tick; otherwise the
+            // form only: under 18 (the desk with a parent), no date, a name from before #267 (Save says what to
+            // correct), or no privacy tick (FF-01: the form shows the notice).
             const age = w.dob ? ageFromForm(formatTypedDate(w.dob)) : null;
-            // A name that breaks the name rule (a sign-up from before #267): the form, where Save says what to correct.
-            const canAccept = !!age && !age.minor && checkPersonName(w.full_name, { max: 100 }) === null;
+            const action = waitingAction(w);
+            const canAccept = action === 'accept';
             if (age && accepting?.id === w.id) {
               return (
                 <View key={w.id} style={styles.confirm}>
@@ -403,7 +458,13 @@ export default function RegisterStudentScreen() {
                   <AppText variant="label">{t('register.acceptCheckId')}</AppText>
                   {acceptError ? <Notice tone="error">{t(acceptError)}</Notice> : null}
                   <Button icon="check" label={t('register.accept')} loading={acceptBusy} onPress={() => void confirmAccept(w)} />
-                  <Button variant="secondary" label={t('register.acceptChange')} disabled={acceptBusy} onPress={() => fillFrom(w)} />
+                  {/* No privacy tick at sign-up: Fill the form is the way through, so it comes first (R2-03). */}
+                  <Button
+                    variant={acceptError === 'register.acceptErrors.noNotice' ? 'primary' : 'secondary'}
+                    label={t('register.acceptChange')}
+                    disabled={acceptBusy}
+                    onPress={() => fillFrom(w)}
+                  />
                   <Button variant="link" label={t('register.cancel')} disabled={acceptBusy} onPress={() => setAccepting(null)} />
                 </View>
               );
@@ -413,7 +474,12 @@ export default function RegisterStudentScreen() {
                 key={w.id}
                 leading="person"
                 title={w.full_name || w.email || ''}
-                details={[w.email ?? '', t('register.signedUpOn', { when: formatDateTime(w.created_at) })].filter(Boolean)}
+                details={[
+                  w.email ?? '',
+                  w.phone ? formatPhone(w.phone) : '',
+                  t('register.signedUpOn', { when: formatDateTime(w.created_at) }),
+                  action === 'noNotice' ? t('register.waitingNoNotice') : '',
+                ].filter(Boolean)}
                 action={
                   canAccept
                     ? { label: t('register.accept'), onPress: () => askAccept(w) }
@@ -422,6 +488,13 @@ export default function RegisterStudentScreen() {
               />
             );
           })}
+          {waitingMatches.length > waitingShown ? (
+            <Button
+              variant="secondary"
+              label={t('register.waitingMore', { shown: waitingShown, total: waitingMatches.length })}
+              onPress={() => setWaitingShown((n) => n + WAITING_PAGE)}
+            />
+          ) : null}
         </Section>
       ) : null}
       {fromSignUp ? (
@@ -486,7 +559,8 @@ export default function RegisterStudentScreen() {
         <TextField
           ref={target('email')}
           label={t('register.email')}
-          hint={t('register.emailHint')}
+          // A child's record is never linked to a login by itself (#276): children use the printed QR card (R1-01).
+          hint={t(minor ? 'register.emailHintMinor' : 'register.emailHint')}
           value={form.email}
           onChangeText={field('email')}
           onBlur={() => checkOnLeave('email')}
@@ -554,6 +628,18 @@ export default function RegisterStudentScreen() {
           </>
         ) : (
           <AppText tone="muted">{t('common.loading')}</AppText>
+        )}
+        {/* An adult's privacy notice (#290, #292): ticked at sign-up, or shown here and kept on the record. A
+            minor's is on the parent's consent below. */}
+        {minor ? null : fromSignUp?.notice_version ? (
+          <AppText variant="small" tone="muted">
+            {t('register.adultNoticeFromSignUp')}
+          </AppText>
+        ) : (
+          <>
+            <PrivacyNoticeLink label={t('signUp.privacyNotice')} />
+            <Checkbox label={t('register.adultNoticeShown')} checked={adultNoticeShown} onChange={setAdultNoticeShown} />
+          </>
         )}
       </Section>
 

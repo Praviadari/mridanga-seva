@@ -7,10 +7,14 @@
 // A check-in also sends the phone's position (src/lib/attendance-location.ts, DECISIONS #70): the
 // visit is saved anyway, and flagged for the Guru when the phone is outside the centre's area or
 // gives no position. The permission is asked the first time a student is checked in.
+// From the moment a code is read until the answer (location at most 8 s, the call at most 15 s), the screen
+// says "Checking…" and offers no "Scan the next student", so no next code is read and lost (audit R2-04 /
+// R5-03, docs/DECISIONS.md #293).
 
 import { router, Stack, useFocusEffect } from 'expo-router';
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ActivityIndicator } from 'react-native';
 
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
@@ -37,6 +41,7 @@ import { assetTokenFromScan } from '@/lib/asset-link';
 import { locationForCheckIn, locationRefused, warmUpLocation } from '@/lib/attendance-location';
 import { localDate, formatDate, localTime, todayLocal } from '@/lib/dates';
 import { scanFeedback } from '@/lib/haptics';
+import { useTheme } from '@/theme/use-theme';
 
 /**
  * How long the same QR code is ignored after it was read, in milliseconds. The camera sees a
@@ -51,6 +56,7 @@ const SEARCH_DELAY_MS = 300;
 /** Scanner, result card and name search. */
 export default function MarkAttendanceScreen() {
   const { t } = useTranslation();
+  const { colors } = useTheme();
 
   // undefined = loading, null = could not load.
   const [today, setToday] = useState<AttendanceToday | null | undefined>(undefined);
@@ -64,6 +70,10 @@ export default function MarkAttendanceScreen() {
   const [scanPaused, setScanPaused] = useState(false);
   // Refs, not state: the camera can report the same code again before the screen re-renders.
   const working = useRef(false);
+  // True from the read of a code until its answer: "Checking…" shows, "Scan the next student" does not.
+  const [checking, setChecking] = useState(false);
+  // A code read while the last one was still being checked (it was not sent): say so instead of dropping it.
+  const [droppedScan, setDroppedScan] = useState(false);
   const lastCode = useRef<{ token: string; at: number } | null>(null);
 
   const [query, setQuery] = useState('');
@@ -104,7 +114,10 @@ export default function MarkAttendanceScreen() {
   const shown = result === null ? null : result?.students;
 
   async function onScan(text: string) {
-    if (working.current) return;
+    if (working.current) {
+      setDroppedScan(true);
+      return;
+    }
     // An asset label (0035, DECISIONS #159) opens the item instead; student codes go on below.
     const asset = assetTokenFromScan(text);
     if (asset) {
@@ -119,14 +132,23 @@ export default function MarkAttendanceScreen() {
     }
     working.current = true;
     setScanPaused(true);
-    // A scan may be a check-in, so the position goes along; the database ignores it for a check-out.
-    const scanned: MarkOutcome = token
-      ? await scanStudentQr(token, await locationForCheckIn())
-      : { result: { action: 'unknown' } };
+    // The last result goes at once, so "Checking…" is not read as the answer for this student.
+    setOutcome(null);
+    setDroppedScan(false);
+    setChecking(true);
+    let scanned: MarkOutcome;
+    try {
+      // A scan may be a check-in, so the position goes along; the database ignores it for a check-out.
+      scanned = token ? await scanStudentQr(token, await locationForCheckIn()) : { result: { action: 'unknown' } };
+    } catch {
+      // Never left on "Checking…": the data functions do not throw, but a scan must always end.
+      scanned = { errorKey: 'common.genericError' };
+    }
     // Remember the code only when it worked, so a scan that failed (no internet) can be retried.
     lastCode.current = token && scanned.result ? { token, at: now } : null;
     setTappedId(null);
     setOutcome(scanned);
+    setChecking(false);
     // A buzz for the result, so the door need not watch the screen (D7-20, docs/DECISIONS.md #239).
     scanFeedback(scanned.result !== undefined && scanned.result.action !== 'unknown');
     working.current = false;
@@ -194,18 +216,31 @@ export default function MarkAttendanceScreen() {
       />
       {noLocation ? <Notice tone="info">{t('attendanceLocation.refusedNote')}</Notice> : null}
 
+      {checking ? (
+        <>
+          <Notice tone="info" title={t('attendance.checkingTitle')} announced>
+            {t('attendance.checkingBody')}
+          </Notice>
+          <ActivityIndicator color={colors.primary} />
+        </>
+      ) : null}
       {resultUnderRow ? null : outcomeNotice}
 
       <Section icon="attendance" title={t('attendance.scanSection')} description={t('attendance.scanIntro')}>
         {cameraOpen ? (
           <>
             <QrScanner onScan={(text) => void onScan(text)} paused={scanPaused} />
-            {scanPaused ? (
+            {droppedScan ? <Notice tone="info">{t('attendance.waitForLast')}</Notice> : null}
+            {/* Not while a scan is being checked: the next code would be read before this answer (R5-03). */}
+            {scanPaused && !checking ? (
               <Button
                 label={t('attendance.scanNext')}
                 onPress={() => {
                   setOutcome(null);
+                  setDroppedScan(false);
                   setScanPaused(false);
+                  // The position is read while the next student comes up, not after the code (R2-04).
+                  warmUpLocation();
                 }}
               />
             ) : null}

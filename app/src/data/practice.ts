@@ -10,7 +10,7 @@
 import { readLocal, writeLocal } from '@/lib/local-storage';
 import { supabase } from '@/lib/supabase';
 
-import { isNetworkError, type MessageKey } from './errors';
+import { fallbackErrorKey, isNetworkError, type MessageKey } from './errors';
 
 /** One taal (table taals). */
 export type Taal = {
@@ -196,7 +196,7 @@ function practiceErrorKey(message: string | undefined): MessageKey {
   if (isNetworkError(message)) return 'common.networkError';
   const code = PRACTICE_CODES.find((c) => message === c);
   if (code) return `practiceLog.errors.${code}` as MessageKey;
-  return 'common.genericError';
+  return fallbackErrorKey(message);
 }
 
 /** What to log: from the S5 timer (startedAt) or typed in (practisedOn). */

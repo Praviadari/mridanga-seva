@@ -6,10 +6,18 @@
 import { Platform } from 'react-native';
 
 /**
- * The web app's address for real labels. app.mridangaseva.com goes live with the LIVE site
- * (brief 8); until then labels printed for testing point to the TEST site (see webAppOrigin).
+ * The LIVE web app's addresses (docs/DECISIONS.md #294, audit R2-08). The first is where the phone app
+ * opens "Print QR cards" and what new labels carry; every one of them scans. Until the domain move
+ * (GO_LIVE_CHECKLIST E3) the LIVE site is mridanga-seva.pages.dev and app.mridangaseva.com is not live.
+ * THE DOMAIN MOVE = swap these two lines, so labels printed from either site keep scanning.
  */
-export const ASSET_LINK_ORIGIN = 'https://app.mridangaseva.com';
+export const LIVE_WEB_ORIGINS = [
+  'https://mridanga-seva.pages.dev',
+  'https://app.mridangaseva.com',
+] as const;
+
+/** The LIVE web app's address for real labels and printing: the first of LIVE_WEB_ORIGINS. */
+export const ASSET_LINK_ORIGIN: string = LIVE_WEB_ORIGINS[0];
 
 /** The TEST web site (Cloudflare Pages project mridanga-seva-test, docs/OPERATIONS.md). */
 export const TEST_WEB_ORIGIN = 'https://mridanga-seva-test.pages.dev';
@@ -46,7 +54,7 @@ export function assetTokenFromScan(text: string): string | null {
   if (!match) return null;
   const host = match[1].toLowerCase();
   const ours =
-    host === new URL(ASSET_LINK_ORIGIN).host ||
+    LIVE_WEB_ORIGINS.some((origin) => host === new URL(origin).host) ||
     host === new URL(TEST_WEB_ORIGIN).host ||
     host.endsWith('.mridanga-seva-test.pages.dev') ||
     host.startsWith('localhost') ||

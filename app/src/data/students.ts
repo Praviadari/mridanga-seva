@@ -194,6 +194,7 @@ export function repeatedOtherPerson(registered: Registered, typedName: string): 
 export async function registerStudent(
   form: RegistrationForm,
   minorByServer = false,
+  adultNotice: string | null = null,
 ): Promise<{ registered?: Registered; errorKey?: MessageKey }> {
   const minor = minorByServer || (ageFromForm(form.dob)?.minor ?? false);
   const args = {
@@ -215,13 +216,14 @@ export async function registerStudent(
     // "The parent signed the paper form": required by the database for a minor (0025).
     p_written_consent: minor ? form.writtenConsent : null,
   };
-  // The privacy notice the parent was shown is kept on the consent (0034). PGRST202: the database
-  // has no register_student with that parameter yet; try without it, then without p_request_id
-  // (before 0032).
+  // The privacy notice the parent was shown is kept on the consent (0034); an adult's, when the desk
+  // has one (adultNotice: ticked at sign-up, or shown at the desk), on the record (0048, #290, #292).
+  // PGRST202: the database has no register_student with that parameter yet; try without it, then
+  // without p_request_id (before 0032).
   let { data, error } = await supabase.rpc('register_student', {
     ...args,
     p_request_id: form.requestId,
-    p_notice_version: minor ? PRIVACY_NOTICE_VERSION : null,
+    p_notice_version: minor ? PRIVACY_NOTICE_VERSION : adultNotice,
   });
   if (error?.code === 'PGRST202')
     ({ data, error } = await supabase.rpc('register_student', { ...args, p_request_id: form.requestId }));
@@ -240,11 +242,25 @@ export async function registerStudent(
 }
 
 /**
- * Maps an error from register_student to a message. The codes are listed in migrations 0003, 0025
- * and 0032 (request_id_used cannot happen from this app, so it gets the general message).
+ * Maps an error from register_student to a message. The codes are listed in migrations 0003, 0025,
+ * 0032, 0047 and 0048 (request_id_used and notice_version_invalid cannot happen from this app, so they
+ * get the general message; student_withdrawn is worded by fallbackErrorKey). Exported for the tests.
  */
-function registerErrorKey(message: string, code: string | undefined): MessageKey {
+export function registerErrorKey(message: string, code: string | undefined): MessageKey {
   switch (message) {
+    // The name rule in SQL (0047, #271): the form checks the same rule first, so this is an older
+    // build's or a pasted name's way through.
+    case 'name_invalid':
+      return 'register.errors.nameInvalid';
+    case 'name_too_long':
+      return 'validation.nameTooLong';
+    case 'gender_unknown':
+      return 'register.errors.genderUnknown';
+    // A consent that names another student's parent, or one by email code (0047 guard): no form of this
+    // app writes either, so it means the desk should start the form again.
+    case 'consent_guardian_mismatch':
+    case 'consent_method_not_allowed':
+      return 'register.errors.consentRefused';
     case 'not_allowed':
       return 'register.errors.notAllowed';
     case 'name_required':
@@ -287,9 +303,18 @@ export async function acceptSignUp(profileId: string): Promise<{ accepted?: Acce
   };
 }
 
-/** Maps an error from accept_sign_up (migration 0046) to a message. */
-function acceptErrorKey(message: string): MessageKey {
+/**
+ * Maps an error from accept_sign_up (migrations 0046-0048) to a message. student_withdrawn (a record with
+ * this email had its consent withdrawn, 0048) is worded by fallbackErrorKey. Exported for the tests.
+ */
+export function acceptErrorKey(message: string): MessageKey {
   switch (message) {
+    // A sign-up without the privacy tick (an older build, 0047 #280): Fill the form shows the notice.
+    case 'notice_not_accepted':
+      return 'register.acceptErrors.noNotice';
+    case 'name_invalid':
+    case 'name_too_long':
+      return 'register.acceptErrors.nameInvalid';
     case 'not_allowed':
       return 'register.errors.notAllowed';
     case 'already_registered':

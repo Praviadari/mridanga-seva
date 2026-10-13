@@ -38,7 +38,9 @@ SplashScreen.preventAutoHideAsync();
 
 /**
  * Expo Router shows this in place of the app when anything below the root throws while rendering (D10-17,
- * docs/DECISIONS.md #216): the person's language, Try again, the way home, the version and the error line.
+ * docs/DECISIONS.md #216): the person's language, Try again, the way home, Restart the app, the version and
+ * the error line. A crash in the first seconds of a downloaded update goes on to expo-updates instead, so a
+ * bad update is rolled back (#294, src/lib/crash-recovery.ts).
  */
 export function ErrorBoundary(props: ErrorBoundaryProps) {
   return <CrashScreen {...props} />;

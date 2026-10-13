@@ -328,6 +328,11 @@ export type WaitingSignUp = SavedAbout & {
   /** The centre's name (since 0046; undefined before). */
   centre_name?: string | null;
   created_at: string;
+  /**
+   * The privacy notice version ticked at sign-up (since 0047, #280): null = no tick (Accept refuses it,
+   * notice_not_accepted); undefined before 0047.
+   */
+  notice_version?: string | null;
 };
 
 /** Confirmed sign-ups without a student record (own centre for a coordinator). [] before 0036. */

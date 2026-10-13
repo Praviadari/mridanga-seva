@@ -9,6 +9,19 @@ import { formatDateTime } from './dates';
 /** Does nothing on the web. */
 export function useUpdateChecks(): void {}
 
+/** Nothing to look for on the web: a new version comes with the next page load. */
+export async function checkForUpdateNow(): Promise<void> {}
+
+/** The web has no update to go back to: the crash screen shows every crash. */
+export function startupCrashGoesToUpdates(): boolean {
+  return false;
+}
+
+/** Never used on the web (startupCrashGoesToUpdates is false). */
+export function handOverStartupCrash(): boolean {
+  return false;
+}
+
 /** Never ready on the web. */
 export function useAppUpdate(): AppUpdate {
   return { ready: false, restart: async () => 'no updates on the web' };

@@ -111,12 +111,13 @@
     "sessionEnded": "Your sign-in has ended. Please sign in again.",
     "linkExpired": "This email link has expired or was already used. Ask for a new one.",
     "signupClosed": "New accounts cannot be made just now. Please ask a coordinator.",
-    "accountOff": "This account is switched off. Please ask a coordinator."
+    "accountOff": "This account is switched off. Please ask a coordinator.",
+    "signUpRefused": "The login could not be made. If your name is the same as the Guru's or a coordinator's, add your surname or an initial and try again. Otherwise ask at the class desk."
   },
   "pending": {
     "title": "Waiting for access",
-    "body": "Your account is ready. The facilitator will give you access soon.",
-    "studentHint": "Are you a student? Ask the Guru to link this login to your student record, then tap Check again.",
+    "body": "Your account is ready. Come to the class desk with an ID: a coordinator checks your name and registers you.",
+    "studentHint": "When the coordinator says you are registered, tap Check again.",
     "kiosk": "The door tablet screens come in a later version.",
     "inactiveTitle": "Account switched off",
     "inactiveBody": "This account is not active. Please speak to the facilitator or a coordinator.",
@@ -265,7 +266,10 @@
       "notFound": "This student is no longer in the records.",
       "alreadyMarked": "Another phone marked this student at the same moment. Check the list and try again."
     },
-    "moreMatches": "Showing the first {{number}}. Type more of the name to find the right student."
+    "moreMatches": "Showing the first {{number}}. Type more of the name to find the right student.",
+    "checkingTitle": "Checking…",
+    "checkingBody": "Wait for the answer before the next student.",
+    "waitForLast": "Still checking the last scan. Wait for its answer, then scan again."
   },
   "attendanceLocation": {
     "why": "When you check a student in, the app checks your phone's location — only while the app is open, to confirm you are at the class. Outside the area the check-in is still saved, but flagged for the facilitator.",
@@ -350,7 +354,7 @@
     "ageMinor": "Age {{age}} — under 18, a parent's consent is needed",
     "phone": "Phone",
     "email": "Email",
-    "emailHint": "The student's own email, if they will use the app. Their login is connected to this record.",
+    "emailHint": "The student's own email, if they are 18 or over and will use the app. Their login is connected to this record.",
     "area": "Area",
     "areaHint": "Only the area, e.g. Koti. Not the full address.",
     "pincode": "Pincode",
@@ -387,7 +391,10 @@
       "fixFields": "Please correct the fields that show a message under them.",
       "minorByServer": "By the server's date this student is under 18. Fill in the parent's part below and save again.",
       "guardianEmailOnMinor": "This is a parent's email. A child's record keeps the child's own email, or none: a login with a parent's email would be linked as the child.",
-      "mentorInactive": "That mentor is no longer active. Choose another mentor, or Automatic."
+      "mentorInactive": "That mentor is no longer active. Choose another mentor, or Automatic.",
+      "nameInvalid": "Check the name: letters only (any language), at least two. A space, dot, apostrophe or hyphen may go between them.",
+      "genderUnknown": "This gender is not in the option list. Choose one of the options.",
+      "consentRefused": "The server did not accept the parent's consent for this student. Check the parent's details and save again; if it happens again, tell the Guru."
     },
     "privacyNotice": "Privacy notice for parents",
     "privacyNoticeHint": "Show it to the parent before they sign the consent form.",
@@ -424,10 +431,23 @@
       "noDob": "The sign-up has no date of birth. Use Fill the form.",
       "minor": "Under 18: register at the desk with a parent. Use Fill the form.",
       "noName": "The sign-up has no name. Use Fill the form.",
-      "unavailable": "Accept is not available on this server yet. Use Fill the form."
+      "unavailable": "Accept is not available on this server yet. Use Fill the form.",
+      "noNotice": "This sign-up has no privacy tick (made with an older app). Use Fill the form: show them the privacy notice there, tick the box and save.",
+      "nameInvalid": "The name in this sign-up does not follow the name rule. Use Fill the form and correct it against their ID."
     },
     "otherSavedTitle": "{{name}} was NOT saved",
-    "otherSavedBody": "This form had already saved {{other}} ({{rollNo}}) before its answer was lost. Check the details and tap Save again: {{name}} is then saved as a new student."
+    "otherSavedBody": "This form had already saved {{other}} ({{rollNo}}) before its answer was lost. Check the details and tap Save again: {{name}} is then saved as a new student.",
+    "waitingLoadFailed": "Could not load the people waiting for the desk",
+    "waitingRefresh": "Refresh list",
+    "waitingStale": "Could not refresh. This is the list from before; pull down or tap Refresh list to try again.",
+    "waitingSearch": "Find a person waiting",
+    "waitingSearchHint": "Part of the name or email, or 3 or more digits of the phone.",
+    "waitingNoMatch": "Nobody waiting matches. Check the spelling, or ask whether they opened the link in the sign-up email.",
+    "waitingNoNotice": "No privacy tick at sign-up: use Fill the form.",
+    "waitingMore": "Show more ({{shown}} of {{total}} shown)",
+    "emailHintMinor": "Optional: the child's own email, never a parent's. A child's record is not linked to an app login: the child checks in with the printed QR card (Print QR cards).",
+    "adultNoticeFromSignUp": "They ticked the privacy notice at sign-up; it is kept on the record.",
+    "adultNoticeShown": "I showed them the privacy notice (kept on the record)."
   },
   "statuses": {
     "new": "New",
@@ -1274,7 +1294,8 @@
       "too_big": "The file is larger than 5 MB."
     },
     "name_digits": "The name has numbers in it.",
-    "name_signs": "The name has signs other than letters, spaces, . ' and -, or fewer than two letters."
+    "name_signs": "The name has signs other than letters, spaces, . ' and -.",
+    "name_too_short": "The name has fewer than two letters."
   },
   "settings": {
     "title": "Settings",
@@ -3412,7 +3433,8 @@
     "body": "This screen stopped working. Nothing you saved is lost. Try again, or go to the home screen.",
     "tryAgain": "Try again",
     "home": "Go to the home screen",
-    "report": "If it keeps happening, close the app fully and open it again. To report it, send a screenshot of this page to the coordinator."
+    "report": "If it keeps happening, tap Restart the app. To report it, send a screenshot of this page to the coordinator.",
+    "restart": "Restart the app"
   },
   "drafts": {
     "restoredTitle": "What you typed is back",

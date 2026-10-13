@@ -12,7 +12,7 @@ import { formatTypedDate, parseDayMonthYear, todayLocal } from '@/lib/dates';
 import { supabase } from '@/lib/supabase';
 
 import { parseMediaFile, type MediaFile } from './assessment-files';
-import { isNetworkError, type MessageKey } from './errors';
+import { fallbackErrorKey, isNetworkError, type MessageKey } from './errors';
 import { fetchStaff } from './student-overview';
 
 /** Longest nomination reason, feedback comment and decision note (C22, C23, G7); the database checks them too. */
@@ -118,7 +118,7 @@ function errorKeyOf(message: string | undefined): MessageKey {
   const code = KNOWN_CODES.find((c) => message === c);
   if (code) return `promotion.errors.${code}` as MessageKey;
   if (/row-level security|permission denied/i.test(message)) return 'promotion.errors.not_allowed';
-  return 'common.genericError';
+  return fallbackErrorKey(message);
 }
 
 /** The criteria check of one student; a message key when it failed. */
