@@ -4,8 +4,10 @@
 
 import type { Area } from '@/auth/types';
 
-/** Does nothing on the web. */
-export async function registerForPush(): Promise<void> {}
+/** Does nothing on the web; push-state stays 'unknown', so no notice shows. `options` matches ./push.ts. */
+export async function registerForPush(options: { ask?: boolean } = {}): Promise<void> {
+  void options;
+}
 
 /** Does nothing on the web. */
 export async function unregisterPush(): Promise<void> {}

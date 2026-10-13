@@ -5165,3 +5165,105 @@ children without phones must print from the APK before the domain moves.
 **Consequences.** Goes in Friday's APK (fingerprint unchanged, 40e5832c), so it protects against bad updates
 published after it. Labels printed on pages.dev keep scanning after the domain move. Phone-only checks:
 NOTES.md (main folder) "13-10-2026 — Weekend app fixes".
+
+## 301. Back returns to the screen you came from: stack copies of the tab screens — 13 Oct 2026
+
+**Context.** Audit phase 2 R4-01. A screen on top of the tabs (Overview, Follow-ups by coordinator, My
+profile) that opened a tab's address (Students, Follow-up calls, Mark attendance, My QR) made Expo Router push a
+second copy of the whole tab set; Back then landed on that copy's Home, and a third Back was needed. The same
+happened for "Back to home" on My progress and Attendance history (`router.navigate('/student')`: a NAVIGATE on
+the stack pushes unless the route is the focused one).
+
+**Decision (JS).** Four stack routes show the tab pages on top of the screen that opened them:
+`staff/class-list` (Students, with `?status=notLeft`), `staff/calls` (Follow-up calls, with `?scope=` /
+`?assignee=`), `staff/mark-attendance`, `student/qr`; each renders the tab file. The Overview tiles, the
+Follow-ups rows and "Open all", and My profile → "My QR card" push these. "Back to home" and the announcement
+editor's "not found" use `router.dismissTo` (back down to the tabs already there). A unit test fails when a
+file outside `(tabs)/` pushes, navigates or replaces to a tab address (`tests/launch-week-app.test.mjs`).
+
+**Why.** Praveen's rule: Back must return to the screen you came from. A copy of the tabs also kept every tab
+screen mounted twice on low-end phones.
+
+**Consequences.** A new link from a stack screen to a tab page needs a stack copy (or dismissTo); the test
+says so. The web addresses of the copies differ from the tabs'.
+
+## 302. The Guru's week-1 tools: mentor, level, wrong login, and a guarded "Make a coordinator" — 13 Oct 2026
+
+**Context.** Audit phase 2 R3-01, R3-02, R3-03, R3-05. "Mentor needed" notices led to a student page with no
+way to give a mentor; Accept and the desk make everyone Beginner, joined today; a wrong login link had no
+undo in the app (`unlink_student_login` refuses in the SQL editor); since 0046 every adult sign-up waits in
+Coordinators → "Waiting for a role", where "Make a coordinator" was one confirm away and cannot be undone.
+
+**Decision (JS, no migration).**
+1. Student profile, the Guru only: "Facilitator: this record" with Choose / Change mentor (active staff,
+   `reassign_mentees`), Set level and "Joined the class on" (a direct update; the database allows it to the
+   Guru only and writes level_history), and "Take the login off this record" (asks in place;
+   `unlink_student_login`; the login goes back to waiting).
+2. Coordinators: "Waiting for a role" shows the count and a search (2+ letters of a name or email, 3+ phone
+   digits); the whole queue is never drawn. "Make a coordinator" warns in red that the role sees every child's
+   record and cannot be taken back, and is enabled only when the person's name is typed (case, accents and
+   spaces do not matter). Rules in `app/src/lib/guru-tools.ts` (unit-tested).
+3. R3-04 (remove a duplicate, undo an import) is not built: it needs a migration (a `delete_student_record`
+   that refuses linked or visited records, and an import undo). Until then duplicates go to the Guru and
+   Praveen cleans up in SQL (`erase_student`, OPERATIONS.md).
+
+**Why.** The registration weekend fills these lists; the Guru needs to act from the phone in week 1.
+
+**Consequences.** Status (New) is not set by hand: it follows the usual rules. A record whose login was taken
+off can be linked again on Coordinators (Link to a student record).
+
+## 303. My QR is saved on the phone from the student home — 13 Oct 2026
+
+**Context.** Audit phase 2 R1-02: the card was saved only when My QR was opened online, so a student accepted on
+the weekend who first opened My QR at the door without signal saw "Could not load your QR card".
+
+**Decision (JS).** The student home's load also asks for the card (`keepMyCardSaved`, data/my-student.ts): once
+per app run and login, again after a failure; sign-out still deletes it (#186) and resets the once-per-run mark.
+
+**Why.** The door often has no signal; #21 promises My QR without internet.
+
+**Consequences.** One small extra read per app start for students. A student who never opens the app online
+after sign-in still has no card (printed card or roll number at the door).
+
+## 304. Reads give up after 10 s, once — 13 Oct 2026
+
+**Context.** Audit phase 2 R5-01: the database library retries a failed read (GET) three times with waits of
+1, 2 and 4 s, and each attempt had the 15 s limit of #237, so a stalled read failed after 67 s; without
+internet after 7 s.
+
+**Decision (JS).** `db: { retry: false }` on the Supabase client, and a 10 s limit for reads (GET, HEAD); writes
+and database functions keep 15 s, Storage uploads none (`timeLimitFor`, app/src/lib/timed-fetch.ts).
+
+**Why.** People at the hall stare at grey cards for a minute and think the app is broken; every screen offers
+Try again.
+
+**Consequences.** A read hitting a passing 503/520 from the server is not retried by itself; Try again does it.
+Measured in the browser on TEST: a stalled list read showed the error after ~11 s with one attempt.
+
+## 305. A refused or failed push registration shows a quiet notice and is retried — 13 Oct 2026
+
+**Context.** Audit phase 2 R5-04: "Don't allow" or a failed `register_push_token` left the phone without
+announcement pushes and nothing said so; it was tried again only at the next cold start.
+
+**Decision (JS).** `app/src/lib/push-state.ts` keeps the outcome of each registration. The three homes and My
+profile show a plain notice: "Notifications are off on this phone" with "Turn on in Settings" (and "Not now"
+on a home, remembered on the phone), or "Notifications are not working yet" after a failure. When the app
+comes back to the front while push is refused or failed, it registers again without asking again. Nothing on
+the web (no push there).
+
+**Why.** Announcements are a core journey; the in-app inbox still has them, but people must know.
+
+**Consequences.** A person who refused keeps the notice on My profile. Phone check only.
+
+## 306. Print QR cards keeps its chosen students through web sign-in — 13 Oct 2026
+
+**Context.** Audit phase 2 R2-08 (secondary): the phone app opens Print QR cards in the browser as
+`/staff/qr-cards?ids=…`; when the browser was not signed in, the remembered address kept only the path (#30,
+D14-15: no query, which can carry sign-in tokens), so the chosen students were lost.
+
+**Decision (JS).** `keptQuery` (app/src/auth/requested-path.ts) keeps `ids` for `/staff/qr-cards` only, and
+only values that are record ids (UUIDs), at most 300. Nothing else of any query is kept.
+
+**Why.** A coordinator printing one child's card from the phone must not have to find the child again.
+
+**Consequences.** A remembered push target still keeps no query.

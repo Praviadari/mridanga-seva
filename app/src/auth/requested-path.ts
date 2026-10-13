@@ -15,6 +15,35 @@ import type { Area } from './types';
 /** The path asked for, e.g. '/student/announcements/12', or null. */
 let requested: string | null = null;
 
+/** The one query kept with it (keptQuery), e.g. '?ids=…', or ''. */
+let requestedQuery = '';
+
+/** A record id (a UUID), the only thing keptQuery lets through. */
+const RECORD_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** At most this many ids are kept: a printed sheet holds far fewer, and the address stays short. */
+const MAX_KEPT_IDS = 300;
+
+/**
+ * The part of a query kept through sign-in, else ''. Only Print QR cards' preselected students
+ * (`/staff/qr-cards?ids=<id>,<id>`, opened from the phone app in the browser) are kept (audit R2-08,
+ * docs/DECISIONS.md #306): without them the coordinator signs in on the web and finds nobody chosen. Only
+ * record ids pass, so nothing else in an address (a sign-in token) is ever kept.
+ * @param path the path the query came with (pathOnly's answer).
+ * @param search the address's query, with or without its '?'.
+ */
+export function keptQuery(path: string | null, search: string): string {
+  if (path !== '/staff/qr-cards') return '';
+  let ids: string | null = null;
+  try {
+    ids = new URLSearchParams(search).get('ids');
+  } catch {
+    return '';
+  }
+  const kept = (ids ?? '').split(',').filter((id) => RECORD_ID.test(id)).slice(0, MAX_KEPT_IDS);
+  return kept.length > 0 ? `?ids=${kept.join(',')}` : '';
+}
+
 /**
  * Keeps only the path of an address: no query and no '#' part, which can carry sign-in tokens
  * (password-reset links), and no trailing slash. The path is normalised before anything compares
@@ -61,7 +90,10 @@ function pathOfAppLink(url: string): string | null {
 // Read once, when the app starts: this file is loaded with the screens, before the router has
 // moved away from the address it was opened with.
 if (Platform.OS === 'web') {
-  if (typeof window !== 'undefined') requested = pathOnly(window.location.pathname);
+  if (typeof window !== 'undefined') {
+    requested = pathOnly(window.location.pathname);
+    requestedQuery = keptQuery(requested, window.location.search ?? '');
+  }
 } else {
   void Linking.getInitialURL()
     .then((url) => {
@@ -77,6 +109,7 @@ if (Platform.OS === 'web') {
  */
 export function rememberRequestedPath(path: string): void {
   requested = pathOnly(path);
+  requestedQuery = '';
 }
 
 /**
@@ -99,11 +132,11 @@ export function belongsTo(path: string, area: Area): boolean {
 }
 
 /**
- * The remembered path, when it is a screen of `area`; otherwise null. Does not forget it: call
- * forgetRequestedPath once the person is signed in (see src/app/index.tsx).
+ * The remembered path, when it is a screen of `area`, with its kept query (keptQuery); otherwise null.
+ * Does not forget it: call forgetRequestedPath once the person is signed in (see src/app/index.tsx).
  */
 export function requestedPathFor(area: Area): string | null {
-  return requested && belongsTo(requested, area) ? requested : null;
+  return requested && belongsTo(requested, area) ? requested + requestedQuery : null;
 }
 
 /**
@@ -113,4 +146,5 @@ export function requestedPathFor(area: Area): string | null {
  */
 export function forgetRequestedPath(): void {
   requested = null;
+  requestedQuery = '';
 }

@@ -20,6 +20,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { AppState } from 'react-native';
 
 import { AuthProvider, useAuth } from '@/auth/auth-provider';
 import { CrashScreen } from '@/components/crash-screen';
@@ -28,6 +29,7 @@ import { SetupNeeded } from '@/components/setup-needed';
 import { useUpdateChecks } from '@/lib/app-update';
 import { documentTitleLayout } from '@/lib/document-title';
 import { registerForPush, usePushTaps } from '@/lib/push';
+import { pushNeedsRetry } from '@/lib/push-state';
 import { useTakingLong } from '@/lib/slow-start';
 import { supabaseConfigProblem } from '@/lib/supabase';
 import { useTheme } from '@/theme/use-theme';
@@ -146,14 +148,22 @@ function RootNavigator() {
  * Push notifications on the Android app (src/lib/push.ts): once a student, coordinator or the
  * Guru is signed in, asks for permission and saves the phone's token; opens the announcement when
  * a notification is tapped. Does nothing on the web or while push is not set up. Renders nothing.
+ * A refused permission or a failed registration is tried again, without asking again, each time the
+ * app comes back to the front (audit R5-04, docs/DECISIONS.md #305).
  */
 function PushSetup() {
   const { area, profile } = useAuth();
   const profileId = profile?.id;
+  const signedIn = Boolean(profileId) && (area === 'guru' || area === 'coordinator' || area === 'student');
   usePushTaps(area);
   useEffect(() => {
-    if (profileId && (area === 'guru' || area === 'coordinator' || area === 'student')) void registerForPush();
-  }, [area, profileId]);
+    if (!signedIn) return;
+    void registerForPush();
+    const subscription = AppState.addEventListener('change', (next) => {
+      if (next === 'active' && pushNeedsRetry()) void registerForPush({ ask: false });
+    });
+    return () => subscription.remove();
+  }, [signedIn, profileId]);
   return null;
 }
 

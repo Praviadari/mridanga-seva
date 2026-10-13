@@ -52,8 +52,8 @@ export default function MyQrScreen() {
   }, [profileId, loadAttempt]);
 
   // Until the server answers, show the card saved on this phone (without the "no internet" note:
-  // that is not known yet). Without signal the answer takes several seconds, because the database
-  // client retries a failed request; the student must not stand at the door looking at "Loading".
+  // that is not known yet). On a stalled connection the answer takes up to the read time limit
+  // (10 s, lib/timed-fetch.ts); the student must not stand at the door looking at "Loading".
   const savedNow = useMemo(() => (profileId ? savedCardFor(profileId) : null), [profileId]);
   const shown: MyCardResult | undefined =
     result ?? (savedNow ? { state: 'ok', card: savedNow, saved: false } : undefined);

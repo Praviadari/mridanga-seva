@@ -132,7 +132,8 @@ function EditAnnouncementScreenContent() {
         {loaded === 'not_found' ? (
           <>
             <Notice tone="error">{t('announcements.detail.notFound')}</Notice>
-            <Button label={t('announcements.detail.back')} onPress={() => router.replace('/staff/announcements')} />
+            {/* dismissTo, not replace: back down to the tabs already under this screen (#301, R4-01). */}
+            <Button label={t('announcements.detail.back')} onPress={() => router.dismissTo('/staff/announcements')} />
           </>
         ) : null}
         {loaded === null ? (

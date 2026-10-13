@@ -18,6 +18,7 @@ import { HeldItemsPanel } from '@/components/held-items';
 import { LanguagePicker } from '@/components/language-picker';
 import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
+import { PushNotice } from '@/components/push-notice';
 import { Screen } from '@/components/screen';
 import { SignOutButton } from '@/components/sign-out-button';
 import { Section } from '@/components/section';
@@ -154,7 +155,7 @@ export function MyProfileScreen() {
             </>
           ) : null}
           {student === 'not_found' ? <AppText tone="muted">{t('myQr.noRecordBody')}</AppText> : null}
-          <Button variant="secondary" icon="qr" label={t('myQr.open')} onPress={() => router.push('/student/my-qr')} />
+          <Button variant="secondary" icon="qr" label={t('myQr.open')} onPress={() => router.push('/student/qr')} />
         </Section>
       ) : null}
 
@@ -178,6 +179,9 @@ export function MyProfileScreen() {
       <Section icon="language" title={t('common.language')}>
         <LanguagePicker />
       </Section>
+
+      {/* Notifications refused or not set up on this phone (#305); nothing while they work. */}
+      <PushNotice place="profile" />
 
       <SignOutButton icon="signOut" />
       {/* The version line, once at the foot of the homes (simple home, docs/DECISIONS.md #240). */}

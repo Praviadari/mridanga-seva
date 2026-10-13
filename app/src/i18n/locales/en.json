@@ -874,7 +874,13 @@
   },
   "push": {
     "channelName": "Announcements",
-    "channelDescription": "New announcements from the class"
+    "channelDescription": "New announcements from the class",
+    "offTitle": "Notifications are off on this phone",
+    "offBody": "New announcements will not pop up. They still arrive under the bell at the top of the home.",
+    "openSettings": "Turn on in Settings",
+    "notNow": "Not now",
+    "failedTitle": "Notifications are not working yet",
+    "failedBody": "This phone could not be set up for notifications (no internet?). The app tries again each time you open it. Announcements still arrive under the bell."
   },
   "appUpdate": {
     "readyTitle": "A new version is ready",
@@ -1119,7 +1125,7 @@
     "signedUpLabel": "Signed up",
     "waitingTitle": "Waiting for a role ({{count}})",
     "waitingEmpty": "Nobody is waiting for a role.",
-    "waitingHelp": "Students whose email matches their record get their role by themselves. Open a person to make them a coordinator or to link them to their student record.",
+    "waitingHelp": "Everyone who signed up and is not accepted yet waits here, most of them students for the desk (Register a student). Search for a person to make them a coordinator or to link them to their student record.",
     "staffTitle": "Facilitator and coordinators ({{count}})",
     "staffEmpty": "No coordinators yet.",
     "noMentorCount": "Students without a mentor: {{count}}. Give them one on the student's profile, or move students here.",
@@ -1144,9 +1150,9 @@
     "moved_one": "{{count}} student moved to {{name}}.",
     "moved_other": "{{count}} students moved to {{name}}.",
     "giveRoleTitle": "Give a role",
-    "giveRoleHint": "Check who this is before you give a role.",
+    "giveRoleHint": "Check who this is before you give a role. Students who signed up are accepted at the desk (Register a student), not here.",
     "makeCoordinatorAsk": "Make {{name}} a coordinator?",
-    "makeCoordinatorBody": "They will see every student, mark attendance, log calls, tick the syllabus and post announcements.",
+    "makeCoordinatorBody": "They will see every student's record, children included, mark attendance, log calls, tick the syllabus and post announcements. The app cannot take the role back: only switching the login off stops it.",
     "makeCoordinator": "Make a coordinator",
     "madeCoordinator": "Now a coordinator. They see it after they open the app again or tap Check again.",
     "linkTitle": "Or link to a student record",
@@ -1203,7 +1209,12 @@
     "genderHint": "New students get a coordinator of their own gender, the one with the fewest students.",
     "genderLabel": "Gender",
     "genderSaved": "Gender saved.",
-    "referralCode": "Referral code: {{code}}"
+    "referralCode": "Referral code: {{code}}",
+    "waitingSearch": "Find a person",
+    "waitingSearchHint": "At least 2 letters of the name or email, or 3 digits of the phone.",
+    "waitingNoMatch": "Nobody waiting matches this.",
+    "typeNameLabel": "Type their name to confirm",
+    "typeNameHint": "Type: {{name}}"
   },
   "database": {
     "title": "Student database",
@@ -3505,6 +3516,37 @@
     "errors": {
       "notAllowed": "Only the facilitator can replace a QR card.",
       "withdrawn": "Consent was withdrawn: this record is frozen."
+    }
+  },
+  "studentTools": {
+    "title": "Facilitator: this record",
+    "hint": "Mentor, level and app login. Accept and the desk start everyone as Beginner, joined today.",
+    "chooseMentor": "Choose a mentor",
+    "changeMentor": "Change mentor",
+    "setLevel": "Set level",
+    "unlink": "Take the login off this record",
+    "noMentors": "No other active coordinator to choose. Make a coordinator first (Coordinators).",
+    "mentorLabel": "Mentor",
+    "mentorHint": "Their open follow-up calls go to the new mentor.",
+    "saveMentor": "Save mentor",
+    "mentorSaved": "{{name}} is now the mentor.",
+    "levelLabel": "Level",
+    "joinedLabel": "Joined the class on",
+    "joinedHint": "Day-month-year, e.g. 15-06-2019. For a student who came before the app, the day they first joined.",
+    "joinedInvalid": "Enter a real date, not in the future, as day-month-year.",
+    "saveLevel": "Save level",
+    "levelSaved": "Saved. The level change is in the level history.",
+    "unlinkAsk": "Take the app login off {{name}}'s record?",
+    "unlinkBody": "That login no longer sees this record (QR card, visits, progress) and waits for a role again. Then link the right record on Coordinators.",
+    "unlinkYes": "Take the login off",
+    "unlinked": "The login is off this record and waits for a role.",
+    "errors": {
+      "not_allowed": "Only the facilitator can do this.",
+      "level_guru_only": "Only the facilitator changes a level.",
+      "joined_on_invalid": "A joining date lies between 1900 and today.",
+      "mentor_not_staff": "A mentor must be an active coordinator or the facilitator.",
+      "student_not_found": "This student record is gone. Pull down to refresh.",
+      "student_not_linked": "This record has no app login any more. Pull down to refresh."
     }
   }
 }

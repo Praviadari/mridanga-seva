@@ -8,6 +8,8 @@
 // Under each guardian of a minor: whether they get the attendance emails (check-out only by default,
 // 0044), with the switch (0043).
 // At the end: print the student's QR card, or (the Guru) replace a lost one (0045, P3-1).
+// Under the details, for the Guru: choose the mentor, set the level and joining date, take a wrong login off
+// (components/guru-student-tools.tsx, docs/DECISIONS.md #302).
 
 import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Fragment, useCallback, useState } from 'react';
@@ -17,6 +19,7 @@ import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { DetailGrid } from '@/components/detail-grid';
 import { GuardianNoticeLine, useGuardianNotices } from '@/components/guardian-notices';
+import { GuruStudentTools } from '@/components/guru-student-tools';
 import { HeldItemsPanel } from '@/components/held-items';
 import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
@@ -30,7 +33,7 @@ import { Section } from '@/components/section';
 import { StudentDetailsPanel } from '@/components/student-details-panel';
 import { VisitResultNotice } from '@/components/visit-result-notice';
 import { markVisit, type MarkOutcome } from '@/data/attendance';
-import { fetchStaff } from '@/data/student-overview';
+import { fetchStaff, type StaffMember } from '@/data/student-overview';
 import { fetchStudentProfile, hasDataConsent, type StudentProfile } from '@/data/student-profile';
 import {
   callReasonName,
@@ -44,8 +47,8 @@ import {
 import { locationForCheckIn } from '@/lib/attendance-location';
 import { ageOn, localDate, formatDate, localTime, todayLocal } from '@/lib/dates';
 
-/** What the screen loaded: the profile and the staff names it mentions. */
-type Loaded = { profile: StudentProfile; staffNames: Map<string, string> };
+/** What the screen loaded: the profile, the staff (the Guru's mentor picker) and the staff names it mentions. */
+type Loaded = { profile: StudentProfile; staff: StaffMember[]; staffNames: Map<string, string> };
 
 /** The whole profile, one section per topic, with the two actions at the top. */
 function StudentProfileScreenContent() {
@@ -63,7 +66,7 @@ function StudentProfileScreenContent() {
     const [profile, staff] = await Promise.all([fetchStudentProfile(id), fetchStaff()]);
     if (profile === 'not_found') setLoaded('not_found');
     else if (!profile || !staff) setLoaded(null);
-    else setLoaded({ profile, staffNames: new Map(staff.map((s) => [s.id, s.fullName])) });
+    else setLoaded({ profile, staff, staffNames: new Map(staff.map((s) => [s.id, s.fullName])) });
   }, [id]);
 
   // Reload when coming back from the call screen, so the new call shows at once.
@@ -93,7 +96,7 @@ function StudentProfileScreenContent() {
     );
   }
 
-  const { profile, staffNames } = loaded;
+  const { profile, staff, staffNames } = loaded;
   const { student } = profile;
   const nameOf = (profileId: string | null) =>
     (profileId && staffNames.get(profileId)) || t('profile.unknownPerson');
@@ -160,6 +163,9 @@ function StudentProfileScreenContent() {
           ]}
         />
       </Section>
+
+      {/* The Guru: mentor, level and joining date, a wrong login (#302). */}
+      <GuruStudentTools student={student} staff={staff} onChanged={() => void load()} />
 
       {/* About you / the desk's details (0036). */}
       <StudentDetailsPanel studentId={student.id} minor={profile.minor} />

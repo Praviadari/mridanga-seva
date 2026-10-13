@@ -2,7 +2,9 @@
 // the students they mentor with "move the picked students to another coordinator", and switch off
 // or on (a coordinator who still mentors students must hand them over first). For someone waiting
 // for a role: make them a coordinator, or link them to their student record (for a student whose
-// email on the record differs from the login's), or put the login aside. Changes ask first.
+// email on the record differs from the login's), or put the login aside. Changes ask first; "Make a
+// coordinator" also wants the person's name typed, because the role sees every child's record and the app
+// cannot take it back (audit R3-05, docs/DECISIONS.md #302).
 // A coordinator can be marked as an Ishtagoshti editor (slokas and themes; Phase 2 slice 6,
 // docs/DECISIONS.md #57).
 // Staff also get a gender (the Guru sets it; students are matched with a coordinator of the same gender)
@@ -45,6 +47,7 @@ import {
 import { fetchAllOptions, optionLabel, type OptionRow } from '@/data/options';
 import { levelName, statusName } from '@/i18n/labels';
 import { formatDateTime } from '@/lib/dates';
+import { nameTypedRight } from '@/lib/guru-tools';
 import { searchFold } from '@/lib/search-text';
 
 type Loaded = { person: Person; board: CoordinatorsBoard };
@@ -67,6 +70,8 @@ function PersonScreenContent() {
   const [target, setTarget] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [asking, setAsking] = useState<Asking>(null);
+  // The name typed to confirm "Make a coordinator" (#302).
+  const [typedName, setTypedName] = useState('');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ tone: 'success' | 'error'; text: string } | null>(null);
 
@@ -300,21 +305,38 @@ function PersonScreenContent() {
       {person.role === 'pending' && person.active ? (
         <Section icon="person" title={t('coordinators.giveRoleTitle')} description={t('coordinators.giveRoleHint')}>
           {asking === 'coordinator' ? (
-            <Notice tone="info" title={t('coordinators.makeCoordinatorAsk', { name: person.fullName || person.email })}>
+            <Notice tone="error" title={t('coordinators.makeCoordinatorAsk', { name: person.fullName || person.email })}>
               {t('coordinators.makeCoordinatorBody')}
             </Notice>
           ) : null}
           {asking === 'coordinator' ? (
             <>
+              <TextField
+                label={t('coordinators.typeNameLabel')}
+                hint={t('coordinators.typeNameHint', { name: person.fullName || person.email })}
+                value={typedName}
+                onChangeText={setTypedName}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
               <Button
                 label={t('coordinators.makeCoordinator')}
                 loading={busy}
+                disabled={busy || !nameTypedRight(typedName, person.fullName || person.email || '')}
                 onPress={() => void run(() => makeCoordinator(person.id), t('coordinators.madeCoordinator'))}
               />
               <Button variant="link" label={t('syllabusEditor.cancel')} onPress={() => setAsking(null)} />
             </>
           ) : asking === null ? (
-            <Button variant="secondary" icon="groups" label={t('coordinators.makeCoordinator')} onPress={() => setAsking('coordinator')} />
+            <Button
+              variant="secondary"
+              icon="groups"
+              label={t('coordinators.makeCoordinator')}
+              onPress={() => {
+                setTypedName('');
+                setAsking('coordinator');
+              }}
+            />
           ) : null}
 
           <AppText variant="label">{t('coordinators.linkTitle')}</AppText>

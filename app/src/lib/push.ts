@@ -9,7 +9,8 @@
 //
 // Everything here gives up quietly when push is not set up: in Expo Go (which has no push on
 // Android since SDK 53), before `eas init` (no project id), before the Firebase key is uploaded
-// (no token), or when the person says no. The app then works exactly as without push.
+// (no token), or when the person says no. The app then works exactly as without push; a refusal or a
+// failed registration shows as a quiet notice on the homes and My profile (src/lib/push-state.ts, #305).
 // expo-notifications is loaded only when push can work: merely loading it in Expo Go prints a
 // warning on every start.
 
@@ -25,6 +26,7 @@ import { isNoticeScreen } from '@/data/notifications';
 import i18n from '@/i18n';
 
 import { readLocal, removeLocal, writeLocal } from './local-storage';
+import { setPushState } from './push-state';
 import { storedLoginUserId, supabase } from './supabase';
 
 type Notifications = typeof NotificationsModule;
@@ -114,16 +116,33 @@ function screenOf(response: NotificationsModule.NotificationResponse | null): st
   return typeof url === 'string' && isNoticeScreen(url) ? url : null;
 }
 
+/** The registration running now, so a start and a return to the front never register twice at once. */
+let registering: Promise<void> | null = null;
+
 /**
- * Asks for permission (once; Android 13 and later show the question) and saves this phone's
- * push token for the signed-in person. Call after sign-in, for students and staff. Never throws
- * and never shows an error: without push the app works as before. The error codes listed with
- * register_push_token in 0011 are not translated: any refusal just leaves the token unsaved.
+ * Asks for permission (Android 13 and later show the question) and saves this phone's push token
+ * for the signed-in person. Call after sign-in, for students and staff, and again when the app comes
+ * back to the front while pushNeedsRetry() (src/lib/push-state.ts). Never throws: without push the
+ * app works as before. The outcome goes to push-state, so a refusal or a failure shows as a quiet
+ * notice on the homes and My profile (audit R5-04, docs/DECISIONS.md #305) instead of nothing. The
+ * error codes listed with register_push_token in 0011 are not translated: any refusal is 'failed'.
+ * @param options.ask false on a return to the front: check the permission without asking again
+ *   (the person may have turned it on in the phone's settings).
  */
-export async function registerForPush(): Promise<void> {
+export function registerForPush(options: { ask?: boolean } = {}): Promise<void> {
+  registering ??= register(options.ask ?? true).finally(() => {
+    registering = null;
+  });
+  return registering;
+}
+
+async function register(ask: boolean): Promise<void> {
   const module = await notifications();
   const projectId = easProjectId();
-  if (!module || !projectId) return;
+  if (!module || !projectId) {
+    setPushState('off');
+    return;
+  }
   try {
     // The channel must exist before Android 13 shows the permission question.
     await module.setNotificationChannelAsync(CHANNEL_ID, {
@@ -133,16 +152,21 @@ export async function registerForPush(): Promise<void> {
     });
     const current = await module.getPermissionsAsync();
     let status = current.status;
-    if (status !== 'granted' && current.canAskAgain) status = (await module.requestPermissionsAsync()).status;
-    if (status !== 'granted') return;
+    if (status !== 'granted' && current.canAskAgain && ask) status = (await module.requestPermissionsAsync()).status;
+    if (status !== 'granted') {
+      setPushState('denied');
+      return;
+    }
     const token = (await module.getExpoPushTokenAsync({ projectId })).data;
     const { error } = await supabase.rpc('register_push_token', { p_token: token, p_platform: 'android' });
     if (!error) {
       savedToken = token;
       writeLocal(PUSH_TOKEN_KEY, token);
     }
+    setPushState(error ? 'failed' : 'on');
   } catch {
-    // For example no Firebase key yet, or no internet: try again at the next start.
+    // For example no Firebase key yet, or no internet: tried again when the app comes back to the front.
+    setPushState('failed');
   }
 }
 
@@ -154,6 +178,8 @@ export async function registerForPush(): Promise<void> {
  * over anyway.
  */
 export async function unregisterPush(): Promise<void> {
+  // The next login on this phone starts with no notice; its own registration sets the state.
+  setPushState('unknown');
   const token = savedToken ?? readLocal(PUSH_TOKEN_KEY);
   if (!token) return;
   savedToken = null;

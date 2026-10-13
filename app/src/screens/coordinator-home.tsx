@@ -4,7 +4,7 @@
 // Overview (CoordinatorOverview below, staff/overview.tsx), the new joiners on New joiners
 // (NewJoinersList below, staff/new-joiners.tsx), promotions on C22/C23. What waits for the
 // coordinator is a count on its circle: calls due for my students, feedback asked of me. Only
-// notices stay on the home: "A new version is ready" on the Android app, and could not load.
+// notices stay on the home: "A new version is ready" on the Android app, notifications off (#305), and could not load.
 // Mark attendance, Students, Calls and Announcements are the bottom tabs. Numbers:
 // coordinator_dashboard() through src/data/home.ts. It loads again each time it comes back into view.
 
@@ -23,6 +23,7 @@ import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { StaffModules } from '@/components/staff-shortcuts';
 import { StatGrid, StatTile } from '@/components/stat-tile';
+import { PushNotice } from '@/components/push-notice';
 import { UpdateNotice } from '@/components/update-notice';
 import { fetchCoordinatorDashboard, type CoordinatorDashboard } from '@/data/home';
 import { fetchPromotionHome } from '@/data/promotion';
@@ -52,6 +53,7 @@ export function CoordinatorHome() {
   return (
     <Screen wide header={<HomeHeader name={name} role={t('roles.coordinator')} />} onRefresh={load}>
       <UpdateNotice />
+      <PushNotice place="home" />
       {board === null ? (
         <>
           <Notice tone="error" title={t('home.loadFailed')}>
@@ -75,12 +77,12 @@ export function CoordinatorOverview({ board }: { board: CoordinatorDashboard }) 
     <>
       <StatGrid>
         <StatTile icon="hereNow" value={String(board.hereNow)} label={t('home.staff.hereNow')} onPress={() => router.push('/staff/here-now')} />
-        <StatTile icon="visits" value={String(board.visitsToday)} label={t('home.staff.visitsToday')} onPress={() => router.push('/staff/attendance')} />
+        <StatTile icon="visits" value={String(board.visitsToday)} label={t('home.staff.visitsToday')} onPress={() => router.push('/staff/mark-attendance')} />
         <StatTile
           icon="calls"
           value={String(board.myCallsDue)}
           label={t('home.staff.myCallsDue')}
-          onPress={() => router.push({ pathname: '/staff/follow-up', params: { scope: 'mine' } })}
+          onPress={() => router.push({ pathname: '/staff/calls', params: { scope: 'mine' } })}
         />
         <StatTile
           icon="newJoiner"
