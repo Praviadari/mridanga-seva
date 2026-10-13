@@ -5406,7 +5406,7 @@ bars had no room, chip labels ran past the pill; the sidebar's open tab label wa
 **Decision (JS, no new colours).** Drop-down rows grow to two lines of the scaled text; the box shows the
 whole value. At large text the home header puts the greeting and name on their own line; the bell count is
 capped at 130 % (its label says the number) and the name's line height is 1.45 for Telugu and Devanagari.
-Header titles may take two lines (`components/header-title.tsx`, stacks and tabs). Weekly practice puts the
+Header titles are drawn whole (`components/header-title.tsx`, stacks and tabs): on the phone a long title shrinks to fit the bar's fixed height (down to 60 %), on the web it may take two lines. Weekly practice puts the
 bar under week and time at large text. Chip labels shrink and wrap. The sidebar's open tab uses
 onPrimarySoft (6.7:1).
 
