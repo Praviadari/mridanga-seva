@@ -1,4 +1,4 @@
-// Face scan developer screen (Phase 3 P3-3, docs/DECISIONS.md #312): hidden. Reached only from staff My profile,
+// C26 Face scan test, the developer screen (Phase 3 P3-3, docs/DECISIONS.md #312): hidden. Reached only from staff My profile,
 // and only on a TEST build (development or the 'preview' channel) while the server's switch is on
 // (components/face-entries.tsx FaceDevSection). Checks both again here, so a typed address shows nothing more.
 // The working part is src/face/face-dev-panel.tsx (camera → ML Kit → SFace + MiniFASNet, in memory only).

@@ -199,6 +199,18 @@ change. A "Class fund" row under the staff homes' buttons opens it; G2 has the t
 | F4-F6 | One entry: record (income or expense, category, amount in rupees, date, from / to whom, reference, note, bill photo or PDF; "waits for approval" shown over the limit); an entry: status, who recorded and decided, the bill, reversal links; Approve / Decline (reason) for its approver, Withdraw for its maker, Reverse (reason) for a keeper | Treasurer, Guru (coordinators read) | Built | `app/src/app/staff/fund/[id].tsx` |
 | F7 | Fund categories: built-in and own, add (income or expense, name), retire, offer again | Guru | Built | `app/src/app/staff/fund/categories.tsx` |
 | G2 / G10 | Treasurer switch on a coordinator's page; "Class fund" limits (approval over, bill over, in rupees) in Settings | Guru | Built | `coordinators/[id].tsx`, `settings.tsx` |
+
+## Phase 3 (branch `face-scan`, was `p3-native`; not merged: face scan is off for everyone)
+
+Face scan, P3-3 and P3-4 ([DECISIONS.md #307-#312](DECISIONS.md), server: 0070 #295-#300). **Native**: the Phase 3 APK
+(fingerprint 0dfc4d5f) carries the camera and model packages; nothing here reaches today's phones. Every entry shows only
+while the server's switch `face_enabled` is on (default off), and the student's camera screens only in the Android app.
+
+| # | Screen | Who | Status | Code |
+|---|---|---|---|---|
+| S15 | Face scan: from My profile (row shown while the switch is on, or while this phone keeps a face code). Off/intro (what it is, the code stays on this phone, turned on once at the desk, the QR code stays) → "Turn on face scan" (the server checks consent and age first; no consent explains how to give it) → camera permission in the class's words → blink and turn in a random order → 5 pictures → the 6-digit code for the coordinator, which finishes by itself once they type it → "Face scan is on until …"; "Turn face scan off" (the consent ends, the face code is deleted); the re-enrol prompt 30 days before the end (also on S1) | Student | Built (branch; phone test day pending) | `app/src/app/student/face-scan.tsx`, `src/face/*`, `src/components/face-entries.tsx` |
+| C25 | Face scan at the desk: from the student's profile (C8) while the switch is on. Confirm the code from the student's phone (tries left; never one's own); face scan consent (adult: signed form; child: the parent who signed, the parent's ID, the child's own yes); the face scan record on request (written to the access log); Turn face scan off (they say no: consent ends / lost or new phone: consent stays). No camera: works on the web too | Coordinator, Guru | Built (branch) | `app/src/app/staff/face/[id].tsx`, `src/data/face.ts` |
+| C26 | Face scan test (developer, hidden): staff, switch on, TEST builds only (development or channel `preview`): models' load time, live ML Kit numbers, one picture → embedding + real-face score with each step's time, cosine to the previous picture; in memory only | Coordinator, Guru | Built (branch) | `app/src/app/staff/face-dev.tsx`, `src/face/face-dev-panel.tsx` |
 ## Build order
 
 ~~A1~~ → ~~C2, C3~~ → ~~C5, C6~~ → ~~C7, C8~~ → ~~C10, C11~~ → ~~C9~~ → ~~G4, G5~~ → ~~C15, S10~~ → ~~S1~~, ~~S3~~, ~~S4, S9~~ →

@@ -1,7 +1,7 @@
-// C24 Face scan at the desk (Phase 3 P3-4, docs/DECISIONS.md #307-#312): what a coordinator (or the Guru) does
+// C25 Face scan at the desk (Phase 3 P3-4, docs/DECISIONS.md #307-#312): what a coordinator (or the Guru) does
 // for one student's face scan, beside the student, on their OWN phone or computer. Opened from the student's
 // profile (C8) by "Face scan at the desk", which shows only while the server's switch is on (face_enabled).
-// No camera here: the student scans on their own phone (S14); this screen never sees a face code (Gate 2).
+// No camera here: the student scans on their own phone (S15); this screen never sees a face code (Gate 2).
 // 1. Confirm the code: the 6-digit code on the student's phone after their scan (approve_face_enrolment; never
 //    one's own record; 5 wrong codes end the request). The student's phone then finishes by itself.
 // 2. Face scan consent: the signed face scan form, recorded once (record_face_consent). A child: the parent

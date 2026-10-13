@@ -5559,6 +5559,138 @@ only values that are record ids (UUIDs), at most 300. Nothing else of any query 
 **Why.** A coordinator printing one child's card from the phone must not have to find the child again.
 
 **Consequences.** A remembered push target still keeps no query.
+## 307. The Phase 3 APK's native face packages, trimmed; one new fingerprint — 13 Oct 2026
+
+**Status: built on branch `face-scan` (was `p3-native`; P3-3), not merged; face scan stays off.**
+
+**Context.** The P3-0 spike (SPIKE_RESULT.md on branch `p3-spike`) chose the on-device chain and measured +65.9 MB on the
+APK. P3-3 puts that chain into the class app itself, so the Phase 3 APK can be built on the test day.
+
+**Decision.** Exact versions as the spike proved them: `react-native-vision-camera` 5.2.3 + `-worklets` 5.2.3,
+`react-native-nitro-modules` 0.37.1, `react-native-nitro-image` 0.15.2, `react-native-vision-camera-face-detector` 2.1.0,
+`react-native-fast-tflite` 3.0.1, `@expo/app-integrity` 57.0.2 (unused until the self-scan, P3-5/P3-6, but native, so the
+fingerprint changes only once), `expo-secure-store` ~57.0.4. Models in app/assets/models (SFace int8, MiniFASNet V2 and
+V1SE int8; README with the full SHA-256 of each), Metro `tflite` assets (app/metro.config.js). Trimmed: no SQLCipher
+(expo-sqlite stays plain), LiteRT's GPU delegate library left out (`packagingOptions.exclude`), no
+`expo-local-authentication` (the phone's fingerprint is not an attendance factor, audit S4F-10). Both ABIs in one APK
+(arm64-v8a + armeabi-v7a), as the class app ships today. Camera permission text names the face scan (te/hi for iOS in
+app/locales); brief 9's `blockedPermissions` and `allowBackup: false` unchanged. Fingerprint **0dfc4d5f** (was 40e5832c).
+A branch-only GitHub Actions workflow (.github/workflows/face-scan-android.yml; was p3-native-android.yml) builds the
+release APK on every push to `face-scan`, with its size against main 4b522f9 and the permissions it asks for.
+
+**Why.** Pinned versions: VisionCamera 5 and Nitro move fast and `@expo/app-integrity` is alpha (SPIKE_RESULT §12). The
+trims take off what the class does not use (≈ 7.5 MB arm64 + the 32-bit share). An arm64-only APK would save ≈ 15 MB more
+but shut out old 32-bit phones; decided at P3-7 with the measured size.
+
+**Consequences.** From the merge on, main's updates reach only APKs built with this code (WORK_PLAN P3-3): the branch
+merges right before the Phase 3 APK build, after the phone test day and Praveen's go.
+
+## 308. The face code lives only in the phone's Keystore store; no face scan on the web — 13 Oct 2026
+
+**Status: built on branch `face-scan` (was `p3-native`; P3-4).**
+
+**Context.** Gate 2 (audit S4F-02, #295): the server keeps an enrolment record and never a face code, so the phone's
+copy is the only one. SPIKE_RESULT §7 chose `expo-secure-store` over SQLCipher.
+
+**Decision.** One record per phone and login under `face.v1` in `expo-secure-store` (Android Keystore; iOS
+`WHEN_UNLOCKED_THIS_DEVICE_ONLY`): the login it belongs to, the device key (#309), the model version, the enrolled face
+code and its end date, and a face code waiting for the coordinator with its 6-digit code. A face code is the normalised
+mean of the enrolment pictures' 128 numbers — the pictures' own numbers are not kept, and no picture ever is (the exact
+path's temporary JPEG is deleted in the same call). The web app has no face scan: src/face/face-store.web.ts,
+face-scanner.web.tsx and face-dev-panel.web.tsx stand in, so the native packages never reach the web bundle (a test
+checks the importers); the student's Face scan row is hidden there.
+
+**Why.** The mean is all a 1:1 check needs; keeping less is the DPIA's data minimisation. The web has no Keystore and no
+models.
+
+**Consequences.** A new phone, a re-install or a sign-out means a new supervised enrolment at the desk. The self-scan
+(P3-5) reads the face code from this store.
+
+## 309. The device key: random, per login on one phone, gone with the face code — 13 Oct 2026
+
+**Status: built on branch `face-scan` (was `p3-native`; P3-4).**
+
+**Context.** 0070 ties an enrolment to a `device_key` (16-100 of A-Z a-z 0-9 _ -), "an id the app makes once per
+install" (#297).
+
+**Decision.** 24 random bytes (expo-crypto), base64url, 32 characters, made with the first enrolment of a login on this
+phone and kept in the face record; a re-enrolment on the same phone keeps it; it is deleted with the face code. No
+hardware or Android id is used.
+
+**Why.** A random key says nothing about the phone; tying it to the face record means nothing is left on the phone
+after a wipe, and a key copied off the phone is useless without the face code beside it.
+
+**Consequences.** After a wipe the next enrolment has a new key; the server's old enrolment for the old key stays until
+it is replaced or ends (it holds no face code).
+
+## 310. The wipe rule: asked at every start, at sign-out, and on "Turn face scan off" — 13 Oct 2026
+
+**Status: built on branch `face-scan` (was `p3-native`; P3-4).**
+
+**Context.** Audit S4F-02/03/06: the phone's face code must not outlive the enrolment, the login or the person's no.
+
+**Decision.** At every start of the student area (online), the phone asks `my_face_enrolment(device key)` and applies
+src/face/enrolment.ts `applyWipeRule`: another login's record or another model → everything goes; the enrolled code stays
+only while the server says this phone's enrolment is current; a waiting code stays while the server waits on that
+request, is promoted when the server already enrolled it (the app stopped between `enrol_face` and saving), else goes;
+without an answer nothing is decided, except a waiting code older than an hour. Every sign-out path (own, or a login the
+server ended) wipes it with the other device traces (src/lib/device-traces.ts). "Turn face scan off" calls
+`remove_face` first (the consent ends too, #297) and wipes only when the server has answered — offline it says so and
+keeps both, so the phone and the server never disagree about the student's choice. The Face scan row shows while the
+switch is on, or while this phone still keeps a face code (so it can always be turned off).
+
+**Why.** The server is the record of the person's choice and of the enrolment; the phone follows it, and a sign-out
+on a shared family phone must leave no face code behind.
+
+**Consequences.** Tests: tests/face-enrolment.test.mjs (wipe rule, screen states, record changes). A sign-out leaves the
+server's enrolment until replaced or expired; staff counts (face_use_counts) may count such a student as enrolled.
+
+## 311. The enrolment on the student's phone: the server first, then the scan, then the code — 13 Oct 2026
+
+**Status: built on branch `face-scan` (was `p3-native`; P3-4); thresholds wait for the test day.**
+
+**Context.** #297 fixed the server's three steps (start, the coordinator's code, enrol). The phone decides the order
+around the camera and what makes a good enrolment.
+
+**Decision.** S15 Face scan: "Turn on face scan" calls `start_face_enrolment` before the camera opens, so a missing
+consent, the age rule or a switched-off class is said first (no_face_consent explains how to give consent at the desk).
+Then the camera permission with the class's own words, the blink/turn challenge in a random order (8 s per step; a lost
+or second face fails it, "Try again" with a new order), then 5 pictures (at least 3) on the exact path. Kept only if every
+picture scores as a real face (MiniFASNet ≥ 0.8) and each is close to their mean (cosine ≥ 0.5) — the spike's starting
+values, tuned on the test day and in the pilot. The face code is saved waiting, then the 6-digit code is shown (after
+the scan, so the coordinator watches the scan first); the page asks the server every 4 s and finishes by itself once
+the coordinator has typed it (`enrol_face`). A waiting code survives an app restart (it is in the record with its code).
+A re-enrolment (prompt on the home and the page 30 days before the end) keeps the old face code until the new one is
+confirmed.
+
+**Why.** Telling a refusal before the camera saves the student a pointless scan; the code after the scan ties the
+coordinator's confirmation to the scan they saw.
+
+**Consequences.** A request is 10 minutes on the server: a scan that takes longer means "Start again". At most 5
+requests an hour (too_many_requests).
+
+## 312. The coordinator's desk screen, and a hidden developer screen on TEST builds only — 13 Oct 2026
+
+**Status: built on branch `face-scan` (was `p3-native`; P3-3, P3-4).**
+
+**Context.** The coordinator confirms on their own phone (#297); the desk also records the face consent
+(`record_face_consent`, #298) and turns face scan off for a parent or a lost phone. P3-3 asks for a hidden screen that
+proves detect → embed on a phone.
+
+**Decision.** C25 Face scan at the desk, opened from the student's profile (C8) by a button shown only while the switch
+is on: confirm the code (6 digits; a wrong code says how many tries are left; never one's own record), record the face
+consent once (adult: the signed form; child: the parent who signed, the parent's ID seen and the child's own yes), the
+student's face scan record on request (`get_face_enrolments` writes the read to the access log), and Turn face scan off
+("they say no": the consent ends; "lost or new phone": the consent stays). It needs no camera, so it works on the web
+too. C26 Face scan test: staff only, while the switch is on, and only on a TEST build (a development run or the update
+channel `preview`, never `production`): the models' load time, the live ML Kit numbers, one picture → embedding and
+real-face score with every step's time, cosine to the previous picture; in memory only.
+
+**Why.** The desk works from whatever device the coordinator has; the developer screen must never reach LIVE users.
+
+**Consequences.** Every server refusal is worded (src/data/face.ts `FACE_ERROR_CODES`, en/te/hi; te/hi drafts for native
+review), including the integrity codes the self-scan will use.
+
 ## 313. Attendance by name answers at once; long people lists are drawn 50 at a time — 13 Oct 2026
 
 **Context.** Audit phase 4 P5-04: a tap on a name on Mark attendance waited for the check-in and then for a full

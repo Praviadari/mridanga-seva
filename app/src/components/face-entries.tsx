@@ -2,10 +2,10 @@
 // unless the server's switch is on (face_enabled, default off) — so today nobody sees anything face-related —
 // and on the web, which has no face scan. One exception: a student whose phone still keeps a face code sees
 // the row even while the switch is off, so they can always turn face scan off.
-// - FaceProfileSection: My profile, for a student → S14 Face scan.
+// - FaceProfileSection: My profile, for a student → S15 Face scan.
 // - FaceReEnrolNotice: the student home, when the enrolment ends within 30 days.
 // - FaceDevSection: My profile, for staff, on a TEST (preview) build only → the hidden developer screen.
-// - FaceDeskEntry: the student's profile (C8), for staff → C24 Face scan at the desk (also on the web: no camera).
+// - FaceDeskEntry: the student's profile (C8), for staff → C25 Face scan at the desk (also on the web: no camera).
 
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';

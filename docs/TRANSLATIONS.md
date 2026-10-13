@@ -303,3 +303,11 @@ The privacy texts of 0034 (`signUp.privacyNotice`, `signUp.under18`, `register.p
   are drafts. Words to check: "apostrophe" అపాస్ట్రఫీ / अपॉस्ट्रॉफ़ी and "hyphen" హైఫన్ / हाइफ़न (maybe show only the signs),
   "Tap" నొక్కండి / दबाएँ. Added the same day: `signUp.choicesNeeded`, `signUp.noticeRead`, `signUp.noticeRequired`,
   `importErrors.name_digits`, `importErrors.name_signs` (drafts); "privacy notice" follows `signUp.privacyNotice` (గోప్యతా ప్రకటన / गोपनीयता सूचना).
+- **Face scan** (branch `face-scan`, was `p3-native`; [DECISIONS.md #307-#312](DECISIONS.md), 13 Oct 2026; not merged, face scan is off):
+  the whole `face.*` group (S15 Face scan, C25 Face scan at the desk, C26 the developer screen, the blink/turn prompts
+  `face.challenge.*`, and `face.errors.*` = every refusal of migration 0070 and of the integrity check) and the iOS camera
+  text in `app/locales/te.json` / `hi.json`; Telugu and Hindi are drafts. Words to check: "face scan" kept as
+  ఫేస్ స్కాన్ / फ़ेस स्कैन (the consent scope says ముఖ గుర్తింపు / चेहरा पहचान — pick one for both), "face code"
+  ఫేస్ కోడ్ / फ़ेस कोड, "consent form" సమ్మతి పత్రం / सहमति फ़ॉर्म, "safety check" (integrity) భద్రతా పరీక్ష / सुरक्षा जाँच,
+  "enrolment" నమోదు / नामांकन, and the child's own "yes" (`face.desk.childAssent`). The developer screen's live numbers are
+  English on purpose.
