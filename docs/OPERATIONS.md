@@ -1433,8 +1433,34 @@ verification on (audit: every owner account has 2FA and a second owner), not a p
    (the oldest app build accepted).
 
 **2. Database (TEST).** SQL editor: run `0070_face_enrolment.sql` (its final number on main may differ:
-the lead renumbers it at merge), then the check in the TEST-run pack (NOTES.md "13-10-2026 — Phase 3 P3-2 +
-P3-6 server"). Face scan stays **off** (`face_enabled` false) after it.
+renumbered at the merge into main; it answers a one-row `schedule` table), then this check (read-only):
+```sql
+-- 0070 face scan, server side: verification on TEST (READ-ONLY, selects only). One row.
+select
+  (select value from settings where key = 'face_enabled') = 'false'::jsonb                       as face_off,
+  (select count(*) from settings where key like 'face\_%')::int                                   as face_settings,
+  to_regclass('public.face_enrolments') is not null
+    and not exists (select 1 from information_schema.columns where table_schema = 'public'
+                     and table_name = 'face_enrolments' and column_name ~ 'template|embedding')    as no_face_code,
+  (select relrowsecurity from pg_class where oid = 'public.face_enrolments'::regclass)
+    and not has_table_privilege('authenticated', 'public.face_enrolments', 'SELECT')
+    and not has_table_privilege('authenticated', 'public.integrity_challenges', 'SELECT')        as tables_closed,
+  (select count(*) from pg_trigger where not tgisinternal and tgname in ('consents_face_at_desk', 'consents_revoked_by',
+     'consents_end_face', 'students_end_face', 'profiles_end_face', 'settings_face_model', 'visits_face_guard',
+     'face_enrolments_refuse_withdrawn'))::int                                                    as triggers,
+  exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'visits' and column_name = 'liveness_ok')
+    and not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'visits' and column_name = 'match_score')
+                                                                                                  as visit_columns,
+  has_function_privilege('service_role', 'public.begin_integrity_check(text,uuid,text,text)', 'execute')
+    and not has_function_privilege('authenticated', 'public.begin_integrity_check(text,uuid,text,text)', 'execute')
+    and not has_function_privilege('authenticated', 'public.use_integrity_pass(text,text,text)', 'execute') as edge_only,
+  has_function_privilege('authenticated', 'public.start_face_enrolment(text,text)', 'execute')
+    and not has_function_privilege('anon', 'public.start_face_enrolment(text,text)', 'execute')  as app_functions,
+  (select count(*) from cron.job where jobname = 'mridanga-face-housekeeping' and active)::int   as job,
+  (select count(*) from face_enrolments)::int                                                     as enrolments;
+-- Expected: true | 6 | true | true | 8 | true | true | true | 1 | 0
+```
+Face scan stays **off** (`face_enabled` false) after it.
 
 **3. Deploy the function (TEST ref only; the CLI on Praveen's PC is logged in and really deploys).** From
 the repository folder, on the branch that has the function:
