@@ -26,6 +26,7 @@ import {
   type Notice,
 } from '@/data/notifications';
 import { formatDateTime } from '@/lib/dates';
+import { useReloadOnResume } from '@/lib/reload-on-resume';
 
 type Loaded = { notices: Notice[]; hasOlder: boolean };
 
@@ -43,6 +44,8 @@ export function NotificationsScreen() {
     setLoaded(await fetchInbox(limit));
   }, [limit]);
 
+  // F9 / R4-04 (#327): back after a while (a phone that slept), the screen loads again.
+  useReloadOnResume(load);
   useFocusEffect(
     useCallback(() => {
       void load();

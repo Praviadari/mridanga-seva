@@ -35,6 +35,8 @@ import {
 } from '@/data/student-overview';
 import { lastVisitText, LEVEL_IDS, levelName, statusName } from '@/i18n/labels';
 import { spacing, useWide } from '@/theme/use-theme';
+import { RefreshFailed } from '@/components/refresh-failed';
+import { useKeptLoad } from '@/lib/kept-load';
 
 /** Students drawn at a time; "Show more" adds as many. */
 const STUDENT_PAGE = 50;
@@ -48,7 +50,7 @@ export default function StudentListScreen() {
   const { profile } = useAuth();
   const myId = profile?.id ?? null;
   // undefined = loading, null = could not load.
-  const [loaded, setLoaded] = useState<Loaded | null | undefined>(undefined);
+  const [loaded, setLoaded, refreshFailed] = useKeptLoad<Loaded | null | undefined>();
   // The Guru's "In class" tile opens the list as ?status=notLeft, so it matches the number (FS2-06).
   const { status: statusParam } = useLocalSearchParams<{ status?: string }>();
   const [filters, setFilters] = useState<StudentFilters>(statusParam === 'notLeft' ? { ...NO_FILTERS, status: 'notLeft' } : NO_FILTERS);
@@ -72,7 +74,7 @@ export default function StudentListScreen() {
   const load = useCallback(async () => {
     const [students, staff] = await Promise.all([fetchStudentSummaries(), fetchStaff()]);
     setLoaded(students && staff ? { students, staff } : null);
-  }, []);
+  }, [setLoaded]);
 
   // Reload whenever the screen comes back into view, e.g. after a call was logged on a profile.
   useFocusEffect(
@@ -161,6 +163,8 @@ export default function StudentListScreen() {
 
   return (
     <Screen underHeader wide onRefresh={load}>
+      {/* F9 (#327): a failed refresh keeps what is shown and says so. */}
+      <RefreshFailed at={refreshFailed} onRetry={() => load()} />
       {header}
       {wide ? (
         <View style={styles.toolbar}>

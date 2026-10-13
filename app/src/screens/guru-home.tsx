@@ -32,6 +32,7 @@ import { fetchGuruDashboard, type GuruDashboard } from '@/data/home';
 import { fetchPromotionHome } from '@/data/promotion';
 import { levelName, statusName } from '@/i18n/labels';
 import { formatDate } from '@/lib/dates';
+import { useReloadOnResume } from '@/lib/reload-on-resume';
 
 /** Follow-ups overdue or escalated, over every coordinator. */
 export function followUpsNeedingAttention(board: GuruDashboard): number {
@@ -53,6 +54,8 @@ export function GuruHome() {
     setToDecide(promotions ? promotions.toDecide : 0);
   }, []);
 
+  // F9 / R4-04 (#327): back after a while (a phone that slept), the screen loads again.
+  useReloadOnResume(load);
   useFocusEffect(
     useCallback(() => {
       void load();

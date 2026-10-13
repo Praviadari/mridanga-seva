@@ -11,7 +11,13 @@ import './stubs/register.mjs';
 const { readAllRows } = await import('../src/lib/paged-read.ts');
 const { insertOnce, rpcOnce, uploadOnce, forgetUploads, isRepeatedRequest } = await import('../src/data/create-once.ts');
 const { toCsv } = await import('../src/lib/csv.ts');
-const { fundCsvRows } = await import('../src/data/fund.ts');
+const { fundCsvRows, fundErrorField, parseRupees, checkEntryForm } = await import('../src/data/fund.ts');
+const { keptValue } = await import('../src/lib/kept-load.ts');
+const { shouldReload, RESUME_AFTER_MS } = await import('../src/lib/resume-rule.ts');
+const { attendanceChange } = await import('../src/data/events.ts');
+const { groupImports } = await import('../src/data/student-import.ts');
+const { phoneToSave } = await import('../src/data/students.ts');
+const { phoneCountryOf } = await import('../src/lib/phone.ts');
 
 const src = (path) => readFileSync(new URL(`../src/${path}`, import.meta.url), 'utf8');
 const locales = Object.fromEntries(
@@ -198,4 +204,137 @@ test('Finish and Delete of a count each ask first (P1-23)', () => {
   assert.ok(!/label=\{t\('stocktake\.delete'\)\}\s+onPress=\{\(\) =>\s+void \(async/.test(screen), 'Delete no longer acts on the first tap');
   assertWorded('stocktake.finishAsk', 'stocktake.finishAskBody_one', 'stocktake.finishAskBody_other', 'stocktake.finishAskAllSeen',
     'stocktake.finishYes', 'stocktake.deleteHint', 'stocktake.deleteAsk', 'stocktake.deleteAskBody_one', 'stocktake.deleteAskBody_other');
+});
+
+// ---------------------------------------------------------------- #324 phones, #326 imports, #328 attendance
+
+test('the desk sends phones as E.164; an unknown class country counts as India', () => {
+  assert.equal(phoneToSave('98765 43210'), '+919876543210');
+  assert.equal(phoneToSave('098765-43210'), '+919876543210');
+  assert.equal(phoneToSave('+44 20 7946 0958'), '+442079460958');
+  assert.equal(phoneToSave('  '), null);
+  assert.equal(phoneCountryOf('US'), 'US');
+  assert.equal(phoneCountryOf('XX'), 'IN');
+  assert.equal(phoneCountryOf(null), 'IN');
+});
+
+test('an import is undone by its id; the list groups records by import, newest first', () => {
+  const rows = [
+    { import_id: 'a', created_at: '2026-10-20T10:00:05Z' },
+    { import_id: 'b', created_at: '2026-10-21T09:00:00Z' },
+    { import_id: 'a', created_at: '2026-10-20T10:00:01Z' },
+  ];
+  assert.deepEqual(groupImports(rows), [
+    { importId: 'b', at: '2026-10-21T09:00:00Z', count: 1 },
+    { importId: 'a', at: '2026-10-20T10:00:01Z', count: 2 },
+  ]);
+  const importer = src('data/student-import.ts');
+  assert.ok(importer.includes('import_id: importId,'), 'every row carries the import id');
+  assert.ok(src('app/staff/database/import.tsx').includes("t('importStudents.notSent'"), 'rows not sent are counted (R3-07)');
+  assertWorded('importStudents.undoButton', 'importStudents.undoAsk_one', 'importStudents.undoAsk_other', 'importStudents.undoBody',
+    'importStudents.undoDone_one', 'importStudents.undoDone_other', 'importStudents.notSent_one', 'importStudents.notSent_other',
+    'importStudents.importRest', 'importStudents.recentTitle', 'studentTools.delete', 'studentTools.deleteBody',
+    'studentTools.errors.student_linked', 'studentTools.errors.student_visited', 'studentTools.errors.student_has_history',
+    'studentTools.errors.student_withdrawn');
+});
+
+test('the Guru deletes a record only with a reason and the name typed again', () => {
+  const tools = src('components/guru-student-tools.tsx');
+  assert.match(tools, /disabled=\{busy \|\| reason\.trim\(\)\.length < 3 \|\| !nameTypedRight\(typedName, student\.fullName\)\}/);
+  assert.ok(src('data/student-admin.ts').includes("supabase.rpc('delete_student_record'"));
+});
+
+test('event attendance sends only what this phone changed (R2-07)', () => {
+  assert.deepEqual(attendanceChange(new Set(['a', 'b']), new Set(['b', 'c'])), { came: ['c'], notCame: ['a'] });
+  assert.deepEqual(attendanceChange(new Set(['a']), new Set(['a'])), { came: [], notCame: [] });
+  assert.ok(src('data/events.ts').includes("supabase.rpc('change_event_attendance'"));
+  assert.ok(!src('data/events.ts').includes("'mark_event_attendance'"), 'the whole-list replace is no longer called');
+});
+
+// ---------------------------------------------------------------- #323 shared form parts
+
+test('number boxes read Telugu and Devanagari digits; an amount pasted with them too', () => {
+  assert.equal(parseRupees('౧,౨౫౦.౫౦'), 125050);
+  assert.equal(parseRupees('१२५०'), 125000);
+  const field = src('components/text-field.tsx');
+  assert.ok(field.includes('onChangeText(asciiDigits(text))'));
+  for (const [kind, keyboard] of [['phone', 'phone-pad'], ['number', 'number-pad'], ['decimal', 'decimal-pad']]) {
+    assert.ok(new RegExp(`case '${kind}':\\s+return \\{ keyboardType: '${keyboard}'`).test(field), kind);
+  }
+  assert.ok(/case 'name':\s+return \{ autoCorrect: false, autoCapitalize: 'words'/.test(field), 'names: no autocorrect (F5-08)');
+  assert.ok(/case 'time':[^}]+maxLength: 11/.test(field), 'a time takes "12:15 a.m." (F4-15)');
+});
+
+test('the hint stays when an error shows, both are read out, long boxes count characters', () => {
+  const field = src('components/text-field.tsx');
+  assert.ok(field.includes("accessibilityHint={[hint, error].filter(Boolean).join('. ') || undefined}"));
+  assert.ok(!field.includes('error ?? hint'), 'the error no longer replaces the hint (F5-12)');
+  assert.ok(field.includes("t('common.charactersUsed'"));
+  assertWorded('common.charactersUsed', 'common.fixFieldsTitle_one', 'common.fixFieldsTitle_other', 'common.goToField', 'common.refreshFailed');
+});
+
+test('the error summary lists the fields in page order with their messages', async () => {
+  const { summaryItems } = await import('../src/components/form-error-summary.tsx').catch(() => ({ summaryItems: null }));
+  const fields = [{ key: 'amount', label: 'Amount' }, { key: 'date', label: 'Date' }, { key: 'note', label: 'Note' }];
+  if (summaryItems) {
+    assert.deepEqual(summaryItems({ note: 'fund.x', amount: 'Too big' }, fields, (v) => `<${v}>`), [
+      { key: 'amount', label: 'Amount', message: '<Too big>' },
+      { key: 'note', label: 'Note', message: '<fund.x>' },
+    ]);
+  }
+  assert.ok(src('components/form-error-summary.tsx').includes('accessibilityRole="link"'));
+});
+
+test('a refusal of the fund form shows at its field; a date over a year back is caught before the bill uploads', () => {
+  assert.equal(fundErrorField('fund.errors.date_too_old'), 'date');
+  assert.equal(fundErrorField('fund.errors.bill_missing'), 'bill');
+  assert.equal(fundErrorField('fund.errors.party_too_long'), 'party');
+  assert.equal(fundErrorField('common.networkError'), null);
+  const form = { direction: 'income', categoryId: 1, date: '', amount: '10', party: '', reference: '', note: '', bill: null };
+  assert.equal(checkEntryForm(form, '2025-10-01', '2026-10-13', 50000).date, 'fund.errors.date_too_old');
+  assert.equal(checkEntryForm(form, '2025-10-20', '2026-10-13', 50000).date, undefined);
+});
+
+test('Button ignores presses while the promise it was given runs', () => {
+  const button = src('components/button.tsx');
+  assert.ok(button.includes('if (running.current) return;'));
+  assert.ok(button.includes('aria-busy={!!loading || busy}'));
+});
+
+// ---------------------------------------------------------------- #327 leave guard, kept data, reload on resume
+
+test('Back asks before a half-filled form is lost, never after a save', () => {
+  for (const file of ['app/staff/register.tsx', 'app/staff/announcements/new.tsx', 'screens/event-form.tsx', 'screens/poll-form.tsx',
+    'screens/assessment-form.tsx', 'app/staff/call/[id].tsx', 'app/staff/fund/[id].tsx', 'app/staff/materials/[id].tsx']) {
+    assert.ok(src(file).includes('useLeaveGuard('), file);
+  }
+  for (const file of ['screens/event-form.tsx', 'screens/poll-form.tsx', 'screens/assessment-form.tsx', 'app/staff/fund/[id].tsx',
+    'app/staff/materials/[id].tsx', 'app/staff/announcements/new.tsx']) {
+    const text = src(file);
+    assert.ok(/allowLeave\(\);\s+(\/\/[^\n]*\n\s+)?(router\.(back|replace|dismissTo)|goBackOr)\(/.test(text), `${file}: allowLeave before leaving`);
+  }
+  assert.ok(src('lib/use-leave-guard.ts').includes("from 'expo-router/react-navigation'"));
+  assertWorded('leaveGuard.title', 'leaveGuard.body', 'leaveGuard.keep', 'leaveGuard.discard');
+});
+
+test('a failed reload keeps the data shown; the first load still shows its error', () => {
+  assert.deepEqual(keptValue({ n: 1 }, null), { value: { n: 1 }, failed: true });
+  assert.deepEqual(keptValue(undefined, null), { value: null, failed: false });
+  assert.deepEqual(keptValue('not_found', null), { value: null, failed: false });
+  assert.deepEqual(keptValue({ n: 1 }, { n: 2 }), { value: { n: 2 }, failed: false });
+  for (const file of ['app/student/announcements/[id].tsx', 'app/student/assessments/[id].tsx', 'app/student/practice-log.tsx',
+    'screens/event-detail.tsx', 'screens/poll-detail.tsx', 'app/student/progress.tsx', 'app/staff/students/[id].tsx', 'app/staff/here-now.tsx']) {
+    const text = src(file);
+    assert.ok(text.includes('useKeptLoad<') && text.includes('<RefreshFailed at={refreshFailed}'), file);
+  }
+});
+
+test('a screen loads again when the app comes back after five minutes or more', () => {
+  assert.equal(shouldReload(null, 10 * RESUME_AFTER_MS), false);
+  assert.equal(shouldReload(0, RESUME_AFTER_MS - 1), false);
+  assert.equal(shouldReload(0, RESUME_AFTER_MS), true);
+  for (const file of ['screens/coordinator-home.tsx', 'screens/guru-home.tsx', 'app/student/(tabs)/index.tsx', 'app/staff/(tabs)/attendance.tsx',
+    'app/staff/here-now.tsx', 'app/staff/(tabs)/follow-up.tsx', 'screens/notifications.tsx']) {
+    assert.ok(src(file).includes('useReloadOnResume('), file);
+  }
 });

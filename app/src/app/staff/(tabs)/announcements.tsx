@@ -6,7 +6,7 @@
 // Data: src/data/announcements.ts.
 
 import { router, Stack, useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useAuth } from '@/auth/auth-provider';
@@ -20,6 +20,8 @@ import { Screen } from '@/components/screen';
 import { fetchStaffAnnouncements, isScheduled, type StaffAnnouncementList } from '@/data/announcements';
 import { audienceName } from '@/i18n/labels';
 import { formatDateTime } from '@/lib/dates';
+import { RefreshFailed } from '@/components/refresh-failed';
+import { useKeptLoad } from '@/lib/kept-load';
 
 /** The "New announcement" button and one card per announcement. */
 export default function StaffAnnouncementsScreen() {
@@ -27,11 +29,11 @@ export default function StaffAnnouncementsScreen() {
   const { profile } = useAuth();
   const myId = profile?.id ?? '';
   // undefined = loading, null = could not load.
-  const [loaded, setLoaded] = useState<StaffAnnouncementList | null | undefined>(undefined);
+  const [loaded, setLoaded, refreshFailed] = useKeptLoad<StaffAnnouncementList | null | undefined>();
 
   const load = useCallback(async () => {
     setLoaded(await fetchStaffAnnouncements(myId));
-  }, [myId]);
+  }, [myId, setLoaded]);
 
   // Reload whenever the screen comes back into view: after posting, pinning or deleting, and to
   // show the latest seen counts.
@@ -60,6 +62,8 @@ export default function StaffAnnouncementsScreen() {
 
   return (
     <Screen underHeader wide onRefresh={load}>
+      {/* F9 (#327): a failed refresh keeps what is shown and says so. */}
+      <RefreshFailed at={refreshFailed} onRetry={() => load()} />
       {header}
       {newButton}
       {loaded === undefined ? <LoadingCards /> : null}
