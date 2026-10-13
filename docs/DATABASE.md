@@ -1721,6 +1721,39 @@ The Edge Function: `supabase/functions/verify-integrity` (verdict rules in `verd
 OPERATIONS.md "Face scan: integrity check". Tests: section "0070 face scan" in
 `supabase/tests/smoke-test.mjs` and `supabase/tests/integrity-verdict.test.mjs`.
 
+## Face self-scan (0071)
+
+Phase 3 P3-5, branch `face-scan` (placeholder number, was 0064 on `p3-selfscan`; runs after 0070, same conditions; [#344-#349](DECISIONS.md)).
+Nothing changes while `face_enabled` is false.
+
+**Setting.** `face_match_percent` 55 (30-95, SQL editor only like every `face_*`): the 1:1 threshold (cosine 0.55).
+`guard_setting` = 0070's plus this key: a later migration that replaces it must keep `qr_rescan_minutes` (0048), the
+0070 face keys and this one.
+
+**Visits.** `check_out_location` (inside, outside, refused, no_fix, no_location, no_area, mocked, inaccurate),
+`check_out_distance_m` (inside/outside only), `check_out_method` (`face` from the self-scan; null = not recorded: the
+desk, the night job, every check-out before 0071). Locked for app users (`guard_visit_location`, now both results);
+`check_out_method = 'face'` only from the self-scan path (`guard_face_visit`, widened).
+
+**Functions (the student's phone; each checks the caller and the switch inside).**
+- `self_scan_state(device_key)` → `{ face_enabled, enrolled, action: check_in | check_out | null, open_now, opens_at,
+  closes_at, checked_in_at, centre: { lat, lng, radius_m } | null, match_min, blocked }` — the home's circle (#344).
+- `self_scan(action, location jsonb, pass, device_key, liveness_ok, match_score)` (#345) → `{ ok: true, action: in |
+  already_in | out | already_out, at, roll_no, full_name, location, flagged, minutes }` or `{ ok: false, reason,
+  detail, minutes }` with reason integrity (detail = the pass's code), not_enrolled, liveness, no_match, window,
+  outside (detail = the location result), mocked — each counted in `face_scan_failures` — or not_checked_in, too_soon
+  (not counted). Raises `not_allowed`, `action_invalid`, `face_off`, `bad_location` and `face_block_reason`'s codes.
+  A check-in: method `face`, `marked_by` = the student, `liveness_ok` true, location result + distance, score in
+  `visit_face_scores`, status back to active, follow-ups done. A check-out: saved with its own location result,
+  flagged when not inside; the parent's check-out email comes from 0043/0044's trigger.
+- `note_self_scan_failure(reason, detail)` (#346) → true when counted: outside (+ detail), mocked, liveness, no_match;
+  enrolled students only; at most 200 a centre an hour.
+- Internal: `self_scan_location(location, centre)` (the phone's rule: mocked → mocked; accuracy null or over 100 →
+  inaccurate; no centre point → no_area; inside = distance ≤ radius + accuracy), `centre_open_now(centre)`,
+  `self_scan_enrolment(student, device_key)`, `close_earlier_open_visit(student)`.
+
+Tests: section "0071 face self-scan" in `supabase/tests/smoke-test.mjs`; the phone's rules in
+`app/tests/self-scan.test.mjs`.
 ## Linking a login to a student
 
 A student record can exist without a login (many students never install the app). When a person

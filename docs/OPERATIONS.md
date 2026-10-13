@@ -1491,8 +1491,9 @@ Other face settings, same way: `face_min_age` (18 until the Guru and the lawyer 
 (12), `face_expiry_months_adult` (24), `face_score_days` (60), `face_model_version` (changing it ends every
 enrolment made with another model: everyone re-enrols at the desk).
 
-**Counts for staff:** `select face_use_counts(current_date - 30, current_date);` signed in as staff in the app
-(a screen comes with P3-6's app half); in the SQL editor read `face_scan_failures` directly (no student ids in it).
+**Counts for staff:** Reports → **Face scan use** (C27, branch `face-scan`; shown while face scan is on): per centre,
+students with face scan and failed face check-ins by reason. In the SQL editor read `face_scan_failures` directly (no
+student ids in it).
 
 **If the service-account key leaks:** Google Cloud → IAM & Admin → Service accounts → `integrity-decoder-…` →
 Keys → delete it; make a new key (step 4) and replace the secret (step 5). A leaked key lets someone decode
@@ -1502,6 +1503,56 @@ tokens of our package, nothing more; it cannot read the database.
 the LIVE project, `0070` in the go-live order (GO_LIVE_CHECKLIST row M0070), the same deploy with the LIVE
 ref, Google added to the processor register as a live processor and to the privacy notice (N4, after the
 lawyer), then `face_enabled` true only on Praveen's word.
+
+## Face self-scan: check-in and check-out on the student's phone
+
+**Phase 3 — branch `face-scan` (was `p3-selfscan`), not merged; after "Face scan: integrity check" above, same conditions (test day
+first, LIVE only on Praveen's word).** [DECISIONS.md #344-#349](DECISIONS.md); DATABASE.md "Face self-scan (0071)".
+
+**1. The app learns the Cloud project number.** After step 1 of "Face scan: integrity check": put the project number
+in `app/src/face/face-settings.ts` (`PLAY_INTEGRITY_CLOUD_PROJECT = '123456789012'`, digits only). It is not a secret
+(it is inside every APK). Until then a self-scan stops at "Face check-in is not ready yet. Ask a coordinator."
+
+**2. Database (TEST).** SQL editor: run `0071_face_selfscan.sql` after 0070 (both renumbered at the merge into main; no rows
+answered), then this check (read-only):
+```sql
+-- 0071 face self-scan: verification on TEST (READ-ONLY, selects only). One row.
+select
+  (select value from settings where key = 'face_match_percent') = '55'::jsonb                     as threshold,
+  (select count(*) from information_schema.columns where table_schema = 'public' and table_name = 'visits'
+     and column_name in ('check_out_location', 'check_out_distance_m', 'check_out_method'))::int  as checkout_columns,
+  has_function_privilege('authenticated', 'public.self_scan(text,jsonb,text,text,boolean,real)', 'execute')
+    and has_function_privilege('authenticated', 'public.self_scan_state(text)', 'execute')
+    and not has_function_privilege('anon', 'public.self_scan(text,jsonb,text,text,boolean,real)', 'execute') as app_functions,
+  not has_function_privilege('authenticated', 'public.self_scan_location(jsonb,smallint)', 'execute')
+    and not has_function_privilege('authenticated', 'public.use_integrity_pass(text,text,text)', 'execute') as internal_closed,
+  (select value from settings where key = 'face_enabled') = 'false'::jsonb                        as face_off,
+  (select count(*) from visits where method = 'face' or check_out_method = 'face')::int           as face_visits;
+-- Expected: true | 3 | true | true | true | 0
+```
+The threshold, like every face setting, changes in the SQL editor only:
+`update settings set value = '60' where key = 'face_match_percent';` (30-95; higher = stricter, more "ask a
+coordinator").
+
+**3. Phone walk on the test day (adults only, face_enabled on TEST only for the walk, then off again).** Needs: the
+Phase 3 test APK ("Mridanga Seva TEST", branch face-scan; OPERATIONS "Face scan: the test app") on two phones, the Edge Function deployed with the APK's certificate, the project
+number in the app, a TEST student login enrolled at the desk (S15 + C25), the TEST centre's point and radius set (G9),
+its open hours covering the test time.
+1. Student phone at the class: the home shows **Check in** (first circle). Tap → location allowed → blink/turn → 3
+   pictures → "Checked in at …". Coordinator phone: Who is here now shows the student; the visit's method is face.
+2. Home now shows **Check out**. Within 10 minutes → "You checked in less than 10 minutes ago …" (desk path). After
+   10 minutes, step outside the area (≥ 150 m) → Check out → "Checked out at … after n minutes" + the note "Your phone
+   was not at the class …"; the coordinator's visit history of the student shows "Checked out away from the class:
+   outside the area".
+3. Refusals (each must end with "Or ask a coordinator"): check in from outside the area; with location switched off
+   (no position); with a fake-GPS app (developer options → mock location app) → "made-up location"; outside the open
+   hours (no circle; the page says the hours); flight mode (no internet); another person's face → "did not match"
+   (three such tries → "Three tries did not work today").
+4. Reports → **Face scan use** shows the counts (outside, mocked, no match …), no names.
+5. A minor's parent email on check-out only (dry run, notices on for a test guardian) — only when the Guru and the
+   lawyer have allowed minors (face_min_age stays 18 until then).
+Write the times (location read, scan, integrity, save) and the scores from C26 into SPIKE_RESULT §9.## Files no announcement uses
+
 ## Face scan: the test app (Mridanga Seva TEST)
 
 **Branch `face-scan` only, not merged ([DECISIONS.md #430-#432](DECISIONS.md)). The build is Praveen's, after the
