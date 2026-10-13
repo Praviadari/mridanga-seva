@@ -21,6 +21,7 @@ import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { TextField } from '@/components/text-field';
 import { announce } from '@/lib/announce';
+import { confirmReady, confirmShown } from '@/lib/second-tap';
 import { deletePractice, fetchMyPracticeLog, fetchTaals, logPractice, type PracticeLog } from '@/data/practice';
 import { formatDate, todayLocal } from '@/lib/dates';
 import { asciiDigits } from '@/lib/digits';
@@ -90,10 +91,13 @@ export default function PracticeLogScreen() {
   const remove = async (id: number) => {
     if (confirming !== id) {
       setConfirming(id);
+      confirmShown();
       // Only the button's words change; TalkBack does not read them again by itself (P2-01, #314).
       announce(t('practiceLog.confirmDelete'));
       return;
     }
+    // "Yes, delete" sits where Delete was: a double tap must not delete unseen (P2-06, #332).
+    if (!confirmReady()) return;
     setConfirming(null);
     const errorKey = await deletePractice(id);
     setMessage(errorKey ? { tone: 'error', text: t(errorKey) } : { tone: 'success', text: t('practiceLog.deleted') });

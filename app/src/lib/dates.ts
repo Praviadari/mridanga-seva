@@ -112,8 +112,8 @@ export function startOfTodayLocal(): string {
  * The locale for Intl: the app's language with the class's country, e.g. 'te-IN', 'en-US'
  * (BCP 47). Formats follow the country, words the language.
  */
-export function intlLocale(): string {
-  return `${currentLanguage()}-${classLocale().country}`;
+export function intlLocale(language: string = currentLanguage()): string {
+  return `${language}-${classLocale().country}`;
 }
 
 const monthDayFormatters = new Map<string, Intl.DateTimeFormat | null>();

@@ -10,6 +10,7 @@ import { useWindowDimensions } from 'react-native';
 
 import { tabIcon } from '@/components/icon';
 import { tabLabel } from '@/components/tab-label';
+import { headerTitleOptions } from '@/components/header-title';
 import { documentTitleLayout } from '@/lib/document-title';
 import { useHeadingFont } from '@/theme/fonts';
 import { tabsScreenOptions, useTheme } from '@/theme/use-theme';
@@ -20,8 +21,9 @@ export default function StudentTabsLayout() {
   const { colors } = useTheme();
   const titleFont = useHeadingFont();
   const { fontScale } = useWindowDimensions();
+  const tabs = tabsScreenOptions(colors, false, fontScale, titleFont);
   return (
-    <Tabs screenLayout={documentTitleLayout} screenOptions={tabsScreenOptions(colors, false, fontScale, titleFont)}>
+    <Tabs screenLayout={documentTitleLayout} screenOptions={{ ...tabs, ...headerTitleOptions(tabs.headerTitleStyle) }}>
       {/* The home has its own saffron header band instead of a header bar. */}
       <Tabs.Screen name="index" options={{ title: t('tabs.home'), tabBarLabel: tabLabel(t('tabs.home')), headerShown: false, tabBarIcon: tabIcon('home') }} />
       <Tabs.Screen

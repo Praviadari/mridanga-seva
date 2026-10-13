@@ -49,7 +49,8 @@ export function QrCode({ value, size, label }: QrCodeProps) {
   const drawn = Math.max(1, Math.floor(size / box)) * box;
 
   return (
-    <View role="img" aria-label={label} style={{ width: drawn, height: drawn }}>
+    // accessible + role, or the label on a plain View is never read out (audit P2-05, #332).
+    <View accessible role="img" aria-label={label} style={{ width: drawn, height: drawn }}>
       <Svg width={drawn} height={drawn} viewBox={`0 0 ${box} ${box}`}>
         <Rect width={box} height={box} fill={qrColours.light} />
         <Path d={path} fill={qrColours.dark} />

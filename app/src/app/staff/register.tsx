@@ -468,8 +468,7 @@ export default function RegisterStudentScreen() {
     return (
       <Screen underHeader>
         {header}
-        {/* The row pressed is gone: TalkBack's focus goes to the result (P2-02). */}
-          <Notice tone="success" title={t('register.doneTitle')} focused>
+        <Notice tone="success" title={t('register.doneTitle')}>
           {t('register.doneBody', { name: saved.name, rollNo: saved.registered.rollNo })}
         </Notice>
         {saved.registered.repeated ? <AppText>{t('register.alreadySaved')}</AppText> : null}
@@ -543,7 +542,8 @@ export default function RegisterStudentScreen() {
 
           {accepted ? (
             <>
-              <Notice tone="success" title={t('register.doneTitle')}>
+              {/* The row pressed is gone: TalkBack's focus goes to the result (P2-02). */}
+              <Notice tone="success" title={t('register.doneTitle')} focused>
                 {[
                   t('register.doneBody', { name: accepted.fullName, rollNo: accepted.rollNo }),
                   t(accepted.repeated ? 'register.acceptedRepeated' : accepted.existing ? 'register.acceptedExisting' : 'register.acceptedLogin'),
@@ -688,6 +688,7 @@ export default function RegisterStudentScreen() {
           <TextField kind="name"
             ref={target('fullName')}
             label={t('register.fullName')}
+            required
             value={form.fullName}
             onChangeText={field('fullName')}
             onBlur={() => checkOnLeave('fullName')}

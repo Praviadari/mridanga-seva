@@ -11,6 +11,8 @@ import { StatusBar } from 'expo-status-bar';
 import { useTranslation } from 'react-i18next';
 
 import { UpdateNoticeOnScreens } from '@/components/update-notice';
+import { headerTitleOptions } from '@/components/header-title';
+import { webBackOptions } from '@/components/web-back-button';
 import { documentTitleLayout } from '@/lib/document-title';
 import { useHeadingFont } from '@/theme/fonts';
 import { headerBarOptions, useTheme } from '@/theme/use-theme';
@@ -25,12 +27,13 @@ export const unstable_settings = { anchor: '(tabs)' };
 export default function StaffLayout() {
   const { colors } = useTheme();
   const titleFont = useHeadingFont();
+  const bar = headerBarOptions(colors, titleFont);
   const { t } = useTranslation();
   return (
     <UpdateNoticeOnScreens value>
       {/* Light status-bar icons on the saffron headers. */}
       <StatusBar style="light" />
-      <Stack screenLayout={documentTitleLayout} screenOptions={headerBarOptions(colors, titleFont)}>
+      <Stack screenLayout={documentTitleLayout} screenOptions={{ ...bar, ...headerTitleOptions(bar.headerTitleStyle), ...webBackOptions }}>
         {/* No bar of its own (the tabs have theirs); the title is what Back says on the next screen. */}
         <Stack.Screen name="(tabs)" options={{ headerShown: false, title: t('home.title') }} />
       </Stack>

@@ -325,7 +325,7 @@ const styles = StyleSheet.create({
   },
   cell: {
     width: 64,
-    height: 44,
+    height: 48,
     borderWidth: 1,
     borderRadius: radius,
     alignItems: 'center',

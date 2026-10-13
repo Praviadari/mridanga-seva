@@ -38,7 +38,8 @@ export function BeatGrid({ bols, divisions, marks, current, hands = false }: Bea
     <View style={styles.grid}>
       {rows.map((row) => (
         <View key={row.index} style={styles.row}>
-          <View style={styles.mark} accessibilityLabel={t('practice.markLabel', { mark: markName(t, row.mark) })}>
+          {/* accessible: the mark is read as sam / khali / tali, not as "X" or "0" (audit P2-05, #332). */}
+          <View style={styles.mark} accessible accessibilityLabel={t('practice.markLabel', { mark: markName(t, row.mark) })}>
             <AppText variant="subtitle" family="sans" tone="primary">
               {row.mark}
             </AppText>

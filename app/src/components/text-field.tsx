@@ -45,6 +45,11 @@ export type TextFieldProps = TextInputProps & {
    * "too long" (F5-15). Without it a box with maxLength of COUNTER_FROM or more counts against maxLength.
    */
   counter?: number;
+  /**
+   * The form cannot be sent without it. Screen readers say so (web aria-required; on the phone ", required"
+   * after the label); the screen looks the same (audit F5-13, docs/DECISIONS.md #332).
+   */
+  required?: boolean;
 };
 
 /**
@@ -95,7 +100,7 @@ export function readsDigits(kind: FieldKind | undefined, keyboardType: KeyboardT
 }
 
 /** Labelled text input in the app's style. */
-export function TextField({ label, hint, error, secret, ref, style, kind, counter, ...inputProps }: TextFieldProps) {
+export function TextField({ label, hint, error, secret, ref, required, style, kind, counter, ...inputProps }: TextFieldProps) {
   const { colors } = useTheme();
   const { t } = useTranslation();
   const [revealed, setRevealed] = useState(false);
@@ -126,7 +131,8 @@ export function TextField({ label, hint, error, secret, ref, style, kind, counte
         ]}>
         <TextInput
           ref={ref}
-          accessibilityLabel={label}
+          accessibilityLabel={required && Platform.OS !== 'web' ? `${label}, ${t('common.required')}` : label}
+          aria-required={required || undefined}
           accessibilityHint={[hint, error].filter(Boolean).join('. ') || undefined}
           aria-describedby={described || undefined}
           aria-invalid={!!error}

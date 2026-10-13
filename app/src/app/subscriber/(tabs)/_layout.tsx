@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { useWindowDimensions } from 'react-native';
 
 import { tabIcon } from '@/components/icon';
+import { headerTitleOptions } from '@/components/header-title';
 import { documentTitleLayout } from '@/lib/document-title';
 import { useHeadingFont } from '@/theme/fonts';
 import { tabsScreenOptions, useTheme } from '@/theme/use-theme';
@@ -16,8 +17,9 @@ export default function SubscriberTabsLayout() {
   const { colors } = useTheme();
   const titleFont = useHeadingFont();
   const { fontScale } = useWindowDimensions();
+  const tabs = tabsScreenOptions(colors, false, fontScale, titleFont);
   return (
-    <Tabs screenLayout={documentTitleLayout} screenOptions={tabsScreenOptions(colors, false, fontScale, titleFont)}>
+    <Tabs screenLayout={documentTitleLayout} screenOptions={{ ...tabs, ...headerTitleOptions(tabs.headerTitleStyle) }}>
       <Tabs.Screen
         name="ishtagoshti"
         options={{ title: t('ishtagoshti.title'), tabBarLabel: t('tabs.ishtagoshti'), tabBarIcon: tabIcon('ishtagoshti') }}

@@ -16,6 +16,7 @@ import { useWindowDimensions } from 'react-native';
 import { tabIcon } from '@/components/icon';
 import { MenuButton } from '@/components/side-menu';
 import { tabLabel } from '@/components/tab-label';
+import { headerTitleOptions } from '@/components/header-title';
 import { documentTitleLayout } from '@/lib/document-title';
 import { useHeadingFont } from '@/theme/fonts';
 import { tabsScreenOptions, useTheme } from '@/theme/use-theme';
@@ -34,6 +35,7 @@ export default function StaffTabsLayout() {
   const { colors } = useTheme();
   const titleFont = useHeadingFont();
   const { width, fontScale } = useWindowDimensions();
+  const tabs = tabsScreenOptions(colors, width >= SIDEBAR_FROM, fontScale, titleFont);
 
   return (
     <Tabs
@@ -42,7 +44,8 @@ export default function StaffTabsLayout() {
       backBehavior="firstRoute"
       screenLayout={documentTitleLayout}
       screenOptions={{
-        ...tabsScreenOptions(colors, width >= SIDEBAR_FROM, fontScale, titleFont),
+        ...tabs,
+        ...headerTitleOptions(tabs.headerTitleStyle),
         // The side menu (components/side-menu.tsx, #350) from every tab's header bar; the home has it in its band.
         headerLeft: menuButton,
       }}>
