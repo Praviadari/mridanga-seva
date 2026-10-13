@@ -46,7 +46,8 @@ export function InboxBell() {
       <Icon name="bell" size={24} color={colors.onHeader} />
       {unread > 0 ? (
         <View style={[styles.badge, { backgroundColor: colors.onHeader }]}>
-          <AppText variant="small" style={[styles.count, { color: colors.headerTop }]}>
+          {/* Capped: at 200 % the count spilled out of its pill; the bell's label says the number (P3-08). */}
+          <AppText variant="small" maxFontSizeMultiplier={1.3} style={[styles.count, { color: colors.headerTop }]}>
             {unread > 99 ? '99+' : String(unread)}
           </AppText>
         </View>
@@ -57,9 +58,10 @@ export function InboxBell() {
 
 const styles = StyleSheet.create({
   bell: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    // 48 dp, Android's smallest comfortable touch target; hitSlop does nothing on the web (audit P2-08, #332).
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
@@ -69,7 +71,7 @@ const styles = StyleSheet.create({
     top: -4,
     right: -6,
     minWidth: 22,
-    height: 22,
+    minHeight: 22,
     borderRadius: 11,
     paddingHorizontal: 4,
     alignItems: 'center',

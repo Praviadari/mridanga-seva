@@ -111,7 +111,8 @@ export function tabsScreenOptions(colors: Palette, sidebar: boolean, fontScale =
     headerTintColor: colors.onHeader,
     headerTitleStyle: { color: colors.onHeader },
     sceneStyle: { backgroundColor: colors.background },
-    tabBarActiveTintColor: colors.primary,
+    // The sidebar's open tab sits on primarySoft: onPrimarySoft reads 6.7:1 there, primary only 4.3:1 (audit P3-07, #333).
+    tabBarActiveTintColor: sidebar ? colors.onPrimarySoft : colors.primary,
     tabBarInactiveTintColor: colors.textMuted,
     // The open tab's pill in the sidebar.
     tabBarActiveBackgroundColor: sidebar ? colors.primarySoft : undefined,

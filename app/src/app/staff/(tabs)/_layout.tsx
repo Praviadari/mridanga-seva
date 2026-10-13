@@ -14,6 +14,7 @@ import { useWindowDimensions } from 'react-native';
 
 import { tabIcon } from '@/components/icon';
 import { tabLabel } from '@/components/tab-label';
+import { headerTitleOptions } from '@/components/header-title';
 import { documentTitleLayout } from '@/lib/document-title';
 import { tabsScreenOptions, useTheme } from '@/theme/use-theme';
 
@@ -27,7 +28,7 @@ export default function StaffTabsLayout() {
   const { width, fontScale } = useWindowDimensions();
 
   return (
-    <Tabs screenLayout={documentTitleLayout} screenOptions={tabsScreenOptions(colors, width >= SIDEBAR_FROM, fontScale)}>
+    <Tabs screenLayout={documentTitleLayout} screenOptions={{ ...tabsScreenOptions(colors, width >= SIDEBAR_FROM, fontScale), ...headerTitleOptions }}>
       {/* The home has its own saffron header band instead of a header bar. */}
       <Tabs.Screen
         name="index"

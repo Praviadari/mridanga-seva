@@ -27,6 +27,49 @@ export function isNetworkError(message: string): boolean {
  * withdrawn — Accept, a desk Save, a loan, a practice log, a nomination all refuse it (#292).
  */
 export function fallbackErrorKey(message: string): MessageKey {
-  if (message === 'student_withdrawn') return 'common.studentWithdrawn';
+  if (message === 'student_withdrawn' || message === 'already_withdrawn') return 'common.studentWithdrawn';
+  const known = SERVER_MESSAGES[message];
+  if (known) return known;
   return isNetworkError(message) ? 'common.networkError' : 'common.genericError';
 }
+
+/**
+ * Database refusals a screen can meet (a race between two desks, a record frozen meanwhile, a rule the form
+ * does not check first) that no data file's own list words (audit D8-21, phase 4 B4-9, docs/DECISIONS.md #334).
+ * The rest of the 50 codes found unworded are refusals of bad input the screens never send; they keep the
+ * general message.
+ */
+const SERVER_MESSAGES: Partial<Record<string, MessageKey>> = {
+  material_frozen: 'common.serverErrors.frozen',
+  assessment_frozen: 'common.serverErrors.frozen',
+  event_frozen: 'common.serverErrors.frozen',
+  poll_frozen: 'common.serverErrors.frozen',
+  fund_entry_frozen: 'common.serverErrors.frozen',
+  student_field_locked: 'common.serverErrors.locked',
+  profile_field_locked: 'common.serverErrors.locked',
+  visit_field_locked: 'common.serverErrors.locked',
+  consent_locked: 'common.serverErrors.locked',
+  option_code_locked: 'common.serverErrors.locked',
+  location_locked: 'common.serverErrors.locked',
+  theme_not_found: 'common.serverErrors.notFound',
+  sloka_not_found: 'common.serverErrors.notFound',
+  profile_not_found: 'common.serverErrors.notFound',
+  guardian_not_found: 'common.serverErrors.notFound',
+  student_not_linked: 'common.serverErrors.notFound',
+  open_loan: 'common.serverErrors.openLoan',
+  roll_no_frozen: 'common.serverErrors.rollNoFrozen',
+  roll_no_missing: 'common.serverErrors.rollNoMissing',
+  status_needs_call_log: 'common.serverErrors.needsCallLog',
+  group_inactive: 'common.serverErrors.groupInactive',
+  member_not_allowed: 'common.serverErrors.memberNotAllowed',
+  switch_off_first: 'common.serverErrors.switchOffFirst',
+  not_yourself: 'common.serverErrors.notYourself',
+  role_guru_only: 'common.serverErrors.guruOnly',
+  not_staff: 'common.serverErrors.staffOnly',
+  centre_delete_not_allowed: 'common.serverErrors.centreInUse',
+  fund_entry_kept: 'common.serverErrors.fundKept',
+  request_id_used: 'common.serverErrors.alreadySaved',
+  visit_time_future: 'common.serverErrors.visitFuture',
+  setting_required: 'common.serverErrors.settingRequired',
+  too_many_rows: 'common.serverErrors.tooManyRows',
+};

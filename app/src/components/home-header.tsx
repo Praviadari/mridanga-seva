@@ -10,7 +10,7 @@
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
-import { spacing, useTheme } from '@/theme/use-theme';
+import { spacing, useLargeText, useTheme } from '@/theme/use-theme';
 
 import { AppText } from './app-text';
 import { InboxBell } from './inbox-bell';
@@ -30,6 +30,28 @@ export type HomeHeaderProps = {
 export function HomeHeader({ name, role }: HomeHeaderProps) {
   const { t } = useTranslation();
   const { colors } = useTheme();
+  // At large text the greeting and name get a line of their own under the mark and buttons, whole, instead of
+  // ~7 letters a line beside them and "…" after two lines (audit P3-08, docs/DECISIONS.md #333).
+  const large = useLargeText();
+
+  const names = (
+    <View style={styles.names}>
+      {name ? (
+        <>
+          <AppText variant="label" style={{ color: colors.onHeaderMuted }}>
+            {t('home.greetingNoName')}
+          </AppText>
+          <AppText variant="title" style={[styles.name, { color: colors.onHeader }]} numberOfLines={large ? undefined : 2}>
+            {name}
+          </AppText>
+        </>
+      ) : (
+        <AppText variant="title" style={{ color: colors.onHeader }}>
+          {t('home.greetingNoName')}
+        </AppText>
+      )}
+    </View>
+  );
 
   return (
     <SaffronBand>
@@ -37,27 +59,13 @@ export function HomeHeader({ name, role }: HomeHeaderProps) {
         <View style={[styles.markCircle, { backgroundColor: colors.onHeader }]}>
           <MridangaMark size={34} color={colors.headerTop} accent={colors.onHeader} />
         </View>
-        <View style={styles.names}>
-          {name ? (
-            <>
-              <AppText variant="label" style={{ color: colors.onHeaderMuted }}>
-                {t('home.greetingNoName')}
-              </AppText>
-              <AppText variant="title" style={[styles.name, { color: colors.onHeader }]} numberOfLines={2}>
-                {name}
-              </AppText>
-            </>
-          ) : (
-            <AppText variant="title" style={{ color: colors.onHeader }}>
-              {t('home.greetingNoName')}
-            </AppText>
-          )}
-        </View>
+        {large ? <View style={styles.names} /> : names}
         <View style={styles.buttons}>
           <InboxBell />
           <ProfileButton />
         </View>
       </View>
+      {large ? names : null}
 
       {role ? (
         <AppText variant="small" style={{ color: colors.onHeaderMuted }}>
@@ -100,7 +108,8 @@ const styles = StyleSheet.create({
   // A little under the title size, so a usual name stays on one line beside the two buttons.
   name: {
     fontSize: 22,
-    lineHeight: 28,
+    // 1.45 x: Telugu and Devanagari vowel signs above and below need the room (audit P1 lead).
+    lineHeight: 32,
   },
   mantra: {
     borderLeftWidth: 2,

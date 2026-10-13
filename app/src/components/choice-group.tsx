@@ -82,7 +82,8 @@ export function ChoiceGroup<T extends string | number>({
               {chips && choice.icon ? (
                 <Icon name={choice.icon} size={18} color={selected ? colors.onPrimary : colors.primary} />
               ) : null}
-              <AppText variant="label" lang={choice.lang} style={{ color: textColour }}>
+              {/* Shrinks and wraps inside the pill at large text instead of running past its edge (P3 lead L2). */}
+              <AppText variant="label" lang={choice.lang} style={{ color: textColour, flexShrink: 1 }}>
                 {choice.label}
               </AppText>
             </Pressable>
@@ -120,7 +121,8 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   chip: {
-    minWidth: 0,
+    // A one-digit chip ("2" … "8") stays 48 wide (P2-08).
+    minWidth: 48,
     borderRadius: 999,
   },
 });

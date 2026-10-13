@@ -5,7 +5,7 @@
 // the button goes under the name instead of beside it, so the name keeps the row's width (audit P3-01, #315).
 
 import { useTranslation } from 'react-i18next';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { cardLook, spacing, useLargeText, useTheme } from '@/theme/use-theme';
 
@@ -57,11 +57,12 @@ export function ListRow({ title, details = [], highlighted, action, onPress, lea
     // Room for the button on a line of its own (RowContent).
     large && action ? styles.wrap : null,
   ];
+  const spoken = [title, ...(chips ? studentChipsText(t, chips) : []), ...details, ...(warning ? [warning] : [])].join(', ');
   if (onPress) {
     return (
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={[title, ...(chips ? studentChipsText(t, chips) : []), ...details, ...(warning ? [warning] : [])].join(', ')}
+        accessibilityLabel={spoken}
         onPress={onPress}
         style={({ pressed }) => [styles.row, look, pressed && styles.pressed]}>
         <RowContent title={title} details={details} action={action} leading={leading} chips={chips} warning={warning} />
@@ -71,7 +72,7 @@ export function ListRow({ title, details = [], highlighted, action, onPress, lea
   }
   return (
     <View style={[styles.row, look]}>
-      <RowContent title={title} details={details} action={action} leading={leading} chips={chips} warning={warning} />
+      <RowContent title={title} details={details} action={action} leading={leading} chips={chips} warning={warning} spoken={spoken} />
     </View>
   );
 }
@@ -84,14 +85,25 @@ function RowContent({
   leading,
   chips,
   warning,
-}: Pick<ListRowProps, 'title' | 'details' | 'action' | 'leading' | 'chips' | 'warning'>) {
+  spoken,
+}: Pick<ListRowProps, 'title' | 'details' | 'action' | 'leading' | 'chips' | 'warning'> & {
+  /**
+   * A row that is not itself a button: its words as one TalkBack stop (name, chips, details, warning), so ten
+   * search results are ten stops plus their buttons, not fifty (audit P2-12, #332). Phones only: on the web a
+   * grouped text would become an extra Tab stop.
+   */
+  spoken?: string;
+}) {
   const { colors } = useTheme();
   const large = useLargeText();
   const button = action ? <Button {...action} accessibilityLabel={action.accessibilityLabel ?? `${action.label}, ${title}`} /> : null;
   return (
     <>
       {leading === 'initials' ? <Initials name={title} /> : leading ? <IconBadge name={leading} size={40} /> : null}
-      <View style={styles.text}>
+      <View
+        style={styles.text}
+        accessible={spoken !== undefined && Platform.OS !== 'web' ? true : undefined}
+        accessibilityLabel={spoken !== undefined && Platform.OS !== 'web' ? spoken : undefined}>
         <AppText variant="label">{title}</AppText>
         {chips ? <StudentChips {...chips} /> : null}
         {details.map((line) => (

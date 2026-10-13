@@ -11,6 +11,8 @@ import { StatusBar } from 'expo-status-bar';
 import { useTranslation } from 'react-i18next';
 
 import { UpdateNoticeOnScreens } from '@/components/update-notice';
+import { headerTitleOptions } from '@/components/header-title';
+import { webBackOptions } from '@/components/web-back-button';
 import { documentTitleLayout } from '@/lib/document-title';
 import { headerBarOptions, useTheme } from '@/theme/use-theme';
 
@@ -28,7 +30,7 @@ export default function StaffLayout() {
     <UpdateNoticeOnScreens value>
       {/* Light status-bar icons on the saffron headers. */}
       <StatusBar style="light" />
-      <Stack screenLayout={documentTitleLayout} screenOptions={headerBarOptions(colors)}>
+      <Stack screenLayout={documentTitleLayout} screenOptions={{ ...headerBarOptions(colors), ...headerTitleOptions, ...webBackOptions }}>
         {/* No bar of its own (the tabs have theirs); the title is what Back says on the next screen. */}
         <Stack.Screen name="(tabs)" options={{ headerShown: false, title: t('home.title') }} />
       </Stack>

@@ -513,6 +513,7 @@ export default function RegisterStudentScreen() {
         <TextField
           ref={target('fullName')}
           label={t('register.fullName')}
+          required
           value={form.fullName}
           onChangeText={field('fullName')}
           onBlur={() => checkOnLeave('fullName')}

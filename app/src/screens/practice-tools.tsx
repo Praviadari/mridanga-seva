@@ -322,7 +322,8 @@ function TempoControl({ bpm, onChange }: { bpm: number; onChange: (bpm: number) 
   };
   return (
     <View style={styles.tempo}>
-      <View style={styles.tempoValue} accessible accessibilityLabel={t('practice.bpmLabel', { bpm })}>
+      {/* Spoken again after each change, so a blind student hears the new tempo (audit P2-04, #332). */}
+      <View style={styles.tempoValue} accessible accessibilityLabel={t('practice.bpmLabel', { bpm })} accessibilityLiveRegion="polite">
         <AppText variant="title">{bpm}</AppText>
         <AppText tone="muted">{t('practice.bpm', { min: MIN_BPM, max: MAX_BPM })}</AppText>
       </View>
@@ -332,6 +333,7 @@ function TempoControl({ bpm, onChange }: { bpm: number; onChange: (bpm: number) 
             <Button
               variant="secondary"
               label={by > 0 ? `+${by}` : `−${-by}`}
+              accessibilityLabel={by > 0 ? t('practice.tempoFaster', { by }) : t('practice.tempoSlower', { by: -by })}
               disabled={(by < 0 && bpm <= MIN_BPM) || (by > 0 && bpm >= MAX_BPM)}
               onPress={() => step(by)}
             />

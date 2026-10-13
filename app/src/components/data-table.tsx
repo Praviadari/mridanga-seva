@@ -72,7 +72,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderTopWidth: StyleSheet.hairlineWidth,
-    minHeight: 40,
+    minHeight: 48,
   },
   headRow: {
     borderTopWidth: 0,

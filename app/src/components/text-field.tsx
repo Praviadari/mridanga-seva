@@ -20,6 +20,11 @@ export type TextFieldProps = TextInputProps & {
   secret?: boolean;
   /** Lets a form move focus to this box, e.g. from email to password. */
   ref?: Ref<TextInput>;
+  /**
+   * The form cannot be sent without it. Screen readers say so (web aria-required; on the phone ", required"
+   * after the label); the screen looks the same (audit F5-13, docs/DECISIONS.md #332).
+   */
+  required?: boolean;
 };
 
 /**
@@ -33,7 +38,7 @@ export const DATE_KEYBOARD: KeyboardTypeOptions = Platform.OS === 'android' ? 'p
 export const SIGNED_NUMBER_KEYBOARD: KeyboardTypeOptions = Platform.OS === 'android' ? 'numeric' : 'numbers-and-punctuation';
 
 /** Labelled text input in the app's style. */
-export function TextField({ label, hint, error, secret, ref, style, ...inputProps }: TextFieldProps) {
+export function TextField({ label, hint, error, secret, ref, required, style, ...inputProps }: TextFieldProps) {
   const { colors } = useTheme();
   const { t } = useTranslation();
   const [revealed, setRevealed] = useState(false);
@@ -52,7 +57,8 @@ export function TextField({ label, hint, error, secret, ref, style, ...inputProp
         ]}>
         <TextInput
           ref={ref}
-          accessibilityLabel={label}
+          accessibilityLabel={required && Platform.OS !== 'web' ? `${label}, ${t('common.required')}` : label}
+          aria-required={required || undefined}
           accessibilityHint={note}
           aria-describedby={note ? noteId : undefined}
           aria-invalid={!!error}

@@ -31,9 +31,10 @@ export function ProfileButton() {
 
 const styles = StyleSheet.create({
   button: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    // 48 dp, Android's smallest comfortable touch target; hitSlop does nothing on the web (audit P2-08, #332).
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',

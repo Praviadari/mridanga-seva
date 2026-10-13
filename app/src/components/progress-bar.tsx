@@ -30,6 +30,8 @@ export function ProgressBar({ done, total, label, valueText, showComplete = true
   const complete = showComplete && total > 0 && done >= total;
   return (
     <View
+      // accessible: one stop that says what is measured and how far (audit P2-05, #332).
+      accessible
       role="progressbar"
       aria-label={label}
       aria-valuemin={0}

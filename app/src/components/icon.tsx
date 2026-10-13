@@ -12,6 +12,8 @@ import { useTheme } from '@/theme/use-theme';
 /** What each icon stands for in this app, and the Ionicons shape used for it. */
 const SHAPES = {
   home: 'home-outline',
+  /** The header's back button on the web (components/web-back-button.tsx). */
+  back: 'arrow-back',
   qr: 'qr-code-outline',
   news: 'megaphone-outline',
   attendance: 'scan-outline',

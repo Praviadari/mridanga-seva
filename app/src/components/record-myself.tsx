@@ -14,6 +14,7 @@ import { Platform, StyleSheet, View } from 'react-native';
 
 import { useAuth } from '@/auth/auth-provider';
 import { announce } from '@/lib/announce';
+import { confirmReady, confirmShown } from '@/lib/second-tap';
 import { fetchMyAssessments, OPEN_STATUSES, type MyAssessmentItem } from '@/data/assessments';
 import { formatDateTime, formatDate } from '@/lib/dates';
 import {
@@ -216,13 +217,15 @@ function RecordingRow({
         ) : null}
         {asking ? (
           <>
-            <Button icon="delete" label={t('recordMyself.deleteSure')} onPress={() => void onDelete()} />
+            {/* Where Delete was: a double tap must not delete unseen (P2-06, #332). */}
+            <Button icon="delete" label={t('recordMyself.deleteSure')} onPress={() => void (confirmReady() && onDelete())} />
             <Button variant="link" label={t('syllabusEditor.cancel')} onPress={() => setAsking(false)} />
           </>
         ) : (
           <Button variant="link" icon="delete" label={t('recordMyself.delete')}
             onPress={() => {
               setAsking(true);
+              confirmShown();
               // The question appears where the button was; TalkBack does not read it by itself (P2-01, #314).
               announce(t('recordMyself.deleteSure'));
             }}

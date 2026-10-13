@@ -28,11 +28,14 @@ export type BirthDateFieldProps = {
 
 const DAYS = Array.from({ length: 31 }, (_, i) => ({ value: i + 1, label: String(i + 1) }));
 
-/** The month names of the app's language, January first. */
-function monthOptions(): { value: number; label: string }[] {
+/**
+ * The month names of `language`, January first. Passed in, not read inside, so the list follows a language
+ * switch under the React Compiler (audit P1-04, docs/DECISIONS.md #334).
+ */
+function monthOptions(language: string): { value: number; label: string }[] {
   let format: Intl.DateTimeFormat | null = null;
   try {
-    format = new Intl.DateTimeFormat(intlLocale(), { month: 'long', timeZone: 'UTC' });
+    format = new Intl.DateTimeFormat(intlLocale(language), { month: 'long', timeZone: 'UTC' });
   } catch {
     format = null;
   }
@@ -44,7 +47,7 @@ function monthOptions(): { value: number; label: string }[] {
 
 /** Day, month and year drop-downs under one label. */
 export function BirthDateField({ label, value, onChange, error, hint, ref }: BirthDateFieldProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const years = birthYears().map((y) => ({ value: y, label: String(y) }));
   return (
     <View ref={ref} style={styles.wrapper} role="group" accessibilityLabel={label}>
@@ -52,7 +55,7 @@ export function BirthDateField({ label, value, onChange, error, hint, ref }: Bir
       <View style={styles.row}>
         <SelectField compact label={t('birthDate.day')} options={DAYS} value={value.day}
           onChange={(day) => onChange({ ...value, day })} placeholder="—" invalid={!!error} />
-        <SelectField compact label={t('birthDate.month')} options={monthOptions()} value={value.month}
+        <SelectField compact label={t('birthDate.month')} options={monthOptions(i18n.language)} value={value.month}
           onChange={(month) => onChange({ ...value, month })} placeholder="—" invalid={!!error} />
         <SelectField compact label={t('birthDate.year')} options={years} value={value.year} startAt={years[25]?.value}
           onChange={(year) => onChange({ ...value, year })} placeholder="—" invalid={!!error} />
