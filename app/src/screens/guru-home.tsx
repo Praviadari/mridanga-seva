@@ -6,7 +6,8 @@
 // staff/follow-ups-by-coordinator.tsx), the level-up queue on G7, the admin screens on Running the
 // class (staff/running-the-class.tsx). What waits for the Guru is a count on its circle: follow-ups
 // overdue or escalated, nominations to decide. Only notices stay on the home: "A new version is
-// ready" on the Android app, notifications off (#305), and could not load. Numbers: guru_dashboard() through src/data/home.ts.
+// ready" on the Android app, notifications off (#305), and could not load. Above the circles (#339, #340): the Today line,
+// Scan at the door and Waiting for you (components/staff-today.tsx). Numbers: staff_dashboard() through src/data/home.ts.
 // It loads again each time it comes back into view.
 
 import { router, useFocusEffect } from 'expo-router';
@@ -25,11 +26,11 @@ import { PromotionHomeCard } from '@/components/promotion-parts';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { StaffModules } from '@/components/staff-shortcuts';
+import { StaffToday } from '@/components/staff-today';
 import { StatGrid, StatTile } from '@/components/stat-tile';
 import { PushNotice } from '@/components/push-notice';
 import { UpdateNotice } from '@/components/update-notice';
-import { fetchGuruDashboard, type GuruDashboard } from '@/data/home';
-import { fetchPromotionHome } from '@/data/promotion';
+import { fetchStaffDashboard, type GuruDashboard, type StaffDashboard } from '@/data/home';
 import { levelName, statusName } from '@/i18n/labels';
 import { formatDate } from '@/lib/dates';
 
@@ -44,13 +45,10 @@ export function GuruHome() {
   const { profile } = useAuth();
   const name = profile?.full_name.trim();
   // undefined = loading, null = could not load.
-  const [board, setBoard] = useState<GuruDashboard | null | undefined>(undefined);
-  const [toDecide, setToDecide] = useState(0);
+  const [board, setBoard] = useState<StaffDashboard | null | undefined>(undefined);
 
   const load = useCallback(async () => {
-    const [loaded, promotions] = await Promise.all([fetchGuruDashboard(), fetchPromotionHome()]);
-    setBoard(loaded);
-    setToDecide(promotions ? promotions.toDecide : 0);
+    setBoard(await fetchStaffDashboard(true));
   }, []);
 
   useFocusEffect(
@@ -71,7 +69,8 @@ export function GuruHome() {
           <Button variant="secondary" icon="refresh" label={t('common.tryAgain')} onPress={() => void load()} />
         </>
       ) : null}
-      <StaffModules guru callsDue={board ? followUpsNeedingAttention(board) : 0} promotionsWaiting={toDecide} />
+      {board === null ? null : <StaffToday guru board={board} />}
+      <StaffModules guru callsDue={board ? board.callsDue : 0} promotionsWaiting={board ? board.promotions : 0} />
     </Screen>
   );
 }

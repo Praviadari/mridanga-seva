@@ -13,6 +13,8 @@ import {
   type AnnouncementFormErrors,
 } from '@/data/announcements';
 import { LEVEL_IDS, levelName } from '@/i18n/labels';
+import { localTime, todayLocal } from '@/lib/dates';
+import { announcementTimes } from '@/lib/quick-times';
 
 import { AppText } from './app-text';
 import { AttachmentPicker } from './attachment-picker';
@@ -20,6 +22,7 @@ import { Button } from './button';
 import { Checkbox } from './checkbox';
 import { ChoiceGroup } from './choice-group';
 import type { IconName } from './icon';
+import { QuickTimes } from './quick-times';
 import { Section } from './section';
 import { DATE_KEYBOARD, TextField } from './text-field';
 
@@ -155,6 +158,11 @@ export function AnnouncementFields({
           {form.when === 'later' ? (
             <>
               <AppText tone="muted">{t('announcements.compose.laterHelp')}</AppText>
+              {/* One tap fills the date and time (#343). */}
+              <QuickTimes
+                choices={announcementTimes(todayLocal(), localTime(new Date().toISOString()))}
+                onPick={(choice) => onChange({ date: choice.date, time: choice.time ?? form.time })}
+              />
               <TextField
                 label={t('announcements.compose.date')}
                 hint={t('announcements.compose.dateHint')}

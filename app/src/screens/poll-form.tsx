@@ -20,6 +20,7 @@ import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
+import { QuickTimes } from '@/components/quick-times';
 import { DATE_KEYBOARD, TextField } from '@/components/text-field';
 import { AUDIENCES, fetchComposeOptions, type ComposeOptions } from '@/data/announcements';
 import {
@@ -39,6 +40,7 @@ import {
   type ResultsWhen,
 } from '@/data/polls';
 import { formatTypedDate, todayLocal } from '@/lib/dates';
+import { pollCloseTimes } from '@/lib/quick-times';
 
 type Loaded = { options: ComposeOptions; original: { poll: Poll; voted: boolean } | null };
 
@@ -177,6 +179,7 @@ export function PollFormScreen({ pollId }: { pollId?: number }) {
         ) : null}
       </Section>
       <Section icon="time" title={t('polls.form.closes')}>
+        <QuickTimes choices={pollCloseTimes(todayLocal())} onPick={(choice) => update({ date: choice.date, time: choice.time ?? form.time })} />
         <TextField
           label={t('events.form.date')}
           hint={t('announcements.compose.dateHint')}

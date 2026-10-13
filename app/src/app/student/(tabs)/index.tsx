@@ -13,6 +13,8 @@
 // Numbers: student_home() through src/data/home.ts; announcements: src/data/announcements.ts.
 // It loads again each time it comes back into view, so a count goes once the thing is done. It also
 // saves the My QR card on the phone once per run of the app (data/my-student.ts keepMyCardSaved).
+// A login that has just become a student sees a welcome card once on this phone in place of the circles (roll
+// number, what My QR is for; components/welcome-card.tsx, lib/welcome.ts, #342); About you waits until the next start.
 
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
@@ -29,13 +31,16 @@ import { ProgressBar } from '@/components/progress-bar';
 import { Screen } from '@/components/screen';
 import { PushNotice } from '@/components/push-notice';
 import { UpdateNotice } from '@/components/update-notice';
+import { WelcomeCard } from '@/components/welcome-card';
 import { fetchMyLatestAnnouncements, type MyLatestAnnouncements } from '@/data/announcements';
 import { fetchStudentHome, type StudentHome } from '@/data/home';
 import { keepMyCardSaved } from '@/data/my-student';
 import { fetchPollsToVote } from '@/data/polls';
 import { levelName } from '@/i18n/labels';
 import { useAboutPrompt } from '@/lib/about-prompt';
+import { todayLocal } from '@/lib/dates';
 import { useLatestLoad } from '@/lib/latest-load';
+import { markWelcomeSeen, welcomeDue, welcomeSeen } from '@/lib/welcome';
 
 /** Student home screen. */
 export default function StudentHomeScreen() {
@@ -46,9 +51,16 @@ export default function StudentHomeScreen() {
   const [home, setHome] = useState<StudentHome | 'not_found' | null | undefined>(undefined);
   const [news, setNews] = useState<MyLatestAnnouncements | null | undefined>(undefined);
   const [pollsToVote, setPollsToVote] = useState(0);
+  // The welcome, once per login on this phone, for a student who joined lately (#342).
+  const [welcomeClosed, setWelcomeClosed] = useState(false);
+  const welcome =
+    !welcomeClosed && !!myId && !!home && home !== 'not_found' && welcomeDue(welcomeSeen(myId), home.joinedOn, todayLocal());
+  // Once the welcome showed, About you does not push itself over it (or over My QR) in this run of the app.
+  const [hadWelcome, setHadWelcome] = useState(false);
+  if (welcome && !hadWelcome) setHadWelcome(true);
   // About you (step 2 of joining, docs/DECISIONS.md #164): opens by itself once after the first
   // sign-in; while unfinished it is a circle with a mark.
-  const aboutOpen = useAboutPrompt(profile?.id, '/student/about-you');
+  const aboutOpen = useAboutPrompt(profile?.id, '/student/about-you', home !== undefined && !welcome && !hadWelcome);
   const beginLoad = useLatestLoad();
   // The name on the student record, which staff keep correct, once loaded; until then the name
   // typed at sign-up (FS2-10).
@@ -144,12 +156,31 @@ export default function StudentHomeScreen() {
         </Notice>
       ) : null}
 
-      {/* Shown while loading too: every circle opens its screen, which loads on its own. */}
-      <ModuleRing modules={modules} />
+      {welcome ? (
+        <WelcomeCard
+          name={home.fullName.trim().split(/\s+/)[0] ?? ''}
+          rollNo={home.rollNo}
+          levelId={home.levelId}
+          onShowQr={() => {
+            markWelcomeSeen(myId);
+            setWelcomeClosed(true);
+            router.push('/student/my-qr');
+          }}
+          onClose={() => {
+            markWelcomeSeen(myId);
+            setWelcomeClosed(true);
+          }}
+        />
+      ) : (
+        <>
+          {/* Shown while loading too: every circle opens its screen, which loads on its own. */}
+          <ModuleRing modules={modules} />
 
-      {/* Under the ring (#242): my level at a glance (opens S4), and today's fact about the mṛdaṅga. */}
-      {home && home !== 'not_found' ? <LevelStrip home={home} /> : null}
-      <FactCard />
+          {/* Under the ring (#242): my level at a glance (opens S4), and today's fact about the mṛdaṅga. */}
+          {home && home !== 'not_found' ? <LevelStrip home={home} /> : null}
+          <FactCard />
+        </>
+      )}
     </Screen>
   );
 }
