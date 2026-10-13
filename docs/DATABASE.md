@@ -201,7 +201,7 @@ visits from the app, all in database functions so that the rules sit in one plac
 
 | Action in the app | Function | What happens |
 |---|---|---|
-| Coordinator scans a student's QR code (C5), door tablet later | `scan_qr` → `toggle_visit` | Toggles: check in if the student is out, check out if in. A scan within 30 seconds of the check-in answers `already_in` (0030: a second phone scanning a moment later does not end the visit) |
+| Coordinator scans a student's QR code (C5), door tablet later | `scan_qr` → `toggle_visit` | Toggles: check in if the student is out, check out if in. A scan within `qr_rescan_minutes` (10, since 0048; 30 seconds before) of the check-in answers `already_in` (a retry after a lost answer or a second phone does not end the visit) |
 | Coordinator taps *Check in* or *Check out* next to a name (C5, C6) | `mark_visit(student, 'in' / 'out')` | Does what the button says. If the student is already in that state, nothing changes and it returns `already_in` / `already_out` |
 | Coordinator taps *Check out all* (C6) | `check_out_all()` | Closes every open visit: today's end now, a visit left open from an earlier day ends at that day's closing time |
 
@@ -931,7 +931,7 @@ Screens C16, C17, S11, S12 (SCREENS.md). Who an event or poll is for uses the an
 (`all`, `level`, `mentees` of the author, `staff`, `group`), worked out by
 `audience_profiles(audience, level, group, author)` (active logins; unlike announcements the author
 counts when they fit) and `audience_students(...)` (student records not Left, logins or not; none for
-`staff`). Staff see every event and poll; a student those for them (and events they perform at).
+`staff`). Staff see every event and poll; a student those for them (and events they perform at). Since 0048 `audience_profiles` is internal; the rules ask `in_audience` / `event_visible_to` about the caller only (#288).
 
 | Table | One row per | Written by |
 |---|---|---|
@@ -1090,7 +1090,7 @@ the Storage paths (photo, recordings and voice notes) that must be deleted by ha
   Left keeps everything until the login is switched off (Praveen, 6 Oct 2026).
 - **Materials** (policy `visible`): staff, or a student with a record, for approved materials up to
   their level. Waiting logins and the door tablet read none, and so open no material file.
-- **Profiles:** see "Own name and phone". `staff_name_taken(id, name)` answers the name check (security
+- **Profiles:** see "Own name and phone". `staff_name_taken(id, name)` answers the name check (since 0048 only for the caller's own id or the Guru, #288; security
   definer, yes or no only).
 - **Posted files:** `announcement_file_uploadable`, `material_file_uploadable` and
   `ig_audio_uploadable` refuse a name that an announcement, a material or a sloka lists, so a file
@@ -1500,6 +1500,43 @@ match on gives `[]`.
 
 Tests: section "0047 form rules in SQL" in `supabase/tests/smoke-test.mjs`.
 
+## Withdrawn records and leaks (0048)
+
+[DECISIONS.md #281, #288-#290](DECISIONS.md). Migration `0048_withdrawn_and_leaks.sql`.
+
+**A withdrawn record stays frozen (#281).** A record whose consent was withdrawn (`withdraw_consent`) is
+never linked to a login again: `link_login_to_student` and `link_student_email` skip it (like a minor's),
+`link_student_login` (G2) and `accept_sign_up` refuse with `student_withdrawn` (Accept: when any
+withdrawn record has the sign-up's email). Its login stays switched off: switching it on (G2 or the
+dashboard) is refused, `student_withdrawn` (trigger `profiles_withdrawn_stay_off`, function
+`guard_withdrawn_login`); the parent consenting again clears `withdrawn_at` first (OPERATIONS.md). The
+trigger function `refuse_withdrawn` (0025) now also guards, before insert: `practice_logs`,
+`push_tokens` (insert or a token moved to the login; the login's record), `promotion_nominations`,
+`promotion_feedback` (insert or update; the nomination's student), `level_history` (so "promote" is
+refused, "not yet" and "more" still work) and `inventory_loans` — all `student_withdrawn`; and it leaves
+the withdrawn student out of lists written at once without an error: `assessment_assignments`,
+`event_attendance`, `event_performers` (as `follow_up_tasks`). The migration switched off any login
+already on a withdrawn record and deleted its push tokens.
+
+**Who is in an audience (#288).** `audience_profiles(...)` is internal now (the owner's functions and
+pg_cron). The polls rule asks `in_audience(audience, level, group, author)`: true when the signed-in
+person is in that audience. `event_visible_to(event, profile)` answers about another login only for
+staff (or with nobody signed in); the events rule and `rsvp_event` ask about the caller.
+`staff_name_taken(id, name)` answers only for the caller's own id (and with nobody signed in: the
+sign-up) or for the Guru; others get `false`.
+
+**QR re-scan (#289).** `toggle_visit`: a QR scan within `qr_rescan_minutes` (setting, default 10, 1-60,
+SQL editor only) of the open visit's check-in answers `already_in` and changes nothing (no check-out, no
+parent "left" email). 30 seconds after a check-out still answers `already_out`. `guard_setting` knows the
+new key.
+
+**The notice stays (#290).** When a login is linked to a record that already has an About-you row,
+the merge keeps the record's `notice_version` / `notice_accepted_at`, else the sign-up's.
+`record_desk_notice(student, version)` (staff; set once; errors `not_allowed`, `notice_version_invalid`,
+`student_not_found`, `student_withdrawn`) keeps the notice the desk showed an adult; `register_student`
+calls it when `p_notice_version` is given for an adult (a minor's goes on the consent, as before).
+
+Tests: section "0048 withdrawn records and leaks" in `supabase/tests/smoke-test.mjs`.
 ## Linking a login to a student
 
 A student record can exist without a login (many students never install the app). When a person
@@ -1523,7 +1560,7 @@ Linking before confirmation would let anyone claim a record by typing its email
 
 **Since 0047** ([DECISIONS.md #276](DECISIONS.md)) neither automatic path links a record of someone under
 18: a login with a child's record email stays `pending` until the Guru links it (`link_student_login`).
-See "Form rules (0047)".
+See "Form rules (0047)". **Since 0048** ([#281](DECISIONS.md)) no path links a withdrawn record, the Guru's included (`student_withdrawn`); see "Withdrawn records and leaks (0048)".
 
 Roles other than `student` are given by the Guru in the app (G2, see "Coordinators and roles"), or for the very first Guru, in the
 Supabase dashboard (OPERATIONS.md). The Guru can also link a pending login to a student record
@@ -1603,7 +1640,7 @@ The Storage rules `announcement_file_readable`, `announcement_file_uploadable`,
 `announcement_file_deletable` and `announcement_file_path_ok` are run by row-level security as
 the person asking, so signed-in people may execute them; each answers only yes or no about that
 person's own access. The same holds for `material_file_readable`, `material_file_uploadable`,
-`material_file_deletable` and `youtube_link_ok` (0013), `video_link_ok` (0020), and `ig_audio_readable`, `ig_audio_uploadable` and `ig_audio_path_ok` (0021), and `audience_profiles`, `clean_audience`, `event_visible_to` and `poll_is_closed` (0022).
+`material_file_deletable` and `youtube_link_ok` (0013), `video_link_ok` (0020), and `ig_audio_readable`, `ig_audio_uploadable` and `ig_audio_path_ok` (0021), and `clean_audience`, `event_visible_to` and `poll_is_closed` (0022), and `in_audience` (0048; `audience_profiles` is internal since 0048).
 
 Internal functions (not called by the app, and not allowed to): `refresh_student_statuses`,
 `close_open_visits`, `send_due_push`, `call_notify_function`, `handle_new_user`, `handle_user_confirmed`,

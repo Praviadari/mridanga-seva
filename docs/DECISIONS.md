@@ -4617,3 +4617,88 @@ app) cannot be accepted with one tap. Open: an adult registered at the desk by F
 notice version stored (`register_student` records one only on a minor's consent); and if the student
 record already has a details row when the login is linked, 0036's merge keeps the record's row and the
 sign-up's notice is not copied (rare: a record that got About-you answers at the desk before the link).
+
+## 281. A withdrawn record is never linked again, and nothing new is recorded about the student — 13 Oct 2026
+
+**Context.** Audit phase 3 S2-02 (High): after a parent withdrew consent (`withdraw_consent`, #76), the
+record was frozen only against app users' direct writes; the linking functions run as the owner, so the
+child's own later sign-up (or the Guru's G2 link, or Accept) attached a new, switched-on login to the
+frozen record, and practice logs, phones for pushes and promotion started again. `refuse_withdrawn` (0025)
+was on visits, calls, call tasks and syllabus ticks only.
+
+**Decision (0048).** The automatic link paths skip a withdrawn record (like a minor's, #276);
+`link_student_login` and `accept_sign_up` refuse with `student_withdrawn` (Accept: any withdrawn record
+with the sign-up's email, so no second, unfrozen record of the same person is made). A login on a
+withdrawn record cannot be switched on (`guard_withdrawn_login`, for everyone, the dashboard too). One
+error code for every refusal: **`student_withdrawn`**, the code 0025 already used (the app shows it on
+attendance, calls, About you and QR cards). `refuse_withdrawn` now also guards `practice_logs`,
+`push_tokens` (through the login's record), `promotion_nominations`, `promotion_feedback`, `level_history`
+(so the Guru's "promote" is refused; "not yet" and "more feedback" still close or keep a nomination) and
+`inventory_loans`; where a whole list is written at once (`assessment_assignments`, `event_attendance`,
+`event_performers`, like the daily job's call tasks) the withdrawn student is left out without an
+error, so the rest of the list is saved. The migration switches off any login already on a withdrawn
+record and forgets its phones.
+
+**Why.** DPDP s.6: processing stops when consent is withdrawn. A second record for the same person
+would undo the freeze as surely as a link.
+
+**Consequences.** The parent consenting again stays the documented SQL-editor step (OPERATIONS
+"Withdrawal of consent": clear `withdrawn_at`, new consent, then switch the login on in G2 — in that
+order, or the switch is refused). The desk can still register the person as a new record with a new
+consent; `possible_duplicates` shows the old one as withdrawn. G2's link, promotion, instrument loans
+and Accept show the app's generic error for `student_withdrawn` until an app message is added (JS).
+Votes, RSVPs and assessment submissions are covered by the login staying off (`my_role()` is null).
+
+## 288. Audience and staff-name checks answer for the person asking only — 13 Oct 2026
+
+**Context.** Audit phase 3 S1-01 (Medium): `audience_profiles` gave any signed-in login (waiting,
+Ishtagoshti subscriber, kiosk, switched off) every active student's and staff member's login id, per
+level and per mentor, and `event_visible_to(event, any login)` said whether someone was in an event's
+audience. S1-02 (Low): `staff_name_taken(id, name)` told anyone whether a name is the Guru's or a
+coordinator's, and with an id which login carries it.
+
+**Decision (0048).** `audience_profiles` is no longer executable by app users (only the owner's
+functions and pg_cron use it). The polls rule asks `in_audience(...)`, which tests the caller only.
+`event_visible_to` answers about another login only for staff (and with nobody signed in).
+`staff_name_taken` answers for the caller's own id (the sign-up runs with nobody signed in; a name
+change passes the caller's id) and for the Guru, who names coordinators; anyone else gets false.
+
+**Why.** The rules need "is this person in the audience", never the list. The name clash must stay a
+rule of the sign-up and of a name change, so a login can still learn that one name is taken by trying
+it for itself — that much the rule itself tells, but no list and no id-to-name mapping.
+
+**Consequences.** No app change: the app calls none of these directly.
+
+## 289. A QR re-scan within 10 minutes of the check-in does not check out — 13 Oct 2026
+
+**Context.** Audit phase 2 R2-05/R5-12: the app gives up on an answer after 15 seconds; a coordinator
+who scanned the same student again more than 30 seconds after a lost answer checked the student out,
+and with parent emails on the parent got a "left" email.
+
+**Decision (0048).** A QR scan within `qr_rescan_minutes` (setting, default **10**, 1-60) of the open
+visit's check-in answers `already_in` and changes nothing; the open visit is today's (an earlier day's
+is closed first) at the student's centre. The 30 seconds after a check-out (`already_out`, 0038) and
+the coordinator's tap on Mark attendance (manual, always checks out) are unchanged. The setting is
+changed in the SQL editor (G10 does not show it; old builds keep working).
+
+**Why.** Ten minutes covers a retry, a second phone and a queue at the door; a real visit is longer.
+
+**Consequences.** A student who really leaves within 10 minutes is checked out by a tap on Mark
+attendance, or by the centre's closing time (the night email is off, #246).
+
+## 290. The privacy notice stays on the record: the merge, and Fill the form for an adult — 13 Oct 2026
+
+**Context.** #280's two open points: when a login is linked to a record that already has About-you
+answers, 0036's merge dropped the notice the person ticked at sign-up; and an adult registered by Fill
+the form had no notice stored.
+
+**Decision (0048).** The merge keeps the record's own notice when it has one, else the sign-up's (with
+its time). `register_student` keeps `p_notice_version` for an adult on the record's About-you row, through
+the new staff function `record_desk_notice(student, version)` (set once: a notice already there stays;
+`notice_version_invalid`, `student_withdrawn`). A minor's stays on the parent's consent.
+
+**Why.** The tick is the person's own record of the notice they were shown; it should follow them.
+
+**Consequences.** The app sends `p_notice_version` today only for a minor
+(app/src/data/students.ts); sending it for adults too is a one-line JS change for the app chip. A
+sign-up whose email the desk typed differently is not linked, so its notice stays with the login.

@@ -126,7 +126,7 @@ process.on('uncaughtException', (error) => {
 // D14-10: every check is counted, and the run fails when fewer (or more) checks ran than expected,
 // so a block skipped by a renamed migration or a commented-out section cannot pass unseen.
 // Adding or removing checks? Run the suite and set this to the new total it prints.
-const EXPECTED_CHECKS = 1599; // 0047 form rules: +109; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
+const EXPECTED_CHECKS = 1649; // 0048 withdrawn records and leaks: +50; 0047 form rules: +109; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
 let failures = 0;
 let passes = 0;
 
@@ -369,7 +369,8 @@ const [rescan] = await asApp('authenticated', coordinator, `select scan_qr($1) a
 check('D5-11: a QR scan within 30 seconds of the check-in answers already_in', rescan.r.action === 'already_in', rescan.r.action);
 const [{ n: stillIn }] = await asOwner(`select count(*)::int as n from visits where student_id = '${registered.id}' and check_out is null`);
 check('... and the visit stays open', stillIn === 1);
-await asOwner(`update visits set check_in = check_in - interval '1 minute' where student_id = '${registered.id}' and check_out is null`);
+// 0048 (#289): the re-scan window is now qr_rescan_minutes (10) after the check-in.
+await asOwner(`update visits set check_in = check_in - interval '11 minutes' where student_id = '${registered.id}' and check_out is null`);
 const [scanned] = await asApp('authenticated', coordinator, `select scan_qr($1) as r`, [qrToken]);
 check('scanning the QR of a student who is in checks them out', scanned.r.action === 'out');
 const [unknown] = await asApp('authenticated', coordinator,
@@ -2820,7 +2821,7 @@ await refusesWith('a login without a profile cannot run toggle_visit', 'not_allo
 const kiosk = await signUp('door.tablet@example.com', true);
 await asOwner(`update profiles set role = 'kiosk' where id = '${kiosk}'`);
 const [kioskIn] = await asApp('authenticated', kiosk, 'select scan_qr($1) as r', [secQr]);
-await asOwner(`update visits set check_in = check_in - interval '1 minute' where student_id = '${secAdult.id}' and check_out is null`);
+await asOwner(`update visits set check_in = check_in - interval '11 minutes' where student_id = '${secAdult.id}' and check_out is null`);
 const [kioskOut] = await asApp('authenticated', kiosk, 'select scan_qr($1) as r', [secQr]);
 check('the door tablet (kiosk) checks a student in and out by QR', kioskIn.r.action === 'in' && kioskOut.r.action === 'out');
 await refusesWith('... but cannot mark by name', 'not_allowed', () => asApp('authenticated', kiosk, `select mark_visit($1, 'in')`, [secAdult.id]));
@@ -4096,7 +4097,7 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
     'announcement_file_deletable(text)', 'announcement_file_path_ok(text)', 'announcement_file_readable(text)',
     'announcement_file_uploadable(text)', 'assessment_clean_file(jsonb,text[],boolean)', 'assessment_clean_link(text)',
     'assessment_file_deletable(text)', 'assessment_file_kind(text)', 'assessment_file_readable(text)',
-    'assessment_file_uploadable(text)', 'audience_profiles(text,smallint,bigint,uuid)',
+    'assessment_file_uploadable(text)',
     'check_inventory_item(bigint,text,text)', 'check_out_all(smallint)', 'class_report(date,date,uuid)',
     'clean_audience(text,smallint,bigint)', 'coordinator_dashboard()', 'decide_fund_entry(bigint,boolean,text)',
     'decide_material_suggestion(bigint,boolean,text)', 'decide_promotion(bigint,text,text,date)',
@@ -4149,6 +4150,8 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
     'accept_sign_up(uuid)',
     // 0047: the name rule (runs as the person saving), the desk's default centre, duplicates (staff only inside)
     'clean_person_name(text,integer)', 'person_name_symbols()', 'default_home_centre()', 'possible_duplicates(text,date,text)',
+    // 0048: the caller's own audience (polls rule, #288; audience_profiles closed); the desk's notice for an adult (#290)
+    'in_audience(text,smallint,bigint,uuid)', 'record_desk_notice(uuid,text)',
   ];
   const runnableBy = async (role) => (await asOwner(`select p.oid::regprocedure::text as f from pg_proc p
     where p.pronamespace = 'public'::regnamespace
@@ -4693,8 +4696,8 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   const scan38 = async () => (await asApp('authenticated', coordinator, 'select scan_qr($1) as r', [s38.qr_token]))[0].r.action;
   const visits38 = async () => (await asOwner(`select count(*)::int as n, count(*) filter (where check_out is null)::int as open from visits where student_id = '${s38.id}'`))[0];
   check('D6-09: (control) a first scan checks in', (await scan38()) === 'in');
-  await asOwner(`update visits set check_in = check_in - interval '1 minute' where student_id = '${s38.id}'`);
-  check('D6-09: (control) a scan a minute later checks out', (await scan38()) === 'out');
+  await asOwner(`update visits set check_in = check_in - interval '11 minutes' where student_id = '${s38.id}'`);
+  check('D6-09: (control) a scan 11 minutes later checks out (0048: 10-minute re-scan window)', (await scan38()) === 'out');
   const retried = await scan38();
   const after = await visits38();
   check('D6-09: the same scan again within 30 seconds (a retry, a second phone) answers already_out', retried === 'already_out', retried);
@@ -4911,6 +4914,8 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
 
 // ---------------------------------------------------------------- 0043 parent notices (DECISIONS #224-#231)
 {
+  // Its scans step back a minute between check-in and check-out: 0048's re-scan window set to 1 minute here.
+  await asOwner(`update settings set value = '1' where key = 'qr_rescan_minutes'`);
   const reg43 = async (name, years, guardianEmail) => (await asApp('authenticated', coordinator, `select register_student(p_full_name => $1,
     p_dob => (current_date - ($2 || ' years')::interval)::date, p_guardian_name => 'Parent Fortythree', p_guardian_phone => '9876543210',
     p_guardian_email => $3, p_guardian_relation => 'mother', p_id_type_checked => 'school_id', p_written_consent => true) as r`,
@@ -5098,6 +5103,7 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   check('0043: the every-minute job is scheduled', job43?.schedule === '* * * * *' && job43.command === 'select send_parent_notices()');
   await asOwner(`delete from students where id in ('${kid43.id}', '${adult43}', '${sib43.id}')`);
   check('0043: deleting a student deletes their notices', (await asOwner(`select count(*)::int as n from parent_notices where guardian_id = '${g43}'`))[0].n === 0);
+  await asOwner(`update settings set value = '10' where key = 'qr_rescan_minutes'`);
 }
 
 // ---------------------------------------------------------------- 0044 check-out emails only (DECISIONS #246-#247)
@@ -5182,7 +5188,7 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   const [{ qr_token: new45 }] = await asOwner(`select qr_token from students where id = '${card.id}'`);
   check('0045: the Guru reissues: the student has a new code', new45 !== card.qr_token);
   check('0045: the old (lost) card is refused as unknown', (await scan45(card.qr_token)).action === 'unknown');
-  await asOwner(`update visits set check_in = check_in - interval '1 minute' where student_id = '${card.id}'`);
+  await asOwner(`update visits set check_in = check_in - interval '11 minutes' where student_id = '${card.id}'`);
   check('0045: the new card works (checks the student out again)', (await scan45(new45)).action === 'out');
   const audit45 = await asOwner(`select changed_by from audit_log where table_name = 'students' and row_id = '${card.id}' and action = 'UPDATE'
     and old_row->>'qr_token' is distinct from new_row->>'qr_token'`);
@@ -5569,6 +5575,178 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   let again = '';
   try { await db.exec(readFileSync(new URL('migrations/0047_form_rules.sql', supabaseDir), 'utf8')); } catch (e) { again = String(e.message); }
   check('0047 can run a second time', again === '', again);
+}
+
+// ---------------------------------------------------------------- 0048 withdrawn records and leaks (DECISIONS #281, #288-#290)
+{
+  // The checks above ran 0046 and 0047 again, which put their link functions and Accept back: 0048 again.
+  const file48 = readFileSync(new URL('migrations/0048_withdrawn_and_leaks.sql', supabaseDir), 'utf8');
+  await db.exec(file48);
+  const adultDob48 = `${year - 30}-04-04`;
+  const signUp48 = async (email, meta) => (await db.query(
+    `insert into auth.users (email, email_confirmed_at, raw_user_meta_data) values ($1, now(), $2) returning id`,
+    [email, JSON.stringify({ notice_version: 'v1', dob: adultDob48, centre_id: 1, ...meta })])).rows[0].id;
+  const loginOf48 = async (id) => (await asOwner(`select profile_id from students where id = '${id}'`))[0].profile_id;
+  const withdraw48 = (id) => asApp('authenticated', guru, `select withdraw_consent($1, 'parent, by phone') as r`, [id]);
+
+  // S2-02 (#281): a withdrawn record with an email and no login yet.
+  const gone = await register(coordinator, { p_full_name: 'Withdrawn Fortyeight', p_dob: adultDob48, p_email: 'withdrawn.48@example.com' });
+  await withdraw48(gone.id);
+  const late48 = await signUp48('withdrawn.48@example.com', { full_name: 'Withdrawn Fortyeight' });
+  check('0048 S2-02: a sign-up confirming the email of a withdrawn record is not linked to it',
+    (await loginOf48(gone.id)) === null && (await roleOf(late48)) === 'pending');
+  await asOwner(`update students set email = null where id = '${gone.id}'`);
+  await asOwner(`update students set email = 'withdrawn.48@example.com' where id = '${gone.id}'`);
+  check('0048 S2-02: ... nor when the email is saved on the record again (the dashboard)', (await loginOf48(gone.id)) === null);
+  await refusesWith('0048 S2-02: the Guru\'s link_student_login refuses a withdrawn record', 'student_withdrawn', () =>
+    asApp('authenticated', guru, 'select link_student_login($1, $2)', [late48, gone.id]));
+  const before48 = (await asOwner(`select count(*)::int as n from students where lower(email) = 'withdrawn.48@example.com'`))[0].n;
+  await refusesWith('0048 S2-02: Accept refuses a sign-up whose email is on a withdrawn record', 'student_withdrawn', () =>
+    asApp('authenticated', coordinator, 'select accept_sign_up($1) as r', [late48]));
+  check('0048 S2-02: ... and makes no second record of the person',
+    (await asOwner(`select count(*)::int as n from students where lower(email) = 'withdrawn.48@example.com'`))[0].n === before48);
+  const fresh48 = await register(coordinator, { p_full_name: 'Linked Fortyeight', p_dob: adultDob48 });
+  await asApp('authenticated', guru, 'select link_student_login($1, $2)', [late48, fresh48.id]);
+  check('0048 S2-02: (control) the Guru links the same login to a record that is not withdrawn', (await loginOf48(fresh48.id)) === late48);
+
+  // A student with a login, an open nomination (two answers) and a phone, then withdrawn.
+  const kept48 = await signUp48('kept.48@example.com', { full_name: 'Kept Fortyeight' });
+  const rec48 = await register(coordinator, { p_full_name: 'Kept Fortyeight', p_dob: adultDob48, p_email: 'kept.48@example.com' });
+  check('0048: (control) an adult record links by email', (await loginOf48(rec48.id)) === kept48);
+  await asApp('authenticated', kept48, `select log_practice(20, 'manual')`);
+  check('0048: (control) the student logs practice', (await asOwner(`select count(*)::int as n from practice_logs where student_id = '${rec48.id}'`))[0].n === 1);
+  await asApp('authenticated', kept48, `select register_push_token('ExponentPushToken[kept48AbCdEfGh]', 'android')`);
+  const [{ nom }] = await asApp('authenticated', coordinator, `select nominate_for_promotion($1, 'Plays the level well') as nom`, [rec48.id]);
+  await asApp('authenticated', coordinator2, `select give_promotion_feedback($1, 'ready', 'Agreed')`, [nom]);
+  await withdraw48(rec48.id);
+  check('0048: (control) withdrawing switches the login off and forgets its phones', (await asOwner(`select active from profiles where id = '${kept48}'`))[0].active === false
+    && (await asOwner(`select count(*)::int as n from push_tokens where profile_id = '${kept48}'`))[0].n === 0);
+  await refusesWith('0048 S2-02: the login of a withdrawn record cannot be switched on again (G2)', 'student_withdrawn', () =>
+    asApp('authenticated', guru, 'update profiles set active = true where id = $1', [kept48]));
+  await refusesWith('0048 S2-02: ... nor in the dashboard', 'student_withdrawn', () =>
+    asOwner(`update profiles set active = true where id = '${kept48}'`));
+  await refusesWith('0048 S2-02: its switched-off login logs no practice', 'not_allowed', () =>
+    asApp('authenticated', kept48, `select log_practice(20, 'manual')`));
+  await refusesWith('0048 S2-02: practice is refused for a withdrawn record whatever the path', 'student_withdrawn', () =>
+    asOwner(`insert into practice_logs (student_id, practised_on, minutes, source) values ('${rec48.id}', current_date, 20, 'manual')`));
+  await refusesWith('0048 S2-02: its switched-off login stores no phone', 'not_allowed', () =>
+    asApp('authenticated', kept48, `select register_push_token('ExponentPushToken[kept48AbCdEfGh]', 'android')`));
+  await refusesWith('0048 S2-02: a phone is refused for a withdrawn record\'s login whatever the path', 'student_withdrawn', () =>
+    asOwner(`insert into push_tokens (token, profile_id, platform) values ('ExponentPushToken[kept48Other]', '${kept48}', 'android')`));
+  await refusesWith('0048 S2-02: a coordinator cannot nominate a withdrawn student', 'student_withdrawn', () =>
+    asApp('authenticated', coordinator2, `select nominate_for_promotion($1, 'Again')`, [gone.id]));
+  await refusesWith('0048 S2-02: ... nor answer an open nomination about them', 'student_withdrawn', () =>
+    asApp('authenticated', coordinator2, `select give_promotion_feedback($1, 'almost', 'Changed my mind')`, [nom]));
+  await refusesWith('0048 S2-02: the Guru cannot promote a withdrawn student', 'student_withdrawn', () =>
+    asApp('authenticated', guru, `select decide_promotion($1, 'promote')`, [nom]));
+  check('0048 S2-02: ... the level stays', (await asOwner(`select level_id from students where id = '${rec48.id}'`))[0].level_id === 1);
+  await asApp('authenticated', guru, `select decide_promotion($1, 'not_yet', 'Consent withdrawn', current_date + 30)`, [nom]);
+  check('0048 S2-02: (control) the Guru can still close the nomination with "not yet"',
+    (await asOwner(`select status from promotion_nominations where id = ${nom}`))[0].status !== 'open');
+  const trig48 = (await asOwner(`select string_agg(c.relname, ',' order by c.relname) as t from pg_trigger t join pg_class c on c.oid = t.tgrelid
+    where t.tgname like '%refuse_withdrawn' and not t.tgisinternal`))[0].t;
+  check('0048 S2-02: refuse_withdrawn guards practice, phones, promotion, loans, events and assessments too',
+    ['assessment_assignments', 'event_attendance', 'event_performers', 'inventory_loans', 'level_history', 'practice_logs',
+      'promotion_feedback', 'promotion_nominations', 'push_tokens'].every((t) => trig48.split(',').includes(t)), trig48);
+  await asOwner(`update students set withdrawn_at = null, withdrawn_note = null where id = '${rec48.id}'`);
+  await asApp('authenticated', guru, 'update profiles set active = true where id = $1', [kept48]);
+  check('0048 S2-02: (control) after the parent consents again (docs/OPERATIONS.md) the login is switched on', (await asOwner(`select active from profiles where id = '${kept48}'`))[0].active === true);
+
+  // S1-01, S1-02 (#288): a waiting login learns nothing about the class.
+  const nosy = await signUp48('nosy.48@example.com', { full_name: 'Nosy Fortyeight' });
+  await refusesWith('0048 S1-01: a waiting login cannot list the class\'s login ids', 'permission denied for function audience_profiles', () =>
+    asApp('authenticated', nosy, `select * from audience_profiles('all', null, null, null)`));
+  await refusesWith('0048 S1-01: ... nor a student', 'permission denied for function audience_profiles', () =>
+    asApp('authenticated', kept48, `select * from audience_profiles('staff', null, null, null)`));
+  const [{ id: ev48 }] = await asOwner(`insert into events (title, starts_at, place, audience, created_by) values ('Kirtan Fortyeight', now() + interval '2 days', 'Temple hall', 'all', '${guru}') returning id`);
+  const vis48 = async (who, profile) => (await asApp('authenticated', who, 'select event_visible_to($1, $2) as r', [ev48, profile]))[0].r;
+  check('0048 S1-01: event_visible_to tells a waiting login nothing about a student', (await vis48(nosy, kept48)) === false);
+  check('0048 S1-01: ... nor a student about another student', (await vis48(kept48, late48)) === false);
+  check('0048 S1-01: (control) a student is told about themselves, staff about a student',
+    (await vis48(kept48, kept48)) === true && (await vis48(coordinator, kept48)) === true);
+  check('0048 S1-01: (control) the student reads the event (row-level security)',
+    (await asApp('authenticated', kept48, 'select id from events where id = $1', [ev48])).length === 1);
+  const inAud = async (who, aud) => (await asApp('authenticated', who, 'select in_audience($1, null, null, null) as r', [aud]))[0].r;
+  check('0048 S1-01: in_audience answers for the caller only', (await inAud(nosy, 'staff')) === false && (await inAud(coordinator, 'staff')) === true
+    && (await inAud(kept48, 'all')) === true);
+  const [{ id: poll48 }] = await asOwner(`insert into polls (question, options, closes_at, audience, audience_level, created_by)
+    values ('Which day?', '{Saturday,Sunday}', now() + interval '2 days', 'level', 2, '${guru}') returning id`);
+  check('0048 S1-01: a poll for level 2 is hidden from a level 1 student, shown to staff',
+    (await asApp('authenticated', kept48, 'select id from polls where id = $1', [poll48])).length === 0
+    && (await asApp('authenticated', coordinator, 'select id from polls where id = $1', [poll48])).length === 1);
+  await asOwner(`update polls set audience = 'all', audience_level = null where id = ${poll48}`);
+  check('0048 S1-01: (control) a poll for everyone is shown to the student', (await asApp('authenticated', kept48, 'select id from polls where id = $1', [poll48])).length === 1);
+  await db.exec(`delete from polls where id = ${poll48}; delete from events where id = ${ev48}`);
+  const [{ n: coordName }] = await asOwner(`select full_name as n from profiles where id = '${coordinator}'`);
+  const taken = async (who, id) => (await asApp('authenticated', who, 'select staff_name_taken($1, $2) as r', [id, coordName]))[0].r;
+  check('0048 S1-02: staff_name_taken answers a waiting login nothing about another login\'s name', (await taken(nosy, late48)) === false);
+  check('0048 S1-02: (control) it answers for the caller\'s own name, as the sign-up and a name change need, and for the Guru',
+    (await taken(nosy, nosy)) === true && (await taken(guru, late48)) === true);
+  await refusesWith('0048 S1-02: (control) a waiting login still cannot take a coordinator\'s name', 'name_taken', () =>
+    asApp('authenticated', nosy, 'update profiles set full_name = $2 where id = $1', [nosy, coordName]));
+
+  // R2-05/R5-12 (#289): a re-scan within 10 minutes of the check-in does not check out nor email the parent.
+  const kid48 = await register(coordinator, { p_full_name: 'Scan Child Fortyeight', p_dob: `${year - 10}-04-04`, p_guardian_name: 'Parent Fortyeight',
+    p_guardian_phone: '9876543248', p_guardian_email: 'parent.48@example.com', p_guardian_relation: 'mother', p_id_type_checked: 'school_id',
+    p_written_consent: true });
+  const [{ qr_token: qr48 }] = await asOwner(`select qr_token from students where id = '${kid48.id}'`);
+  const flags48 = await asOwner(`select key, value from settings where key in ('parent_notices_enabled', 'parent_notices_check_out')`);
+  await asOwner(`update settings set value = 'true' where key in ('parent_notices_enabled', 'parent_notices_check_out')`);
+  const scan48 = async () => (await asApp('authenticated', coordinator, 'select scan_qr($1) as r', [qr48]))[0].r.action;
+  const outs48 = async () => (await asOwner(`select count(*)::int as n from parent_notices p join visits v on v.id = p.visit_id
+    where v.student_id = '${kid48.id}' and p.kind = 'out'`))[0].n;
+  check('0048 #289: (control) the first scan checks the child in', (await scan48()) === 'in');
+  await asOwner(`update visits set check_in = check_in - interval '5 minutes' where student_id = '${kid48.id}'`);
+  check('0048 #289: a re-scan 5 minutes after the check-in answers already_in', (await scan48()) === 'already_in');
+  check('0048 #289: ... the visit stays open and no "left" email is queued',
+    (await asOwner(`select count(*)::int as n from visits where student_id = '${kid48.id}' and check_out is null`))[0].n === 1 && (await outs48()) === 0);
+  await asOwner(`update visits set check_in = check_in - interval '6 minutes' where student_id = '${kid48.id}'`);
+  check('0048 #289: (control) a scan 11 minutes after the check-in checks out, and the parent is emailed',
+    (await scan48()) === 'out' && (await outs48()) === 1);
+  for (const r of flags48) await asOwner(`update settings set value = '${JSON.stringify(r.value)}' where key = '${r.key}'`);
+  const saveRescan = (v) => asApp('authenticated', guru, 'select save_settings($1::jsonb)', [JSON.stringify({ qr_rescan_minutes: v })]);
+  await refusesWith('0048 #289: the window is 1 to 60 minutes', 'setting_invalid', () => saveRescan(0));
+  await refusesWith('0048 #289: ... not 61', 'setting_invalid', () => saveRescan(61));
+  await saveRescan(15);
+  check('0048 #289: (control) the Guru may set 15 minutes', (await asOwner(`select value from settings where key = 'qr_rescan_minutes'`))[0].value === 15);
+  await saveRescan(10);
+
+  // #290: the notice ticked at sign-up survives the merge into a record with About-you details.
+  const desk48 = await register(coordinator, { p_full_name: 'Merge Fortyeight', p_dob: adultDob48, p_email: 'merge.48@example.com' });
+  await asApp('authenticated', coordinator, 'select save_student_details($1, $2::jsonb)', [desk48.id, JSON.stringify({ occupation: 'working' })]);
+  const merged48 = await signUp48('merge.48@example.com', { full_name: 'Merge Fortyeight', notice_version: 'v2026-10' });
+  const [rowM] = await asOwner(`select notice_version, notice_accepted_at, occupation, profile_id from person_details where student_id = '${desk48.id}'`);
+  check('0048 #290: a sign-up linked to a record with About-you details keeps its notice (merged)',
+    rowM?.notice_version === 'v2026-10' && !!rowM.notice_accepted_at && rowM.occupation === 'working' && rowM.profile_id === merged48, JSON.stringify(rowM));
+  const adult290 = await register(coordinator, { p_full_name: 'Desk Notice Fortyeight', p_dob: adultDob48, p_notice_version: 'v0.2' });
+  check('0048 #290: Fill the form keeps the notice the desk showed an adult',
+    (await asOwner(`select notice_version from person_details where student_id = '${adult290.id}'`))[0]?.notice_version === 'v0.2');
+  await asApp('authenticated', coordinator, 'select record_desk_notice($1, $2)', [desk48.id, 'v9']);
+  check('0048 #290: a notice already on the record is kept', (await asOwner(`select notice_version from person_details where student_id = '${desk48.id}'`))[0].notice_version === 'v2026-10');
+  await refusesWith('0048 #290: only staff record the desk\'s notice', 'not_allowed', () =>
+    asApp('authenticated', nosy, 'select record_desk_notice($1, $2)', [adult290.id, 'v0.2']));
+  await refusesWith('0048 #290: ... in the notice-version shape', 'notice_version_invalid', () =>
+    asApp('authenticated', coordinator, 'select record_desk_notice($1, $2)', [adult290.id, 'v1; drop']));
+  await refusesWith('0048 #290: ... never on a withdrawn record', 'student_withdrawn', () =>
+    asApp('authenticated', coordinator, 'select record_desk_notice($1, $2)', [gone.id, 'v0.2']));
+
+  // Before 0048 a login could be linked to a withdrawn record and switched on: the migration switches it off.
+  const ghost48 = await signUp48('ghost.48@example.com', { full_name: 'Ghost Fortyeight' });
+  await db.exec(`alter table profiles disable trigger profiles_withdrawn_stay_off; alter table push_tokens disable trigger push_tokens_refuse_withdrawn;
+    update students set profile_id = '${ghost48}' where id = '${gone.id}';
+    update profiles set active = true, role = 'student' where id = '${ghost48}';
+    insert into push_tokens (token, profile_id, platform) values ('ExponentPushToken[ghost48AbCdEfGh]', '${ghost48}', 'android');
+    alter table profiles enable trigger profiles_withdrawn_stay_off; alter table push_tokens enable trigger push_tokens_refuse_withdrawn`);
+  const counts48 = async () => (await asOwner(`select (select count(*) from students)::int as s, (select count(*) from profiles where active)::int as a,
+    (select count(*) from push_tokens)::int as t, (select count(*) from settings)::int as k, (select count(*) from person_details)::int as d`))[0];
+  let again = '';
+  try { await db.exec(file48); } catch (e) { again = String(e.message); }
+  check('0048 can run again (on a project where a withdrawn record had a switched-on login)', again === '', again);
+  check('0048: ... that login is switched off and its phones forgotten', (await asOwner(`select active from profiles where id = '${ghost48}'`))[0].active === false
+    && (await asOwner(`select count(*)::int as n from push_tokens where profile_id = '${ghost48}'`))[0].n === 0);
+  const c1 = await counts48();
+  try { await db.exec(file48); } catch (e) { again = String(e.message); }
+  check('0048: a second run changes nothing', again === '' && JSON.stringify(await counts48()) === JSON.stringify(c1), `${again} ${JSON.stringify(c1)}`);
 }
 
 // ---------------------------------------------------------------- row-level security
