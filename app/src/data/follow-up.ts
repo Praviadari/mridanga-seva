@@ -10,6 +10,7 @@ import { addDays, parseDayMonthYear, todayLocal } from '@/lib/dates';
 import { readLogged } from '@/lib/logged-read';
 import { supabase } from '@/lib/supabase';
 
+import { rpcOnce } from './create-once';
 import { fallbackErrorKey, type MessageKey } from './errors';
 import type { OpenTask } from './student-profile';
 import { fetchStaff, fetchStudentSummaries, type StaffMember, type StudentSummary } from './student-overview';
@@ -288,11 +289,13 @@ export function checkCallForm(form: CallForm, today: string): CallFormErrors {
 /**
  * Records the call with log_call, which also applies the outcome: Paused until the date, Left,
  * a new call task the day after "returning on", or a retry task (escalated to the Guru after
- * too many failed tries). Call only after checkCallForm found no problems.
+ * too many failed tries). Call only after checkCallForm found no problems. equestId is the open
+ * form's (#322): Save again after a lost answer records the call once, with one retry task.
  */
-export async function logCall(studentId: string, form: CallForm): Promise<{ errorKey?: MessageKey }> {
+export async function logCall(studentId: string, form: CallForm, requestId: string): Promise<{ errorKey?: MessageKey }> {
   if (!form.outcome) return { errorKey: 'callLog.errors.choose' };
-  const { error } = await supabase.rpc('log_call', {
+  const { error } = await rpcOnce('log_call', {
+    p_request_id: requestId,
     p_student: studentId,
     p_outcome: form.outcome,
     p_reason: outcomeNeedsReason(form.outcome) ? form.reason : null,

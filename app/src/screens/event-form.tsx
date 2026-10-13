@@ -36,6 +36,7 @@ import {
 } from '@/data/events';
 import { todayLocal } from '@/lib/dates';
 import { eventDates } from '@/lib/quick-times';
+import { useRequestId } from '@/lib/use-request-id';
 
 type Loaded = {
   options: ComposeOptions;
@@ -54,6 +55,8 @@ export function EventFormScreen({ eventId }: { eventId?: number }) {
   const [errors, setErrors] = useState<EventFormErrors>({});
   const [serverError, setServerError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  // #322: one id for a new event, so Create again after a lost answer does not tell everyone twice.
+  const { requestId } = useRequestId();
   const filled = useRef(false);
 
   const load = useCallback(async () => {
@@ -138,7 +141,7 @@ export function EventFormScreen({ eventId }: { eventId?: number }) {
       }
       router.back();
     } else {
-      const result = await createEvent(form);
+      const result = await createEvent(form, requestId());
       setSaving(false);
       if (result.errorKey || result.id === undefined) {
         setServerError(t(result.errorKey ?? 'common.genericError'));

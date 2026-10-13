@@ -54,6 +54,7 @@ import {
 } from '@/data/assessments';
 import { fileSizeText, LEVEL_IDS, levelName } from '@/i18n/labels';
 import { spacing, useTheme } from '@/theme/use-theme';
+import { useRequestId } from '@/lib/use-request-id';
 
 
 /** The icon of a file's kind. */
@@ -134,6 +135,8 @@ function FormBody({ header, editing }: { header: ReactNode; editing: Editing | n
   const [serverError, setServerError] = useState<string | null>(null);
   const [saving, setSaving] = useState<'send' | 'draft' | 'edit' | null>(null);
   const [picking, setPicking] = useState(false);
+  // #322: one id for a new assessment, so Save again after a lost answer saves it once.
+  const { requestId } = useRequestId();
   const [pickError, setPickError] = useState<string | null>(null);
 
   const update = (change: Partial<AssessmentForm>) => {
@@ -156,7 +159,7 @@ function FormBody({ header, editing }: { header: ReactNode; editing: Editing | n
     setErrors(found);
     if (Object.keys(found).length > 0) return;
     setSaving(send ? 'send' : 'draft');
-    const result = await createAssessment(form, myId, send);
+    const result = await createAssessment(form, myId, send, requestId());
     setSaving(null);
     if (result.errorKey || result.id === undefined) {
       setServerError(t(result.errorKey ?? 'common.genericError'));

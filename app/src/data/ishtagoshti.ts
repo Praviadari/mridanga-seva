@@ -11,6 +11,7 @@ import * as Crypto from 'expo-crypto';
 import { todayLocal } from '@/lib/dates';
 import { supabase } from '@/lib/supabase';
 
+import { insertOnce } from './create-once';
 import { bodyOf, endingFor, pickRecordingFiles, recordingAsMedia, type PickedMedia } from './assessment-files';
 import { isNetworkError, type MessageKey } from './errors';
 
@@ -283,8 +284,14 @@ export type SlokaInput = {
   audio: { path: string; name: string } | null;
 };
 
-/** Saves a sloka (new when `id` is null). Returns its id or the message to show. */
-export async function saveSloka(id: number | null, input: SlokaInput): Promise<{ id: number } | { errorKey: MessageKey }> {
+/**
+ * Saves a sloka (new when `id` is null). Returns its id or the message to show; `noAnswer` when the
+ * server did not answer, so the sloka may be saved with a just-uploaded recording (F4-02: keep it).
+ */
+export async function saveSloka(
+  id: number | null,
+  input: SlokaInput,
+): Promise<{ id: number } | { errorKey: MessageKey; noAnswer?: boolean }> {
   const row = {
     ref: input.ref,
     devanagari: input.devanagari,
@@ -308,7 +315,7 @@ export async function saveSloka(id: number | null, input: SlokaInput): Promise<{
     ? supabase.from('ig_slokas').insert(row).select('id').single<{ id: number }>()
     : supabase.from('ig_slokas').update(row).eq('id', id).select('id').single<{ id: number }>();
   const { data, error } = await query;
-  if (error || !data) return { errorKey: errorKeyOf(error?.message) };
+  if (error || !data) return { errorKey: errorKeyOf(error?.message), noAnswer: !!error && isNetworkError(error.message) };
   return { id: data.id };
 }
 
@@ -329,8 +336,15 @@ export type ThemeInput = {
   slokaIds: number[];
 };
 
-/** Saves a theme and its slokas in order (new when `id` is null). Returns its id or the message. */
-export async function saveTheme(id: number | null, input: ThemeInput): Promise<{ id: number } | { errorKey: MessageKey }> {
+/**
+ * Saves a theme and its slokas in order (new when `id` is null). Returns its id or the message. A new
+ * theme goes with the open form's `requestId` (#322): Save again after a lost answer saves it once.
+ */
+export async function saveTheme(
+  id: number | null,
+  input: ThemeInput,
+  requestId: string,
+): Promise<{ id: number } | { errorKey: MessageKey }> {
   const row = {
     title: input.title,
     intro: input.intro,
@@ -339,14 +353,19 @@ export async function saveTheme(id: number | null, input: ThemeInput): Promise<{
     sample: input.sample,
     sort: input.sort,
   };
-  const query = id === null
-    ? supabase.from('ig_themes').insert(row).select('id').single<{ id: number }>()
-    : supabase.from('ig_themes').update(row).eq('id', id).select('id').single<{ id: number }>();
-  const { data, error } = await query;
-  if (error || !data) return { errorKey: errorKeyOf(error?.message) };
-  const linked = await supabase.rpc('set_theme_slokas', { p_theme: data.id, p_slokas: input.slokaIds });
+  let themeId: number;
+  if (id === null) {
+    const saved = await insertOnce('ig_themes', row, requestId);
+    if ('error' in saved) return { errorKey: errorKeyOf(saved.error.message) };
+    themeId = saved.id;
+  } else {
+    const { data, error } = await supabase.from('ig_themes').update(row).eq('id', id).select('id').single<{ id: number }>();
+    if (error || !data) return { errorKey: errorKeyOf(error?.message) };
+    themeId = data.id;
+  }
+  const linked = await supabase.rpc('set_theme_slokas', { p_theme: themeId, p_slokas: input.slokaIds });
   if (linked.error) return { errorKey: errorKeyOf(linked.error.message) };
-  return { id: data.id };
+  return { id: themeId };
 }
 
 /** Deletes a theme; its slokas stay. */

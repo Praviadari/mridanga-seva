@@ -11,6 +11,7 @@ import { formatDate, formatTypedDate, localDate, localMoment, localTime, parseDa
 import { supabase } from '@/lib/supabase';
 
 import type { Audience } from './announcements';
+import { insertOnce } from './create-once';
 import { fallbackErrorKey, isNetworkError, type MessageKey } from './errors';
 
 /** Longest texts of the event forms (C16); the database checks them too. */
@@ -440,10 +441,13 @@ function rowOf(form: EventForm, keepEnd: string | null) {
   };
 }
 
-/** Creates an event; everyone it is for is told. Returns the new id. */
-export async function createEvent(form: EventForm): Promise<{ id?: number; errorKey?: MessageKey }> {
-  const { data, error } = await supabase.from('events').insert(rowOf(form, null)).select('id').single<{ id: number }>();
-  return error ? { errorKey: errorKeyOf(error.message) } : { id: data.id };
+/**
+ * Creates an event; everyone it is for is told. Returns the new id. equestId is the open form's
+ * (#322): Create again after a lost answer returns the first event, so nobody is told twice.
+ */
+export async function createEvent(form: EventForm, requestId: string): Promise<{ id?: number; errorKey?: MessageKey }> {
+  const saved = await insertOnce('events', rowOf(form, null), requestId);
+  return 'error' in saved ? { errorKey: errorKeyOf(saved.error.message) } : { id: saved.id };
 }
 
 /** Saves changes; a new time or place is told to everyone it is for. */

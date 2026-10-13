@@ -7,6 +7,7 @@
 
 import type { ParseKeys } from 'i18next';
 
+import { readAllRows } from '@/lib/paged-read';
 import { cleanSearchText } from '@/lib/student-search';
 import { supabase } from '@/lib/supabase';
 
@@ -170,9 +171,12 @@ function toItem(row: ItemRow, holder: Holder | null): InventoryItem {
 }
 
 async function openLoans(itemIds?: number[]): Promise<Map<number, Holder> | null> {
-  let query = supabase.from('inventory_loans').select(LOAN_COLUMNS).is('returned_at', null);
-  if (itemIds) query = query.in('item_id', itemIds);
-  const { data, error } = await query;
+  const query = () => {
+    const open = supabase.from('inventory_loans').select(LOAN_COLUMNS).is('returned_at', null);
+    return itemIds ? open.in('item_id', itemIds) : open;
+  };
+  // P1-19 (#325): every open loan and item, past PostgREST's 1,000-row cap.
+  const { data, error } = itemIds ? await query() : await readAllRows((from, to) => query().order('id').range(from, to));
   if (error) return null;
   return new Map((data as unknown as LoanRow[]).map((row) => [row.item_id, toHolder(row)]));
 }
@@ -180,7 +184,7 @@ async function openLoans(itemIds?: number[]): Promise<Map<number, Holder> | null
 /** Every item with who holds it, in name order (retired ones too). null = could not be loaded. */
 export async function fetchInventory(): Promise<InventoryItem[] | null> {
   const [items, loans] = await Promise.all([
-    supabase.from('inventory_items').select(ITEM_COLUMNS).order('code'),
+    readAllRows((from, to) => supabase.from('inventory_items').select(ITEM_COLUMNS).order('code').order('id').range(from, to)),
     openLoans(),
   ]);
   if (items.error || !loans) return null;
@@ -465,7 +469,7 @@ export async function fetchStocktakes(): Promise<Stocktake[] | null> {
 export async function fetchStocktake(id: number): Promise<{ stocktake: Stocktake; seenIds: Set<number> } | 'not_found' | null> {
   const [count, seen] = await Promise.all([
     supabase.from('inventory_stocktakes').select(STOCKTAKE_COLUMNS).eq('id', id).maybeSingle(),
-    supabase.from('inventory_stocktake_items').select('item_id').eq('stocktake_id', id),
+    readAllRows((from, to) => supabase.from('inventory_stocktake_items').select('item_id').eq('stocktake_id', id).order('item_id').range(from, to)),
   ]);
   if (count.error || seen.error) return null;
   if (!count.data) return 'not_found';

@@ -105,7 +105,7 @@ export default function FundScreen() {
 
   async function exportCsv(way: 'download' | 'folder' | 'share') {
     if (!book) return;
-    const text = toCsv(fundCsvRows(book, inPeriod, t, formatDate));
+    const text = toCsv(fundCsvRows(book, inPeriod, t));
     const name = fundFileName(from, today);
     const result: CsvResult =
       way === 'folder' ? await saveCsvToFolder(name, text) : way === 'share' ? await shareCsv(name, text) : await downloadCsv(name, text);

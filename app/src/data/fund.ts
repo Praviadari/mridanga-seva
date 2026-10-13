@@ -11,10 +11,12 @@ import type { ParseKeys, TFunction } from 'i18next';
 import * as WebBrowser from 'expo-web-browser';
 
 import { formatMoney } from '@/lib/money';
+import { readAllRows } from '@/lib/paged-read';
 import { supabase } from '@/lib/supabase';
 
 import { pickPdfs, pickPhotos, removeFiles, signedLinks, uploadFiles, type PickedFile, type PickResult } from './announcement-files';
-import { fallbackErrorKey } from './errors';
+import { forgetUploads, rpcOnce, uploadOnce } from './create-once';
+import { fallbackErrorKey, isNetworkError } from './errors';
 
 /** The private Storage bucket of the bills (migration 0026). */
 export const BILLS_BUCKET = 'fund-bills';
@@ -120,7 +122,8 @@ const ENTRY_COLUMNS =
 export async function fetchFundBook(myId: string | null, isGuru: boolean): Promise<FundBook | null> {
   const [categories, entries, limits, treasurer] = await Promise.all([
     supabase.from('fund_categories').select('id, direction, code, name, sort, retired_at').order('direction').order('sort').order('name'),
-    supabase.from('fund_entries').select(ENTRY_COLUMNS).order('on_date').order('id'),
+    // P1-19 (#325): every entry, past PostgREST's 1,000-row cap, or the balance stops at the 1,000th.
+    readAllRows((from, to) => supabase.from('fund_entries').select(ENTRY_COLUMNS).order('on_date').order('id').range(from, to)),
     supabase.from('settings').select('key, value').in('key', ['fund_approval_rupees', 'fund_bill_rupees']),
     supabase.rpc('is_treasurer'),
   ]);
@@ -272,11 +275,12 @@ export function fundFileName(from: string | null, to: string): string {
 }
 
 /**
- * The CSV rows of the given entries (oldest first) with headings in the app's language: date,
- * kind, category, amount (negative on a reversal), status, from/to, reference, note, bill, who
+ * The CSV rows of the given entries (oldest first) with headings in the app's language: date
+ * (YYYY-MM-DD, which Excel reads as a date in any format; F3-10), kind, category, amount (negative on a
+ * reversal), the effect on the balance (+ income, - expense, 0 unless approved; F3-10), status, from/to, reference, note, bill, who
  * recorded and decided, the balance after. Then the monthly summary.
  */
-export function fundCsvRows(book: FundBook, entries: readonly FundEntry[], t: TFunction, dateText: (iso: string) => string): string[][] {
+export function fundCsvRows(book: FundBook, entries: readonly FundEntry[], t: TFunction): string[][] {
   const category = new Map(book.categories.map((c) => [c.id, c]));
   const rows: string[][] = [
     [
@@ -284,6 +288,7 @@ export function fundCsvRows(book: FundBook, entries: readonly FundEntry[], t: TF
       t('fund.csv.kind'),
       t('fund.csv.category'),
       t('fund.csv.amount'),
+      t('fund.csv.effect'),
       t('fund.csv.status'),
       t('fund.csv.party'),
       t('fund.csv.reference'),
@@ -296,10 +301,11 @@ export function fundCsvRows(book: FundBook, entries: readonly FundEntry[], t: TF
   ];
   for (const e of [...entries].reverse()) {
     rows.push([
-      dateText(e.onDate),
+      e.onDate,
       e.reversesId ? t('fund.reversalOf', { id: e.reversesId }) : t(`fund.directions.${e.direction}`),
       categoryName(t, category.get(e.categoryId)),
       csvAmount(e.amountPaise),
+      csvAmount(e.effectPaise),
       t(`fund.statuses.${e.status}`),
       e.party ?? '',
       e.reference ?? '',
@@ -356,15 +362,30 @@ export async function pickBill(kind: 'image' | 'pdf'): Promise<PickResult> {
   return kind === 'pdf' ? pickPdfs(1, BILL_LIMIT) : pickPhotos(1, BILL_LIMIT);
 }
 
-/** Records an entry: uploads the bill first; if the entry cannot be saved, the bill is removed again. Returns the new id. */
-export async function recordEntry(myId: string, form: EntryForm, isoDate: string): Promise<{ id?: number; errorKey?: ParseKeys }> {
+/**
+ * Records an entry: uploads the bill first; if the entry is refused, the bill is removed again. Returns
+ * the new id. `requestId` is the open form's (#322): Save again after a lost answer returns the entry
+ * saved the first time, with the bill uploaded the first time; with no answer the bill is kept, since
+ * the entry may list it (P1-03).
+ */
+export async function recordEntry(
+  myId: string,
+  form: EntryForm,
+  isoDate: string,
+  requestId: string,
+): Promise<{ id?: number; errorKey?: ParseKeys }> {
   let bill: { path: string; name: string } | null = null;
   if (form.bill) {
-    const uploaded = await uploadFiles(myId, [form.bill], BILLS_BUCKET);
-    if (!uploaded.attachments) return { errorKey: uploaded.errorKey ?? 'fund.errors.upload_failed' };
-    bill = uploaded.attachments[0];
+    let failedKey: ParseKeys | undefined;
+    bill = await uploadOnce(requestId, form.bill.key, async () => {
+      const uploaded = await uploadFiles(myId, [form.bill as PickedFile], BILLS_BUCKET);
+      failedKey = uploaded.errorKey;
+      return uploaded.attachments?.[0] ?? null;
+    });
+    if (!bill) return { errorKey: failedKey ?? 'fund.errors.upload_failed' };
   }
-  const { data, error } = await supabase.rpc('record_fund_entry', {
+  const { data, error } = await rpcOnce<number>('record_fund_entry', {
+    p_request_id: requestId,
     p_direction: form.direction,
     p_category: form.categoryId,
     p_on_date: isoDate,
@@ -376,9 +397,13 @@ export async function recordEntry(myId: string, form: EntryForm, isoDate: string
     p_bill_name: bill?.name ?? null,
   });
   if (error) {
-    if (bill) await removeFiles([bill.path], BILLS_BUCKET);
+    if (!isNetworkError(error.message)) {
+      if (bill) await removeFiles([bill.path], BILLS_BUCKET);
+      forgetUploads(requestId);
+    }
     return { errorKey: fundErrorKey(error.message, error.code) };
   }
+  forgetUploads(requestId);
   return { id: Number(data) };
 }
 

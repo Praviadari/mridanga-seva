@@ -173,7 +173,8 @@ function EditSlokaScreenContent() {
       audio,
     });
     if ('errorKey' in result) {
-      if (uploaded) await removeRecitation(uploaded);
+      // F4-02: with no answer the sloka may be saved with the new recording, so it stays (an unused one is cleaned up later).
+      if (uploaded && !result.noAnswer) await removeRecitation(uploaded);
       setSaving(false);
       setError(t(result.errorKey));
       return;

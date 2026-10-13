@@ -44,6 +44,7 @@ import { fetchSyllabusByLevel, LEVEL_IDS, type LevelSyllabus } from '@/data/syll
 import { fileSizeText, levelName } from '@/i18n/labels';
 import { goBackOr } from '@/lib/go-back';
 import { spacing } from '@/theme/use-theme';
+import { useRequestId } from '@/lib/use-request-id';
 
 /** "Whole level" in the item choice (no item). */
 const WHOLE_LEVEL = 0;
@@ -76,6 +77,8 @@ function MaterialScreenContent() {
   const [errors, setErrors] = useState<MaterialFormErrors>({});
   const [busy, setBusy] = useState<'save' | 'pick' | 'delete' | null>(null);
   const [asking, setAsking] = useState(false);
+  // #322: one id for a new material, so Save again after a lost answer saves it once.
+  const { requestId } = useRequestId();
   const [message, setMessage] = useState<string | null>(null);
   const [declining, setDeclining] = useState(false);
   const [declineReason, setDeclineReason] = useState('');
@@ -169,7 +172,7 @@ function MaterialScreenContent() {
     if (Object.keys(found).length > 0) return;
     setBusy('save');
     setMessage(null);
-    const outcome = isNew ? await addMaterial(myId, form) : await updateMaterial(Number(params.id), form);
+    const outcome = isNew ? await addMaterial(myId, form, requestId()) : await updateMaterial(Number(params.id), form);
     setBusy(null);
     if (outcome.errorKey) setMessage(t(outcome.errorKey));
     // A coordinator's suggestion is listed on C18, not on the level page.

@@ -11,6 +11,7 @@
 import { LEVEL_IDS } from '@/i18n/labels';
 import { supabase } from '@/lib/supabase';
 
+import { insertOnce } from './create-once';
 import { fallbackErrorKey, type MessageKey } from './errors';
 
 /** Longest title and description, as in the database. */
@@ -94,14 +95,13 @@ export function checkItemForm(title: string, description: string): ItemFormError
   return errors;
 }
 
-/** Adds an item at the end of a level (the database gives it the next place). */
-export async function addItem(levelId: number, title: string, description: string): Promise<EditOutcome> {
-  const { data, error } = await supabase
-    .from('syllabus_items')
-    .insert({ level_id: levelId, title: title.trim(), description: description.trim() || null })
-    .select('id')
-    .single<{ id: number }>();
-  return error ? { errorKey: editorErrorKey(error.message, error.code) } : { id: data.id };
+/**
+ * Adds an item at the end of a level (the database gives it the next place). `requestId` is the open
+ * form's (#322): Add again after a lost answer returns the first item.
+ */
+export async function addItem(levelId: number, title: string, description: string, requestId: string): Promise<EditOutcome> {
+  const saved = await insertOnce('syllabus_items', { level_id: levelId, title: title.trim(), description: description.trim() || null }, requestId);
+  return 'error' in saved ? { errorKey: editorErrorKey(saved.error.message, saved.error.code) } : { id: saved.id };
 }
 
 /** Saves a changed title and description. Ticks stay as they are. */

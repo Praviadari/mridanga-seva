@@ -232,7 +232,7 @@ function InventoryItemScreenContent() {
       {item ? (
         <Section
           icon="instruments"
-          title={` · ${item.label}`}
+          title={`${item.code} · ${item.label}`}
           description={[t(`inventory.kinds.${item.kind}`), item.category, item.centreName].filter(Boolean).join(' · ')}>
           <AppText>
             {t('inventory.conditionNow', { condition: t(`inventory.conditions.${item.condition}`) })}

@@ -22,6 +22,7 @@ import {
   type MediaFile,
   type PickedMedia,
 } from './assessment-files';
+import { forgetUploads, insertOnce, uploadOnce } from './create-once';
 import { fallbackErrorKey, isNetworkError, type MessageKey } from './errors';
 import { fetchStudentSummaries, type StudentSummary } from './student-overview';
 
@@ -383,39 +384,48 @@ export function checkAssessmentForm(form: AssessmentForm): AssessmentFormErrors 
 
 /**
  * Uploads the files and saves the assessment, as a draft or sent at once. Returns its id, or a
- * message (the uploaded files are removed again when the save fails).
+ * message. `requestId` is the open form's (#322): Save again after a lost answer returns the first
+ * assessment, with the files uploaded the first time. The files are removed again only when the
+ * database refused the save; with no answer they stay, since the saved row may list them (P1-03).
  */
-export async function createAssessment(form: AssessmentForm, myId: string, send: boolean): Promise<{ id?: number; errorKey?: MessageKey }> {
-  const uploaded = await uploadMedia(myId, form.files);
-  if (!uploaded.media) return { errorKey: uploaded.errorKey };
-  const rubric = rubricOf(form);
-  try {
-    const { data, error } = await supabase
-      .from('assessments')
-      .insert({
-        title: form.title.trim(),
-        instructions: form.instructions.trim(),
-        kind: form.kind,
-        level_id: form.levelId,
-        level_up: form.levelUp,
-        rubric,
-        media: uploaded.media,
-        media_link: form.link.trim() || null,
-        sent_at: send ? new Date().toISOString() : null,
-      })
-      .select('id')
-      .single();
-    if (error || !data) {
-      await removeMedia(uploaded.media.map((m) => m.path));
-      return { errorKey: errorKeyOf(error?.message) };
+export async function createAssessment(
+  form: AssessmentForm,
+  myId: string,
+  send: boolean,
+  requestId: string,
+): Promise<{ id?: number; errorKey?: MessageKey }> {
+  let failedKey: MessageKey | undefined;
+  const media = await uploadOnce(requestId, form.files.map((f) => f.key).join(',') || 'none', async () => {
+    const uploaded = await uploadMedia(myId, form.files);
+    failedKey = uploaded.errorKey;
+    return uploaded.media ?? null;
+  });
+  if (!media) return { errorKey: failedKey };
+  const saved = await insertOnce(
+    'assessments',
+    {
+      title: form.title.trim(),
+      instructions: form.instructions.trim(),
+      kind: form.kind,
+      level_id: form.levelId,
+      level_up: form.levelUp,
+      rubric: rubricOf(form),
+      media,
+      media_link: form.link.trim() || null,
+      sent_at: send ? new Date().toISOString() : null,
+    },
+    requestId,
+  );
+  if ('error' in saved) {
+    if (!isNetworkError(saved.error.message)) {
+      await removeMedia(media.map((m) => m.path));
+      forgetUploads(requestId);
     }
-    return { id: (data as { id: number }).id };
-  } catch (failure) {
-    await removeMedia(uploaded.media.map((m) => m.path));
-    return { errorKey: errorKeyOf(String(failure)) };
+    return { errorKey: errorKeyOf(saved.error.message) };
   }
+  forgetUploads(requestId);
+  return { id: saved.id };
 }
-
 /** The rubric lines as the database takes them (empty lines left out). */
 function rubricOf(form: AssessmentForm): RubricLine[] {
   return form.rubric
@@ -449,15 +459,24 @@ export async function updateAssessment(
     change.level_up = form.levelUp;
     change.rubric = rubricOf(form);
   }
-  try {
-    const { data, error } = await supabase.from('assessments').update(change).eq('id', original.id).select('id');
-    if (error || !data || data.length === 0) {
-      await removeMedia(uploaded.media.map((m) => m.path));
-      return error ? errorKeyOf(error.message) : 'assessments.errors.not_allowed';
+  const newPaths = uploaded.media.map((m) => m.path);
+  const { data, error } = await supabase.from('assessments').update(change).eq('id', original.id).select('id');
+  if (error && isNetworkError(error.message)) {
+    // F4-02: no answer is not a refusal. Saved when the row now lists the new files (or, with none, the
+    // new title); the new files are removed only when it is known the change was not saved.
+    const after = await supabase.from('assessments').select('title, media').eq('id', original.id).maybeSingle();
+    if (after.error) return 'common.networkError';
+    const listed = new Set(parseMedia((after.data as { media: unknown } | null)?.media).map((m) => m.path));
+    const saved = !!after.data && (newPaths.length > 0
+      ? newPaths.every((p) => listed.has(p))
+      : (after.data as { title: string }).title === change.title);
+    if (!saved) {
+      await removeMedia(newPaths);
+      return 'common.networkError';
     }
-  } catch (failure) {
-    await removeMedia(uploaded.media.map((m) => m.path));
-    return errorKeyOf(String(failure));
+  } else if (error || !data || data.length === 0) {
+    await removeMedia(newPaths);
+    return error ? errorKeyOf(error.message) : 'assessments.errors.not_allowed';
   }
   const keptPaths = new Set(form.kept.map((m) => m.path));
   await removeMedia(original.media.filter((m) => !keptPaths.has(m.path)).map((m) => m.path));

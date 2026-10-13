@@ -131,8 +131,8 @@ function StaffAnnouncementScreenContent() {
   const personLine = (m: (typeof audience)[number]) => (m.rollNo ? [m.rollNo] : []);
   const writerOf = (r: Reply) => (r.rollNo ? `${r.fullName} · ${r.rollNo}` : r.fullName);
 
-  async function reply(body: string) {
-    const outcome = await sendReply(a.id, body);
+  async function reply(body: string, requestId: string) {
+    const outcome = await sendReply(a.id, body, requestId);
     if (!outcome.errorKey) await load();
     return outcome.errorKey;
   }
