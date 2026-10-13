@@ -109,7 +109,7 @@ export function MyProfileScreen() {
                 { label: t('myProfile.role'), value: roleName },
               ]}
             />
-            <TextField
+            <TextField kind="name"
               label={t('myProfile.nameLabel')}
               value={fullName}
               onChangeText={setFullName}
@@ -120,7 +120,7 @@ export function MyProfileScreen() {
               maxLength={NAME_MAX + 10}
               error={errors.fullName ? t(errors.fullName) : undefined}
             />
-            <TextField
+            <TextField kind="phone"
               label={t('myProfile.phoneLabel')}
               hint={t('myProfile.phoneHint')}
               value={phone}

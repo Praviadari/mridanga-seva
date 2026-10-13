@@ -40,6 +40,7 @@ import {
 } from '@/data/polls';
 import { formatTypedDate, todayLocal } from '@/lib/dates';
 import { useRequestId } from '@/lib/use-request-id';
+import { useFormChanged, useLeaveGuard } from '@/lib/use-leave-guard';
 
 type Loaded = { options: ComposeOptions; original: { poll: Poll; voted: boolean } | null };
 
@@ -62,6 +63,8 @@ export function PollFormScreen({ pollId }: { pollId?: number }) {
   // #322: one id for a new poll, so Create again after a lost answer does not tell everyone twice.
   const { requestId } = useRequestId();
   const filled = useRef(false);
+  // #327: Back asks before a half-filled form is thrown away.
+  const { allowLeave } = useLeaveGuard(useFormChanged(form, typeof loaded === 'object' && loaded !== null));
 
   const load = useCallback(async () => {
     const [options, existing] = await Promise.all([
@@ -133,12 +136,18 @@ export function PollFormScreen({ pollId }: { pollId?: number }) {
       const result = await updatePoll(original.poll, form);
       setSaving(false);
       if (result.errorKey) setServerError(t(result.errorKey));
-      else router.back();
+      else {
+        allowLeave();
+        router.back();
+      }
     } else {
       const result = await createPoll(form, requestId());
       setSaving(false);
       if (result.errorKey || result.id === undefined) setServerError(t(result.errorKey ?? 'common.genericError'));
-      else router.replace({ pathname: '/staff/polls/[id]', params: { id: String(result.id) } });
+      else {
+        allowLeave();
+        router.replace({ pathname: '/staff/polls/[id]', params: { id: String(result.id) } });
+      }
     }
   }
 

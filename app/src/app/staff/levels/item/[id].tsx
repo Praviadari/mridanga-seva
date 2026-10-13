@@ -181,7 +181,7 @@ function SyllabusItemScreenContent() {
           <Chip label={t('syllabusEditor.retiredChip')} tone="neutral" />
         </View>
       ) : null}
-      {message ? <Notice tone={message.tone}>{message.text}</Notice> : null}
+      {message && !(isGuru && message.tone === 'error') ? <Notice tone={message.tone}>{message.text}</Notice> : null}
 
       {isGuru ? (
         <Section icon="edit" title={t('syllabusEditor.textTitle')}>
@@ -203,6 +203,8 @@ function SyllabusItemScreenContent() {
             error={errors.description ? t(errors.description) : undefined}
           />
           {item && item.ticks > 0 ? <AppText variant="small" tone="muted">{t('syllabusEditor.ticksKept', { count: item.ticks })}</AppText> : null}
+          {/* P1-11 (#323): a refusal beside the button, not above the form. */}
+          {message?.tone === 'error' ? <Notice tone="error">{message.text}</Notice> : null}
           <Button
             icon="check"
             label={isNew ? t('syllabusEditor.addItem') : t('syllabusEditor.save')}

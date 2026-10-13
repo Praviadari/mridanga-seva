@@ -1,6 +1,8 @@
 // The app's button: a filled main action, an outlined second action, or a text link, with an
-// optional icon before the label.
+// optional icon before the label. Since #323 (audit F5-16): when onPress returns a promise (an async
+// save passed straight in), the button shows its spinner and ignores presses until it settles.
 
+import { useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet } from 'react-native';
 
 import { cardRadius, radius, spacing, typography, useTheme } from '@/theme/use-theme';
@@ -12,7 +14,8 @@ import { Icon, type IconName } from './icon';
 export type ButtonProps = {
   /** Text on the button, already translated. */
   label: string;
-  onPress: () => void;
+  /** What a press does; a returned promise keeps the button busy until it settles (#323). */
+  onPress: () => unknown;
   /** 'primary' = main action (one per screen), 'secondary' = outlined, 'link' = text only. */
   variant?: 'primary' | 'secondary' | 'link';
   /**
@@ -48,7 +51,22 @@ export function Button({
   accessibilityLabel,
 }: ButtonProps) {
   const { colors } = useTheme();
-  const inactive = disabled || loading;
+  // A press while the last one's promise runs is ignored (a ref: two quick taps come before a re-render).
+  const running = useRef(false);
+  const [busy, setBusy] = useState(false);
+  const inactive = disabled || loading || busy;
+  const press = () => {
+    if (running.current) return;
+    const result = onPress();
+    if (result && typeof (result as Promise<unknown>).then === 'function') {
+      running.current = true;
+      setBusy(true);
+      void (result as Promise<unknown>).finally(() => {
+        running.current = false;
+        setBusy(false);
+      });
+    }
+  };
   const textColour = variant === 'primary' ? colors.onPrimary : colors.primary;
 
   return (
@@ -57,9 +75,9 @@ export function Button({
       accessibilityLabel={accessibilityLabel ?? label}
       // aria-* props (not accessibilityState) so the web version reports them too.
       aria-disabled={!!inactive}
-      aria-busy={!!loading}
+      aria-busy={!!loading || busy}
       disabled={inactive}
-      onPress={onPress}
+      onPress={press}
       style={({ pressed }) => [
         styles.base,
         variant === 'primary' && { backgroundColor: colors.primary },
@@ -68,7 +86,7 @@ export function Button({
         size === 'large' && styles.large,
         (pressed || disabled) && styles.dimmed,
       ]}>
-      {loading ? (
+      {loading || busy ? (
         <ActivityIndicator color={textColour} />
       ) : (
         <>

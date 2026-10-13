@@ -34,6 +34,7 @@ import {
   type EventFormErrors,
 } from '@/data/events';
 import { useRequestId } from '@/lib/use-request-id';
+import { useFormChanged, useLeaveGuard } from '@/lib/use-leave-guard';
 
 type Loaded = {
   options: ComposeOptions;
@@ -55,6 +56,8 @@ export function EventFormScreen({ eventId }: { eventId?: number }) {
   // #322: one id for a new event, so Create again after a lost answer does not tell everyone twice.
   const { requestId } = useRequestId();
   const filled = useRef(false);
+  // #327: Back asks before a half-filled form is thrown away.
+  const { allowLeave } = useLeaveGuard(useFormChanged(form, typeof loaded === 'object' && loaded !== null));
 
   const load = useCallback(async () => {
     const [options, centres, existing] = await Promise.all([
@@ -136,6 +139,7 @@ export function EventFormScreen({ eventId }: { eventId?: number }) {
         setServerError(t(result.errorKey));
         return;
       }
+      allowLeave();
       router.back();
     } else {
       const result = await createEvent(form, requestId());
@@ -144,6 +148,7 @@ export function EventFormScreen({ eventId }: { eventId?: number }) {
         setServerError(t(result.errorKey ?? 'common.genericError'));
         return;
       }
+      allowLeave();
       router.replace({ pathname: '/staff/events/[id]', params: { id: String(result.id) } });
     }
   }

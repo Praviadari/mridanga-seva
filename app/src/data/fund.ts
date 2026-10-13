@@ -13,6 +13,8 @@ import * as WebBrowser from 'expo-web-browser';
 import { formatMoney } from '@/lib/money';
 import { readAllRows } from '@/lib/paged-read';
 import { supabase } from '@/lib/supabase';
+import { asciiDigits } from '@/lib/digits';
+import { addDays } from '@/lib/dates';
 
 import { pickPdfs, pickPhotos, removeFiles, signedLinks, uploadFiles, type PickedFile, type PickResult } from './announcement-files';
 import { forgetUploads, rpcOnce, uploadOnce } from './create-once';
@@ -215,7 +217,8 @@ export function formatRupees(paise: number, signed = false): string {
 
 /** Rupees as typed ("1,250.50", "₹ 2000") → whole paise, or null when it is not an amount of 0.01 to 1 crore. */
 export function parseRupees(text: string): number | null {
-  const plain = text.replace(/[₹,\s]/g, '').replace(/^rs\.?/i, '');
+  // Telugu and Devanagari digits too, also when pasted (P1-09).
+  const plain = asciiDigits(text).replace(/[₹,\s]/g, '').replace(/^rs\.?/i, '');
   const match = /^(\d{1,8})(?:\.(\d{1,2}))?$/.exec(plain);
   if (!match) return null;
   const paise = Number(match[1]) * 100 + Number((match[2] ?? '').padEnd(2, '0'));
@@ -346,6 +349,8 @@ export function checkEntryForm(form: EntryForm, isoDate: string | null, today: s
   if (form.categoryId === null) errors.category = 'fund.errors.category_invalid';
   if (!isoDate) errors.date = 'fund.errors.date_invalid';
   else if (isoDate > today) errors.date = 'fund.errors.date_future';
+  // As the database: at most 366 days back, said before the bill is uploaded (F3-08).
+  else if (isoDate < addDays(today, -366)) errors.date = 'fund.errors.date_too_old';
   const paise = parseRupees(form.amount);
   if (paise === null) errors.amount = 'fund.errors.amount_invalid';
   if (form.party.trim().length > PARTY_MAX) errors.party = 'fund.errors.party_too_long';
@@ -353,6 +358,22 @@ export function checkEntryForm(form: EntryForm, isoDate: string | null, today: s
   if (form.note.trim().length > NOTE_MAX) errors.note = 'fund.errors.note_too_long';
   if (form.direction === 'expense' && paise !== null && paise > billLimitPaise && !form.bill) errors.bill = 'fund.errors.bill_required';
   return errors;
+}
+
+/** The fields of the entry form in page order, for the error summary and focus (#323). */
+export const ENTRY_FIELDS = ['category', 'amount', 'date', 'party', 'reference', 'note', 'bill'] as const;
+
+/** The field a refusal of the database belongs to (F3-08: shown at the field), or null for the form as a whole. */
+export function fundErrorField(key: ParseKeys): (typeof ENTRY_FIELDS)[number] | null {
+  const code = String(key).replace(/^fund\.errors\./, '');
+  if (code.startsWith('date_')) return 'date';
+  if (code.startsWith('bill_')) return 'bill';
+  if (code === 'amount_invalid') return 'amount';
+  if (code === 'category_invalid') return 'category';
+  if (code === 'party_too_long') return 'party';
+  if (code === 'reference_too_long') return 'reference';
+  if (code === 'note_too_long') return 'note';
+  return null;
 }
 
 const BILL_LIMIT = { maxBytes: MAX_BILL_BYTES, tooBigKey: 'fund.errors.bill_too_big' as ParseKeys };

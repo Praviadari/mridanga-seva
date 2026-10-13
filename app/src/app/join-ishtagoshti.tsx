@@ -34,7 +34,9 @@ import {
 import { todayLocal } from '@/lib/dates';
 import { isValidEmail } from '@/lib/email';
 import { checkPersonName, cleanName, nameMessage } from '@/lib/person-name';
-import { typedPhone } from '@/lib/phone';
+import { phoneCountryOf, toE164, typedPhone } from '@/lib/phone';
+import { asciiDigits } from '@/lib/digits';
+import { classLocale } from '@/lib/class-locale';
 
 type Field = 'year' | 'phone' | 'terms' | 'parentName' | 'parentEmail' | 'parentConsent';
 
@@ -118,7 +120,9 @@ function JoinForm({ mine, onJoined }: { mine: MySubscription; onJoined: (state: 
   const [formError, setFormError] = useState<ParseKeys | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const yearNumber = /^\d{4}$/.test(year.trim()) ? Number(year.trim()) : null;
+  // Digits of the Telugu or Hindi keyboard too (P1-09).
+  const yearText = asciiDigits(year.trim());
+  const yearNumber = /^\d{4}$/.test(yearText) ? Number(yearText) : null;
   const group = yearNumber ? ageGroup(yearNumber, thisYear) : null;
   const minor = group === 'minor' || (group === 'eighteen' && !turned18);
 
@@ -126,7 +130,7 @@ function JoinForm({ mine, onJoined }: { mine: MySubscription; onJoined: (state: 
     if (busy) return; // Enter pressed again while the request runs (D6-17)
     const found: Partial<Record<Field, ParseKeys>> = {};
     if (!yearNumber || yearNumber < thisYear - 120 || yearNumber > thisYear - 5) found.year = 'ishtagoshtiJoin.errors.birth_year_invalid';
-    if (phone.trim() && !/^\+?[0-9][0-9 -]{5,18}[0-9]$/.test(phone.trim())) found.phone = 'ishtagoshtiJoin.errors.phone_invalid';
+    if (phone.trim() && !toE164(phone, phoneCountryOf(classLocale().country))) found.phone = 'ishtagoshtiJoin.errors.phone_invalid';
     if (!terms) found.terms = 'ishtagoshtiJoin.errors.terms_required';
     if (minor) {
       // Letters, spaces, . ' - only (#267); empty keeps this form's own message.
@@ -160,7 +164,6 @@ function JoinForm({ mine, onJoined }: { mine: MySubscription; onJoined: (state: 
 
   return (
     <>
-      {formError ? <Notice tone="error">{t(formError)}</Notice> : null}
       <Section icon="person" title={t('ishtagoshtiJoin.aboutYou')}>
         <TextField
           label={t('ishtagoshtiJoin.birthYear')}
@@ -174,7 +177,7 @@ function JoinForm({ mine, onJoined }: { mine: MySubscription; onJoined: (state: 
         {group === 'eighteen' ? (
           <Checkbox label={t('ishtagoshtiJoin.turned18')} checked={turned18} onChange={setTurned18} />
         ) : null}
-        <TextField
+        <TextField kind="phone"
           label={t('ishtagoshtiJoin.phone')}
           hint={t('ishtagoshtiJoin.phoneHint')}
           value={phone}
@@ -190,7 +193,7 @@ function JoinForm({ mine, onJoined }: { mine: MySubscription; onJoined: (state: 
 
       {minor ? (
         <Section icon="guardian" title={t('ishtagoshtiJoin.parentTitle')} description={t('ishtagoshtiJoin.parentHint')}>
-          <TextField
+          <TextField kind="name"
             label={t('ishtagoshtiJoin.parentName')}
             value={parentName}
             onChangeText={setParentName}
@@ -228,7 +231,8 @@ function JoinForm({ mine, onJoined }: { mine: MySubscription; onJoined: (state: 
         <Checkbox label={t('ishtagoshtiJoin.termsAgree')} checked={terms} onChange={setTerms} error={errors.terms && t(errors.terms)} />
       </Section>
 
-      <FormErrorSummary errors={errors} />
+      {/* P1-11 / F1-14 (#323): the server's refusal beside the button, not at the top of the form. */}
+      <FormErrorSummary errors={errors} serverError={formError ? t(formError) : null} />
       <Button icon="ishtagoshti" label={minor ? t('ishtagoshtiJoin.submitMinor') : t('ishtagoshtiJoin.submit')} onPress={submit} loading={busy} />
     </>
   );

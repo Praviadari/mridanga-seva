@@ -36,6 +36,7 @@ import { callReasonName, lastVisitText, outcomeName, relationName } from '@/i18n
 import { localDate, formatDate, parseDayMonthYear, todayLocal } from '@/lib/dates';
 import { goBackOr } from '@/lib/go-back';
 import { useRequestId } from '@/lib/use-request-id';
+import { useFormChanged, useLeaveGuard } from '@/lib/use-leave-guard';
 
 /** A phone number to dial: whose it is (already translated) and the number. */
 type Dial = { who: string; phone: string };
@@ -73,6 +74,9 @@ function CallLogScreenContent() {
   const [dialFailed, setDialFailed] = useState<string | null>(null);
   // #322: one id for this call note, so Save again after a lost answer records it once.
   const { requestId } = useRequestId();
+  // #327: Back asks before a typed call note is thrown away (not after it is saved).
+  const changed = useFormChanged(form, true);
+  useLeaveGuard(changed && saved === null);
 
   const load = useCallback(async () => {
     setContext(await fetchCallContext(id));

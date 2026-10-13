@@ -8,6 +8,8 @@
 import type { Language } from '@/i18n';
 import { checkPersonName, cleanName, nameMessage } from '@/lib/person-name';
 import { supabase } from '@/lib/supabase';
+import { classLocale } from '@/lib/class-locale';
+import { phoneCountryOf, toE164 } from '@/lib/phone';
 
 import { isNetworkError, type MessageKey } from './errors';
 
@@ -36,9 +38,9 @@ export function checkMyDetails(details: MyDetails): MyDetailsErrors {
   else if (problem === 'tooLong') errors.fullName = 'myProfile.errors.nameTooLong';
   else if (HIDDEN_CHARACTER.test(name)) errors.fullName = 'myProfile.errors.nameInvalid';
   else if (problem) errors.fullName = nameMessage(problem);
+  // A real number of the class's country, or with + and a country code; kept as E.164 (#324).
   const phone = details.phone.trim();
-  const digits = phone.replace(/[^0-9]/g, '').length;
-  if (phone && (!/^\+?[0-9 ]+$/.test(phone) || digits < 7 || digits > 15)) errors.phone = 'myProfile.errors.phoneInvalid';
+  if (phone && !toE164(phone, phoneCountryOf(classLocale().country))) errors.phone = 'myProfile.errors.phoneInvalid';
   return errors;
 }
 
@@ -53,11 +55,17 @@ export async function fetchMyPhone(profileId: string): Promise<string | null | u
   return data?.phone ?? null;
 }
 
+/** The phone as the database keeps it (E.164, #324); empty = null. */
+function savedPhone(typed: string): string | null {
+  const phone = typed.trim();
+  return phone ? (toE164(phone, phoneCountryOf(classLocale().country)) ?? phone) : null;
+}
+
 /** Saves the name and phone. Nothing = saved. */
 export async function saveMyDetails(profileId: string, details: MyDetails): Promise<{ errorKey?: MessageKey }> {
   const { data, error } = await supabase
     .from('profiles')
-    .update({ full_name: cleanName(details.fullName), phone: details.phone.trim() || null })
+    .update({ full_name: cleanName(details.fullName), phone: savedPhone(details.phone) })
     .eq('id', profileId)
     .select('id');
   if (error) {

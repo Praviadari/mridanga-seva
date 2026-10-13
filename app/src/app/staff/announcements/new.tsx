@@ -31,6 +31,7 @@ import {
   type ComposeOptions,
 } from '@/data/announcements';
 import { discardDraft, peekDraft, useDraftKeeper } from '@/lib/form-drafts';
+import { useLeaveGuard } from '@/lib/use-leave-guard';
 
 /** The key of this form's draft (src/lib/form-drafts.ts). */
 const DRAFT_KEY = 'announcement-new';
@@ -62,6 +63,8 @@ export default function NewAnnouncementScreen() {
   const [errors, setErrors] = useState<AnnouncementFormErrors>({});
   const [serverError, setServerError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  // #327: Back asks before a typed announcement is thrown away.
+  const { allowLeave } = useLeaveGuard(!!(form.title.trim() || form.body.trim() || form.files.length > 0));
 
   const load = useCallback(async () => {
     setOptions(await fetchComposeOptions(myId));
@@ -116,6 +119,7 @@ export default function NewAnnouncementScreen() {
       return;
     }
     // Replace, so Back from the new announcement returns to the list, not to an empty form.
+    allowLeave();
     router.replace({ pathname: '/staff/announcements/[id]', params: { id: String(result.id), posted: '1' } });
   }
 

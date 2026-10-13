@@ -220,7 +220,7 @@ export function IshtagoshtiSloka({ area }: { area: IgArea }) {
                   }}
                 />
               ))}
-              <TextField label={t('ishtagoshti.pinDate')} hint={t('ishtagoshti.pinDateHint')} value={pinDay} onChangeText={setPinDay} maxLength={10} />
+              <TextField kind="date" label={t('ishtagoshti.pinDate')} hint={t('ishtagoshti.pinDateHint')} value={pinDay} onChangeText={setPinDay} maxLength={10} />
               <Button variant="secondary" icon="today" label={t('ishtagoshti.pin')} loading={busy} onPress={pin} />
             </>
           ) : (

@@ -55,6 +55,7 @@ import {
 import { fileSizeText, LEVEL_IDS, levelName } from '@/i18n/labels';
 import { spacing, useTheme } from '@/theme/use-theme';
 import { useRequestId } from '@/lib/use-request-id';
+import { useFormChanged, useLeaveGuard } from '@/lib/use-leave-guard';
 
 
 /** The icon of a file's kind. */
@@ -138,6 +139,8 @@ function FormBody({ header, editing }: { header: ReactNode; editing: Editing | n
   // #322: one id for a new assessment, so Save again after a lost answer saves it once.
   const { requestId } = useRequestId();
   const [pickError, setPickError] = useState<string | null>(null);
+  // #327: Back asks before a half-filled form is thrown away.
+  const { allowLeave } = useLeaveGuard(useFormChanged(form, true));
 
   const update = (change: Partial<AssessmentForm>) => {
     setForm((current) => ({ ...current, ...change }));
@@ -165,6 +168,7 @@ function FormBody({ header, editing }: { header: ReactNode; editing: Editing | n
       setServerError(t(result.errorKey ?? 'common.genericError'));
       return;
     }
+    allowLeave();
     router.replace({ pathname: '/staff/assessments/[id]', params: { id: String(result.id) } });
   }
 
@@ -181,6 +185,7 @@ function FormBody({ header, editing }: { header: ReactNode; editing: Editing | n
       return;
     }
     // Back to the assessment; opened from a link, the form is replaced by it.
+    allowLeave();
     router.dismissTo({ pathname: '/staff/assessments/[id]', params: { id: String(editing.assessment.id) } });
   }
 

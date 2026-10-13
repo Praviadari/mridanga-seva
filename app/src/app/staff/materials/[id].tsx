@@ -45,6 +45,8 @@ import { fileSizeText, levelName } from '@/i18n/labels';
 import { goBackOr } from '@/lib/go-back';
 import { spacing } from '@/theme/use-theme';
 import { useRequestId } from '@/lib/use-request-id';
+import { FormErrorSummary } from '@/components/form-error-summary';
+import { useFormChanged, useLeaveGuard } from '@/lib/use-leave-guard';
 
 /** "Whole level" in the item choice (no item). */
 const WHOLE_LEVEL = 0;
@@ -82,6 +84,8 @@ function MaterialScreenContent() {
   const [message, setMessage] = useState<string | null>(null);
   const [declining, setDeclining] = useState(false);
   const [declineReason, setDeclineReason] = useState('');
+  // #327: Back asks before a half-filled form is thrown away.
+  const { allowLeave } = useLeaveGuard(useFormChanged(form, typeof loaded === 'object' && loaded !== null));
 
   useEffect(() => {
     let cancelled = false;
@@ -174,9 +178,13 @@ function MaterialScreenContent() {
     setMessage(null);
     const outcome = isNew ? await addMaterial(myId, form, requestId()) : await updateMaterial(Number(params.id), form);
     setBusy(null);
-    if (outcome.errorKey) setMessage(t(outcome.errorKey));
+    if (outcome.errorKey) {
+      setMessage(t(outcome.errorKey));
+      return;
+    }
+    allowLeave();
     // A coordinator's suggestion is listed on C18, not on the level page.
-    else goBackOr(suggesting ? '/staff/suggestions' : { pathname: '/staff/levels/[id]', params: { id: String(form.levelId) } });
+    goBackOr(suggesting ? '/staff/suggestions' : { pathname: '/staff/levels/[id]', params: { id: String(form.levelId) } });
   }
 
   /** The Guru's review: saves the edits, then adds the suggestion to the lessons or declines it. */
@@ -193,7 +201,10 @@ function MaterialScreenContent() {
     const outcome = saved.errorKey ? saved : await decideSuggestion(material.id, approve, declineReason);
     setBusy(null);
     if (outcome.errorKey) setMessage(t(outcome.errorKey));
-    else goBackOr('/staff/suggestions');
+    else {
+      allowLeave();
+      goBackOr('/staff/suggestions');
+    }
   }
 
   async function remove() {
@@ -203,13 +214,15 @@ function MaterialScreenContent() {
     const outcome = await deleteMaterial(material);
     setBusy(null);
     if (outcome.errorKey) setMessage(t(outcome.errorKey));
-    else goBackOr({ pathname: '/staff/levels/[id]', params: { id: String(form.levelId) } });
+    else {
+      allowLeave();
+      goBackOr({ pathname: '/staff/levels/[id]', params: { id: String(form.levelId) } });
+    }
   }
 
   return (
     <Screen underHeader>
       {header}
-      {message ? <Notice tone="error">{message}</Notice> : null}
       {suggesting ? <Notice tone="info">{t('suggestions.formIntro')}</Notice> : null}
       {suggestion ? (
         <Notice tone="info" title={t('suggestions.reviewTitle', { name: suggestion.suggestedBy })}>
@@ -341,6 +354,8 @@ function MaterialScreenContent() {
       </Section>
 
       {busy === 'save' && isNew && form.file ? <AppText tone="muted">{t('announcements.files.uploading')}</AppText> : null}
+      {/* P1-11 (#323): the problems and the server's answer beside the buttons, not at the top of the page. */}
+      <FormErrorSummary errors={errors} serverError={message} />
       {suggestion ? (
         // C18 review: add it (with any edits above) or decline it with a reason.
         declining ? (

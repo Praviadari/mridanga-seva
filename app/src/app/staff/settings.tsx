@@ -116,7 +116,7 @@ export default function SettingsScreen() {
           <AppText tone="muted">{t('settings.noCentre')}</AppText>
         ) : (
           <>
-            <TextField
+            <TextField kind="time"
               label={t('settings.opensAt')}
               value={form.opensAt}
               onChangeText={(opensAt) => setForm({ ...form, opensAt })}
@@ -124,7 +124,7 @@ export default function SettingsScreen() {
               hint={t('settings.timeHint')}
               error={errors.opensAt ? t(errors.opensAt) : undefined}
             />
-            <TextField
+            <TextField kind="time"
               label={t('settings.closesAt')}
               value={form.closesAt}
               onChangeText={(closesAt) => setForm({ ...form, closesAt })}
