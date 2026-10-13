@@ -13,6 +13,8 @@ const stubs = {
   // src/data/students.ts (the desk's request ids, reg-accept): a random UUID, and a client that is never called.
   'expo-crypto': stub('./expo-crypto.mjs'),
   '@/lib/supabase': stub('./supabase.mjs'),
+  // src/lib/slow-start.ts restartApp (the crash screen's Restart, #294): a counted reloadAsync.
+  'expo-updates': stub('./expo-updates.mjs'),
 };
 
 /** Node module hook: resolves a stubbed package or app module to its stand-in file. */

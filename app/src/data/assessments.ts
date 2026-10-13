@@ -22,7 +22,7 @@ import {
   type MediaFile,
   type PickedMedia,
 } from './assessment-files';
-import { isNetworkError, type MessageKey } from './errors';
+import { fallbackErrorKey, isNetworkError, type MessageKey } from './errors';
 import { fetchStudentSummaries, type StudentSummary } from './student-overview';
 
 /** Longest texts and sizes of the assessment forms (G6, C12, S7, C14); the database checks them too. */
@@ -137,7 +137,7 @@ function errorKeyOf(message: string | undefined): MessageKey {
   const code = KNOWN_CODES.find((c) => message === c);
   if (code) return `assessments.errors.${code}` as MessageKey;
   if (/row-level security|permission denied|violates foreign key/i.test(message)) return 'assessments.errors.not_allowed';
-  return 'common.genericError';
+  return fallbackErrorKey(message);
 }
 
 /** Names of the Guru and the coordinators by profile id (staff_names, docs/DECISIONS.md #26). */

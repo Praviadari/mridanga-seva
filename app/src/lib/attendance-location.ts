@@ -8,7 +8,8 @@
 //   phone shows: only while the app is open, to confirm you are at the class).
 // - A fix younger than FIX_MAX_AGE_MS is reused, so a queue at the door is not slowed down; the
 //   attendance screen warms it up on opening when the permission is already given.
-// - No fix within FIX_TIMEOUT_MS (indoors, location switched off) = 'no_fix'.
+// - No fix within FIX_TIMEOUT_MS (indoors, location switched off) = 'no_fix', and 'no_fix' at once for the
+//   next minute (NO_FIX_RETRY_MS) instead of waiting again for each student.
 // - The web version uses the browser's location (expo-location wraps navigator.geolocation);
 //   a browser without it = 'no_location'.
 // Docs: https://docs.expo.dev/versions/v57.0.0/sdk/location/
@@ -46,19 +47,32 @@ function toLocation(position: Location.LocationObject): PhoneLocation {
   };
 }
 
+/**
+ * After a read that got no fix in time, the next reads within this time answer 'no_fix' at once instead
+ * of waiting FIX_TIMEOUT_MS again, so a queue at the door in a hall without a fix pays the wait at most
+ * once a minute (audit R2-04, docs/DECISIONS.md #293). A fix that arrives late is still kept.
+ */
+const NO_FIX_RETRY_MS = 60_000;
+let lastNoFix = 0;
+
 /** A fresh position (or a recent one the phone already has); null when none came in time. */
 async function readPosition(): Promise<PhoneLocation | null> {
   if (lastFix && Date.now() - lastFix.at < FIX_MAX_AGE_MS) return lastFix.location;
-  const position = await Promise.race([
-    (async () => {
-      const known = await Location.getLastKnownPositionAsync({ maxAge: FIX_MAX_AGE_MS, requiredAccuracy: 200 }).catch(() => null);
-      return known ?? (await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }));
-    })().catch(() => null),
-    timeout(FIX_TIMEOUT_MS),
-  ]);
-  if (!position) return null;
-  const location = toLocation(position);
-  lastFix = { location, at: Date.now() };
+  if (Date.now() - lastNoFix < NO_FIX_RETRY_MS) return null;
+  const reading = (async () => {
+    const known = await Location.getLastKnownPositionAsync({ maxAge: FIX_MAX_AGE_MS, requiredAccuracy: 200 }).catch(() => null);
+    return known ?? (await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }));
+  })()
+    .then((position) => {
+      // Also when it comes after the time limit: the next student's check-in uses it.
+      const location = toLocation(position);
+      lastFix = { location, at: Date.now() };
+      lastNoFix = 0;
+      return location;
+    })
+    .catch(() => null);
+  const location = await Promise.race([reading, timeout(FIX_TIMEOUT_MS)]);
+  if (!location) lastNoFix = Date.now();
   return location;
 }
 

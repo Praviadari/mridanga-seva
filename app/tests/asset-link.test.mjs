@@ -13,11 +13,13 @@ const { ASSET_LINK_ORIGIN, assetLink, assetTokenFromScan } = await import('../sr
 const TOKEN = 'Ab3_-xYz0123456789AbCd';
 
 test('the label link is the web app + /i/ + the token', () => {
-  assert.equal(assetLink(TOKEN, ASSET_LINK_ORIGIN), `https://app.mridangaseva.com/i/${TOKEN}`);
+  // Until the domain move the LIVE site is pages.dev (#294, audit R2-08).
+  assert.equal(assetLink(TOKEN, ASSET_LINK_ORIGIN), `https://mridanga-seva.pages.dev/i/${TOKEN}`);
 });
 
 test('a scanned label link from our sites gives the token', () => {
   assert.equal(assetTokenFromScan(`https://app.mridangaseva.com/i/${TOKEN}`), TOKEN);
+  assert.equal(assetTokenFromScan(`https://mridanga-seva.pages.dev/i/${TOKEN}`), TOKEN, 'the LIVE site before the domain move');
   assert.equal(assetTokenFromScan(` https://APP.mridangaseva.com/i/${TOKEN}/ `), TOKEN, 'host case and a trailing slash');
   assert.equal(assetTokenFromScan(`https://mridanga-seva-test.pages.dev/i/${TOKEN}`), TOKEN, 'the TEST site');
   assert.equal(assetTokenFromScan(`http://localhost:8127/i/${TOKEN}?x=1`), TOKEN, 'a dev server');
