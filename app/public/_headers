@@ -2,15 +2,18 @@
 # A TEMPLATE: scripts/export-web.mjs fills in the two __NAMES__ below and writes the result to
 # dist/_headers, and refuses to finish if either is left. Upload only what export-web made.
 #   __SUPABASE__        the Supabase project of the site being built, e.g. https://<ref>.supabase.co
-#   __PLAYER_SCRIPT__   'sha256-...' of PLAYER_SCRIPT in src/lib/lesson-player-html.ts. The lesson
-#                       video plays in a srcdoc frame, which inherits this policy; that one script
+#   __PLAYER_SCRIPT__   'sha256-...' of PLAYER_SCRIPT in src/lib/lesson-player-html.ts. A lesson
+#                       video FILE plays in a srcdoc frame, which inherits this policy; that one script
 #                       is the only inline script allowed anywhere.
 #
 # Every outside host the web version loads, and why (checked 07-10-2026; add a host here only
 # with a DECISIONS entry):
 #   __SUPABASE__              data, sign-in, files and photos (REST, Auth, Storage, Edge Functions).
 #                             No Realtime is used, so no wss://.
-#   https://www.youtube.com   lesson videos: the IFrame Player API script and its player frame.
+#   https://www.youtube.com   lesson videos: YouTube's embed page in a sandboxed frame of its own origin,
+#                             driven by messages (lib/youtube-embed.ts). Its scripts are NOT allowed
+#                             here: none of YouTube's code runs in this site's origin (audit S5-01,
+#                             docs/DECISIONS.md #282).
 #   https: (media only)       a lesson video FILE is the team's own copy at any https address
 #                             (materials kind 'video'); media cannot run code.
 # Not loaded at all: the zxing QR reader comes from this site (/zxing/, lib/qr-reader.web.ts),
@@ -30,7 +33,7 @@
 # this policy blocks.
 
 /*
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval' __PLAYER_SCRIPT__ https://www.youtube.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: __SUPABASE__; media-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' data: blob: __SUPABASE__; frame-src https://www.youtube.com; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; upgrade-insecure-requests
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval' __PLAYER_SCRIPT__; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: __SUPABASE__; media-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' data: blob: __SUPABASE__; frame-src https://www.youtube.com; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; upgrade-insecure-requests
   Strict-Transport-Security: max-age=63072000; includeSubDomains
   X-Content-Type-Options: nosniff
   X-Frame-Options: DENY
