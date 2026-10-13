@@ -5558,6 +5558,168 @@ and polls "to students" reach student logins only (`audience_profiles`); a coord
 Praveen (after 21 Oct): the Guru's own record (default: allowed, linked in the SQL editor, nobody self-marks); Me >
 Assessments; whether follow-up calls should skip coordinators.
 
+## 322. A create is saved once, however often Save is tapped after a lost answer — 13 Oct 2026
+
+**Context.** Audit phase 1 P1-02 / P1-03 (F5-01, F4-01, F4-02, F3-02, F5-02). On a weak network the server can
+store a row while its answer is lost; the screen said "try again", and the second Save made a second fund entry,
+call note, practice entry, event or poll (which told everyone twice), assessment, material, syllabus item,
+theme or reply. Some of those saves also deleted the files they had just uploaded, although the saved row listed
+them. Only register_student (#126) and announcements (D6-10) were safe.
+
+**Decision (migration 0062 + JS).** Each open form holds one request id (a uuid, `lib/use-request-id.ts`) and
+sends it with every Save. Ten tables get a unique `request_id` (fund_entries, call_logs, practice_logs, events,
+polls, assessments, materials, syllabus_items, ig_themes, announcement_replies). Direct inserts send it as a
+column; a repeat is refused by the unique index and the app reads the first row back (`data/create-once.ts`
+insertOnce). The three functions get a twin with `p_request_id` first (record_fund_entry, log_call,
+log_practice) that returns the row saved earlier by the same person; the twin passes the id to the row through
+a transaction setting (`app.request_id`, trigger `stamp_request_id`), so the original functions stay unchanged
+and older apps keep calling them. Files: a repeated Save reuses the upload of the first try (`uploadOnce`); with
+no answer the files are kept (the row may list them; unused files are cleaned up as in OPERATIONS.md); only a
+refusal removes them. The same for a sloka's recording and an assessment edit.
+
+**Why.** Money, a child's call record and a push to the whole class must not happen twice because the hall's
+signal dropped.
+
+**Consequences.** "Try again" after a network error is now safe on these forms. Two keepers cannot share an id
+(the twin looks only at the caller's rows). Updates are not covered (they are idempotent already).
+
+## 323. Shared form parts: kinds, native digits, the hint kept, linked error summary, a self-guarding button — 13 Oct 2026
+
+**Context.** Audit phase 1 B4: P1-09 (Telugu/Hindi digits refused or deleted in number boxes), P1-11 (server
+messages at the top of long forms; the summary listed nothing), F5-08 (autocorrect on names), F5-10..F5-16,
+F1-11, F4-13, F4-15.
+
+**Decision (JS).** TextField: a `kind` preset (name, email, url, phone, number, decimal, date, time, code) sets
+keyboard, autocorrect, capitals and length (the caller's props win); in number-like boxes Telugu and Devanagari
+digits become 0-9 as they are typed; the hint stays and the error shows under it, both read out; a 2 px primary
+border while focused and a muted look when read-only; a "n of max" counter from 200 characters (`counter` gives
+the real limit when maxLength leaves room for a "too long" message); a multiline box starts about four lines
+tall. FormErrorSummary: given the form's fields it lists each problem as a link that scrolls to and focuses the
+field, and carries the server's refusal beside the button (fund entry first; materials, inventory item, syllabus
+item and Join Ishtagoshti moved their message beside the button). Button: an onPress that returns a promise keeps
+the button busy until it settles. The fund form checks the 366-day limit itself and shows a server refusal at
+its field (F3-08).
+
+**Why.** One change in four shared parts lifts every form (GOV.UK error summary and error message, WCAG 3.3.1,
+2.4.7; Apple HIG keyboards).
+
+**Consequences.** Other forms keep the count-only summary until they pass their fields. Native digits are read
+only where the box is number-like.
+
+## 324. Phone numbers are kept in one format, E.164 — 13 Oct 2026
+
+**Context.** Audit phase 1 P1-07 (F2-06, F1-05, F5-04): the same number was stored as 9876543210, 09876543210,
++919876543210 and 98765 43210; #164 had left the desk's own field national. Duplicate checks, search, dialling
+and exports disagreed.
+
+**Decision (migration 0062 + JS).** Retires #164's exception. `phone_e164()` reads a number with +, with 00, or a
+national Indian number (10 digits, 11 with a leading 0, 12 starting 91); a trigger keeps students, guardians,
+profiles and Ishtagoshti subscribers as E.164 on every changed phone and refuses what is not a number
+(`phone_invalid`); an unchanged old value is left alone, so editing other fields never fails on it. The run
+rewrites the stored numbers it can read, once. The desk, My profile and Join Ishtagoshti send E.164 (the class's
+country for a national number); the import goes through the same function.
+
+**Why.** One person, one number: duplicates are found and the call screen dials the right one.
+
+**Consequences.** India is assumed for a national number without a code in SQL (the app sends E.164). Numbers
+the run cannot read stay as they are: OPERATIONS.md "Phones that are not E.164" lists them.
+
+## 325. Fund and inventory past 1,000 rows; CSV, stocktake, suggestions, audit log, reports — 13 Oct 2026
+
+**Context.** Audit phase 1 B6: P1-19 (one unpaged read: past 1,000 fund entries the balance stopped at the
+1,000th), P1-21 (inventory lost its label code), P1-22 (Take back deleted an approved material's file),
+P1-23 (stocktake Finish / Delete on one tap), F3-09, F3-10, F3-11, F3-13, F3-17; phase 2 R3-08.
+
+**Decision.** (JS) `lib/paged-read.ts` reads every row 1,000 at a time in a total order: fund entries,
+inventory items and open loans, a count's ticks, the import's existing students, the audit log's names. The
+inventory list shows and searches `code · name` again. Finish and Delete of a count each ask first (Delete in
+its own section). Take back deletes the suggestion row first and its file only then. CSV exports write
+YYYY-MM-DD dates; the fund CSV adds a signed "Effect on balance" column; the formula guard also covers a
+leading tab, CR and the full-width = + - @. The audit log can filter and name fund entries and categories,
+instruments, counts, events and polls, with paise as rupees. Reports check a custom range at its fields (both
+dates, from before to, at most a year) and show only the newest load. A Settings refusal says to reload and
+check, not "{{min}} to {{max}}". (Migration 0062) an approved material's file can be deleted by the Guru only.
+
+**Why.** A treasurer must never read a wrong balance; staff search the code printed on the label.
+
+**Consequences.** No list in these screens is capped any more; 50,000 rows is the safety stop.
+
+## 326. The Guru deletes a record entered by mistake, and can undo an Excel import — 13 Oct 2026
+
+**Context.** Audit phase 2 R3-04 (#302 left it): a duplicate from the desk or a mis-mapped import could only be
+removed by Praveen in the SQL editor, as an "erasure".
+
+**Decision (migration 0062 + JS).** `delete_student_record(id, reason)`, the Guru only: deletes a record that
+nothing hangs on, with what was made with it (guardians, consents, About-you details, tasks, status and level
+history), and writes the reason on its audit-log row (the row keeps the record's copy). It refuses a record
+with a login (`student_linked`: take the login off first), a withdrawn one (`student_withdrawn`: erasure is
+the way), one with visits (`student_visited`) or anything recorded about the student (`student_has_history`:
+a call, a tick, practice, a loan, an assessment submission, an event, a nomination). On the student profile:
+"Delete this record (entered by mistake)", with a reason and the name typed again, only for a record without a
+login. Imports: each chosen file gets an id sent with every row (`students.import_id`, set only by the Guru's
+import, frozen after); `undo_import(id)` deletes the import's records that nothing hangs on and lists the
+others with why. The import screen offers Undo after an import and for the last 30 days' imports; rows a
+dropped connection did not send are counted ("Not sent: n", Import the rest) instead of a green "finished"
+(R3-07, R2-13).
+
+**Why.** Week 1 brings duplicates and a first import; the Guru must fix them from the phone without an erasure
+record.
+
+**Consequences.** Two records of one student that both have history are merged by the app team (SQL), as
+before. Roll numbers of deleted records are never given again.
+
+## 327. Back asks before typed work is lost; a failed refresh keeps the data; screens reload after a while — 13 Oct 2026
+
+**Context.** Audit phase 1 P1-10 (Back threw away a half-filled form, F5-05, F4-03) and phase 2 F9: R1-04 /
+R2-10 (a failed reload after an action replaced the page with "Could not load"), R4-04 (a tab left open
+overnight showed yesterday), R3-09 (load failures with no Try again).
+
+**Decision (JS).** `useLeaveGuard(dirty)` (lib/use-leave-guard.ts, React Navigation's usePreventRemove from
+`expo-router/react-navigation`; SDK 58 brings its own) asks "Discard what you typed?" on Back, the swipe and
+the header arrow while a form holds unsaved changes (register, new announcement, event, poll, assessment, call
+note, fund entry, material); on the web also before a reload or closing the tab. A form calls allowLeave()
+before it leaves after a save. `useKeptLoad` keeps the last data when a reload fails and shows "Could not
+refresh. Showing what was loaded at HH:MM" with Try again, on twelve screens; the first load still shows its
+error. `useReloadOnResume` loads again when the app returns after 5 minutes or more (homes, Attendance, Here now,
+Follow-up, the inbox). Fund entry, inventory item and a count offer Try again when they could not load.
+
+**Why.** Two minutes of a child's registration must not vanish on a slip; a sent reply must not look lost.
+
+**Consequences.** On the web the browser's own Back keeps the form and asks, but the address bar already shows
+the previous page (a react-navigation web limit). The form drafts of #218 still cover a forced sign-out.
+
+## 328. Event attendance per student; a withdrawn record says so — 13 Oct 2026
+
+**Context.** Audit phase 2 F11 (R2-07: two phones marking one event replaced each other's whole list) and F12
+(R3-06: a withdrawn record looked normal; staff learned it only from a refused action).
+
+**Decision.** (Migration 0062) `change_event_attendance(event, came, not_came)` changes only the students given,
+with mark_event_attendance's rules; (JS) the attendance screen sends what this phone changed since it loaded,
+then loads again with the other phones' ticks. (JS) The student profile shows "Consent withdrawn on <date>"
+and what that means. A Guru "Record withdrawal" form stays a team decision (withdraw_consent in SQL, OPERATIONS).
+
+**Why.** Several coordinators mark a festival's attendance at once; a frozen record must be recognisable.
+
+**Consequences.** mark_event_attendance stays for older apps. The Students list has no withdrawn chip yet (it
+needs the overview view to carry the date).
+
+## 329. The parent's code email is capped per address; small sign-in and message gaps closed — 13 Oct 2026
+
+**Context.** Audit phase 1 B10 (P1-13: any address could get the code email three times a day per login, and a
+few accounts could use up the app's 100 a day; the email carried the user's own text) and B8 (P1-14: no way to
+get a new confirmation email after "confirm your email first"; F5-09: server codes shown as "Something went
+wrong").
+
+**Decision.** (Migration 0062) ig_send_parent_code refuses a fourth code a day to the same parent address, from
+any child (`code_parent_limit`, worded in the app); the names in the email are cut to letters, marks, spaces,
+' and - (no link, no lines of one's own). (JS) Sign-in shows "Send a new confirmation email" after "confirm your
+email first"; `group_inactive` and `member_not_allowed` have their own words.
+
+**Why.** The class's email sender must not be usable to send other people's text, and one parent's inbox must
+not be flooded.
+
+**Consequences.** The consent wording (#88) and a minimum age of the login stay team decisions.
+
 ## 336. Design tokens from one file; option A palette by default, switchable — 13 Oct 2026
 
 **Status: built on branch `after-launch-design` (merge after launch); the palette is a team decision (audit phase
