@@ -153,5 +153,6 @@ test('the Guru links a staff login to its own record with link_staff_record, and
   const person = src('app/staff/coordinators/[id].tsx');
   assert.match(person, /linkOwnRecord\(person\.id, asking\.own\.id\)/);
   assert.match(person, /unlinkLogin\(own\.id\)/);
+  assert.ok(person.includes('details={[`${own.rollNo} · ${levelName(t, own.levelId)} · ${statusName(t, own.status)}`]}'), 'the own record row names it');
   assert.match(person, /\) : isMe \? \(\s*<AppText tone="muted">\{t\('coordinators\.ownSelf'\)\}/, 'the Guru\'s own record: the SQL editor');
 });
