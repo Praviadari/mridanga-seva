@@ -149,9 +149,13 @@ function InventoryItemScreenContent() {
         {loaded === undefined ? <LoadingCards /> : null}
         {loaded === 'not_found' ? <EmptyState icon="instruments" title={t('inventory.notFound')} /> : null}
         {loaded === null ? (
-          <Notice tone="error" title={t('inventory.loadFailed')}>
-            {t('common.networkError')}
-          </Notice>
+          <>
+            <Notice tone="error" title={t('inventory.loadFailed')}>
+              {t('common.networkError')}
+            </Notice>
+            {/* R3-09 (#327): not a dead end on a weak signal. */}
+            <Button icon="refresh" label={t('common.tryAgain')} onPress={() => void load()} />
+          </>
         ) : null}
       </Screen>
     );
