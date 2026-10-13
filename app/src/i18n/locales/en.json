@@ -350,7 +350,17 @@
     "flaggedTile": "Flagged check-ins",
     "flaggedHint": "Check-ins where the phone was outside the area or gave no location. The visit still counts; look into ones that repeat.",
     "reasonLine": "{{reason}}: {{count}}",
-    "csvColumn": "Flagged check-ins"
+    "csvColumn": "Flagged check-ins",
+    "checkOut": "Checked out away from the class: {{reason}}",
+    "outReason": {
+      "outside": "outside the area",
+      "refused": "location refused",
+      "no_fix": "no location fix",
+      "no_location": "no location",
+      "no_area": "no class place set",
+      "mocked": "made-up location",
+      "inaccurate": "location not precise"
+    }
   },
   "hereNow": {
     "title": "In class now",
@@ -4137,7 +4147,92 @@
       "not_configured": "The safety check is not set up on the server yet. Use your QR code, or ask a coordinator.",
       "bad_request": "The safety check request was not valid. Update the app, then try again.",
       "server_error": "The server had a problem. Use your QR code, or ask a coordinator.",
-      "confirmOwn": "You cannot confirm your own face scan: another coordinator does it."
+      "confirmOwn": "You cannot confirm your own face scan: another coordinator does it.",
+      "bad_location": "The phone's location could not be read. Try again, or ask a coordinator."
+    }
+  },
+  "selfScan": {
+    "checkIn": "Check in",
+    "checkOut": "Check out",
+    "appOnly": "Checking in with your face works in the Android app only.",
+    "locating": "Finding where your phone is (once, only now)…",
+    "saving": "Checking…",
+    "tryAgain": "Try again",
+    "backHome": "Back to home",
+    "ask": {
+      "title": "Or ask a coordinator",
+      "body": "Show your printed QR card or My QR at the desk, or tell the coordinator your roll number.",
+      "openQr": "Open My QR"
+    },
+    "done": {
+      "inTitle": "Checked in",
+      "in": "You are checked in at {{time}}. Hare Krishna!",
+      "alreadyIn": "You were already checked in at {{time}}.",
+      "outTitle": "Checked out",
+      "out_one": "You checked out at {{time}}, after {{count}} minute at the class.",
+      "out_other": "You checked out at {{time}}, after {{count}} minutes at the class.",
+      "alreadyOut": "You have just checked out.",
+      "flagged": "Your phone was not at the class when you checked out. It is saved, with a note the coordinators see."
+    },
+    "refused": {
+      "offline": "No internet just now, so the face check-in cannot be used. Ask a coordinator.",
+      "notAvailable": "Face check-in is not available for you on this phone just now. Ask a coordinator.",
+      "window": "The class is open from {{opens}} to {{closes}}. You can check in with your face only then.",
+      "notConfigured": "Face check-in is not ready yet. Ask a coordinator.",
+      "integrity": "This phone could not be checked by Google Play, so the face check-in cannot be used. Ask a coordinator.",
+      "triesUsedUp": "Three tries did not work today. Please ask a coordinator to check you in.",
+      "location": {
+        "outside": "Your phone is not at the class, so you cannot check in with your face. At the class? Ask a coordinator.",
+        "refused": "Location is not allowed for this app, so the face check-in cannot be used. Ask a coordinator, or allow location in the phone's Settings.",
+        "no_fix": "Your phone could not find where it is in time. Ask a coordinator.",
+        "no_location": "This phone gives no location. Ask a coordinator.",
+        "no_area": "The class has no place set for the check-in yet. Ask a coordinator.",
+        "mocked": "Your phone reports a made-up location (a fake-location app or developer setting), so the face check-in cannot be used. Ask a coordinator.",
+        "inaccurate": "Your phone's location is not precise enough just now. Step near a window or outside the door and try again, or ask a coordinator."
+      },
+      "face": {
+        "tooFew": "Not enough clear pictures. Hold the phone at eye level in good light and try again.",
+        "liveness": "The scan did not see a live face. Try again in good light, or ask a coordinator.",
+        "notOneFace": "The pictures were not all of one face. Only you in front of the camera, please, and try again.",
+        "noMatch": "Your face did not match this phone's face scan. Ask a coordinator; never mind, your QR card works."
+      },
+      "server": {
+        "integrity": "The phone check did not pass. Ask a coordinator.",
+        "not_enrolled": "Face scan is not on for this phone any more. Ask a coordinator; you can turn it on again at the desk.",
+        "liveness": "The scan did not see a live face. Ask a coordinator.",
+        "no_match": "Your face did not match. Ask a coordinator.",
+        "window": "The class is open from {{opens}} to {{closes}}. You can check in with your face only then.",
+        "outside": "Your phone is not at the class. Ask a coordinator.",
+        "mocked": "Your phone reports a made-up location. Ask a coordinator.",
+        "not_checked_in": "You are not checked in today, so there is nothing to check out.",
+        "too_soon": "You checked in less than {{minutes}} minutes ago. To leave now, ask a coordinator to check you out.",
+        "other": "The face check-in did not work. Ask a coordinator."
+      }
+    }
+  },
+  "faceCounts": {
+    "title": "Face scan use",
+    "intro": "Numbers only: how many students use face scan, and how many face check-ins failed and why. No student is named.",
+    "entryHint": "How face scan is used at your centre, in numbers.",
+    "open": "Open face scan use",
+    "period": "Period",
+    "range": "{{from}} to {{to}}",
+    "enrolled": "students with face scan",
+    "failed": "failed face check-ins",
+    "noFailures": "No failed face check-ins in this period.",
+    "times_one": "{{count}} time",
+    "times_other": "{{count}} times",
+    "integrityTitle": "Phone check (Google Play): what failed",
+    "reasons": {
+      "outside": "Not at the class (or no precise location)",
+      "mocked": "Made-up location",
+      "window": "Outside the open hours",
+      "integrity": "Phone check failed",
+      "liveness": "No live face seen",
+      "no_match": "Face did not match",
+      "not_enrolled": "Face scan not on for that phone",
+      "offline": "No internet",
+      "other": "Other"
     }
   }
 }

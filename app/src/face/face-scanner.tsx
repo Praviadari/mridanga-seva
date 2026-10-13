@@ -36,6 +36,10 @@ export type FaceScannerProps = {
   /** Called once with the pictures' numbers (never the pictures). */
   onDone: (samples: EnrolSample[]) => void;
   onCancel: () => void;
+  /** The self-scan (#345): told each time the blink/turn challenge fails, so the tries are counted. */
+  onFailed?: () => void;
+  /** False = no "Try again" after a failed challenge (the self-scan's tries are used up). Default true. */
+  canRetry?: boolean;
 };
 
 /** The camera permission, then the scan. */
@@ -84,14 +88,14 @@ function toSample(r: FrameReport): FaceSample {
 }
 
 /** One run: challenge, then the pictures. A new `key` (Try again) starts a fresh run. */
-function ScanRun({ frames, onDone, onCancel }: FaceScannerProps) {
+function ScanRun(props: FaceScannerProps) {
   const [run, setRun] = useState(0);
-  return <ScanAttempt key={run} frames={frames} onDone={onDone} onCancel={onCancel} onRetry={() => setRun((n) => n + 1)} />;
+  return <ScanAttempt key={run} {...props} onRetry={() => setRun((n) => n + 1)} />;
 }
 
 type AttemptProps = FaceScannerProps & { onRetry: () => void };
 
-function ScanAttempt({ frames, onDone, onCancel, onRetry }: AttemptProps) {
+function ScanAttempt({ frames, onDone, onCancel, onFailed, canRetry = true, onRetry }: AttemptProps) {
   const { t } = useTranslation();
   const cam = useRef<FaceCameraHandle>(null);
   const [steps] = useState<Step[]>(() => randomSteps());
@@ -174,13 +178,14 @@ function ScanAttempt({ frames, onDone, onCancel, onRetry }: AttemptProps) {
       if (st.kind === 'failed') {
         finished.current = true;
         setPhase('failed');
+        onFailed?.();
         return;
       }
       if (st.kind !== 'passed') return;
       if (before.kind !== 'passed') setPhase('pictures');
       if (goodForCapture(s, settings) && Date.now() - lastCaptureAt.current > ENROL_FRAME_GAP_MS) void tryCapture();
     },
-    [settings, steps, tryCapture],
+    [onFailed, settings, steps, tryCapture],
   );
 
   return (
@@ -200,7 +205,7 @@ function ScanAttempt({ frames, onDone, onCancel, onRetry }: AttemptProps) {
             : t(prompt)}
       </AppText>
       {problem ? <Notice tone="error">{problem}</Notice> : null}
-      {phase === 'failed' ? <Button icon="refresh" label={t('face.scan.tryAgain')} onPress={onRetry} /> : null}
+      {phase === 'failed' && canRetry ? <Button icon="refresh" label={t('face.scan.tryAgain')} onPress={onRetry} /> : null}
       <Button variant="secondary" label={t('face.scan.cancel')} onPress={onCancel} />
     </View>
   );

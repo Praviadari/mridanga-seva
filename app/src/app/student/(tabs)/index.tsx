@@ -37,6 +37,7 @@ import { fetchMyLatestAnnouncements, type MyLatestAnnouncements } from '@/data/a
 import { fetchStudentHome, type StudentHome } from '@/data/home';
 import { keepMyCardSaved } from '@/data/my-student';
 import { fetchPollsToVote } from '@/data/polls';
+import { useSelfScanState } from '@/face/use-self-scan';
 import { levelName } from '@/i18n/labels';
 import { useAboutPrompt } from '@/lib/about-prompt';
 import { todayLocal } from '@/lib/dates';
@@ -90,11 +91,26 @@ export default function StudentHomeScreen() {
   );
 
   const unread = news ? news.unread : 0;
+  // Face self-scan (Phase 3, #344): Check in during the open hours, Check out while checked in; nothing while
+  // face scan is off, on the web, or on a phone without a face code.
+  const selfScan = useSelfScanState(profile?.id);
+  const selfScanAction = selfScan?.action ?? null;
 
   // The ring of the student's screens (docs/DECISIONS.md #41, #44, #240), in reading order; coloured by family and the
   // circles of a family side by side (UI audit fix 9, #368): blue the door, purple learning, teal practice, orange
   // community, green About you.
   const modules: Module[] = [
+    ...(selfScanAction
+      ? [
+          {
+            key: 'selfScan',
+            icon: selfScanAction === 'check_in' ? 'hereNow' : 'signOut',
+            tone: 'green',
+            label: t(selfScanAction === 'check_in' ? 'selfScan.checkIn' : 'selfScan.checkOut'),
+            onPress: () => router.push({ pathname: '/student/self-scan', params: { action: selfScanAction } }),
+          } satisfies Module,
+        ]
+      : []),
     // My QR first: it works without internet (#21), when it is needed most; also a tab.
     { key: 'qr', icon: 'qr', tone: 'blue', label: t('tabs.myQr'), onPress: () => router.push('/student/my-qr') },
     // S9 with this week's visits at the top.

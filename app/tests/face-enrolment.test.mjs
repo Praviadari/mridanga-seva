@@ -267,7 +267,7 @@ test('the web bundle never imports the native face packages', () => {
   walk(path.join(app, 'src'));
   const importers = files.filter((f) => native.test(read(f)));
   // Each either has a .web twin, or is imported only by files that have one.
-  const twinned = new Set(['src/face/face-scanner.tsx', 'src/face/face-dev-panel.tsx', 'src/face/face-store.ts']);
+  const twinned = new Set(['src/face/face-scanner.tsx', 'src/face/face-dev-panel.tsx', 'src/face/face-store.ts', 'src/face/integrity.ts']);
   const insideTwinned = new Set(['src/face/face-camera.tsx', 'src/face/pipeline.ts']);
   assert.deepEqual(importers.filter((f) => !twinned.has(f) && !insideTwinned.has(f)), []);
   for (const f of twinned) assert.ok(fs.existsSync(path.join(app, f.replace(/\.(tsx?)$/, '.web.$1'))), `${f} has a .web twin`);

@@ -16,6 +16,7 @@ import { Button } from '@/components/button';
 import { ChoiceGroup, type Choice } from '@/components/choice-group';
 import { DataTable } from '@/components/data-table';
 import { EmptyState } from '@/components/empty-state';
+import { FaceCountsEntry } from '@/components/face-entries';
 import { ListRow } from '@/components/list-row';
 import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
@@ -145,6 +146,8 @@ export default function ReportsScreen() {
     <Screen underHeader wide>
       <Stack.Screen options={{ title }} />
       <ScreenIntro text={isGuru ? t('reports.introGuru') : t('reports.introCoordinator')} />
+      {/* Phase 3 (C27): only while face scan is switched on. */}
+      <FaceCountsEntry />
 
       <Section icon="visits" title={t('reports.rangeTitle')}>
         <ChoiceGroup

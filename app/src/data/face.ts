@@ -70,6 +70,8 @@ export const FACE_ERROR_CODES = [
   'not_configured',
   'bad_request',
   'server_error',
+  // The self-scan (self_scan, 0071): a position the server cannot read.
+  'bad_location',
 ] as const;
 
 export type FaceErrorCode = (typeof FACE_ERROR_CODES)[number];
@@ -229,6 +231,41 @@ export type FaceEnrolmentRow = {
   revokedAt: string | null;
   revokeReason: string | null;
 };
+
+/** face_scan_failures' reasons (0070, 0071), in the order the staff counts list them. */
+export const FACE_FAILURE_REASONS = ['outside', 'mocked', 'window', 'integrity', 'liveness', 'no_match', 'not_enrolled', 'offline', 'other'] as const;
+export type FaceFailureReason = (typeof FACE_FAILURE_REASONS)[number];
+
+/** One centre in the staff counts (C27): numbers only, no student is named (#213, Guru item 11). */
+export type FaceUseCounts = {
+  centreId: number;
+  centre: string;
+  /** Students with a current face enrolment. */
+  enrolled: number;
+  /** Failed self-scans in the period, by reason. */
+  failures: Partial<Record<FaceFailureReason, number>>;
+  /** The integrity failures by the rule that failed (verify-integrity's codes, use_integrity_pass's). */
+  integrity: Record<string, number>;
+};
+
+const counts = (v: unknown): Record<string, number> =>
+  Object.fromEntries(
+    Object.entries(v && typeof v === 'object' ? (v as Record<string, unknown>) : {}).filter((e): e is [string, number] => typeof e[1] === 'number'),
+  );
+
+/** face_use_counts (P3-6): per centre (a coordinator: their own; the Guru: every active centre), from - to (days at the class). */
+export async function fetchFaceUseCounts(from: string, to: string): Promise<{ centres: FaceUseCounts[] } | Failed> {
+  const { data, error } = await supabase.rpc('face_use_counts', { p_from: from, p_to: to });
+  if (error) return failed(error.message);
+  const centres = ((Array.isArray(data) ? data : []) as Record<string, unknown>[]).map((c) => ({
+    centreId: Number(c.centre_id),
+    centre: String(c.centre ?? ''),
+    enrolled: Number(c.enrolled ?? 0),
+    failures: counts(c.failures) as Partial<Record<FaceFailureReason, number>>,
+    integrity: counts(c.integrity),
+  }));
+  return { centres };
+}
 
 /** get_face_enrolments: the student's enrolments, newest first (the server writes one access-log row). */
 export async function fetchFaceEnrolments(studentId: string): Promise<{ rows: FaceEnrolmentRow[] } | Failed> {

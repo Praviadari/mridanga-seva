@@ -6,6 +6,8 @@
 // - FaceReEnrolNotice: the student home, when the enrolment ends within 30 days.
 // - FaceDevSection: My profile, for staff, on a TEST (preview) build only → the hidden developer screen.
 // - FaceDeskEntry: the student's profile (C8), for staff → C25 Face scan at the desk (also on the web: no camera).
+// - FaceCountsEntry: Reports (C21/G8), for staff → C27 Face scan use (counts per centre, P3-6).
+// The self-scan's "Check in" / "Check out" circle on the student home is src/face/use-self-scan.ts (S16).
 
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -76,6 +78,21 @@ export function FaceDevSection() {
   return (
     <Section icon="construction" title={t('face.dev.title')} description={t('face.dev.hint')}>
       <Button variant="secondary" icon="face" label={t('face.dev.open')} onPress={() => router.push('/staff/face-dev')} />
+    </Section>
+  );
+}
+
+/** Reports (C21/G8): "Face scan use" (C27), the counts per centre, while the switch is on. Works on the web too. */
+export function FaceCountsEntry() {
+  const { t } = useTranslation();
+  const [on, setOn] = useState(false);
+  useEffect(() => {
+    void fetchFaceSwitch().then(setOn);
+  }, []);
+  if (!on) return null;
+  return (
+    <Section icon="face" title={t('faceCounts.title')} description={t('faceCounts.entryHint')}>
+      <Button variant="secondary" icon="face" label={t('faceCounts.open')} onPress={() => router.push('/staff/face-counts')} />
     </Section>
   );
 }
