@@ -48,8 +48,8 @@ const GO_LIVE = ['0013', '0014', '0015', '0016', '0017', '0018', '0019', '0020',
   '0051',
   // More home practice (#400-#404).
   '0052',
-  // Phase 3 face scan (branch face-scan, placeholder number; renumbered at the merge before the production APK)
-  '0070'];
+  // Phase 3 face scan (branch face-scan, placeholder numbers: server 0070, self-scan 0071; renumbered at the merge before the production APK)
+  '0070', '0071'];
 
 let failures = 0;
 let passes = 0;

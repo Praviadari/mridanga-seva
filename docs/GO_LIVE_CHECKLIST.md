@@ -102,7 +102,8 @@ with m(migration, present) as (values
   ('0050', exists (select 1 from pg_proc where proname = 'staff_dashboard' and pronamespace = 'public'::regnamespace)),
   ('0051', to_regclass('public.minor_signups') is not null),
   ('0052', to_regclass('public.practice_plans') is not null),
-  ('0070', to_regclass('public.face_enrolments') is not null)
+  ('0070', to_regclass('public.face_enrolments') is not null),
+  ('0071', exists (select 1 from pg_proc where proname = 'self_scan' and pronamespace = 'public'::regnamespace))
 )
 select migration, case when present then 'yes' else 'no' end as present from m
 union all
@@ -171,6 +172,7 @@ a second paste. So pasting a file twice by mistake is harmless; still, never do 
 | M0051 | `0051_minor_home_signup.sql` | Praveen · dashboard | No rows; probe `0051`, `MISSING` `none`; verification row 3 `12 of 12` | **A child under 18 signs up at home; the parent consents by email** ([#399](DECISIONS.md)). New tables `minor_signups` and `parent_mail_log` (empty), new job `mridanga-minor-signups` (daily 02:15 IST: a child's sign-up without the parent's consent in 30 days is erased with `erase_login`), replaced `handle_new_user` (a minor's date of birth is kept only with the parent's details), `waiting_sign_ups` (+ the parent's part; a child appears only once the parent consented), `send_parent_notices` (also calls `notify-parents` for consent emails, check-out emails on or off) and the consent guard; new `accept_minor_sign_up`, the child's `my_parent_consent` / `resend_parent_email` / `set_parent_details` and the consent page's `give_parent_consent` (anon). `accept_sign_up` is not changed. **Order:** TEST first (with Praveen); on LIVE only after 0049 (it uses `erase_login`) and after (1) `notify-parents` is deployed from the same commit (C7, LIVE ref) and (2) `BREVO_API_KEY` + `NOTICE_FROM` are set in Edge Functions → Secrets (OPERATIONS "Parent consent by email"): without them every consent email is a dry run and children see "emails to parents are not switched on". Then the OTA with the new sign-up screen. Safe to run twice. **Done on LIVE 22 Oct 2026** (Praveen, main 3f74b53 file): `minor_signups` present, jobs 12 with `mridanga-minor-signups`, anon may run `give_parent_consent` and not `accept_minor_sign_up`; `notify-parents` deployed to LIVE the same morning (version 2, 11:16 IST). Brevo secrets not set yet: consent emails are dry runs |
 | M0052 | `0052_practice_more.sql` | Praveen · dashboard | No rows; probe `0052`, `MISSING` `none` | More home practice ([#400-#405](DECISIONS.md)): adds the table `practice_plans` (per level: the weekly goal, 4 x 15 until changed, and up to three things to practise; staff write, a student reads their own level's), `practice_goals` with `set_my_practice_goal` (a student's own goal), `practice_mantras` (the mantra before practice, Guru and Ishtagoshti editors write; nothing seeded) and the read-only function `practice_days` (a student's minutes per day with their goal, row-level security of the asker). No existing row or function changes; safe to run twice. **TEST first** (`fhuqyk…`), then LIVE, **before** the OTA and web upload that use it (without it the app shows no plan and no week card, and the plan editor cannot load). After 0051. **Done on LIVE 22 Oct 2026** (Praveen, main 7c846ed file): "Success. No rows returned"; `practice_plans` and `practice_mantras` present |
 | M0070 | `0070_face_enrolment.sql` | Praveen · dashboard | `schedule` table (one job); probe `0070`, `MISSING` `none` | **Phase 3, NOT for the launch.** Placeholder number (branch `face-scan`, was 0060 on `p3-server`; renumbered at the merge into main, right before the next production APK). Runs on TEST after the phone test day, on LIVE only after Praveen says face scan is fully tested ([#295-#300](DECISIONS.md)). Face scan server side: setting `face_enabled` **false** (SQL editor only), face consent with the child's own yes, `face_enrolments` (an enrolment record, **no face code**), the desk-confirmed enrolment, the integrity challenge and pass for the Edge Function `verify-integrity` (deployed separately, [OPERATIONS.md "Face scan: integrity check"](OPERATIONS.md#face-scan-integrity-check)), `visits.liveness_ok`, the staff counts. Adds `mridanga-face-housekeeping` |
+| M0071 | `0071_face_selfscan.sql` | Praveen · dashboard | No rows; probe `0071`, `MISSING` `none` | **Phase 3, NOT for the launch.** Placeholder number (branch `face-scan`, was 0064 on `p3-selfscan`; renumbered at the merge into main, after 0070). Same conditions as M0070 ([#344-#349](DECISIONS.md)). The student's own face check-in / check-out: `self_scan_state` (the home's circle), `self_scan` (re-checks the integrity pass, consent, this phone's enrolment, location, open hours, liveness and score), `note_self_scan_failure` (counts only); `visits.check_out_location` / `check_out_distance_m` / `check_out_method` (a check-out outside is saved and flagged); setting `face_match_percent` 55 (SQL editor only). Nothing changes while `face_enabled` is false |
 
 **A file newer than 0052 on main:** the replay's first check fails until this table lists it. Add it
 here, with its own steps, then run it last.
@@ -309,7 +311,8 @@ with m(migration, present) as (values
   ('0050', exists (select 1 from pg_proc where proname = 'staff_dashboard' and pronamespace = 'public'::regnamespace)),
   ('0051', to_regclass('public.minor_signups') is not null),
   ('0052', to_regclass('public.practice_plans') is not null),
-  ('0070', to_regclass('public.face_enrolments') is not null)
+  ('0070', to_regclass('public.face_enrolments') is not null),
+  ('0071', exists (select 1 from pg_proc where proname = 'self_scan' and pronamespace = 'public'::regnamespace))
 ),
 last_in_order as (select coalesce(max(a.migration), 'before 0010') as v from m a
   where a.present and not exists (select 1 from m b where b.migration <= a.migration and not b.present)),
@@ -320,7 +323,7 @@ jobs(name) as (values ('mridanga-status-refresh'), ('mridanga-close-visits'), ('
   ('mridanga-cron-history-purge'), ('mridanga-orphan-files'), ('mridanga-parent-notices'), ('mridanga-minor-signups'),
   ('mridanga-face-housekeeping')),
 checks(sort, check_name, ok, found, expected) as (
-  select 1, 'last migration', (select v from last_in_order) = '0070', (select v from last_in_order), '0070'
+  select 1, 'last migration', (select v from last_in_order) = '0071', (select v from last_in_order), '0071'
   union all select 2, 'migrations missing', (select v from missing) = 'none', (select v from missing), 'none'
   union all select 3, 'scheduled jobs',
     (select count(*) from jobs j join cron.job c on c.jobname = j.name and c.active) = 13,
