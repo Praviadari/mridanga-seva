@@ -10,6 +10,8 @@
 // home: "A new version is ready" on the Android app (components/update-notice.tsx), could not load,
 // and no student record. Language, Sign out and the version line are on My profile (A3), opened
 // by the person button beside the bell in the header.
+// Phase 3 (branch p3-selfscan, #344): a "Check in" / "Check out" circle first in the ring, only on the Android app
+// while face scan is on and this phone keeps a face code (src/face/use-self-scan.ts); it opens S16.
 // Numbers: student_home() through src/data/home.ts; announcements: src/data/announcements.ts.
 // It loads again each time it comes back into view, so a count goes once the thing is done.
 

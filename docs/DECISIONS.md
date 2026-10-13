@@ -5453,3 +5453,131 @@ real-face score with every step's time, cosine to the previous picture; in memor
 
 **Consequences.** Every server refusal is worded (src/data/face.ts `FACE_ERROR_CODES`, en/te/hi; te/hi drafts for native
 review), including the integrity codes the self-scan will use.
+
+## 344. The home's "Check in" / "Check out" circle: only when a self-scan can happen — 13 Oct 2026
+
+**Status: built on branch `p3-selfscan` (P3-5); migration 0064 (placeholder number).**
+
+**Context.** WORK_PLAN P3-5: a circle on the student home, only inside the centre's open window; face scan stays off by
+default (#300) and nothing face-related may show while it is off.
+
+**Decision.** The home asks `self_scan_state(device_key)` each time it comes into view, but only on the Android app, only
+while the start check (#310) says face scan is on and this phone keeps a confirmed face code. The answer's `action` is
+`check_in` while the centre is open (opens_at to closes_at, its time zone) and the student is not checked in, `check_out`
+while a visit of today is open (any time, until the closing job closes it), otherwise null (no circle); null too when
+this phone is not the enrolled one or `face_block_reason` names a reason (no consent, too young, left ...). The circle is
+the first in the ring, green, "Check in" / "Check out"; it opens S16. The answer also carries the centre's point and
+radius (the phone needs them for the location result it binds into the integrity token) and the match threshold.
+
+**Why.** Everyone else — web, iPhone, students without face scan, every student while the switch is off — never calls
+the server for it and sees exactly today's home.
+
+**Consequences.** One extra read per home view for enrolled students only. The window shown is the centre's
+`opens_at`-`closes_at`; a closed day (festival) is not known to the server, so the circle shows then too.
+
+## 345. The self-scan: the phone refuses first, the server re-checks everything, a refusal is answered — 13 Oct 2026
+
+**Status: built on branch `p3-selfscan` (P3-5); migration 0064 `self_scan`.**
+
+**Context.** WORK_PLAN P3-5 and the binding gates: Gate 1 (Play Integrity per check-in, #296), Gate 2 (face code on the
+phone only, #295), never a guess, the coordinator always offered, 0048's QR re-scan window and withdrawn rule.
+
+**Decision.** On the phone (S16), in order: ONE position (#348) → a check-in goes on only from "inside" → the blink/turn
+challenge + 3 pictures, each a real face, all one face, their mean matching the phone's face code (#348) → a challenge
+(`issue_integrity_challenge`) → a Play Integrity token bound to login, action, challenge and location result → the Edge
+Function `verify-integrity` → a one-time pass → `self_scan(action, position, pass, device_key, liveness_ok, score)`. The
+server then re-checks, in order: caller is a student, face scan on, `face_block_reason` (consent, record, age), the
+location result from the position (`self_scan_location`, the phone's rule letter for letter), the pass (this login,
+action and location result, once — `use_integrity_pass`, 0060), the enrolment of THIS phone, liveness, the score against
+`face_match_percent`, and for a check-in the open hours and "inside". A failed re-check is **answered**
+`{ ok: false, reason }`, not raised, so the pass stays spent and the failure stays counted (`face_scan_failures`, per
+centre, no student id). A check-in is saved with method `face`, `marked_by` = the student, `liveness_ok` true, the
+location result and distance, and the score in `visit_face_scores` (0060: never on `visits`, which audit_log copies). A
+check-out is never refused for the place: saved with its own location result (#347), flagged when not inside; it still
+needs the face match and the pass. 0048 holds: a check-in while in answers `already_in`; a check-out within
+`qr_rescan_minutes` (10) of the check-in answers `too_soon` (the desk can still check out); a repeat within 30 s
+`already_out`; a withdrawn record's login is switched off, so it gets `not_allowed`. An earlier day's open visit is closed
+at that day's closing time first, as at the desk. The parent's check-out email follows from 0043/0044's trigger with no
+change.
+
+**Why.** The phone's answers (liveness, score, mocked) are only as good as the app, which is what the integrity pass
+vouches for; everything the server can see itself (time, place from the position, consent, enrolment) it checks again.
+
+**Consequences.** Error codes raised to the app: `not_allowed`, `action_invalid`, `face_off`, `bad_location` and
+`face_block_reason`'s. The position goes with the call and is never stored (only the result and the distance, as 0024).
+
+## 346. Failed self-scans are counted from the phone too, without a name — 13 Oct 2026
+
+**Status: built on branch `p3-selfscan`; migration 0064 `note_self_scan_failure`.**
+
+**Context.** P3-6's staff view counts failed self-scans by reason; most failures (outside, mocked, liveness, no match)
+happen on the phone before the server is asked.
+
+**Decision.** `note_self_scan_failure(reason, detail)`: a student with a current enrolment, face scan on; reasons
+`outside` (detail: inaccurate, no_fix, refused, no_location, no_area, outside), `mocked`, `liveness`, `no_match`; into 0060's
+`face_scan_failures` (centre, reason, detail, time — no student id). At most 200 a centre an hour from phones; beyond that
+the call answers false and counts nothing. The app never waits for it and never shows its errors.
+
+**Why.** Counts only, so nobody who struggles (or said no) is singled out (#213, Guru item 11); the cap keeps one phone
+from flooding the numbers.
+
+**Consequences.** A modified app could add false counts up to the cap; the numbers are a guide for the pilot, not a record.
+
+## 347. A self-scan check-out keeps its own location result — 13 Oct 2026
+
+**Status: built on branch `p3-selfscan`; migration 0064 (visits columns), app visit history.**
+
+**Context.** "Check-out: outside = saved and flagged, never blocked" (WORK_PLAN P3-5). `visits.location_check` (0024) is
+the check-in's.
+
+**Decision.** `visits.check_out_location` (inside, outside, refused, no_fix, no_location, no_area, mocked, inaccurate),
+`check_out_distance_m` (inside/outside only) and `check_out_method` (`face` from the self-scan; null otherwise, as before
+0064). App users cannot change them (0024's `guard_visit_location`, widened); `check_out_method = 'face'` is reserved for
+the self-scan path like method `face` (0060's `guard_face_visit`, widened). Staff see a flagged check-out in the visit
+history (S9 for staff): "Checked out away from the class: …". The history reads `select('*')` so it still loads on a
+database without 0064.
+
+**Why.** A student who leaves early from the road is still checked out (the parent's email goes), and the coordinator
+sees it was not at the class.
+
+**Consequences.** Reports (C21/G8) still count check-in flags only; check-out flags are in the history.
+
+## 348. The numbers of the self-scan: one fresh position, 0.55, three pictures, three tries — 13 Oct 2026
+
+**Status: built on branch `p3-selfscan`; tuned on the test day and in the pilot (P3-7).**
+
+**Decision.** Location: one `getCurrentPositionAsync` at High accuracy, at the tap, at most 8 s, never a position kept from
+earlier (attendance-location.ts reuses one for a queue at the desk; a self-scan must be where the student is now), never
+in the background, never stored on the phone. Mocked (Android reports it) → refused; accuracy over 100 m or none →
+refused ("inaccurate"); inside = distance ≤ radius + accuracy (0024's allowance). Face: 3 pictures after the challenge,
+each real-face score ≥ 0.8, each within cosine 0.5 of their mean, the mean's cosine with the phone's code ≥ 0.55
+(`MATCH_MIN`; the server's `face_match_percent`, default 55, SQL editor only, is used when stricter and re-checked by
+the server). Three failed tries in a day (challenge failed, no live face, not one face, no match, integrity) → only the
+coordinator's way is offered; kept in memory only, so a restart starts again (the server's 10 challenges per 10 minutes
+still hold). Place and time refusals are not tries: they say "Ask a coordinator" at once.
+
+**Why.** The spike measured same person 0.81 and different people 0.11-0.31 (OpenCV's own line 0.363): 0.55 prefers
+"use your QR card" over a wrong check-in. Abids' radius is the centre's setting (Guru item 4: 100 m).
+
+**Consequences.** All numbers live in `src/face/face-settings.ts` and 0064; the test day measures genuine and impostor
+scores on the phone (C26) before face scan is switched on.
+
+## 349. The Play Integrity call and the staff counts screen (P3-6 app half) — 13 Oct 2026
+
+**Status: built on branch `p3-selfscan`; needs the Google Cloud project after the test day.**
+
+**Decision.** `src/face/integrity.ts` (Android only; `integrity.web.ts` stands in, so `@expo/app-integrity` stays out of
+the web bundle): `prepareIntegrityTokenProviderAsync(project number)` once, `requestIntegrityCheckAsync(SHA-256 of the
+request text)`, prepared again and asked once more when the provider has gone stale. The project number is a constant,
+`PLAY_INTEGRITY_CLOUD_PROJECT` in face-settings.ts — empty until Praveen makes the Google Cloud project (OPERATIONS "Face
+scan: integrity check" step 1); while empty, the self-scan says "not ready yet, ask a coordinator" and nothing else
+changes. It is not a secret (it is inside every APK); setting it is a JS change (an OTA). No self-scan on iPhone (no Play
+Integrity; WORK_PLAN §4) or on the web. C27 Face scan use, opened from Reports while the switch is on (web too): per centre
+(a coordinator their own, the Guru all), students with face scan, failed self-scans by reason and the phone-check
+failures by rule, for the last 4 weeks / this month / last month / last 3 months; counts only, nobody named or ranked.
+
+**Why.** One Cloud project serves the spike's Gate 1 and this (p3-server's notes); the counts screen answers "is face scan
+working at the centre?" without making a list of people.
+
+**Consequences.** After the Cloud project exists: one line in face-settings.ts, then the Edge Function's secrets and
+deploy (p3-server's OPERATIONS steps).

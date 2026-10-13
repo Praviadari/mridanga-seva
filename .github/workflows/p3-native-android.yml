@@ -1,4 +1,5 @@
-# BRANCH p3-native ONLY (Phase 3 P3-3 native foundation + P3-4 enrolment; docs/DECISIONS.md #307).
+# BRANCHES p3-native AND p3-selfscan ONLY (Phase 3 P3-3 native foundation + P3-4 enrolment, P3-5 self-scan + P3-6
+# app half; docs/DECISIONS.md #307, #344).
 # A free compile check of the Phase 3 APK on GitHub's runner, so a native build failure shows up here and
 # not in one of the few free EAS builds: the same steps EAS runs (expo prebuild, then a release Gradle build,
 # minified, both phone ABIs), plus the APK's size against the APK without the face packages (origin/weekend-app
@@ -11,7 +12,7 @@ name: Phase 3 APK (p3-native)
 
 on:
   push:
-    branches: [p3-native]
+    branches: [p3-native, p3-selfscan]
   workflow_dispatch:
 
 permissions:
