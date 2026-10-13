@@ -1458,7 +1458,13 @@
       "ig_slokas": "శ్లోకం",
       "ig_themes": "ఇష్టగోష్ఠి అంశం",
       "consents": "అనుమతి",
-      "guardians": "తల్లి/తండ్రి లేదా సంరక్షకులు"
+      "guardians": "తల్లి/తండ్రి లేదా సంరక్షకులు",
+      "fund_entries": "నిధి నమోదు",
+      "fund_categories": "నిధి వర్గం",
+      "inventory_items": "వాయిద్యం లేదా వస్తువు",
+      "inventory_stocktakes": "లెక్కింపు",
+      "events": "కార్యక్రమం",
+      "polls": "పోల్"
     },
     "show": "చూపించు",
     "views": {

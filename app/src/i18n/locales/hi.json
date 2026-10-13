@@ -1458,7 +1458,13 @@
       "ig_slokas": "श्लोक",
       "ig_themes": "इष्टगोष्ठी विषय",
       "consents": "सहमति",
-      "guardians": "माता/पिता या अभिभावक"
+      "guardians": "माता/पिता या अभिभावक",
+      "fund_entries": "निधि प्रविष्टि",
+      "fund_categories": "निधि श्रेणी",
+      "inventory_items": "वाद्य या वस्तु",
+      "inventory_stocktakes": "गिनती",
+      "events": "कार्यक्रम",
+      "polls": "मतदान"
     },
     "show": "दिखाएँ",
     "views": {
