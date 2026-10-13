@@ -38,8 +38,6 @@ export type FaceScannerProps = {
   onCancel: () => void;
   /** The self-scan (#345): told each time the blink/turn challenge fails, so the tries are counted. */
   onFailed?: () => void;
-  /** False = no "Try again" after a failed challenge (the self-scan's tries are used up). Default true. */
-  canRetry?: boolean;
 };
 
 /** The camera permission, then the scan. */
@@ -95,7 +93,7 @@ function ScanRun(props: FaceScannerProps) {
 
 type AttemptProps = FaceScannerProps & { onRetry: () => void };
 
-function ScanAttempt({ frames, onDone, onCancel, onFailed, canRetry = true, onRetry }: AttemptProps) {
+function ScanAttempt({ frames, onDone, onCancel, onFailed, onRetry }: AttemptProps) {
   const { t } = useTranslation();
   const cam = useRef<FaceCameraHandle>(null);
   const [steps] = useState<Step[]>(() => randomSteps());
@@ -205,7 +203,7 @@ function ScanAttempt({ frames, onDone, onCancel, onFailed, canRetry = true, onRe
             : t(prompt)}
       </AppText>
       {problem ? <Notice tone="error">{problem}</Notice> : null}
-      {phase === 'failed' && canRetry ? <Button icon="refresh" label={t('face.scan.tryAgain')} onPress={onRetry} /> : null}
+      {phase === 'failed' ? <Button icon="refresh" label={t('face.scan.tryAgain')} onPress={onRetry} /> : null}
       <Button variant="secondary" label={t('face.scan.cancel')} onPress={onCancel} />
     </View>
   );

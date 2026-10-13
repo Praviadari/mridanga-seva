@@ -97,7 +97,8 @@ export default function SelfScanScreen() {
       refuse('selfScan.refused.offline');
       return;
     }
-    if (!state.faceEnabled || !state.enrolled || state.blocked) {
+    // This phone must keep the confirmed face code too (a phone with only a waiting one has nothing to match).
+    if (!state.faceEnabled || !state.enrolled || state.blocked || !enrolled) {
       refuse('selfScan.refused.notAvailable');
       return;
     }
@@ -114,7 +115,7 @@ export default function SelfScanScreen() {
       return;
     }
     setStep({ kind: 'scanning', position, location: result, state });
-  }, [action, deviceKey, refuse]);
+  }, [action, deviceKey, enrolled, refuse]);
 
   useEffect(() => {
     if (started.current || !deviceKey) return;
@@ -203,10 +204,11 @@ export default function SelfScanScreen() {
           onDone={(s) => void scanned(s, scan)}
           onCancel={() => router.back()}
           onFailed={() => {
+            // The blink/turn challenge failed: one try. The scanner offers Try again; after the third, only the coordinator.
             void noteSelfScanFailure('liveness');
             tries = addTry(tries, todayLocal());
+            if (triesUsedUp(tries, todayLocal(), MAX_SELF_SCAN_TRIES)) refuse('selfScan.refused.triesUsedUp');
           }}
-          canRetry={!triesUsedUp(tries, todayLocal(), MAX_SELF_SCAN_TRIES)}
         />
         <AskCoordinator />
       </Screen>
@@ -216,8 +218,8 @@ export default function SelfScanScreen() {
   return (
     <Screen underHeader>
       {header}
-      {!enrolled && status ? <Notice tone="info">{t('selfScan.refused.notAvailable')}</Notice> : null}
-      {step.kind === 'locating' && (enrolled || !status) ? <Notice tone="info">{t('selfScan.locating')}</Notice> : null}
+      {status && !deviceKey ? <Notice tone="info">{t('selfScan.refused.notAvailable')}</Notice> : null}
+      {step.kind === 'locating' && (deviceKey || !status) ? <Notice tone="info">{t('selfScan.locating')}</Notice> : null}
       {step.kind === 'saving' ? <Notice tone="info">{t('selfScan.saving')}</Notice> : null}
       {step.kind === 'done' ? <Done outcome={step.outcome} /> : null}
       {step.kind === 'refused' ? (
