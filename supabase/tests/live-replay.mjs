@@ -47,7 +47,9 @@ const GO_LIVE = ['0013', '0014', '0015', '0016', '0017', '0018', '0019', '0020',
   // A child's sign-up at home with the parent's consent by email (#399).
   '0051',
   // More home practice (#400-#404).
-  '0052'];
+  '0052',
+  // Phase 3 face scan (branch face-scan, placeholder number; renumbered at the merge before the production APK)
+  '0070'];
 
 let failures = 0;
 let passes = 0;
@@ -297,8 +299,8 @@ const row = (name) => verify.find((r) => r.check_name === name);
 const expectOk = ['last migration', 'migrations missing', 'tables without row-level security',
   'anon table rights', 'anon function rights', 'update/delete without where', 'roll numbers missing'];
 for (const name of expectOk) check(`verification SQL: "${name}" is ok on the replayed LIVE`, row(name)?.ok === true, JSON.stringify(row(name)));
-check('verification SQL: "scheduled jobs" counts the twelve jobs of 0001-0051',
-  row('scheduled jobs')?.found === '12 of 12', JSON.stringify(row('scheduled jobs')));
+check('verification SQL: "scheduled jobs" counts the thirteen jobs of 0001-0051 and 0070',
+  row('scheduled jobs')?.found === '13 of 13', JSON.stringify(row('scheduled jobs')));
 check('verification SQL: Vault and pg_net are reported missing here (PGlite has neither), not hidden',
   row('vault secrets')?.ok === false && row('pg_net')?.ok === false);
 check('verification SQL: the three sample logins confirmed at sign-up are flagged (what auto-confirm would leave)',
