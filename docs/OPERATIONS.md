@@ -232,6 +232,37 @@ request first.
 6. The tombstone (roll number, date, who, reason, reference) stays in `erasures`:
    `select * from erasures order by erased_at desc;` This is the proof that the request was met.
 
+## A record entered by mistake, an import undone (0062)
+
+Not an erasure ([DECISIONS.md #326](DECISIONS.md)): a second copy of a student typed at the desk, or the
+records of a wrong Excel file.
+- **In the app (the Guru):** the student's profile → "Delete this record (entered by mistake)", with a reason
+  and the name typed again. Database → Import → "Imports of the last 30 days" → Undo this import. Both delete
+  only records nothing hangs on; the audit log keeps the deleted row with the reason
+  (`select old_row, new_row from audit_log where table_name = 'students' and action = 'DELETE' order by id desc;`).
+- **Refused, two records with history** (`student_visited`, `student_has_history`): merge them by hand. In the
+  SQL editor, move the visits, calls, ticks and practice of the wrong record to the right one
+  (`update visits set student_id = '<right>' where student_id = '<wrong>';`, the same for `call_logs`,
+  `student_progress`, `practice_logs`), check the wrong record's guardians and consents, then delete it in the
+  app (it now has nothing left). A record with a login: the Guru takes the login off first (#302).
+
+## Phones that are not E.164
+
+0062 keeps every phone as E.164 (`+919876543210`, [DECISIONS.md #324](DECISIONS.md)) and rewrote the stored
+numbers it could read. The rest stay as they were; list them after running 0062:
+
+```sql
+select 'student' as kind, roll_no as who, phone from students where phone is not null and phone !~ '^\+[1-9][0-9]{6,14}$'
+union all
+select 'guardian', s.roll_no, g.phone from guardians g join students s on s.id = g.student_id
+ where g.phone is not null and g.phone !~ '^\+[1-9][0-9]{6,14}$'
+union all
+select 'login', p.full_name, p.phone from profiles p where p.phone is not null and p.phone !~ '^\+[1-9][0-9]{6,14}$';
+```
+
+Correct each one with the person (C8 Edit details, or the Table Editor for a guardian); a saved number that is
+not a number is refused (`phone_invalid`).
+
 ## Staff who leave
 
 A coordinator who stops: the Guru switches the login off in the app (G2); that is enough for a
