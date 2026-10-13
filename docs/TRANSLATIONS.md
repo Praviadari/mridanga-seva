@@ -310,3 +310,11 @@ The privacy texts of 0034 (`signUp.privacyNotice`, `signUp.under18`, `register.p
   `unlinkedStaff`. Words to check first: "Me" as నేను / मैं (a one-word circle label; maybe నా రికార్డు / मेरा रिकॉर्ड
   reads better), "own record" స్వంత రికార్డు / अपना रिकॉर्ड, "colleague" సహచరులు / सहकर्मी, "staff member" సిబ్బంది సభ్యుడు /
   स्टाफ़ सदस्य.
+- **Review round 1 sheet** (branch `after-launch-a11y`, [DECISIONS.md #334, #335](DECISIONS.md), 13 Oct 2026): every text
+  with its English, Telugu, Hindi, what to check and the screens it shows on is in
+  [translation-review/te-hi-review.xlsx](translation-review/te-hi-review.xlsx), with a "Check first" sheet (the audit's
+  flagged lines first: the consent word అనుమతి / సమ్మతి on the minor-consent lines, audit P1-01, NOT changed yet) and a
+  "Terms" sheet (one thing named two ways). Rebuild it with `node scripts/translation-review.mjs` from app/ after any
+  text change. New drafts in this round: `common.back`, `common.required`, `common.serverErrors.*` (the database's
+  refusals), `practice.tempoFaster` / `tempoSlower`; changed: the five te/hi sentences that named the "My QR" tab in
+  English now use the tab's own name (“నా QR” / “मेरा QR”).

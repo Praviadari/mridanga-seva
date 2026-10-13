@@ -5720,6 +5720,137 @@ not be flooded.
 
 **Consequences.** The consent wording (#88) and a minimum age of the login stay team decisions.
 
+## 330. Lists and homes load only what they show; long reads go page by page — 13 Oct 2026
+
+**Context.** Audit phase 4 B4-5 (P5-03, P5-05, P5-06, P5-09, P5-10, D9-04, P1-19). The Ishtagoshti home and
+sloka lists downloaded every sloka's purports in three languages (up to 20,000 characters each) on every
+visit; the student home made ~10 requests, four of them for things it never shows; the Students and Calls
+tabs downloaded the whole class again on every return; Supabase sends at most 1,000 rows per request, so a
+class past 1,000 students (and the fund ledger past 1,000 entries) silently lost its last rows; an event's
+"everyone" list drew every student; a scan right after "Scan the next student" started a second location
+reading with its own 8 s wait.
+
+**Decision (JS).** Sloka lists read a list column set (no purports, no word meanings); the I1 home reads only
+counts and the sloka of the day's id, and draws Themes and All slokas at once. The student home reads ids and
+the student's own reads for the News badge, not posts, group or staff names, and no week setting. The class
+(`student_overview`) is kept for 60 s for the signed-in person and shared by the Students and Calls tabs; any
+call that may save (every non-read call except a list of read-only database functions, `lib/data-version.ts`)
+drops it, and pull to refresh / Try again always load. Whole-table reads go through `lib/read-all.ts`
+(1,000-row pages, ordered on id): Students, Calls, group members, Print QR cards, the Guru's database, the
+fund ledger, the import's duplicate check. Event performers and attendance draw 50 rows at a time. A scan
+joins the location reading already under way and waits only its remaining time.
+
+**Why.** Slow data in the hall and low-end phones; the 1,000-row cap was a silent data loss waiting for growth.
+
+**Consequences.** A change made by another phone shows on Students / Calls within a minute, or at once on
+pull to refresh. A new database function that only reads should be added to the list in data-version.ts,
+or it costs a reload (never a stale screen). Not done here: announcement photo thumbnails (P5-11, with the
+photo descriptions of P2-10 they need the attachment rules of 0010 changed: a migration round), the promotion
+count on every staff home (P5-07, needs a migration), the staff Announcements seen-count second step (the
+seen-count view cannot be ordered like the list), D9-05 / D9-09.
+
+## 331. Telugu and Hindi load when chosen; fewer calls at start — 13 Oct 2026
+
+**Context.** Audit phase 4 B4-6 (P4-03, P4-04, P4-05, P4-06, D9-11). Every start evaluated all three
+languages (6,000 Telugu and Hindi strings) and the web's one script carried them for every visitor; eight
+screens reloaded when the fetched profile replaced the remembered one (the sloka editor reloaded the sloka
+over unsaved edits when the app came back to the front); push registration called Expo and the database on
+every cold start; the loading shapes faded on the JavaScript thread.
+
+**Decision (JS + web upload).** English stays in the app (the fallback). Telugu and Hindi load only when they
+are the start language or chosen: on the phone through a `require` inside a function (`i18n/locale-loaders.ts`,
+evaluated on the first call); on the web as their own files (`locale-loaders.web.ts`, `import()`), with the
+app's splash kept over the app until the start language is in. The loaders return English's shape, so tsc
+still fails on a missing key. Loads depend on the profile id, not the object. A push registration counts for a
+week for the same login and token (`lib/push-registered.ts`, forgotten at sign-out). The fade runs on the native
+driver on phones. Hashed web assets (`/assets/*`) are cached for a year like `/_expo/static/*`.
+
+**Why.** Start-up and first web visit on slow data and small phones.
+
+**Consequences.** Web build of TEST, measured 13 Oct 2026 (main script): before (e46ed0c) 4,458 KB raw,
+1,106 KB gzip, 826 KB brotli; after 3,403 KB, 979 KB, 741 KB; Telugu and Hindi are separate files of ~51 KB
+brotli each, fetched only by their readers. Expo Router's `asyncRoutes` (the rest of D9-11) is an app.json
+option, which changes the fingerprint: next APK, not here.
+
+## 332. Screen readers: focus follows the question, one stop per row, the web in the app's language — 13 Oct 2026
+
+**Context.** Audit phase 4 B4-7 (P2-02, -04, -05, -06, -07, -08, -09, -12; F5-13; F1-11). Nothing moved
+TalkBack's focus when the pressed button disappeared; the tempo buttons said "plus 5"; the My QR code, beat
+marks and progress bars carried labels TalkBack never read; a double tap could delete through a same-place
+"Yes, delete"; the web back button was English; the bell and profile buttons were 40 dp; plain list rows were
+3-5 stops each; "Remove animations" was ignored; required fields were not exposed.
+
+**Decision (JS).** `lib/a11y-focus.ts` moves focus (phone: an accessibility focus event; web: the element,
+tabindex -1) and `Notice focused` reads a confirm as one stop: desk Accept, its result, Delete announcement,
+Check out everyone, Replace QR card; the camera frame when it opens; a date, choice or tick with a form error.
+Tempo buttons say "Faster by 5" and the tempo is a live region. The three views are `accessible`. A
+same-place confirm ignores taps for 600 ms (`lib/second-tap.ts`). The web header's back button is our own,
+named `common.back`. Bell and profile 48 dp, one-digit chips 48 wide, table rows 48. A plain row's words are
+one stop (phones). `lib/reduced-motion.ts` stops the loading fade, the drop-down fade and the smooth scroll.
+TextField `required` (web aria-required, ", required" on the phone), used on Register a student's name.
+
+**Why.** Blind and low-vision members and staff; the confirm questions of #314 needed the focus too.
+
+**Consequences.** F1-11 (a repeated identical error) is covered where a form uses useFormFocus: focus moves to
+the field and its error is read as its hint. Marking optional fields on screen stays a team decision (F5-13);
+other forms can pass `required`. Photo descriptions (P2-10) wait for the team and a migration. TalkBack
+behaviour is a phone check.
+
+## 333. Large text and colour polish within the palette — 13 Oct 2026
+
+**Context.** Audit phase 4 B4-8 (P3-05, -07, -08, -12, -13; lead L2). At 200 %: drop-down rows overlapped,
+the home header cut the name and the bell count spilled, header titles ended in "…", the weekly practice
+bars had no room, chip labels ran past the pill; the sidebar's open tab label was 4.3:1.
+
+**Decision (JS, no new colours).** Drop-down rows grow to two lines of the scaled text; the box shows the
+whole value. At large text the home header puts the greeting and name on their own line; the bell count is
+capped at 130 % (its label says the number) and the name's line height is 1.45 for Telugu and Devanagari.
+Header titles may take two lines (`components/header-title.tsx`, stacks and tabs). Weekly practice puts the
+bar under week and time at large text. Chip labels shrink and wrap. The sidebar's open tab uses
+onPrimarySoft (6.7:1).
+
+**Why.** Many members use the phone's large text.
+
+**Consequences.** Left to the design branch (new tokens, tab pill): P3-06 open tab by colour only, P3-09
+green for problem states, P3-11 the ring motto size and the ring centre's line height. Phone checks at
+200 %.
+
+## 334. Telugu and Hindi fixes that need no native judgement; server refusals worded — 13 Oct 2026
+
+**Context.** Audit phase 4 B4-9 (P1-02, P1-04, D8-21; P1-01, P1-05, P1-06 noted). Five te/hi sentences named
+the "My QR" tab in English; a chosen date of birth and the web month list stayed in the old language after a
+switch (the React Compiler kept the first answer); 50 database refusal codes showed "Something went wrong".
+
+**Decision (JS).** The five sentences name the tab as it is called (“నా QR” / “मेरा QR”). The birth-date
+field passes the language into its date and month helpers. 32 codes the screens can meet (a frozen record,
+a locked detail, a record gone, an open loan, roll number, call log first, group off, Guru or staff only,
+centre in use, fund entries kept, saved already, a visit in the future, empty setting, too many rows) map to
+19 messages under `common.serverErrors` (te/hi drafts); the rest are refusals of input the screens never send.
+
+**Why.** Words the audit was certain of; the consent word is not (P1-01).
+
+**Consequences.** P1-01 (అనుమతి vs సమ్మతి on the minor-consent lines) is NOT changed: it is first on the review
+sheet (#335). P1-05 (the web lesson video frame's English title) is done at the rebase on the launch code,
+which rewrites that file (launch-cleanup S5-01). The 18 unused keys (P1-06) stay in the files and are marked
+"skip" on the sheet, to keep this branch's language-file changes small.
+
+## 335. A review sheet for the native Telugu and Hindi review — 13 Oct 2026
+
+**Context.** All Telugu and Hindi texts are drafts (D8-10); the reviewers need every text with its English,
+where it shows and what to look at first.
+
+**Decision.** `app/scripts/translation-review.mjs` builds `docs/translation-review/te-hi-review.xlsx` from the
+language files and docs/TRANSLATIONS.md: "Read me"; "Check first" (P1-01 consent lines, P1-02 changed lines,
+the new texts of #332-#334, plural pairs still identical, Hindi gendered forms); "Terms" (one thing named two
+ways, with counts and the texts using the less used word; the consent row carries the audit's suggestion);
+"All texts" (key, English, Telugu, Hindi, what to check, screens, columns for the reviewer's fixes).
+Screens are named as people call them where known, else from the file.
+
+**Why.** One file a reviewer can work through on a laptop; rebuilt after every text change.
+
+**Consequences.** Run `node scripts/translation-review.mjs` from app/ after changing texts and commit the new
+sheet. The reviewers' fixes come back as a sheet; a worker copies them into the language files.
+
 ## 336. Design tokens from one file; option A palette by default, switchable — 13 Oct 2026
 
 **Status: built on branch `after-launch-design` (merge after launch); the palette is a team decision (audit phase
