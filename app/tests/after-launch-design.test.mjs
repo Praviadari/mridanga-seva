@@ -63,7 +63,7 @@ test('quick times for a poll and an event (#343)', () => {
   assert.deepEqual(eventDates('2026-10-25').map((c) => c.date), ['25-10-2026', '01-11-2026'], 'on a Sunday, this Sunday is today');
 });
 
-test('the staff homes load their numbers in one request, and fall back when 0063 has not run (#340)', () => {
+test('the staff homes load their numbers in one request, and fall back when 0050 has not run (#340)', () => {
   for (const screen of ['src/screens/coordinator-home.tsx', 'src/screens/guru-home.tsx']) {
     const text = read(screen);
     assert.match(text, /fetchStaffDashboard\(/, screen);

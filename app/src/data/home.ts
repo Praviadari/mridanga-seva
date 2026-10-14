@@ -221,7 +221,7 @@ export async function fetchGuruDashboard(): Promise<GuruDashboard | null> {
   };
 }
 
-// ---------------------------------------------------------------- C1 / G1: today and waiting (0063)
+// ---------------------------------------------------------------- C1 / G1: today and waiting (0050)
 
 /** What the staff homes show above their circles (docs/DECISIONS.md #339, #340). */
 export type StaffDashboard = {
@@ -260,7 +260,7 @@ type StaffDashboardRow = {
 };
 
 /**
- * Loads the staff home's numbers in one request (staff_dashboard, migration 0063). On a project where 0063
+ * Loads the staff home's numbers in one request (staff_dashboard, migration 0050). On a project where 0050
  * has not run yet (PostgREST PGRST202, "no such function") it falls back to the older functions, so an
  * update reaching phones before the migration still shows the circles' counts; the new rows stay 0.
  * Returns null when nothing could be loaded (usually no internet).

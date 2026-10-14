@@ -48,7 +48,7 @@ in number order:
 | `0044_parent_checkout_only.sql` | Parent emails only for a check-out recorded in the app: settings `parent_notices_check_in` and `parent_notices_no_checkout` (both off), `guard_setting` with them, the visits trigger honouring each switch ([DECISIONS.md #246-#247](DECISIONS.md)). See "Parent notices (0043)" |
 | `0045_qr_cards.sql` | Printed QR cards for students without a phone (Phase 3 P3-1): `reissue_qr_code(student)`, the Guru gives a student a new `qr_token` when a card is lost, so the old card scans as unknown ([DECISIONS.md #249-#252](DECISIONS.md)). The cards carry the My QR code and need no table. See "Attendance" |
 | `0047_form_rules.sql` | Form rules in SQL (audit phase 1, [DECISIONS.md #271-#274](DECISIONS.md)): one name rule `clean_person_name` on every person's name an app user writes (no digits of any script, Telugu/Hindi vowel signs and joiners kept, NFC), a minor needs a guardian with a phone and that guardian's own consent (also when the date of birth changes), About you keeps a student's gender once set, a desk registration gets the coordinator's centre, `possible_duplicates` for the desk; a minor's record is never linked to a login by email (the Guru links it), a student inserted by an app user gets no login, the notice ticked at sign-up is kept and Accept needs it ([#276](DECISIONS.md), [#280](DECISIONS.md)). See "Form rules (0047)" |
-| `0063_staff_dashboard.sql` | **Placeholder number** (branch `after-launch-design`, renumbered at the merge): `staff_dashboard()`, the staff homes' Today numbers and what waits for the caller in one request ([DECISIONS.md #339, #340](DECISIONS.md)). See "Staff home: today and waiting (0063)" |
+| `0050_staff_dashboard.sql` | Launch range (placeholder 0063 on branch `after-launch-design`, renumbered 14-10-2026): `staff_dashboard()`, the staff homes' Today numbers and what waits for the caller in one request ([DECISIONS.md #339, #340](DECISIONS.md)). See "Staff home: today and waiting (0050)" |
 
 The Phase 2 files were renumbered when they merged into main (#55). TEST ran some under their
 branch numbers (0012, 0014_promotion, 0016_practice, 0017_media, 0021_events_polls), so it skips
@@ -1539,9 +1539,9 @@ calls it when `p_notice_version` is given for an adult (a minor's goes on the co
 
 Tests: section "0048 withdrawn records and leaks" in `supabase/tests/smoke-test.mjs`.
 
-## Staff home: today and waiting (0063)
+## Staff home: today and waiting (0050)
 
-[DECISIONS.md #339, #340](DECISIONS.md). Migration `0063_staff_dashboard.sql` (placeholder number on branch
+[DECISIONS.md #339, #340](DECISIONS.md). Migration `0050_staff_dashboard.sql` (was the placeholder 0063 on branch
 `after-launch-design`; renumbered at the merge).
 
 `staff_dashboard()` — Guru and coordinators (others `not_allowed`); read-only, security invoker. One JSON object for
@@ -1554,7 +1554,7 @@ fund entries made by someone else that the caller may decide: the Guru, or a tre
 no entries), `suggestions` (the Guru: materials with `approved_by` and `decided_at` empty; a coordinator 0). The app
 falls back to the older functions when it is missing (PostgREST `PGRST202`).
 
-Tests: section "0063 staff dashboard" in `supabase/tests/smoke-test.mjs`.
+Tests: section "0050 staff dashboard" in `supabase/tests/smoke-test.mjs`.
 ## Linking a login to a student
 
 A student record can exist without a login (many students never install the app). When a person
@@ -1625,7 +1625,7 @@ switched-off login is refused like a stranger.
 | `student_home()` | Anyone signed in (a student gets their own numbers) | The student home's numbers. See "Home screens" |
 | `coordinator_dashboard()` | Guru, coordinator | The coordinator dashboard's numbers. See "Home screens" |
 | `guru_dashboard()` | Guru | The Guru dashboard's numbers. See "Home screens" |
-| `staff_dashboard()` | Guru, coordinator | The staff homes' Today numbers and what waits for the caller, in one request (0063). See "Staff home: today and waiting (0063)" |
+| `staff_dashboard()` | Guru, coordinator | The staff homes' Today numbers and what waits for the caller, in one request (0050). See "Staff home: today and waiting (0050)" |
 | `move_syllabus_item(item, up)` | Guru | Moves a syllabus item one place up or down among the items in use. See "Syllabus editor" |
 | `syllabus_item_counts()` | Guru, coordinator | Ticks and materials per syllabus item. See "Syllabus editor" |
 | `week_start_ist()` | Anyone signed in | First day of "this week" at the caller's centre (Monday, or 6 days ago with `week_starts` = `rolling7`); used by the functions above |

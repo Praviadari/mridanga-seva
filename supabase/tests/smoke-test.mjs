@@ -126,7 +126,7 @@ process.on('uncaughtException', (error) => {
 // D14-10: every check is counted, and the run fails when fewer (or more) checks ran than expected,
 // so a block skipped by a renamed migration or a commented-out section cannot pass unseen.
 // Adding or removing checks? Run the suite and set this to the new total it prints.
-const EXPECTED_CHECKS = 1664; // 0063 staff dashboard: +15; 0048 withdrawn records and leaks: +50; 0047 form rules: +109; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
+const EXPECTED_CHECKS = 1664; // 0050 staff dashboard: +15; 0048 withdrawn records and leaks: +50; 0047 form rules: +109; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
 let failures = 0;
 let passes = 0;
 
@@ -5749,10 +5749,10 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   check('0048: a second run changes nothing', again === '' && JSON.stringify(await counts48()) === JSON.stringify(c1), `${again} ${JSON.stringify(c1)}`);
 }
 
-// ---------------------------------------------------------------- 0063 staff dashboard (DECISIONS #340)
+// ---------------------------------------------------------------- 0050 staff dashboard (DECISIONS #340)
 {
   // Placeholder number on branch after-launch-design; the lead renumbers it at the merge.
-  const file63 = readFileSync(new URL('migrations/0063_staff_dashboard.sql', supabaseDir), 'utf8');
+  const file63 = readFileSync(new URL('migrations/0050_staff_dashboard.sql', supabaseDir), 'utf8');
   const board63 = (userId) => homeOf('staff_dashboard', userId);
   const c63 = await board63(coordinator);
   const g63 = await board63(guru);
@@ -5760,42 +5760,42 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   const gOld = await homeOf('guru_dashboard', guru);
   const promoOf = async (userId) => (await asApp('authenticated', userId, 'select promotion_home() as h'))[0].h;
   const waitingOf = async (userId) => ((await asApp('authenticated', userId, 'select waiting_sign_ups() as r'))[0].r ?? []).length;
-  check('0063: staff_dashboard names the role', c63?.role === 'coordinator' && g63?.role === 'guru', `${c63?.role} ${g63?.role}`);
-  check('0063: here now and visits today are C1\'s numbers', c63.here_now === cOld.here_now && c63.visits_today === cOld.visits_today
+  check('0050: staff_dashboard names the role', c63?.role === 'coordinator' && g63?.role === 'guru', `${c63?.role} ${g63?.role}`);
+  check('0050: here now and visits today are C1\'s numbers', c63.here_now === cOld.here_now && c63.visits_today === cOld.visits_today
     && g63.here_now === cOld.here_now, JSON.stringify([c63.here_now, c63.visits_today, cOld.here_now, cOld.visits_today]));
-  check('0063: came this week is the Guru dashboard\'s', g63.came_this_week === gOld.came_this_week, `${g63.came_this_week} ${gOld.came_this_week}`);
-  check('0063: a coordinator\'s calls due are C1\'s "my calls due"', c63.calls_due === cOld.my_calls_due, `${c63.calls_due} ${cOld.my_calls_due}`);
+  check('0050: came this week is the Guru dashboard\'s', g63.came_this_week === gOld.came_this_week, `${g63.came_this_week} ${gOld.came_this_week}`);
+  check('0050: a coordinator\'s calls due are C1\'s "my calls due"', c63.calls_due === cOld.my_calls_due, `${c63.calls_due} ${cOld.my_calls_due}`);
   const gCalls = gOld.follow_ups.reduce((n, f) => n + f.overdue + f.escalated, 0);
-  check('0063: the Guru\'s calls due are the Follow-ups circle\'s count', g63.calls_due === gCalls, `${g63.calls_due} ${gCalls}`);
-  check('0063: promotions = feedback asked (coordinator), to decide (Guru)', c63.promotions === (await promoOf(coordinator)).to_answer
+  check('0050: the Guru\'s calls due are the Follow-ups circle\'s count', g63.calls_due === gCalls, `${g63.calls_due} ${gCalls}`);
+  check('0050: promotions = feedback asked (coordinator), to decide (Guru)', c63.promotions === (await promoOf(coordinator)).to_answer
     && g63.promotions === (await promoOf(guru)).to_decide, `${c63.promotions} ${g63.promotions}`);
-  check('0063: sign-ups waiting = the Register a student list', c63.signups_waiting === (await waitingOf(coordinator))
+  check('0050: sign-ups waiting = the Register a student list', c63.signups_waiting === (await waitingOf(coordinator))
     && g63.signups_waiting === (await waitingOf(guru)), `${c63.signups_waiting} ${g63.signups_waiting}`);
   const submitted63 = (await asOwner(`select count(*)::int as n from assessment_assignments where status = 'submitted'`))[0].n;
-  check('0063: recordings to review = assignments sent and not reviewed', c63.to_review === submitted63 && g63.to_review === submitted63, `${c63.to_review} ${submitted63}`);
+  check('0050: recordings to review = assignments sent and not reviewed', c63.to_review === submitted63 && g63.to_review === submitted63, `${c63.to_review} ${submitted63}`);
   const suggested63 = (await asOwner('select count(*)::int as n from materials where approved_by is null and decided_at is null'))[0].n;
-  check('0063: suggestions wait for the Guru only', g63.suggestions === suggested63 && c63.suggestions === 0, `${g63.suggestions} ${suggested63}`);
+  check('0050: suggestions wait for the Guru only', g63.suggestions === suggested63 && c63.suggestions === 0, `${g63.suggestions} ${suggested63}`);
 
   // A new confirmed sign-up waits at the desk: the Guru's count goes up by one.
   await signUp('waiting.63@example.com', true);
-  check('0063: (control) a new confirmed sign-up adds one to the Guru\'s sign-ups waiting',
+  check('0050: (control) a new confirmed sign-up adds one to the Guru\'s sign-ups waiting',
     (await board63(guru)).signups_waiting === g63.signups_waiting + 1);
 
   // The treasurer's expense over the approval limit waits for the Guru, never for its maker.
   const fundBefore = { g: g63.fund_to_approve, t: (await board63(coordinator2)).fund_to_approve };
   const [{ id: waiting63 }] = await asOwner(`insert into fund_entries (direction, category_id, on_date, amount_paise, party, status, created_by)
     values ('expense', ${repair}, today_ist(), 250000, 'Drum maker 63', 'waiting', '${coordinator2}') returning id`);
-  check('0063: (control) the expense waits for approval', (await entryOf(waiting63)).status === 'waiting');
-  check('0063: it counts for the Guru, not for the treasurer who made it, nor for a coordinator',
+  check('0050: (control) the expense waits for approval', (await entryOf(waiting63)).status === 'waiting');
+  check('0050: it counts for the Guru, not for the treasurer who made it, nor for a coordinator',
     (await board63(guru)).fund_to_approve === fundBefore.g + 1 && (await board63(coordinator2)).fund_to_approve === fundBefore.t
       && (await board63(coordinator)).fund_to_approve === 0);
   await asApp('authenticated', coordinator2, 'select withdraw_fund_entry($1)', [waiting63]);
 
-  await refusesWith('0063: a student has no staff dashboard', 'not_allowed', () => homeOf('staff_dashboard', arjun));
-  await refusesWith('0063: nobody signed in cannot run it', 'permission denied for function staff_dashboard', () => asApp('anon', null, 'select staff_dashboard()'));
+  await refusesWith('0050: a student has no staff dashboard', 'not_allowed', () => homeOf('staff_dashboard', arjun));
+  await refusesWith('0050: nobody signed in cannot run it', 'permission denied for function staff_dashboard', () => asApp('anon', null, 'select staff_dashboard()'));
   let again63 = '';
   try { await db.exec(file63); } catch (e) { again63 = String(e.message); }
-  check('0063 can run again', again63 === '', again63);
+  check('0050 can run again', again63 === '', again63);
 }
 
 // ---------------------------------------------------------------- row-level security

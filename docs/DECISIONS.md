@@ -5386,7 +5386,7 @@ tappable numbers — here now, visits today, and for the Guru came this week ("�
 
 ## 340. "Waiting for you" from one request: staff_dashboard() — 13 Oct 2026
 
-**Status: branch `after-launch-design`; placeholder migration 0063_staff_dashboard.sql (renumber at merge).**
+**Status: branch `after-launch-design`; migration 0050_staff_dashboard.sql (placeholder 0063 until the launch UI renumbered it, 14-10-2026).**
 
 **Decision.** `staff_dashboard()` (read-only, security invoker, staff only) returns the Today numbers and what
 waits for the caller: sign-ups waiting at the desk (= Register a student's list), calls due (coordinator: C1's
@@ -5394,7 +5394,7 @@ my_calls_due; Guru: the Follow-ups circle's count), promotions (feedback asked /
 fund entries to approve (never one's own; the Guru, or a treasurer for the Guru's), material suggestions (Guru).
 Each count uses the rule of the screen it opens. Both homes now make this ONE request instead of two or three; the
 circles' counts come from it too. Under the Today line, "Waiting for you": one amber row per non-zero count, most
-urgent first, or "Nothing is waiting. Thank you for your seva." If 0063 has not run (PGRST202) the app falls back
+urgent first, or "Nothing is waiting. Thank you for your seva." If 0050 has not run (PGRST202) the app falls back
 to the old functions, so an update can reach phones before the migration.
 
 **Consequences.** A "Me" entry for staff (#316-#321, staff-own-record) sits with the circles, not in this block.

@@ -1,5 +1,5 @@
--- 0063 "Today" and "Waiting for you" on the staff homes in one request (audit phase 5 of 13-10-2026:
--- U1-01, U1-08, U4-01; docs/DECISIONS.md #340; docs/DATABASE.md "Staff home: today and waiting (0063)").
+-- 0050 "Today" and "Waiting for you" on the staff homes in one request (audit phase 5 of 13-10-2026:
+-- U1-01, U1-08, U4-01; docs/DECISIONS.md #340; docs/DATABASE.md "Staff home: today and waiting (0050)").
 -- PLACEHOLDER NUMBER: branch after-launch-design; the lead renumbers it at the merge.
 -- staff_dashboard(): what the coordinator and Guru homes show above their circles. Counts only,
 -- read-only, security invoker (row-level security of the person asking, like coordinator_dashboard):

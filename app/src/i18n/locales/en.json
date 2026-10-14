@@ -1183,7 +1183,7 @@
     "email": "Email",
     "phone": "Phone",
     "dutyTitle": "Duty hours",
-    "dutyHint": "When this coordinator is usually at the class. Shifts by date are on the Duty roster.",
+    "dutyHint": "When this coordinator is usually at the class. Seva slots by date are on the Seva roster.",
     "dutyLabel": "Duty hours",
     "dutyPlaceholder": "For example: Mon, Thu 16:00-19:00",
     "saveDuty": "Save duty hours",
