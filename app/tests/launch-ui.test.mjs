@@ -105,6 +105,8 @@ test('Waiting for you is one amber Today box with the total, opening its own scr
     assert.doesNotMatch(text, /<WaitingForYou/, `${home} still lists the rows`);
     assert.match(text, /<Screen wide compact/);
     assert.match(text, /<HomeHeader menu /);
+    // "Did you know?" under the ring, as on the student home (Praveen 14-10-2026).
+    assert.match(text, /<StaffModules [^\n]*\/>\n[^\n]*\n\s*<FactCard \/>/);
   }
   assert.match(src('app/student/(tabs)/index.tsx'), /<Screen wide compact/);
 });

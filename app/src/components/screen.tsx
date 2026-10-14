@@ -96,7 +96,7 @@ export function Screen({ centred, underHeader, header, wide, onRefresh, compact,
           <View ref={content} collapsable={false} style={[styles.scroll, centred && !header && styles.centred]}>
             {header}
             <View style={[styles.content, centred && styles.centred, compact && styles.compact]}>
-              <View style={[styles.column, { maxWidth: wide ? maxDashboardWidth : maxContentWidth }]}>
+              <View style={[styles.column, compact && styles.compactColumn, { maxWidth: wide ? maxDashboardWidth : maxContentWidth }]}>
                 {updateNotice ? <UpdateNotice /> : null}
                 {children}
               </View>
@@ -127,6 +127,10 @@ const styles = StyleSheet.create({
   },
   compact: {
     paddingVertical: spacing.sm,
+  },
+  // The homes' blocks (Today, ring, fact) sit closer, so the fact card fits a 360 x 760 phone too.
+  compactColumn: {
+    gap: spacing.sm,
   },
   column: {
     width: '100%',

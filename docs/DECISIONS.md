@@ -5462,8 +5462,8 @@ class week on the home, the rest in a menu, the most important in the footer.
 **Decision.** Team decision (Praveen 14-10-2026): a home fits one phone screen. Waiting for you's rows moved to
 their own screen (staff/waiting.tsx, titled "To do"); the home shows three Today boxes (in class now; check-ins
 today, or this week for the Guru; the "to do" total, amber when above 0). The middle box is a number only, not a
-button: its screen is already the Overview circle or the Check-in tab. Homes use `Screen compact` (8 px above and
-below); under an 800 px window the student home's fact card is shorter; a ring under 340 px
+button: its screen is already the Overview circle or the Check-in tab. Under the staff rings, as on the student home, the fact of the day ("Did you know?", #242). Homes use `Screen
+compact` (8 px above and below, 8 px between blocks); under an 800 px window the student home's fact card is shorter; a ring under 340 px
 uses 56 px circles and a 128 px drum circle. Checked with no scroll at 375 x 812 and 360 x 760; at the phone's large
 text sizes the grid and scrolling stay (nothing is cut).
 

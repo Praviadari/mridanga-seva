@@ -14,6 +14,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/auth/auth-provider';
 import { Button } from '@/components/button';
 import { EmptyState } from '@/components/empty-state';
+import { FactCard } from '@/components/fact-card';
 import { HomeHeader } from '@/components/home-header';
 import { ListRow } from '@/components/list-row';
 import { Notice } from '@/components/notice';
@@ -60,6 +61,8 @@ export function CoordinatorHome() {
       ) : null}
       {board === null ? null : <StaffToday guru={false} board={board} />}
       <StaffModules guru={false} promotionsWaiting={board ? board.promotions : 0} />
+      {/* Under the ring, as on the student home (#242; Praveen 14-10-2026): a fact about the mṛdaṅga a day. */}
+      <FactCard />
     </Screen>
   );
 }
