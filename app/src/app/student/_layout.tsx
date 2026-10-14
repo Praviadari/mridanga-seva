@@ -7,6 +7,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useTranslation } from 'react-i18next';
 
 import { documentTitleLayout } from '@/lib/document-title';
+import { useHeadingFont } from '@/theme/fonts';
 import { headerBarOptions, useTheme } from '@/theme/use-theme';
 
 /**
@@ -19,12 +20,13 @@ export const unstable_settings = { anchor: '(tabs)' };
 /** Navigator for the Student screens. */
 export default function StudentLayout() {
   const { colors } = useTheme();
+  const titleFont = useHeadingFont();
   const { t } = useTranslation();
   return (
     <>
       {/* Light status-bar icons on the saffron headers. */}
       <StatusBar style="light" />
-      <Stack screenLayout={documentTitleLayout} screenOptions={headerBarOptions(colors)}>
+      <Stack screenLayout={documentTitleLayout} screenOptions={headerBarOptions(colors, titleFont)}>
         {/* No bar of its own (the tabs have theirs); the title is what Back says on the next screen. */}
         <Stack.Screen name="(tabs)" options={{ headerShown: false, title: t('home.title') }} />
       </Stack>

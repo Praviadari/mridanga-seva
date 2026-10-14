@@ -34,11 +34,14 @@ test('every text colour is 4.5:1 or more, every control and icon 3:1, light and 
   assert.ok(rows.length >= 500, `${rows.length} pairs`);
 });
 
-test('the default palette is option A: night-indigo header, deep saffron #9A4307 (team decision pending)', () => {
+test('the default palette is option A: royal-blue header with gold, deep saffron #9A4307 (Praveen 14-10-2026, #352)', () => {
   assert.deepEqual(tokens.choices, { header: 'indigo', primary: 'deep' });
   const light = palette(tokens, 'light');
   assert.equal(light.primary, '#9A4307');
-  assert.equal(light.header, '#1B1E4B');
+  // The band runs from deep night (headerDeep) at the top to royal blue (header) below; the app's name is gold.
+  assert.equal(light.header, '#22307A');
+  assert.equal(light.headerDeep, '#0B0C26');
+  assert.equal(light.headerGold, '#FFD27A');
   // Option B keeps the saffron header; "bright" keeps today's #B45309: both stay one line away.
   assert.equal(palette(tokens, 'light', { header: 'saffron', primary: 'bright' }).primary, '#B45309');
   assert.equal(palette(tokens, 'light', { header: 'saffron', primary: 'deep' }).header, '#9A4307');

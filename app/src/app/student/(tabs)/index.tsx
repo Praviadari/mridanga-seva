@@ -98,7 +98,8 @@ export default function StudentHomeScreen() {
       key: 'news',
       icon: 'news',
       tone: 'orange',
-      label: t('announcements.title'),
+      // "News", the tab's own word (#353).
+      label: t('tabs.news'),
       badge: unread,
       badgeSpoken: t('home.badges.new', { count: unread }),
       onPress: () => router.push('/student/announcements'),
@@ -138,7 +139,7 @@ export default function StudentHomeScreen() {
   ];
 
   return (
-    <Screen wide header={<HomeHeader name={name} />} onRefresh={load}>
+    <Screen wide compact header={<HomeHeader name={name} />} onRefresh={load}>
       <UpdateNotice />
       <PushNotice place="home" />
 

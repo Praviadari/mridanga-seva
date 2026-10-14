@@ -7,15 +7,17 @@ import { useWindowDimensions } from 'react-native';
 
 import { tabIcon } from '@/components/icon';
 import { documentTitleLayout } from '@/lib/document-title';
+import { useHeadingFont } from '@/theme/fonts';
 import { tabsScreenOptions, useTheme } from '@/theme/use-theme';
 
 /** Tab navigator for the subscriber screens. */
 export default function SubscriberTabsLayout() {
   const { t } = useTranslation();
   const { colors } = useTheme();
+  const titleFont = useHeadingFont();
   const { fontScale } = useWindowDimensions();
   return (
-    <Tabs screenLayout={documentTitleLayout} screenOptions={tabsScreenOptions(colors, false, fontScale)}>
+    <Tabs screenLayout={documentTitleLayout} screenOptions={tabsScreenOptions(colors, false, fontScale, titleFont)}>
       <Tabs.Screen
         name="ishtagoshti"
         options={{ title: t('ishtagoshti.title'), tabBarLabel: t('tabs.ishtagoshti'), tabBarIcon: tabIcon('ishtagoshti') }}

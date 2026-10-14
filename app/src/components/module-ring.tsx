@@ -81,6 +81,9 @@ const ITEM_WIDTH_DENSE = 80;
  * the same slots, so the side labels stay inside a 375 px screen.
  */
 const CIRCLE_TEN = 50;
+/** A ring narrower than this (a 360 px phone) draws smaller circles and a smaller drum circle. */
+const NARROW_RING = 340;
+const CENTRE_NARROW = 128;
 /** More modules than this are shown as the grid. */
 const MAX_ON_RING = 10;
 /** Below this window width the labels would overlap, so the grid is used. */
@@ -128,7 +131,10 @@ function Ring({ modules, width }: { modules: readonly Module[]; width: number })
   const size = Math.min(width - 2 * spacing.md, modules.length <= 4 ? MAX_SIZE_FEW : MAX_SIZE);
   const dense = modules.length >= DENSE_FROM;
   const ten = modules.length >= MAX_ON_RING;
-  const circle = ten ? CIRCLE_TEN : dense ? CIRCLE_DENSE : CIRCLE;
+  // A narrow phone (360 px): smaller circles and drum, so the top labels keep clear of the drum (#351).
+  const narrow = size < NARROW_RING;
+  const circle = ten ? CIRCLE_TEN : dense || narrow ? CIRCLE_DENSE : CIRCLE;
+  const centreSize = narrow ? CENTRE_NARROW : CENTRE;
   const itemWidth = dense ? ITEM_WIDTH_DENSE : ITEM_WIDTH;
   const radius = size / 2 - itemWidth / 2;
   const centre = size / 2;
@@ -149,14 +155,18 @@ function Ring({ modules, width }: { modules: readonly Module[]; width: number })
         style={[
           styles.centre,
           {
-            left: centre - CENTRE / 2,
-            top: centre - CENTRE / 2,
-            backgroundColor: colors.primarySoft,
-            borderColor: colors.cardBorder,
+            left: centre - centreSize / 2,
+            top: centre - centreSize / 2,
+            width: centreSize,
+            height: centreSize,
+            borderRadius: centreSize / 2,
+            backgroundColor: colors.surfaceRaised,
+            borderColor: colors.ornament,
           },
         ]}>
         <MridangaMark size={44} color={colors.primary} accent={colors.primarySoft} />
-        <AppText variant="small" style={[styles.centreText, { color: colors.onPrimarySoft, fontWeight: '700' }]}>
+        {/* Inside the header element above: plain text here, not a second heading. */}
+        <AppText variant="subtitle" accessibilityRole="text" aria-level={undefined} style={[styles.centreText, styles.centreName, { color: colors.onPrimarySoft }]}>
           {t('app.name')}
         </AppText>
         <AppText
@@ -232,7 +242,14 @@ function ModuleButton({
       onPress={module.onPress}
       style={({ pressed }) => [styles.item, style, pressed && styles.pressed]}>
       <View>
-        <IconBadge name={module.icon} size={circle} tone={module.tone} />
+        {/* Filled like the team's "version 3" mockup (#352): deep colour, light icon, a light edge and a soft shadow. */}
+        <IconBadge
+          name={module.icon}
+          size={circle}
+          tone={module.tone}
+          solid
+          style={[styles.solid, { borderColor: colors.surfaceRaised, boxShadow: `0 3px 8px ${colors.shadow}` }]}
+        />
         {module.soon ? (
           <View style={[styles.soonMark, { backgroundColor: soonLook.background, borderColor: colors.background }]}>
             <Icon name="construction" size={12} color={soonLook.text} />
@@ -277,7 +294,7 @@ const styles = StyleSheet.create({
     width: CENTRE,
     height: CENTRE,
     borderRadius: CENTRE / 2,
-    borderWidth: 1,
+    borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: spacing.xs,
@@ -285,6 +302,13 @@ const styles = StyleSheet.create({
   centreText: {
     textAlign: 'center',
     lineHeight: 16,
+  },
+  centreName: {
+    fontSize: 19,
+    lineHeight: 24,
+  },
+  solid: {
+    borderWidth: 3,
   },
   motto: {
     fontSize: 9.5,

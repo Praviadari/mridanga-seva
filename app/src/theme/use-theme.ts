@@ -24,7 +24,8 @@ export const typography = {
   subtitle: { fontSize: 19, lineHeight: 28, fontWeight: '600' },
   body: { fontSize: 16, lineHeight: 24, fontWeight: '400' },
   label: { fontSize: 15, lineHeight: 22, fontWeight: '600' },
-  small: { fontSize: 13, lineHeight: 20, fontWeight: '400' },
+  // 14 px since the launch UI (#355; audit phase 5: 13 px was hard to read in sunlight).
+  small: { fontSize: 14, lineHeight: 20, fontWeight: '400' },
   /** The big number on a home-screen tile. */
   number: { fontSize: 28, lineHeight: 36, fontWeight: '700' },
 } as const;
@@ -32,8 +33,8 @@ export const typography = {
 /** Corner roundness for fields and buttons. */
 export const radius = 10;
 
-/** Corner roundness for cards and tiles: rounder than fields, so a card reads as one block. */
-export const cardRadius = 16;
+/** Corner roundness for cards and tiles: rounder than fields, so a card reads as one block (the website's 14 px, #355). */
+export const cardRadius = 14;
 
 /**
  * Widest a form or reading column should get, in pixels. Keeps lines readable on tablets and on
@@ -86,11 +87,11 @@ export function useTheme(): Theme {
  * Header bar of the screens opened from a home (title and back button): saffron like the home
  * header, with light text. For a Stack's `screenOptions`.
  */
-export function headerBarOptions(colors: Palette) {
+export function headerBarOptions(colors: Palette, titleFont?: string) {
   return {
     headerStyle: { backgroundColor: colors.headerTop },
     headerTintColor: colors.onHeader,
-    headerTitleStyle: { color: colors.onHeader },
+    headerTitleStyle: headerTitle(colors, titleFont),
     contentStyle: { backgroundColor: colors.background },
   } as const;
 }
@@ -103,13 +104,13 @@ export function headerBarOptions(colors: Palette) {
  * label at 200 % is not cut off under the icon. From about 115 % a label may take two lines
  * (components/tab-label.tsx, audit P3-03, docs/DECISIONS.md #315), so the bar has room for the second line.
  */
-export function tabsScreenOptions(colors: Palette, sidebar: boolean, fontScale = 1) {
+export function tabsScreenOptions(colors: Palette, sidebar: boolean, fontScale = 1, titleFont?: string) {
   const secondLine = fontScale >= 1.15 ? Math.round(18 * fontScale) : 0;
   const extra = Math.round(Math.max(0, fontScale - 1) * 24) + secondLine;
   return {
     headerStyle: { backgroundColor: colors.headerTop },
     headerTintColor: colors.onHeader,
-    headerTitleStyle: { color: colors.onHeader },
+    headerTitleStyle: headerTitle(colors, titleFont),
     sceneStyle: { backgroundColor: colors.background },
     tabBarActiveTintColor: colors.tabActive,
     tabBarInactiveTintColor: colors.tabInactive,
@@ -133,6 +134,16 @@ export function tabsScreenOptions(colors: Palette, sidebar: boolean, fontScale =
 }
 
 /**
+ * A header bar's title: the website's serif (theme/fonts.tsx useHeadingFont, English only) a little larger, as on the
+ * home band (#355); the phone's bold sans otherwise.
+ */
+function headerTitle(colors: Palette, titleFont: string | undefined) {
+  return titleFont
+    ? ({ color: colors.onHeader, fontFamily: titleFont, fontSize: 22, fontWeight: 'normal' } as const)
+    : ({ color: colors.onHeader } as const);
+}
+
+/**
  * The look of a card: surface colour, edge and a soft shadow (light mode only). `boxShadow` works
  * the same on Android, iPhone and the web with the New Architecture (React Native 0.76 and later).
  */
@@ -142,6 +153,7 @@ export function cardLook(colors: Palette) {
     borderColor: colors.cardBorder,
     borderWidth: 1,
     borderRadius: cardRadius,
-    boxShadow: `0 1px 3px ${colors.shadow}`,
+    // The website's two-layer shadow (website/src/tokens.css --shadow, #355).
+    boxShadow: `0 1px 2px ${colors.shadow}, 0 8px 24px ${colors.shadow}`,
   } as const;
 }

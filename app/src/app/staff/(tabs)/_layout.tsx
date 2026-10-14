@@ -2,7 +2,8 @@
 // Mark attendance (C5), Students (C7), Follow-up calls (C10), Announcements (C15) and Ishtagoshti
 // (I1, Phase 2 slice 6, docs/DECISIONS.md #57). Six labels do not fit a phone's bottom bar (62 px for
 // "Attendance", 65 px for Telugu "Students" in a 53 px slot at 375 px), so the Slokas tab shows only in the
-// sidebar; on a phone the staff home has a Slokas button under its ring (components/staff-shortcuts.tsx). On a phone
+// sidebar; on a phone the staff home has an Ishtagoshti circle (components/staff-shortcuts.tsx). Since the launch UI
+// (#350, #353) every tab's header bar has the side menu's button at its left, and the tabs read Check-in and Follow-ups. On a phone
 // the tabs sit at the bottom; on a wide screen (a laptop, a tablet held sideways) they become a
 // sidebar on the left (docs/DECISIONS.md #36). The other staff screens (a profile, a call, here
 // now, groups ...) open on top of the tabs from staff/_layout.tsx, with a back button.
@@ -13,21 +14,35 @@ import { useTranslation } from 'react-i18next';
 import { useWindowDimensions } from 'react-native';
 
 import { tabIcon } from '@/components/icon';
+import { MenuButton } from '@/components/side-menu';
 import { tabLabel } from '@/components/tab-label';
 import { documentTitleLayout } from '@/lib/document-title';
+import { useHeadingFont } from '@/theme/fonts';
 import { tabsScreenOptions, useTheme } from '@/theme/use-theme';
 
 /** Window width in pixels from which the tabs become a sidebar. */
 const SIDEBAR_FROM = 900;
 
+/** The side menu's button at the left of a tab's header bar. */
+function menuButton() {
+  return <MenuButton place="bar" />;
+}
+
 /** Tab navigator for the staff home and the four screens used most. */
 export default function StaffTabsLayout() {
   const { t } = useTranslation();
   const { colors } = useTheme();
+  const titleFont = useHeadingFont();
   const { width, fontScale } = useWindowDimensions();
 
   return (
-    <Tabs screenLayout={documentTitleLayout} screenOptions={tabsScreenOptions(colors, width >= SIDEBAR_FROM, fontScale)}>
+    <Tabs
+      screenLayout={documentTitleLayout}
+      screenOptions={{
+        ...tabsScreenOptions(colors, width >= SIDEBAR_FROM, fontScale, titleFont),
+        // The side menu (components/side-menu.tsx, #350) from every tab's header bar; the home has it in its band.
+        headerLeft: menuButton,
+      }}>
       {/* The home has its own saffron header band instead of a header bar. */}
       <Tabs.Screen
         name="index"

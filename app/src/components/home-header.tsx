@@ -1,11 +1,12 @@
-// The saffron band at the top of the three home screens (S1, C1, G1): the drum mark, "Hare
-// Krishna" and the person's name, their role, and the Hare Krishna maha-mantra as the line of the
-// day. The mantra is free to use in every script, while book translations are not, so the header
-// shows only the mantra (docs/DECISIONS.md #36); slokas with the temple's own translations live in
-// the Ishtagoshti tab (#57). The band itself, with its
-// gradient and the space for the notch, is components/saffron-band.tsx. The bell at the top right opens the
-// notifications inbox (A2, components/inbox-bell.tsx); beside it the person button opens My profile (A3,
-// components/profile-button.tsx; Praveen 10-10-2026, instead of a circle on the simple homes, #240).
+// The band at the top of the three home screens (S1, C1, G1). Since the launch UI (14-10-2026, docs/DECISIONS.md
+// #352; Praveen: "divine peace feeling, international standard", reference = the team's "version 3" mockup): the
+// app's name in gold serif with its motto in the middle, the menu button (staff, #350) or the drum mark on the left,
+// the bell and the person button on the right; under a thin gold rule "Hare Krishna" and the person's name (the role is in
+// the side menu and said to screen readers). The maha-mantra left the header (Praveen 14-10-2026: everyone knows it, the home must not scroll; it
+// is now at the foot of the side menu, components/side-menu.tsx; amends #36). The band itself,
+// with its gradient, golden halo and the space for the notch, is components/saffron-band.tsx. The bell opens the
+// notifications inbox (A2,
+// components/inbox-bell.tsx); the person button opens My profile (A3, components/profile-button.tsx, #240).
 
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
@@ -14,6 +15,7 @@ import { spacing, useTheme } from '@/theme/use-theme';
 
 import { AppText } from './app-text';
 import { InboxBell } from './inbox-bell';
+import { MenuButton } from './side-menu';
 import { ProfileButton } from './profile-button';
 import { MridangaMark } from './mridanga-mark';
 import { SaffronBand } from './saffron-band';
@@ -22,36 +24,37 @@ import { SaffronBand } from './saffron-band';
 export type HomeHeaderProps = {
   /** The person's name, or empty when the profile has none (then only "Hare Krishna" shows). */
   name: string | undefined;
-  /** The role, already translated, e.g. "Guru". Left out on the student home. */
+  /**
+   * The role, already translated, e.g. "Guru": said with the greeting to screen readers only; the band shows it no
+   * more, to stay short (#352; the side menu shows it). Left out on the student home.
+   */
   role?: string;
+  /** Staff homes: the side menu's button (components/side-menu.tsx) in place of the drum mark (#350). */
+  menu?: boolean;
 };
 
-/** Saffron header with the greeting, for the top of a home screen. */
-export function HomeHeader({ name, role }: HomeHeaderProps) {
+/** The home's header band with the app's name and the greeting. */
+export function HomeHeader({ name, role, menu }: HomeHeaderProps) {
   const { t } = useTranslation();
   const { colors } = useTheme();
 
   return (
     <SaffronBand>
       <View style={styles.row}>
-        <View style={[styles.markCircle, { backgroundColor: colors.onHeader }]}>
-          <MridangaMark size={34} color={colors.headerTop} accent={colors.onHeader} />
-        </View>
-        <View style={styles.names}>
-          {name ? (
-            <>
-              <AppText variant="label" style={{ color: colors.onHeaderMuted }}>
-                {t('home.greetingNoName')}
-              </AppText>
-              <AppText variant="title" family="sans" style={[styles.name, { color: colors.onHeader }]} numberOfLines={2}>
-                {name}
-              </AppText>
-            </>
-          ) : (
-            <AppText variant="title" style={{ color: colors.onHeader }}>
-              {t('home.greetingNoName')}
-            </AppText>
-          )}
+        {menu ? (
+          <MenuButton place="band" />
+        ) : (
+          <View style={[styles.markCircle, { borderColor: colors.headerGold }]}>
+            <MridangaMark size={28} color={colors.headerGold} accent={colors.headerBottom} />
+          </View>
+        )}
+        <View style={styles.brand}>
+          <AppText variant="title" style={[styles.brandName, { color: colors.headerGold }]} numberOfLines={1}>
+            {t('app.name')}
+          </AppText>
+          <AppText variant="small" style={[styles.motto, { color: colors.headerGold }]}>
+            {t('app.motto')}
+          </AppText>
         </View>
         <View style={styles.buttons}>
           <InboxBell />
@@ -59,20 +62,32 @@ export function HomeHeader({ name, role }: HomeHeaderProps) {
         </View>
       </View>
 
-      {role ? (
-        <AppText variant="small" style={{ color: colors.onHeaderMuted }}>
-          {t('home.role', { role })}
-        </AppText>
-      ) : null}
-
-      <View style={[styles.mantra, { borderColor: colors.onHeaderMuted }]}>
-        <AppText variant="small" style={[styles.mantraText, { color: colors.onHeaderMuted }]}>
-          {t('home.mantraLine1')}
-        </AppText>
-        <AppText variant="small" style={[styles.mantraText, { color: colors.onHeaderMuted }]}>
-          {t('home.mantraLine2')}
-        </AppText>
+      {/* A thin gold rule with a dot in the middle, like the website's lotus divider. */}
+      <View style={styles.rule} aria-hidden>
+        <View style={[styles.ruleLine, { backgroundColor: colors.headerGold }]} />
+        <View style={[styles.ruleDot, { backgroundColor: colors.headerGold }]} />
+        <View style={[styles.ruleLine, { backgroundColor: colors.headerGold }]} />
       </View>
+
+      <View style={styles.greeting}>
+        {/* "Hare Krishna, Name" on one line when it fits, so the circles stay near the top. */}
+        <View
+          style={styles.greetingLine}
+          accessible
+          accessibilityLabel={[t('home.greetingNoName'), name, role ? t('home.role', { role }) : undefined].filter(Boolean).join(', ')}>
+          <AppText variant="label" style={[styles.centred, { color: colors.onHeaderMuted }]}>
+            {name ? `${t('home.greetingNoName')},` : t('home.greetingNoName')}
+          </AppText>
+          {name ? (
+            <AppText variant="label" style={[styles.centred, styles.name, { color: colors.onHeader }]}>
+              {name}
+            </AppText>
+          ) : null}
+        </View>
+
+      </View>
+
+
     </SaffronBand>
   );
 }
@@ -84,30 +99,61 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   markCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  names: {
+  brand: {
     flex: 1,
+    alignItems: 'center',
+  },
+  brandName: {
+    textAlign: 'center',
+  },
+  motto: {
+    textAlign: 'center',
+    letterSpacing: 0.6,
   },
   buttons: {
     flexDirection: 'row',
     gap: spacing.xs,
   },
-  // A little under the title size, so a usual name stays on one line beside the two buttons.
-  name: {
-    fontSize: 22,
-    lineHeight: 28,
-  },
-  mantra: {
-    borderLeftWidth: 2,
-    paddingLeft: spacing.sm,
+  rule: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
     marginTop: spacing.xs,
+    opacity: 0.7,
   },
-  mantraText: {
-    fontStyle: 'italic',
+  ruleLine: {
+    width: 56,
+    height: StyleSheet.hairlineWidth * 2,
+  },
+  ruleDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 3,
+  },
+  greeting: {
+    alignItems: 'center',
+  },
+  centred: {
+    textAlign: 'center',
+  },
+  greetingLine: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    alignItems: 'baseline',
+    columnGap: spacing.xs,
+  },
+  name: {
+    fontSize: 18,
+    lineHeight: 26,
+    fontWeight: '700',
   },
 });

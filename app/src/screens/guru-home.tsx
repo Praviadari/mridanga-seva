@@ -1,14 +1,11 @@
-// G1 Guru home, simple since 10-10-2026 (docs/DECISIONS.md #240): the saffron header with the
-// greeting, then only circles (components/staff-shortcuts.tsx): a ring of eight around the drum and
-// two rows of four under it. What used to be cards here lives behind a circle: the numbers, students
-// per level and per status on Overview (GuruOverview below, staff/overview.tsx), the overdue and
-// escalated follow-ups per coordinator on Follow-ups (GuruFollowUps below,
-// staff/follow-ups-by-coordinator.tsx), the level-up queue on G7, the admin screens on Running the
-// class (staff/running-the-class.tsx). What waits for the Guru is a count on its circle: follow-ups
-// overdue or escalated, nominations to decide. Only notices stay on the home: "A new version is
-// ready" on the Android app, notifications off (#305), and could not load. Above the circles (#339, #340): the Today line,
-// Scan at the door and Waiting for you (components/staff-today.tsx). Numbers: staff_dashboard() through src/data/home.ts.
-// It loads again each time it comes back into view.
+// G1 Guru home since the launch UI (14-10-2026, docs/DECISIONS.md #350-#353; was the simple home #240): the band with
+// the menu button (components/side-menu.tsx), then the Today boxes and Scan to check in (components/staff-today.tsx),
+// then a ring of eight filled circles (components/staff-shortcuts.tsx). It fits one screen (#351): what waits for the
+// Guru is a count on its circle and the amber To do box (staff/waiting.tsx). Behind the circles: the numbers on
+// Overview (GuruOverview below, staff/overview.tsx), the overdue and escalated follow-ups per coordinator on
+// Follow-ups (GuruFollowUps below, staff/follow-ups-by-coordinator.tsx). Set-up screens are in the side menu. Only
+// notices stay: "A new version is ready", notifications off (#305), could not load. Numbers: staff_dashboard() through
+// src/data/home.ts. It loads again each time it comes back into view.
 
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
@@ -58,7 +55,7 @@ export function GuruHome() {
   );
 
   return (
-    <Screen wide header={<HomeHeader name={name} role={t('roles.guru')} />} onRefresh={load}>
+    <Screen wide compact header={<HomeHeader menu name={name} role={t('roles.guru')} />} onRefresh={load}>
       <UpdateNotice />
       <PushNotice place="home" />
       {board === null ? (

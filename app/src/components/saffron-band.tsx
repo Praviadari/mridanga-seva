@@ -8,7 +8,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useId, useState, type PropsWithChildren } from 'react';
 import { StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
+import Svg, { Defs, LinearGradient, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
 
 import { maxDashboardWidth, spacing, useTheme } from '@/theme/use-theme';
 
@@ -49,17 +49,70 @@ export function SaffronBand({ maxWidth = maxDashboardWidth, centred, children }:
         aria-hidden>
         <Defs>
           <LinearGradient id={gradientId} x1="0" y1="0" x2="0.4" y2="1">
-            <Stop offset="0" stopColor={colors.headerTop} />
-            <Stop offset="1" stopColor={colors.headerBottom} />
+            {/* Deep night at the top, opening to royal blue below, like the dawn sky (#352). */}
+            <Stop offset="0" stopColor={colors.headerBottom} />
+            <Stop offset="1" stopColor={colors.headerTop} />
           </LinearGradient>
         </Defs>
         <Rect width={size?.width ?? '100%'} height={size?.height ?? '100%'} fill={`url(#${gradientId})`} />
+        {size ? (
+          <WebsiteGlow
+            id={gradientId}
+            width={size.width}
+            height={size.height}
+            gold={colors.headerGold}
+            violet={colors.headerGlow}
+            edge={colors.background}
+          />
+        ) : null}
       </Svg>
       <View style={[styles.column, { maxWidth }, centred && styles.centred]}>{children}</View>
     </View>
   );
 }
 
+/**
+ * The website's night band (website/src/styles.css .night, #352): a golden halo behind the app's name, a faint
+ * violet glow on the left, and a soft wave where the band meets the page.
+ */
+function WebsiteGlow({
+  id,
+  width,
+  height,
+  gold,
+  violet,
+  edge,
+}: {
+  id: string;
+  width: number;
+  height: number;
+  gold: string;
+  violet: string;
+  edge: string;
+}) {
+  const wave = Math.min(14, height / 8);
+  const d =
+    `M0 ${height} L0 ${height - wave * 0.4} ` +
+    `C ${width * 0.22} ${height - wave * 1.2}, ${width * 0.45} ${height + wave * 0.2}, ${width * 0.7} ${height - wave * 0.7} ` +
+    `S ${width * 0.95} ${height - wave * 0.6}, ${width} ${height - wave * 0.9} L${width} ${height} Z`;
+  return (
+    <>
+      <Defs>
+        <RadialGradient id={`${id}-gold`} cx="0.5" cy="0.1" r="0.6">
+          <Stop offset="0" stopColor={gold} stopOpacity={0.24} />
+          <Stop offset="1" stopColor={gold} stopOpacity={0} />
+        </RadialGradient>
+        <RadialGradient id={`${id}-violet`} cx="0.08" cy="0.2" r="0.5">
+          <Stop offset="0" stopColor={violet} stopOpacity={0.16} />
+          <Stop offset="1" stopColor={violet} stopOpacity={0} />
+        </RadialGradient>
+      </Defs>
+      <Rect width={width} height={height} fill={`url(#${id}-gold)`} />
+      <Rect width={width} height={height} fill={`url(#${id}-violet)`} />
+      <Path d={d} fill={edge} />
+    </>
+  );
+}
 const styles = StyleSheet.create({
   band: {
     width: '100%',

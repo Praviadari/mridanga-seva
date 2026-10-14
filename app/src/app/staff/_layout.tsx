@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next';
 
 import { UpdateNoticeOnScreens } from '@/components/update-notice';
 import { documentTitleLayout } from '@/lib/document-title';
+import { useHeadingFont } from '@/theme/fonts';
 import { headerBarOptions, useTheme } from '@/theme/use-theme';
 
 /**
@@ -23,12 +24,13 @@ export const unstable_settings = { anchor: '(tabs)' };
 /** Navigator for staff screens: the tabs, and saffron header bars with a back button above them. */
 export default function StaffLayout() {
   const { colors } = useTheme();
+  const titleFont = useHeadingFont();
   const { t } = useTranslation();
   return (
     <UpdateNoticeOnScreens value>
       {/* Light status-bar icons on the saffron headers. */}
       <StatusBar style="light" />
-      <Stack screenLayout={documentTitleLayout} screenOptions={headerBarOptions(colors)}>
+      <Stack screenLayout={documentTitleLayout} screenOptions={headerBarOptions(colors, titleFont)}>
         {/* No bar of its own (the tabs have theirs); the title is what Back says on the next screen. */}
         <Stack.Screen name="(tabs)" options={{ headerShown: false, title: t('home.title') }} />
       </Stack>

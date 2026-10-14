@@ -110,6 +110,26 @@ function Lotus({ x, y, scale }: { x: number; y: number; scale: number }) {
   );
 }
 
+/**
+ * A small lotus on a ground line, drawn in outline: the picture of an empty list (components/empty-state.tsx,
+ * launch UI #355), in the module's colour when the screen has one.
+ */
+export function LotusLine({ size, color }: { size: number; color: string }) {
+  return (
+    <View pointerEvents="none" aria-hidden importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
+      <Svg width={size} height={size * 0.6} viewBox="-40 -36 80 48">
+        <G fill="none" stroke={color} strokeWidth={1.6} strokeLinejoin="round">
+          <Path d="M0 0 C -6 -10, -6 -22, 0 -30 C 6 -22, 6 -10, 0 0 Z" />
+          <Path d="M0 0 C -10 -6, -18 -16, -20 -24 C -10 -22, -3 -14, 0 0 Z" />
+          <Path d="M0 0 C 10 -6, 18 -16, 20 -24 C 10 -22, 3 -14, 0 0 Z" />
+          <Path d="M0 0 C -14 -2, -26 -8, -30 -14 C -18 -14, -8 -8, 0 0 Z" />
+          <Path d="M0 0 C 14 -2, 26 -8, 30 -14 C 18 -14, 8 -8, 0 0 Z" />
+          <Path d="M-36 4 H36" strokeLinecap="round" />
+        </G>
+      </Svg>
+    </View>
+  );
+}
 const styles = StyleSheet.create({
   centre: {
     alignItems: 'center',

@@ -1,6 +1,6 @@
 // A titled card that groups related things: fields in a long form ("Student", "Parent or
 // guardian") or a block of a home screen ("This week", "Announcements"), optionally with an icon
-// before the heading.
+// before the heading. Since the launch UI (#355) it wears the website's card top: a thin marigold line.
 
 import type { PropsWithChildren } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -24,7 +24,7 @@ export type SectionProps = PropsWithChildren<{
 export function Section({ title, description, icon, children }: SectionProps) {
   const { colors } = useTheme();
   return (
-    <View style={[styles.card, cardLook(colors)]}>
+    <View style={[styles.card, cardLook(colors), { borderTopWidth: 3, borderTopColor: colors.accent }]}>
       <View style={styles.heading}>
         {icon ? <IconBadge name={icon} size={36} /> : null}
         <View style={styles.headingText}>

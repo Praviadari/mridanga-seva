@@ -1,13 +1,11 @@
-// C1 Coordinator home, simple since 10-10-2026 (docs/DECISIONS.md #240): the saffron header with the
-// greeting, then only circles (components/staff-shortcuts.tsx): a ring of eight around the drum and
-// two rows of four under it. What used to be cards here lives behind a circle: the numbers on
-// Overview (CoordinatorOverview below, staff/overview.tsx), the new joiners on New joiners
-// (NewJoinersList below, staff/new-joiners.tsx), promotions on C22/C23. What waits for the
-// coordinator is a count on its circle: calls due for my students, feedback asked of me. Only
-// notices stay on the home: "A new version is ready" on the Android app, notifications off (#305), and could not load.
-// Above the circles (#339, #340): the Today line, Scan at the door and Waiting for you (components/staff-today.tsx).
-// Mark attendance, Students, Calls and Announcements are the bottom tabs. Numbers: staff_dashboard() (one request)
-// through src/data/home.ts. It loads again each time it comes back into view.
+// C1 Coordinator home since the launch UI (14-10-2026, docs/DECISIONS.md #350-#353; was the simple home #240): the
+// band with the menu button (components/side-menu.tsx), the Today boxes and Scan to check in (components/staff-today.tsx),
+// then a ring of eight filled circles (components/staff-shortcuts.tsx); it fits one screen (#351). Behind the circles and
+// the menu: the numbers on Overview (CoordinatorOverview below, staff/overview.tsx), the newcomers (NewJoinersList below,
+// staff/new-joiners.tsx), level-ups on C22/C23. What waits is a count on its circle and the amber To do box
+// (staff/waiting.tsx). Check-in, Students, Follow-ups and News are the tabs. Only notices stay: app update,
+// notifications off (#305), could not load. Numbers: staff_dashboard() (one request) through src/data/home.ts. It loads
+// again each time it comes back into view.
 
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
@@ -49,7 +47,7 @@ export function CoordinatorHome() {
   );
 
   return (
-    <Screen wide header={<HomeHeader name={name} role={t('roles.coordinator')} />} onRefresh={load}>
+    <Screen wide compact header={<HomeHeader menu name={name} role={t('roles.coordinator')} />} onRefresh={load}>
       <UpdateNotice />
       <PushNotice place="home" />
       {board === null ? (

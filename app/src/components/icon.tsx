@@ -7,7 +7,10 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { View, type ColorValue, type StyleProp, type ViewStyle } from 'react-native';
 
 import type { ModuleTone } from '@/theme/colors';
+import { useModuleTone } from '@/theme/module-tone';
 import { useTheme } from '@/theme/use-theme';
+
+import { MridangaMark } from './mridanga-mark';
 
 /** What each icon stands for in this app, and the Ionicons shape used for it. */
 const SHAPES = {
@@ -15,7 +18,8 @@ const SHAPES = {
   qr: 'qr-code-outline',
   news: 'megaphone-outline',
   attendance: 'scan-outline',
-  hereNow: 'enter-outline',
+  // Launch UI (#353): a group, not an arrow through a door (members read "Here now" as a map's "you are here").
+  hereNow: 'people-circle-outline',
   students: 'school-outline',
   calls: 'call-outline',
   groups: 'people-outline',
@@ -27,7 +31,8 @@ const SHAPES = {
   newJoiner: 'sparkles-outline',
   level: 'ribbon-outline',
   syllabus: 'book-outline',
-  status: 'pulse-outline',
+  // A pie chart (#353): the heartbeat looked medical.
+  status: 'pie-chart-outline',
   pin: 'pin-outline',
   file: 'document-attach-outline',
   reply: 'chatbubble-outline',
@@ -76,7 +81,8 @@ const SHAPES = {
   link: 'link-outline',
   score: 'star-outline',
   // Promotion approval (Phase 2 slice 2): the level-up queue, a coordinator's feedback.
-  promote: 'trending-up-outline',
+  // A medal (#353): the rising arrow looked like the stock market.
+  promote: 'medal-outline',
   feedback: 'chatbubbles-outline',
   // Practice tools (Phase 2 slice 3): the module, stop, tap tempo, the taal editor.
   practice: 'musical-note-outline',
@@ -114,6 +120,14 @@ const SHAPES = {
   dropdown: 'chevron-down',
   close: 'close',
   lists: 'list-outline',
+  // Launch UI (docs/DECISIONS.md #350): the side menu's button in the staff headers.
+  menu: 'menu-outline',
+  todo: 'checkmark-done-circle-outline',
+  // Instruments (#353): drawn as the app's own drum (components/mridanga-mark.tsx), not musical notes, which
+  // Practice uses. The Ionicons name is only the fallback shape.
+  drum: 'musical-notes-outline',
+  settings: 'settings-outline',
+  audit: 'document-lock-outline',
   about: 'id-card-outline',
 } as const;
 
@@ -134,6 +148,10 @@ export type IconProps = {
 /** One icon, hidden from screen readers (the text next to it says the same). */
 export function Icon({ name, size = 22, color, filled }: IconProps) {
   const { colors } = useTheme();
+  if (name === 'drum') {
+    // The drum's lacing is cut out of its body (transparent), so it shows on any background.
+    return <MridangaMark size={Math.round(size * 1.15)} color={String(color ?? colors.text)} accent="transparent" />;
+  }
   return (
     <Ionicons
       name={filled ? filledShape(name) : SHAPES[name]}
@@ -172,15 +190,29 @@ export type IconBadgeProps = {
   name: IconName;
   /** Diameter of the circle in pixels. Default 40; the icon is a little over half of it. */
   size?: number;
-  /** A module's colour instead of saffron (the circles of the home screen's module ring). */
+  /**
+   * A module's colour (the circles of the home screen's module ring). Left out: the colour of the module the screen
+   * belongs to (theme/module-tone.ts, #354), or saffron where there is none.
+   */
   tone?: ModuleTone;
+  /** Saffron even inside a module's screen (the side menu, which lists every module). */
+  plain?: boolean;
+  /** Filled: the tone's deep colour with a light icon (the home circles, #352); otherwise a pale tint. */
+  solid?: boolean;
   style?: StyleProp<ViewStyle>;
 };
 
 /** An icon in a pale saffron circle (or a module's colour): the start of a card, a tile or an empty screen. */
-export function IconBadge({ name, size = 40, tone, style }: IconBadgeProps) {
+export function IconBadge({ name, size = 40, tone: given, plain, solid, style }: IconBadgeProps) {
   const { colors } = useTheme();
-  const look = tone ? colors.modules[tone] : { background: colors.primarySoft, icon: colors.primary };
+  const screenTone = useModuleTone();
+  const tone = given ?? (plain ? undefined : screenTone);
+  const look =
+    tone && solid
+      ? { background: colors.moduleSolid[tone], icon: colors.onHeader }
+      : tone
+        ? colors.modules[tone]
+        : { background: colors.primarySoft, icon: colors.primary };
   return (
     <View
       style={[
@@ -194,7 +226,12 @@ export function IconBadge({ name, size = 40, tone, style }: IconBadgeProps) {
         },
         style,
       ]}>
-      <Icon name={name} size={Math.round(size * 0.55)} color={look.icon} />
+      {name === 'drum' ? (
+        // The drum's lacing in the circle's own colour, so it reads as a drum and not a blot.
+        <MridangaMark size={Math.round(size * 0.66)} color={look.icon} accent={look.background} />
+      ) : (
+        <Icon name={name} size={Math.round(size * 0.55)} color={look.icon} />
+      )}
     </View>
   );
 }

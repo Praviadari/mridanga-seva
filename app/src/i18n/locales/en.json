@@ -159,13 +159,13 @@
     },
     "staff": {
       "shortcuts": "Screens",
-      "hereNow": "Here now",
+      "hereNow": "In class now",
       "visitsToday": "Visits today",
       "myCallsDue": "Calls due for my students",
-      "newJoiners_one": "New joiners (last week)",
-      "newJoiners_other": "New joiners (last {{count}} weeks)",
-      "newJoinersTitle_one": "New joiners: first week",
-      "newJoinersTitle_other": "New joiners: first {{count}} weeks",
+      "newJoiners_one": "Newcomers (last week)",
+      "newJoiners_other": "Newcomers (last {{count}} weeks)",
+      "newJoinersTitle_one": "Newcomers: first week",
+      "newJoinersTitle_other": "Newcomers: first {{count}} weeks",
       "newJoinersHint": "Newest first. Tap a name to open the profile. Someone with no visits yet may need a call.",
       "newJoinersEmpty_one": "Nobody new joined in the last week.",
       "newJoinersEmpty_other": "Nobody new joined in the last {{count}} weeks.",
@@ -181,12 +181,12 @@
       "byStatus": "Students per status",
       "byStatusHint": "Every student, including those who left.",
       "share": "{{name}}: {{count}} of {{total}}",
-      "followUps": "Follow-ups per coordinator",
-      "followUpsHint": "Calls past their date, and students handed to you. Tap to open the follow-up calls.",
+      "followUps": "Follow-ups by coordinator",
+      "followUpsHint": "Calls past their date, and students handed to you. Tap to open the follow-ups.",
       "followUpsEmpty": "No follow-up call is overdue.",
       "followUpLine": "Overdue: {{overdue}} · With the facilitator: {{escalated}}",
       "noName": "(no name)",
-      "openCalls": "Open all follow-up calls"
+      "openCalls": "Open all follow-ups"
     },
     "badges": {
       "new": "{{count}} new",
@@ -197,19 +197,21 @@
     },
     "modules": {
       "overview": "Overview",
-      "newJoiners": "New joiners",
-      "promotions": "Promotions"
+      "newJoiners": "Newcomers",
+      "promotions": "Level-ups"
     },
     "today": {
-      "hereNow": "here now",
-      "visitsToday_one": "visit today",
-      "visitsToday_other": "visits today",
-      "cameThisWeek_one": "came this week",
-      "cameThisWeek_other": "came this week",
-      "scan": "Scan at the door"
+      "hereNow": "in class now",
+      "visitsToday_one": "check-in today",
+      "visitsToday_other": "check-ins today",
+      "cameThisWeek_one": "this week",
+      "cameThisWeek_other": "this week",
+      "waiting_one": "to do",
+      "waiting_other": "to do",
+      "scan": "Scan to check in"
     },
     "waiting": {
-      "title": "Waiting for you",
+      "title": "To do",
       "nothing": "Nothing is waiting. Thank you for your seva.",
       "signups_one": "{{count}} person waiting at the desk",
       "signups_other": "{{count}} people waiting at the desk",
@@ -217,23 +219,36 @@
       "calls_other": "{{count}} calls due for your students",
       "callsGuru_one": "{{count}} follow-up overdue or with you",
       "callsGuru_other": "{{count}} follow-ups overdue or with you",
-      "promotions_one": "{{count}} promotion asks your feedback",
-      "promotions_other": "{{count}} promotions ask your feedback",
-      "promotionsGuru_one": "{{count}} promotion to decide",
-      "promotionsGuru_other": "{{count}} promotions to decide",
+      "promotions_one": "{{count}} level-up asks your feedback",
+      "promotions_other": "{{count}} level-ups ask your feedback",
+      "promotionsGuru_one": "{{count}} level-up to decide",
+      "promotionsGuru_other": "{{count}} level-ups to decide",
       "fund_one": "{{count}} fund entry to approve",
       "fund_other": "{{count}} fund entries to approve",
       "toReview_one": "{{count}} recording to review",
       "toReview_other": "{{count}} recordings to review",
-      "suggestions_one": "{{count}} material suggestion to review",
-      "suggestions_other": "{{count}} material suggestions to review"
+      "suggestions_one": "{{count}} suggestion to review",
+      "suggestions_other": "{{count}} suggestions to review"
+    }
+  },
+  "menu": {
+    "open": "Open the menu",
+    "close": "Close the menu",
+    "title": "Menu",
+    "groups": {
+      "class": "Class",
+      "teaching": "Teaching",
+      "seva": "Seva",
+      "reports": "Reports",
+      "setup": "Set-up",
+      "me": "You"
     }
   },
   "tabs": {
     "home": "Home",
-    "attendance": "Attendance",
+    "attendance": "Check-in",
     "students": "Students",
-    "calls": "Calls",
+    "calls": "Follow-ups",
     "news": "News",
     "myQr": "My QR",
     "ishtagoshti": "Slokas",
@@ -249,11 +264,11 @@
     "goHome": "Go to home"
   },
   "staff": {
-    "registerStudent": "Register a student",
-    "markAttendance": "Mark attendance",
-    "hereNow": "Who is here now",
+    "registerStudent": "Welcome desk",
+    "markAttendance": "Check-in",
+    "hereNow": "In class now",
     "students": "Students",
-    "followUp": "Follow-up calls"
+    "followUp": "Follow-ups"
   },
   "time": {
     "minutes": "{{minutes}} min",
@@ -267,14 +282,14 @@
     "noCamera": "The camera could not start. Search the name below instead."
   },
   "attendance": {
-    "title": "Mark attendance",
-    "summary": "Here now: {{here}} · Visits today: {{visits}}",
+    "title": "Check-in",
+    "summary": "In class now: {{here}} · Check-ins today: {{visits}}",
     "loadFailed": "Could not load today's attendance.",
     "loadFailedBody": "Cannot reach the server. You can still scan or check in by name: the buttons may not know who is already here until the list loads.",
-    "scanSection": "Scan a QR code",
+    "scanSection": "Scan to check in",
     "scanIntro": "Ask the student to open My QR in the app, or to show their printed QR card, and hold it in front of the camera.",
-    "startScan": "Scan a QR code",
-    "scanNext": "Scan the next student",
+    "startScan": "Scan to check in",
+    "scanNext": "Scan next",
     "stopScan": "Close the camera",
     "searchSection": "Find by name",
     "searchLabel": "Name or roll number",
@@ -329,14 +344,14 @@
     "csvColumn": "Flagged check-ins"
   },
   "hereNow": {
-    "title": "Who is here now",
-    "count": "Students here now: {{number}}",
+    "title": "In class now",
+    "count": "Students in class now: {{number}}",
     "empty": "Nobody is checked in right now.",
     "since": "Since {{time}} · {{duration}}",
     "sinceEarlierDay": "Since {{date}} {{time}}: not checked out that day",
     "refresh": "Refresh",
     "checkOutAll": "Check out all",
-    "confirmTitle": "Check out everyone here now ({{number}})?",
+    "confirmTitle": "Check out everyone in class now ({{number}})?",
     "confirmBody": "Use this when the class closes. Each visit ends now; a visit left open from an earlier day ends at that day's closing time.",
     "confirmYes": "Yes, check out all",
     "cancel": "Cancel",
@@ -377,7 +392,7 @@
     "other": "Other"
   },
   "register": {
-    "title": "Register a student",
+    "title": "Welcome desk",
     "intro": "Takes about two minutes. Only the name and date of birth are required.",
     "studentSection": "Student",
     "fullName": "Full name",
@@ -426,7 +441,7 @@
       "guardianEmailOnMinor": "This is a parent's email. A child's record keeps the child's own email, or none: a login with a parent's email would be linked as the child.",
       "mentorInactive": "That mentor is no longer active. Choose another mentor, or Automatic.",
       "nameInvalid": "Check the name: letters only (any language), at least two. A space, dot, apostrophe or hyphen may go between them.",
-      "genderUnknown": "This gender is not in the option list. Choose one of the options.",
+      "genderUnknown": "This gender is not in the form choices. Choose one of the options.",
       "consentRefused": "The server did not accept the parent's consent for this student. Check the parent's details and save again; if it happens again, tell the Guru."
     },
     "privacyNotice": "Privacy notice for parents",
@@ -528,7 +543,7 @@
     "clearFilters": "Clear filters",
     "count": "Showing {{shown}} of {{total}}",
     "empty": "No student matches. Change the search or the filters.",
-    "hereNow": "Here now",
+    "hereNow": "In class now",
     "lastVisitToday": "Last visit today",
     "lastVisitYesterday": "Last visit yesterday",
     "lastVisit": "Last visit {{date}} · {{days}} days ago",
@@ -555,7 +570,7 @@
     "notFound": "This student is not in the records.",
     "unknownPerson": "unknown",
     "pausedUntil": "Paused until {{date}}",
-    "logCall": "Log a call",
+    "logCall": "Record a call",
     "detailsSection": "Details",
     "joined": "Joined",
     "notGiven": "Not given",
@@ -567,7 +582,7 @@
     "consentLine": "{{scope}} · {{method}} · {{date}}",
     "idSeen": "ID seen: {{idType}}",
     "consentWithdrawn": "withdrawn {{date}}",
-    "followUpSection": "Follow-up calls",
+    "followUpSection": "Follow-ups",
     "noCalls": "No calls logged yet.",
     "callExpected": "expected {{date}}",
     "callUntil": "until {{date}}",
@@ -588,7 +603,7 @@
     "tickSyllabus": "Tick syllabus items"
   },
   "syllabus": {
-    "title": "Syllabus tick-off",
+    "title": "Mark progress",
     "loadFailed": "Could not load the syllabus.",
     "studentLevel": "Level now: {{level}}",
     "intro": "Tap the box when the student shows the item in class. Today's date and your name are saved with the tick.",
@@ -620,7 +635,7 @@
     "tickWithRemark": "Tick and save the remark"
   },
   "followUp": {
-    "title": "Follow-up calls",
+    "title": "Follow-ups",
     "intro": "Students who have stopped coming. Tap a name to phone them and record the call.",
     "loadFailed": "Could not load the follow-up list.",
     "scope": "Show",
@@ -643,7 +658,7 @@
     "noTask": "No call task yet"
   },
   "callLog": {
-    "title": "Log a call",
+    "title": "Record a call",
     "loadFailed": "Could not load this student.",
     "student": "Student",
     "parent": "Parent",
@@ -664,7 +679,7 @@
     "dateHint": "Day-month-year, e.g. 15-10-2026",
     "comment": "What was said",
     "commentHint": "Required. A short note for whoever calls next.",
-    "save": "Save call",
+    "save": "Save",
     "confirmLeftTitle": "Mark {{name}} as Left?",
     "confirmLeftBody": "They leave the follow-up list. Their record, roll number and history are kept, and their next visit makes them Active again. Their login keeps working, and they still get class messages and notifications, until the Guru switches the login off.",
     "confirmLeftYes": "Yes, save and mark as Left",
@@ -949,8 +964,8 @@
     "retired": "No longer taught"
   },
   "syllabusEditor": {
-    "module": "Syllabus and lessons",
-    "title": "Syllabus and lessons",
+    "module": "Lessons",
+    "title": "Lessons",
     "introGuru": "Enter each level's syllabus in teaching order, and add the lessons: YouTube videos, PDFs and photos. Ticks already given always stay.",
     "introStaff": "The syllabus of each level and its lessons. Only the facilitator changes them.",
     "loadFailed": "Could not load the syllabus.",
@@ -1126,7 +1141,7 @@
     }
   },
   "admin": {
-    "title": "Running the class",
+    "title": "Set-up",
     "guruOnly": "Only the facilitator uses this page.",
     "coordinatorsLine": "Roles for new sign-ups, mentees, duty hours",
     "databaseLine": "Every student record, and the Excel import",
@@ -1159,7 +1174,7 @@
     "signedUpLabel": "Signed up",
     "waitingTitle": "Waiting for a role ({{count}})",
     "waitingEmpty": "Nobody is waiting for a role.",
-    "waitingHelp": "Everyone who signed up and is not accepted yet waits here, most of them students for the desk (Register a student). Search for a person to make them a coordinator or to link them to their student record.",
+    "waitingHelp": "Everyone who signed up and is not accepted yet waits here, most of them students for the Welcome desk. Search for a person to make them a coordinator or to link them to their student record.",
     "staffTitle": "Facilitator and coordinators ({{count}})",
     "staffEmpty": "No coordinators yet.",
     "noMentorCount": "Students without a mentor: {{count}}. Give them one on the student's profile, or move students here.",
@@ -1184,7 +1199,7 @@
     "moved_one": "{{count}} student moved to {{name}}.",
     "moved_other": "{{count}} students moved to {{name}}.",
     "giveRoleTitle": "Give a role",
-    "giveRoleHint": "Check who this is before you give a role. Students who signed up are accepted at the desk (Register a student), not here.",
+    "giveRoleHint": "Check who this is before you give a role. Students who signed up are accepted at the Welcome desk, not here.",
     "makeCoordinatorAsk": "Make {{name}} a coordinator?",
     "makeCoordinatorBody": "They will see every student's record, children included, mark attendance, log calls, tick the syllabus and post announcements. The app cannot take the role back: only switching the login off stops it.",
     "makeCoordinator": "Make a coordinator",
@@ -1227,7 +1242,7 @@
       "mentor_not_staff": "A mentor must be an active coordinator or the facilitator.",
       "ig_editor_coordinator_only": "Only a coordinator can be made an Ishtagoshti editor.",
       "treasurer_coordinator_only": "Only a coordinator can be a treasurer.",
-      "gender_unknown": "This gender is not in the option list."
+      "gender_unknown": "This gender is not in the form choices."
     },
     "igEditorTitle": "Ishtagoshti editor",
     "igEditorHint": "An editor adds and edits slokas and themes, and pins the sloka of the day. The facilitator always can.",
@@ -1251,7 +1266,7 @@
     "typeNameHint": "Type: {{name}}"
   },
   "database": {
-    "title": "Student database",
+    "title": "All students",
     "intro": "Every student record, Left ones too. Tap a student to open their profile. Coordinators use the Students tab.",
     "loadFailed": "Could not load the student records.",
     "import": "Import from Excel or CSV",
@@ -1313,7 +1328,7 @@
     "doneTitle": "Import finished",
     "doneLine": "Saved: {{saved}}. Refused: {{refused}}.",
     "savedLine": "Row {{line}} → {{roll}}",
-    "openDatabase": "Back to the student database"
+    "openDatabase": "Back to All students"
   },
   "importErrors": {
     "name_required": "The name is missing.",
@@ -1344,7 +1359,7 @@
   },
   "settings": {
     "title": "Settings",
-    "intro": "The class settings the app uses. Changes take effect at once; the daily follow-up job uses them the next morning. Every change is kept in the audit log.",
+    "intro": "The class settings the app uses. Changes take effect at once; the daily follow-up job uses them the next morning. Every change is kept in the change history.",
     "loadFailed": "Could not load the settings.",
     "windowTitle": "Open window ({{centre}})",
     "windowHint": "When the class is open. Visits still open at night are closed at the closing time.",
@@ -1358,9 +1373,9 @@
     "weekRolling": "Last 7 days",
     "followTitle": "Follow-up",
     "followHint": "When a student who stops coming is followed up.",
-    "joinerTitle": "New joiners",
-    "promotionTitle": "Promotion criteria",
-    "promotionHint": "Checked when a student is nominated for the next level and shown to you in the level-up queue. They advise; you decide.",
+    "joinerTitle": "Newcomers",
+    "promotionTitle": "Level-up criteria",
+    "promotionHint": "Checked when a student is recommended for the next level and shown to you in Level-ups. They advise; you decide.",
     "rangeHint": "{{min}} to {{max}}",
     "save": "Save the settings",
     "saved": "Settings saved.",
@@ -1373,7 +1388,7 @@
       "call_due_days": "Days to make the call",
       "retry_days": "Days before trying again when not reachable",
       "max_retries": "Tries before the facilitator is asked",
-      "new_joiner_weeks": "Weeks a student counts as a new joiner",
+      "new_joiner_weeks": "Weeks a student counts as a newcomer",
       "promotion_min_visits": "Visits needed",
       "promotion_visit_weeks": "... in the last how many weeks",
       "promotion_syllabus_percent": "Share of the level's syllabus that must be ticked (%)",
@@ -1425,9 +1440,9 @@
     }
   },
   "auditLog": {
-    "title": "Audit log",
+    "title": "Change history",
     "intro": "Every change to students, profiles, calls, levels, syllabus, lessons, announcements, settings and centres, newest first. Tap a change to see the values before and after.",
-    "loadFailed": "Could not load the audit log.",
+    "loadFailed": "Could not load the change history.",
     "empty": "No changes match.",
     "what": "Record",
     "who": "Changed by",
@@ -1477,7 +1492,7 @@
       "get_guardians": "Parent or guardian details",
       "get_consents": "Consent records",
       "get_call_notes": "Call notes",
-      "get_audit_log": "Audit log page",
+      "get_audit_log": "Change history page",
       "get_student_details": "About the student (emergency contact and details)"
     },
     "readErased": "Deleted record",
@@ -1536,7 +1551,7 @@
     "visitors": "Students",
     "hours": "Hours",
     "periodLine": "{{visits}} visits · {{visitors}} students · {{hours}} h",
-    "callsTitle": "Follow-up calls",
+    "callsTitle": "Follow-ups",
     "callsHint": "Made in these dates; due and planned as of today.",
     "callsLine": "Due now: {{due}} (with the facilitator: {{escalated}}) · planned later: {{planned}}",
     "outcomeLine": "{{outcome}}: {{count}}",
@@ -1674,7 +1689,7 @@
       "redo": "Redo"
     },
     "compose": {
-      "title": "Create assessment",
+      "title": "New assessment",
       "guruOnly": "Only the facilitator creates assessments.",
       "what": "The assessment",
       "titleLabel": "Title",
@@ -1683,7 +1698,7 @@
       "kind": "Type",
       "level": "Level",
       "levelRequired": "Choose the level.",
-      "levelUpLabel": "Level-up assessment: an accepted recording can be sent to the facilitator for promotion",
+      "levelUpLabel": "Level-up assessment: an accepted recording can be sent to the facilitator for a level-up",
       "rubric": "Rubric",
       "rubricHint": "What is scored. Each line gets a score from 0 to its top score (1 to 10).",
       "criterion": "Line {{number}}",
@@ -1706,8 +1721,8 @@
       "draftNote": "Draft: coordinators cannot see it yet",
       "send": "Send to coordinators",
       "sentDone": "Sent. Coordinators can now release it to students.",
-      "release": "Give to students",
-      "releases": "Given to students",
+      "release": "Assign",
+      "releases": "Assigned",
       "releaseLine": "Due {{due}} · by {{name}}",
       "someone": "a coordinator",
       "coordinatorNote": "Note from {{name}}: {{note}}",
@@ -1718,7 +1733,7 @@
       "deleteNo": "Keep it"
     },
     "release": {
-      "title": "Give to students",
+      "title": "Assign",
       "forStudents": "For the students",
       "notes": "Notes (optional)",
       "notesHint": "Shown to the students with the assessment.",
@@ -1757,7 +1772,7 @@
       "skipped": "Already reminded in the last 12 hours: {{count}}."
     },
     "review": {
-      "title": "Review",
+      "title": "Review recording",
       "seenAt": "Seen {{date}}",
       "nothingYet": "Nothing sent yet.",
       "recording": "The recording",
@@ -1858,14 +1873,14 @@
     }
   },
   "promotion": {
-    "loadFailed": "Could not load the promotions.",
+    "loadFailed": "Could not load the level-ups.",
     "queueTitle": "Level-up queue",
-    "listTitle": "Promotions",
+    "listTitle": "Level-ups",
     "someone": "someone",
     "levelStep": "{{from}} → {{to}}",
     "answersLine": "Answers: {{count}} of {{needed}} · Ready {{ready}} · Almost {{almost}} · Not yet {{notYet}}",
     "answersShort": "Answers: {{count}} of {{needed}}",
-    "nominatedLine": "Nominated {{date}} by {{name}}",
+    "nominatedLine": "Recommended {{date}} by {{name}}",
     "rating": {
       "ready": "Ready",
       "almost": "Almost",
@@ -1888,30 +1903,30 @@
       "levelUpMissing": "No accepted level-up assessment of this level yet"
     },
     "panel": {
-      "title": "Promotion",
+      "title": "Level-up",
       "toLevel": "Next level: {{level}}",
       "topLevel": "Already at the highest level.",
-      "open": "Nominated: waiting for the coordinators' feedback and the facilitator's decision.",
-      "openNomination": "Open the nomination",
-      "notYetUntil": "The facilitator said \"not yet\". A new nomination is possible after {{date}}.",
-      "nominate": "Nominate for promotion"
+      "open": "Recommended: waiting for the coordinators' feedback and the facilitator's decision.",
+      "openNomination": "Open the recommendation",
+      "notYetUntil": "The facilitator said \"not yet\". A new recommendation is possible after {{date}}.",
+      "nominate": "Recommend for next level"
     },
     "home": {
       "guruTitle": "Level-up queue",
-      "guruHint": "Students nominated for the next level. Only you promote.",
+      "guruHint": "Students recommended for the next level. Only you decide.",
       "toDecide": "To decide: {{count}}",
       "collecting": "Collecting feedback: {{count}}",
-      "ready": "Ready to nominate: {{count}}",
-      "openQueue": "Open the level-up queue",
-      "coordinatorTitle": "Promotions",
-      "coordinatorHint": "Nominate students who meet the criteria, and give feedback on others.",
+      "ready": "Ready to recommend: {{count}}",
+      "openQueue": "Open level-ups",
+      "coordinatorTitle": "Level-ups",
+      "coordinatorHint": "Recommend students who meet the criteria, and give feedback on others.",
       "toAnswer": "Your feedback asked: {{count}}",
       "myReady": "Your students ready: {{count}}",
-      "openList": "Open promotions"
+      "openList": "Open level-ups"
     },
     "list": {
       "introGuru": "A student moves up only when you approve, after the coordinators who teach them have given feedback.",
-      "introCoordinator": "Nominate a student when they meet the criteria; give your feedback when other coordinators nominate. The facilitator decides.",
+      "introCoordinator": "Recommend a student when they meet the criteria; give your feedback when other coordinators recommend. The facilitator decides.",
       "toDecide": "Waiting for your decision ({{count}})",
       "toDecideNone": "Nothing waiting for your decision.",
       "collecting": "Collecting feedback ({{count}})",
@@ -1919,42 +1934,42 @@
       "none": "None.",
       "toAnswer": "Your feedback is asked ({{count}})",
       "toAnswerHint": "Open one to rate the student: Ready, Almost or Not yet.",
-      "toAnswerNone": "No nomination waits for your feedback.",
+      "toAnswerNone": "No recommendation waits for your feedback.",
       "answered": "You have answered ({{count}})",
-      "readyAll": "Ready to nominate ({{count}})",
-      "readyMine": "Your students ready to nominate ({{count}})",
+      "readyAll": "Ready to recommend ({{count}})",
+      "readyMine": "Your students ready to recommend ({{count}})",
       "readyHint": "They meet every criterion the facilitator set.",
       "readyNone": "No student meets every criterion right now.",
-      "nominate": "Nominate",
+      "nominate": "Recommend",
       "decided": "Decided lately"
     },
     "nominate": {
-      "title": "Nominate for promotion",
+      "title": "Recommend for next level",
       "criteria": "Criteria",
       "allMet": "Every criterion is met.",
-      "notAllMet": "Not every criterion is met. You can still nominate; say why in the reason. The facilitator sees the check.",
+      "notAllMet": "Not every criterion is met. You can still recommend; say why in the reason. The facilitator sees the check.",
       "reasonTitle": "Why now",
       "reason": "Reason",
       "reasonHint": "What the student plays well now, and anything the facilitator should know.",
       "askTitle": "Ask for feedback",
-      "askHint_one": "The coordinators picked get a notification. At least {{count}} coordinator answer is needed before the facilitator can promote; your nomination counts as one \"Ready\".",
-      "askHint_other": "The coordinators picked get a notification. At least {{count}} coordinator answers are needed before the facilitator can promote; your nomination counts as one \"Ready\".",
+      "askHint_one": "The coordinators picked get a notification. At least {{count}} coordinator answer is needed before the facilitator can decide; your recommendation counts as one \"Ready\".",
+      "askHint_other": "The coordinators picked get a notification. At least {{count}} coordinator answers are needed before the facilitator can decide; your recommendation counts as one \"Ready\".",
       "noCoordinators": "There are no other coordinators to ask.",
       "taught": "{{name}} (taught this student lately)",
-      "send": "Nominate and ask {{count}} for feedback",
-      "sendAlone": "Nominate"
+      "send": "Recommend and ask {{count}} for feedback",
+      "sendAlone": "Recommend"
     },
     "detail": {
-      "title": "Promotion",
+      "title": "Level-up",
       "reason": "Reason",
       "asked": "Feedback asked from: {{names}}",
       "openStudent": "Open the student's profile",
       "promotedTitle": "Promoted to {{level}}",
       "decidedBy": "By {{name}}, {{date}}",
       "notYetTitle": "Not yet",
-      "withdrawn": "This nomination was withdrawn.",
+      "withdrawn": "This recommendation was withdrawn.",
       "moreAsked": "More feedback asked {{date}}",
-      "criteria": "Criteria when nominated",
+      "criteria": "Criteria when recommended",
       "criteriaHint": "From the settings the facilitator set.",
       "recording": "Level-up recording",
       "openReview": "Open the review",
@@ -1987,11 +2002,11 @@
         "more": "What should the coordinators look at?"
       },
       "noteHint": {
-        "promote": "Shown on the nomination.",
-        "not_yet": "What to practise before the next nomination. The coordinators see it.",
+        "promote": "Shown on the recommendation.",
+        "not_yet": "What to practise before the next recommendation. The coordinators see it.",
         "more": "The coordinators who have not answered get a notification."
       },
-      "after": "Nominate again after",
+      "after": "Recommend again after",
       "afterHint": "Day-month-year, for example 15-11-2026.",
       "dateInvalid": "Write the date as day-month-year, for example 15-11-2026.",
       "confirmTitle": "Promote {{name}} to {{level}}?",
@@ -2004,15 +2019,15 @@
         "more": "Ask for more feedback"
       },
       "done": {
-        "promote": "Promoted. The student and the nominator are told.",
+        "promote": "Moved up a level. The student and the coordinator who recommended are told.",
         "not_yet": "Saved. The coordinators are told.",
         "more": "Asked. The coordinators who have not answered are told."
       }
     },
     "withdraw": {
-      "button": "Withdraw the nomination",
-      "ask": "Withdraw this nomination?",
-      "note": "The answers stay on record. The student can be nominated again.",
+      "button": "Withdraw the recommendation",
+      "ask": "Withdraw this recommendation?",
+      "note": "The answers stay on record. The student can be recommended again.",
       "yes": "Yes, withdraw",
       "no": "Keep it",
       "done": "Withdrawn."
@@ -2021,18 +2036,18 @@
       "not_allowed": "You are not allowed to do this.",
       "student_not_found": "This student is not there, or has left.",
       "top_level": "The student is already at the highest level.",
-      "already_nominated": "This student is already nominated.",
+      "already_nominated": "This student is already recommended.",
       "too_soon": "The facilitator said \"not yet\"; wait until after the date given.",
       "reason_required": "Write the reason.",
       "reason_too_long": "The reason is at most 2000 characters.",
-      "nomination_not_found": "This nomination is not there.",
-      "nomination_closed": "This nomination is already decided.",
+      "nomination_not_found": "This recommendation is not there.",
+      "nomination_closed": "This recommendation is already decided.",
       "rating_invalid": "Choose Ready, Almost or Not yet.",
       "comment_required": "Write a comment.",
       "comment_too_long": "The comment is at most 1000 characters.",
       "decision_invalid": "Choose a decision.",
       "feedback_needed": "Not enough coordinators have answered yet.",
-      "level_changed": "The student's level has changed since the nomination.",
+      "level_changed": "The student's level has changed since the recommendation.",
       "note_required": "Write the guidance.",
       "more_note_required": "Write what the coordinators should look at.",
       "note_too_long": "The text is at most 2000 characters.",
@@ -2056,7 +2071,7 @@
     "stop": "Stop",
     "soundFailedTitle": "No sound",
     "soundFailed": "Sound could not start on this device. Check the volume and try again.",
-    "savedTaalsTitle": "Offline",
+    "savedTaalsTitle": "Saved on this phone",
     "savedTaals": "No connection: showing the taals saved on this phone.",
     "noTaals": "No taals yet. The facilitator adds them.",
     "taal": "Taal",
@@ -2157,7 +2172,7 @@
     }
   },
   "taals": {
-    "title": "Taals",
+    "title": "Rhythms (taals)",
     "edit": "Edit taals",
     "introGuru": "The taals students play in Practice tools. Placeholder taals are stand-ins: replace them with the real ones.",
     "introStaff": "Only the facilitator adds and changes taals.",
@@ -2499,7 +2514,7 @@
       "answeredClosed": "Your answer: {{answer}}. The event has started.",
       "answers": "Answers",
       "noAnswer": "No answer",
-      "performersCount": "Performers: {{n}}",
+      "performersCount": "Who plays: {{n}}",
       "attendedCount": "Came: {{n}}",
       "peopleFailed": "Could not load the names. Pull down to try again.",
       "yourPart": "Your part: {{part}}",
@@ -2532,8 +2547,8 @@
       "failed": "Could not make the calendar file. Try Google Calendar instead."
     },
     "performers": {
-      "open": "Performers",
-      "title": "Performers",
+      "open": "Who plays",
+      "title": "Who plays",
       "intro": "Pick who plays at this event and their part. New performers get a notice.",
       "chosen": "Chosen: {{n}}",
       "none": "Nobody picked yet.",
@@ -2690,7 +2705,7 @@
     "resultsAnonymousStaff": "Anonymous poll: the results show when it closes, so nobody can tell who chose what."
   },
   "suggestions": {
-    "title": "Material suggestions",
+    "title": "Suggestions",
     "shortcutLine": "Suggest a lesson material; the facilitator adds it or declines it",
     "introGuru": "Coordinators suggest videos, PDFs and photos for the lessons. Review one to add it (you may change the title, level or item first) or decline it with a reason. The coordinator is told either way.",
     "introCoordinator": "Suggest a video, PDF or photo for the lessons. The facilitator adds it or declines it with a reason; you get a notice either way. Students see it only once it is added.",
@@ -2736,7 +2751,7 @@
     }
   },
   "inventory": {
-    "title": "Instruments and assets",
+    "title": "Instruments",
     "introGuru": "Every seva item — mridangas, kartals, harmonium, sound, books, furniture and more — with its label code, condition and who holds it. Add an item here; open one to lend it, take it back or check its condition.",
     "introStaff": "Every seva item — mridangas, kartals, harmonium, sound, books, furniture and more — with its label code, condition and who holds it. Open one to lend it, take it back or check its condition.",
     "add": "Add an item",
@@ -2867,11 +2882,11 @@
     "categoryHint": "Inside the kind, e.g. \"Mixer\" or \"Bhagavad Gita\". Up to {{max}} characters."
   },
   "duty": {
-    "title": "Duty roster",
+    "title": "Seva roster",
     "shortcutLine": "Who is on duty when; your own shifts",
     "introGuru": "Plan who is on duty, per date and centre, inside the open hours. Everyone on a shift gets a reminder at 18:00 the evening before.",
     "introCoordinator": "Your shifts and the whole roster for the next 4 weeks. You get a reminder at 18:00 the evening before a shift.",
-    "add": "Add a shift",
+    "add": "Add a seva slot",
     "loadFailed": "Could not load the roster.",
     "mineTitle": "My shifts",
     "mineHint": "The next 4 weeks.",
@@ -2904,7 +2919,7 @@
     "weeksHint": "Number of weeks, this one included. Each week becomes its own shift you can change.",
     "peopleTitle": "Who is on duty",
     "peopleHint": "Active coordinators. They see the shift and get a reminder.",
-    "addSave": "Add the shift",
+    "addSave": "Add the seva slot",
     "save": "Save",
     "delete": "Delete this shift",
     "deleteAsk": "Delete this shift?",
@@ -3156,7 +3171,7 @@
       "code_daily_cap": "Too many codes were sent today. Please try again tomorrow.",
       "not_subscriber": "This account has not joined Ishtagoshti as a public member.",
       "not_allowed": "You are not allowed to do this.",
-      "not_found": "This subscriber is not on the list any more.",
+      "not_found": "This member is not on the list any more.",
       "reason_too_long": "Keep the reason under 200 characters."
     }
   },
@@ -3174,11 +3189,11 @@
     "stay": "No, stay"
   },
   "igSubscribers": {
-    "title": "Ishtagoshti subscribers",
+    "title": "Ishtagoshti members",
     "intro": "People from outside the class who joined Ishtagoshti for free. Only you see this list.",
     "homeHint": "Public members: who joined, joins per week, block or unblock.",
-    "open": "Open the subscriber list",
-    "loadFailed": "Could not load the subscribers",
+    "open": "Open the member list",
+    "loadFailed": "Could not load the members",
     "reading": "Reading",
     "waitingParent": "Waiting for parent",
     "blocked": "Blocked",
@@ -3189,7 +3204,7 @@
     "show": "Show",
     "filterAll_one": "All ({{count}})",
     "filterAll_other": "All ({{count}})",
-    "none": "No subscribers here.",
+    "none": "No members here.",
     "state_reading": "Reading",
     "state_parent": "Waiting for the parent's code",
     "state_blocked": "Blocked",
@@ -3257,19 +3272,19 @@
     "scanTitle": "Scan a label",
     "scanIntro": "Point the camera at an item's QR label to open the item.",
     "scanAgain": "Scan again",
-    "studentCode": "This is a student's attendance code. Use Mark attendance for it.",
+    "studentCode": "This is a student's attendance code. Use Check-in for it.",
     "notALabel": "This is not a Mridanga Seva label.",
     "unknownTitle": "Label not found",
     "unknownBody": "No item has this label. It may have been deleted, or printed from the test version.",
     "otherCentreTitle": "Another centre's item",
     "otherCentreBody": "This item belongs to {{centre}}. Ask that centre's coordinator or the facilitator.",
-    "toInventory": "To instruments and assets",
+    "toInventory": "To Instruments",
     "publicTitle": "Mridanga Seva property",
     "publicBody": "This label belongs to an item of the Mridanga Seva team. If you found it, please write to info@mridangaseva.com. Team members: sign in to open the item.",
     "home": "Home"
   },
   "stocktake": {
-    "title": "Stocktake",
+    "title": "Count instruments",
     "intro": "Count a centre's items: start a count, scan each label (or tap Seen), then finish. The app lists what was not seen and keeps the summary.",
     "centre": "Centre",
     "start": "Start or join a count",
@@ -3400,7 +3415,7 @@
     "save": "Save details"
   },
   "options": {
-    "title": "Option lists",
+    "title": "Form choices",
     "intro": "The choices offered at sign-up, in About you and at the desk. Change a label, the order, or switch an option off; answers already given keep it.",
     "whichList": "List",
     "lists": {
@@ -3441,7 +3456,7 @@
     "add": "Add an option",
     "noTranslation": "No Telugu or Hindi label yet",
     "offLabel": "switched off",
-    "loadFailed": "Could not load the option lists.",
+    "loadFailed": "Could not load the form choices.",
     "errors": {
       "labelRequired": "Enter the English label.",
       "labelTooLong": "At most 80 characters.",
@@ -3449,7 +3464,7 @@
       "inUse": "Somebody chose this option. Switch it off instead.",
       "required": "The app's rules need this option. Switch it off instead.",
       "duplicate": "This list already has an option with this English label.",
-      "notAllowed": "Only the facilitator changes the option lists."
+      "notAllowed": "Only the facilitator changes the form choices."
     }
   },
   "heardReport": {
@@ -3561,7 +3576,7 @@
     "unlink": "Take the login off this record",
     "noMentors": "No other active coordinator to choose. Make a coordinator first (Coordinators).",
     "mentorLabel": "Mentor",
-    "mentorHint": "Their open follow-up calls go to the new mentor.",
+    "mentorHint": "Their open follow-ups go to the new mentor.",
     "saveMentor": "Save mentor",
     "mentorSaved": "{{name}} is now the mentor.",
     "levelLabel": "Level",

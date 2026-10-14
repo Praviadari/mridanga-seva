@@ -37,10 +37,12 @@ export type ScreenProps = PropsWithChildren<{
    * its own reload). The spinner stays until the returned promise settles.
    */
   onRefresh?: () => Promise<unknown> | void;
+  /** Less space above and below the content: the staff homes, which fit one phone screen without scrolling (#351). */
+  compact?: boolean;
 }>;
 
 /** Standard scrolling page with the app background colour. */
-export function Screen({ centred, underHeader, header, wide, onRefresh, children }: ScreenProps) {
+export function Screen({ centred, underHeader, header, wide, onRefresh, compact, children }: ScreenProps) {
   const { colors } = useTheme();
   // Inside a tab navigator the tab bar already keeps clear of the phone's bottom edge.
   const inTabs = useContext(BottomTabBarHeightContext) !== undefined;
@@ -93,7 +95,7 @@ export function Screen({ centred, underHeader, header, wide, onRefresh, children
           {/* One View around the page: forms measure a field's place against it (form-focus.tsx). */}
           <View ref={content} collapsable={false} style={[styles.scroll, centred && !header && styles.centred]}>
             {header}
-            <View style={[styles.content, centred && styles.centred]}>
+            <View style={[styles.content, centred && styles.centred, compact && styles.compact]}>
               <View style={[styles.column, { maxWidth: wide ? maxDashboardWidth : maxContentWidth }]}>
                 {updateNotice ? <UpdateNotice /> : null}
                 {children}
@@ -122,6 +124,9 @@ const styles = StyleSheet.create({
   },
   centred: {
     justifyContent: 'center',
+  },
+  compact: {
+    paddingVertical: spacing.sm,
   },
   column: {
     width: '100%',

@@ -4,7 +4,7 @@
 // is drawn behind it (components/home-art.tsx).
 
 import { useTranslation } from 'react-i18next';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { factNumber } from '@/lib/fact-of-the-day';
 import { cardLook, spacing, useTheme } from '@/theme/use-theme';
@@ -17,9 +17,11 @@ import { Icon } from './icon';
 export function FactCard() {
   const { t } = useTranslation();
   const { colors } = useTheme();
+  // A shorter card on a short phone, so the student home fits one screen without scrolling (#351).
+  const short = useWindowDimensions().height < 800;
   const key = `facts.f${factNumber(new Date())}` as const;
   return (
-    <View accessible accessibilityLabel={`${t('facts.title')}. ${t(key as 'facts.f1')}`} style={[styles.card, cardLook(colors)]}>
+    <View accessible accessibilityLabel={`${t('facts.title')}. ${t(key as 'facts.f1')}`} style={[styles.card, cardLook(colors), short && styles.short]}>
       <TempleBackdrop />
       <Icon name="instruments" size={20} color={colors.primary} />
       <View style={styles.text}>
@@ -41,6 +43,9 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
+  },
+  short: {
+    minHeight: 72,
   },
   text: {
     flex: 1,

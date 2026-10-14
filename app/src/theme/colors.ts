@@ -104,6 +104,10 @@ export type Palette = {
   onHeaderMuted: string;
   /** A marigold word on the band (indigo) or a pale one (saffron). */
   headerAccent: string;
+  /** Gold lettering on the band: the app's name and motto, like the team's mockup (#352). */
+  headerGold: string;
+  /** A faint violet glow on the band, as on the website's night band (decoration only). */
+  headerGlow: string;
   /**
    * Small status labels (components/status-chip.tsx): text and background per kind. `info` new,
    * `success` active, `warning` irregular, `neutral` inactive, `paused` paused, `danger` left.
@@ -115,6 +119,11 @@ export type Palette = {
    * to find a circle again; the word is always under it.
    */
   modules: Record<ModuleTone, { background: string; icon: string }>;
+  /**
+   * The filled home circles (#352): the module's deep colour with a white icon, the same in light and dark (white on
+   * each is 4.5:1 or more).
+   */
+  moduleSolid: Record<ModuleTone, string>;
 };
 
 /** The kinds of small status label, each with its own colours. */
@@ -134,6 +143,7 @@ function fromTokens(scheme: 'light' | 'dark'): Palette {
     headerBottom: s.headerDeep,
     chips: chips[scheme],
     modules: modules[scheme],
+    moduleSolid: Object.fromEntries(Object.entries(modules.light).map(([tone, look]) => [tone, look.icon])) as Record<ModuleTone, string>,
   };
 }
 

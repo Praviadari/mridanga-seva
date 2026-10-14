@@ -9,6 +9,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useTranslation } from 'react-i18next';
 
 import { documentTitleLayout } from '@/lib/document-title';
+import { useHeadingFont } from '@/theme/fonts';
 import { headerBarOptions, useTheme } from '@/theme/use-theme';
 
 /** The tabs sit under any subscriber screen opened from a link, so Back leads to them. */
@@ -17,11 +18,12 @@ export const unstable_settings = { anchor: '(tabs)' };
 /** Navigator for the subscriber screens. */
 export default function SubscriberLayout() {
   const { colors } = useTheme();
+  const titleFont = useHeadingFont();
   const { t } = useTranslation();
   return (
     <>
       <StatusBar style="light" />
-      <Stack screenLayout={documentTitleLayout} screenOptions={headerBarOptions(colors)}>
+      <Stack screenLayout={documentTitleLayout} screenOptions={headerBarOptions(colors, titleFont)}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false, title: t('ishtagoshti.title') }} />
       </Stack>
     </>

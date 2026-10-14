@@ -3,7 +3,8 @@
 
 import { ActivityIndicator, Pressable, StyleSheet } from 'react-native';
 
-import { cardRadius, radius, spacing, typography, useTheme } from '@/theme/use-theme';
+import { radii } from '@/theme/tokens.generated';
+import { spacing, typography, useTheme } from '@/theme/use-theme';
 
 import { AppText } from './app-text';
 import { Icon, type IconName } from './icon';
@@ -86,7 +87,8 @@ export function Button({
 const styles = StyleSheet.create({
   base: {
     minHeight: 48,
-    borderRadius: radius,
+    // Pill-shaped like the website's buttons (#352).
+    borderRadius: radii.pill,
     paddingHorizontal: spacing.lg,
     flexDirection: 'row',
     gap: spacing.sm,
@@ -104,7 +106,6 @@ const styles = StyleSheet.create({
   },
   large: {
     minHeight: 72,
-    borderRadius: cardRadius,
   },
   dimmed: {
     opacity: 0.6,
