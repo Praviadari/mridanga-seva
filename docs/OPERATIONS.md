@@ -372,6 +372,7 @@ to `app/dist/`. Always use this command, not a bare `npx expo export`, because
 
 | Date | Site | Commit | Built (UTC) | By |
 |---|---|---|---|---|
+| 14-10-2026 | test | 0b055c6 (main; home band one button per side; entry-4e6f06fd…) | 2026-10-14T15:08:09Z | Claude (wrangler 4.149, Praveen's login) |
 | 14-10-2026 | test | 2bc9ca3 (main; launch UI + dark mode midnight navy #358; entry-9ab8a35d…) | 2026-10-14T14:57:23Z | Claude (wrangler 4.149, Praveen's login) |
 | 14-10-2026 | test | 8044238 (main; weekend app + launch-week app + launch UI redesign; entry-f36545e8…; headers checked) | 2026-10-14T14:39:26Z | Claude (wrangler 4.149, Praveen's login) |
 | 10-10-2026 | test | 74890f0 (branch ops-backlog = main 5c8d972 + scripts/docs; entry-348c578a…) | 2026-10-10T04:46:22Z | Claude (wrangler, Praveen's login) |
