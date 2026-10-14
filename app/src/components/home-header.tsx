@@ -1,12 +1,14 @@
 // The band at the top of the three home screens (S1, C1, G1). Since the launch UI (14-10-2026, docs/DECISIONS.md
 // #352; Praveen: "divine peace feeling, international standard", reference = the team's "version 3" mockup): the
-// app's name in gold serif with its motto in the middle, the menu button (staff, #350) or the drum mark on the left,
-// the bell and the person button on the right; under a thin gold rule "Hare Krishna" and the person's name (the role is in
-// the side menu and said to screen readers). The maha-mantra left the header (Praveen 14-10-2026: everyone knows it, the home must not scroll; it
-// is now at the foot of the side menu, components/side-menu.tsx; amends #36). The band itself,
+// app's name in gold serif with its motto in the middle, one button on each side, then a thin gold rule and "Hare
+// Krishna" with the person's name (the role is in the side menu and said to screen readers). One button per side,
+// both 40 px, keeps the name, the rule and the greeting on the phone's centre line (Praveen 14-10-2026): staff have
+// the side menu's button (#350) on the left and the bell on the right (My profile is in the side menu); students
+// have My profile on the left and the bell on the right. The maha-mantra left the header (Praveen 14-10-2026:
+// everyone knows it, the home must not scroll; it is now at the foot of the side menu; amends #36). The band itself,
 // with its gradient, golden halo and the space for the notch, is components/saffron-band.tsx. The bell opens the
-// notifications inbox (A2,
-// components/inbox-bell.tsx); the person button opens My profile (A3, components/profile-button.tsx, #240).
+// notifications inbox (A2, components/inbox-bell.tsx); the person button opens My profile (A3,
+// components/profile-button.tsx, #240).
 
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
@@ -17,7 +19,6 @@ import { AppText } from './app-text';
 import { InboxBell } from './inbox-bell';
 import { MenuButton } from './side-menu';
 import { ProfileButton } from './profile-button';
-import { MridangaMark } from './mridanga-mark';
 import { SaffronBand } from './saffron-band';
 
 /** Props for HomeHeader. */
@@ -29,7 +30,7 @@ export type HomeHeaderProps = {
    * more, to stay short (#352; the side menu shows it). Left out on the student home.
    */
   role?: string;
-  /** Staff homes: the side menu's button (components/side-menu.tsx) in place of the drum mark (#350). */
+  /** Staff homes: the side menu's button (components/side-menu.tsx) on the left, in place of My profile (#350). */
   menu?: boolean;
 };
 
@@ -41,13 +42,7 @@ export function HomeHeader({ name, role, menu }: HomeHeaderProps) {
   return (
     <SaffronBand>
       <View style={styles.row}>
-        {menu ? (
-          <MenuButton place="band" />
-        ) : (
-          <View style={[styles.markCircle, { borderColor: colors.headerGold }]}>
-            <MridangaMark size={28} color={colors.headerGold} accent={colors.headerBottom} />
-          </View>
-        )}
+        <View style={styles.side}>{menu ? <MenuButton place="band" /> : <ProfileButton />}</View>
         <View style={styles.brand}>
           <AppText variant="title" style={[styles.brandName, { color: colors.headerGold }]} numberOfLines={1}>
             {t('app.name')}
@@ -56,9 +51,8 @@ export function HomeHeader({ name, role, menu }: HomeHeaderProps) {
             {t('app.motto')}
           </AppText>
         </View>
-        <View style={styles.buttons}>
+        <View style={[styles.side, styles.right]}>
           <InboxBell />
-          <ProfileButton />
         </View>
       </View>
 
@@ -84,10 +78,7 @@ export function HomeHeader({ name, role, menu }: HomeHeaderProps) {
             </AppText>
           ) : null}
         </View>
-
       </View>
-
-
     </SaffronBand>
   );
 }
@@ -98,13 +89,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.sm,
   },
-  markCircle: {
+  // One 40 px button on each side, so the name in the middle is centred on the phone.
+  side: {
     width: 40,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+  },
+  right: {
+    alignItems: 'flex-end',
   },
   brand: {
     flex: 1,
@@ -116,10 +106,6 @@ const styles = StyleSheet.create({
   motto: {
     textAlign: 'center',
     letterSpacing: 0.6,
-  },
-  buttons: {
-    flexDirection: 'row',
-    gap: spacing.xs,
   },
   rule: {
     flexDirection: 'row',
