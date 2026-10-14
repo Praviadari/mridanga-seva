@@ -44,7 +44,7 @@
   },
   "signUp": {
     "title": "New student registration",
-    "subtitle": "Students: use the email you gave the coordinator, so your record is linked.",
+    "subtitle": "Sign up here before you come; the desk then accepts your sign-up.",
     "fullName": "Full name",
     "confirmPassword": "Type the password again",
     "passwordHint": "At least 8 characters.",
@@ -1136,7 +1136,7 @@
     "email": "Email",
     "phone": "Phone",
     "dutyTitle": "Duty hours",
-    "dutyHint": "When this coordinator is usually at the class. The duty roster comes later.",
+    "dutyHint": "When this coordinator is usually at the class. Shifts by date are on the Duty roster.",
     "dutyLabel": "Duty hours",
     "dutyPlaceholder": "For example: Mon, Thu 16:00-19:00",
     "saveDuty": "Save duty hours",
@@ -1334,7 +1334,7 @@
     "saved": "Settings saved.",
     "fixFirst": "Fix the marked fields first.",
     "laterTitle": "Planned for later",
-    "later": "Reasons for a call (needs a translation for each new reason), centres and the attendance area (G9), notification times, the duty roster.",
+    "later": "Reasons for a call (needs a translation for each new reason) and notification times.",
     "fields": {
       "irregular_days": "Days without a visit before Irregular",
       "inactive_days": "Days without a visit before Inactive",
