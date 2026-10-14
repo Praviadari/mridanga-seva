@@ -49,6 +49,8 @@ export const semantic = {
     shadow: 'rgba(60, 30, 10, 0.10)',
     overlay: 'rgba(18, 20, 58, 0.55)',
     pressedOverlay: 'rgba(36, 23, 15, 0.08)',
+    bar: '#1B1E4B',
+    barLine: 'rgba(224, 178, 92, 0.55)',
     header: '#22307A',
     headerDeep: '#0B0C26',
     onHeader: '#FFF6E8',
@@ -63,15 +65,15 @@ export const semantic = {
   },
   dark: {
     background: '#0E1130',
-    surface: '#181C45',
-    surfaceRaised: '#1F2350',
+    surface: '#161A3D',
+    surfaceRaised: '#1D2148',
     surfaceSunken: '#0A0C24',
     text: '#F6EEE4',
     textMuted: '#C3B5A6',
-    border: '#2C3170',
-    cardBorder: '#2C3170',
+    border: '#272C5C',
+    cardBorder: '#272C5C',
     controlBorder: '#8287C4',
-    primarySoft: '#3A2817',
+    primarySoft: '#4A3618',
     onPrimarySoft: '#F6C27A',
     link: '#F6B860',
     accent: '#F2A33A',
@@ -95,12 +97,14 @@ export const semantic = {
     disabled: '#A89A8D',
     disabledSurface: '#232858',
     tabActive: '#F6C27A',
-    tabActiveIndicator: '#3A2817',
+    tabActiveIndicator: '#4A3618',
     tabInactive: '#C3B5A6',
     skeleton: '#232858',
     shadow: 'transparent',
     overlay: 'rgba(0, 0, 0, 0.6)',
     pressedOverlay: 'rgba(255, 246, 232, 0.08)',
+    bar: '#22307A',
+    barLine: 'rgba(224, 178, 92, 0.55)',
     header: '#22307A',
     headerDeep: '#0B0C26',
     onHeader: '#FFF6E8',
@@ -174,7 +178,7 @@ export const chips = {
     },
     level: {
       text: '#F6C27A',
-      background: '#3A2817'
+      background: '#4A3618'
     }
   }
 } as const;

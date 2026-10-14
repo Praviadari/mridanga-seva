@@ -206,11 +206,12 @@ export type IconBadgeProps = {
 
 /** An icon in a pale saffron circle (or a module's colour): the start of a card, a tile or an empty screen. */
 export function IconBadge({ name, size = 40, tone: given, plain, solid, style }: IconBadgeProps) {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const screenTone = useModuleTone();
   const tone = given ?? (plain ? undefined : screenTone);
+  // In dark mode a module's circles are always filled: its pale tint turned muddy on the night page (#362).
   const look =
-    tone && solid
+    tone && (solid || isDark)
       ? { background: colors.moduleSolid[tone], icon: colors.onHeader }
       : tone
         ? colors.modules[tone]

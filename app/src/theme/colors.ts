@@ -102,6 +102,9 @@ export type Palette = {
   onHeader: string;
   /** Less important text on the band. */
   onHeaderMuted: string;
+  /** The header bars of the inner screens: the website's night (royal in dark mode), and the thin gold line under them (#362). */
+  bar: string;
+  barLine: string;
   /** A marigold word on the band (indigo) or a pale one (saffron). */
   headerAccent: string;
   /** Gold lettering on the band: the app's name and motto, like the team's mockup (#352). */

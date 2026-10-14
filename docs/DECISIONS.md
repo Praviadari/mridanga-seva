@@ -5598,3 +5598,19 @@ date pickers and alerts follow; the web follows the app's own colours. No new pa
 
 **Why.** Praveen 14-10-2026 asked where to change light and dark in the app; following only the phone's setting left
 no way to choose inside the app, as international apps allow.
+
+## 362. Inner header bars in night and gold; a calmer dark mode — 14 Oct 2026
+
+**Status: branch `launch-ui` (update).**
+
+**Decision.** Praveen chose option 2 of three shown on the same page (royal now / night and gold / calm cream). The
+header bars of every inner screen use new tokens `bar` and `barLine`: the website's night (indigo.800 #1B1E4B) in light
+mode and royal blue (indigo.650) in dark mode, the title in gold (headerGold), light arrows, and a thin gold line under
+the bar (rgba(224, 178, 92, 0.55)); the side menu's top uses the same bar. Amends #359 for light mode (bars were royal).
+Dark mode, checked on his request: cards a quieter step above the page (night.880 #161A3D, raised #1D2148, lines
+#272C5C, were #181C45 / #2C3170); the soft accent behind initials, the level chip and the open tab is bronze
+(#4A3618, was the brown-black-era #3A2817); a module's icon circles are filled in dark mode (deep colour, light icon,
+as on the Home ring) because the pale dark tints looked murky on night. 592 contrast pairs, 0 low.
+
+**Why.** The flat royal bar read as a generic office app and fought the warm page; in dark mode the boxes looked like
+blue panels and the brown accents like mud.

@@ -139,7 +139,7 @@ function SideMenu({ onClose }: { onClose: () => void }) {
               transform: [{ translateX: offset }],
             },
           ]}>
-          <View style={[styles.top, { paddingTop: insets.top + spacing.md, backgroundColor: colors.headerTop }]}>
+          <View style={[styles.top, { paddingTop: insets.top + spacing.md, backgroundColor: colors.bar }]}>
             {/* The person's own card, as in LinkedIn (Praveen 14-10-2026, #360): initials, name, role and "View my
                 profile", one button that opens My profile; TalkBack starts here when the menu opens. */}
             <Pressable

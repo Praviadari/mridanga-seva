@@ -1,7 +1,8 @@
 // Gives a screen the colours, spacing and text sizes for the phone's light or dark setting.
 // Use it in every component instead of raw numbers or colour codes.
 
-import { useColorScheme, useWindowDimensions } from 'react-native';
+import { createElement } from 'react';
+import { useColorScheme, useWindowDimensions, View } from 'react-native';
 
 import { isDarkFor } from '@/lib/appearance';
 
@@ -88,14 +89,12 @@ export function useTheme(): Theme {
 }
 
 /**
- * Header bar of the screens opened from a home (title and back button): saffron like the home
- * header, with light text. For a Stack's `screenOptions`.
+ * Header bar of the screens opened from a home (title and back button): the website's night bar (royal in dark mode)
+ * with the title in gold and a thin gold line under it, like the home band (#362). For a Stack's `screenOptions`.
  */
 export function headerBarOptions(colors: Palette, titleFont?: string) {
   return {
-    headerStyle: { backgroundColor: colors.headerTop },
-    headerTintColor: colors.onHeader,
-    headerTitleStyle: headerTitle(colors, titleFont),
+    ...barOptions(colors, titleFont),
     contentStyle: { backgroundColor: colors.background },
   } as const;
 }
@@ -112,9 +111,7 @@ export function tabsScreenOptions(colors: Palette, sidebar: boolean, fontScale =
   const secondLine = fontScale >= 1.15 ? Math.round(18 * fontScale) : 0;
   const extra = Math.round(Math.max(0, fontScale - 1) * 24) + secondLine;
   return {
-    headerStyle: { backgroundColor: colors.headerTop },
-    headerTintColor: colors.onHeader,
-    headerTitleStyle: headerTitle(colors, titleFont),
+    ...barOptions(colors, titleFont),
     sceneStyle: { backgroundColor: colors.background },
     tabBarActiveTintColor: colors.tabActive,
     tabBarInactiveTintColor: colors.tabInactive,
@@ -143,8 +140,8 @@ export function tabsScreenOptions(colors: Palette, sidebar: boolean, fontScale =
  */
 function headerTitle(colors: Palette, titleFont: string | undefined) {
   return titleFont
-    ? ({ color: colors.onHeader, fontFamily: titleFont, fontSize: 22, fontWeight: 'normal' } as const)
-    : ({ color: colors.onHeader } as const);
+    ? ({ color: colors.headerGold, fontFamily: titleFont, fontSize: 22, fontWeight: 'normal' } as const)
+    : ({ color: colors.headerGold } as const);
 }
 
 /**
@@ -160,4 +157,15 @@ export function cardLook(colors: Palette) {
     // The website's two-layer shadow (website/src/tokens.css --shadow, #355).
     boxShadow: `0 1px 2px ${colors.shadow}, 0 8px 24px ${colors.shadow}`,
   } as const;
+}
+
+/** The bar itself, shared by stacks and tabs: night (royal in dark mode), a thin gold line under it, light arrows. */
+function barOptions(colors: Palette, titleFont: string | undefined) {
+  return {
+    headerStyle: { backgroundColor: colors.bar },
+    headerBackground: () =>
+      createElement(View, { style: { flex: 1, backgroundColor: colors.bar, borderBottomWidth: 1, borderBottomColor: colors.barLine } }),
+    headerTintColor: colors.onHeader,
+    headerTitleStyle: headerTitle(colors, titleFont),
+  };
 }

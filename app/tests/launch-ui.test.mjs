@@ -223,3 +223,17 @@ test('My profile offers Same as phone / Light / Dark, remembered on this phone, 
     }
   }
 });
+
+// ---------------------------------------------------------------- #362 night-and-gold bars, calmer dark mode
+
+test('inner header bars are night with a gold title and gold line; dark mode fills module circles', () => {
+  const theme = src('theme/use-theme.ts');
+  assert.match(theme, /headerStyle: \{ backgroundColor: colors\.bar \}/);
+  assert.match(theme, /borderBottomColor: colors\.barLine/);
+  assert.match(theme, /color: colors\.headerGold, fontFamily: titleFont/);
+  const generated = src('theme/tokens.generated.ts');
+  assert.match(generated, /bar: '#1B1E4B'/);
+  assert.match(generated, /bar: '#22307A'/);
+  assert.match(src('components/icon.tsx'), /tone && \(solid \|\| isDark\)/);
+  assert.match(menu, /backgroundColor: colors\.bar \}/);
+});
