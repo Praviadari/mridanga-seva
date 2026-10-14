@@ -136,7 +136,7 @@ function RowContent({
  * `size` is the circle's diameter in pixels (default 40). Hidden from screen readers: the name is
  * always written next to it.
  */
-export function Initials({ name, size = 40 }: { name: string; size?: number }) {
+export function Initials({ name, size = 40, onBand }: { name: string; size?: number; /** On the header band: ivory circle, band-blue letters. */ onBand?: boolean }) {
   const { colors } = useTheme();
   const letters = name
     .trim()
@@ -150,9 +150,9 @@ export function Initials({ name, size = 40 }: { name: string; size?: number }) {
       aria-hidden
       style={[
         styles.initials,
-        { width: size, height: size, borderRadius: size / 2, backgroundColor: colors.primarySoft },
+        { width: size, height: size, borderRadius: size / 2, backgroundColor: onBand ? colors.onHeader : colors.primarySoft },
       ]}>
-      <AppText variant={size >= 56 ? 'subtitle' : 'label'} maxFontSizeMultiplier={1.3} style={{ color: colors.onPrimarySoft }}>
+      <AppText variant={size >= 56 ? 'subtitle' : 'label'} maxFontSizeMultiplier={1.3} style={{ color: onBand ? colors.headerTop : colors.onPrimarySoft }}>
         {letters}
       </AppText>
     </View>

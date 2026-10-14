@@ -84,6 +84,11 @@ test('the side menu is reachable and closable for everyone: label, Back/Escape, 
   // No drawer package: plain React Native, so it reaches installed phones as an update.
   const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
   assert.equal(pkg.dependencies['@react-navigation/drawer'], undefined);
+  // The person's own card at the top opens My profile (#360), so the menu has no second My profile line.
+  assert.match(menu, /openMyProfile\(\);/);
+  assert.match(menu, /<Initials name=\{myName\} size=\{52\} onBand \/>/);
+  assert.doesNotMatch(fnText(shortcuts, 'staffMenuGroups'), /'\/staff\/profile'/);
+  for (const lang of ['en', 'te', 'hi']) assert.ok(get(locale(lang), 'menu.viewProfile'), `${lang} menu.viewProfile`);
   // The menu button sits in the home band and in every tab's header bar.
   assert.match(src('components/home-header.tsx'), /<MenuButton place="band" \/>/);
   assert.match(src('app/staff/(tabs)/_layout.tsx'), /headerLeft: menuButton/);

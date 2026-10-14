@@ -30,8 +30,8 @@ import { spacing, useTheme } from '@/theme/use-theme';
 
 import { AppText } from './app-text';
 import { Icon, IconBadge } from './icon';
-import { MridangaMark } from './mridanga-mark';
-import { openMenuItem, staffMenuGroups, type MenuItem } from './staff-shortcuts';
+import { Initials } from './list-row';
+import { openMenuItem, openMyProfile, staffMenuGroups, type MenuItem } from './staff-shortcuts';
 
 /** Widest the sheet gets; on a phone it leaves a strip of the screen beside it to tap. */
 const SHEET_MAX = 340;
@@ -113,6 +113,10 @@ function SideMenu({ onClose }: { onClose: () => void }) {
     };
   }, [offset]);
 
+  const myName = profile?.full_name.trim() || t('home.greetingNoName');
+  const roleLine =
+    profile?.role === 'guru' || profile?.role === 'coordinator' ? t('home.role', { role: t(`roles.${profile.role}`) }) : '';
+
   const open = (item: MenuItem) => {
     onClose();
     openMenuItem(item);
@@ -136,24 +140,33 @@ function SideMenu({ onClose }: { onClose: () => void }) {
             },
           ]}>
           <View style={[styles.top, { paddingTop: insets.top + spacing.md, backgroundColor: colors.headerTop }]}>
-            <View style={[styles.markCircle, { backgroundColor: colors.onHeader }]}>
-              <MridangaMark size={28} color={colors.headerTop} accent={colors.onHeader} />
-            </View>
-            {/* One stop for TalkBack, where it starts when the menu opens; the title inside is the heading. */}
-            <View ref={heading} accessible style={styles.topText}>
-              <AppText variant="subtitle" style={{ color: colors.onHeader }}>
-                {t('app.name')}
-              </AppText>
-              <AppText variant="small" style={{ color: colors.onHeaderMuted }}>
-                {t('app.motto')}
-              </AppText>
-              {/* The role left the home band (#352); it is said here. */}
-              {profile?.role === 'guru' || profile?.role === 'coordinator' ? (
-                <AppText variant="small" style={{ color: colors.headerGold }}>
-                  {t('home.role', { role: t(`roles.${profile.role}`) })}
+            {/* The person's own card, as in LinkedIn (Praveen 14-10-2026, #360): initials, name, role and "View my
+                profile", one button that opens My profile; TalkBack starts here when the menu opens. */}
+            <Pressable
+              ref={heading}
+              accessibilityRole="button"
+              accessibilityLabel={[myName, roleLine, t('menu.viewProfile')].filter(Boolean).join(', ')}
+              onPress={() => {
+                onClose();
+                openMyProfile();
+              }}
+              style={({ pressed }) => [styles.me, pressed && styles.pressed]}>
+              <Initials name={myName} size={52} onBand />
+              <View style={styles.topText}>
+                <AppText variant="label" style={[styles.myName, { color: colors.onHeader }]} numberOfLines={2}>
+                  {myName}
                 </AppText>
-              ) : null}
-            </View>
+                {/* The role left the home band (#352); it is said here. */}
+                {roleLine ? (
+                  <AppText variant="small" style={{ color: colors.headerGold }}>
+                    {roleLine}
+                  </AppText>
+                ) : null}
+                <AppText variant="small" style={{ color: colors.onHeaderMuted }}>
+                  {t('menu.viewProfile')} ›
+                </AppText>
+              </View>
+            </Pressable>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={t('menu.close')}
@@ -253,12 +266,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.md,
   },
-  markCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  me: {
+    flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: spacing.sm,
+    minHeight: 56,
+  },
+  myName: {
+    fontSize: 18,
+    lineHeight: 24,
+    fontWeight: '700',
   },
   topText: {
     flex: 1,

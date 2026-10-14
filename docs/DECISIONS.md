@@ -5573,3 +5573,15 @@ the back arrow is for screens opened from another screen), the menu button (☰)
 Gmail or Google Photos, and the phone's Back from any tab returns to Home (`backBehavior="firstRoute"`, now explicit).
 
 **Why.** In dark mode the bars merged into the page; members asked why a tab shows ☰ and not ←.
+
+## 360. The side menu opens with the person's own card — 14 Oct 2026
+
+**Status: branch `launch-ui` (update).**
+
+**Decision.** The top of the side menu is the signed-in person's card, as in LinkedIn and most apps with a drawer: their
+initials in an ivory circle, their name, "Signed in as Coordinator / Facilitator" and "View my profile ›", one button
+that opens My profile (staff/profile). The app's name and motto left the menu's top (the home band shows them) and the
+"My profile" line left the You group, so My profile is offered once. TalkBack still starts on this card when the menu
+opens.
+
+**Why.** Praveen 14-10-2026: the profile belongs at the top of the menu; the repeated app name said nothing new.

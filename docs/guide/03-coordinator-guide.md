@@ -56,8 +56,8 @@ The **Home** tab, from top to bottom:
 | **Did you know?** | A fact about the mṛdaṅga, a new one each day, as on the student home |
 
 The **side menu**: **Class** (**Overview**, **Groups**), **Teaching** (**Level-ups**, **Practice**,
-**Suggestions**), **Seva** (**Class fund**), **Reports** (**My reports**), **You** (**My profile**,
-**Notifications**). The Hare Krishna maha-mantra is at its foot. Close it with the ✕, a tap beside it, or
+**Suggestions**), **Seva** (**Class fund**), **Reports** (**My reports**), **You** (**Notifications**).
+At its top is your own card (initials, name, role, **View my profile**): tap it for **My profile**. The Hare Krishna maha-mantra is at its foot. Close it with the ✕, a tap beside it, or
 the phone's Back.
 
 Pull down to refresh on a phone. On Android, **A new version is ready** with **Restart now**

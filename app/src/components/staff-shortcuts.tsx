@@ -160,11 +160,15 @@ export function staffMenuGroups(guru: boolean, t: TFunction): MenuGroup[] {
     key: 'me',
     title: t('menu.groups.me'),
     items: [
-      { key: 'profile', icon: 'profile', label: t('myProfile.title'), href: '/staff/profile' },
       { key: 'notifications', icon: 'bell', label: t('inbox.title'), href: '/staff/notifications' },
     ],
   });
   return groups;
+}
+
+/** Opens My profile from the person's card at the top of the side menu (#360). */
+export function openMyProfile() {
+  router.push('/staff/profile');
 }
 
 /** Opens a side-menu line's screen on top of the tabs. */

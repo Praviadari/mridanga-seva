@@ -50,7 +50,7 @@ The **Home** tab, from top to bottom (it fits one screen):
 The **side menu**: **Class** (**Follow-ups by coordinator**: overdue and escalated calls of each coordinator, **Groups**, **Seva roster**, **Instruments**),
 **Teaching** (**Practice**, **Suggestions**), **Seva** (**Class fund**), **Reports** (**Reports**, **How
 students found us**, **Change history**), **Set-up** (**Coordinators**, **All students**, **Centres**,
-**Settings**, **Form choices**), **You** (**My profile**, **Notifications**); the maha-mantra at its foot.
+**Settings**, **Form choices**), **You** (**Notifications**); your own card at the top opens **My profile**; the maha-mantra at its foot.
 It replaces the old **the side menu** list.
 
 The bottom tabs are the same as a coordinator's: **Home**, **Check-in**, **Students**, **Follow-ups**,
