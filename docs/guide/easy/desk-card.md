@@ -11,7 +11,7 @@ One page. Print it and keep it at the desk. Hare Krishna, and thank you for your
 ### A student arrives
 
 1. Ask them to open **My QR card** on their phone.
-2. On your phone: **Attendance** tab → **Scan a QR code** → hold their code in front of the camera.
+2. On your phone: **Check-in** tab → **Scan to check in** → hold their code in front of the camera.
 3. You see **Checked in at …**. Done.
 
 No phone? Under **Find by name**, type 2 letters of the name → **Check in**.
@@ -22,7 +22,7 @@ Scan the same code again → **Checked out at …**.
 
 ### A new person wants to join
 
-1. **Students** tab → **Register a student**.
+1. **Students** tab → **Welcome desk**.
 2. **Full name** and **Date of birth** are enough. Add phone, email, area (not the full address),
    level, and a mentor if you know.
 3. **Under 18?** The parent must be there:
@@ -35,11 +35,11 @@ Scan the same code again → **Checked out at …**.
 
 ### Closing time (20:00)
 
-**Here now** → **Check out all** → **Yes, check out all**.
+**In class now** → **Check out all** → **Yes, check out all**.
 
 ### Someone has stopped coming
 
-**Calls** tab → tap the name → **Call** → after the call choose what happened (**Coming back**,
+**Follow-ups** tab → tap the name → **Call** → after the call choose what happened (**Coming back**,
 **Taking a break**, **Not reachable**, **Stopped coming**), a reason, and write **What was said**
 (short; no medical details). **Save call**.
 

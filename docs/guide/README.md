@@ -23,13 +23,13 @@ time it is used.
 |---|---|---|---|
 | 1 | [Why this app exists](01-why-this-app.md) | Everyone | The class, the mridanga (khol), the WhatsApp-and-Excel problem, the spirit of seva |
 | 2 | [Student guide](02-student-guide.md) | Students and parents | Sign up, wait for access, the home screen, My QR, announcements, My progress, attendance, profile |
-| 3 | [Coordinator guide](03-coordinator-guide.md) | Coordinators | Register a student with consent, mark attendance, who is here now, follow-up calls, syllabus ticks, announcements and groups, my reports |
+| 3 | [Coordinator guide](03-coordinator-guide.md) | Coordinators | Welcome desk with consent, check-in, in class now, follow-ups, syllabus ticks, announcements and groups, my reports |
 | 4 | [Facilitator (Guru) guide](04-facilitator-guide.md) | The Guru | Dashboard, syllabus and lessons, coordinators, the student database and Excel import, settings, reports, centres, audit log |
 | 5 | [Phones, install and updates](05-phones-and-updates.md) | Everyone | The Android app from a link, iPhone through Safari, updates and Restart, languages, using it offline |
 | 6 | [How the app works](06-how-it-works.md) | The curious, new helpers | App, web and database in plain words; why the rules live in the database; test and live; how updates reach phones |
 | 7 | [How it was built](07-how-it-was-built.md) | Anyone deciding whether to trust it | The approved screen list, written decisions, the checks on every change, the timeline, and what is not done yet |
 | 8 | [For a new helper](08-new-helper.md) | Volunteers and developers | Ways to help without code; running the app on a laptop; a map of the code; making a small change safely |
-| 9 | [Learning and community (Phase 2)](09-learning-and-community.md) | Everyone | Assessments, moving up a level, practice tools and both drum heads, lesson videos, Record myself, events, polls, sloka study, instruments and duty roster |
+| 9 | [Learning and community (Phase 2)](09-learning-and-community.md) | Everyone | Assessments, moving up a level, practice tools and both drum heads, lesson videos, Record myself, events, polls, sloka study, instruments and seva roster |
 | — | [Glossary](../GLOSSARY.md) | Everyone | Mridanga words (bol, taal, dayan), app words (visit, mentor, Irregular) and beginner's technical words |
 
 **Short on time?**
@@ -37,8 +37,8 @@ time it is used.
 - *I am a student:* read [Create your account](02-student-guide.md#create-your-account) and
   [My QR card](02-student-guide.md#my-qr-card-checking-in-and-out); then try the
   [practice tools](09-learning-and-community.md#practice-tools-metronome-taal-player-both-heads).
-- *I am a coordinator at the desk today:* read [Register a student](03-coordinator-guide.md#register-a-student)
-  and [Mark attendance](03-coordinator-guide.md#mark-attendance).
+- *I am a coordinator at the desk today:* read [Welcome desk](03-coordinator-guide.md#welcome-desk)
+  and [Check-in](03-coordinator-guide.md#check-in).
 - *I want to know if the app is safe for children's data:* read
   [The rules live in the database](06-how-it-works.md#the-rules-live-in-the-database) and
   [How each change is checked](07-how-it-was-built.md#how-each-change-is-checked).
@@ -53,10 +53,10 @@ The state on **5 October 2026**, on the main code:
 | Registration with roll numbers and parental consent for minors | Promotion: nominate, coordinators' feedback, the Facilitator decides | |
 | Attendance by QR code or by name; who is here now; check out all; location flag | Practice tools: metronome, taal player, both drum heads, practice timer and log | More Ishtagoshti: memorise mode, discussion, sessions, free public sign-up |
 | Student list and profile; follow-up calls with reasons | Lesson player: speed, A-B loop, mirror, camera angles; Record myself | Face attendance, only with consent (Phase 3) |
-| Syllabus tick-off; syllabus editor; lessons (YouTube, video file, PDF, photo) | Events (Going / Maybe / Not going, performers, who came) and polls | |
+| Mark progress; syllabus editor; lessons (YouTube, video file, PDF, photo) | Events (Going / Maybe / Not going, performers, who came) and polls | |
 | Announcements with audiences, files, "seen by", private replies; groups; Android notifications | Ishtagoshti sloka study: themes, sloka of the day, recitation, notes; free public sign-up | |
 | | Class fund: income and expenses, approval over ₹2,000 by a second person, bills, month by month, CSV | |
-| Home screens; attendance history; my profile; notifications inbox | Instruments, duty roster, material suggestions | |
+| Home screens; attendance history; my profile; notifications inbox | Instruments, seva roster, material suggestions | |
 | Coordinators and roles; student database and Excel import; settings; audit log; reports with CSV; centres | | |
 | English, Telugu, Hindi; Android app with self-updates; iPhone and laptop through the web | | |
 The class's pilot is planned at Abids from 16 to 29 November 2026, and Phase 1 goes live on

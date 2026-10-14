@@ -3,7 +3,7 @@
 Hare Krishna. This page is for the Guru who leads the class. The English screens call this role
 **Facilitator**; Telugu and Hindi say Guru. The Facilitator can do everything a coordinator does
 (see the [coordinator guide](03-coordinator-guide.md)), and also runs the class: the syllabus, the
-lessons, the coordinators, the whole student database, the settings and the audit log.
+lessons, the coordinators, all student records, the settings and the change history.
 
 [← Back to the guide](README.md) · Previous: [3. Coordinator guide](03-coordinator-guide.md) · Next: [5. Phones, install and updates →](05-phones-and-updates.md)
 
@@ -13,18 +13,18 @@ lessons, the coordinators, the whole student database, the settings and the audi
 
 1. [The first Facilitator account](#the-first-facilitator-account)
 2. [Your dashboard](#your-dashboard)
-3. [Syllabus and lessons](#syllabus-and-lessons)
+3. [Lessons (the syllabus editor)](#lessons-the-syllabus-editor)
 4. [Lessons and materials](#lessons-and-materials)
 5. [Coordinators: roles, mentees, duty hours](#coordinators-roles-mentees-duty-hours)
-6. [Student database](#student-database)
+6. [All students](#all-students)
 7. [Import students from Excel or CSV](#import-students-from-excel-or-csv)
 8. [Settings](#settings)
 9. [Reports](#reports)
 10. [Centres](#centres)
-11. [Audit log](#audit-log)
+11. [Change history](#change-history)
 12. [Announcements and replies](#announcements-and-replies)
 13. [Slokas (Ishtagoshti)](#slokas-ishtagoshti)
-14. [Team tools: suggestions, instruments, duty roster](#team-tools-suggestions-instruments-duty-roster)
+14. [Team tools: suggestions, instruments, seva roster](#team-tools-suggestions-instruments-seva-roster)
 15. [Assessments, promotion, practice, events and polls](#assessments-promotion-practice-events-and-polls)
 
 ## The first Facilitator account
@@ -37,26 +37,26 @@ After that, the Facilitator gives every other role from the app.
 
 ## Your dashboard
 
-The **Home** tab, from top to bottom:
+The **Home** tab, from top to bottom (it fits one screen):
 
 | Part | What it shows |
 |---|---|
-| **Mark attendance** (big button) | Opens attendance, as for coordinators |
-| **Students who came this week** | From Monday, or the last 7 days (a setting). The line under it says from which date |
-| **Students in class (not left)** | Everyone who has not left |
-| **New joiners** | Joined in the last 4 weeks |
-| **Follow-ups overdue or with you** | Calls past their date and students handed to you. Tap to open **Follow-up calls** |
-| **Students per level** | Beginner, Intermediate, Advanced, among students who have not left |
-| **Students per status** | New, Active, Irregular, Inactive, Paused, Left, among every student |
-| **Follow-ups per coordinator** | For each coordinator: **Overdue: N · With the facilitator: N**. Tap to open the calls |
-| **Level-up queue** | **To decide: N**, **Collecting feedback: N**, **Ready to nominate: N**, and **Open the level-up queue** ([promotion](09-learning-and-community.md#moving-up-a-level-promotion)) |
-| **Running the class** | **Coordinators** (roles for new sign-ups, mentees, duty hours), **Student database** (every record, and the Excel import), **Settings** (open window, this week, follow-up days), **Audit log** (who changed what, and when), **Reports** (visits, statuses, calls and progress, with a CSV file), **Centres** (places, address, GPS point and attendance area) |
-| Bell on the header | Your **Notifications** inbox, with the unread count |
+| Menu button (☰, top left) | Opens the **side menu** (below) |
+| Bell, person (top right) | Your **Notifications** inbox; **My profile** |
+| **In class now**, **This week**, **To do** | Students checked in now; students who came this week (from Monday, or the last 7 days: a setting; tap for **Overview**); everything waiting for your decision, amber when there is anything (tap for the list) |
+| **Scan to check in** | Opens **Check-in** with the camera on, as for coordinators |
+| The circles | **Overview** (students who came this week, in class, newcomers, follow-ups to check, the level-up queue, students per level and per status), **Follow-ups** (overdue and escalated, per coordinator), **Level-ups** (to decide; [promotion](09-learning-and-community.md#moving-up-a-level-promotion)), **Newcomers**, **Assessments**, **Lessons**, **Events & polls**, **Ishtagoshti** |
 
-The bottom tabs are the same as a coordinator's: **Home**, **Attendance**, **Students**, **Calls**,
+The **side menu**: **Class** (**Welcome desk**, **Groups**, **Seva roster**, **Instruments**),
+**Teaching** (**Practice**, **Suggestions**), **Seva** (**Class fund**), **Reports** (**Reports**, **How
+students found us**, **Change history**), **Set-up** (**Coordinators**, **All students**, **Centres**,
+**Settings**, **Form choices**), **You** (**My profile**, **Notifications**); the maha-mantra at its foot.
+It replaces the old **the side menu** list.
+
+The bottom tabs are the same as a coordinator's: **Home**, **Check-in**, **Students**, **Follow-ups**,
 **News**. On a laptop they become a sidebar, with **Slokas** as a sixth.
 
-## Syllabus and lessons
+## Lessons (the syllabus editor)
 
 Open **Syllabus and lessons** in the ring. It shows the three levels (Beginner, Intermediate,
 Advanced) with **Items: N · Lessons and materials: N**. The three levels are fixed; their items are
@@ -114,7 +114,7 @@ ISKCON videos shown through the YouTube player with credit) ([DECISIONS.md #9](.
 
 ## Coordinators: roles, mentees, duty hours
 
-Open **Running the class → Coordinators**.
+Open **the side menu → Coordinators**.
 
 The page has three lists:
 
@@ -139,7 +139,7 @@ Open a person to:
   history stay. A coordinator who still mentors students must hand them over first.
 - **Ishtagoshti editor**: tick **May edit Ishtagoshti slokas and themes** for the coordinators who
   type in slokas (for example the senior devotee who writes the translations). Untick to take it away.
-Every change asks first and is kept in the audit log. Nobody can change their own role or switch
+Every change asks first and is kept in the change history. Nobody can change their own role or switch
 themselves off; the Facilitator role is given only in the dashboard
 ([DECISIONS.md #45](../DECISIONS.md)).
 
@@ -152,9 +152,9 @@ coordinator of that gender exists, the student stays without a mentor and you ge
 open it and choose a mentor on the student's page. Every coordinator sees their own referral code on
 My profile.
 
-## Option lists
+## Form choices
 
-**Running the class → Option lists** holds the choices of the sign-up, About you and the desk: gender,
+**the side menu → Form choices** holds the choices of the sign-up, About you and the desk: gender,
 the instruments people can learn, how people heard of us, education / occupation, service areas and
 the relation of an emergency contact. Change a
 label (English, Telugu, Hindi), move an option **Up** or **Down**, **Switch off** one that should no
@@ -163,13 +163,13 @@ option nobody chose; male, female, the parent relations and "Other" always stay.
 
 ## How students found us
 
-**Running the class → How students found us** counts, for this month, last month, the last 4 weeks or
+**the side menu → How students found us** counts, for this month, last month, the last 4 weeks or
 3 months, the answers to "How did you hear about us?": by source, and by the coordinator who brought
 them, each with how many are students now; and how many want to learn each instrument.
 
-## Student database
+## All students
 
-Open **Running the class → Student database**. It lists **every student record, Left ones too**
+Open **the side menu → All students**. It lists **every student record, Left ones too**
 (coordinators use the Students tab instead).
 
 - **Search name, roll number, phone or email**.
@@ -180,7 +180,7 @@ Open **Running the class → Student database**. It lists **every student record
 
 ## Import students from Excel or CSV
 
-For bringing the existing student list into the app. From the Student database, tap **Import from
+For bringing the existing student list into the app. From the All students, tap **Import from
 Excel or CSV**.
 
 1. **Choose a file**: an Excel file (`.xlsx`) or a CSV file, up to 5 MB. The first sheet is read; its
@@ -204,15 +204,15 @@ parent's signed consent is recorded ([DECISIONS.md #46](../DECISIONS.md)).
 
 ## Settings
 
-Open **Running the class → Settings**. Changes take effect at once; the daily follow-up job uses
-them the next morning. Every change is kept in the audit log.
+Open **the side menu → Settings**. Changes take effect at once; the daily follow-up job uses
+them the next morning. Every change is kept in the change history.
 
 | Section | Settings |
 |---|---|
 | **Open window** | **Opens at** and **Closes at** (for example 14:30 and 20:00). Visits still open at night are closed at the closing time |
 | **"This week" on the home screens** | **From Monday** or **Last 7 days** |
 | **Follow-up** | **Days without a visit before Irregular** (14), **Days without a visit before Inactive** (30), **Days to make the call** (3), **Days before trying again when not reachable**, **Tries before the facilitator is asked** |
-| **New joiners** | **Weeks a student counts as a new joiner** (4) |
+| **Newcomers** | **Weeks a student counts as a new joiner** (4) |
 | **Promotion criteria** | Checked when a student is nominated (Phase 2); they advise, you decide: visits needed, in how many weeks, share of the syllabus ticked, whether a level-up assessment is needed, and how many coordinators must answer |
 | **Ishtagoshti translator** | The name shown as "Translation and purport: …" on a sloka whose own credit is left empty (Phase 2) |
 Tap **Save the settings**. The database checks every value (for example, Inactive must come after
@@ -220,7 +220,7 @@ Irregular) ([DECISIONS.md #47](../DECISIONS.md)).
 
 ## Reports
 
-Open **Running the class → Reports**. It is the same screen coordinators know as
+Open **the side menu → Reports**. It is the same screen coordinators know as
 [My reports](03-coordinator-guide.md#my-reports), but for **the whole class**. Under **Whose
 students**, choose **Everyone** or one coordinator's mentees; the student lines then show a mentor
 column. Choose the dates, read the totals, visits per week and month, calls and syllabus progress,
@@ -233,7 +233,7 @@ repeat. A student's **All visits** list shows the reason under each flagged visi
 
 Each centre now has a **City**: people signing up choose country, then city, then centre.
 
-Open **Running the class → Centres**: *Where the class meets, with its address and the area where
+Open **the side menu → Centres**: *Where the class meets, with its address and the area where
 attendance counts.* Today that is Abids; a new centre is a setting, not new code.
 
 - **Add a centre**, or tap one to change it: **Name**, **Address**, **Opens at** / **Closes at**.
@@ -247,9 +247,9 @@ Each check-in compares the marking phone's position with this area; outside it, 
 but flagged (see Reports). Without a point the area is not checked ([DECISIONS.md #51](../DECISIONS.md),
 [#70](../DECISIONS.md)).
 
-## Audit log
+## Change history
 
-Open **Running the class → Audit log**. It is read-only.
+Open **the side menu → Change history**. It is read-only.
 
 It lists every change to students, logins, calls, levels, the syllabus, ticks, lessons,
 announcements, settings and centres, newest first, 50 at a time (**Show older changes**). Filters:
@@ -287,11 +287,11 @@ parent and whether the parent confirmed; **Block** (with a reason only you see) 
 Coordinators do not see subscribers at all, and subscribers see nothing of the class. They are not
 in the "waiting for a role" list on Coordinators. The notice and consent texts are still
 placeholders until the team gives the wording ([DECISIONS.md #88](../DECISIONS.md)).
-## Team tools: suggestions, instruments, duty roster
+## Team tools: suggestions, instruments, seva roster
 
-Phase 2 ([DECISIONS.md #65](../DECISIONS.md)). Coordinators' side: [Coordinator guide](03-coordinator-guide.md#team-tools-instruments-duty-roster-suggesting-a-lesson).
+Phase 2 ([DECISIONS.md #65](../DECISIONS.md)). Coordinators' side: [Coordinator guide](03-coordinator-guide.md#team-tools-instruments-seva-roster-suggesting-a-lesson).
 
-- **Material suggestions** (under the ring): coordinators' suggestions wait here, oldest first, with
+- **Suggestions** (under the ring): coordinators' suggestions wait here, oldest first, with
   who suggested it and why. **Review** opens the lesson form: change the title, level or item if
   needed, then **Add to lessons** (students see it from then on) or **Decline** with a reason the
   coordinator reads. You get a notice for each new suggestion.
@@ -305,9 +305,9 @@ Phase 2 ([DECISIONS.md #65](../DECISIONS.md)). Coordinators' side: [Coordinator 
   items), with an optional **Category** ("Mixer", "Bhagavad Gita"). The app gives each item a code
   (KHOL-007: drums share KHOL; KART, HARM, INST, SND, BAG, BOOK, FURN, PUJA, OTH) and a secret QR link; neither
   can be changed, so a printed sticker stays right when you correct the kind. **Print labels**, **Scan a label**
-  and **Stocktake** work as in the [Coordinator guide](03-coordinator-guide.md#team-tools-instruments-duty-roster-suggesting-a-lesson);
+  and **Count instruments** work as in the [Coordinator guide](03-coordinator-guide.md#team-tools-instruments-seva-roster-suggesting-a-lesson);
   you can count any centre, and delete a count started by mistake while it is open. The sticker shows nothing
-  to a stranger: the QR opens a sign-in page, and a finder reads "if found: info@mridangaseva.com".- **Duty roster** (under the ring): **Add a shift**: the date, the centre, from and to (inside the
+  to a stranger: the QR opens a sign-in page, and a finder reads "if found: info@mridangaseva.com".- **Seva roster** (under the ring): **Add a shift**: the date, the centre, from and to (inside the
   centre's open hours), what the duty is (optional, e.g. "Desk and attendance"), who is on it, and
   **Repeat every week for** up to 12 weeks. Tap a shift to change it or delete it. Everyone on a
   shift gets a reminder at 18:00 the evening before. **Duty hours** on a coordinator's page stay as

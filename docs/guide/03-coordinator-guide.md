@@ -11,20 +11,20 @@ class, screen by screen. Words in **bold** are the words the app shows in Englis
 
 1. [Getting a coordinator account](#getting-a-coordinator-account)
 2. [Your home screen (dashboard)](#your-home-screen-dashboard)
-3. [Register a student](#register-a-student)
-4. [Mark attendance](#mark-attendance)
-5. [Who is here now, and closing time](#who-is-here-now-and-closing-time)
+3. [Welcome desk](#welcome-desk)
+4. [Mark attendance](#check-in)
+5. [In class now, and closing time](#in-class-now-and-closing-time)
 6. [The student list](#the-student-list)
 7. [A student's profile](#a-students-profile)
-8. [Syllabus tick-off](#syllabus-tick-off)
-9. [Follow-up calls](#follow-up-calls)
-10. [Log a call](#log-a-call)
+8. [Mark progress](#mark-progress)
+9. [Follow-ups](#follow-ups)
+10. [Record a call](#record-a-call)
 11. [Announcements](#announcements)
 12. [Groups](#groups)
 13. [My reports](#my-reports)
-14. [Syllabus and lessons (read only)](#syllabus-and-lessons-read-only)
+14. [Lessons (read only)](#lessons-read-only)
 15. [Slokas (Ishtagoshti)](#slokas-ishtagoshti)
-16. [Team tools: instruments, duty roster, suggesting a lesson](#team-tools-instruments-duty-roster-suggesting-a-lesson)
+16. [Team tools: instruments, seva roster, suggesting a lesson](#team-tools-instruments-seva-roster-suggesting-a-lesson)
 17. [What a coordinator can and cannot see](#what-a-coordinator-can-and-cannot-see)
 18. [Assessments, promotion, practice, events and polls](#assessments-promotion-practice-events-and-polls)
 
@@ -39,29 +39,33 @@ class, screen by screen. Words in **bold** are the words the app shows in Englis
 
 ## Your home screen (dashboard)
 
-At the bottom are five tabs: **Home**, **Attendance**, **Students**, **Calls** and **News**. On a
-laptop they become a sidebar on the left, with a sixth, **Slokas**.
+At the bottom are five tabs: **Home**, **Check-in**, **Students**, **Follow-ups** and **News**. On a
+laptop they become a sidebar on the left, with a sixth, **Slokas**. The home fits one screen; nothing
+below it to scroll to.
 
-The **Home** tab shows:
+The **Home** tab, from top to bottom:
 
 | Part | What it does |
 |---|---|
-| **Mark attendance** (big button) | Opens the attendance screen |
-| **Here now** | How many students are checked in. Tap to open **Who is here now** |
-| **Visits today** | Visits so far today. Tap to open attendance |
-| **Calls due for my students** | Follow-up calls due for the students you mentor. Tap to open **Follow-up calls** |
-| **New joiners (last 4 weeks)** | Students who joined recently, newest first, with their number of visits. Tap a name to open the profile. Someone with no visits yet may need a call |
-| **Promotions** | **Your feedback asked: N** and **Your students ready: N** (see [promotion](09-learning-and-community.md#moving-up-a-level-promotion)) |
-| **My reports** (under the ring) | Your mentees' visits, statuses, calls and progress, with a CSV file (see [My reports](#my-reports)) |
-| Bell on the header | Your **Notifications** inbox, with the unread count (as for students: [Notifications](02-student-guide.md#notifications)) |
-| Foot of the page | Language, **My profile**, **Notifications**, **Sign out**, version line |
+| Menu button (☰, top left) | Opens the **side menu** with everything that is not on the home (below) |
+| Bell, person (top right) | Your **Notifications** inbox with the unread count; **My profile** (language, **Sign out**, version) |
+| **In class now** | How many students are checked in. Tap to open **In class now** |
+| **Check-ins today** | Check-ins so far today. Tap to open **Check-in** |
+| **To do** | Everything waiting for you, amber when there is anything: people at the **Welcome desk**, calls due, feedback asked of you, recordings to review. Tap to see the list |
+| **Scan to check in** | Opens **Check-in** with the camera on |
+| The circles | **Welcome desk**, **Newcomers**, **Instruments**, **Seva roster**, **Events & polls**, **Assessments**, **Lessons**, **Ishtagoshti**. A red number on a circle says something waits there |
+
+The **side menu**: **Class** (**Overview**, **Groups**), **Teaching** (**Level-ups**, **Practice**,
+**Suggestions**), **Seva** (**Class fund**), **Reports** (**My reports**), **You** (**My profile**,
+**Notifications**). The Hare Krishna maha-mantra is at its foot. Close it with the ✕, a tap beside it, or
+the phone's Back.
 
 Pull down to refresh on a phone. On Android, **A new version is ready** with **Restart now**
 appears when an update has arrived.
 
-## Register a student
+## Welcome desk
 
-Open the **Students** tab and tap **Register a student** at the top. It takes about two minutes.
+Open the **Students** tab and tap **Welcome desk** at the top. It takes about two minutes.
 Only the name and date of birth are required.
 
 **Someone who signed up in the app?** At the top you see the people of your centre who signed up and
@@ -111,9 +115,9 @@ Why so strict? The database itself refuses a student under 18 without the parent
 any screen or app version ([DECISIONS.md #16](../DECISIONS.md)). Roll numbers are given by the
 database, can never be changed, and are never reused ([DECISIONS.md #3](../DECISIONS.md)).
 
-## Mark attendance
+## Check-in
 
-Open the **Attendance** tab (**Mark attendance**). The top line says **Here now: N · Visits today: N**.
+Open the **Check-in** tab (**Check-in**). The top line says **In class now: N · Check-ins today: N**.
 
 **By QR code (quickest)**
 
@@ -151,15 +155,15 @@ while the app is open, to confirm you are at the class). The first time, the pho
 using the app**. If you are outside the centre's area, refuse, or the phone finds no position within a
 few seconds, the student is **still checked in**, but the card adds a line such as **Outside the class
 area (320 m away) — flagged for the facilitator.** The facilitator sees these flags in the reports;
-**Who is here now** shows them too. To allow location later: phone **Settings → Apps → Mridanga Seva
+**In class now** shows them too. To allow location later: phone **Settings → Apps → Mridanga Seva
 → Location** ([DECISIONS.md #70](../DECISIONS.md)).
 
-## Who is here now, and closing time
+## In class now, and closing time
 
-Open **Here now** from the home screen or the ring. **Who is here now** lists every student checked
+Tap **In class now** on the home screen. **In class now** lists every student checked
 in, with **Since** (time) and how long they have stayed. Tap **Refresh** to update it.
 
-At closing time, tap **Check out all**. The app asks **Check out everyone here now (N)?** Tap
+At closing time, tap **Check out all**. The app asks **Check out everyone in class now (N)?** Tap
 **Yes, check out all**. Each visit ends now. A visit left open from an earlier day ends at that
 day's closing time.
 
@@ -169,13 +173,13 @@ If nobody does this, a nightly job closes any visit still open at 21:00, at the 
 
 Open the **Students** tab.
 
-- **Register a student** is at the top.
+- **Welcome desk** is at the top.
 - **Search**: type a name or roll number.
 - **Filters**: **Level**, **Status**, **Mentor** (including **My students** and **No mentor**), and
   **Not seen for** (for example 14+ days). **Clear filters** removes them.
 - **Showing N of M** says how many match.
 - Each row shows the name, roll number, level and status, the last visit
-  (**Last visit 12-09-2026 · 21 days ago**, or **Here now**), and the mentor.
+  (**Last visit 12-09-2026 · 21 days ago**, or **In class now**), and the mentor.
 
 On a laptop the list shows two columns.
 
@@ -196,24 +200,24 @@ The day limits (14, 30) are settings the Facilitator can change.
 
 **About the student** shows what they told in About you or the desk recorded: gender, emergency
 contact, how they found us, occupation and service areas. **Edit these details** changes them; each
-change is recorded in the audit log. Reading them is staff-only.
+change is recorded in the change history. Reading them is staff-only.
 
-Tap a student anywhere (list, new joiners, a call) to open the **Student profile**.
+Tap a student anywhere (list, newcomers, a call) to open the **Student profile**.
 
 - At the top: name, roll number, level and status, and (if paused) **Paused until**.
-- **Log a call** and **Check in** / **Check out** buttons.
+- **Record a call** and **Check in** / **Check out** buttons.
 - **Details**: joined, date of birth and age, phone, email, area, mentor, and **App login** (yes or no).
 - **Parent or guardian** (minors): the parent's details and consent lines, such as
   *Consent for the student's details · signed paper form · date*, with **ID seen**. *Only
   coordinators and the facilitator can see this.* If consent is missing, the profile says so; tell
   the Facilitator.
-- **Follow-up calls**: the open call task (due date, try number, who it is for) and every call
+- **Follow-ups**: the open call task (due date, try number, who it is for) and every call
   logged, with **Logged by**.
 - **Visits**: **Last 30 days: N · All: N**, the latest visits, and **All visits by month**, which
   opens the full attendance history.
 - **Syllabus**: the student's level, **N of M done**, and **Tick syllabus items**.
 - **Level history**: each level change and who approved it.
-- **Promotion**: the criteria check and **Nominate for promotion**
+- **Promotion**: the criteria check and **Recommend for next level**
   ([how](09-learning-and-community.md#moving-up-a-level-promotion)).
 - **Practice**: the practice the student logged, week by week.
 - **Items on loan**: temple instruments the student has borrowed.
@@ -221,9 +225,9 @@ Tap a student anywhere (list, new joiners, a call) to open the **Student profile
 Changing a student's name or phone in the app is not built yet; ask the Facilitator. A level changes only through [promotion](09-learning-and-community.md#moving-up-a-level-promotion). A
 mentor is chosen at registration; the Facilitator can move students to another mentor.
 
-## Syllabus tick-off
+## Mark progress
 
-From the profile, tap **Tick syllabus items** to open **Syllabus tick-off**.
+From the profile, tap **Tick syllabus items** to open **Mark progress**.
 
 - It shows the student's level (**Level now**) and every level's items in teaching order, with a
   progress bar.
@@ -238,9 +242,9 @@ From the profile, tap **Tick syllabus items** to open **Syllabus tick-off**.
 
 If someone else ticked the same item a moment earlier, their tick is kept and the app tells you.
 
-## Follow-up calls
+## Follow-ups
 
-The **Calls** tab (**Follow-up calls**) lists students who have stopped coming. Tap a name to phone
+The **Follow-ups** tab (**Follow-ups**) lists students who have stopped coming. Tap a name to phone
 them and record the call.
 
 **Show: Everyone** or **My students** (those you mentor; when none of yours is left, the list
@@ -260,9 +264,9 @@ mentor; if the mentor changes, the call moves with the student
 student becomes **Irregular** and the mentor gets a call too. The try number starts again after a
 visit ([DECISIONS.md #107, #108](../DECISIONS.md)).
 
-## Log a call
+## Record a call
 
-Tap a student in **Follow-up calls**, or **Log a call** on a profile.
+Tap a student in **Follow-ups**, or **Record a call** on a profile.
 
 1. Tap **Call student: 98…** (or **Call Parent** for a minor). The phone's dialler opens.
 2. After the call, under **What happened on the call?**, choose the **Outcome**:
@@ -324,7 +328,7 @@ You can edit, pin or delete your own announcements; the Facilitator can do so fo
 
 ## Groups
 
-Groups replace the WhatsApp groups for announcements to "A group". Open **Groups** in the ring.
+Groups replace the WhatsApp groups for announcements to "A group". Open **Groups** in the side menu.
 
 - The list shows each group and **Members: N**.
 - **New group**: a **Name** (for example *Sunday Harinam*) and **What is it for?**, then
@@ -338,14 +342,14 @@ Groups are never deleted, only switched off, so old announcements keep their aud
 
 ## My reports
 
-Tap **My reports** under the ring on your home screen. It covers **your mentees**.
+Tap **My reports** in the side menu (☰ on your home screen). It covers **your mentees**.
 
 1. Choose the **Dates**: **This month**, **Last month**, **Last 4 weeks**, **Last 3 months**, or
    **Other dates** (type **From** and **To**, then **Show**). A report covers at most one year.
 2. Read the summary: **Students in class now**, **Joined in these dates**, visits and how many
    students came, **Calls made**, **Calls due now** and **Left in these dates**.
 3. Below: **Students by status, now**, **Visits per week** and **Visits per month** (visits,
-   students, hours), **Follow-up calls** (by outcome), and **Syllabus progress per level**.
+   students, hours), **Follow-ups** (by outcome), and **Syllabus progress per level**.
 4. **Students**: one line per student (visits, hours, calls, last visit, syllabus). Tap a line to
    open the profile. On a laptop it is a table.
 5. **CSV file**: one line per student, for Excel or Google Sheets. On the web, **Download CSV**; on
@@ -354,22 +358,22 @@ Tap **My reports** under the ring on your home screen. It covers **your mentees*
 The database gives each coordinator only their own mentees' report; the Facilitator sees the whole
 class ([DECISIONS.md #50](../DECISIONS.md)).
 
-## Syllabus and lessons (read only)
+## Lessons (read only)
 
-**Syllabus and lessons** in the ring shows each level's syllabus in teaching order, and the lessons
+**Lessons** in the ring shows each level's syllabus in teaching order, and the lessons
 (videos, PDFs, photos) for each item. Coordinators can open the lessons; only the Facilitator
 changes them.
 
 ## Slokas (Ishtagoshti)
 
-The **Slokas** tab (on a phone: the **Ishtagoshti** button under the ring on your home) works for you as for students: the sloka of the day, themes, your own notes and
+The **Slokas** tab (on a phone: the **Ishtagoshti** circle on your home) works for you as for students: the sloka of the day, themes, your own notes and
 memorised ticks (see the [student guide](02-student-guide.md#slokas-ishtagoshti)). If the Facilitator
 has made you an **Ishtagoshti editor**, you also get **Add a sloka**, **Add a theme**, **Edit sloka**
 and **Make it the sloka of that day**. Type only the temple's own translation, word meanings and
 purport, never text copied from BBT books or vedabase; the app will not publish a sloka until you
 tick that it is the temple's own.
 
-## Team tools: instruments, duty roster, suggesting a lesson
+## Team tools: instruments, seva roster, suggesting a lesson
 
 Phase 2 ([DECISIONS.md #65](../DECISIONS.md)).
 
@@ -393,7 +397,7 @@ A student sees the items they hold on **My profile**; you see them on the studen
 (drums, kartals, harmonium, sound, books, furniture, altar items ...) has a code such as **KHOL-007** and a QR
 sticker.
 
-- **Scan a label** (on Instruments and assets, or the camera on **Mark attendance**): point the camera at the
+- **Scan a label** (on Instruments, or the camera on **Check-in**): point the camera at the
   sticker and the item opens: lend, take back or check it as above. A phone's own camera app opens the same
   item in the browser after you sign in. "Another centre's item" means it belongs to another centre: tell
   its coordinator. "Label not found": tell the facilitator.
@@ -403,16 +407,16 @@ sticker.
   size"), margins None, headers and footers off. After a good print tap **mark printed**. New pack or new
   printer: first tick **Test print** and print on plain paper; hold it against a label sheet up to the light;
   if the outlines are off, type the shift in **Move right / Move down** (mm) and print the test again.
-- **Stocktake**: **Start or join a count** for your centre, then scan every sticker (or tap **Seen** for an
+- **Count instruments**: **Start or join a count** for your centre, then scan every sticker (or tap **Seen** for an
   item whose sticker is damaged). **Not seen yet** shrinks as you go; two people can count at once. **Finish
   the count** saves the summary: seen, **missing** (not seen and not lent out) and lent out, with who did it.
   Look for the missing ones and tell the facilitator.
 
-**Duty roster** (under the ring) shows **My shifts** for the next 4 weeks and the whole roster by
+**Seva roster** (a circle on your home) shows **My shifts** for the next 4 weeks and the whole roster by
 date, with who is on each shift. The facilitator plans it. At 18:00 the evening before a shift you
 get a notice in your inbox (and a push on Android).
 
-**Material suggestions** (under the ring): **Suggest a material** opens the lesson form (a YouTube
+**Suggestions** (side menu): **Suggest a material** opens the lesson form (a YouTube
 link, a video-file link, a PDF or a photo, for a level and optionally an item) with **Why this
 helps**. **Send to the facilitator**. Students do not see it until the facilitator adds it. Each
 suggestion shows **Waiting**, **Added to lessons** or **Declined** with the facilitator's reason;
@@ -424,7 +428,7 @@ a day.
 | You can | You cannot |
 |---|---|
 | See and work with every student: register, mark attendance, log calls, tick the syllabus | Give roles, switch logins off, or move mentees |
-| See parents' details and consent records of minors | See the audit log, change the settings, edit the syllabus or lessons |
+| See parents' details and consent records of minors | See the change history, change the settings, edit the syllabus or lessons |
 | Post announcements and manage groups | Edit or delete someone else's announcement |
 | Read replies to your own announcements | Read replies to other people's announcements |
 | See reports on your own mentees | See the whole-class report, or change centres |

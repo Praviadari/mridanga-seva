@@ -5432,3 +5432,114 @@ an event's day — This Sunday, Next Sunday (`lib/quick-times.ts`). "Next class 
 left for later.
 
 **Why.** Typing 18-10-2026 on a phone keyboard is the slowest, most error-prone entry (audit U4-05).
+
+## 350. Staff side menu; eight circles per home — 14 Oct 2026
+
+**Status: branch `launch-ui`.**
+
+**Decision.** The staff homes show the five bottom tabs, a ring of eight filled circles and nothing else to tap
+below it; every other staff screen is in a side menu opened from a menu button at the left of the home band and of
+each tab's header bar (components/side-menu.tsx). Plain React Native (Modal + Animated), no drawer package, so it
+reaches installed phones as an update. Groups: Class, Teaching, Seva, Reports, Set-up (Guru), You; the maha-mantra
+at its foot. It closes on the close button, a tap beside it, Android Back and Escape; focus moves into it and back
+to the button; rows are 52 px and wrap at large text. Guru ring: Overview, Follow-ups (by coordinator), Level-ups,
+Newcomers, Assessments, Lessons, Events & polls, Ishtagoshti. Coordinator ring: Welcome desk, Newcomers,
+Instruments, Seva roster, Events & polls, Assessments, Lessons, Ishtagoshti. Running the class stays at its
+address (links) but is no longer offered: its screens are the menu's Reports and Set-up groups. One file
+(components/staff-shortcuts.tsx) holds the ring and the menu, so a screen is never offered twice or forgotten
+(tests/launch-ui.test.mjs). Amends #240, #241.
+
+**Why.** Praveen 14-10-2026: the Guru home had 16 circles plus 8 behind Running the class; keep what is used in a
+class week on the home, the rest in a menu, the most important in the footer.
+
+## 351. The staff and student homes do not scroll — 14 Oct 2026
+
+**Status: branch `launch-ui`.**
+
+**Decision.** Team decision (Praveen 14-10-2026): a home fits one phone screen. Waiting for you's rows moved to
+their own screen (staff/waiting.tsx, titled "To do"); the home shows three Today boxes (in class now; check-ins
+today, or this week for the Guru; the "to do" total, amber when above 0). Homes use `Screen compact` (8 px above and
+below); under an 800 px window the Scan button is the normal height and the fact card shorter; a ring under 340 px
+uses 56 px circles and a 128 px drum circle. Checked with no scroll at 375 x 812 and 360 x 760; at the phone's large
+text sizes the grid and scrolling stay (nothing is cut).
+
+**Why.** Members missed what was below the first screen; counts on circles and one total say "something waits".
+
+## 352. Header band: night to royal blue with gold — 14 Oct 2026
+
+**Status: branch `launch-ui`.**
+
+**Decision.** The band runs from deep night (indigo.950) at the top to royal blue (new indigo.650 #22307A, the
+header bars' colour) below, with a golden halo (headerGold = gold.300) behind the app's name in gold Cormorant and
+its motto, a thin gold rule, then "Hare Krishna, name" on one line; a faint violet glow (headerGlow) and a wave
+where it meets the page, as on the website's night band. The role line and the maha-mantra left the band (role:
+side menu and screen readers; mantra: side menu foot; amends #36). Home circles are filled with the module's deep
+colour and a light icon, with a light edge and a soft shadow; the ring's centre is white with a gold ring
+(reference: the team's "version 3" mockup, kept outside the repository because it shows the ISKCON logo).
+
+**Why.** Praveen: the app goes to ISKCON temples for approval and should feel calm and devotional at an
+international standard.
+
+## 353. International names and clearer icons — 14 Oct 2026
+
+**Status: branch `launch-ui`.**
+
+**Decision.** Renamed for people anywhere (en; te/hi drafts, Praveen checks te): Here now → In class now; Mark
+attendance / Attendance tab → Check-in; Scan at the door → Scan to check in; visits today → check-ins today; came
+this week → this week; Waiting for you → To do; Register a student → Welcome desk; New joiners → Newcomers; Follow-up
+calls / Calls tab → Follow-ups; Log a call → Record a call; Syllabus and lessons → Lessons; Syllabus tick-off → Mark
+progress; Material suggestions → Suggestions; Create assessment → New assessment; Give to students → Assign;
+Review → Review recording; Promotions → Level-ups and nominate → recommend (the decision buttons keep "Promote to
+level"); Performers → Who plays; Ishtagoshti subscribers → members; Taals → Rhythms (taals); Offline → Saved on this
+phone; Instruments and assets → Instruments; Stocktake → Count instruments; Duty roster → Seva roster; Student
+database → All students; Option lists → Form choices; Audit log → Change history; Running the class → Set-up; the
+student ring's Announcements → News. Icons: In class now a group (not an arrow through a door), Overview a pie
+chart (not a heartbeat), Level-ups a medal (not a rising arrow), Instruments the app's drum drawing. Unchanged on
+purpose: Students, News, Groups, Class fund, Centres, Settings, My QR card, Ishtagoshti, sloka, seva. Database
+names and addresses (routes) are unchanged.
+
+**Why.** At the class on Sunday 11-10-2026 members misread names ("Here now" as a map's "you are here").
+
+## 354. A screen wears its module's colour — 14 Oct 2026
+
+**Status: branch `launch-ui`.**
+
+**Decision.** The colour of a module's home circle carries into its screens: IconBadge without a tone takes the
+module colour of the current route (lib/module-tone.ts by the first segment after the role; theme/module-tone.ts
+reads it), so list icons, section icons and empty screens are tinted with it. Homes, the side menu and set-up
+screens stay saffron.
+
+**Why.** Like coloured signs in a temple: a person knows which part of the app they are in.
+
+## 355. The website look in the shared parts — 14 Oct 2026
+
+**Status: branch `launch-ui`.**
+
+**Decision.** Changed once in the shared components so every screen follows: header bars in royal blue with the
+title in Cormorant (English; sans for te/hi); cards 14 px corners with the website's two-layer shadow; Section cards
+with a 3 px marigold top line; empty screens with a line-drawn lotus in the module's colour; pill-shaped buttons;
+small text 14 px (was 13). Contrast pairs stay checked by design/tokens.json (new: headerGold on header and
+headerDeep).
+
+**Why.** Praveen: the website's colours and fonts read better than the app's.
+
+## 356. What the side menu does not do — 14 Oct 2026
+
+**Status: branch `launch-ui`.**
+
+**Decision.** The menu opens only screens that stack on top of the tabs (router.push), never a tab screen, so Back
+keeps returning to where the person came from (#301, R4-01). It is for staff only; students keep their eight
+circles and four tabs. On a wide screen (900 px and up) the tabs are a sidebar as before (#36) and the menu button
+stays in the header bars.
+
+**Why.** A second copy of a tab under the stack was the cause of the Back problems fixed in #301.
+
+## 357. Icon and splash wait for the next APK — 14 Oct 2026
+
+**Status: branch `launch-ui`.**
+
+**Decision.** The app icon, splash screen and notification icon keep today's saffron drum: they live in the
+native build (app.json) and would change the fingerprint (59a0c569 after the rebase). The gold-on-royal look of
+#352 is the brief for them at the next APK, with the ISKCON emblem only after the temple's written permission.
+
+**Why.** The launch update must reach installed phones over the air.

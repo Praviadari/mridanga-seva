@@ -22,7 +22,7 @@ in English.
 9. [Events](#events)
 10. [Polls](#polls)
 11. [Slokas (Ishtagoshti)](#slokas-ishtagoshti)
-12. [Team tools: instruments, duty roster, suggestions](#team-tools-instruments-duty-roster-suggestions)
+12. [Team tools: instruments, seva roster, suggestions](#team-tools-instruments-seva-roster-suggestions)
 13. [Location check at check-in](#location-check-at-check-in)
 14. [Still to come](#still-to-come)
 
@@ -38,8 +38,8 @@ in English.
 | Events and polls | **Events & polls** in the ring | **Events & polls** in the ring | Same |
 | Slokas | **Slokas** tab | **Slokas** tab on a laptop; **Ishtagoshti** button under the ring on a phone | Same |
 | Instruments | Items you hold, on **My profile** | **Instruments** in the ring | Same; adds items |
-| Duty roster | — | **Duty roster** under the ring | Same; plans shifts |
-| Material suggestions | — | **Material suggestions** under the ring | Same; reviews them |
+| Seva roster | — | **Seva roster**: a circle on the coordinator home, the side menu for the Facilitator | Same; plans shifts |
+| Suggestions | — | **Suggestions** in the side menu | Same; reviews them |
 
 The student's home also shows the next event and **Polls waiting for your vote: N**.
 
@@ -138,7 +138,7 @@ assessment. They advise; the Facilitator decides.
 
 **Coordinator: nominate.** On the home, the **Promotions** card shows **Your feedback asked** and
 **Your students ready** (students who meet every criterion). On a student's profile, the
-**Promotion** block shows the criteria check and **Nominate for promotion**.
+**Promotion** block shows the criteria check and **Recommend for next level**.
 
 1. Check the **Criteria**. If not every one is met, you can still nominate; say why.
 2. Write the **Reason**: what the student plays well now.
@@ -303,24 +303,24 @@ goes to the parent's email and nothing opens until it is typed in. They read the
 own notes and ticks, and see nothing else of the class. The Facilitator sees the list and may block
 ([DECISIONS.md #88](../DECISIONS.md); steps for them in the
 [student guide](02-student-guide.md#ishtagoshti-for-people-outside-the-class-free)).
-## Team tools: instruments, duty roster, suggestions
+## Team tools: instruments, seva roster, suggestions
 
 For the people who run the class ([DECISIONS.md #65](../DECISIONS.md)):
 
 - **Instruments**: the temple's mridangas, kartals and other items, their condition, and who has
   each one, with lending, taking back and condition checks.
-- **Duty roster**: who is on duty when; a reminder the evening before a shift.
-- **Material suggestions**: coordinators suggest a lesson; the Facilitator adds it or declines it.
+- **Seva roster**: who is on duty when; a reminder the evening before a shift.
+- **Suggestions**: coordinators suggest a lesson; the Facilitator adds it or declines it.
 
-Step by step: [coordinators](03-coordinator-guide.md#team-tools-instruments-duty-roster-suggesting-a-lesson),
-[the Facilitator](04-facilitator-guide.md#team-tools-suggestions-instruments-duty-roster).
+Step by step: [coordinators](03-coordinator-guide.md#team-tools-instruments-seva-roster-suggesting-a-lesson),
+[the Facilitator](04-facilitator-guide.md#team-tools-suggestions-instruments-seva-roster).
 
 ## Location check at check-in
 
 When a coordinator checks a student in, the app compares the coordinator's phone position with the
 centre's attendance area. Outside it, or without a position, the visit is **still saved** but
 **flagged for the facilitator**, who sees the flags in the reports ([DECISIONS.md #70](../DECISIONS.md)).
-Details: [coordinator guide](03-coordinator-guide.md#mark-attendance) and
+Details: [coordinator guide](03-coordinator-guide.md#check-in) and
 [Facilitator guide](04-facilitator-guide.md#reports).
 
 ## Class fund
@@ -340,7 +340,7 @@ The Mridanga team's **own** fund, recorded in the app ([DECISIONS.md #80](../DEC
   approves. **Nobody approves their own entry.** A **bill is needed over ₹500.** Both amounts are in
   Settings.
 - **Nothing is deleted.** A mistake is undone by a **reversal**: a new entry that takes the amount
-  back, with a reason. Both stay in the ledger, and every change is in the audit log.
+  back, with a reason. Both stay in the ledger, and every change is in the change history.
 - **See it:** "Class fund" under the buttons on the home screen: the balance, what waits for you,
   the entries of this month, 3 months, this financial year (from 1 April) or all with the balance
   after each, month by month, and **Download CSV** (on Android: save to a folder or share) for Excel.
