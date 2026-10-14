@@ -1,5 +1,5 @@
-// The ring of modules on the home screens (C1, G1; S1 since round 5): the drum mark, the app name
-// and its motto in the middle, and one coloured circle per module around it, each a button to that
+// The ring of modules on the home screens (C1, G1; S1 since round 5): the drum mark in the middle (only the drum since
+// 14-10-2026: the band above says the name), and one coloured circle per module around it, each a button to that
 // module's screen. Modules that are not built yet (Instruments, Events) carry a small "under
 // construction" mark and open the Coming soon screen (docs/DECISIONS.md #39, #41). The idea comes
 // from the volunteers' mockup of 2 Oct 2026, "version 3": a central menu around the drum.
@@ -61,7 +61,7 @@ const CIRCLE = 64;
 const ITEM_WIDTH = 92;
 /** Room under the lowest circle for its label. */
 const LABEL_ROOM = 44;
-/** Diameter of the drum circle in the middle: wide enough for the motto on one line. */
+/** Diameter of the drum circle in the middle (since 14-10-2026 only the drum is drawn in it). */
 const CENTRE = 144;
 /** A label may be a little wider than its circle's slot, e.g. "Announcements" in one word. */
 const LABEL_OVERHANG = 14;
@@ -148,9 +148,10 @@ function Ring({ modules, width }: { modules: readonly Module[]; width: number })
         <RingMandala size={size} />
       </View>
       <View
-        // One element for screen readers: the app name and motto together.
+        // Only the drum in the centre (Praveen 14-10-2026: the band above already says the name); screen readers hear
+        // the app's name and motto.
         accessible
-        accessibilityRole="header"
+        accessibilityRole="image"
         accessibilityLabel={`${t('app.name')}, ${t('app.motto')}`}
         style={[
           styles.centre,
@@ -164,18 +165,7 @@ function Ring({ modules, width }: { modules: readonly Module[]; width: number })
             borderColor: colors.ornament,
           },
         ]}>
-        <MridangaMark size={44} color={colors.primary} accent={colors.primarySoft} />
-        {/* Inside the header element above: plain text here, not a second heading. */}
-        <AppText variant="subtitle" accessibilityRole="text" aria-level={undefined} style={[styles.centreText, styles.centreName, { color: colors.onPrimarySoft }]}>
-          {t('app.name')}
-        </AppText>
-        <AppText
-          variant="small"
-          // The motto is one line; at a larger text size the grid is shown instead.
-          maxFontSizeMultiplier={1.2}
-          style={[styles.centreText, styles.motto, { color: colors.onPrimarySoft }]}>
-          {t('app.motto')}
-        </AppText>
+        <MridangaMark size={Math.round(centreSize * 0.62)} color={colors.primary} accent={colors.surfaceRaised} />
       </View>
       {modules.map((module, index) => {
         // Start at the top and go clockwise.
@@ -299,20 +289,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: spacing.xs,
   },
-  centreText: {
-    textAlign: 'center',
-    lineHeight: 16,
-  },
-  centreName: {
-    fontSize: 19,
-    lineHeight: 24,
-  },
   solid: {
     borderWidth: 3,
-  },
-  motto: {
-    fontSize: 9.5,
-    letterSpacing: 0.2,
   },
   item: {
     alignItems: 'center',
