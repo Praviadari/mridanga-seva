@@ -5547,3 +5547,16 @@ native build (app.json) and would change the fingerprint (59a0c569 after the reb
 #352 is the brief for them at the next APK, with the ISKCON emblem only after the temple's written permission.
 
 **Why.** The launch update must reach installed phones over the air.
+
+## 358. Dark mode in midnight navy; light mode stays sandalwood cream — 14 Oct 2026
+
+**Status: branch `launch-ui` (update after the launch-UI merge).**
+
+**Decision.** Praveen chose L1 + D2 of the options shown on 14-10-2026. Dark mode's page, cards, lines and quiet boxes
+use a new `night` family in design/tokens.json (page #0E1130, cards #181C45, raised #1F2350, sunken #0A0C24, lines
+#2C3170, control edges #8287C4); the header band and bars stay as #352, so the page continues the band's night sky. Light
+mode keeps the website's warm cream (#FBF5EC). Text, gold, marigold, the module circles and every contrast pair are
+unchanged and still checked (576 pairs). The website keeps its own dark colours for now.
+
+**Why.** The colours speak of Krishna: night blue for His śyāma complexion, gold for His pītāmbara, cream for the
+sandalwood offered to Him; the old brown-black dark page fought the blue header.

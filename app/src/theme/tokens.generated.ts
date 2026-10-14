@@ -62,15 +62,15 @@ export const semantic = {
     onPrimary: '#FFFFFF'
   },
   dark: {
-    background: '#15100C',
-    surface: '#1F1813',
-    surfaceRaised: '#2A211B',
-    surfaceSunken: '#2E2620',
+    background: '#0E1130',
+    surface: '#181C45',
+    surfaceRaised: '#1F2350',
+    surfaceSunken: '#0A0C24',
     text: '#F6EEE4',
     textMuted: '#C3B5A6',
-    border: '#3A2F27',
-    cardBorder: '#3A2F27',
-    controlBorder: '#8A7B6E',
+    border: '#2C3170',
+    cardBorder: '#2C3170',
+    controlBorder: '#8287C4',
     primarySoft: '#3A2817',
     onPrimarySoft: '#F6C27A',
     link: '#F6B860',
@@ -86,18 +86,18 @@ export const semantic = {
     danger: '#F97066',
     dangerSurface: '#3A1A17',
     info: '#A5A9E0',
-    infoSurface: '#1C1F52',
+    infoSurface: '#2C3170',
     infoBorder: '#A5A9E0',
     neutral: '#C8BFB6',
-    neutralSurface: '#2E2620',
+    neutralSurface: '#232858',
     paused: '#D8B4FE',
     pausedSurface: '#2A1A3A',
     disabled: '#A89A8D',
-    disabledSurface: '#2E2620',
+    disabledSurface: '#232858',
     tabActive: '#F6C27A',
     tabActiveIndicator: '#3A2817',
     tabInactive: '#C3B5A6',
-    skeleton: '#2E2620',
+    skeleton: '#232858',
     shadow: 'transparent',
     overlay: 'rgba(0, 0, 0, 0.6)',
     pressedOverlay: 'rgba(255, 246, 232, 0.08)',
@@ -150,7 +150,7 @@ export const chips = {
   dark: {
     info: {
       text: '#A5A9E0',
-      background: '#1C1F52'
+      background: '#2C3170'
     },
     success: {
       text: '#47CD89',
@@ -162,7 +162,7 @@ export const chips = {
     },
     neutral: {
       text: '#C8BFB6',
-      background: '#2E2620'
+      background: '#232858'
     },
     paused: {
       text: '#D8B4FE',
