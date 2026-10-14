@@ -14,6 +14,7 @@ import { ListRow } from '@/components/list-row';
 import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
+import { ScreenIntro } from '@/components/more-text';
 import { fetchAllTaals, type Taal } from '@/data/practice';
 import { levelName } from '@/i18n/labels';
 
@@ -37,7 +38,7 @@ export default function TaalsScreen() {
   return (
     <Screen underHeader onRefresh={load}>
       <Stack.Screen options={{ title: t('taals.title') }} />
-      <Notice tone="info">{isGuru ? t('taals.introGuru') : t('taals.introStaff')}</Notice>
+      <ScreenIntro text={isGuru ? t('taals.introGuru') : t('taals.introStaff')} />
       {isGuru ? (
         <Button icon="add" label={t('taals.add')} onPress={() => router.push({ pathname: '/staff/taals/[id]', params: { id: 'new' } })} />
       ) : null}

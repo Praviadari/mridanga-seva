@@ -24,6 +24,7 @@ import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { SIGNED_NUMBER_KEYBOARD, TextField } from '@/components/text-field';
+import { ScreenIntro } from '@/components/more-text';
 import { fetchInventory, fetchMyCentreId, markLabelsPrinted, type InventoryItem } from '@/data/inventory';
 import { assetLink, webAppOrigin } from '@/lib/asset-link';
 import { NUDGE_MAX, PER_SHEET, sheetHtml, sheetsNeeded, type LabelContent } from '@/lib/label-sheet';
@@ -172,7 +173,7 @@ export default function LabelsScreen() {
   return (
     <Screen underHeader wide onRefresh={load}>
       <Stack.Screen options={{ title: t('labels.title') }} />
-      <Notice tone="info">{t('labels.intro')}</Notice>
+      <ScreenIntro text={t('labels.intro')} />
       {message ? <Notice tone={message.tone}>{message.text}</Notice> : null}
       {items === undefined ? <LoadingCards /> : null}
       {items === null ? (

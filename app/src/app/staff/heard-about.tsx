@@ -19,6 +19,7 @@ import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { StatGrid, StatTile } from '@/components/stat-tile';
+import { ScreenIntro } from '@/components/more-text';
 import { fetchAllOptions, labelOf, type OptionRow } from '@/data/options';
 import { rangeOf, type RangeChoice } from '@/data/reports';
 import { formatDate } from '@/lib/dates';
@@ -75,7 +76,7 @@ export default function HeardAboutScreen() {
   return (
     <Screen underHeader wide>
       <Stack.Screen options={{ title: t('heardReport.title') }} />
-      <AppText tone="muted">{t('heardReport.intro')}</AppText>
+      <ScreenIntro text={t('heardReport.intro')} />
       <ChoiceGroup
         chips
         label={t('heardReport.range')}

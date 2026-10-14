@@ -24,6 +24,7 @@ import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { TextField } from '@/components/text-field';
+import { ScreenIntro } from '@/components/more-text';
 import { fetchMyCentreId } from '@/data/inventory';
 import { fetchCardStudents, fetchQrTexts, type CardStudent } from '@/data/qr-cards';
 import { LEVEL_IDS, levelName } from '@/i18n/labels';
@@ -143,7 +144,7 @@ export default function QrCardsScreen() {
   return (
     <Screen underHeader wide onRefresh={load}>
       <Stack.Screen options={{ title: t('qrCards.title') }} />
-      <Notice tone="info">{t('qrCards.intro')}</Notice>
+      <ScreenIntro text={t('qrCards.intro')} />
       {students === undefined ? <LoadingCards /> : null}
       {students === null ? (
         <>

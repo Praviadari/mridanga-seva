@@ -20,6 +20,7 @@ import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { TextField } from '@/components/text-field';
+import { ScreenIntro } from '@/components/more-text';
 import {
   fetchEvent,
   fetchEventStudents,
@@ -141,7 +142,7 @@ export function EventStudentsScreen({ id, mode }: { id: number; mode: 'performer
       {header}
       <AppText variant="title" family="sans">{event.title}</AppText>
       <AppText tone="muted">{whenText(event)}</AppText>
-      <AppText tone="muted">{mode === 'performers' ? t('events.performers.intro') : t('events.attendance.intro')}</AppText>
+      <ScreenIntro text={mode === 'performers' ? t('events.performers.intro') : t('events.attendance.intro')} />
 
       {mode === 'performers' ? (
         <Section icon="performer" title={t('events.performers.chosen', { n: parts.size })}>

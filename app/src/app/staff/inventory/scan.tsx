@@ -10,6 +10,7 @@ import { Button } from '@/components/button';
 import { Notice } from '@/components/notice';
 import { QrScanner } from '@/components/qr-scanner';
 import { Screen } from '@/components/screen';
+import { ScreenIntro } from '@/components/more-text';
 import { readScanText } from '@/lib/scan-text';
 
 /** The label scanner. */
@@ -36,7 +37,7 @@ export default function ScanLabelScreen() {
   return (
     <Screen underHeader>
       <Stack.Screen options={{ title: t('labels.scanTitle') }} />
-      <Notice tone="info">{t('labels.scanIntro')}</Notice>
+      <ScreenIntro text={t('labels.scanIntro')} />
       {notice ? <Notice tone="error">{notice}</Notice> : null}
       <QrScanner onScan={onScan} />
       {notice ? <Button variant="secondary" label={t('labels.scanAgain')} onPress={() => setNotice(null)} /> : null}

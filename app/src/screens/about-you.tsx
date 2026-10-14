@@ -17,6 +17,7 @@ import { Notice } from '@/components/notice';
 import { ProgressBar } from '@/components/progress-bar';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
+import { ScreenIntro } from '@/components/more-text';
 import {
   aboutFormFrom,
   aboutPatch,
@@ -144,7 +145,7 @@ export function AboutYouScreen({ home, standalone }: AboutYouScreenProps) {
 
   return wrap(
     <>
-      <AppText tone="muted">{t('about.intro')}</AppText>
+      <ScreenIntro text={t('about.intro')} />
       <ProgressBar done={step} total={STEPS.length} label={t('about.progress')} showComplete={false}
         valueText={t('about.stepOf', { step: step + 1, total: STEPS.length })} />
       <Section icon="about" title={stepTitles[part]}>

@@ -8,7 +8,6 @@ import { router, Stack, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { EmptyState } from '@/components/empty-state';
 import { ListRow } from '@/components/list-row';
@@ -17,6 +16,7 @@ import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { TextField } from '@/components/text-field';
+import { ScreenIntro } from '@/components/more-text';
 import {
   checkGroupForm,
   createGroup,
@@ -93,7 +93,7 @@ export default function GroupsScreen() {
   return (
     <Screen underHeader>
       {header}
-      <AppText tone="muted">{t('groups.intro')}</AppText>
+      <ScreenIntro text={t('groups.intro')} />
       {groups === undefined ? <LoadingCards /> : null}
       {groups && groups.length === 0 ? <EmptyState icon="groups" title={t('groups.empty')} /> : null}
       {groups?.map((g) => (

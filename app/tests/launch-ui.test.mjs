@@ -237,3 +237,54 @@ test('inner header bars are night with a gold title and gold line; dark mode fil
   assert.match(src('components/icon.tsx'), /tone && \(solid \|\| isDark\)/);
   assert.match(menu, /backgroundColor: colors\.bar \}/);
 });
+
+// ---------------------------------------------------------------- #363 UI audit fixes 1, 2, 4, 7
+
+test('help paragraphs show their first sentence and "ⓘ More" (en, te, hi; abbreviations kept)', async () => {
+  const { firstSentence } = await import('../src/lib/first-sentence.ts');
+  assert.deepEqual(firstSentence('Every seva item is here with its label code. Open one to lend it or take it back.'), {
+    first: 'Every seva item is here with its label code.',
+    rest: 'Open one to lend it or take it back.',
+  });
+  // A short first sentence keeps the next one; a short rest is not hidden.
+  assert.equal(firstSentence('Newest first. Tap a name to open the profile. Someone with no visits yet may need a call.').first, 'Newest first. Tap a name to open the profile.');
+  assert.equal(firstSentence('Only the facilitator changes these lessons for the class. Thank you.').rest, '');
+  assert.equal(firstSentence('Only the area of the student, e.g. Koti, not the full address. Never the house number.').first, 'Only the area of the student, e.g. Koti, not the full address.');
+  assert.equal(firstSentence('विद्यार्थी ऐप में मेरा QR खोलें और कैमरे के सामने रखें। बाहर होने पर चेक-इन फिर भी सहेजा जाता है।').rest, 'बाहर होने पर चेक-इन फिर भी सहेजा जाता है।');
+  assert.ok(firstSentence('విద్యార్థిని యాప్‌లో నా QR తెరవమని అడగండి. తరగతి బయట ఉంటే చెక్-ఇన్ గుర్తుపెట్టబడుతుంది.').rest.length > 0);
+  // Section descriptions and screen intros use it; the More button is a real disclosure button.
+  assert.match(src('components/section.tsx'), /<MoreText text=\{description\} \/>/);
+  const more = src('components/more-text.tsx');
+  assert.match(more, /accessibilityRole="button"/);
+  assert.match(more, /aria-expanded=\{open\}/);
+  for (const screen of ['app/staff/inventory/index.tsx', 'app/staff/levels/index.tsx', 'app/staff/assessments/index.tsx', 'app/staff/(tabs)/follow-up.tsx', 'app/staff/settings.tsx']) {
+    assert.match(src(screen), /<ScreenIntro text=/, screen);
+  }
+  for (const lang of ['en', 'te', 'hi']) assert.ok(get(locale(lang), 'common.more') && get(locale(lang), 'common.less'), lang);
+});
+
+test('Check-in opens with one big Scan button; its answer sits under it; a name tap buzzes like a scan', () => {
+  const screen = src('app/staff/(tabs)/attendance.tsx');
+  const scan = screen.indexOf("<Button size=\"large\" icon=\"qr\" label={t('attendance.startScan')}");
+  assert.ok(scan > 0 && scan < screen.indexOf("t('attendance.summary'"), 'Scan comes before the counts');
+  assert.ok(!screen.includes("title={t('attendance.scanSection')}"), 'no repeated "Scan to check in" heading');
+  assert.ok(screen.indexOf('{resultUnderRow ? null : outcomeNotice}') < screen.indexOf("t('attendance.summary'"));
+  assert.match(screen, /setOutcome\(marked\);\n\s+\/\/[^\n]*\n\s+scanFeedback\(/);
+});
+
+test('success moments: the tick pops and the phone buzzes once; buttons and circles sink when pressed', () => {
+  const notice = src('components/notice.tsx');
+  assert.match(notice, /haptic = tone === 'success'/);
+  assert.match(notice, /if \(haptic\) successFeedback\(\);/);
+  assert.match(notice, /isReduceMotionEnabled/);
+  assert.match(src('components/visit-result-notice.tsx'), /<Notice haptic=\{false\} tone=/);
+  assert.match(src('components/button.tsx'), /pressed && !inactive && styles\.pressed/);
+  assert.match(src('components/module-ring.tsx'), /scale: 0\.94/);
+});
+
+test('home boxes: one rule — a box that opens a list shows ›, the number-only box has none', () => {
+  const chip = fnText(today, 'TodayChip');
+  assert.match(chip, /if \(!href\)/);
+  assert.match(chip.slice(chip.indexOf('<Pressable')), /<Icon name="chevron"/);
+  assert.doesNotMatch(chip.slice(0, chip.indexOf('<Pressable')), /<Icon name="chevron"/);
+});

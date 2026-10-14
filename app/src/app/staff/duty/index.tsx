@@ -18,6 +18,7 @@ import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
+import { ScreenIntro } from '@/components/more-text';
 import { dayText, fetchRoster, type Shift } from '@/data/duty';
 
 /** The roster. */
@@ -46,7 +47,7 @@ export default function DutyScreen() {
   return (
     <Screen underHeader wide onRefresh={load}>
       <Stack.Screen options={{ title: t('duty.title') }} />
-      <Notice tone="info">{isGuru ? t('duty.introGuru') : t('duty.introCoordinator')}</Notice>
+      <ScreenIntro text={isGuru ? t('duty.introGuru') : t('duty.introCoordinator')} />
       {isGuru ? <Button icon="add" label={t('duty.add')} onPress={() => router.push({ pathname: '/staff/duty/[id]', params: { id: 'new' } })} /> : null}
       {shifts === undefined ? <LoadingCards /> : null}
       {shifts === null ? (

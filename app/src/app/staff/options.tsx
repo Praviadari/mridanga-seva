@@ -19,6 +19,7 @@ import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { TextField } from '@/components/text-field';
+import { ScreenIntro } from '@/components/more-text';
 import {
   addOption,
   checkLabels,
@@ -133,7 +134,7 @@ export default function OptionListsScreen() {
   return (
     <Screen underHeader onRefresh={load}>
       {header}
-      <AppText tone="muted">{t('options.intro')}</AppText>
+      <ScreenIntro text={t('options.intro')} />
       <ChoiceGroup
         chips
         label={t('options.whichList')}

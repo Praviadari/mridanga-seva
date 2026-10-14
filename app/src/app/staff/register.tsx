@@ -42,6 +42,7 @@ import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { StatusText } from '@/components/status-text';
 import { TextField } from '@/components/text-field';
+import { ScreenIntro } from '@/components/more-text';
 import {
   aboutFormFrom,
   aboutPatch,
@@ -387,7 +388,7 @@ export default function RegisterStudentScreen() {
   return (
     <Screen underHeader onRefresh={refreshWaiting}>
       {header}
-      <AppText tone="muted">{t('register.intro')}</AppText>
+      <ScreenIntro text={t('register.intro')} />
       {showRestored ? (
         <DraftNotice
           notes={restored?.form.writtenConsent || restored?.form.photoConsent ? [t('drafts.consentAgain')] : []}

@@ -20,6 +20,7 @@ import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { TextField } from '@/components/text-field';
+import { ScreenIntro } from '@/components/more-text';
 import {
   checkSettings,
   fetchSettings,
@@ -109,7 +110,7 @@ export default function SettingsScreen() {
   return (
     <Screen underHeader>
       {header}
-      <AppText tone="muted">{t('settings.intro')}</AppText>
+      <ScreenIntro text={t('settings.intro')} />
 
       <Section icon="time" title={t('settings.windowTitle', { centre: form.centreName })} description={t('settings.windowHint')}>
         {form.centreId === null ? (

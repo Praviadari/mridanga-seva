@@ -1,4 +1,4 @@
-// A short buzz for the result of a QR scan (D7-20; docs/DECISIONS.md #239), so the coordinator at the door
+// A short buzz for the result of a QR scan or a tap on a name (D7-20; docs/DECISIONS.md #239), so the coordinator at the door
 // feels the scan landed without looking at the screen. Uses expo-haptics
 // (https://docs.expo.dev/versions/v57.0.0/sdk/haptics/); the phone's own "touch vibration" setting can turn it
 // off. Nothing on the web version.
@@ -16,4 +16,10 @@ export function scanFeedback(worked: boolean): void {
   void Haptics.notificationAsync(
     worked ? Haptics.NotificationFeedbackType.Success : Haptics.NotificationFeedbackType.Error,
   ).catch(() => undefined);
+}
+
+/** A short success buzz when something is saved or decided (UI audit 14-10-2026, #363). Never throws; nothing on the web. */
+export function successFeedback(): void {
+  if (Platform.OS === 'web') return;
+  void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
 }

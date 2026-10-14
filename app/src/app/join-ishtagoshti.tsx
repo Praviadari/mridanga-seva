@@ -23,6 +23,7 @@ import { Screen } from '@/components/screen';
 import { SignOutButton } from '@/components/sign-out-button';
 import { Section } from '@/components/section';
 import { TextField } from '@/components/text-field';
+import { ScreenIntro } from '@/components/more-text';
 import {
   ageGroup,
   confirmParentCode,
@@ -94,7 +95,7 @@ export default function JoinIshtagoshtiScreen() {
   return (
     <Screen header={<BrandHeader compact />}>
       <AppText variant="title">{t('ishtagoshtiJoin.title')}</AppText>
-      <AppText tone="muted">{t('ishtagoshtiJoin.intro')}</AppText>
+      <ScreenIntro text={t('ishtagoshtiJoin.intro')} />
       {body}
       <Button variant="link" label={t('ishtagoshtiJoin.back')} onPress={back} />
       <SignOutButton variant="link" />

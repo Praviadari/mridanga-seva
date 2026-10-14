@@ -22,6 +22,7 @@ import { RouteIdGuard } from '@/components/route-id-guard';
 import { Screen } from '@/components/screen';
 import { SyllabusItemCard } from '@/components/syllabus-item-card';
 import { TextField } from '@/components/text-field';
+import { ScreenIntro } from '@/components/more-text';
 import { fetchStaff } from '@/data/student-overview';
 import {
   fetchStudentSyllabus,
@@ -145,7 +146,7 @@ function SyllabusTickOffScreenContent() {
         name={student.fullName}
         details={[`${student.rollNo} · ${t('syllabus.studentLevel', { level: levelName(t, student.levelId) })}`]}
       />
-      <AppText>{t('syllabus.intro')}</AppText>
+      <ScreenIntro text={t('syllabus.intro')} />
 
       {levelIds.length > 1 ? (
         <ChoiceGroup

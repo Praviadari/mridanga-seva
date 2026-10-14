@@ -21,6 +21,7 @@ import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
 import { TextField } from '@/components/text-field';
+import { ScreenIntro } from '@/components/more-text';
 import { fetchCoordinatorsBoard, type CoordinatorsBoard, type Person } from '@/data/coordinators';
 import { formatDateTime } from '@/lib/dates';
 import { findWaitingPeople, MIN_WAITING_SEARCH } from '@/lib/guru-tools';
@@ -86,7 +87,7 @@ export default function CoordinatorsScreen() {
   return (
     <Screen underHeader wide onRefresh={load}>
       <Stack.Screen options={{ title: t('coordinators.title') }} />
-      <AppText tone="muted">{t('coordinators.intro')}</AppText>
+      <ScreenIntro text={t('coordinators.intro')} />
 
       {board === undefined ? <LoadingCards /> : null}
       {board === null ? (

@@ -5614,3 +5614,22 @@ as on the Home ring) because the pale dark tints looked murky on night. 592 cont
 
 **Why.** The flat royal bar read as a generic office app and fought the warm page; in dark mode the boxes looked like
 blue panels and the brown accents like mud.
+
+## 363. UI audit fixes before launch: one-line help, Check-in scan first, success moments, one rule for the home boxes — 14 Oct 2026
+
+**Status: branch `launch-ui` (update).**
+
+**Decision.** From the UI/UX audit of 14-10-2026 (overall 6.8/10; worktree shots-launch-ui/UI_AUDIT_14-10-2026.md),
+Praveen chose fixes 1, 2, 4 and 7. (1) The help paragraph at the top of 29 screens and every section description show
+their first sentence and an "ⓘ More" disclosure button for the rest (components/more-text.tsx ScreenIntro / MoreText,
+lib/first-sentence.ts: English, Telugu and Hindi full stops, common abbreviations kept, a first sentence under 24
+characters keeps the next); no new texts to translate. (2) Check-in opens with one large "Scan to check in" button, the
+how-to and the location note as one line with More, the scan's answer right under the scanner, then the counts and
+Find by name; the repeated "Scan to check in" heading is gone. (4) Success moments: a success notice's tick pops in
+(spring; none with reduced motion) and the phone gives one short success buzz (expo-haptics, already in the APK); the
+attendance card keeps its own scan buzz, and a tap on a name now buzzes like a scan; buttons sink a little (scale 0.97)
+and home circles (0.94) when pressed. (7) The home boxes follow one rule: a box that opens a list shows a small ›, the
+number-only box has none. JS only.
+
+**Why.** The audit's weakest scores were inner-screen clarity (5.5) and delight (4); these are the low-risk fixes that
+reach phones as an update before launch.

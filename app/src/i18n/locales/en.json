@@ -18,7 +18,9 @@
     "fixFieldsAbove": "Some fields need a fix ({{count}}). Each has its message under it, above.",
     "linkOpensInBrowser": "The link opens in your web browser. When you are done there, come back to this app and sign in.",
     "foundCount_one": "{{count}} found",
-    "foundCount_other": "{{count}} found"
+    "foundCount_other": "{{count}} found",
+    "more": "More",
+    "less": "Less"
   },
   "password": {
     "show": "Show",

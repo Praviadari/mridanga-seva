@@ -20,6 +20,7 @@ import { ListRow } from '@/components/list-row';
 import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
+import { ScreenIntro } from '@/components/more-text';
 import {
   fetchFollowUpQueue,
   isMine,
@@ -112,7 +113,7 @@ export default function FollowUpScreen() {
   return (
     <Screen underHeader wide onRefresh={load}>
       {header}
-      <AppText tone="muted">{t('followUp.intro')}</AppText>
+      <ScreenIntro text={t('followUp.intro')} />
       {haveMine ? (
         <ChoiceGroup
           label={t('followUp.scope')}

@@ -116,6 +116,10 @@ function TodayChip({ item }: { item: TodayItem }) {
         pressed && item.attention && styles.pressed,
       ]}>
       {content}
+      {/* One rule for the boxes (#363): a box that opens a list shows ›; a number-only box has none. */}
+      <View style={styles.chevron}>
+        <Icon name="chevron" size={16} color={item.attention ? colors.warning : colors.textMuted} />
+      </View>
     </Pressable>
   );
 }
@@ -207,6 +211,11 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.7,
+  },
+  chevron: {
+    position: 'absolute',
+    top: spacing.xs,
+    right: spacing.xs,
   },
   chipLabel: {
     lineHeight: 18,

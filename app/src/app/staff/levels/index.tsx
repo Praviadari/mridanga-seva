@@ -14,6 +14,7 @@ import { ListRow } from '@/components/list-row';
 import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
+import { ScreenIntro } from '@/components/more-text';
 import { countMaterialsByLevel } from '@/data/materials';
 import { fetchSyllabusByLevel, type LevelSyllabus } from '@/data/syllabus-editor';
 import { levelName } from '@/i18n/labels';
@@ -42,7 +43,7 @@ export default function LevelsScreen() {
   return (
     <Screen underHeader onRefresh={load}>
       <Stack.Screen options={{ title: t('syllabusEditor.title') }} />
-      <Notice tone="info">{isGuru ? t('syllabusEditor.introGuru') : t('syllabusEditor.introStaff')}</Notice>
+      <ScreenIntro text={isGuru ? t('syllabusEditor.introGuru') : t('syllabusEditor.introStaff')} />
 
       {loaded === undefined ? <LoadingCards /> : null}
       {loaded === null ? (

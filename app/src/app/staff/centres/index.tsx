@@ -7,7 +7,6 @@ import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useAuth } from '@/auth/auth-provider';
-import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { Columns } from '@/components/columns';
 import { GuruOnly } from '@/components/guru-only';
@@ -15,6 +14,7 @@ import { ListRow } from '@/components/list-row';
 import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
+import { ScreenIntro } from '@/components/more-text';
 import { fetchCentres, type Centre } from '@/data/centres';
 
 /** The list of centres. */
@@ -52,7 +52,7 @@ export default function CentresScreen() {
   return (
     <Screen underHeader wide onRefresh={load}>
       {header}
-      <AppText tone="muted">{t('centres.intro')}</AppText>
+      <ScreenIntro text={t('centres.intro')} />
       <Notice tone="info">{t('centres.phoneCheckLater')}</Notice>
       <Button icon="add" label={t('centres.add')} onPress={() => router.push({ pathname: '/staff/centres/[id]', params: { id: 'new' } })} />
       {centres === undefined ? <LoadingCards /> : null}

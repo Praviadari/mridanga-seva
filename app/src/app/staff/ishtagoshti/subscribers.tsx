@@ -23,6 +23,7 @@ import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { StatGrid, StatTile } from '@/components/stat-tile';
 import { TextField } from '@/components/text-field';
+import { ScreenIntro } from '@/components/more-text';
 import { fetchSubscribers, setSubscriberBlocked, type Subscriber, type WeekJoins } from '@/data/ig-subscribers';
 import { formatDate, todayLocal } from '@/lib/dates';
 
@@ -67,7 +68,7 @@ export default function IshtagoshtiSubscribersScreen() {
   return (
     <Screen underHeader wide onRefresh={load}>
       <Stack.Screen options={{ title: t('igSubscribers.title') }} />
-      <AppText tone="muted">{t('igSubscribers.intro')}</AppText>
+      <ScreenIntro text={t('igSubscribers.intro')} />
       {data === undefined ? <LoadingCards /> : null}
       {data === null ? (
         <>

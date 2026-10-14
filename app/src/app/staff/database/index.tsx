@@ -21,6 +21,7 @@ import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { StatusText } from '@/components/status-text';
 import { TextField } from '@/components/text-field';
+import { ScreenIntro } from '@/components/more-text';
 import {
   areasOf,
   fetchStudentDatabase,
@@ -110,7 +111,7 @@ export default function StudentDatabaseScreen() {
   return (
     <Screen underHeader wide onRefresh={load}>
       {header}
-      <AppText tone="muted">{t('database.intro')}</AppText>
+      <ScreenIntro text={t('database.intro')} />
       <Button icon="add" label={t('database.import')} onPress={() => router.push('/staff/database/import')} />
       <TextField
         label={t('database.searchLabel')}

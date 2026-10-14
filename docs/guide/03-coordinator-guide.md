@@ -122,7 +122,7 @@ Open the **Check-in** tab (**Check-in**). The top line says **In class now: N ·
 **By QR code (quickest)**
 
 1. Ask the student to open **My QR** on their phone.
-2. Tap **Scan a QR code**. The first time, allow the camera (*Nothing is recorded or saved.*).
+2. Tap the big **Scan to check in** button at the top. The first time, allow the camera (*Nothing is recorded or saved.*).
 3. Hold the student's code in front of the camera.
 4. The app says **Checked in at 16:05.** When the same student leaves and you scan again, it
    says **Checked out at 18:10. Stayed 2 h 5 min.**

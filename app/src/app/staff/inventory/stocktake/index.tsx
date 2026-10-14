@@ -14,6 +14,7 @@ import { ListRow } from '@/components/list-row';
 import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
+import { ScreenIntro } from '@/components/more-text';
 import { fetchCentres, type Centre } from '@/data/centres';
 import { fetchMyCentreId, fetchStocktakes, startStocktake, type Stocktake } from '@/data/inventory';
 import { formatDateTime } from '@/lib/dates';
@@ -63,7 +64,7 @@ export default function StocktakesScreen() {
   return (
     <Screen underHeader onRefresh={load}>
       <Stack.Screen options={{ title: t('stocktake.title') }} />
-      <Notice tone="info">{t('stocktake.intro')}</Notice>
+      <ScreenIntro text={t('stocktake.intro')} />
       {error ? <Notice tone="error">{error}</Notice> : null}
       {choosable.length > 1 ? (
         <ChoiceGroup<number> chips label={t('stocktake.centre')} choices={choosable.map((c) => ({ value: c.id, label: c.name }))} value={centre ?? choosable[0].id} onChange={setCentre} />

@@ -18,7 +18,9 @@
     "fixFieldsAbove": "कुछ जानकारी ठीक करनी है ({{count}})। ऊपर हर एक के नीचे उसका संदेश है।",
     "linkOpensInBrowser": "लिंक आपके वेब ब्राउज़र में खुलेगा। वहाँ काम पूरा होने के बाद इस ऐप में वापस आकर साइन इन करें।",
     "foundCount_one": "{{count}} मिला",
-    "foundCount_other": "{{count}} मिले"
+    "foundCount_other": "{{count}} मिले",
+    "more": "और पढ़ें",
+    "less": "कम"
   },
   "password": {
     "show": "दिखाएँ",

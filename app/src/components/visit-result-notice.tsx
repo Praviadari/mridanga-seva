@@ -18,13 +18,13 @@ export type VisitResultNoticeProps = {
   result: VisitResult;
 };
 
-/** Green for a change, plain for "nothing changed", red for an unknown code. */
+/** Green for a change, plain for "nothing changed", red for an unknown code. The attendance screen buzzes itself. */
 export function VisitResultNotice({ result }: VisitResultNoticeProps) {
   const { t } = useTranslation();
 
   if (result.action === 'unknown') {
     return (
-      <Notice tone="error" title={t('attendance.unknownTitle')}>
+      <Notice haptic={false} tone="error" title={t('attendance.unknownTitle')}>
         {t('attendance.unknownBody')}
       </Notice>
     );
@@ -36,7 +36,7 @@ export function VisitResultNotice({ result }: VisitResultNoticeProps) {
       // A flagged check-in is saved all the same; the card says why it is flagged (DECISIONS #70).
       const flag = locationFlagText(t, result.locationCheck, result.distanceM, true);
       return (
-        <Notice tone={flag ? 'info' : 'success'} title={title} announced>
+        <Notice haptic={false} tone={flag ? 'info' : 'success'} title={title} announced>
           {flag
             ? `${t('attendance.checkedIn', { time: localTime(result.at) })} ${flag}`
             : t('attendance.checkedIn', { time: localTime(result.at) })}
@@ -45,7 +45,7 @@ export function VisitResultNotice({ result }: VisitResultNoticeProps) {
     }
     case 'out':
       return (
-        <Notice tone="success" title={title}>
+        <Notice haptic={false} tone="success" title={title}>
           {t('attendance.checkedOut', {
             time: localTime(result.at),
             duration: formatDuration(t, result.minutes),
@@ -54,13 +54,13 @@ export function VisitResultNotice({ result }: VisitResultNoticeProps) {
       );
     case 'already_in':
       return (
-        <Notice tone="info" title={title} announced>
+        <Notice haptic={false} tone="info" title={title} announced>
           {t('attendance.alreadyIn')}
         </Notice>
       );
     case 'already_out':
       return (
-        <Notice tone="info" title={title} announced>
+        <Notice haptic={false} tone="info" title={title} announced>
           {t('attendance.alreadyOut')}
         </Notice>
       );

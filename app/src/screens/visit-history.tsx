@@ -19,6 +19,7 @@ import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
+import { ScreenIntro } from '@/components/more-text';
 import { fetchVisitHistory, MONTHS_PER_PAGE, type VisitHistory } from '@/data/visits';
 import { formatDuration, monthName } from '@/i18n/labels';
 import { locationFlagText } from '@/i18n/location-flag';
@@ -71,7 +72,7 @@ export function VisitHistoryScreen({ studentId, subtitle, top }: VisitHistoryScr
       <Stack.Screen options={{ title: t('visitHistory.title') }} />
       {subtitle ? <AppText variant="subtitle" family="sans">{subtitle}</AppText> : null}
       {top}
-      <AppText tone="muted">{t('visitHistory.intro')}</AppText>
+      <ScreenIntro text={t('visitHistory.intro')} />
 
       {history === undefined ? <LoadingCards /> : null}
       {history === null ? (

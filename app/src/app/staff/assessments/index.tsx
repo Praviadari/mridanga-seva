@@ -18,6 +18,7 @@ import { ListRow } from '@/components/list-row';
 import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
+import { ScreenIntro } from '@/components/more-text';
 import { fetchStaffAssessments, type StaffAssessmentItem } from '@/data/assessments';
 import { levelName } from '@/i18n/labels';
 import { formatDateTime } from '@/lib/dates';
@@ -61,7 +62,7 @@ export default function StaffAssessmentsScreen() {
       {isGuru ? (
         <Button icon="add" label={t('assessments.create')} onPress={() => router.push('/staff/assessments/new')} />
       ) : (
-        <Notice tone="info">{t('assessments.coordinatorIntro')}</Notice>
+        <ScreenIntro text={t('assessments.coordinatorIntro')} />
       )}
       {items === undefined ? <LoadingCards /> : null}
       {items && items.length === 0 ? (

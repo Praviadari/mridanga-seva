@@ -10,13 +10,13 @@ import { useTranslation } from 'react-i18next';
 
 import { useAuth } from '@/auth/auth-provider';
 import { AnnouncementCard } from '@/components/announcement-card';
-import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { EmptyState } from '@/components/empty-state';
 import { LoadingCards } from '@/components/loading-cards';
 import { Notice as NoticeBox } from '@/components/notice';
 import { Screen } from '@/components/screen';
 import { StatusText } from '@/components/status-text';
+import { ScreenIntro } from '@/components/more-text';
 import {
   fetchInbox,
   markNoticesRead,
@@ -88,7 +88,7 @@ export function NotificationsScreen() {
   return (
     <Screen underHeader onRefresh={load}>
       {header}
-      <AppText tone="muted">{t('inbox.intro')}</AppText>
+      <ScreenIntro text={t('inbox.intro')} />
       {loaded === undefined ? <LoadingCards /> : null}
       {loaded ? (
         <>

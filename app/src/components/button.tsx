@@ -67,7 +67,9 @@ export function Button({
         variant === 'secondary' && { borderColor: colors.primary, borderWidth: 1.5 },
         variant === 'link' && styles.link,
         size === 'large' && styles.large,
-        (pressed || disabled) && styles.dimmed,
+        // A gentle press: the button sinks a little (#363); a disabled one stays dimmed.
+        pressed && !inactive && styles.pressed,
+        disabled && styles.dimmed,
       ]}>
       {loading ? (
         <ActivityIndicator color={textColour} />
@@ -106,6 +108,10 @@ const styles = StyleSheet.create({
   },
   large: {
     minHeight: 72,
+  },
+  pressed: {
+    opacity: 0.85,
+    transform: [{ scale: 0.97 }],
   },
   dimmed: {
     opacity: 0.6,

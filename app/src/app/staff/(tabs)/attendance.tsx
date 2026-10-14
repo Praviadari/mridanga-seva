@@ -28,6 +28,7 @@ import { Section } from '@/components/section';
 import { StatusText } from '@/components/status-text';
 import { TextField } from '@/components/text-field';
 import { VisitResultNotice } from '@/components/visit-result-notice';
+import { MoreText } from '@/components/more-text';
 import {
   fetchAttendanceToday,
   markVisit,
@@ -180,6 +181,8 @@ export default function MarkAttendanceScreen() {
     const marked = await markVisit(student.id, action, action === 'in' ? await locationForCheckIn() : undefined);
     setTappedId(student.id);
     setOutcome(marked);
+    // The same buzz as a scan, so a tap on a name is felt too (#363).
+    scanFeedback(marked.result !== undefined && marked.result.action !== 'unknown');
     // The answer changes the list at once, so the button shows its new meaning without waiting for the
     // reload (mark_visit changes nothing when the student already is in that state, so a stale tap is safe).
     const { result } = marked;
@@ -221,6 +224,51 @@ export default function MarkAttendanceScreen() {
     <Screen underHeader>
       <Stack.Screen options={{ title: t('attendance.title') }} />
 
+      {/* Scan first, as one big button: what the door needs (UI audit 14-10-2026, #363). The how-to and the
+          location note are one line with "ⓘ More". */}
+      {cameraOpen ? (
+        <>
+          <QrScanner onScan={(text) => void onScan(text)} paused={scanPaused} />
+          {droppedScan ? <Notice tone="info">{t('attendance.waitForLast')}</Notice> : null}
+          {/* Not while a scan is being checked: the next code would be read before this answer (R5-03). */}
+          {scanPaused && !checking ? (
+            <Button
+              size="large"
+              icon="qr"
+              label={t('attendance.scanNext')}
+              onPress={() => {
+                setOutcome(null);
+                setDroppedScan(false);
+                setScanPaused(false);
+                // The position is read while the next student comes up, not after the code (R2-04).
+                warmUpLocation();
+              }}
+            />
+          ) : null}
+          <Button
+            variant="secondary"
+            label={t('attendance.stopScan')}
+            onPress={() => {
+              setCameraOpen(false);
+              setScanPaused(false);
+            }}
+          />
+        </>
+      ) : (
+        <Button size="large" icon="qr" label={t('attendance.startScan')} onPress={() => setCameraOpen(true)} />
+      )}
+      {/* The scan's answer right under the scanner. */}
+      {checking ? (
+        <>
+          <Notice tone="info" title={t('attendance.checkingTitle')} announced>
+            {t('attendance.checkingBody')}
+          </Notice>
+          <ActivityIndicator color={colors.primary} />
+        </>
+      ) : null}
+      {resultUnderRow ? null : outcomeNotice}
+      <MoreText text={`${t('attendance.scanIntro')} ${t('attendanceLocation.why')}`} />
+
       {today === null ? (
         // The scan and the name search still work: a failed list only means the buttons cannot
         // tell who is already in (audit D6-03).
@@ -245,50 +293,6 @@ export default function MarkAttendanceScreen() {
       />
       {noLocation ? <Notice tone="info">{t('attendanceLocation.refusedNote')}</Notice> : null}
 
-      {checking ? (
-        <>
-          <Notice tone="info" title={t('attendance.checkingTitle')} announced>
-            {t('attendance.checkingBody')}
-          </Notice>
-          <ActivityIndicator color={colors.primary} />
-        </>
-      ) : null}
-      {resultUnderRow ? null : outcomeNotice}
-
-      <Section icon="attendance" title={t('attendance.scanSection')} description={t('attendance.scanIntro')}>
-        {cameraOpen ? (
-          <>
-            <QrScanner onScan={(text) => void onScan(text)} paused={scanPaused} />
-            {droppedScan ? <Notice tone="info">{t('attendance.waitForLast')}</Notice> : null}
-            {/* Not while a scan is being checked: the next code would be read before this answer (R5-03). */}
-            {scanPaused && !checking ? (
-              <Button
-                label={t('attendance.scanNext')}
-                onPress={() => {
-                  setOutcome(null);
-                  setDroppedScan(false);
-                  setScanPaused(false);
-                  // The position is read while the next student comes up, not after the code (R2-04).
-                  warmUpLocation();
-                }}
-              />
-            ) : null}
-            <Button
-              variant="secondary"
-              label={t('attendance.stopScan')}
-              onPress={() => {
-                setCameraOpen(false);
-                setScanPaused(false);
-              }}
-            />
-          </>
-        ) : (
-          <Button icon="qr" label={t('attendance.startScan')} onPress={() => setCameraOpen(true)} />
-        )}
-        <AppText variant="small" tone="muted">
-          {t('attendanceLocation.why')}
-        </AppText>
-      </Section>
 
       <Section icon="search" title={t('attendance.searchSection')}>
         <TextField

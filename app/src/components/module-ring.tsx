@@ -358,7 +358,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: spacing.sm,
   },
+  // A circle sinks a little when pressed (#363).
   pressed: {
-    opacity: 0.7,
+    opacity: 0.8,
+    transform: [{ scale: 0.94 }],
   },
 });

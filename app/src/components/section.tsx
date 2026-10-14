@@ -9,6 +9,7 @@ import { cardLook, spacing, useTheme } from '@/theme/use-theme';
 
 import { AppText } from './app-text';
 import { IconBadge, type IconName } from './icon';
+import { MoreText } from './more-text';
 
 /** Props for Section. */
 export type SectionProps = PropsWithChildren<{
@@ -29,7 +30,8 @@ export function Section({ title, description, icon, children }: SectionProps) {
         {icon ? <IconBadge name={icon} size={36} /> : null}
         <View style={styles.headingText}>
           <AppText variant="subtitle">{title}</AppText>
-          {description ? <AppText tone="muted">{description}</AppText> : null}
+          {/* One line; the rest behind "ⓘ More" (UI audit 14-10-2026, #363). */}
+          {description ? <MoreText text={description} /> : null}
         </View>
       </View>
       {children}

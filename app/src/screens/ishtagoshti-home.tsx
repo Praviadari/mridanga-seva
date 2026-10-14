@@ -13,7 +13,6 @@ import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useAuth } from '@/auth/auth-provider';
-import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { EmptyState } from '@/components/empty-state';
 import { openIg, type IgArea } from '@/components/ishtagoshti-parts';
@@ -22,6 +21,7 @@ import { ModuleRing, type Module } from '@/components/module-ring';
 import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
 import { StatGrid, StatTile } from '@/components/stat-tile';
+import { ScreenIntro } from '@/components/more-text';
 import { fetchIshtagoshtiHome, type IshtagoshtiHome as Home } from '@/data/ishtagoshti';
 
 /** I1 for students, staff or subscribers. */
@@ -72,7 +72,7 @@ export function IshtagoshtiHome({ area }: { area: IgArea }) {
 
   return (
     <Screen underHeader onRefresh={load}>
-      <AppText tone="muted">{t('ishtagoshti.intro')}</AppText>
+      <ScreenIntro text={t('ishtagoshti.intro')} />
       {home === undefined ? <LoadingCards /> : null}
       {home === null ? (
         <>

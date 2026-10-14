@@ -24,6 +24,7 @@ import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { StatGrid, StatTile } from '@/components/stat-tile';
+import { ScreenIntro } from '@/components/more-text';
 import {
   categoryName,
   fetchFundBook,
@@ -115,11 +116,13 @@ export default function FundScreen() {
   return (
     <Screen underHeader wide onRefresh={load}>
       {header}
-      <Notice tone="info">
-        {book.isKeeper
-          ? t('fund.introKeeper', { approval: formatRupees(book.approvalLimitPaise), bill: formatRupees(book.billLimitPaise) })
-          : t('fund.introReader')}
-      </Notice>
+      <ScreenIntro
+        text={
+          book.isKeeper
+            ? t('fund.introKeeper', { approval: formatRupees(book.approvalLimitPaise), bill: formatRupees(book.billLimitPaise) })
+            : t('fund.introReader')
+        }
+      />
 
       <StatGrid>
         <StatTile icon="fund" value={formatRupees(book.balancePaise)} label={t('fund.balance')} />

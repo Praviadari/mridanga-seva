@@ -20,6 +20,7 @@ import { ListRow } from '@/components/list-row';
 import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
+import { ScreenIntro } from '@/components/more-text';
 import { fetchInventory, type InventoryItem } from '@/data/inventory';
 import { formatDate, todayLocal, localDate } from '@/lib/dates';
 import { searchFold } from '@/lib/search-text';
@@ -72,7 +73,7 @@ export default function InventoryScreen() {
   return (
     <Screen underHeader wide onRefresh={load}>
       <Stack.Screen options={{ title: t('inventory.title') }} />
-      <Notice tone="info">{isGuru ? t('inventory.introGuru') : t('inventory.introStaff')}</Notice>
+      <ScreenIntro text={isGuru ? t('inventory.introGuru') : t('inventory.introStaff')} />
       {isGuru ? (
         <Button icon="add" label={t('inventory.add')} onPress={() => router.push({ pathname: '/staff/inventory/[id]', params: { id: 'new' } })} />
       ) : null}

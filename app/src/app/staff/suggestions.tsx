@@ -20,6 +20,7 @@ import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { Chip } from '@/components/status-chip';
+import { ScreenIntro } from '@/components/more-text';
 import { fetchSuggestions, removeSuggestion, type Suggestion } from '@/data/suggestions';
 import { levelName } from '@/i18n/labels';
 import { formatDateTime } from '@/lib/dates';
@@ -115,7 +116,7 @@ export default function SuggestionsScreen() {
   return (
     <Screen underHeader onRefresh={load}>
       <Stack.Screen options={{ title: t('suggestions.title') }} />
-      <Notice tone="info">{isGuru ? t('suggestions.introGuru') : t('suggestions.introCoordinator')}</Notice>
+      <ScreenIntro text={isGuru ? t('suggestions.introGuru') : t('suggestions.introCoordinator')} />
       {!isGuru ? (
         <Button icon="add" label={t('suggestions.suggest')} onPress={() => router.push({ pathname: '/staff/materials/[id]', params: { id: 'new' } })} />
       ) : null}

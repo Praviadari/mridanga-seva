@@ -25,6 +25,7 @@ import { Section } from '@/components/section';
 import { StatusText } from '@/components/status-text';
 import { StatGrid, StatTile } from '@/components/stat-tile';
 import { TextField } from '@/components/text-field';
+import { ScreenIntro } from '@/components/more-text';
 import {
   fetchReport,
   rangeOf,
@@ -143,7 +144,7 @@ export default function ReportsScreen() {
   return (
     <Screen underHeader wide>
       <Stack.Screen options={{ title }} />
-      <AppText tone="muted">{isGuru ? t('reports.introGuru') : t('reports.introCoordinator')}</AppText>
+      <ScreenIntro text={isGuru ? t('reports.introGuru') : t('reports.introCoordinator')} />
 
       <Section icon="visits" title={t('reports.rangeTitle')}>
         <ChoiceGroup
