@@ -3,6 +3,9 @@
 
 import { useColorScheme, useWindowDimensions } from 'react-native';
 
+import { isDarkFor } from '@/lib/appearance';
+
+import { useAppearance } from './appearance';
 import { darkPalette, lightPalette, type Palette } from './colors';
 
 /** Space between things, in density-independent pixels. Use these steps, not other numbers. */
@@ -75,11 +78,12 @@ export type Theme = {
 };
 
 /**
- * Returns the palette matching the phone's (or browser's) light/dark setting.
+ * Returns the palette for light or dark: the choice on My profile, else the phone's (or browser's) setting.
  * Re-renders the caller when the user changes that setting.
  */
 export function useTheme(): Theme {
-  const isDark = useColorScheme() === 'dark';
+  // The person's choice on My profile (#361), or the phone's own setting under "Same as phone".
+  const isDark = isDarkFor(useAppearance(), useColorScheme());
   return { colors: isDark ? darkPalette : lightPalette, isDark };
 }
 

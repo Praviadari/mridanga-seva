@@ -1,5 +1,5 @@
 // A3 Profile and app language, for everyone signed in: my name and phone (editable), my email
-// and role (read-only), the language switch (the same picker as on the home screens) and Sign
+// and role (read-only), the language switch (the same picker as on the home screens), light or dark screens (#361) and Sign
 // out, and the app version line (since the simple home, #240). A student also sees their roll number and the way to My QR; the name on the roll is the
 // coordinators' record and changes only through them. Shown by two routes: student/profile.tsx
 // (from the ring on S1) and staff/profile.tsx (from "My profile" at the foot of the staff homes).
@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next';
 
 import { useAuth } from '@/auth/auth-provider';
 import { AppText } from '@/components/app-text';
+import { AppearancePicker } from '@/components/appearance-picker';
 import { Button } from '@/components/button';
 import { DetailGrid } from '@/components/detail-grid';
 import { HeldItemsPanel } from '@/components/held-items';
@@ -178,6 +179,11 @@ export function MyProfileScreen() {
 
       <Section icon="language" title={t('common.language')}>
         <LanguagePicker />
+      </Section>
+
+      {/* Light or dark screens on this phone (#361). */}
+      <Section icon="appearance" title={t('myProfile.appearance')} description={t('myProfile.appearanceHint')}>
+        <AppearancePicker />
       </Section>
 
       {/* Notifications refused or not set up on this phone (#305); nothing while they work. */}

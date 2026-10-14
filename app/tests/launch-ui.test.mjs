@@ -199,3 +199,27 @@ test('icons: a group for In class now, a pie chart for Overview, a medal for Lev
   assert.match(icon, /if \(name === 'drum'\)/);
   assert.match(shortcuts, /key: 'instruments', icon: 'drum'/);
 });
+
+// ---------------------------------------------------------------- #361 light or dark on My profile
+
+test('My profile offers Same as phone / Light / Dark, remembered on this phone, and the theme follows it', async () => {
+  const { appearanceFrom, isDarkFor, APPEARANCES } = await import('../src/lib/appearance.ts');
+  assert.deepEqual([...APPEARANCES], ['system', 'light', 'dark']);
+  assert.equal(appearanceFrom(null), 'system');
+  assert.equal(appearanceFrom('dark'), 'dark');
+  assert.equal(appearanceFrom('purple'), 'system');
+  assert.equal(isDarkFor('system', 'dark'), true);
+  assert.equal(isDarkFor('system', 'light'), false);
+  assert.equal(isDarkFor('light', 'dark'), false);
+  assert.equal(isDarkFor('dark', 'light'), true);
+  assert.match(src('theme/use-theme.ts'), /isDarkFor\(useAppearance\(\), useColorScheme\(\)\)/);
+  const store = src('theme/appearance.ts');
+  assert.match(store, /Appearance\.setColorScheme\(choice === 'system' \? 'unspecified' : choice\)/);
+  assert.match(store, /if \(choice === 'system'\) removeLocal\(KEY\)/);
+  assert.match(src('screens/my-profile.tsx'), /<AppearancePicker \/>/);
+  for (const lang of ['en', 'te', 'hi']) {
+    for (const key of ['myProfile.appearance', 'myProfile.appearanceHint', 'myProfile.appearanceChoices.system', 'myProfile.appearanceChoices.light', 'myProfile.appearanceChoices.dark']) {
+      assert.ok(get(locale(lang), key), `${lang} ${key}`);
+    }
+  }
+});

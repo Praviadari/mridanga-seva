@@ -123,6 +123,8 @@ const SHAPES = {
   // Launch UI (docs/DECISIONS.md #350): the side menu's button in the staff headers.
   menu: 'menu-outline',
   todo: 'checkmark-done-circle-outline',
+  // Light or dark screens on My profile (#361).
+  appearance: 'contrast-outline',
   // Instruments (#353): drawn as the app's own drum (components/mridanga-mark.tsx), not musical notes, which
   // Practice uses. The Ionicons name is only the fallback shape.
   drum: 'musical-notes-outline',

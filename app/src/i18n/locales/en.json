@@ -1139,6 +1139,13 @@
       "nameInvalid": "Use letters and spaces only; the name holds a hidden or control character.",
       "nameTaken": "This is the name of the Guru or a coordinator. Add your surname or an initial.",
       "phoneInvalid": "Enter a phone number of 7 to 15 digits; it may start with +."
+    },
+    "appearance": "Appearance",
+    "appearanceHint": "Light or dark screens on this phone. Same as phone follows the phone's own setting.",
+    "appearanceChoices": {
+      "system": "Same as phone",
+      "light": "Light",
+      "dark": "Dark"
     }
   },
   "admin": {

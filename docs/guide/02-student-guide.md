@@ -111,7 +111,7 @@ The home screen is the first tab, **Home**. From top to bottom:
 | **My level** | Your level (Beginner, Intermediate or Advanced), a progress bar of the syllabus items ticked, and **See every item** |
 | **Screens** (the ring) | Round buttons around the drum: **My QR**, **Announcements**, **My progress**, **Assessments**, **Practice**, **Attendance**, **My profile** and **Events & polls** |
 | **Announcements** | The latest three announcements for you. **New** marks the ones you have not opened; **New for you: N** counts them. **All announcements** opens the full list |
-| Foot of the page | The language picker, **My profile**, **Notifications**, **Sign out**, and the version line |
+| Person (top left), bell (top right) | **My profile** (language, **Appearance**: light or dark screens, **Sign out**, the version line) and your **Notifications** inbox |
 
 At the bottom of the screen are four tabs: **Home**, **My QR**, **News** (announcements) and **Slokas** (sloka study).
 

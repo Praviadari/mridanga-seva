@@ -48,7 +48,7 @@ The **Home** tab, from top to bottom:
 | Part | What it does |
 |---|---|
 | Menu button (☰, top left) | Opens the **side menu** with everything that is not on the home (below) |
-| Bell, person (top right) | Your **Notifications** inbox with the unread count; **My profile** (language, **Sign out**, version) |
+| Bell (top right) | Your **Notifications** inbox with the unread count. **My profile** (language, **Appearance**: light or dark screens, **Sign out**, version) is your card at the top of the side menu |
 | **In class now** | How many students are checked in. Tap to open **In class now** |
 | **Check-ins today** | Check-ins so far today (a number to read; the **Check-in** tab opens the screen) |
 | **To do** | Everything waiting for you, amber when there is anything: people at the **Welcome desk**, calls due, feedback asked of you, recordings to review. Tap to see the list |

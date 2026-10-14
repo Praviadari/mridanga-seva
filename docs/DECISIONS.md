@@ -5585,3 +5585,16 @@ that opens My profile (staff/profile). The app's name and motto left the menu's 
 opens.
 
 **Why.** Praveen 14-10-2026: the profile belongs at the top of the menu; the repeated app name said nothing new.
+
+## 361. Light or dark screens: a choice on My profile — 14 Oct 2026
+
+**Status: branch `launch-ui` (update).**
+
+**Decision.** My profile has an Appearance section under Language: **Same as phone** (the default), **Light**, **Dark**.
+The choice applies at once to every screen (theme/use-theme.ts reads it through theme/appearance.ts), is remembered on
+this device only (lib/local-storage.ts key `appearance`; Same as phone removes it), and is not saved to the profile, so
+two phones of one person can differ. On Android and iOS it is also handed to the phone (Appearance.setColorScheme), so
+date pickers and alerts follow; the web follows the app's own colours. No new package.
+
+**Why.** Praveen 14-10-2026 asked where to change light and dark in the app; following only the phone's setting left
+no way to choose inside the app, as international apps allow.
