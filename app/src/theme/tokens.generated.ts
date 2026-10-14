@@ -101,7 +101,7 @@ export const semantic = {
     shadow: 'transparent',
     overlay: 'rgba(0, 0, 0, 0.6)',
     pressedOverlay: 'rgba(255, 246, 232, 0.08)',
-    header: '#1B1E4B',
+    header: '#22307A',
     headerDeep: '#0B0C26',
     onHeader: '#FFF6E8',
     onHeaderMuted: '#E6D6C0',

@@ -5560,3 +5560,16 @@ unchanged and still checked (576 pairs). The website keeps its own dark colours 
 
 **Why.** The colours speak of Krishna: night blue for His śyāma complexion, gold for His pītāmbara, cream for the
 sandalwood offered to Him; the old brown-black dark page fought the blue header.
+
+## 359. Header bars and tab navigation by Material Design / iOS rules — 14 Oct 2026
+
+**Status: branch `launch-ui` (update).**
+
+**Decision.** Praveen: "as per international standards only". (1) In dark mode the header bars and the home band end in
+the same royal blue as in light mode (indigo.650 #22307A, was indigo.800), a clear step above the midnight page
+(#358), with the standard 1 px divider under the bars; no decorative line. (2) The bottom tabs (Home, Check-in,
+Students, Follow-ups, News) are top-level destinations: no back arrow on them (Material Design 3 and Apple's guidelines;
+the back arrow is for screens opened from another screen), the menu button (☰) stays in their header bars as in
+Gmail or Google Photos, and the phone's Back from any tab returns to Home (`backBehavior="firstRoute"`, now explicit).
+
+**Why.** In dark mode the bars merged into the page; members asked why a tab shows ☰ and not ←.

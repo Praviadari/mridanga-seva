@@ -37,6 +37,9 @@ export default function StaffTabsLayout() {
 
   return (
     <Tabs
+      // The tabs are top-level screens: no back arrow on them (Material Design / iOS), and the phone's Back from any
+      // tab returns to Home (Praveen 14-10-2026, #359).
+      backBehavior="firstRoute"
       screenLayout={documentTitleLayout}
       screenOptions={{
         ...tabsScreenOptions(colors, width >= SIDEBAR_FROM, fontScale, titleFont),
