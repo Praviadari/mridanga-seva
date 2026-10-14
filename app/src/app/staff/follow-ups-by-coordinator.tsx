@@ -32,7 +32,7 @@ export default function FollowUpsByCoordinatorScreen() {
 
   return (
     <Screen underHeader onRefresh={load}>
-      <Stack.Screen options={{ title: t('staff.followUp') }} />
+      <Stack.Screen options={{ title: t('home.guru.followUps') }} />
       {board === undefined ? <LoadingCards /> : null}
       {board === null ? (
         <>

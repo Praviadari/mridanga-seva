@@ -38,7 +38,9 @@ export function SaffronBand({ maxWidth = maxDashboardWidth, centred, children }:
   return (
     <View
       onLayout={onLayout}
-      style={[styles.band, { paddingTop: insets.top + spacing.lg, backgroundColor: colors.headerBottom }]}>
+      // Once the drawing has the band's size, the page colour sits under it: the wave's last fractional pixel row
+      // then blends into the page instead of showing a dark hairline.
+      style={[styles.band, { paddingTop: insets.top + spacing.lg, backgroundColor: size ? colors.background : colors.headerBottom }]}>
       {/* Light status-bar icons on saffron, while the band is on screen. */}
       <StatusBar style="light" />
       {/* Sized in pixels: on the web an SVG without width/height is drawn 300 x 150 px. */}
@@ -91,10 +93,12 @@ function WebsiteGlow({
   edge: string;
 }) {
   const wave = Math.min(14, height / 8);
+  // The wave's foot runs 2 px past the band's edge, so no anti-aliased hairline of the band shows under it.
+  const foot = height + 2;
   const d =
-    `M0 ${height} L0 ${height - wave * 0.4} ` +
+    `M0 ${foot} L0 ${height - wave * 0.4} ` +
     `C ${width * 0.22} ${height - wave * 1.2}, ${width * 0.45} ${height + wave * 0.2}, ${width * 0.7} ${height - wave * 0.7} ` +
-    `S ${width * 0.95} ${height - wave * 0.6}, ${width} ${height - wave * 0.9} L${width} ${height} Z`;
+    `S ${width * 0.95} ${height - wave * 0.6}, ${width} ${height - wave * 0.9} L${width} ${foot} Z`;
   return (
     <>
       <Defs>

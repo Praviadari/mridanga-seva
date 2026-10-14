@@ -43,20 +43,28 @@ test('every screen the old staff homes offered is still offered: a tab, a circle
   for (const name of ['index', 'attendance', 'students', 'follow-up', 'announcements']) assert.match(tabs, new RegExp(`name="${name}"`));
 });
 
-test('each staff home has eight circles, the Guru and the coordinator their own', () => {
+test('each staff home has eight circles, none repeating a tab, the Guru and the coordinator their own', () => {
   const ring = fnText(shortcuts, 'StaffModules');
   const [guru, coordinator] = ring.split(/\n\s+: \[/);
-  const count = (text) => (text.match(/key: '|shared\.\w+,/g) ?? []).length;
+  const count = (text) => (text.match(/key: '|shared\.\w+,|\bregister,/g) ?? []).length;
   assert.equal(count(guru.slice(guru.indexOf('guru\n'))), 8, 'Guru ring');
   assert.equal(count(coordinator.slice(0, coordinator.indexOf(']'))), 8, 'coordinator ring');
   // No second row of small circles any more (#241's rows went to the side menu).
   assert.doesNotMatch(ring, /more=/);
+  // No circle repeats a bottom tab, and the home has no second Check-in (Praveen 14-10-2026).
+  for (const tab of ['/staff/follow-up', '/staff/follow-ups-by-coordinator', '/staff/attendance', '/staff/students', '/staff/announcements']) {
+    assert.ok(!ring.includes(`'${tab}'`), `ring repeats ${tab}`);
+  }
+  assert.doesNotMatch(today, /<Button/);
+  // The middle Today box is a number only: Overview is a circle, Check-in a tab.
+  assert.doesNotMatch(today, /href: '\/staff\/(overview|mark-attendance)'/);
+  assert.match(fnText(shortcuts, 'staffMenuGroups'), /href: '\/staff\/follow-ups-by-coordinator'/);
 });
 
 test('the side menu never opens a tab screen as a second copy (R4-01) and lists only stack screens', () => {
   const groups = fnText(shortcuts, 'staffMenuGroups');
-  for (const tab of ['/staff/attendance', '/staff/students', '/staff/follow-up', '/staff/announcements', "/staff'"]) {
-    assert.ok(!groups.includes(`'${tab}`), `menu opens the tab ${tab}`);
+  for (const tab of ['/staff/attendance', '/staff/students', '/staff/follow-up', '/staff/announcements', '/staff']) {
+    assert.ok(!groups.includes(`'${tab}'`), `menu opens the tab ${tab}`);
   }
   assert.match(fnText(shortcuts, 'openMenuItem'), /router\.push\(item\.href\)/);
 });

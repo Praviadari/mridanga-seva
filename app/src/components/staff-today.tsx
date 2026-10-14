@@ -1,20 +1,20 @@
 // What the coordinator and Guru homes show between the header and the circles (audit phase 5 U1-01, U1-08, U4-01;
 // docs/DECISIONS.md #339, #340; since the launch UI #351): three Today boxes on one line (in class now; check-ins
-// today, or this week for the Guru; the "to do" total, amber when anything waits, opening staff/waiting.tsx) and one
-// big "Scan to check in" button that opens Check-in with the camera on. WaitingForYou (one row per thing that waits,
+// today, or this week for the Guru; the "to do" total, amber when anything waits, opening staff/waiting.tsx). The
+// big Scan button left the home (Praveen 14-10-2026: Check-in was there twice; the Check-in tab is one tap and starts
+// with Scan to check in). WaitingForYou (one row per thing that waits,
 // most urgent first) is the To do screen's list. Numbers from staff_dashboard() (src/data/home.ts), loaded by the home.
 // While loading the numbers show "–", never 0.
 
 import { router, type Href } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import type { StaffDashboard } from '@/data/home';
 import { radii } from '@/theme/tokens.generated';
 import { spacing, useTheme } from '@/theme/use-theme';
 
 import { AppText } from './app-text';
-import { Button } from './button';
 import { Icon, type IconName } from './icon';
 import { ListRow } from './list-row';
 
@@ -25,23 +25,14 @@ export type StaffTodayProps = {
   board: StaffDashboard | null | undefined;
 };
 
-/** Window height (px) under which the Scan button is drawn at the normal height. */
-const SHORT_SCREEN = 800;
-
-/** Opens Mark attendance (the tab, not a second copy of it: R4-01) with the camera on. */
-export function openScanner() {
-  // A new value each time, so the tab opens the camera again when it is already open behind the home.
-  router.navigate({ pathname: '/staff/attendance', params: { scan: String(Date.now()) } });
-}
-
-/** The Today line and the Scan button; Waiting for you comes under the ring (WaitingForYou, #351). */
+/** The Today line: three boxes above the ring (#351). */
 export function StaffToday({ guru, board }: StaffTodayProps) {
   const { t } = useTranslation();
-  const { height } = useWindowDimensions();
   const value = (n: number | undefined) => (board ? n : undefined);
   const waiting = board ? waitingTotal(board) : undefined;
   // Three boxes on one line (#351): in class now; today's check-ins (the Guru: who came this week); and the total
-  // of what waits for this person, amber when there is any, opening Waiting for you (staff/waiting.tsx).
+  // of what waits for this person, amber when there is any, opening Waiting for you (staff/waiting.tsx). The middle
+  // box is a number only: its screen is already a circle (Overview) or a tab (Check-in), Praveen 14-10-2026.
   const today: TodayItem[] = [
     { key: 'here', icon: 'hereNow', count: value(board?.hereNow), label: t('home.today.hereNow'), href: '/staff/here-now' },
     guru
@@ -50,14 +41,12 @@ export function StaffToday({ guru, board }: StaffTodayProps) {
           icon: 'students',
           count: value(board?.cameThisWeek),
           label: t('home.today.cameThisWeek', { count: board?.cameThisWeek ?? 0 }),
-          href: '/staff/overview',
         }
       : {
           key: 'visits',
           icon: 'visits',
           count: value(board?.visitsToday),
           label: t('home.today.visitsToday', { count: board?.visitsToday ?? 0 }),
-          href: '/staff/mark-attendance',
         },
     {
       key: 'waiting',
@@ -75,36 +64,25 @@ export function StaffToday({ guru, board }: StaffTodayProps) {
           <TodayChip key={item.key} item={item} />
         ))}
       </View>
-      {/* Large where the screen is tall enough; on a short phone the normal height keeps the home to one screen (#351). */}
-      <Button size={height >= SHORT_SCREEN ? 'large' : 'normal'} icon="attendance" label={t('home.today.scan')} onPress={openScanner} />
     </View>
   );
 }
 
-type TodayItem = { key: string; icon: IconName; count: number | undefined; label: string; href: Href; attention?: boolean };
+/** A box of the Today line; without href it is a number to read, not a button. */
+type TodayItem = { key: string; icon: IconName; count: number | undefined; label: string; href?: Href; attention?: boolean };
 
 /** Everything that waits for this person, the sum of Waiting for you's rows. */
 export function waitingTotal(board: StaffDashboard): number {
   return board.signupsWaiting + board.callsDue + board.promotions + board.fundToApprove + board.toReview + board.suggestions;
 }
 
-/** One number of the Today line: tap to open its list. */
+/** One number of the Today line: a button to its list, or (no `href`) a number to read. */
 function TodayChip({ item }: { item: TodayItem }) {
   const { colors } = useTheme();
   const shown = item.count === undefined ? '–' : String(item.count);
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`${shown} ${item.label}`}
-      onPress={() => router.push(item.href)}
-      style={({ pressed }) => [
-        styles.chip,
-        item.attention
-          ? { backgroundColor: colors.warningSurface, borderColor: colors.warningBorder }
-          : { backgroundColor: pressed ? colors.primarySoft : colors.surface, borderColor: colors.cardBorder },
-        pressed && item.attention && styles.pressed,
-      ]}>
-      {/* A box like the website's facts (#351): the number big, its icon, the words under it. */}
+  // A box like the website's facts (#351): the number big, its icon, the words under it.
+  const content = (
+    <>
       <View style={styles.chipTop}>
         <Icon name={item.icon} size={18} color={item.attention ? colors.warning : colors.primary} />
         <AppText variant="number" style={styles.chipNumber}>
@@ -114,6 +92,30 @@ function TodayChip({ item }: { item: TodayItem }) {
       <AppText variant="small" tone="muted" style={[styles.chipLabel, item.attention && { color: colors.text }]}>
         {item.label}
       </AppText>
+    </>
+  );
+  const href = item.href;
+  if (!href) {
+    // Read as one line; drawn flatter than the buttons beside it (no raised surface), so it does not invite a tap.
+    return (
+      <View accessible accessibilityLabel={`${shown} ${item.label}`} style={[styles.chip, { borderColor: colors.border }]}>
+        {content}
+      </View>
+    );
+  }
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${shown} ${item.label}`}
+      onPress={() => router.push(href)}
+      style={({ pressed }) => [
+        styles.chip,
+        item.attention
+          ? { backgroundColor: colors.warningSurface, borderColor: colors.warningBorder }
+          : { backgroundColor: pressed ? colors.primarySoft : colors.surface, borderColor: colors.cardBorder },
+        pressed && item.attention && styles.pressed,
+      ]}>
+      {content}
     </Pressable>
   );
 }

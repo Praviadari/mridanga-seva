@@ -1,9 +1,9 @@
 // G1 Guru home since the launch UI (14-10-2026, docs/DECISIONS.md #350-#353; was the simple home #240): the band with
-// the menu button (components/side-menu.tsx), then the Today boxes and Scan to check in (components/staff-today.tsx),
+// the menu button (components/side-menu.tsx), then the Today boxes (components/staff-today.tsx),
 // then a ring of eight filled circles (components/staff-shortcuts.tsx). It fits one screen (#351): what waits for the
 // Guru is a count on its circle and the amber To do box (staff/waiting.tsx). Behind the circles: the numbers on
-// Overview (GuruOverview below, staff/overview.tsx), the overdue and escalated follow-ups per coordinator on
-// Follow-ups (GuruFollowUps below, staff/follow-ups-by-coordinator.tsx). Set-up screens are in the side menu. Only
+// Overview (GuruOverview below, staff/overview.tsx); in the side menu the overdue and escalated follow-ups per
+// coordinator (GuruFollowUps below, staff/follow-ups-by-coordinator.tsx). Set-up screens are in the side menu. Only
 // notices stay: "A new version is ready", notifications off (#305), could not load. Numbers: staff_dashboard() through
 // src/data/home.ts. It loads again each time it comes back into view.
 
@@ -67,7 +67,7 @@ export function GuruHome() {
         </>
       ) : null}
       {board === null ? null : <StaffToday guru board={board} />}
-      <StaffModules guru callsDue={board ? board.callsDue : 0} promotionsWaiting={board ? board.promotions : 0} />
+      <StaffModules guru promotionsWaiting={board ? board.promotions : 0} />
     </Screen>
   );
 }

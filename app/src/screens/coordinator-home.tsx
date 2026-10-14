@@ -1,5 +1,5 @@
 // C1 Coordinator home since the launch UI (14-10-2026, docs/DECISIONS.md #350-#353; was the simple home #240): the
-// band with the menu button (components/side-menu.tsx), the Today boxes and Scan to check in (components/staff-today.tsx),
+// band with the menu button (components/side-menu.tsx), the Today boxes (components/staff-today.tsx),
 // then a ring of eight filled circles (components/staff-shortcuts.tsx); it fits one screen (#351). Behind the circles and
 // the menu: the numbers on Overview (CoordinatorOverview below, staff/overview.tsx), the newcomers (NewJoinersList below,
 // staff/new-joiners.tsx), level-ups on C22/C23. What waits is a count on its circle and the amber To do box
@@ -59,7 +59,7 @@ export function CoordinatorHome() {
         </>
       ) : null}
       {board === null ? null : <StaffToday guru={false} board={board} />}
-      <StaffModules guru={false} callsDue={board ? board.callsDue : 0} promotionsWaiting={board ? board.promotions : 0} />
+      <StaffModules guru={false} promotionsWaiting={board ? board.promotions : 0} />
     </Screen>
   );
 }

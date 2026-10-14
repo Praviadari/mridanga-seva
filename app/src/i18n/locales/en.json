@@ -565,7 +565,7 @@
     }
   },
   "profile": {
-    "title": "Student profile",
+    "title": "Student",
     "loadFailed": "Could not load this student.",
     "notFound": "This student is not in the records.",
     "unknownPerson": "unknown",
@@ -3405,12 +3405,12 @@
     "learnAll": "All"
   },
   "studentDetails": {
-    "title": "About the student",
+    "title": "Student details",
     "staffOnly": "From About you or the desk. Staff only.",
     "loadFailed": "Could not load the student's details.",
     "referredBy": "Brought by {{name}}",
     "edit": "Edit these details",
-    "editTitle": "About the student",
+    "editTitle": "Student details",
     "saved": "Details saved.",
     "save": "Save details"
   },

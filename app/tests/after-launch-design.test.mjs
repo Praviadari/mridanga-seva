@@ -75,8 +75,7 @@ test('the staff homes load their numbers in one request, and fall back when 0063
   assert.match(home, /PGRST202/);
 });
 
-test('Scan at the door opens the attendance tab (navigate, not a second copy) with the camera on (#339)', () => {
-  assert.match(read('src/components/staff-today.tsx'), /router\.navigate\(\{ pathname: '\/staff\/attendance', params: \{ scan:/);
+test('the attendance tab still opens the camera for ?scan= (#339; the home button left in the launch UI, #351)', () => {
   assert.match(read('src/app/staff/(tabs)/attendance.tsx'), /params\.scan !== seenScan[\s\S]{0,80}setCameraOpen\(true\)/);
 });
 

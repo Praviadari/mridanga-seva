@@ -5442,8 +5442,11 @@ below it; every other staff screen is in a side menu opened from a menu button a
 each tab's header bar (components/side-menu.tsx). Plain React Native (Modal + Animated), no drawer package, so it
 reaches installed phones as an update. Groups: Class, Teaching, Seva, Reports, Set-up (Guru), You; the maha-mantra
 at its foot. It closes on the close button, a tap beside it, Android Back and Escape; focus moves into it and back
-to the button; rows are 52 px and wrap at large text. Guru ring: Overview, Follow-ups (by coordinator), Level-ups,
-Newcomers, Assessments, Lessons, Events & polls, Ishtagoshti. Coordinator ring: Welcome desk, Newcomers,
+to the button; rows are 52 px and wrap at large text. No circle or button repeats a bottom tab (Praveen 14-10-2026:
+Check-in and Follow-ups were there twice): the home has no Scan button (the Check-in tab starts with Scan to check
+in) and the Guru has no Follow-ups circle (Follow-ups by coordinator is in the menu's Class group; the To do box
+counts the calls). Guru ring: Overview, Level-ups, Newcomers, Assessments, Welcome desk, Lessons, Events & polls,
+Ishtagoshti. Coordinator ring: Welcome desk, Newcomers,
 Instruments, Seva roster, Events & polls, Assessments, Lessons, Ishtagoshti. Running the class stays at its
 address (links) but is no longer offered: its screens are the menu's Reports and Set-up groups. One file
 (components/staff-shortcuts.tsx) holds the ring and the menu, so a screen is never offered twice or forgotten
@@ -5458,8 +5461,9 @@ class week on the home, the rest in a menu, the most important in the footer.
 
 **Decision.** Team decision (Praveen 14-10-2026): a home fits one phone screen. Waiting for you's rows moved to
 their own screen (staff/waiting.tsx, titled "To do"); the home shows three Today boxes (in class now; check-ins
-today, or this week for the Guru; the "to do" total, amber when above 0). Homes use `Screen compact` (8 px above and
-below); under an 800 px window the Scan button is the normal height and the fact card shorter; a ring under 340 px
+today, or this week for the Guru; the "to do" total, amber when above 0). The middle box is a number only, not a
+button: its screen is already the Overview circle or the Check-in tab. Homes use `Screen compact` (8 px above and
+below); under an 800 px window the student home's fact card is shorter; a ring under 340 px
 uses 56 px circles and a 128 px drum circle. Checked with no scroll at 375 x 812 and 360 x 760; at the phone's large
 text sizes the grid and scrolling stay (nothing is cut).
 

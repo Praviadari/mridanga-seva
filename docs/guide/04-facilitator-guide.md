@@ -43,11 +43,10 @@ The **Home** tab, from top to bottom (it fits one screen):
 |---|---|
 | Menu button (☰, top left) | Opens the **side menu** (below) |
 | Bell, person (top right) | Your **Notifications** inbox; **My profile** |
-| **In class now**, **This week**, **To do** | Students checked in now; students who came this week (from Monday, or the last 7 days: a setting; tap for **Overview**); everything waiting for your decision, amber when there is anything (tap for the list) |
-| **Scan to check in** | Opens **Check-in** with the camera on, as for coordinators |
-| The circles | **Overview** (students who came this week, in class, newcomers, follow-ups to check, the level-up queue, students per level and per status), **Follow-ups** (overdue and escalated, per coordinator), **Level-ups** (to decide; [promotion](09-learning-and-community.md#moving-up-a-level-promotion)), **Newcomers**, **Assessments**, **Lessons**, **Events & polls**, **Ishtagoshti** |
+| **In class now**, **This week**, **To do** | Students checked in now; students who came this week (from Monday, or the last 7 days: a setting; a number to read, the **Overview** circle has the details); everything waiting for your decision, amber when there is anything (tap for the list) |
+| The circles | **Overview** (students who came this week, in class, newcomers, follow-ups to check, the level-up queue, students per level and per status), **Level-ups** (to decide; [promotion](09-learning-and-community.md#moving-up-a-level-promotion)), **Newcomers**, **Assessments**, **Welcome desk**, **Lessons**, **Events & polls**, **Ishtagoshti**. Scanning at the door and the calls are the **Check-in** and **Follow-ups** tabs |
 
-The **side menu**: **Class** (**Welcome desk**, **Groups**, **Seva roster**, **Instruments**),
+The **side menu**: **Class** (**Follow-ups by coordinator**: overdue and escalated calls of each coordinator, **Groups**, **Seva roster**, **Instruments**),
 **Teaching** (**Practice**, **Suggestions**), **Seva** (**Class fund**), **Reports** (**Reports**, **How
 students found us**, **Change history**), **Set-up** (**Coordinators**, **All students**, **Centres**,
 **Settings**, **Form choices**), **You** (**My profile**, **Notifications**); the maha-mantra at its foot.

@@ -1,8 +1,8 @@
 // Where every staff screen is offered, for the coordinator home (C1) and the Guru home (G1). Since the launch
 // UI (14-10-2026, Praveen: "too many icons on the Guru dashboard"; docs/DECISIONS.md #350, #351) there are
 // three places, each holding a screen once:
-// - the bottom tabs (staff/(tabs)/_layout.tsx): Home, Mark attendance (C5), Students (C7), Follow-up calls
-//   (C10) and Announcements (C15), used every class or every week by everyone;
+// - the bottom tabs (staff/(tabs)/_layout.tsx): Home, Check-in (C5), Students (C7), Follow-ups (C10) and News
+//   (C15), used every class or every week by everyone; no circle repeats a tab (Praveen 14-10-2026);
 // - the ring on the home (StaffModules below): eight circles around the drum, like the student home, with what
 //   this role opens in a usual class week; a count on a circle says something waits;
 // - the side menu (components/side-menu.tsx, from the menu button in the header): everything else, in groups
@@ -10,11 +10,11 @@
 // One file, so the three never offer a screen twice or forget one (tests/launch-ui.test.mjs checks every
 // staff screen of the old home and of Running the class is still in one of them).
 //
-// Coordinator ring: Register a student (the desk), New joiners, Instruments (drums lent at class), Duty roster,
-// Events & polls, Assessments, Syllabus and lessons, Ishtagoshti.
-// Guru ring: Overview, Follow-ups by coordinator (overdue and escalated), Promotions (to decide), New joiners,
-// Assessments, Syllabus and lessons, Events & polls, Ishtagoshti.
-// Who is here now and today's visits are the Today line above the ring (components/staff-today.tsx).
+// Coordinator ring: Welcome desk, Newcomers, Instruments (drums lent at class), Seva roster, Events & polls,
+// Assessments, Lessons, Ishtagoshti.
+// Guru ring: Overview, Level-ups (to decide), Newcomers, Assessments, Welcome desk, Lessons, Events & polls,
+// Ishtagoshti; Follow-ups by coordinator is in the side menu (the Follow-ups tab and the To do box cover the calls).
+// In class now and today's check-ins are the Today line above the ring (components/staff-today.tsx).
 
 import { router, type Href } from 'expo-router';
 import type { TFunction } from 'i18next';
@@ -26,14 +26,12 @@ import { ModuleRing, type Module } from './module-ring';
 /** Props for StaffModules. */
 export type StaffModulesProps = {
   guru: boolean;
-  /** Calls due for my students (coordinator), or follow-ups overdue or escalated (Guru). */
-  callsDue: number;
   /** Feedback asked of me (coordinator), or nominations to decide (Guru). */
   promotionsWaiting: number;
 };
 
 /** The ring of a staff home. */
-export function StaffModules({ guru, callsDue, promotionsWaiting }: StaffModulesProps) {
+export function StaffModules({ guru, promotionsWaiting }: StaffModulesProps) {
   const { t } = useTranslation();
   const shared = {
     newJoiners: { key: 'newJoiners', icon: 'newJoiner', tone: 'orange', label: t('home.modules.newJoiners'), onPress: () => router.push('/staff/new-joiners') },
@@ -45,18 +43,12 @@ export function StaffModules({ guru, callsDue, promotionsWaiting }: StaffModules
     // On a phone the Ishtagoshti tab does not fit the bottom bar; this opens the tab itself.
     ishtagoshti: { key: 'ishtagoshti', icon: 'ishtagoshti', tone: 'orange', label: t('ishtagoshti.title'), onPress: () => router.push('/staff/ishtagoshti') },
   } satisfies Record<string, Module>;
+  // The desk, where sign-ups are accepted and students registered: both roles (the Guru's Follow-ups circle went,
+  // Praveen 14-10-2026: the Follow-ups tab is the same; follow-ups by coordinator are in the side menu).
+  const register: Module = { key: 'register', icon: 'register', tone: 'green', label: t('staff.registerStudent'), onPress: () => router.push('/staff/register') };
   const ring: Module[] = guru
     ? [
         { key: 'overview', icon: 'status', tone: 'blue', label: t('home.modules.overview'), onPress: () => router.push('/staff/overview') },
-        {
-          key: 'calls',
-          icon: 'calls',
-          tone: 'purple',
-          label: t('staff.followUp'),
-          badge: callsDue,
-          badgeSpoken: t('home.badges.due', { count: callsDue }),
-          onPress: () => router.push('/staff/follow-ups-by-coordinator'),
-        },
         {
           key: 'promotions',
           icon: 'promote',
@@ -68,12 +60,14 @@ export function StaffModules({ guru, callsDue, promotionsWaiting }: StaffModules
         },
         shared.newJoiners,
         shared.assessments,
+        // Not beside Level-ups: two greens side by side would read as one.
+        register,
         shared.syllabus,
         shared.events,
         shared.ishtagoshti,
       ]
     : [
-        { key: 'register', icon: 'register', tone: 'green', label: t('staff.registerStudent'), onPress: () => router.push('/staff/register') },
+        register,
         shared.newJoiners,
         // Phase 2 slice 8 (docs/DECISIONS.md #65): C19 inventory, C20 duty roster.
         { key: 'instruments', icon: 'drum', tone: 'teal', label: t('modules.instruments'), onPress: () => router.push('/staff/inventory') },
@@ -109,7 +103,7 @@ export function staffMenuGroups(guru: boolean, t: TFunction): MenuGroup[] {
       title: t('menu.groups.class'),
       items: guru
         ? [
-            { key: 'register', icon: 'register', label: t('staff.registerStudent'), href: '/staff/register' },
+            { key: 'followUps', icon: 'calls', label: t('home.guru.followUps'), href: '/staff/follow-ups-by-coordinator' },
             { key: 'groups', icon: 'groups', label: t('groups.title'), href: '/staff/groups' },
             { key: 'duty', icon: 'time', label: t('duty.title'), href: '/staff/duty' },
             { key: 'instruments', icon: 'drum', label: t('modules.instruments'), href: '/staff/inventory' },

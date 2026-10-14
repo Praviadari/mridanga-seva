@@ -50,10 +50,9 @@ The **Home** tab, from top to bottom:
 | Menu button (☰, top left) | Opens the **side menu** with everything that is not on the home (below) |
 | Bell, person (top right) | Your **Notifications** inbox with the unread count; **My profile** (language, **Sign out**, version) |
 | **In class now** | How many students are checked in. Tap to open **In class now** |
-| **Check-ins today** | Check-ins so far today. Tap to open **Check-in** |
+| **Check-ins today** | Check-ins so far today (a number to read; the **Check-in** tab opens the screen) |
 | **To do** | Everything waiting for you, amber when there is anything: people at the **Welcome desk**, calls due, feedback asked of you, recordings to review. Tap to see the list |
-| **Scan to check in** | Opens **Check-in** with the camera on |
-| The circles | **Welcome desk**, **Newcomers**, **Instruments**, **Seva roster**, **Events & polls**, **Assessments**, **Lessons**, **Ishtagoshti**. A red number on a circle says something waits there |
+| The circles | **Welcome desk**, **Newcomers**, **Instruments**, **Seva roster**, **Events & polls**, **Assessments**, **Lessons**, **Ishtagoshti**. A red number on a circle says something waits there. To scan at the door, tap the **Check-in** tab |
 
 The **side menu**: **Class** (**Overview**, **Groups**), **Teaching** (**Level-ups**, **Practice**,
 **Suggestions**), **Seva** (**Class fund**), **Reports** (**My reports**), **You** (**My profile**,
