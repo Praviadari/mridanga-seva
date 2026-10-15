@@ -10,6 +10,8 @@ export const choices = {
 /** Semantic colours per scheme, as hex (or rgba for overlays). */
 export const semantic = {
   light: {
+    bodyTop: '#FBF5EC',
+    bodyBottom: '#FBF5EC',
     background: '#FBF5EC',
     surface: '#FFFDF8',
     surfaceRaised: '#FFFFFF',
@@ -64,14 +66,16 @@ export const semantic = {
     onPrimary: '#FFFFFF'
   },
   dark: {
+    bodyTop: '#1A1F55',
+    bodyBottom: '#0A0C24',
     background: '#0E1130',
-    surface: '#161A3D',
-    surfaceRaised: '#1D2148',
+    surface: '#1F2456',
+    surfaceRaised: '#262B60',
     surfaceSunken: '#0A0C24',
     text: '#F6EEE4',
     textMuted: '#C3B5A6',
-    border: '#272C5C',
-    cardBorder: '#272C5C',
+    border: '#2C3170',
+    cardBorder: '#2C3170',
     controlBorder: '#8287C4',
     primarySoft: '#4A3618',
     onPrimarySoft: '#F6C27A',

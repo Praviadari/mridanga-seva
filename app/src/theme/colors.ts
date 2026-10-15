@@ -17,8 +17,14 @@ export const onBrand = '#FFF6E8';
 
 /** Names of the colours every screen may use. */
 export type Palette = {
-  /** Screen background. */
+  /** Screen background: the flat page colour, also the middle of dark mode's night gradient. */
   background: string;
+  /**
+   * Top and foot of the page gradient behind every screen in dark mode (components/page-backdrop.tsx, #371);
+   * in light mode both equal `background`, a flat cream.
+   */
+  bodyTop: string;
+  bodyBottom: string;
   /** Cards, text fields and other raised surfaces. */
   surface: string;
   /** Text fields, sheets and menus: a step above `surface`. */

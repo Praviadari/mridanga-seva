@@ -3,7 +3,8 @@
 // (components/keyboard.tsx, docs/DECISIONS.md #269), lets forms scroll to a field (components/form-focus.tsx), and keeps
 // forms to a readable width on tablets and computers. Home screens put a full-width header band
 // (components/home-header.tsx) above the content and use a wider column. On staff screens a downloaded app
-// update is offered at the top (UpdateNoticeOnScreens, FLOW-06); home screens place it themselves.
+// update is offered at the top (UpdateNoticeOnScreens, FLOW-06); home screens place it themselves. In dark mode a
+// night gradient sits behind the content and does not scroll with it (components/page-backdrop.tsx, #371).
 
 import { BottomTabBarHeightContext } from 'expo-router/tabs';
 import { use, useCallback, useContext, useMemo, useRef, useState, type PropsWithChildren, type ReactNode } from 'react';
@@ -14,6 +15,7 @@ import { maxContentWidth, maxDashboardWidth, spacing, useTheme } from '@/theme/u
 
 import { FormScrollContext } from './form-focus';
 import { KeyboardScrollView } from './keyboard';
+import { PageBackdrop } from './page-backdrop';
 import { UpdateNotice, UpdateNoticeOnScreens } from './update-notice';
 
 /** Props for Screen. */
@@ -41,7 +43,7 @@ export type ScreenProps = PropsWithChildren<{
   compact?: boolean;
 }>;
 
-/** Standard scrolling page with the app background colour. */
+/** Standard scrolling page with the app background: flat cream in light mode, a night gradient in dark mode. */
 export function Screen({ centred, underHeader, header, wide, onRefresh, compact, children }: ScreenProps) {
   const { colors } = useTheme();
   // Inside a tab navigator the tab bar already keeps clear of the phone's bottom edge.
@@ -72,6 +74,8 @@ export function Screen({ centred, underHeader, header, wide, onRefresh, compact,
     <SafeAreaView
       edges={edges}
       style={[styles.fill, { backgroundColor: colors.background }]}>
+      {/* Dark mode's night gradient, fixed behind the scrolling content (#371); light mode stays flat. */}
+      <PageBackdrop />
       <FormScrollContext value={scrollTarget}>
         <KeyboardScrollView
           ref={scroll}

@@ -5748,6 +5748,30 @@ language, label and text size is handled; a guess from the label's length is use
 at 375 px: drum 133 px, every label clear, the ring 8 px shorter than before (the home still does not scroll); 360 px:
 drum 125 px. The fixed 44 px room under the lowest circle became the lowest label's measured height. JS only.
 
+## 371. Dark mode: a night gradient behind every page, cards a step lighter — 15 Oct 2026
+
+**Status: branch `dark-gradient` (update).** Praveen chose option B "gradient on every screen" of three shown (A flat as
+now, B gradient on every screen, C a gold glow on Home only), then option B of two screenshot sets (A: the top stop
+lowered to #181C45, cards as now; B: the mockup's top, cards lighter).
+
+**Decision.** In dark mode every page that uses Screen (components/screen.tsx) has a vertical gradient behind its
+content: bodyTop night.840 #1A1F55 at the top, the page colour night.925 #0E1130 at 45 %, bodyBottom night.950 #0A0C24
+at the foot (components/page-backdrop.tsx, react-native-svg, sized in pixels once measured as the home band is). It
+fills the page frame and does not scroll with the content; screen readers skip it and it takes no taps. Light mode
+stays the flat cream (L1): bodyTop = bodyBottom = background, and nothing is drawn. Header bars, the tab bar, the side
+menu, sheets and the navigators' own background (contentStyle / sceneStyle) stay flat. Because the top stop is lighter
+than the old cards (#161A3D, #362), cards would have looked sunk into the page near the top; dark cards are a step
+lighter: surface night.820 #1F2456, surfaceRaised (fields, sheets) night.760 #262B60, border and cardBorder night.700
+#2C3170 (amends #362's quieter cards). The home and sign-in band (components/saffron-band.tsx) now draws itself only
+down to its wave and paints nothing under it once measured, so the page, flat or gradient, shows under the wave with
+no seam or hairline (it painted the flat page colour there before; a ClipPath would give a jagged edge on Android). The
+contrast check also tests every colour checked on the page on bodyTop, the lightest stop: 688 pairs, 0 low. JS only;
+fingerprint unchanged (23dc7e4a).
+
+**Why.** A flat navy page read as a flat panel; a soft night sky that deepens towards the foot gives the dark mode the
+calm, devotional depth of the website's night band, with the cards clearly raised on it. The range is small
+(#1A1F55 to #0A0C24) so cheap screens show no bands; the real check is on a phone.
+
 ## 380. A new student's first day: registration on the first screen, then "Almost there" — 15 Oct 2026
 
 **Status: branch `launch-ui-student` (update).** From the student screens audit of 15-10-2026 (worktree

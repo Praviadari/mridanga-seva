@@ -38,9 +38,10 @@ export function SaffronBand({ maxWidth = maxDashboardWidth, centred, children }:
   return (
     <View
       onLayout={onLayout}
-      // Once the drawing has the band's size, the page colour sits under it: the wave's last fractional pixel row
-      // then blends into the page instead of showing a dark hairline.
-      style={[styles.band, { paddingTop: insets.top + spacing.lg, backgroundColor: size ? colors.background : colors.headerBottom }]}>
+      // Once the drawing has the band's size, nothing is painted under its wave edge: the page itself shows there, the
+      // flat cream in light mode and the night gradient in dark mode (page-backdrop.tsx, #371), so the wave meets the
+      // page with no seam, and no dark hairline shows in its last fractional pixel row.
+      style={[styles.band, { paddingTop: insets.top + spacing.lg, backgroundColor: size ? 'transparent' : colors.headerBottom }]}>
       {/* Light status-bar icons on saffron, while the band is on screen. */}
       <StatusBar style="light" />
       {/* Sized in pixels: on the web an SVG without width/height is drawn 300 x 150 px. */}
@@ -56,17 +57,11 @@ export function SaffronBand({ maxWidth = maxDashboardWidth, centred, children }:
             <Stop offset="1" stopColor={colors.headerTop} />
           </LinearGradient>
         </Defs>
-        <Rect width={size?.width ?? '100%'} height={size?.height ?? '100%'} fill={`url(#${gradientId})`} />
         {size ? (
-          <WebsiteGlow
-            id={gradientId}
-            width={size.width}
-            height={size.height}
-            gold={colors.headerGold}
-            violet={colors.headerGlow}
-            edge={colors.background}
-          />
-        ) : null}
+          <WebsiteGlow id={gradientId} width={size.width} height={size.height} gold={colors.headerGold} violet={colors.headerGlow} />
+        ) : (
+          <Rect width="100%" height="100%" fill={`url(#${gradientId})`} />
+        )}
       </Svg>
       <View style={[styles.column, { maxWidth }, centred && styles.centred]}>{children}</View>
     </View>
@@ -77,28 +72,15 @@ export function SaffronBand({ maxWidth = maxDashboardWidth, centred, children }:
  * The website's night band (website/src/styles.css .night, #352): a golden halo behind the app's name, a faint
  * violet glow on the left, and a soft wave where the band meets the page.
  */
-function WebsiteGlow({
-  id,
-  width,
-  height,
-  gold,
-  violet,
-  edge,
-}: {
-  id: string;
-  width: number;
-  height: number;
-  gold: string;
-  violet: string;
-  edge: string;
-}) {
+function WebsiteGlow({ id, width, height, gold, violet }: { id: string; width: number; height: number; gold: string; violet: string }) {
   const wave = Math.min(14, height / 8);
-  // The wave's foot runs 2 px past the band's edge, so no anti-aliased hairline of the band shows under it.
-  const foot = height + 2;
+  // The band down to its wave edge; below the wave the page shows through (#371). The last line, along the foot, adds
+  // no area: it keeps the shape's box the band's full size, so each gradient spreads over the band as on a rectangle.
   const d =
-    `M0 ${foot} L0 ${height - wave * 0.4} ` +
+    `M0 0 L0 ${height - wave * 0.4} ` +
     `C ${width * 0.22} ${height - wave * 1.2}, ${width * 0.45} ${height + wave * 0.2}, ${width * 0.7} ${height - wave * 0.7} ` +
-    `S ${width * 0.95} ${height - wave * 0.6}, ${width} ${height - wave * 0.9} L${width} ${foot} Z`;
+    `S ${width * 0.95} ${height - wave * 0.6}, ${width} ${height - wave * 0.9} L${width} 0 Z ` +
+    `M0 ${height} L${width} ${height}`;
   return (
     <>
       <Defs>
@@ -111,9 +93,9 @@ function WebsiteGlow({
           <Stop offset="1" stopColor={violet} stopOpacity={0} />
         </RadialGradient>
       </Defs>
-      <Rect width={width} height={height} fill={`url(#${id}-gold)`} />
-      <Rect width={width} height={height} fill={`url(#${id}-violet)`} />
-      <Path d={d} fill={edge} />
+      <Path d={d} fill={`url(#${id})`} />
+      <Path d={d} fill={`url(#${id}-gold)`} />
+      <Path d={d} fill={`url(#${id}-violet)`} />
     </>
   );
 }

@@ -1,11 +1,13 @@
 // Unit tests for the launch UI (docs/DECISIONS.md #350-#357, Praveen 14-10-2026): the staff side menu, eight
 // circles per home, nothing removed (only moved), a home that does not scroll, the website look through the shared
-// parts, the module colour of a screen, and the international names in en/te/hi.
+// parts, the module colour of a screen, and the international names in en/te/hi; later tweaks (#358-#371) at the end.
 // Run from app/: npm test.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
+
+import { contrast, loadTokens, luminance, palette } from '../../design/tokens.mjs';
 
 import './stubs/register.mjs';
 
@@ -121,7 +123,8 @@ test('Waiting for you is one amber Today box with the total, opening its own scr
 test('the band is the website night with gold; buttons are pills; cards have the website shadow and corners', () => {
   const band = src('components/saffron-band.tsx');
   assert.match(band, /stopColor=\{gold\}/);
-  assert.match(band, /<Path d=\{d\} fill=\{edge\} \/>/, 'wave edge');
+  // The band is drawn down to its wave edge; the page shows under the wave (#371).
+  assert.match(band, /<Path d=\{d\} fill=\{`url\(#\$\{id\}\)`\} \/>/, 'wave edge');
   assert.match(src('components/button.tsx'), /borderRadius: radii\.pill/);
   const theme = src('theme/use-theme.ts');
   assert.match(theme, /cardRadius = 14/);
@@ -288,4 +291,52 @@ test('home boxes: one rule — a box that opens a list shows ›, the number-onl
   assert.match(chip, /if \(!href\)/);
   assert.match(chip.slice(chip.indexOf('<Pressable')), /<Icon name="chevron"/);
   assert.doesNotMatch(chip.slice(0, chip.indexOf('<Pressable')), /<Icon name="chevron"/);
+});
+
+// ---------------------------------------------------------------- #371 dark mode's night gradient behind every page
+
+test('dark pages fade from a lighter navy at the top to the deepest night; light pages stay flat cream', () => {
+  const tokens = loadTokens();
+  const light = palette(tokens, 'light');
+  const dark = palette(tokens, 'dark');
+  assert.equal(light.bodyTop, light.background);
+  assert.equal(light.bodyBottom, light.background);
+  assert.equal(light.background, '#FBF5EC', 'light mode keeps L1 cream');
+  assert.equal(dark.background, '#0E1130', 'the middle stop is the page colour of #358');
+  assert.ok(luminance(dark.bodyTop) > luminance(dark.background), 'top lighter than the middle');
+  assert.ok(luminance(dark.background) > luminance(dark.bodyBottom), 'foot darker than the middle');
+  // A soft range, so a cheap screen shows no bands; cards keep their edge against the lightest stop.
+  assert.ok(contrast(dark.bodyTop, dark.bodyBottom) < 1.5, 'gradient range too wide');
+  assert.ok(contrast(dark.cardBorder, dark.bodyTop) >= 1.15, 'card edge lost at the top of the page');
+  // Cards look raised everywhere: lighter than the lightest page stop, fields and sheets a step above them.
+  assert.ok(luminance(dark.surface) > luminance(dark.bodyTop), 'cards sink into the top of the page');
+  assert.ok(luminance(dark.surfaceRaised) > luminance(dark.surface), 'fields not above the cards');
+  // bodyTop is the lightest stop, under light text: every colour checked on the page is checked on it too.
+  for (const kind of ['text', 'nonText']) {
+    const pairs = tokens.pairs[kind].map(([fg, bg]) => `${fg} on ${bg}`);
+    for (const pair of pairs.filter((p) => p.endsWith(' on background'))) {
+      assert.ok(pairs.includes(pair.replace(/background$/, 'bodyTop')), `${kind}: ${pair} has no bodyTop pair`);
+    }
+  }
+});
+
+test('every page draws the gradient behind its content in dark mode only, fixed, silent and untouchable', () => {
+  const screen = src('components/screen.tsx');
+  // The first thing inside the page frame, outside the scrolling content, so it stays put.
+  assert.match(screen, /style=\{\[styles\.fill, \{ backgroundColor: colors\.background \}\]\}>\n(\s*\{\/\*[^\n]*\*\/\}\n)?\s*<PageBackdrop \/>\n\s*<FormScrollContext/);
+  const backdrop = src('components/page-backdrop.tsx');
+  assert.match(backdrop, /if \(!isDark\) return null;/);
+  assert.match(backdrop, /pointerEvents="none"/);
+  assert.match(backdrop, /aria-hidden/);
+  assert.match(backdrop, /importantForAccessibility="no-hide-descendants"/);
+  assert.match(backdrop, /x1="0" y1="0" x2="0" y2="1"/, 'vertical');
+  const stops = [...backdrop.matchAll(/<Stop offset=\{?"?([\w.]+)"?\}? stopColor=\{colors\.(\w+)\} \/>/g)].map((m) => `${m[1]} ${m[2]}`);
+  assert.deepEqual(stops, ['0 bodyTop', 'MIDDLE background', '1 bodyBottom']);
+  assert.match(backdrop, /const MIDDLE = 0\.45;/);
+  // Header bars, the tab bar and the side menu stay flat.
+  assert.doesNotMatch(src('theme/use-theme.ts') + menu, /PageBackdrop|bodyTop/);
+  // The home and sign-in band paints nothing under its wave: the page, flat or gradient, meets it with no seam.
+  const band = src('components/saffron-band.tsx');
+  assert.match(band, /backgroundColor: size \? 'transparent' : colors\.headerBottom/);
+  assert.doesNotMatch(band, /colors\.background/);
 });
