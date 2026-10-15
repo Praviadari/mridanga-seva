@@ -69,6 +69,8 @@ export default function MyQrScreen() {
       return () => {
         cancelled = true;
       };
+      // loadAttempt: Try again asks again while the screen stays in view.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [profileId, loadAttempt]),
   );
 
