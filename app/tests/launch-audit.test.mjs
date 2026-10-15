@@ -62,6 +62,16 @@ test('Register a student asks possible_duplicates at Next and on Accept, and sho
   assert.match(screen, /<PossibleDuplicates place="accept"/);
 });
 
+test('a form filled from a sign-up that did not connect the login says the sign-up still waits (#392)', () => {
+  const screen = src('app/staff/register.tsx');
+  assert.match(screen, /fromSignUp: !!fromSignUp/);
+  assert.match(screen, /saved\.fromSignUp && !saved\.registered\.linked/);
+  for (const lang of ['en', 'te', 'hi']) {
+    const json = JSON.parse(readFileSync(new URL(`../src/i18n/locales/${lang}.json`, import.meta.url), 'utf8'));
+    assert.match(json.register.signUpNotLinked, /\{\{name\}\}/, lang);
+  }
+});
+
 // ---------------------------------------------------------------- #391 My QR asks again on focus
 
 test('My QR loads the card each time it comes into view, not once per mount', () => {

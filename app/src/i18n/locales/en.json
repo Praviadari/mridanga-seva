@@ -435,6 +435,8 @@
     "doneTitle": "Student registered",
     "doneBody": "{{name}} is registered. Roll number: {{rollNo}}",
     "linked": "Their app login is now connected to this record.",
+    "signUpNotLinkedTitle": "The sign-up is still waiting",
+    "signUpNotLinked": "The app login of {{name}} was not connected to this record: a child's record is never connected by itself, and an adult's only when the email is the same. The sign-up stays in the waiting list. If this login should open this record in the app, the Guru links it: Coordinators, the person, \"Or link to a student record\". Do not register {{name}} again.",
     "alreadySaved": "This student had already been saved: the answer to the first Save did not arrive. Nothing new was stored; check the details on the student's record.",
     "another": "Register another student",
     "done": "Done",

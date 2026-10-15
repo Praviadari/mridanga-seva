@@ -165,7 +165,8 @@ export default function RegisterStudentScreen() {
   const [busy, setBusy] = useState(false);
   // True when the database answered that this student is a minor although this phone's date says not (D6-13).
   const [serverMinor, setServerMinor] = useState(false);
-  const [saved, setSaved] = useState<{ registered: Registered; name: string; detailsFailed: boolean } | null>(null);
+  // fromSignUp: the form was filled from a waiting sign-up, so an unconnected login is worth saying (#392).
+  const [saved, setSaved] = useState<{ registered: Registered; name: string; detailsFailed: boolean; fromSignUp: boolean } | null>(null);
   const [extras, setExtras] = useState<Extras | null>(null);
   const [about, setAbout] = useState<AboutForm>(() => restored?.about ?? emptyAboutForm(classLocale().country));
   const [aboutErrors, setAboutErrors] = useState<AboutErrors>({});
@@ -417,7 +418,7 @@ export default function RegisterStudentScreen() {
       return;
     }
     if (result.registered) {
-      setSaved({ registered: result.registered, name: result.registered.fullName, detailsFailed });
+      setSaved({ registered: result.registered, name: result.registered.fullName, detailsFailed, fromSignUp: !!fromSignUp });
       void refreshWaiting();
     } else if (result.errorKey === 'register.errors.minorNeedsConsent' && !minor) {
       setServerMinor(true);
@@ -453,6 +454,13 @@ export default function RegisterStudentScreen() {
         </Notice>
         {saved.registered.repeated ? <AppText>{t('register.alreadySaved')}</AppText> : null}
         {saved.registered.linked ? <AppText>{t('register.linked')}</AppText> : null}
+        {/* Filled from a sign-up but not connected (a child's record, #276, or another email): the sign-up stays in
+            the waiting list, so say so and who can connect it, before the desk registers the person twice (#392). */}
+        {saved.fromSignUp && !saved.registered.linked ? (
+          <Notice tone="info" title={t('register.signUpNotLinkedTitle')}>
+            {t('register.signUpNotLinked', { name: saved.name })}
+          </Notice>
+        ) : null}
         {saved.detailsFailed ? <Notice tone="error">{t('register.detailsFailed')}</Notice> : null}
         {/* The new student is at the desk: their first visit, now (#341). */}
         <CheckInNow studentId={saved.registered.id} name={saved.name} />

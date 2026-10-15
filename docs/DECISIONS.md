@@ -5892,3 +5892,18 @@ is asked each time My QR comes into view (useFocusEffect); the card on screen (o
 until the answer comes, and without signal the saved card shows with its note as before. JS only.
 
 **Why.** 0045 promised "My QR shows the new code the next time it is online"; the tab broke that promise.
+
+## 392. Fill the form from a sign-up: say when the login was not connected — 15 Oct 2026
+
+**Status: branch `launch-audit`.** Launch audit finding LA-03. When the desk fills the form from a waiting sign-up and
+saves, the login is connected to the new record only for an adult whose email on the form is the sign-up's (#96,
+0047/0048); a child's record never is (#276), and a corrected email is not either. The card then said only "Student
+registered", the sign-up came back in the waiting list at the next reload, and the desk could register the same
+person a second time (Accept with the sign-up's adult date, or the form again). Now, when the form was filled from a
+sign-up and the answer says not linked, the card adds "The sign-up is still waiting": why, that the Guru links the
+login if it should open this record (Coordinators, the person, "Or link to a student record"), and not to register the
+person again. JS only; strings en/te/hi (te/hi drafts). Whether such a sign-up should leave the desk's list by itself is
+a team question (launch audit report, Q-3).
+
+**Why.** The registration weekend's desk works from the waiting list; an entry that never goes away invites a second
+record.
