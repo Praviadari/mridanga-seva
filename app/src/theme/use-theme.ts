@@ -8,6 +8,7 @@ import { isDarkFor } from '@/lib/appearance';
 
 import { useAppearance } from './appearance';
 import { darkPalette, lightPalette, type Palette } from './colors';
+import { serifFont } from './tokens.generated';
 
 /** Space between things, in density-independent pixels. Use these steps, not other numbers. */
 export const spacing = {
@@ -135,13 +136,12 @@ export function tabsScreenOptions(colors: Palette, sidebar: boolean, fontScale =
 }
 
 /**
- * A header bar's title: the website's serif (theme/fonts.tsx useHeadingFont, English only) a little larger, as on the
- * home band (#355); the phone's bold sans otherwise.
+ * A header bar's title: the language's serif (theme/fonts.tsx useHeadingFont); the English one a little larger, as on
+ * the home band (#355), the Telugu and Hindi ones at the bar's own size (#367); the phone's bold sans until loaded.
  */
 function headerTitle(colors: Palette, titleFont: string | undefined) {
-  return titleFont
-    ? ({ color: colors.headerGold, fontFamily: titleFont, fontSize: 22, fontWeight: 'normal' } as const)
-    : ({ color: colors.headerGold } as const);
+  if (!titleFont) return { color: colors.headerGold } as const;
+  return { color: colors.headerGold, fontFamily: titleFont, fontWeight: 'normal', ...(titleFont === serifFont ? { fontSize: 22 } : null) } as const;
 }
 
 /**

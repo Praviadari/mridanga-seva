@@ -88,5 +88,6 @@ test('the heading font is the subset Cormorant Garamond with its licence, small 
   assert.match(read('app/assets/fonts/OFL-cormorant-garamond.txt'), /SIL Open Font License/);
   // Loaded at run time (an update), never through the expo-font config plugin (that would need an APK).
   assert.doesNotMatch(read('app/app.json'), /expo-font/);
-  assert.match(read('app/src/theme/fonts.tsx'), /useFonts\(/);
+  // Since #367 by expo-font's loadAsync, the current language's font only.
+  assert.match(read('app/src/theme/fonts.tsx'), /loadAsync\(\{ \[family\]: source \}\)/);
 });

@@ -5689,3 +5689,22 @@ removed (unused); about.stepOf and about.previous reused. JS only.
 
 **Why.** The audit scored forms 6/10: one long page at the desk, optional fields not tucked away. Two short steps keep
 the required part on one screen at a busy door, the way world-class sign-up forms do.
+
+## 367. Telugu and Hindi headings in Noto Serif, one font per language — 15 Oct 2026
+
+**Status: branch `launch-ui-2` (update).** UI audit 14-10-2026 fix 8; amends #337 ("English only").
+
+**Decision.** Telugu headings use Noto Serif Telugu SemiBold and Hindi headings Noto Serif Devanagari SemiBold, so the
+serif look of the website reaches all three languages (the audit's languages score was held back by "the serif brand
+exists only in English"). Both come from @expo-google-fonts (noto-serif-telugu 0.4.2, noto-serif-devanagari 0.4.1,
+OFL; licences in app/assets/fonts), subset with fontTools to the letters the language uses (Telugu U+0C01-0C6F without
+the archaic letters and fractions; Devanagari U+0900-0970 without the Vedic and other-language letters), digits,
+punctuation, the danda, ZWJ/ZWNJ, the dotted circle and the rupee sign, with the default shaping features (every
+conjunct rule kept) and no hinting: Telugu 181 KB, Hindi 158 KB (339 KB raw, about 115 KB compressed; the conjunct
+shapes are most of it, so the 300 KB aim was not met without cutting them). theme/fonts.tsx loads only the current
+language's font (expo-font loadAsync; on the web only that file is fetched, measured), English keeps Cormorant at its
+larger sizes (serifType, bar title 22 px); Telugu and Hindi keep the sans sizes (title 26/38, subtitle 19/28, the bar's
+own size), whose line heights already leave room for the marks above and below. Until the font is loaded or if it
+fails, the sans as before. JS and assets only: fingerprint unchanged (23dc7e4a), reaches phones with an update.
+
+**Why.** One brand voice in every language the class uses; Noto is Google's open family made for these scripts.

@@ -3,7 +3,7 @@
 
 import { Text, type TextProps } from 'react-native';
 
-import { useHeadingFont } from '@/theme/fonts';
+import { isLatinSerif, useHeadingFont } from '@/theme/fonts';
 import { serifType } from '@/theme/tokens.generated';
 import { typography, useTheme } from '@/theme/use-theme';
 
@@ -15,8 +15,8 @@ export type AppTextProps = TextProps & {
   tone?: 'default' | 'muted' | 'primary' | 'danger' | 'success';
   /**
    * 'sans' keeps a title or subtitle in the plain font: person names, titles staff typed, numbers and bols
-   * (the serif is for the app's own English headings, docs/DECISIONS.md #337). Default: serif for titles and
-   * subtitles in English once the font is loaded.
+   * (the serif is for the app's own headings, docs/DECISIONS.md #337, #367). Default: serif for titles and
+   * subtitles once the language's heading font is loaded.
    */
   family?: 'serif' | 'sans';
 };
@@ -37,8 +37,12 @@ export function AppText({ variant = 'body', tone = 'default', family, style, ...
     success: colors.success,
   }[tone];
   const heading = variant === 'title' || variant === 'subtitle';
-  // One family per weight: with a custom font Android must not also get a fontWeight.
-  const face = heading && serif && family !== 'sans' ? { ...serifType[variant], fontFamily: serif, fontWeight: 'normal' as const } : null;
+  // One family per weight: with a custom font Android must not also get a fontWeight. The English serif is set larger;
+  // the Telugu and Hindi serifs keep the sans sizes (#367).
+  const face =
+    heading && serif && family !== 'sans'
+      ? { ...(isLatinSerif(serif) ? serifType[variant] : null), fontFamily: serif, fontWeight: 'normal' as const }
+      : null;
   return (
     <Text
       accessibilityRole={heading ? 'header' : undefined}

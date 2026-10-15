@@ -1,10 +1,11 @@
 // Unit tests for the second round of UI audit fixes (UI_AUDIT_14-10-2026 fixes 5, 6, 8, 9; docs/DECISIONS.md #365
-// onwards, Praveen 14-10-2026 "do remaining too to build world class"): light list rows, the Welcome desk in two steps.
+// onwards, Praveen 14-10-2026 "do remaining too to build world class"): light list rows, the Welcome desk in two steps,
+// Telugu and Hindi serif headings.
 // Run from app/: npm test.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, statSync } from 'node:fs';
 
 const src = (path) => readFileSync(new URL(`../src/${path}`, import.meta.url), 'utf8');
 
@@ -82,4 +83,24 @@ test('Welcome desk: step 1 Who, Next checks it; step 2 More details with Save; t
     for (const key of ['stepWho', 'stepMore', 'next']) assert.ok(texts.register[key], `${lang} register.${key}`);
     assert.ok(texts.about.stepOf.includes('{{step}}') && texts.about.previous, lang);
   }
+});
+// ---------------------------------------------------------------- #367 Telugu and Hindi serif headings
+
+test('Telugu and Hindi headings have their own serif: subset Noto Serif files with licences, small enough for an update', () => {
+  const fonts = src('theme/fonts.tsx');
+  for (const [lang, file] of [['te', 'NotoSerifTelugu-SemiBold'], ['hi', 'NotoSerifDevanagari-SemiBold']]) {
+    assert.ok(fonts.includes(`${lang}: { family: '${file}', source: require('../../assets/fonts/${file}.ttf') }`), lang);
+    const size = statSync(new URL(`../assets/fonts/${file}.ttf`, import.meta.url)).size;
+    assert.ok(size < 190 * 1024, `${file}: ${size} bytes`);
+  }
+  for (const licence of ['OFL-noto-serif-telugu.txt', 'OFL-noto-serif-devanagari.txt']) {
+    assert.match(readFileSync(new URL(`../assets/fonts/${licence}`, import.meta.url), 'utf8'), /SIL Open Font License/);
+  }
+  // Only the current language's font is loaded; a failure keeps the sans.
+  assert.match(fonts, /const \{ family, source \} = HEADING_FONTS\[language\];/);
+  assert.match(fonts, /\.catch\(\(\) => undefined\)/);
+  assert.match(fonts, /\}, \[language\]\);/);
+  // English keeps its larger serif sizes; Telugu and Hindi keep the sans sizes.
+  assert.match(src('components/app-text.tsx'), /\.\.\.\(isLatinSerif\(serif\) \? serifType\[variant\] : null\)/);
+  assert.match(src('theme/use-theme.ts'), /\.\.\.\(titleFont === serifFont \? \{ fontSize: 22 \} : null\)/);
 });
