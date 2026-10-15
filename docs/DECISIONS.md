@@ -5669,3 +5669,23 @@ JS only.
 
 **Why.** The audit found 3-4 grey lines under every name (inner-screen density 5.5/10); world-class lists (Google
 Classroom, Linear) show one line and let the detail screen carry the rest.
+
+## 366. The Welcome desk in two steps: Who is joining, then More details — 15 Oct 2026
+
+**Status: branch `launch-ui-2` (update).** UI audit 14-10-2026 fix 6.
+
+**Decision.** Register a student (Welcome desk) is two steps. Step 1 "Who is joining": the waiting sign-ups and Accept
+above, then full name, date of birth (age hint), phone, email, level; "Next: more details" checks those four fields
+with the same rules as Save (checkStudentDetails) and goes to the first problem. Step 2 "More details": the name and
+age at the top with "Back to the previous step", area, pincode, About-you (Dīkṣā name, instruments, gender), mentor,
+the adult's privacy notice or the parent's consent for a minor, then "More about the student (optional)" folded
+(components/fold.tsx: a disclosure button with aria-expanded; open by itself when a sign-up or a kept draft answered
+it, or when Save finds a problem inside), and Save. Save is unchanged: every check, register_student with the form's
+request id (#126 one record however often it is sent), the details after it; a problem in a step-1 field (e.g. the
+parent's email typed as the student's) takes the desk back to step 1 and to the field. "Step 1 of 2" is a status line
+read out when the step changes; the page returns to its top. Android's Back on step 2 goes to step 1 (only while the
+desk is in front). New texts register.stepWho / stepMore / next in en/te/hi (te/hi drafts); register.studentSection
+removed (unused); about.stepOf and about.previous reused. JS only.
+
+**Why.** The audit scored forms 6/10: one long page at the desk, optional fields not tucked away. Two short steps keep
+the required part on one screen at a busy door, the way world-class sign-up forms do.

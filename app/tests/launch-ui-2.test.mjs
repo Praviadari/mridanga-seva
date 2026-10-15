@@ -1,5 +1,5 @@
 // Unit tests for the second round of UI audit fixes (UI_AUDIT_14-10-2026 fixes 5, 6, 8, 9; docs/DECISIONS.md #365
-// onwards, Praveen 14-10-2026 "do remaining too to build world class"): light list rows.
+// onwards, Praveen 14-10-2026 "do remaining too to build world class"): light list rows, the Welcome desk in two steps.
 // Run from app/: npm test.
 
 import { test } from 'node:test';
@@ -47,4 +47,39 @@ test('announcement cards: one short meta line; "New" never on your own post; the
   const student = element(src('app/student/(tabs)/announcements.tsx'), 'AnnouncementCard');
   assert.ok(!student.includes('files.count') && !student.includes('audienceName') && !student.includes('announcements.edited'));
   assert.match(student, /\[formatDateTime\(a\.publishAt\), \.\.\.authorLine\(/);
+});
+
+// ---------------------------------------------------------------- #366 Welcome desk in two steps
+
+test('Welcome desk: step 1 Who, Next checks it; step 2 More details with Save; the optional block folded', () => {
+  const desk = src('app/staff/register.tsx');
+  assert.match(desk, /const STEP_ONE: readonly \(keyof RegistrationForm\)\[\] = \['fullName', 'dob', 'phone', 'email'\];/);
+  // Next checks only step 1's fields with the same rules as Save, then shows step 2.
+  const next = desk.slice(desk.indexOf('function next()'), desk.indexOf('async function save()'));
+  assert.match(next, /checkStudentDetails\(form\)/);
+  assert.match(next, /focusFirst\(ORDER, problems\)/);
+  assert.match(next, /setStep\(2\)/);
+  // Save is unchanged at heart: every check, the same register call (the request id keeps a repeat single, #126).
+  const save = desk.slice(desk.indexOf('async function save()'), desk.indexOf('function registerAnother()'));
+  assert.match(save, /checkStudentDetails\(form\), \.\.\.\(minor \? checkGuardianConsent\(form\) : \{\}\)/);
+  assert.match(save, /registerStudent\(form, serverMinor, adultNotice\)/);
+  assert.match(save, /pendingFocus\.current = marks;\n\s+setStep\(1\);/);
+  assert.match(save, /if \(inMore\) setMoreOpen\(true\);/);
+  // One action per step: Next on step 1, Save on step 2.
+  assert.match(desk, /step === 1 \? \(\n\s+<Button label=\{t\('register\.next'\)\} onPress=\{next\} \/>\n\s+\) : \(\n\s+<Button icon="register" label=\{t\('register\.submit'\)\}/);
+  // The waiting list and Accept live on step 1 only; the parent's consent on step 2.
+  assert.ok(desk.indexOf("{step === 1 ? (\n        <>\n          <ScreenIntro") > 0);
+  assert.ok(desk.indexOf("title={t('register.waitingTitle'") < desk.indexOf("title={t('register.stepWho')}"));
+  assert.ok(desk.indexOf("title={t('register.guardianSection')}") > desk.indexOf("title={t('register.stepMore')}"));
+  assert.match(desk, /<Fold icon="about" title=\{t\('register\.moreTitle'\)\}[^>]*open=\{moreOpen\}/);
+  // Android's Back on step 2 goes to step 1, only while the desk is in front.
+  assert.match(desk, /useFocusEffect\(\n\s+useCallback\(\(\) => \{\n\s+if \(step !== 2 \|\| saved\) return undefined;\n\s+const subscription = BackHandler\.addEventListener/);
+  const fold = src('components/fold.tsx');
+  assert.match(fold, /accessibilityRole="button"/);
+  assert.match(fold, /aria-expanded=\{open\}/);
+  for (const lang of ['en', 'te', 'hi']) {
+    const texts = JSON.parse(src(`i18n/locales/${lang}.json`));
+    for (const key of ['stepWho', 'stepMore', 'next']) assert.ok(texts.register[key], `${lang} register.${key}`);
+    assert.ok(texts.about.stepOf.includes('{{step}}') && texts.about.previous, lang);
+  }
 });

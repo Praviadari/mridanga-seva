@@ -45,6 +45,10 @@ const SHAPES = {
   language: 'language-outline',
   signOut: 'log-out-outline',
   chevron: 'chevron-forward',
+  // A folded block's arrow (components/fold.tsx), turned up while open.
+  expand: 'chevron-down',
+  // Back one step in a form (the Welcome desk's step 2, #366).
+  previous: 'arrow-back',
   add: 'add',
   update: 'cloud-download-outline',
   person: 'person-outline',

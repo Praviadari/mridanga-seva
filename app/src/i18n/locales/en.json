@@ -397,7 +397,9 @@
   "register": {
     "title": "Welcome desk",
     "intro": "Takes about two minutes. Only the name and date of birth are required.",
-    "studentSection": "Student",
+    "stepWho": "Who is joining",
+    "stepMore": "More details",
+    "next": "Next: more details",
     "fullName": "Full name",
     "dob": "Date of birth",
     "dobHint": "It decides whether a parent's consent is needed.",

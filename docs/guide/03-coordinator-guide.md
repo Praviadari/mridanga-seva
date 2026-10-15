@@ -73,7 +73,9 @@ wait for the desk. Tap **Fill the form** on the right person: the form fills wit
 (name, date of birth, email, phone, gender and their About-you answers). **Check the name against
 their Aadhaar or other ID** (never write down the number), take the photo, then save as usual.
 
-**Student**
+The form has two steps (**Step 1 of 2**, **Step 2 of 2**).
+
+**Step 1: Who is joining**
 
 | Field | Notes |
 |---|---|
@@ -81,22 +83,33 @@ their Aadhaar or other ID** (never write down the number), take the photo, then 
 | **Date of birth** | Required. Day-month-year, for example 15-06-2012. The app shows the age |
 | **Phone** | 10 digits |
 | **Email** | The student's own email, if they will use the app. Their login is joined to this record by this email |
+| **Level** | Beginner, Intermediate or Advanced |
+
+Tap **Next: more details**. The app checks these fields first and takes you to any that needs
+correcting.
+
+**Step 2: More details.** The name and age are at the top; **Back to the previous step** (or the
+phone's Back button) returns to step 1 with everything you typed.
+
+| Field | Notes |
+|---|---|
 | **Area** | Only the area, for example Koti. **Not the full address** |
 | **Pincode** | 6 digits |
-| **Level** | Beginner, Intermediate or Advanced |
+| **Dīkṣā (initiated) name**, **Interested in learning** | Optional |
 | **Gender** | Each student gets a coordinator of the same gender |
 | **Mentor coordinator** | **Automatic** (the default): the coordinator of the same gender with the fewest students, or the one whose referral code the student gave. Or pick one yourself |
 
-**More about the student (optional).** The About-you questions: emergency contact (adults; for a
-child the parent above is the contact), how they heard about us (pick the coordinator who brought them,
-or a source), occupation and service areas. The student can change these later in the app.
+**More about the student (optional)** is folded: tap it to open. The About-you questions: emergency
+contact (adults; for a child the parent below is the contact), how they heard about us (pick the
+coordinator who brought them, or a source), occupation and service areas. It opens by itself when
+the sign-up already answered them. The student can change these later in the app.
 
 **Your referral code** is on **My profile**: six letters and digits. Give it to people you invite;
 when they type it in About you, the class knows you brought them, and you become their mentor if you
 share their gender. The class never shows a list of coordinators' names to the public.
 
 **Parent or guardian (under 18 only).** If the date of birth makes the student under 18, the app
-says *Age N — under 18, a parent's consent is needed* and adds this section:
+says *Age N — under 18, a parent's consent is needed* and adds this section to step 2:
 
 1. **Parent's full name**, **Parent's phone** (required) and **Parent's email**.
 2. **Relation to the student**: Mother, Father or Other guardian.
@@ -107,7 +120,8 @@ says *Age N — under 18, a parent's consent is needed* and adds this section:
 5. Tick **The parent has filled in and signed the paper consent form, and I have kept it with the
    class records.** Keep the signed form in the class file.
 
-Tap **Save student**. You see **Student registered** with the new **roll number**, for example
+Tap **Save student** at the end of step 2. If something in step 1 needs correcting, the app goes back
+there to it. You see **Student registered** with the new **roll number**, for example
 `MS-2026-0016`. If the student already made an app account with the same confirmed email, the app
 says *Their app login is now connected to this record.*
 

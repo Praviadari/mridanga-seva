@@ -18,11 +18,16 @@
 // time with Show more; it reloads on focus, on pull-down and with Refresh list. A sign-up without the privacy
 // tick has no Accept (FF-01): Fill the form, where an adult's notice is shown and ticked (#292).
 // After Accept or Save the card's first button checks the new student in (#341, audit U2-01).
+// Since UI audit fix 6 (docs/DECISIONS.md #366) the form is two steps: 1 Who is joining (name, date of birth, phone,
+// email, level; the waiting list above it), Next checks those fields; 2 More details (area, pincode, About-you, mentor,
+// the privacy notice, the parent's consent for a minor) with the optional "More about the student" folded, and Save.
+// Save checks everything as before; a problem in step 1 takes the desk back there, to the field. Android's Back on
+// step 2 goes to step 1.
 
 import { router, Stack, useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { use, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { StyleSheet, View } from 'react-native';
+import { BackHandler, StyleSheet, View } from 'react-native';
 
 import type { MessageKey } from '@/auth/auth-actions';
 import { useAuth } from '@/auth/auth-provider';
@@ -35,7 +40,8 @@ import { Checkbox } from '@/components/checkbox';
 import { ListRow } from '@/components/list-row';
 import { ChoiceGroup } from '@/components/choice-group';
 import { DraftNotice } from '@/components/draft-notice';
-import { useFormFocus } from '@/components/form-focus';
+import { Fold } from '@/components/fold';
+import { FormScrollContext, useFormFocus } from '@/components/form-focus';
 import { Notice } from '@/components/notice';
 import { PrivacyNoticeLink } from '@/components/privacy-notice-link';
 import { Screen } from '@/components/screen';
@@ -107,6 +113,25 @@ const DRAFT_KEY = 'register';
 type Field = keyof RegistrationForm | 'aboutYou' | 'aboutMore';
 const ORDER: readonly Field[] = ['fullName', 'dob', 'phone', 'email', 'pincode', 'aboutYou', 'guardianName', 'guardianPhone',
   'guardianEmail', 'relation', 'idType', 'writtenConsent', 'aboutMore'];
+/** The form's two steps (#366): 1 = who is joining, 2 = more details and Save. */
+type Step = 1 | 2;
+/** The checked fields of step 1: Next checks these, and a problem in one of them at Save goes back to step 1. */
+const STEP_ONE: readonly (keyof RegistrationForm)[] = ['fullName', 'dob', 'phone', 'email'];
+
+/** True when the folded block (emergency contact, how they heard, occupation) has answers, e.g. from a sign-up. */
+function hasMoreAnswers(about: AboutForm): boolean {
+  return !!(about.emergencyRelation || about.emergencyName.trim() || about.emergencyPhone.trim() || about.heardVia ||
+    about.occupation || about.serviceAreas.length > 0);
+}
+
+/** Brings the page back to its top when the step changes (inside Screen, which gives the scrolling part). */
+function TopOnStep({ step }: { step: Step }) {
+  const scroll = use(FormScrollContext)?.scroll;
+  useEffect(() => {
+    scroll?.current?.scrollTo({ y: 0, animated: false });
+  }, [step, scroll]);
+  return null;
+}
 
 /** Registration form, then a confirmation with the new roll number. */
 export default function RegisterStudentScreen() {
@@ -149,6 +174,11 @@ export default function RegisterStudentScreen() {
   const [otherSaved, setOtherSaved] = useState<Registered | null>(null);
   // An adult filled in by hand: the coordinator showed them the privacy notice (#290, #292).
   const [adultNoticeShown, setAdultNoticeShown] = useState(false);
+  // The step shown (#366) and whether the optional block is open (open at once when it already has answers).
+  const [step, setStep] = useState<Step>(1);
+  const [moreOpen, setMoreOpen] = useState(() => (restored ? hasMoreAnswers(restored.about) : false));
+  // The problems Save found in step 1, to go to once step 1 is drawn again.
+  const pendingFocus = useRef<Partial<Record<Field, unknown>> | null>(null);
 
   // The sign-ups waiting for the desk, kept apart from the option lists so that one failing never hides
   // the other (audit R2-02). undefined = loading, null = the first load failed.
@@ -177,6 +207,24 @@ export default function RegisterStudentScreen() {
     }, [refreshWaiting]),
   );
   const { target, focusFirst, focusField } = useFormFocus<Field>();
+  useEffect(() => {
+    if (step === 1 && pendingFocus.current) {
+      focusFirst(ORDER, pendingFocus.current);
+      pendingFocus.current = null;
+    }
+  }, [step, focusFirst]);
+  // Android's Back on step 2 goes to step 1, as in other two-step forms, not out of the desk; only while this
+  // screen is in front (the privacy notice opens over it).
+  useFocusEffect(
+    useCallback(() => {
+      if (step !== 2 || saved) return undefined;
+      const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+        setStep(1);
+        return true;
+      });
+      return () => subscription.remove();
+    }, [step, saved]),
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -251,7 +299,10 @@ export default function RegisterStudentScreen() {
       // A new person: never the id of a Save made for someone else (P1-04).
       requestId: newRequestId(),
     }));
-    setAbout(aboutFormFrom(person, classLocale().country));
+    const filled = aboutFormFrom(person, classLocale().country);
+    setAbout(filled);
+    setMoreOpen(hasMoreAnswers(filled));
+    setStep(1);
     setFromSignUp(person);
     setAdultNoticeShown(false);
     setErrors({});
@@ -282,6 +333,21 @@ export default function RegisterStudentScreen() {
     void refreshWaiting();
   }
 
+  /** Step 1's Next: checks the step's fields, then shows step 2 (#366). */
+  function next() {
+    const found = checkStudentDetails(form);
+    const problems: RegistrationErrors = {};
+    for (const key of STEP_ONE) problems[key] = found[key];
+    setErrors((current) => ({ ...current, ...problems }));
+    if (STEP_ONE.some((key) => found[key])) {
+      setFormError('register.errors.fixFields');
+      focusFirst(ORDER, problems);
+      return;
+    }
+    setFormError(null);
+    setStep(2);
+  }
+
   async function save() {
     const found = { ...checkStudentDetails(form), ...(minor ? checkGuardianConsent(form) : {}) };
     const foundAbout = extras ? checkAbout(about, aboutParts, aboutContext) : {};
@@ -292,7 +358,17 @@ export default function RegisterStudentScreen() {
       // About you: the gender and Diksha name are in its first block, the rest in "More about the student".
       const youKeys: (keyof AboutForm)[] = ['dikshaName', 'gender'];
       const aboutYou = youKeys.some((k) => foundAbout[k]);
-      focusFirst(ORDER, { ...found, aboutYou, aboutMore: !aboutYou && Object.keys(foundAbout).length > 0 });
+      const inMore = (Object.keys(foundAbout) as (keyof AboutForm)[]).some((k) => !youKeys.includes(k));
+      const marks = { ...found, aboutYou, aboutMore: !aboutYou && inMore };
+      // The folded block opens to show its problem.
+      if (inMore) setMoreOpen(true);
+      if (STEP_ONE.some((key) => found[key])) {
+        // A problem in step 1 (e.g. the parent's email typed as the student's): back to it, then to the field.
+        pendingFocus.current = marks;
+        setStep(1);
+        return;
+      }
+      focusFirst(ORDER, marks);
       return;
     }
     setFormError(null);
@@ -337,6 +413,8 @@ export default function RegisterStudentScreen() {
     setErrors({});
     setAboutErrors({});
     setAdultNoticeShown(false);
+    setStep(1);
+    setMoreOpen(false);
     if (fromSignUp) setWaitingList((current) => current?.filter((w) => w.id !== fromSignUp.id) ?? current);
     setFromSignUp(null);
     setSaved(null);
@@ -385,385 +463,415 @@ export default function RegisterStudentScreen() {
     );
   }
 
+  const levelChoice = choices ? (
+    <ChoiceGroup
+      label={t('register.level')}
+      choices={choices.levels.map((level) => ({
+        value: level.id,
+        label: levelName(t, level.id, level.name),
+      }))}
+      value={form.levelId}
+      onChange={field('levelId')}
+    />
+  ) : (
+    <AppText tone="muted">{t('common.loading')}</AppText>
+  );
+
   return (
     <Screen underHeader onRefresh={refreshWaiting}>
       {header}
-      <ScreenIntro text={t('register.intro')} />
-      {showRestored ? (
-        <DraftNotice
-          notes={restored?.form.writtenConsent || restored?.form.photoConsent ? [t('drafts.consentAgain')] : []}
-          discardLabel={t('drafts.startEmpty')}
-          onDiscard={registerAnother}
-        />
-      ) : null}
-
-      {accepted ? (
+      <TopOnStep step={step} />
+      {step === 1 ? (
         <>
-          <Notice tone="success" title={t('register.doneTitle')}>
-            {[
-              t('register.doneBody', { name: accepted.fullName, rollNo: accepted.rollNo }),
-              t(accepted.repeated ? 'register.acceptedRepeated' : accepted.existing ? 'register.acceptedExisting' : 'register.acceptedLogin'),
-            ].join('\n')}
-          </Notice>
-          <CheckInNow key={accepted.id} studentId={accepted.id} name={accepted.fullName} />
-          <Button
-            variant="link"
-            icon="person"
-            label={t('register.openStudent')}
-            onPress={() => router.push({ pathname: '/staff/students/[id]', params: { id: accepted.id } })}
-          />
-        </>
-      ) : null}
-      {waitingList === null ? (
-        // The first load failed: say so, so the desk does not think nobody is waiting (R2-02).
-        <>
-          <Notice tone="error" title={t('register.waitingLoadFailed')}>
-            {t('common.networkError')}
-          </Notice>
-          <Button variant="secondary" icon="refresh" label={t('common.tryAgain')} loading={waitingBusy} onPress={() => void refreshWaiting()} />
-        </>
-      ) : null}
-      {waiting.length > 0 ? (
-        <Section icon="newJoiner" title={t('register.waitingTitle', { count: waiting.length })} description={t('register.waitingHint')}>
-          <Button variant="secondary" icon="refresh" label={t('register.waitingRefresh')} loading={waitingBusy} onPress={() => void refreshWaiting()} />
-          {waitingStale ? <Notice tone="info">{t('register.waitingStale')}</Notice> : null}
-          <TextField
-            label={t('register.waitingSearch')}
-            hint={t('register.waitingSearchHint')}
-            value={waitingQuery}
-            onChangeText={(text) => {
-              setWaitingQuery(text);
-              setWaitingShown(WAITING_PAGE);
-            }}
-            autoComplete="off"
-            autoCapitalize="none"
-            autoCorrect={false}
-            returnKeyType="search"
-          />
-          {waitingMatches.length === 0 ? <AppText tone="muted">{t('register.waitingNoMatch')}</AppText> : null}
-          {/* Spoken by TalkBack as the search narrows the list (P2-03, #314). */}
-          {waitingQuery.trim() !== '' && waitingMatches.length > 0 ? (
-            <StatusText tone="muted">{t('common.foundCount', { count: waitingMatches.length })}</StatusText>
+          <ScreenIntro text={t('register.intro')} />
+          {showRestored ? (
+            <DraftNotice
+              notes={restored?.form.writtenConsent || restored?.form.photoConsent ? [t('drafts.consentAgain')] : []}
+              discardLabel={t('drafts.startEmpty')}
+              onDiscard={registerAnother}
+            />
           ) : null}
-          {waitingMatches.slice(0, waitingShown).map((w) => {
-            // Accept for an adult with a date of birth, a name that passes and the privacy tick; otherwise the
-            // form only: under 18 (the desk with a parent), no date, a name from before #267 (Save says what to
-            // correct), or no privacy tick (FF-01: the form shows the notice).
-            const age = w.dob ? ageFromForm(formatTypedDate(w.dob)) : null;
-            const action = waitingAction(w);
-            const canAccept = action === 'accept';
-            if (age && accepting?.id === w.id) {
-              return (
-                <View key={w.id} style={styles.confirm}>
-                  <Notice tone="info" title={t('register.acceptTitle', { name: w.full_name })} announced>
-                    {[
-                      t('register.acceptName', { value: w.full_name }),
-                      t('register.acceptDob', { date: formatTypedDate(w.dob ?? ''), age: age.age }),
-                      w.centre_name ? t('register.acceptCentre', { value: w.centre_name }) : '',
-                      w.phone ? t('register.acceptPhone', { value: formatPhone(w.phone) }) : '',
-                      w.email ? t('register.acceptEmail', { value: w.email }) : '',
-                    ]
-                      .filter(Boolean)
-                      .join('\n')}
-                  </Notice>
-                  <AppText variant="label">{t('register.acceptCheckId')}</AppText>
-                  {acceptError ? <Notice tone="error">{t(acceptError)}</Notice> : null}
-                  <Button icon="check" label={t('register.accept')} loading={acceptBusy} onPress={() => void confirmAccept(w)} />
-                  {/* No privacy tick at sign-up: Fill the form is the way through, so it comes first (R2-03). */}
-                  <Button
-                    variant={acceptError === 'register.acceptErrors.noNotice' ? 'primary' : 'secondary'}
-                    label={t('register.acceptChange')}
-                    disabled={acceptBusy}
-                    onPress={() => fillFrom(w)}
-                  />
-                  <Button variant="link" label={t('register.cancel')} disabled={acceptBusy} onPress={() => setAccepting(null)} />
-                </View>
-              );
-            }
-            return (
-              <ListRow
-                key={w.id}
-                leading="person"
-                title={w.full_name || w.email || ''}
-                details={[
-                  w.email ?? '',
-                  w.phone ? formatPhone(w.phone) : '',
-                  t('register.signedUpOn', { when: formatDateTime(w.created_at) }),
-                  action === 'noNotice' ? t('register.waitingNoNotice') : '',
-                ].filter(Boolean)}
-                action={
-                  canAccept
-                    ? { label: t('register.accept'), onPress: () => askAccept(w) }
-                    : { label: t('register.fillFrom'), variant: 'secondary', onPress: () => fillFrom(w) }
-                }
+
+          {accepted ? (
+            <>
+              <Notice tone="success" title={t('register.doneTitle')}>
+                {[
+                  t('register.doneBody', { name: accepted.fullName, rollNo: accepted.rollNo }),
+                  t(accepted.repeated ? 'register.acceptedRepeated' : accepted.existing ? 'register.acceptedExisting' : 'register.acceptedLogin'),
+                ].join('\n')}
+              </Notice>
+              <CheckInNow key={accepted.id} studentId={accepted.id} name={accepted.fullName} />
+              <Button
+                variant="link"
+                icon="person"
+                label={t('register.openStudent')}
+                onPress={() => router.push({ pathname: '/staff/students/[id]', params: { id: accepted.id } })}
               />
-            );
-          })}
-          {waitingMatches.length > waitingShown ? (
-            <Button
-              variant="secondary"
-              label={t('register.waitingMore', { shown: waitingShown, total: waitingMatches.length })}
-              onPress={() => setWaitingShown((n) => n + WAITING_PAGE)}
-            />
+            </>
           ) : null}
-        </Section>
-      ) : null}
-      {fromSignUp ? (
-        <Notice tone="info" title={t('register.filledTitle', { name: fromSignUp.full_name })}>
-          {t('register.filledBody')}
-        </Notice>
+          {waitingList === null ? (
+            // The first load failed: say so, so the desk does not think nobody is waiting (R2-02).
+            <>
+              <Notice tone="error" title={t('register.waitingLoadFailed')}>
+                {t('common.networkError')}
+              </Notice>
+              <Button variant="secondary" icon="refresh" label={t('common.tryAgain')} loading={waitingBusy} onPress={() => void refreshWaiting()} />
+            </>
+          ) : null}
+          {waiting.length > 0 ? (
+            <Section icon="newJoiner" title={t('register.waitingTitle', { count: waiting.length })} description={t('register.waitingHint')}>
+              <Button variant="secondary" icon="refresh" label={t('register.waitingRefresh')} loading={waitingBusy} onPress={() => void refreshWaiting()} />
+              {waitingStale ? <Notice tone="info">{t('register.waitingStale')}</Notice> : null}
+              <TextField
+                label={t('register.waitingSearch')}
+                hint={t('register.waitingSearchHint')}
+                value={waitingQuery}
+                onChangeText={(text) => {
+                  setWaitingQuery(text);
+                  setWaitingShown(WAITING_PAGE);
+                }}
+                autoComplete="off"
+                autoCapitalize="none"
+                autoCorrect={false}
+                returnKeyType="search"
+              />
+              {waitingMatches.length === 0 ? <AppText tone="muted">{t('register.waitingNoMatch')}</AppText> : null}
+              {/* Spoken by TalkBack as the search narrows the list (P2-03, #314). */}
+              {waitingQuery.trim() !== '' && waitingMatches.length > 0 ? (
+                <StatusText tone="muted">{t('common.foundCount', { count: waitingMatches.length })}</StatusText>
+              ) : null}
+              {waitingMatches.slice(0, waitingShown).map((w) => {
+                // Accept for an adult with a date of birth, a name that passes and the privacy tick; otherwise the
+                // form only: under 18 (the desk with a parent), no date, a name from before #267 (Save says what to
+                // correct), or no privacy tick (FF-01: the form shows the notice).
+                const age = w.dob ? ageFromForm(formatTypedDate(w.dob)) : null;
+                const action = waitingAction(w);
+                const canAccept = action === 'accept';
+                if (age && accepting?.id === w.id) {
+                  return (
+                    <View key={w.id} style={styles.confirm}>
+                      <Notice tone="info" title={t('register.acceptTitle', { name: w.full_name })} announced>
+                        {[
+                          t('register.acceptName', { value: w.full_name }),
+                          t('register.acceptDob', { date: formatTypedDate(w.dob ?? ''), age: age.age }),
+                          w.centre_name ? t('register.acceptCentre', { value: w.centre_name }) : '',
+                          w.phone ? t('register.acceptPhone', { value: formatPhone(w.phone) }) : '',
+                          w.email ? t('register.acceptEmail', { value: w.email }) : '',
+                        ]
+                          .filter(Boolean)
+                          .join('\n')}
+                      </Notice>
+                      <AppText variant="label">{t('register.acceptCheckId')}</AppText>
+                      {acceptError ? <Notice tone="error">{t(acceptError)}</Notice> : null}
+                      <Button icon="check" label={t('register.accept')} loading={acceptBusy} onPress={() => void confirmAccept(w)} />
+                      {/* No privacy tick at sign-up: Fill the form is the way through, so it comes first (R2-03). */}
+                      <Button
+                        variant={acceptError === 'register.acceptErrors.noNotice' ? 'primary' : 'secondary'}
+                        label={t('register.acceptChange')}
+                        disabled={acceptBusy}
+                        onPress={() => fillFrom(w)}
+                      />
+                      <Button variant="link" label={t('register.cancel')} disabled={acceptBusy} onPress={() => setAccepting(null)} />
+                    </View>
+                  );
+                }
+                return (
+                  <ListRow
+                    key={w.id}
+                    leading="person"
+                    title={w.full_name || w.email || ''}
+                    details={[
+                      w.email ?? '',
+                      w.phone ? formatPhone(w.phone) : '',
+                      t('register.signedUpOn', { when: formatDateTime(w.created_at) }),
+                      action === 'noNotice' ? t('register.waitingNoNotice') : '',
+                    ].filter(Boolean)}
+                    action={
+                      canAccept
+                        ? { label: t('register.accept'), onPress: () => askAccept(w) }
+                        : { label: t('register.fillFrom'), variant: 'secondary', onPress: () => fillFrom(w) }
+                    }
+                  />
+                );
+              })}
+              {waitingMatches.length > waitingShown ? (
+                <Button
+                  variant="secondary"
+                  label={t('register.waitingMore', { shown: waitingShown, total: waitingMatches.length })}
+                  onPress={() => setWaitingShown((n) => n + WAITING_PAGE)}
+                />
+              ) : null}
+            </Section>
+          ) : null}
+          {fromSignUp ? (
+            <Notice tone="info" title={t('register.filledTitle', { name: fromSignUp.full_name })}>
+              {t('register.filledBody')}
+            </Notice>
+          ) : null}
+        </>
       ) : null}
 
-      <Section icon="person" title={t('register.studentSection')}>
-        <TextField
-          ref={target('fullName')}
-          label={t('register.fullName')}
-          value={form.fullName}
-          onChangeText={field('fullName')}
-          onBlur={() => checkOnLeave('fullName')}
-          error={errorFor('fullName')}
-          maxLength={NAME_MAX_LENGTH}
-          autoComplete="off"
-          autoCapitalize="words"
-          autoCorrect={false}
-          hint={t('register.fullNameHint')}
-          // The date of birth is a tap on the calendar; Next goes on to the phone.
-          returnKeyType="next"
-          onSubmitEditing={() => focusField('phone')}
-          submitBehavior="submit"
-        />
-        <BirthDateField
-          ref={target('dob')}
-          label={t('register.dob')}
-          // The form keeps the date as typed text (drafts, filled from a sign-up): '15-6-2012'.
-          value={partsOfTyped(form.dob)}
-          onChange={(parts) => {
-            const next = { ...form, dob: typedOfParts(parts) };
-            setForm(next);
-            setServerMinor(false);
-            if (errors.dob) checkOnLeave('dob', next);
-          }}
-          error={errorFor('dob')}
-          // Once a real date is picked, the hint shows the age, so the coordinator sees at once
-          // whether the parent's consent will be needed.
-          hint={
-            age
-              ? t(age.minor ? 'register.ageMinor' : 'register.age', { age: age.age })
-              : t('register.dobHint')
-          }
-        />
-        <TextField
-          ref={target('phone')}
-          label={t('register.phone')}
-          value={form.phone}
-          onChangeText={(text) => field('phone')(typedPhone(text))}
-          onBlur={() => checkOnLeave('phone')}
-          error={errorFor('phone')}
-          keyboardType="phone-pad"
-          inputMode="tel"
-          maxLength={PHONE_MAX_LENGTH}
-          autoComplete="off"
-          returnKeyType="next"
-          onSubmitEditing={() => focusField('email')}
-          submitBehavior="submit"
-        />
-        <TextField
-          ref={target('email')}
-          label={t('register.email')}
-          // A child's record is never linked to a login by itself (#276): children use the printed QR card (R1-01).
-          hint={t(minor ? 'register.emailHintMinor' : 'register.emailHint')}
-          value={form.email}
-          onChangeText={field('email')}
-          onBlur={() => checkOnLeave('email')}
-          error={errorFor('email')}
-          maxLength={EMAIL_MAX_LENGTH}
-          keyboardType="email-address"
-          inputMode="email"
-          autoCapitalize="none"
-          autoCorrect={false}
-          autoComplete="off"
-          returnKeyType="next"
-          onSubmitEditing={() => focusField('area')}
-          submitBehavior="submit"
-        />
-        <TextField
-          ref={target('area')}
-          label={t('register.area')}
-          hint={t('register.areaHint')}
-          value={form.area}
-          onChangeText={field('area')}
-          maxLength={AREA_MAX_LENGTH}
-          autoComplete="off"
-          returnKeyType="next"
-          onSubmitEditing={() => focusField('pincode')}
-          submitBehavior="submit"
-        />
-        <TextField
-          ref={target('pincode')}
-          label={t('register.pincode')}
-          value={form.pincode}
-          onChangeText={(text) => field('pincode')(asciiDigits(text).replace(/\D/g, ''))}
-          onBlur={() => checkOnLeave('pincode')}
-          error={errorFor('pincode')}
-          keyboardType="number-pad"
-          inputMode="numeric"
-          maxLength={6}
-        />
-        {choices ? (
-          <>
-            <ChoiceGroup
-              label={t('register.level')}
-              choices={choices.levels.map((level) => ({
-                value: level.id,
-                label: levelName(t, level.id, level.name),
-              }))}
-              value={form.levelId}
-              onChange={field('levelId')}
-            />
-            {extras ? (
-              <View ref={target('aboutYou')} collapsable={false} style={styles.part}>
-                <YouPart form={about} set={setAboutField} errors={aboutErrors} options={extras.options} context={aboutContext} />
-              </View>
-            ) : null}
-            <ChoiceGroup<string>
-              label={t('register.mentor')}
-              choices={[
-                // Empty string stands for "no mentor yet" inside the picker only; since 0036 the database
-                // then gives a coordinator of the student's gender (#165).
-                { value: '', label: extras ? t('register.mentorAuto') : t('register.noMentor') },
-                ...choices.mentors.map((m) => ({ value: m.id, label: m.fullName })),
-              ]}
-              value={form.mentorId ?? ''}
-              onChange={(id) => field('mentorId')(id || null)}
-            />
-          </>
-        ) : (
-          <AppText tone="muted">{t('common.loading')}</AppText>
-        )}
-        {/* An adult's privacy notice (#290, #292): ticked at sign-up, or shown here and kept on the record. A
-            minor's is on the parent's consent below. */}
-        {minor ? null : fromSignUp?.notice_version ? (
-          <AppText variant="small" tone="muted">
-            {t('register.adultNoticeFromSignUp')}
-          </AppText>
-        ) : (
-          <>
-            <PrivacyNoticeLink label={t('signUp.privacyNotice')} />
-            <Checkbox label={t('register.adultNoticeShown')} checked={adultNoticeShown} onChange={setAdultNoticeShown} />
-          </>
-        )}
-      </Section>
-
-      {minor ? (
-        <Section icon="guardian" title={t('register.guardianSection')} description={t('register.guardianIntro')}>
+      {/* "Step 1 of 2", read out when the step changes (#366). */}
+      <StatusText variant="small" tone="muted">
+        {t('about.stepOf', { step, total: 2 })}
+      </StatusText>
+      {step === 1 ? (
+        <Section icon="person" title={t('register.stepWho')}>
           <TextField
-            ref={target('guardianName')}
-            label={t('register.guardianName')}
-            value={form.guardianName}
-            onChangeText={field('guardianName')}
-            onBlur={() => checkOnLeave('guardianName')}
-            error={errorFor('guardianName')}
+            ref={target('fullName')}
+            label={t('register.fullName')}
+            value={form.fullName}
+            onChangeText={field('fullName')}
+            onBlur={() => checkOnLeave('fullName')}
+            error={errorFor('fullName')}
             maxLength={NAME_MAX_LENGTH}
             autoComplete="off"
             autoCapitalize="words"
             autoCorrect={false}
+            hint={t('register.fullNameHint')}
+            // The date of birth is a tap on the calendar; Next goes on to the phone.
             returnKeyType="next"
-            onSubmitEditing={() => focusField('guardianPhone')}
+            onSubmitEditing={() => focusField('phone')}
             submitBehavior="submit"
           />
+          <BirthDateField
+            ref={target('dob')}
+            label={t('register.dob')}
+            // The form keeps the date as typed text (drafts, filled from a sign-up): '15-6-2012'.
+            value={partsOfTyped(form.dob)}
+            onChange={(parts) => {
+              const changed = { ...form, dob: typedOfParts(parts) };
+              setForm(changed);
+              setServerMinor(false);
+              if (errors.dob) checkOnLeave('dob', changed);
+            }}
+            error={errorFor('dob')}
+            // Once a real date is picked, the hint shows the age, so the coordinator sees at once
+            // whether the parent's consent will be needed.
+            hint={
+              age
+                ? t(age.minor ? 'register.ageMinor' : 'register.age', { age: age.age })
+                : t('register.dobHint')
+            }
+          />
           <TextField
-            ref={target('guardianPhone')}
-            label={t('register.guardianPhone')}
-            value={form.guardianPhone}
-            onChangeText={(text) => field('guardianPhone')(typedPhone(text))}
-            onBlur={() => checkOnLeave('guardianPhone')}
-            error={errorFor('guardianPhone')}
+            ref={target('phone')}
+            label={t('register.phone')}
+            value={form.phone}
+            onChangeText={(text) => field('phone')(typedPhone(text))}
+            onBlur={() => checkOnLeave('phone')}
+            error={errorFor('phone')}
             keyboardType="phone-pad"
             inputMode="tel"
             maxLength={PHONE_MAX_LENGTH}
             autoComplete="off"
             returnKeyType="next"
-            onSubmitEditing={() => focusField('guardianEmail')}
+            onSubmitEditing={() => focusField('email')}
             submitBehavior="submit"
           />
           <TextField
-            ref={target('guardianEmail')}
-            label={t('register.guardianEmail')}
-            value={form.guardianEmail}
-            onChangeText={field('guardianEmail')}
-            onBlur={() => checkOnLeave('guardianEmail')}
-            error={errorFor('guardianEmail')}
+            ref={target('email')}
+            label={t('register.email')}
+            // A child's record is never linked to a login by itself (#276): children use the printed QR card (R1-01).
+            hint={t(minor ? 'register.emailHintMinor' : 'register.emailHint')}
+            value={form.email}
+            onChangeText={field('email')}
+            onBlur={() => checkOnLeave('email')}
+            error={errorFor('email')}
             maxLength={EMAIL_MAX_LENGTH}
             keyboardType="email-address"
             inputMode="email"
             autoCapitalize="none"
             autoCorrect={false}
             autoComplete="off"
+            // The keyboard's Next is the step's Next.
+            returnKeyType="next"
+            onSubmitEditing={next}
           />
-          <View ref={target('relation')} collapsable={false}>
-            <ChoiceGroup
-              label={t('register.relation')}
-              choices={RELATIONS.map((r) => ({ value: r, label: t(`relations.${r}`) }))}
-              value={form.relation}
-              onChange={field('relation')}
-              error={errorFor('relation')}
-            />
-          </View>
-          <View ref={target('idType')} collapsable={false}>
-            <ChoiceGroup
-              label={t('register.idChecked')}
-              choices={ID_TYPES.map((id) => ({ value: id, label: t(`idTypes.${id}`) }))}
-              value={form.idType}
-              onChange={field('idType')}
-              error={errorFor('idType')}
-            />
-          </View>
-          <AppText variant="small" tone="muted">
-            {t('register.idCheckedHint')}
-          </AppText>
-          <PrivacyNoticeLink label={t('register.privacyNotice')} />
-          <AppText variant="small" tone="muted">
-            {t('register.privacyNoticeHint')}
-          </AppText>
-          <Checkbox
-            label={t('register.photoConsent')}
-            checked={form.photoConsent}
-            onChange={field('photoConsent')}
-          />
-          <View ref={target('writtenConsent')} collapsable={false}>
-            <Checkbox
-              label={t('register.writtenConsent')}
-              checked={form.writtenConsent}
-              onChange={field('writtenConsent')}
-              error={errorFor('writtenConsent')}
-            />
-          </View>
+          {levelChoice}
         </Section>
-      ) : null}
-
-      {extras ? (
-        <View ref={target('aboutMore')} collapsable={false}>
-          <Section icon="about" title={t('register.moreTitle')} description={t('register.moreHint')}>
-            {minor ? null : (
+      ) : (
+        <>
+          <Section icon="person" title={t('register.stepMore')}>
+            {/* Who this is, and the way back to correct it. */}
+            <AppText variant="label">
+              {[form.fullName.trim(), age ? t(age.minor ? 'register.ageMinor' : 'register.age', { age: age.age }) : '']
+                .filter(Boolean)
+                .join(' · ')}
+            </AppText>
+            <Button variant="link" icon="previous" label={t('about.previous')} onPress={() => setStep(1)} />
+            <TextField
+              ref={target('area')}
+              label={t('register.area')}
+              hint={t('register.areaHint')}
+              value={form.area}
+              onChangeText={field('area')}
+              maxLength={AREA_MAX_LENGTH}
+              autoComplete="off"
+              returnKeyType="next"
+              onSubmitEditing={() => focusField('pincode')}
+              submitBehavior="submit"
+            />
+            <TextField
+              ref={target('pincode')}
+              label={t('register.pincode')}
+              value={form.pincode}
+              onChangeText={(text) => field('pincode')(asciiDigits(text).replace(/\D/g, ''))}
+              onBlur={() => checkOnLeave('pincode')}
+              error={errorFor('pincode')}
+              keyboardType="number-pad"
+              inputMode="numeric"
+              maxLength={6}
+            />
+            {extras ? (
+              <View ref={target('aboutYou')} collapsable={false} style={styles.part}>
+                <YouPart form={about} set={setAboutField} errors={aboutErrors} options={extras.options} context={aboutContext} />
+              </View>
+            ) : null}
+            {choices ? (
+              <ChoiceGroup<string>
+                label={t('register.mentor')}
+                choices={[
+                  // Empty string stands for "no mentor yet" inside the picker only; since 0036 the database
+                  // then gives a coordinator of the student's gender (#165).
+                  { value: '', label: extras ? t('register.mentorAuto') : t('register.noMentor') },
+                  ...choices.mentors.map((m) => ({ value: m.id, label: m.fullName })),
+                ]}
+                value={form.mentorId ?? ''}
+                onChange={(id) => field('mentorId')(id || null)}
+              />
+            ) : null}
+            {/* An adult's privacy notice (#290, #292): ticked at sign-up, or shown here and kept on the record. A
+                minor's is on the parent's consent below. */}
+            {minor ? null : fromSignUp?.notice_version ? (
+              <AppText variant="small" tone="muted">
+                {t('register.adultNoticeFromSignUp')}
+              </AppText>
+            ) : (
               <>
-                <AppText variant="label">{t('about.stepEmergency')}</AppText>
-                <EmergencyPart form={about} set={setAboutField} errors={aboutErrors} options={extras.options} context={aboutContext} />
+                <PrivacyNoticeLink label={t('signUp.privacyNotice')} />
+                <Checkbox label={t('register.adultNoticeShown')} checked={adultNoticeShown} onChange={setAdultNoticeShown} />
               </>
             )}
-            <HeardPart form={about} set={setAboutField} errors={aboutErrors} options={extras.options} context={aboutContext}
-              referrers={extras.referrers} />
-            <OccupationPart form={about} set={setAboutField} errors={aboutErrors} options={extras.options} context={aboutContext} />
           </Section>
-        </View>
-      ) : null}
 
-      {otherSaved ? (
-        <Notice tone="error" title={t('register.otherSavedTitle', { name: form.fullName.trim() })}>
-          {t('register.otherSavedBody', { other: otherSaved.fullName, rollNo: otherSaved.rollNo })}
-        </Notice>
-      ) : null}
+          {minor ? (
+            <Section icon="guardian" title={t('register.guardianSection')} description={t('register.guardianIntro')}>
+              <TextField
+                ref={target('guardianName')}
+                label={t('register.guardianName')}
+                value={form.guardianName}
+                onChangeText={field('guardianName')}
+                onBlur={() => checkOnLeave('guardianName')}
+                error={errorFor('guardianName')}
+                maxLength={NAME_MAX_LENGTH}
+                autoComplete="off"
+                autoCapitalize="words"
+                autoCorrect={false}
+                returnKeyType="next"
+                onSubmitEditing={() => focusField('guardianPhone')}
+                submitBehavior="submit"
+              />
+              <TextField
+                ref={target('guardianPhone')}
+                label={t('register.guardianPhone')}
+                value={form.guardianPhone}
+                onChangeText={(text) => field('guardianPhone')(typedPhone(text))}
+                onBlur={() => checkOnLeave('guardianPhone')}
+                error={errorFor('guardianPhone')}
+                keyboardType="phone-pad"
+                inputMode="tel"
+                maxLength={PHONE_MAX_LENGTH}
+                autoComplete="off"
+                returnKeyType="next"
+                onSubmitEditing={() => focusField('guardianEmail')}
+                submitBehavior="submit"
+              />
+              <TextField
+                ref={target('guardianEmail')}
+                label={t('register.guardianEmail')}
+                value={form.guardianEmail}
+                onChangeText={field('guardianEmail')}
+                onBlur={() => checkOnLeave('guardianEmail')}
+                error={errorFor('guardianEmail')}
+                maxLength={EMAIL_MAX_LENGTH}
+                keyboardType="email-address"
+                inputMode="email"
+                autoCapitalize="none"
+                autoCorrect={false}
+                autoComplete="off"
+              />
+              <View ref={target('relation')} collapsable={false}>
+                <ChoiceGroup
+                  label={t('register.relation')}
+                  choices={RELATIONS.map((r) => ({ value: r, label: t(`relations.${r}`) }))}
+                  value={form.relation}
+                  onChange={field('relation')}
+                  error={errorFor('relation')}
+                />
+              </View>
+              <View ref={target('idType')} collapsable={false}>
+                <ChoiceGroup
+                  label={t('register.idChecked')}
+                  choices={ID_TYPES.map((id) => ({ value: id, label: t(`idTypes.${id}`) }))}
+                  value={form.idType}
+                  onChange={field('idType')}
+                  error={errorFor('idType')}
+                />
+              </View>
+              <AppText variant="small" tone="muted">
+                {t('register.idCheckedHint')}
+              </AppText>
+              <PrivacyNoticeLink label={t('register.privacyNotice')} />
+              <AppText variant="small" tone="muted">
+                {t('register.privacyNoticeHint')}
+              </AppText>
+              <Checkbox
+                label={t('register.photoConsent')}
+                checked={form.photoConsent}
+                onChange={field('photoConsent')}
+              />
+              <View ref={target('writtenConsent')} collapsable={false}>
+                <Checkbox
+                  label={t('register.writtenConsent')}
+                  checked={form.writtenConsent}
+                  onChange={field('writtenConsent')}
+                  error={errorFor('writtenConsent')}
+                />
+              </View>
+            </Section>
+          ) : null}
+
+          {extras ? (
+            // Optional, so folded (#366); it opens by itself with answers from a sign-up or a problem at Save.
+            <View ref={target('aboutMore')} collapsable={false}>
+              <Fold icon="about" title={t('register.moreTitle')} description={t('register.moreHint')} open={moreOpen} onToggle={setMoreOpen}>
+                {minor ? null : (
+                  <>
+                    <AppText variant="label">{t('about.stepEmergency')}</AppText>
+                    <EmergencyPart form={about} set={setAboutField} errors={aboutErrors} options={extras.options} context={aboutContext} />
+                  </>
+                )}
+                <HeardPart form={about} set={setAboutField} errors={aboutErrors} options={extras.options} context={aboutContext}
+                  referrers={extras.referrers} />
+                <OccupationPart form={about} set={setAboutField} errors={aboutErrors} options={extras.options} context={aboutContext} />
+              </Fold>
+            </View>
+          ) : null}
+
+          {otherSaved ? (
+            <Notice tone="error" title={t('register.otherSavedTitle', { name: form.fullName.trim() })}>
+              {t('register.otherSavedBody', { other: otherSaved.fullName, rollNo: otherSaved.rollNo })}
+            </Notice>
+          ) : null}
+        </>
+      )}
       {formError ? <Notice tone="error">{t(formError)}</Notice> : null}
-      <Button icon="register" label={t('register.submit')} onPress={save} loading={busy} disabled={!choices} />
+      {step === 1 ? (
+        <Button label={t('register.next')} onPress={next} />
+      ) : (
+        <Button icon="register" label={t('register.submit')} onPress={save} loading={busy} disabled={!choices} />
+      )}
     </Screen>
   );
 }
