@@ -534,6 +534,15 @@ in `app/` (a version at least a week old, after reading its release notes), chec
 `npm run update:preview -- --check-only --message x`, commit `package.json` and
 `package-lock.json`, and change the version in this paragraph.
 
+**The lock file must suit the build servers' npm.** EAS installs with Node 22 / **npm 10.9.8**
+(15 Oct 2026); this PC has Node 24 / npm 11, which leaves out entries npm 10 wants. Build
+dc080c84 failed on that (`Missing: typescript@5.9.3 from lock file`: eas-cli's optional TypeScript 5
+peer). After any change to `package-lock.json`, from `app/`:
+`npx -y npm@10.9.8 ci --include=dev --dry-run --ignore-scripts` must end with `added … packages`.
+If it says `Missing:`, add only the missing entries (`npx -y npm@10.9.8 install --package-lock-only`
+in a copy shows them) and check again with both npm versions. Do not pin `node` in `eas.json`: that
+file is part of the fingerprint.
+
 **Once, on a new computer** (from `app/`, after `npm ci`): `npx eas-cli login`. It opens the
 browser to sign in to Expo.
 
