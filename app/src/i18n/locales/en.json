@@ -474,6 +474,18 @@
     "accept": "Accept",
     "acceptTitle": "Accept {{name}}?",
     "acceptCheckId": "Check the name against the government ID.",
+    "duplicates": {
+      "title_one": "Possible duplicate: is this person already here?",
+      "title_other": "{{count}} possible duplicates: is this person already here?",
+      "student": "{{name}}, {{rollNo}} · {{centre}} · joined {{date}}",
+      "studentWithdrawn": "{{name}}, {{rollNo}} · {{centre}} · consent withdrawn: ask the Guru",
+      "signUp": "{{name}} · signed up {{date}} · {{centre}} · waiting in the list above",
+      "sameNameAndBirth": "same name and date of birth",
+      "samePhone": "same phone",
+      "hintSave": "If it is the same person, do not save again: open their record, or accept their sign-up in the list above.",
+      "hintAccept": "If it is the same person, do not accept: open their record instead. Accept only someone who is not on record.",
+      "open": "Open the record of {{name}}"
+    },
     "acceptName": "Name: {{value}}",
     "acceptDob": "Date of birth: {{date}} (age {{age}})",
     "acceptCentre": "Centre: {{value}}",

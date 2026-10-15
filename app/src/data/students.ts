@@ -8,6 +8,7 @@ import * as Crypto from 'expo-crypto';
 import { partsOfTyped } from '@/lib/birth-date';
 import { ageOn, isMinorOn, parseDayMonthYear, todayLocal } from '@/lib/dates';
 import { asciiDigits } from '@/lib/digits';
+import { duplicateQuery, duplicatesFrom, type PossibleDuplicate } from '@/lib/duplicates';
 import { isValidEmail } from '@/lib/email';
 import { cleanName, nameError } from '@/lib/person-name';
 import { toE164 } from '@/lib/phone';
@@ -332,6 +333,25 @@ export function acceptErrorKey(message: string): MessageKey {
       return 'register.acceptErrors.noName';
   }
   return fallbackErrorKey(message);
+}
+
+/**
+ * Student records and waiting sign-ups that may be this person (possible_duplicates, migration 0047, #274, #390):
+ * same name and date of birth, or same phone. A warning only: an empty list when there is nothing to match on, the
+ * call fails (no internet, a database before 0047) or nothing matches, so it never stops the desk.
+ * @param fullName the name as typed. @param dob 'YYYY-MM-DD' or null. @param phone as typed, or null.
+ * @param self the sign-up the desk is working from, left out of the answer.
+ */
+export async function fetchPossibleDuplicates(
+  fullName: string,
+  dob: string | null,
+  phone: string | null,
+  self: string | null = null,
+): Promise<PossibleDuplicate[]> {
+  const query = duplicateQuery(fullName, dob, phone);
+  if (!query) return [];
+  const { data, error } = await supabase.rpc('possible_duplicates', query);
+  return error ? [] : duplicatesFrom(data, self);
 }
 
 /** A level to choose from. */

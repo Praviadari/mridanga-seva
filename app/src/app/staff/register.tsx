@@ -23,6 +23,9 @@
 // the privacy notice, the parent's consent for a minor) with the optional "More about the student" folded, and Save.
 // Save checks everything as before; a problem in step 1 takes the desk back there, to the field. Android's Back on
 // step 2 goes to step 1.
+// Since the launch audit (15-10-2026, docs/DECISIONS.md #390) Next and Accept ask possible_duplicates (0047, #274) and
+// show "Possible duplicate" above Save and on Accept's card: a record or sign-up with the same name and date of birth,
+// or the same phone, with a button to open the record. A warning only.
 
 import { router, Stack, useFocusEffect } from 'expo-router';
 import { use, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -43,6 +46,7 @@ import { DraftNotice } from '@/components/draft-notice';
 import { Fold } from '@/components/fold';
 import { FormScrollContext, useFormFocus } from '@/components/form-focus';
 import { Notice } from '@/components/notice';
+import { PossibleDuplicates } from '@/components/possible-duplicates';
 import { PrivacyNoticeLink } from '@/components/privacy-notice-link';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
@@ -71,6 +75,7 @@ import {
   checkGuardianConsent,
   checkStudentDetails,
   emptyRegistration,
+  fetchPossibleDuplicates,
   fetchRegistrationChoices,
   ID_TYPES,
   newRequestId,
@@ -87,8 +92,9 @@ import {
 import { levelName } from '@/i18n/labels';
 import { partsOfTyped, typedOfParts } from '@/lib/birth-date';
 import { classLocale } from '@/lib/class-locale';
-import { formatDateTime, formatTypedDate } from '@/lib/dates';
+import { formatDateTime, formatTypedDate, parseDayMonthYear } from '@/lib/dates';
 import { asciiDigits } from '@/lib/digits';
+import { duplicateKey, duplicateQuery, type PossibleDuplicate } from '@/lib/duplicates';
 import { discardDraft, peekDraft, useDraftKeeper } from '@/lib/form-drafts';
 import { typedPhone } from '@/lib/phone';
 import { PRIVACY_NOTICE_VERSION } from '@/lib/privacy-notice';
@@ -179,6 +185,9 @@ export default function RegisterStudentScreen() {
   const [moreOpen, setMoreOpen] = useState(() => (restored ? hasMoreAnswers(restored.about) : false));
   // The problems Save found in step 1, to go to once step 1 is drawn again.
   const pendingFocus = useRef<Partial<Record<Field, unknown>> | null>(null);
+  // Possible duplicates (#390): asked at Next for the person typed (key = what was asked), and on Accept's card.
+  const [duplicates, setDuplicates] = useState<{ key: string; matches: PossibleDuplicate[] } | null>(null);
+  const [acceptDuplicates, setAcceptDuplicates] = useState<{ id: string; matches: PossibleDuplicate[] } | null>(null);
 
   // The sign-ups waiting for the desk, kept apart from the option lists so that one failing never hides
   // the other (audit R2-02). undefined = loading, null = the first load failed.
@@ -315,6 +324,11 @@ export default function RegisterStudentScreen() {
     setAccepting(person);
     setAcceptError(null);
     setAccepted(null);
+    // Already on record (registered by hand, or a second sign-up)? Shown on the card when the answer comes (#390).
+    setAcceptDuplicates(null);
+    void fetchPossibleDuplicates(person.full_name, person.dob, person.phone ?? null, person.id).then((matches) =>
+      setAcceptDuplicates({ id: person.id, matches }),
+    );
   }
 
   /** Registers the sign-up from its own data (accept_sign_up); it leaves the waiting list. */
@@ -346,6 +360,12 @@ export default function RegisterStudentScreen() {
     }
     setFormError(null);
     setStep(2);
+    // The person may be on record already, or waiting as a sign-up (#390): asked now, shown above Save.
+    const dob = parseDayMonthYear(form.dob);
+    const key = duplicateKey(duplicateQuery(form.fullName, dob, form.phone));
+    void fetchPossibleDuplicates(form.fullName, dob, form.phone, fromSignUp?.id ?? null).then((matches) =>
+      setDuplicates({ key, matches }),
+    );
   }
 
   async function save() {
@@ -419,6 +439,7 @@ export default function RegisterStudentScreen() {
     setFromSignUp(null);
     setSaved(null);
     setOtherSaved(null);
+    setDuplicates(null);
   }
 
   const header = <Stack.Screen options={{ title: t('register.title') }} />;
@@ -562,6 +583,7 @@ export default function RegisterStudentScreen() {
                           .join('\n')}
                       </Notice>
                       <AppText variant="label">{t('register.acceptCheckId')}</AppText>
+                      <PossibleDuplicates place="accept" matches={acceptDuplicates?.id === w.id ? acceptDuplicates.matches : []} />
                       {acceptError ? <Notice tone="error">{t(acceptError)}</Notice> : null}
                       <Button icon="check" label={t('register.accept')} loading={acceptBusy} onPress={() => void confirmAccept(w)} />
                       {/* No privacy tick at sign-up: Fill the form is the way through, so it comes first (R2-03). */}
@@ -858,6 +880,16 @@ export default function RegisterStudentScreen() {
               </Fold>
             </View>
           ) : null}
+
+          {/* Only for the person typed now: a list asked for another name, birth date or phone is not shown (#390). */}
+          <PossibleDuplicates
+            place="save"
+            matches={
+              duplicates && duplicates.key === duplicateKey(duplicateQuery(form.fullName, parseDayMonthYear(form.dob), form.phone))
+                ? duplicates.matches
+                : []
+            }
+          />
 
           {otherSaved ? (
             <Notice tone="error" title={t('register.otherSavedTitle', { name: form.fullName.trim() })}>

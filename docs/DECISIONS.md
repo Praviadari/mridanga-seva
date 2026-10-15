@@ -5862,3 +5862,22 @@ myProfile.rollTitle, rollNo, rollName, detailsTitle and role removed (unused). J
 
 **Why.** Two names next to each other ("My name: Student Test", "Name on the roll: Arjun Rao") confused students, and
 the phone was asked twice and saved to two places. Language and Appearance were two screens down.
+
+## 390. "Possible duplicate" at the desk: the app asks possible_duplicates — 15 Oct 2026
+
+**Status: branch `launch-audit`.** Launch audit 15-10-2026, finding LA-01. #274 (0047) gave the desk
+`possible_duplicates(full_name, dob, phone)` and said "the app shows Possible duplicate before saving (a later JS
+change)"; that change was never made, so on the registration weekend a person registered by hand who also signed up
+(the desk typed a different email, so no link), or a person typed in at two desks, became two student records with
+nothing on screen. Now Register a student asks it at **Next** (step 1 → 2) for the name, date of birth and phone
+typed, and when **Accept** opens a sign-up's card, for that sign-up's own data. Matches show as an amber notice above
+Save, or on Accept's card above Accept: one line per student record (name, roll number, centre, joined) or waiting
+sign-up, with why it matched (same name and date of birth / same phone), "consent withdrawn: ask the Guru" for a
+withdrawn record, and a button that opens each student record. The sign-up being worked on is left out (it always
+matches itself). A list asked for another name, date or phone is not shown. A warning only: the desk may still save or
+accept (twins, a shared phone); a failed call or a database before 0047 shows nothing. Rules in
+`app/src/lib/duplicates.ts` (unit-tested), call in `src/data/students.ts`, view `components/possible-duplicates.tsx`.
+JS only; strings en/te/hi (te/hi drafts for native review).
+
+**Why.** Praveen's rule is that a person's data is filled once; a second record splits their visits, QR code and
+follow-up calls. The database part was ready and already on LIVE.
