@@ -620,7 +620,7 @@ SDK 58 is not stable yet). Praveen runs every command, from the main folder; a c
 
 | # | Gate | How to know | If not |
 |---|---|---|---|
-| G1 | **LIVE has every migration the app uses.** The production APK talks to LIVE (`qeozvv…`), which is at 0011; the app needs 0013-0045. Without them most screens fail after sign-in | [GO_LIVE_CHECKLIST.md](GO_LIVE_CHECKLIST.md) A1-A4 and B done; its probe on LIVE shows `LAST IN ORDER` = `0045`, `MISSING` = `none` | Do not build production. Either run the checklist first, or build `--profile preview` (TEST) for Friday instead: same native code, and testers keep their TEST logins |
+| G1 | **LIVE has every migration the app uses.** The production APK talks to LIVE (`qeozvv…`), which is at 0011; the app needs 0013-0050 (15 Oct 2026). Without them most screens fail after sign-in | [GO_LIVE_CHECKLIST.md](GO_LIVE_CHECKLIST.md) A1-A6 and B done; its probe on LIVE shows `LAST IN ORDER` = `0050`, `MISSING` = `none` | Do not build production. Either run the checklist first, or build `--profile preview` (TEST) for Friday instead: same native code, and testers keep their TEST logins |
 | G2 | Push on LIVE (needed only for notifications) | GO_LIVE_CHECKLIST C1-C6 done | The APK works without; notices do not arrive. Do C before telling the class to rely on them |
 | G3 | Sign-up and reset emails on LIVE (needed only for new logins and forgotten passwords) | GO_LIVE_CHECKLIST D1, D3-D9 and E1-E2 (the live web site: email links open it) | Existing logins work; new people cannot confirm their email |
 | G4 | `main` holds back-crash and brief9-apk, and nothing native after | `git log --oneline -3` in the main folder; `git status` clean | Ask the lead chat |

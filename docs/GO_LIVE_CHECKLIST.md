@@ -3,7 +3,8 @@
 The ordered steps that take the live Supabase project `qeozvvizcojzxcjgnaei` from where it stands
 (migrations 0001-0011, Praveen's login, no class data) to the pilot: every later migration, push
 notifications, real sign-up and reset emails, and the live web site. Written 10 Oct 2026 against
-main `bcdb2bb` ([DECISIONS.md #232-#234](DECISIONS.md)). Linked from
+main `bcdb2bb` ([DECISIONS.md #232-#234](DECISIONS.md)); updated 15 Oct 2026 for the launch run
+(main `fd49d25`: audit phase 3 S4-09/S4-10/S4-11, phase 5 R5-02). Linked from
 [OPERATIONS.md "LIVE go-live (brief 8)"](OPERATIONS.md#live-go-live-brief-8).
 
 **Who.** *Praveen · dashboard* = Praveen in the Supabase, Brevo or Cloudflare dashboard.
@@ -17,8 +18,10 @@ then Zoho Mail's records in Cloudflare; NOTES_lead.md 07-10-2026). Everything el
 before it: the pilot can start on `https://mridanga-seva.pages.dev` and move to
 `https://app.mridangaseva.com` later (part E).
 
-**Order on the day:** A → B → E1-E2 (the same day as B, for 0034) → C → D1, D3-D6 → D7-D9 → F → G.
-The ⏳ DOMAIN steps (D2, E3-E6) follow whenever the domain is on Cloudflare.
+**Order on the day:** A → B → C → D1, D3-D6c → E0-E2 (the same day as B, for 0034) → D7-D9 → F → G.
+The Auth settings (D5-D6c) come **before** the live web site goes up (E1), so no one can sign up while
+Confirm email, the redirect addresses or the providers are still unchecked (audit S4-10). The ⏳ DOMAIN
+steps (D2, E3-E6) follow whenever the domain is on Cloudflare; E7 follows the production APK.
 
 **The rules for the whole day.**
 
@@ -38,10 +41,19 @@ The ⏳ DOMAIN steps (D2, E3-E6) follow whenever the domain is on Cloudflare.
 | # | Who | Do | Expected | If it differs |
 |---|---|---|---|---|
 | A1 | Praveen · dashboard | Supabase → LIVE → SQL Editor → New query: paste the **probe** (below), Run | `LAST IN ORDER` = `0011`, `MISSING` = `none`, every row after 0011 `no` | Another number: LIVE already has later files. Start part B at the next file after it. `MISSING` not `none`: a file was skipped once; stop and bring the output to a chat |
-| A2 | Praveen · terminal | **Backup** of LIVE, exactly as [OPERATIONS.md "Backups"](OPERATIONS.md#backups) "Each backup" (three `pg_dump` files, row counts, 7-Zip, log line with note `before go-live`) | A `.7z` that opens, a line in `backup-log.csv` | No computer can run `pg_dump` (the office PC cannot, 7 Oct 2026): **the go-live waits.** A backup is the only way back from a bad migration |
+| A2 | Praveen · terminal | **Backup** of LIVE, exactly as [OPERATIONS.md "Backups"](OPERATIONS.md#backups) "Each backup" (three `pg_dump` files, row counts, 7-Zip, log line with note `before go-live`) | A `.7z` that opens, a line in `backup-log.csv` | No computer can run `pg_dump` (the office PC cannot, 7 Oct 2026): **the go-live waits** — except on the 15 Oct 2026 run, see "A2 waiver" below. A backup is the only way back from a bad migration |
 | A3 | Praveen · terminal | In the main folder: `git pull`, then `cd supabase\tests`, `npm ci`, `npm test` | Ends with `Replay passed: LIVE can take the go-live migrations in this order.` and `All checks passed` | A failure names the file. Nothing goes to LIVE until it passes on main |
 | A4 | Praveen · dashboard | LIVE → SQL Editor: paste the **drift query** ([OPERATIONS.md "Releasing a change"](OPERATIONS.md#releasing-a-change-database-first)), Run, **Download CSV** as `drift-live-before-<date>.csv` | About 300 rows | Keep the file with the backup log; it is the "before" picture |
 | A5 | Praveen | Pick a time with no class and two free hours. 0034 needs the live web site the same day (B, step M0034) | | |
+| A6 | Praveen · dashboard | **Owner accounts.** supabase.com → your avatar → **Account preferences → Security**: multi-factor authentication **on** (authenticator app). Then the organisation → **Team**: every member listed is someone the team named, and each Owner has MFA on | MFA on for every Owner; no unknown member | Turn MFA on before going further: an Owner login can read and change everything on LIVE (audit S4-10, brief 1b) |
+
+**A2 waiver (15 Oct 2026 run only, lead's decision 12 Oct 2026, audit S4-09).** LIVE holds no class
+data yet, so the first run may go ahead without the A2 backup. Before part B, paste the **row-count
+SQL** (part F) on LIVE: the waiver holds only if `students`, `visits`, `guardians` and `consents` are
+`0` and `(auth.users)` counts only the team's own logins (Praveen / the Guru). Any class row: stop,
+the go-live waits for A2. Write `waived: LIVE empty (row counts <date>)` in the G-table's backup row.
+The first real backup and a restore drill on TEST follow on the home network on Sun 18 / Mon 19 Oct,
+and **every later LIVE migration (0049 on) needs A2 done**, because from Friday LIVE holds sign-ups.
 
 <!-- replay: probe -->
 ```sql
@@ -149,17 +161,21 @@ a second paste. So pasting a file twice by mistake is harmless; still, never do 
 | M0045 | `0045_qr_cards.sql` | Praveen · dashboard | No rows; probe `0045`, `MISSING` `none` | Adds `reissue_qr_code` (the Guru replaces a lost printed QR card, [#250](DECISIONS.md)); the cards need no other database change |
 | M0046 | `0046_registration_accept.sql` | Praveen · dashboard | No rows; probe `0046`, `MISSING` `none` | Adds `accept_sign_up` (Accept on Register a student, [#263](DECISIONS.md)) and lets every link path take a login whose role was set to `student` by hand without a record ([#265](DECISIONS.md)); links such logins that a record with their email already waits for. **Before the students sign up on LIVE** |
 | M0047 | `0047_form_rules.sql` | Praveen · dashboard | No rows; probe `0047`, `MISSING` `none` | Form rules in SQL (audit phase 1 and early phase 3, [#271-#274, #276, #280](DECISIONS.md)): the app's name rule on every name an app user writes (no digits, letters and vowel signs of any script), a minor needs a guardian with a phone and that guardian's consent also when the date of birth changes, **a child's record is never linked to a login by email (the Guru links it)**, a student inserted by an app user gets no login, About you keeps a student's gender once set, the desk's new students get the coordinator's centre, `possible_duplicates`, the privacy-notice tick at sign-up is kept and Accept needs it. Checks only what is written from now on: stored rows are not changed or re-checked. **Before the students sign up on LIVE** |
-| M0048 | `0048_withdrawn_and_leaks.sql` | Praveen · dashboard | No rows; probe `0048`, `MISSING` `none` | Withdrawn records and leaks ([#281, #288-#290](DECISIONS.md)): **a record whose consent was withdrawn is never linked to a login again** and its login stays off; nothing new is recorded about the student (practice, phones, promotion, loans; events and assessments leave them out), error `student_withdrawn`; `audience_profiles` closed to app users, `event_visible_to` and `staff_name_taken` answer for the caller only; a QR re-scan within 10 minutes of the check-in answers "already in" (setting `qr_rescan_minutes`, no parent "left" email); the sign-up's privacy-notice tick is kept when the login joins a record with About-you details, and Fill the form keeps an adult's. Switches off any login already on a withdrawn record (none expected on LIVE). Planned as its own run on **Sat 17-10**, after 0047 |
-| M0050 | `0050_staff_dashboard.sql` | Praveen · dashboard | No rows; probe `0050`, `MISSING` `none` | **Goes with the launch UI (renumbered from placeholder 0063, 14-10-2026); a read-only function, no data change.** Staff home "Today" and "Waiting for you" in one request ([#339, #340](DECISIONS.md)): one read-only function `staff_dashboard()` (staff only, security invoker); nothing else changes. Run before the OTA that uses it (the app falls back to the older functions without it) |
+| M0048 | `0048_withdrawn_and_leaks.sql` | Praveen · dashboard | No rows; probe `0048`, `MISSING` `none` | Withdrawn records and leaks ([#281, #288-#290](DECISIONS.md)): **a record whose consent was withdrawn is never linked to a login again** and its login stays off; nothing new is recorded about the student (practice, phones, promotion, loans; events and assessments leave them out), error `student_withdrawn`; `audience_profiles` closed to app users, `event_visible_to` and `staff_name_taken` answer for the caller only; a QR re-scan within 10 minutes of the check-in answers "already in" (setting `qr_rescan_minutes`, no parent "left" email); the sign-up's privacy-notice tick is kept when the login joins a record with About-you details, and Fill the form keeps an adult's. Switches off any login already on a withdrawn record (none expected on LIVE). Was planned as its own run on Sat 17-10 while it was still a branch; it is on main and in the replay since 13 Oct, so **run it on 15 Oct with the rest**, after 0047 (0050 cannot follow without it: the probe counts a gap as `MISSING`) |
+| M0050 | `0050_staff_dashboard.sql` | Praveen · dashboard | No rows; probe `0050`, `MISSING` `none` | **Goes with the launch UI (renumbered from placeholder 0063, 14-10-2026); a read-only function, no data change.** Staff home "Today" and "Waiting for you" in one request ([#339, #340](DECISIONS.md)): one read-only function `staff_dashboard()` (staff only, security invoker); nothing else changes. Run before the OTA that uses it (the app falls back to the older functions without it). **TEST first:** not on TEST on 15 Oct 2026; paste it on TEST (`fhuqyk…`), check the probe there, then LIVE |
 
-**A file newer than 0048 on main:** the replay's first check fails until this table lists it. Add it
+**A file newer than 0050 on main:** the replay's first check fails until this table lists it. Add it
 here, with its own steps, then run it last.
+
+**0049 (launch clean-up)** is on TEST but not on main on 15 Oct 2026. It joins this table when branch
+`launch-cleanup` is merged and then runs on LIVE as its own run, **after** 0050 and after a real A2
+backup. The lead checks at that merge that the replay also passes in LIVE's order (0050 before 0049).
 
 **B-end.** Paste the **verification SQL** (part F) and the drift query again. Download the drift CSV
 as `drift-live-after-<date>.csv`, run the same drift query on TEST, and compare the `KIND:` rows
 ([OPERATIONS.md "Releasing a change"](OPERATIONS.md#releasing-a-change-database-first) step 4).
 Expected differences only: `config_rows`, `vault_secret` until part C, and the objects of any
-migration TEST has run that is not on main yet (none once branch withdrawn-leaks is merged: TEST and main then both end at 0048).
+migration TEST has run that is not on main yet (on 15 Oct 2026: 0049's objects, from branch launch-cleanup).
 
 ## C. Push notifications on LIVE
 
@@ -183,6 +199,11 @@ select (select count(*) from pg_extension where extname = 'pg_net') as pg_net,
 | C7 | Praveen · terminal | Parent emails' function, same folder and commit as C4: `npx supabase@latest functions deploy notify-parents --project-ref qeozvvizcojzxcjgnaei --no-verify-jwt --use-api`, then `functions list` | `notify-parents` ACTIVE, version 1 | As C4. It needs no secret of its own to deploy: without `BREVO_API_KEY` / `NOTICE_FROM` it only does dry runs ([OPERATIONS.md "Parent notices by email"](OPERATIONS.md#parent-notices-by-email)) |
 | C8 | Praveen · terminal | `curl.exe -s -X POST https://qeozvvizcojzxcjgnaei.supabase.co/functions/v1/notify-parents` | `{"error":"not_allowed"}` | As C5. Brevo secrets and switching the emails on are later steps (OPERATIONS "On LIVE"), not go-live |
 
+**Not on go-live day:** do **not** put the Brevo API key into LIVE's Vault (`mridanga_brevo_key`) or
+into the Edge Function secrets. The parent-code mail can be made to send to any address until the
+mail hardening after launch (audit S3-01). The Auth SMTP key of D3-D4 is a different key and is fine.
+Parent emails (G10) stay **off**.
+
 The real push test needs the production APK (brief 9): OPERATIONS step 12 with it, then (step 9 of
 [OPERATIONS.md "Friday production build"](OPERATIONS.md#friday-production-build-first-production-apk-brief-9)).
 For the production APK, parts A and B are required (gate G1); C (notifications) and D1, D3-D9 + E1-E2
@@ -202,8 +223,10 @@ way may land in spam: D7 shows it.
 | D2 | Praveen · dashboard + Guru · Zoho | **⏳ DOMAIN** Brevo → **Domains → Add a domain** `mridangaseva.com` → **Authenticate** → put the records Brevo shows (Brevo code TXT, DKIM, DMARC) into Cloudflare's DNS as **DNS only** (grey cloud). One SPF TXT only: Zoho's and Brevo's `include:` in the same record. Then a sender `noreply@mridangaseva.com` (or `seva@`) | Brevo shows the domain **Authenticated** | Do it after Zoho Mail's MX/SPF/DKIM are in Cloudflare and a test mail to seva@ arrives (NOTES_lead.md 07-10-2026) |
 | D3 | Praveen · dashboard | Brevo → **SMTP & API → SMTP → Generate a new SMTP key** (name `supabase-live`). Copy it straight into D4; do not save it anywhere else | A key and the SMTP login (`…@smtp-brevo.com`) | |
 | D4 | Praveen · dashboard | Supabase LIVE → **Authentication → Emails → SMTP Settings** → Enable custom SMTP: sender email = D1's (later D2's) address, sender name `Mridanga Seva`, host `smtp-relay.brevo.com`, port `587`, username = the SMTP login, password = the key → Save | Saved without error | |
-| D5 | Praveen · dashboard | **Authentication → Rate Limits**: emails per hour `30` | 30 | |
+| D5 | Praveen · dashboard | **Authentication → Rate Limits**: emails sent per hour **`100` for the sign-up weekend (Fri 16 - Sun 18 Oct 2026)**, back to `30` on Mon 19 Oct (audit S4-11; Brevo free = 300 a day). Token refreshes **at least `150` per 5 minutes per IP** (audit R5-02: the class shares the temple's Wi-Fi, one IP; a refused refresh signs the person out and deletes their offline QR card). Save | 100 (then 30); token refresh ≥ 150 | Lower token-refresh value: raise it, never lower it below 150 |
 | D6 | Praveen · dashboard | **Authentication → Sign In / Providers → Email**: Email **on**, **Confirm email on**, minimum password length **8**, Secure email change on. **Authentication → URL Configuration**: Site URL `https://mridanga-seva.pages.dev`; Redirect URLs exactly `https://mridanga-seva.pages.dev` (the app sends the site's origin, no path). **No localhost** and no wildcard: delete `http://localhost:8081` if it is still there (brief 1a). After part E2 the addresses change (E3) | As written | |
+| D6b | Praveen · dashboard | **Authentication → Sign In / Providers**: every provider other than Email **off** (Phone, Google, Apple, GitHub, … and **Allow anonymous sign-ins off**); **Allow new users to sign up on** (students sign up themselves); manual linking off | Only Email enabled | Any other provider on: switch it off. The app only signs in with email; another provider makes logins that skip Confirm email and the identity line (audit S4-10) |
+| D6c | Praveen · dashboard | **Project Settings → Data API** (newer dashboards: **Integrations → Data API → Settings**): **Exposed schemas** = `public` and Supabase's default `graphql_public` only | Exactly those two | `auth`, `vault`, `cron`, `storage`, `extensions` or any other schema listed: remove it and Save. The app reads only `public`; every exposed schema can be called through the Data API with the public key (audit S4-10) |
 | D7 | Praveen | **One real sign-up**: on the live web site (part E1 first) sign up with a team mailbox that is not on any student record, e.g. a `+golive` alias | The mail arrives from the sender of D4 within a minute, in the inbox (not spam); its link opens `https://mridanga-seva.pages.dev` and the app says the email is confirmed; the login then waits for a role (pending) | No mail: Supabase → **Authentication → Logs** and Brevo → **Transactional → Logs**. Link opens the Site URL instead of the site, or errors `redirect_to`: the Redirect URL does not match the origin exactly. In spam: do D2 before the pilot |
 | D8 | Praveen | **One real reset**: Forgot password with the same mailbox | The reset mail arrives; its link opens the site; a new password of 8+ characters is accepted; signing in with it works | As D7. Afterwards switch that test login off (G2) or delete it in Authentication → Users |
 | D9 | Praveen · terminal | `curl.exe -s https://qeozvvizcojzxcjgnaei.supabase.co/auth/v1/settings -H "apikey: <LIVE publishable key, the one in app/.env.live>"` | `"disable_signup":false` and `"mailer_autoconfirm":false` | `mailer_autoconfirm:true` = Confirm email is off: switch it on (D6) **before** any real student record exists ([#13](DECISIONS.md), SURF-01) |
@@ -219,12 +242,14 @@ theirs. Auto-confirm (Confirm email off) stays off for good.
 
 | # | Who | Do | Expected | If it differs |
 |---|---|---|---|---|
-| E1 | Praveen · terminal | On the PC with `app/.env.live` (LIVE URL + publishable key): from `app/`, on main at the replay's commit, `npm run export:web -- --site live`; then the first upload as [OPERATIONS.md "Publishing the web version"](OPERATIONS.md#publishing-the-web-version) "First upload" (project name `mridanga-seva`, drag and drop) or `npx wrangler@4 pages deploy dist --project-name mridanga-seva --branch main` | The script's last line names site `live`, Cloudflare project `mridanga-seva`, Supabase `qeozvv…`; Cloudflare shows `https://mridanga-seva.pages.dev` | *Settings file missing*: on 10 Oct 2026 the main folder still had only `app/.env` (= LIVE); move it to `app/.env.live` first (app/README.md "Settings files", [#145](DECISIONS.md)). Cloudflare added letters to the name: use the address it shows everywhere in D6 and here. From a worktree, wrangler without `--branch main` makes a preview, not the site |
+| E0 | Praveen · terminal | **Settings file and EAS environment** (OPERATIONS "Friday production build" gate G5 and step 4). In the main folder move `app\.env` (= LIVE) to `app\.env.live` (app/README.md "Settings files", [#145](DECISIONS.md)); then from `app/`: `npx eas-cli env:push --environment production --path .env.live` and `npx eas-cli env:list --environment production --format long` | `app\.env.live` exists and no plain `app\.env`; EAS `production` shows `EXPO_PUBLIC_SUPABASE_URL` = `https://qeozvvizcojzxcjgnaei.supabase.co` and a key starting `sb_publishable_` | Another address in EAS: push again from the right file. A chat never reads these files |
+| E1 | Praveen · terminal | On the PC with `app/.env.live` (LIVE URL + publishable key): from `app/`, on main at the replay's commit (15 Oct 2026: `fd49d25` or later — it carries the launch redesign and the dark gradient), `npm run export:web -- --site live`; then the first upload as [OPERATIONS.md "Publishing the web version"](OPERATIONS.md#publishing-the-web-version) "First upload" (project name `mridanga-seva`, drag and drop) or `npx wrangler@4 pages deploy dist --project-name mridanga-seva --branch main` | The script's last line names site `live`, Cloudflare project `mridanga-seva`, Supabase `qeozvv…`; Cloudflare shows `https://mridanga-seva.pages.dev` | *Settings file missing*: on 10 Oct 2026 the main folder still had only `app/.env` (= LIVE); move it to `app/.env.live` first (app/README.md "Settings files", [#145](DECISIONS.md)). Cloudflare added letters to the name: use the address it shows everywhere in D6 and here. From a worktree, wrangler without `--branch main` makes a preview, not the site |
 | E2 | Praveen · terminal | The header check and upload-log row of OPERATIONS "After every upload", on `https://mridanga-seva.pages.dev` | CSP with `https://qeozvvizcojzxcjgnaei.supabase.co`, HSTS, `nosniff`; `version.txt` names site live and the commit | |
 | E3 | Praveen · dashboard | **⏳ DOMAIN** Cloudflare → `mridanga-seva` → **Custom domains → Set up a custom domain** `app.mridangaseva.com` (Cloudflare adds the CNAME itself once the zone is Active) | `https://app.mridangaseva.com` opens the app with a padlock | The zone is not Active yet: the domain move is not finished |
 | E4 | Praveen · dashboard | **⏳ DOMAIN** Supabase LIVE → URL Configuration: Site URL `https://app.mridangaseva.com`; Redirect URLs `https://app.mridangaseva.com` and, for a week while old mails are still around, `https://mridanga-seva.pages.dev`; then remove the pages.dev one | As written | |
 | E5 | Praveen | **⏳ DOMAIN** Repeat D7 and D8 once from `https://app.mridangaseva.com` | Both links open `app.mridangaseva.com` | As D7 |
 | E6 | Praveen · terminal | **⏳ DOMAIN** The website: OPERATIONS "The public website" → "Going live" (attach `mridangaseva.com`, `app.webLive: true` once E3 works) | | |
+| E7 | Lead chat, Praveen's go | **After the production APK** (Fri 16 Oct 2026): the public website's "Download for Android" (`apkUrl`) → the **production** APK's link, not the TEST preview APK; `webUrl` `https://mridanga-seva.pages.dev/`, `webLive: true`; upload the website on Praveen's go (audit S4-14) | The website's download button installs the build named in the G-table's production APK row | Still the preview link: TEST logins on the public download — fix before sign-ups |
 
 ## F. After go-live: verification (read-only)
 
@@ -359,8 +384,10 @@ changes later, with the new date.
 
 | Setting | Where | Expected | Seen on LIVE | Date | By |
 |---|---|---|---|---|---|
+| Replay commit | A3, `git log -1` | the main commit the replay passed on; migrations, functions (C4, C7) and the web site (E1) all from it | | | |
 | Last migration (probe) | SQL editor | `0050`, MISSING none | | | |
-| Backup before go-live | `backup-log.csv` | archive name, `before go-live` | | | |
+| Backup before go-live | `backup-log.csv` | archive name, `before go-live` — or on 15 Oct 2026 `waived: LIVE empty (row counts <date>)` (A2 waiver) | | | |
+| Owner MFA | supabase.com Account → Security; organisation → Team | on for every Owner; members = __ | | | |
 | Drift before / after | CSVs of A4, B-end | `ALL` hashes noted; KIND rows = TEST except the expected | | | |
 | Scheduled jobs | verification row 3 | 11 of 11 active | | | |
 | pg_net | Database → Extensions | on | | | |
@@ -371,16 +398,22 @@ changes later, with the new date.
 | `BREVO_API_KEY`, `NOTICE_FROM`, `NOTICE_REPLY_TO` | Edge Functions → Secrets | set; sender `notices@<domain>` (domain authenticated) — or none yet = dry run | | | |
 | Parent emails (G10) | G10 Settings → Emails to parents | **off** until the consent line (#230, wording approved 10 Oct 2026) is on the paper form and the privacy notice; then on: check-out emails only (#246), "check-in" and "night" boxes unticked | | | |
 | Email provider | Sign In / Providers → Email | on | | | |
+| Other providers, anonymous sign-ins | Sign In / Providers (D6b) | all off | | | |
+| Exposed schemas | Data API settings (D6c) | `public`, `graphql_public` | | | |
 | Confirm email | Sign In / Providers → Email | **on** (auto-confirm off) | | | |
 | Minimum password length | Sign In / Providers → Email | 8 | | | |
 | `/auth/v1/settings` | D9 | `mailer_autoconfirm:false`, `disable_signup:false` | | | |
 | Custom SMTP | Emails → SMTP Settings | on, `smtp-relay.brevo.com:587`, sender __ | | | |
 | Brevo sender | Brevo → Senders | verified: __ | | | |
 | Brevo domain | Brevo → Domains | ⏳ authenticated `mridangaseva.com` | | | |
-| Email rate limit | Authentication → Rate Limits | 30 an hour | | | |
+| Email rate limit | Authentication → Rate Limits | 100 an hour Fri 16 - Sun 18 Oct 2026, then 30 (new row with the date when it goes back) | | | |
+| Token refresh limit | Authentication → Rate Limits | ≥ 150 per 5 minutes per IP (R5-02) | | | |
+| EAS `production` environment | `eas-cli env:list --environment production` (E0) | LIVE URL `qeozvv…` + `sb_publishable_…` key | | | |
 | Site URL | URL Configuration | `https://mridanga-seva.pages.dev`, then ⏳ `https://app.mridangaseva.com` | | | |
 | Redirect URLs | URL Configuration | exactly the Site URL's origin (two during the switch); no localhost, no wildcard | | | |
 | Live web site | Cloudflare `mridanga-seva` | `version.txt` commit __ | | | |
+| Production APK | EAS build page; OPERATIONS APK log | build id __, commit __, fingerprint __, versionCode __, same keystore as preview | | | |
+| Website download link | public website `apkUrl` (E7) | the production APK above | | | |
 | Custom domain | Cloudflare `mridanga-seva` → Custom domains | ⏳ `app.mridangaseva.com` active | | | |
 | Real sign-up mail | D7 | arrived in the inbox, link opened the site | | | |
 | Real reset mail | D8 | arrived, new password works | | | |
