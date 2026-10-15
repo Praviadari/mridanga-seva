@@ -1288,11 +1288,14 @@ How much of the free 1 GB is used: **Project Settings → Usage**, or
 
 ## App icon and splash screen
 
-`app/assets/images/` and the web version's home-screen icons in `app/public/` hold placeholder
-artwork (a white khol on saffron), drawn by `node scripts/make-placeholder-icons.mjs` (run from
-`app/`). When the team has a logo, replace the PNG files
-with images of the same sizes and keep the saffron colour in `app.json` and
-`app/src/theme/colors.ts` in step with it.
+`app/assets/images/` and the web version's home-screen icons in `app/public/` hold the website's emblem (gold
+lotus petals round a night disc, a clay drum) on the website's night (#1B1E4B), drawn by
+`node scripts/make-emblem-icons.mjs` (run from `app/`; about 75 s; [DECISIONS.md #364](DECISIONS.md)). The script
+prints how far each Android layer reaches from the centre and stops if it leaves the round-launcher safe zone
+(66/108 of the layer). The night is also `adaptiveIcon.backgroundColor` and the splash `backgroundColor` in
+`app.json`, `brand` in `app/src/theme/colors.ts` and the static web splash in `app/public/index.html`: keep them in
+step. Any change to these images or fields changes the fingerprint, so it needs a new APK. When the temple gives a
+designed logo, change the drawing in the script (or replace the PNGs at the same sizes).
 
 ## Backups
 

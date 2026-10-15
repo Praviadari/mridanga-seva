@@ -5,7 +5,7 @@
   from Expo's default template, plus the lines that let an iPhone add the site to its home
   screen as an app (docs/OPERATIONS.md "Publishing the web version"): the manifest, the home
   screen icon and the apple-mobile-web-app tags. The icons are drawn by
-  scripts/make-placeholder-icons.mjs.
+  scripts/make-emblem-icons.mjs.
 
   iPhone (round 6, docs/DECISIONS.md #42): viewport-fit=cover lets the page reach under the notch
   and the home bar, and makes Safari report their size (env(safe-area-inset-*)), which the app's
@@ -37,8 +37,8 @@
     <meta name="apple-mobile-web-app-title" content="Mridanga Seva" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <!-- The header colours of src/theme/colors.ts (headerTop), light and dark. -->
-    <meta name="theme-color" content="#9A4307" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#5C2B0C" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#1B1E4B" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#12143A" media="(prefers-color-scheme: dark)" />
     <!-- The `react-native-web` recommended style reset: https://necolas.github.io/react-native-web/docs/setup/#root-element -->
     <style id="expo-reset">
       /* These styles make the body full-height */
@@ -72,7 +72,7 @@
         align-items: center;
         justify-content: center;
         gap: 16px;
-        background: #b45309;
+        background: #1b1e4b;
         color: #ffffff;
         font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans Telugu", "Noto Sans Devanagari", sans-serif;
         text-align: center;

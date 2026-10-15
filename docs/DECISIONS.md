@@ -5633,3 +5633,22 @@ number-only box has none. JS only.
 
 **Why.** The audit's weakest scores were inner-screen clarity (5.5) and delight (4); these are the low-risk fixes that
 reach phones as an update before launch.
+
+## 364. App icon and splash: the website's emblem on night — 15 Oct 2026
+
+**Status: branch `launch-ui`; changes the fingerprint (needs the APK).**
+
+**Decision.** Praveen said yes to audit fix 3 for the 15-10 preview APK (design decision 7: use the website emblem now).
+The app icon, the Android adaptive icon (night background layer, emblem foreground, white monochrome layer for themed
+icons and the notification icon), the splash image, the favicon and the web home-screen icons show the website's
+header emblem (website/src/art.mjs emblem(): twelve gold petals round a night disc with a gold ring, a clay drum with
+cream heads) on the website's night #1B1E4B with a soft lighter middle. Drawn by app/scripts/make-emblem-icons.mjs
+(plain Node, no package; replaces make-placeholder-icons.mjs); the Android layers and the splash image keep the
+drawing within 30 % of the size from the centre, inside the round-launcher and Android 12 splash safe circle (30.6 %).
+app.json: adaptiveIcon.backgroundColor and the splash backgroundColor #1B1E4B; nothing else native. The JS splash
+(`brand`, ivory `onBrand`) and the static web splash and manifest follow. Not changed: app.json web themeColor /
+backgroundColor (still #B45309) and the notification accent colour, to keep this change to the icon and splash.
+New fingerprint 23dc7e4a (was 59a0c569). The temple's own logo replaces the drawing when they give one.
+
+**Why.** The first thing people see (icon, splash) was the old saffron placeholder, at odds with the night-and-gold
+inside; the audit scored it as the biggest brand gap.

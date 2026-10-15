@@ -7,13 +7,13 @@
 import { chips, modules, semantic } from './tokens.generated';
 
 /**
- * Saffron of the native splash screen and the app icon (app.json and scripts/make-placeholder-icons.mjs):
- * those change only with a new APK (audit phase 5 step 4), so the JS splash keeps this colour until then.
+ * Night of the native splash screen and the app icon (app.json and scripts/make-emblem-icons.mjs, docs/DECISIONS.md
+ * #364): the JS splash uses the same colour, so the start looks like one screen. Changes with a new APK only.
  */
-export const brand = '#B45309';
+export const brand = '#1B1E4B';
 
-/** Text and the spinner on `brand` (the splash), before the theme is known. */
-export const onBrand = '#FFFFFF';
+/** Text and the spinner on `brand` (the splash), before the theme is known: the band's ivory. */
+export const onBrand = '#FFF6E8';
 
 /** Names of the colours every screen may use. */
 export type Palette = {
