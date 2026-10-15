@@ -5652,3 +5652,20 @@ New fingerprint 23dc7e4a (was 59a0c569). The temple's own logo replaces the draw
 
 **Why.** The first thing people see (icon, splash) was the old saffron placeholder, at odds with the night-and-gold
 inside; the audit scored it as the biggest brand gap.
+
+## 365. Light list rows: the name and one line — 15 Oct 2026
+
+**Status: branch `launch-ui-2` (update).** UI audit 14-10-2026 fix 5 (Praveen: "do remaining too to build world class").
+
+**Decision.** List rows carry the name and one line; the rest is on the screen the row opens. Students (C7): level, the
+status only when it is not Active, and the last visit; roll number and mentor are on the profile (C8). Follow-ups (C10):
+the status and the call (due date, try, for whom), or the last visit when no call is planned; roll number and last visit
+are on the call screen (C11). Newcomers: "Joined … · visits: N"; level and roll number on C8. Staff announcements
+(C15): one line — when (or "Scheduled for"), "Seen by N of M", replies; who it is for, who posted it, edits, files and
+"Without the app" are on the announcement. Student announcements (S10): when · posted by; audience, edits and files on
+the announcement. "New" was already never shown on your own post. ListRow itself is unchanged; the trimming is per
+screen. The keys students.noMentor and announcements.noLoginCount are no longer used (left in the files, as P1-06).
+JS only.
+
+**Why.** The audit found 3-4 grey lines under every name (inner-screen density 5.5/10); world-class lists (Google
+Classroom, Linear) show one line and let the detail screen carry the rest.

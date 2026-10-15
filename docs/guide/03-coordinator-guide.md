@@ -178,8 +178,9 @@ Open the **Students** tab.
 - **Filters**: **Level**, **Status**, **Mentor** (including **My students** and **No mentor**), and
   **Not seen for** (for example 14+ days). **Clear filters** removes them.
 - **Showing N of M** says how many match.
-- Each row shows the name, roll number, level and status, the last visit
-  (**Last visit 12-09-2026 · 21 days ago**, or **In class now**), and the mentor.
+- Each row shows the name, the level (and the status when it is not **Active**) and the last visit
+  (**Last visit 12-09-2026 · 21 days ago**, or **In class now**). The roll number and the mentor are
+  on the student's profile.
 
 On a laptop the list shows two columns.
 
@@ -248,7 +249,8 @@ The **Follow-ups** tab (**Follow-ups**) lists students who have stopped coming. 
 them and record the call.
 
 **Show: Everyone** or **My students** (those you mentor; when none of yours is left, the list
-shows everyone again). Students are grouped:
+shows everyone again). Each row shows the name, the status and one line: the call (**Call due
+01-10-2026 · try 2 · for Radha**), or the last visit when no call is planned. Students are grouped:
 
 | Group | Who |
 |---|---|
@@ -294,9 +296,10 @@ by mistake ([DECISIONS.md #4](../DECISIONS.md)).
 
 Announcements replace the WhatsApp groups. Open the **News** tab (**Announcements**).
 
-**The list** shows each announcement with **Seen by N of M** (M = people it is for who use the app),
-**Without the app: N**, **Replies: N** and **Files: N**. **Pinned** ones are on top; scheduled ones
-say **Scheduled for**.
+**The list** shows each announcement with one short line: when, **Seen by N of M** (M = people it is
+for who use the app) and **Replies: N**. **Pinned** ones are on top; scheduled ones say **Scheduled
+for**. Who it is for, who posted it, files and **Without the app** are on the announcement itself.
+A **New** label marks someone else's announcement you have not opened; never your own.
 
 **Post one**: tap **New announcement**.
 

@@ -1,5 +1,5 @@
-// C7 Student list, for coordinators and the Guru: every student with level, status and when
-// they last came. Search by name or roll number; filter by level, status, mentor and days since
+// C7 Student list, for coordinators and the Guru: every student with level, status (when not Active)
+// and when they last came. Search by name or roll number; filter by level, status, mentor and days since
 // the last visit. Tapping a student opens their profile (C8, ./[id].tsx). A link opens Print QR cards (C24).
 // Data: student_overview (src/data/student-overview.ts). The whole list is loaded once and
 // filtered on the phone, so the search answers as the coordinator types.
@@ -84,11 +84,6 @@ export default function StudentListScreen() {
   const shown = useMemo(
     () => (loaded ? filterStudents(loaded.students, filters, myId) : []),
     [loaded, filters, myId],
-  );
-
-  const staffNames = useMemo(
-    () => new Map((loaded?.staff ?? []).map((s) => [s.id, s.fullName])),
-    [loaded],
   );
 
   const mentorChoices = useMemo((): Choice<string>[] => {
@@ -242,14 +237,10 @@ export default function StudentListScreen() {
             leading="initials"
             title={student.fullName}
             highlighted={student.hereNow}
-            chips={{ levelId: student.levelId, status: student.status }}
-            details={[
-              student.rollNo,
-              lastVisitText(t, student),
-              student.mentorId
-                ? t('students.mentor', { name: staffNames.get(student.mentorId) ?? '' })
-                : t('students.noMentor'),
-            ]}
+            // A light row: the name, the level (and the status only when it is not Active) and the last
+            // visit; roll number and mentor are on the profile (UI audit fix 5, docs/DECISIONS.md #365).
+            chips={{ levelId: student.levelId, status: student.status === 'active' ? undefined : student.status }}
+            details={[lastVisitText(t, student)]}
             onPress={() => router.push({ pathname: '/staff/students/[id]', params: { id: student.id } })}
           />
         ))}

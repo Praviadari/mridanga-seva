@@ -1,6 +1,6 @@
 // S10 Announcements, for students: the announcements addressed to them, pinned ones first, then
-// newest first, with who posted each one; "New" marks those not opened yet and "Edited" those
-// changed after publishing. Tapping one opens it (./[id].tsx), which tells the coordinator it was
+// newest first, with when and who posted each one; "New" marks those not opened yet. Who it is for,
+// edits and files are on its own screen. Tapping one opens it (./[id].tsx), which tells the coordinator it was
 // seen. Scheduled announcements appear only from their time; the database decides which ones a
 // student sees (docs/DECISIONS.md #25). Data: src/data/announcements.ts.
 
@@ -17,7 +17,7 @@ import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
 import { fetchMyAnnouncements, type MyAnnouncementList } from '@/data/announcements';
-import { audienceName, authorLine } from '@/i18n/labels';
+import { authorLine } from '@/i18n/labels';
 import { formatDateTime } from '@/lib/dates';
 
 /** One card per announcement addressed to the student. */
@@ -68,13 +68,10 @@ export default function MyAnnouncementsScreen() {
           body={a.body}
           pinned={a.pinned}
           unread={!a.readByMe}
+          // One short line: when and who posted it; who it is for, edits and files are on the announcement's
+          // own screen (UI audit fix 5, docs/DECISIONS.md #365).
           details={[
-            `${formatDateTime(a.publishAt)} · ${audienceName(t, a, {
-              groupName: a.audienceGroup !== null ? loaded.groupNames.get(a.audienceGroup) : null,
-            })}`,
-            ...authorLine(t, a.createdBy ? loaded.staffNames.get(a.createdBy) : undefined),
-            ...(a.editedAt ? [t('announcements.edited', { date: formatDateTime(a.editedAt) })] : []),
-            ...(a.attachments.length > 0 ? [t('announcements.files.count', { number: a.attachments.length })] : []),
+            [formatDateTime(a.publishAt), ...authorLine(t, a.createdBy ? loaded.staffNames.get(a.createdBy) : undefined)].join(' · '),
           ]}
           onPress={() => router.push({ pathname: '/student/announcements/[id]', params: { id: String(a.id) } })}
         />

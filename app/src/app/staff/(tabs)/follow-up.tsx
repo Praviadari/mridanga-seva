@@ -154,12 +154,11 @@ export default function FollowUpScreen() {
                 key={entry.student.id}
                 leading="initials"
                 title={entry.student.fullName}
-                chips={{ levelId: entry.student.levelId, status: entry.student.status }}
-                details={[
-                  entry.student.rollNo,
-                  lastVisitText(t, entry.student),
-                  taskText(entry),
-                ]}
+                // A light row: the name, the status that put them here and one line, the call (who and when);
+                // with no call planned the group says so, so the line is the last visit. Roll number and
+                // last visit are on the call screen (UI audit fix 5, docs/DECISIONS.md #365).
+                chips={{ status: entry.student.status }}
+                details={[entry.task ? taskText(entry) : lastVisitText(t, entry.student)]}
                 onPress={() => router.push({ pathname: '/staff/call/[id]', params: { id: entry.student.id } })}
               />
             ))}

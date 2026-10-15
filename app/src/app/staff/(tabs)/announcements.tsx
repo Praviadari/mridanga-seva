@@ -1,6 +1,6 @@
 // C15 Announcements, for coordinators and the Guru: every announcement, pinned ones first, then
-// newest first, with who it is for, who posted it, when students see it, whether it was edited,
-// "seen by N of M" and, for the author and the Guru, how many private replies it has.
+// newest first, with when students see it, "seen by N of M" and, for the author and the Guru, how many
+// private replies it has; who it is for, who posted it and edits are on the announcement's own screen.
 // "New announcement" opens the compose screen (./new.tsx); tapping one opens it (./[id].tsx) with
 // the list of who has not seen it yet. Staff see every announcement, scheduled ones too.
 // Data: src/data/announcements.ts.
@@ -18,7 +18,6 @@ import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
 import { fetchStaffAnnouncements, isScheduled, type StaffAnnouncementList } from '@/data/announcements';
-import { audienceName } from '@/i18n/labels';
 import { formatDateTime } from '@/lib/dates';
 
 /** The "New announcement" button and one card per announcement. */
@@ -69,7 +68,6 @@ export default function StaffAnnouncementsScreen() {
       <Columns>
       {loaded?.announcements.map((a) => {
         const byMe = a.createdBy === myId;
-        const authorName = a.createdBy ? loaded.staffNames.get(a.createdBy) : undefined;
         const when = formatDateTime(a.publishAt);
         const seen = a.seenCount;
         return (
@@ -80,27 +78,15 @@ export default function StaffAnnouncementsScreen() {
             pinned={a.pinned}
             // "New" only for someone else's announcement that this person has not opened yet.
             unread={!byMe && !a.readByMe}
+            // One short line: when, "Seen by N of M" and any replies. Who it is for, who posted it, edits,
+            // files and "Without the app" are on the announcement's own screen (UI audit fix 5, #365).
             details={[
-              audienceName(t, a, {
-                groupName: a.audienceGroup !== null ? loaded.groupNames.get(a.audienceGroup) : null,
-                authorName,
-                byMe,
-              }),
-              `${isScheduled(a) ? t('announcements.scheduledFor', { date: when }) : when}${
-                authorName ? ` · ${t('announcements.postedBy', { name: authorName })}` : ''
-              }`,
-              ...(a.editedAt ? [t('announcements.edited', { date: formatDateTime(a.editedAt) })] : []),
-              ...(a.attachments.length > 0 ? [t('announcements.files.count', { number: a.attachments.length })] : []),
-              ...(seen
-                ? [
-                    [
-                      t('announcements.seenCount', { seen: seen.seen, addressed: seen.addressed }),
-                      ...(seen.noLogin > 0 ? [t('announcements.noLoginCount', { number: seen.noLogin })] : []),
-                      // Only the author and the Guru get a count of everyone's replies (0008).
-                      ...(seen.replies > 0 ? [t('announcements.replyCount', { number: seen.replies })] : []),
-                    ].join(' · '),
-                  ]
-                : []),
+              [
+                isScheduled(a) ? t('announcements.scheduledFor', { date: when }) : when,
+                ...(seen && seen.addressed > 0 ? [t('announcements.seenCount', { seen: seen.seen, addressed: seen.addressed })] : []),
+                // Only the author and the Guru get a count of everyone's replies (0008).
+                ...(seen && seen.replies > 0 ? [t('announcements.replyCount', { number: seen.replies })] : []),
+              ].join(' · '),
             ]}
             onPress={() => router.push({ pathname: '/staff/announcements/[id]', params: { id: String(a.id) } })}
           />

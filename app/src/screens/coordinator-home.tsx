@@ -113,8 +113,8 @@ export function NewJoinersList({ board }: { board: CoordinatorDashboard }) {
           key={j.id}
           leading="initials"
           title={j.fullName}
-          chips={{ levelId: j.levelId }}
-          details={[j.rollNo, t('home.staff.joinedVisits', { date: formatDate(j.joinedOn), count: j.visits })]}
+          // A light row: the name and one line; level and roll number are on the profile (UI audit fix 5, #365).
+          details={[t('home.staff.joinedVisits', { date: formatDate(j.joinedOn), count: j.visits })]}
           onPress={() => router.push({ pathname: '/staff/students/[id]', params: { id: j.id } })}
         />
       ))}

@@ -151,9 +151,10 @@ your mentor's students, or for a group you are in.
 
 - **Pinned** ones stay at the top.
 - **New** marks the ones you have not opened yet.
-- Each one says **Posted by** and the name of the coordinator or Facilitator. **Edited** appears if
-  it was changed after it was posted.
-- An announcement may have up to three photos or PDFs. Tap one to open it.
+- Each one says when it was posted and **Posted by** with the name of the coordinator or
+  Facilitator.
+- Open it to see who it is for, its photos or PDFs (up to three; tap one to open it) and **Edited**
+  if it was changed after it was posted.
 
 Open an announcement to read all of it. Opening it tells the coordinator you have seen it (they see
 "Seen by N of M").
