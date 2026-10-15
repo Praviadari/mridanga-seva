@@ -61,3 +61,12 @@ test('Register a student asks possible_duplicates at Next and on Accept, and sho
   assert.match(screen, /<PossibleDuplicates\s+place="save"/);
   assert.match(screen, /<PossibleDuplicates place="accept"/);
 });
+
+// ---------------------------------------------------------------- #391 My QR asks again on focus
+
+test('My QR loads the card each time it comes into view, not once per mount', () => {
+  const screen = src('app/student/(tabs)/my-qr.tsx');
+  const focus = screen.indexOf('useFocusEffect(');
+  assert.ok(focus >= 0 && screen.indexOf('fetchMyCard(profileId)', focus) > focus, 'fetchMyCard inside useFocusEffect');
+  assert.doesNotMatch(screen, /useEffect\(\(\) => \{\s*if \(!profileId\)/);
+});

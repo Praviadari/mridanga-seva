@@ -13,7 +13,7 @@
 
 import { Stack, useFocusEffect } from 'expo-router';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 
@@ -56,16 +56,21 @@ export default function MyQrScreen() {
   const [loadAttempt, setLoadAttempt] = useState(0);
   const profileId = profile?.id;
 
-  useEffect(() => {
-    if (!profileId) return;
-    let cancelled = false;
-    fetchMyCard(profileId).then((loaded) => {
-      if (!cancelled) setResult(loaded);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [profileId, loadAttempt]);
+  // Asked each time My QR comes into view, not once: it is a tab and stays mounted, so a code the Guru gave anew
+  // (a lost printed card, reissue_qr_code 0045) or a record unlinked meanwhile reaches the screen without a restart
+  // (launch audit LA-02, docs/DECISIONS.md #391). The card on screen stays until the answer comes.
+  useFocusEffect(
+    useCallback(() => {
+      if (!profileId) return undefined;
+      let cancelled = false;
+      fetchMyCard(profileId).then((loaded) => {
+        if (!cancelled) setResult(loaded);
+      });
+      return () => {
+        cancelled = true;
+      };
+    }, [profileId, loadAttempt]),
+  );
 
   // Until the server answers, show the card saved on this phone (without the "no internet" note:
   // that is not known yet). On a stalled connection the answer takes up to the read time limit

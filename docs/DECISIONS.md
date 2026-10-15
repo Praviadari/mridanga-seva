@@ -5881,3 +5881,14 @@ JS only; strings en/te/hi (te/hi drafts for native review).
 
 **Why.** Praveen's rule is that a person's data is filled once; a second record splits their visits, QR code and
 follow-up calls. The database part was ready and already on LIVE.
+
+## 391. My QR asks for the card each time it comes into view — 15 Oct 2026
+
+**Status: branch `launch-audit`.** Launch audit finding LA-02. Since My QR became a tab (#350) it stays mounted, and it
+asked the server for the card only when first drawn; the home's prefetch (#303) asks once per run of the app. So a code
+the Guru gave anew (reissue_qr_code, 0045: a lost printed card), or a record unlinked meanwhile, reached the phone only
+after the app was closed and opened again, and the old code scanned as "Code not recognised" at the door. Now the card
+is asked each time My QR comes into view (useFocusEffect); the card on screen (or the one saved on the phone) stays
+until the answer comes, and without signal the saved card shows with its note as before. JS only.
+
+**Why.** 0045 promised "My QR shows the new code the next time it is online"; the tab broke that promise.
