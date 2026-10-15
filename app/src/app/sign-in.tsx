@@ -7,7 +7,7 @@
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { TextInput } from 'react-native';
+import { StyleSheet, View, type TextInput } from 'react-native';
 
 import { isValidEmail, resendConfirmation, signIn, type MessageKey } from '@/auth/auth-actions';
 import { clearEmailLinkProblem, emailLinkProblem } from '@/auth/email-link';
@@ -20,6 +20,7 @@ import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { TextField } from '@/components/text-field';
+import { spacing } from '@/theme/use-theme';
 
 /** Sign-in form. On success the app moves to the person's screens by itself (_layout.tsx). */
 export default function SignInScreen() {
@@ -76,6 +77,9 @@ export default function SignInScreen() {
     // Centred: on a laptop the card sits in the middle of the page instead of hugging the band.
     <Screen centred header={<BrandHeader />}>
       <LanguagePicker />
+      {/* Most people on launch day are new (#380): the way to register comes before the sign-in form, on the first
+          screen. Someone who came from an email link already has an account: for them it stays at the foot. */}
+      {linkProblem ? null : <NewHere />}
 
       {linkProblem ? (
         <Section title={t(linkProblem === 'expired' ? 'signIn.linkExpiredTitle' : 'signIn.linkFailedTitle')}>
@@ -137,14 +141,28 @@ export default function SignInScreen() {
         />
       </Section>
 
-      <AppText tone="muted" style={{ textAlign: 'center' }}>
-        {t('signIn.noAccount')}
-      </AppText>
-      <Button
-        variant="secondary"
-        label={t('signIn.createAccount')}
-        onPress={() => router.push('/sign-up')}
-      />
+      {linkProblem ? <NewHere /> : null}
     </Screen>
   );
 }
+
+/** "New here?" and the button to New student registration, on one line when it fits. */
+function NewHere() {
+  const { t } = useTranslation();
+  return (
+    <View style={styles.newHere}>
+      <AppText tone="muted">{t('signIn.noAccount')}</AppText>
+      <Button variant="secondary" icon="register" label={t('signIn.createAccount')} onPress={() => router.push('/sign-up')} />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  newHere: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+  },
+});

@@ -7,6 +7,8 @@
 // At the door (audit phase 5 U2-02, docs/DECISIONS.md #342): the screen stays awake while My QR is in view, and a
 // line above the card says whether today's check-in is recorded ("Checked in at 16:05"), asked again every 5 s for
 // up to 10 minutes while in view and read out by TalkBack when it changes, so the student sees the scan worked.
+// Since 15-10-2026 (#381) the card is a pass, white in light and dark mode alike, and a check-in is a green box with a
+// tick that pops in and, when the scan lands while the screen is open, one success buzz.
 // Brighter screen: with the next APK (expo-brightness is not in the app yet).
 
 import { Stack, useFocusEffect } from 'expo-router';
@@ -19,6 +21,7 @@ import { useAuth } from '@/auth/auth-provider';
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { LoadingCards } from '@/components/loading-cards';
+import { MoreText } from '@/components/more-text';
 import { MridangaMark } from '@/components/mridanga-mark';
 import { Notice } from '@/components/notice';
 import { Icon } from '@/components/icon';
@@ -30,6 +33,8 @@ import { fetchStudentHome } from '@/data/home';
 import { fetchMyCard, savedCardFor, type MyCardResult } from '@/data/my-student';
 import { localDate, localTime, todayLocal } from '@/lib/dates';
 import { DOOR_POLL_FOR_MS, DOOR_POLL_MS, doorStatus, type DoorStatus } from '@/lib/door-status';
+import { lightPalette, qrColours } from '@/theme/colors';
+import { useHeadingFont } from '@/theme/fonts';
 import { cardLook, maxContentWidth, spacing, useTheme } from '@/theme/use-theme';
 
 /**
@@ -43,6 +48,7 @@ export default function MyQrScreen() {
   const { t } = useTranslation();
   const { profile } = useAuth();
   const { colors } = useTheme();
+  const titleFont = useHeadingFont();
   const { width } = useWindowDimensions();
 
   // undefined = still loading.
@@ -68,12 +74,18 @@ export default function MyQrScreen() {
   const shown: MyCardResult | undefined =
     result ?? (savedNow ? { state: 'ok', card: savedNow, saved: false } : undefined);
 
-  // The page's side padding and the card's own padding come off the screen width.
-  const column = Math.min(width, maxContentWidth) - 2 * spacing.md - 2 * spacing.md;
+  // The page's side padding and the pass's edge come off the screen width; the code's own white border is the
+  // pass's margin (#381).
+  const column = Math.min(width, maxContentWidth) - 2 * spacing.md - 2;
   const qrSize = Math.min(column, MAX_QR_SIZE);
 
   const header = <Stack.Screen options={{ title: t('myQr.title') }} />;
   const door = useDoorStatus(shown?.state === 'ok');
+  // The door moment (#381): the scan landed while My QR was open (not yet checked in, then checked in), so the
+  // phone buzzes once; opened after the scan, the green line shows without a buzz.
+  const [sawNotYet, setSawNotYet] = useState(false);
+  if (door?.kind === 'none' && !sawNotYet) setSawNotYet(true);
+  const landed = sawNotYet && door?.kind === 'in';
 
   if (shown === undefined) {
     return (
@@ -111,28 +123,39 @@ export default function MyQrScreen() {
   return (
     <Screen underHeader>
       {header}
-      <DoorLine status={door} />
-      <View style={[styles.card, cardLook(colors)]}>
-        <View style={styles.brandRow}>
-          <MridangaMark size={28} color={colors.primary} accent={colors.surface} />
-          <AppText variant="label" tone="primary">
+      <DoorLine status={door} landed={landed} />
+      {/* A pass, like a boarding pass in a phone wallet (#381): the night strip with the app's name in gold, then a
+          white body, in light and dark mode alike, so the code is the brightest thing on the screen at the door. */}
+      <View style={[styles.pass, cardLook(colors), { backgroundColor: qrColours.light }]}>
+        <View style={[styles.passTop, { backgroundColor: lightPalette.bar }]}>
+          <MridangaMark size={26} color={lightPalette.headerGold} accent={lightPalette.bar} />
+          <AppText
+            variant="label"
+            style={[styles.passName, { color: lightPalette.headerGold }, titleFont ? { fontFamily: titleFont, fontWeight: 'normal' } : null]}>
             {t('app.name')}
           </AppText>
         </View>
         <QrCode value={studentQrText(card.qrToken)} size={qrSize} label={t('myQr.qrLabel')} />
-        <AppText variant="subtitle" family="sans" style={[styles.centreText, styles.name]}>
-          {card.fullName}
-        </AppText>
-        {card.rollNo ? (
-          <AppText tone="muted" style={styles.rollNo}>
-            {t('myQr.rollNo', { rollNo: card.rollNo })}
+        <View style={styles.passFoot}>
+          <AppText variant="subtitle" family="sans" style={[styles.centreText, styles.name, { color: lightPalette.text }]}>
+            {card.fullName}
           </AppText>
-        ) : null}
+          {card.rollNo ? (
+            <AppText style={[styles.centreText, styles.rollNo, { color: lightPalette.textMuted }]}>
+              {t('myQr.rollNo', { rollNo: card.rollNo })}
+            </AppText>
+          ) : null}
+        </View>
       </View>
 
       {saved ? <AppText tone="muted">{t('myQr.savedCopy')}</AppText> : null}
-      <AppText>{t('myQr.howTo')}</AppText>
-      <AppText tone="muted">{t('myQr.keepPrivate')}</AppText>
+      <MoreText text={t('myQr.howTo')} />
+      <View style={styles.private}>
+        <Icon name="anonymous" size={18} color={colors.textMuted} />
+        <AppText variant="small" tone="muted" style={styles.privateText}>
+          {t('myQr.keepPrivate')}
+        </AppText>
+      </View>
     </Screen>
   );
 }
@@ -170,21 +193,27 @@ function useDoorStatus(active: boolean): DoorStatus | undefined {
   return status;
 }
 
-/** "Not checked in yet today" / "Checked in at 16:05" (green) / "Checked out", read out when it changes. */
-function DoorLine({ status }: { status: DoorStatus | undefined }) {
+/**
+ * "Not checked in yet today" / "Checked out", a quiet line read out when it changes; once checked in, a green box
+ * "Checked in at 16:05 · Hare Krishna! Your visit is recorded." whose tick pops in, with one success buzz when the
+ * scan landed while the screen was open (`landed`, #381; components/notice.tsx).
+ */
+function DoorLine({ status, landed }: { status: DoorStatus | undefined; landed: boolean }) {
   const { t } = useTranslation();
   const { colors } = useTheme();
   if (!status) return null;
-  const text =
-    status.kind === 'in'
-      ? t('myQr.statusIn', { time: localTime(status.at) })
-      : status.kind === 'out'
-        ? t('myQr.statusOut', { time: localTime(status.at) })
-        : t('myQr.statusNone');
-  const colour = status.kind === 'in' ? colors.success : colors.textMuted;
+  if (status.kind === 'in') {
+    return (
+      <Notice tone="success" haptic={landed} title={t('myQr.statusIn', { time: localTime(status.at) })}>
+        {t('myQr.statusInBody')}
+      </Notice>
+    );
+  }
+  const text = status.kind === 'out' ? t('myQr.statusOut', { time: localTime(status.at) }) : t('myQr.statusNone');
+  const colour = colors.textMuted;
   return (
     <View style={styles.doorLine}>
-      <Icon name={status.kind === 'in' ? 'check' : 'time'} size={22} color={colour} />
+      <Icon name="time" size={22} color={colour} />
       <StatusText variant="label" style={[styles.doorText, { color: colour }]}>
         {text}
       </StatusText>
@@ -210,17 +239,37 @@ const styles = StyleSheet.create({
     fontSize: 18,
     lineHeight: 26,
   },
-  card: {
+  pass: {
     alignItems: 'center',
-    padding: spacing.md,
-    gap: spacing.sm,
+    overflow: 'hidden',
   },
-  brandRow: {
+  passTop: {
+    alignSelf: 'stretch',
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: spacing.sm,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+  },
+  passName: {
+    fontSize: 20,
+    lineHeight: 28,
+  },
+  passFoot: {
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.md,
   },
   centreText: {
     textAlign: 'center',
+  },
+  private: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+  },
+  privateText: {
+    flex: 1,
   },
 });

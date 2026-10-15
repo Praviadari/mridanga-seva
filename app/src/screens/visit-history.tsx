@@ -31,8 +31,11 @@ export type VisitHistoryScreenProps = {
   studentId: string;
   /** For staff: the student's name and roll number, shown at the top. */
   subtitle?: string;
-  /** For the student: this week's visits, shown above the months (moved from the home, #240). */
-  top?: ReactNode;
+  /**
+   * For the student: numbers shown above the months (moved from the home, #240); a function gets the loaded history,
+   * for this month's numbers (#382).
+   */
+  top?: ReactNode | ((history: VisitHistory | null | undefined) => ReactNode);
 };
 
 /** The visits of one student by month. */
@@ -71,7 +74,7 @@ export function VisitHistoryScreen({ studentId, subtitle, top }: VisitHistoryScr
     <Screen underHeader onRefresh={load}>
       <Stack.Screen options={{ title: t('visitHistory.title') }} />
       {subtitle ? <AppText variant="subtitle" family="sans">{subtitle}</AppText> : null}
-      {top}
+      {typeof top === 'function' ? top(history) : top}
       <ScreenIntro text={t('visitHistory.intro')} />
 
       {history === undefined ? <LoadingCards /> : null}

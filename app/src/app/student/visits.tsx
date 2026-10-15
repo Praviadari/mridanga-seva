@@ -1,7 +1,8 @@
 // S9 Attendance history for the signed-in student: finds their student record, then shows the
 // shared history (src/screens/visit-history.tsx). Opened from the ring on the student home (S1).
-// Since the simple home (docs/DECISIONS.md #240) this week's visits and the days since the last
-// visit, once on the home, are at the top (student_home() through src/data/home.ts).
+// Since 15-10-2026 (#382) the top shows this week's visits and the weeks in a row with a visit (lib/streak.ts, from
+// the months below) and the last visit as one line (student_home() through src/data/home.ts); before, the second box
+// was the days since the last visit, once on the home (#240).
 
 import { router, Stack } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -15,8 +16,10 @@ import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
 import { StatGrid, StatTile } from '@/components/stat-tile';
 import { fetchStudentHome, type StudentHome } from '@/data/home';
-import { fetchMyStudent, type MyStudent } from '@/data/visits';
+import { fetchMyStudent, type MyStudent, type VisitHistory } from '@/data/visits';
 import { lastVisitText } from '@/i18n/labels';
+import { localDate, todayLocal } from '@/lib/dates';
+import { weeksInARow } from '@/lib/streak';
 import { VisitHistoryScreen } from '@/screens/visit-history';
 
 /** My visits by month. */
@@ -42,12 +45,7 @@ export default function MyVisitsScreen() {
   }, [myId, attempt]);
 
   if (me && me !== 'not_found') {
-    return (
-      <VisitHistoryScreen
-        studentId={me.id}
-        top={week ? <WeekNumbers home={week} /> : null}
-      />
-    );
+    return <VisitHistoryScreen studentId={me.id} top={(history) => <WeekNumbers history={history} home={week} />} />;
   }
 
   return (
@@ -72,28 +70,38 @@ export default function MyVisitsScreen() {
   );
 }
 
-/** Visits this week and days since the last visit, as on the home before #240. */
-function WeekNumbers({ home }: { home: StudentHome }) {
+/**
+ * This week's visits and the weeks in a row with a visit (lib/streak.ts, counted from the months below once they
+ * load), and the last visit as one line (#382: what the student keeps up, not "days since your last visit", a staff
+ * measure that read as blame; this month's figures are already on the month's card below).
+ */
+function WeekNumbers({ history, home }: { history: VisitHistory | null | undefined; home: StudentHome | null }) {
   const { t } = useTranslation();
+  const streak = history
+    ? weeksInARow(
+        history.months.flatMap((month) => month.visits.map((visit) => localDate(visit.checkIn))),
+        todayLocal(),
+      )
+    : null;
   return (
     <>
-      <StatGrid>
-        <StatTile
-          icon="visits"
-          value={String(home.visitsThisWeek)}
-          label={home.weekStarts === 'rolling7' ? t('weekMeaning.studentRolling') : t('home.student.visitsThisWeek')}
-        />
-        <StatTile
-          icon="time"
-          // Never came: no number of days to show; the line below says "No visit yet".
-          value={home.lastVisitAt ? String(home.daysSinceVisit) : '—'}
-          spokenValue={home.lastVisitAt ? undefined : t('home.student.noVisitYet')}
-          label={t('home.student.daysSinceVisit')}
-        />
-      </StatGrid>
-      <AppText variant="small" tone="muted">
-        {lastVisitText(t, home)}
-      </AppText>
+      {home || streak !== null ? (
+        <StatGrid>
+          {home ? (
+            <StatTile
+              icon="visits"
+              value={String(home.visitsThisWeek)}
+              label={home.weekStarts === 'rolling7' ? t('weekMeaning.studentRolling') : t('home.student.visitsThisWeek')}
+            />
+          ) : null}
+          {streak !== null ? <StatTile icon="attended" value={String(streak)} label={t('visitHistory.weeksInARow')} /> : null}
+        </StatGrid>
+      ) : null}
+      {home ? (
+        <AppText variant="small" tone="muted">
+          {lastVisitText(t, home)}
+        </AppText>
+      ) : null}
     </>
   );
 }

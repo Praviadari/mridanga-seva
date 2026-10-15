@@ -1,4 +1,4 @@
-// The student's four tabs: Home (S1), My QR (S3), Announcements (S10) and Ishtagoshti (I1, Phase 2
+// The student's four tabs: Home (S1), My QR (S3), News (S10) and Slokas (I1, Phase 2
 // slice 6, docs/DECISIONS.md #57). Always at the bottom, also on a wide screen: students have only four,
 // and the sidebar is for staff
 // (docs/DECISIONS.md #36). One announcement opens on top of the tabs from student/_layout.tsx.
@@ -34,7 +34,8 @@ export default function StudentTabsLayout() {
       />
       <Tabs.Screen
         name="ishtagoshti"
-        options={{ title: t('ishtagoshti.title'), tabBarLabel: tabLabel(t('tabs.ishtagoshti')), tabBarIcon: tabIcon('ishtagoshti') }}
+        // The header says what the tab says, "Slokas" (#382); staff keep "Ishtagoshti" (#353).
+        options={{ title: t('tabs.ishtagoshti'), tabBarLabel: tabLabel(t('tabs.ishtagoshti')), tabBarIcon: tabIcon('ishtagoshti') }}
       />
     </Tabs>
   );

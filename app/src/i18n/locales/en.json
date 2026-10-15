@@ -120,8 +120,16 @@
   },
   "pending": {
     "title": "Waiting for access",
+    "almostTitle": "Almost there",
     "body": "Your account is ready. Come to the class desk with an ID: a coordinator checks your name and registers you.",
     "studentHint": "When the coordinator says you are registered, tap Check again.",
+    "stepAccount": "Account made",
+    "stepDesk": "Come to the class desk with an ID",
+    "stepDeskHint": "A coordinator checks your name and registers you.",
+    "stepQr": "Your QR card for the door",
+    "stepQrHint": "Your home opens here by itself once you are registered.",
+    "stateDone": "Done",
+    "stateNow": "Your next step",
     "kiosk": "The door tablet screens come in a later version.",
     "inactiveTitle": "Account switched off",
     "inactiveBody": "This account is not active. Please speak to the facilitator or a coordinator.",
@@ -151,8 +159,6 @@
     "student": {
       "thisWeek": "This week",
       "visitsThisWeek": "Visits this week (from Monday)",
-      "daysSinceVisit": "Days since your last visit",
-      "noVisitYet": "no visit yet",
       "myLevel": "My level: {{level}}",
       "unread": "New for you: {{count}}",
       "allAnnouncements": "All announcements",
@@ -373,6 +379,7 @@
     "noRecordBody": "Your login is not connected to a student record. Please speak to a coordinator.",
     "statusNone": "Not checked in yet today",
     "statusIn": "Checked in at {{time}}",
+    "statusInBody": "Hare Krishna! Your visit is recorded.",
     "statusOut": "Checked out. Today's visit began at {{time}}."
   },
   "levels": {
@@ -711,7 +718,7 @@
     "dialFailed": "This device cannot open a phone call. Dial {{phone}} on your phone."
   },
   "announcements": {
-    "title": "Announcements",
+    "title": "News",
     "loadFailed": "Could not load the announcements.",
     "new": "New announcement",
     "empty": "No announcements yet.",
@@ -1107,6 +1114,7 @@
     "noneRecently": "No visits in the last {{months}} months.",
     "month": "{{month}} {{year}}",
     "monthLine": "Visits: {{count}} · Time at class: {{time}}",
+    "weeksInARow": "Weeks in a row",
     "earlier": "Show earlier months",
     "allVisits": "All visits by month"
   },
@@ -2459,7 +2467,7 @@
   "events": {
     "module": "Events & polls",
     "title": "Events",
-    "homeTitle": "Events and polls",
+    "homeTitle": "Events & polls",
     "create": "New event",
     "cancelled": "Cancelled",
     "loadFailed": "Could not load the events.",
@@ -3413,6 +3421,7 @@
     },
     "dikshaName": "Dīkṣā (initiated) name",
     "dikshaHint": "Optional: only if you have received initiation. The name above stays the one on your ID.",
+    "dikshaHintNoName": "Optional: only if you have received initiation. Your name on the class record stays the one on your ID.",
     "learn": "Interested in learning",
     "learnAll": "All"
   },
