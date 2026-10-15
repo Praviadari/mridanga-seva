@@ -109,7 +109,7 @@ The home screen is the first tab, **Home**. From top to bottom:
 | **Visits this week (from Monday)** | How many times you came this week. (If the Facilitator sets "this week" to mean the last 7 days, it says **Visits in the last 7 days**) |
 | **Days since your last visit** | Shown as a number; "—" if you have not come yet |
 | **My level** | Your level (Beginner, Intermediate or Advanced), a progress bar of the syllabus items ticked, and **See every item** |
-| **Screens** (the ring) | Round buttons around the drum: **My QR**, **Announcements**, **My progress**, **Assessments**, **Practice**, **Attendance**, **My profile** and **Events & polls** |
+| **Screens** (the ring) | Round buttons around the drum, coloured by kind: **My QR** and **Attendance** (blue), **My progress** and **Assessments** (purple), **Practice** (teal), **News** and **Events & polls** (orange), and **About you** (green) until you finish it |
 | **Announcements** | The latest three announcements for you. **New** marks the ones you have not opened; **New for you: N** counts them. **All announcements** opens the full list |
 | Person (top left), bell (top right) | **My profile** (language, **Appearance**: light or dark screens, **Sign out**, the version line) and your **Notifications** inbox |
 

@@ -61,7 +61,8 @@ export function IshtagoshtiHome({ area }: { area: IgArea }) {
               {
                 key: 'subscribers',
                 icon: 'groups',
-                tone: 'pink',
+                // People are green (#368).
+                tone: 'green',
                 label: t('igSubscribers.title'),
                 onPress: () => router.push('/staff/ishtagoshti/subscribers'),
               } satisfies Module,

@@ -137,7 +137,8 @@ test("a screen takes its module's circle colour; homes, set-up and unknown scree
   const { moduleToneFor } = await import('../src/lib/module-tone.ts');
   assert.equal(moduleToneFor(['staff', 'inventory', 'stocktake']), 'teal');
   assert.equal(moduleToneFor(['staff', '(tabs)', 'students']), 'green');
-  assert.equal(moduleToneFor(['staff', 'here-now']), 'teal');
+  // In class now is people: green since #368.
+  assert.equal(moduleToneFor(['staff', 'here-now']), 'green');
   assert.equal(moduleToneFor(['student', 'progress']), 'purple');
   assert.equal(moduleToneFor(['staff', '(tabs)']), undefined);
   assert.equal(moduleToneFor(['staff', 'settings']), undefined);

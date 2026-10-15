@@ -90,10 +90,20 @@ export default function StudentHomeScreen() {
 
   const unread = news ? news.unread : 0;
 
-  // The ring of the student's screens (docs/DECISIONS.md #41, #44, #240), in reading order.
+  // The ring of the student's screens (docs/DECISIONS.md #41, #44, #240), in reading order; coloured by family and the
+  // circles of a family side by side (UI audit fix 9, #368): blue the door, purple learning, teal practice, orange
+  // community, green About you.
   const modules: Module[] = [
     // My QR first: it works without internet (#21), when it is needed most; also a tab.
     { key: 'qr', icon: 'qr', tone: 'blue', label: t('tabs.myQr'), onPress: () => router.push('/student/my-qr') },
+    // S9 with this week's visits at the top.
+    { key: 'visits', icon: 'visits', tone: 'blue', label: t('visitHistory.module'), onPress: () => router.push('/student/visits') },
+    // My level and its syllabus (S4).
+    { key: 'progress', icon: 'syllabus', tone: 'purple', label: t('progress.title'), onPress: () => router.push('/student/progress') },
+    // Phase 2 (S7, docs/DECISIONS.md #52).
+    { key: 'assessments', icon: 'assessment', tone: 'purple', label: t('assessments.title'), onPress: () => router.push('/student/assessments') },
+    // Phase 2 slice 3 (S5 Practice tools, docs/DECISIONS.md #54).
+    { key: 'practice', icon: 'practice', tone: 'teal', label: t('practice.module'), onPress: () => router.push('/student/practice') },
     {
       key: 'news',
       icon: 'news',
@@ -104,19 +114,11 @@ export default function StudentHomeScreen() {
       badgeSpoken: t('home.badges.new', { count: unread }),
       onPress: () => router.push('/student/announcements'),
     },
-    // My level and its syllabus (S4).
-    { key: 'progress', icon: 'syllabus', tone: 'purple', label: t('progress.title'), onPress: () => router.push('/student/progress') },
-    // Phase 2 (S7, docs/DECISIONS.md #52); indigo here, as My attendance next to it is teal.
-    { key: 'assessments', icon: 'assessment', tone: 'indigo', label: t('assessments.title'), onPress: () => router.push('/student/assessments') },
-    // Phase 2 slice 3 (S5 Practice tools, docs/DECISIONS.md #54).
-    { key: 'practice', icon: 'practice', tone: 'pink', label: t('practice.module'), onPress: () => router.push('/student/practice') },
-    // S9 with this week's visits at the top.
-    { key: 'visits', icon: 'visits', tone: 'teal', label: t('visitHistory.module'), onPress: () => router.push('/student/visits') },
     // Phase 2 slice 5: events and polls (S11, S12; docs/DECISIONS.md #61).
     {
       key: 'events',
       icon: 'events',
-      tone: 'purple',
+      tone: 'orange',
       label: t('events.module'),
       badge: pollsToVote,
       badgeSpoken: t('home.badges.toVote', { count: pollsToVote }),

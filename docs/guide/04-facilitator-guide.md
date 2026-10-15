@@ -44,7 +44,7 @@ The **Home** tab, from top to bottom (it fits one screen):
 | Menu button (☰, top left) | Opens the **side menu** (below) |
 | Bell (top right) | Your **Notifications** inbox; **My profile** is your card at the top of the side menu |
 | **In class now**, **This week**, **To do** | Students checked in now; students who came this week (from Monday, or the last 7 days: a setting; a number to read, the **Overview** circle has the details); everything waiting for your decision, amber when there is anything (tap for the list) |
-| The circles | **Overview** (students who came this week, in class, newcomers, follow-ups to check, the level-up queue, students per level and per status), **Level-ups** (to decide; [promotion](09-learning-and-community.md#moving-up-a-level-promotion)), **Newcomers**, **Assessments**, **Welcome desk**, **Lessons**, **Events & polls**, **Ishtagoshti**. Scanning at the door and the calls are the **Check-in** and **Follow-ups** tabs |
+| The circles | **Overview** (students who came this week, in class, newcomers, follow-ups to check, the level-up queue, students per level and per status), **Level-ups** (to decide; [promotion](09-learning-and-community.md#moving-up-a-level-promotion)), **Assessments**, **Lessons**, **Events & polls**, **Ishtagoshti**, **Welcome desk**, **Newcomers**, coloured by kind (blue the class at a glance, purple learning, orange community, green people; each screen keeps its circle's colour). Scanning at the door and the calls are the **Check-in** and **Follow-ups** tabs |
 | **Did you know?** | A fact about the mṛdaṅga a day, as on the student home |
 
 The **side menu**: **Class** (**Follow-ups by coordinator**: overdue and escalated calls of each coordinator, **Groups**, **Seva roster**, **Instruments**),

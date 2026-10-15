@@ -5708,3 +5708,22 @@ own size), whose line heights already leave room for the marks above and below. 
 fails, the sans as before. JS and assets only: fingerprint unchanged (23dc7e4a), reaches phones with an update.
 
 **Why.** One brand voice in every language the class uses; Noto is Google's open family made for these scripts.
+
+## 368. Colour by family: five module colours, a family's circles side by side — 15 Oct 2026
+
+**Status: branch `launch-ui-2` (update), waiting for Praveen's look at before/after screenshots.** UI audit 14-10-2026
+fix 9; amends #354 (the module colour thread).
+
+**Decision.** A module colour now says what kind of thing a screen is, not which module: blue = the class at a glance
+and at the door (Overview, To do, Check-in, attendance, follow-up calls, reports, My QR), green = people (Welcome desk,
+Newcomers, students, In class now, groups, Ishtagoshti subscribers, About you), purple = learning (lessons and levels,
+assessments, level-ups, My progress, taals), teal = seva (instruments, seva roster, class fund, suggestions, practice),
+orange = community (News, Events & polls, Ishtagoshti). Pink and indigo are no longer module colours (the palette keeps
+them). The rings put a family's circles side by side, so each reads as a few coloured arcs: Guru Overview · Level-ups,
+Assessments, Lessons · Events & polls, Ishtagoshti · Welcome desk, Newcomers; coordinator Welcome desk, Newcomers ·
+Instruments, Seva roster · Assessments, Lessons · Events & polls, Ishtagoshti; student My QR, Attendance · My progress,
+Assessments · Practice · News, Events & polls · About you. The same map (lib/module-tone.ts TONE_FAMILIES) tints each
+module's own screens. JS only.
+
+**Why.** The audit found eight rainbow circles that dilute the night-and-gold palette and carry no meaning; five
+families are fewer colours and teach where a thing belongs (the way Google Workspace or Apple Settings colour by kind).

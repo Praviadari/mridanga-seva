@@ -52,7 +52,7 @@ The **Home** tab, from top to bottom:
 | **In class now** | How many students are checked in. Tap to open **In class now** |
 | **Check-ins today** | Check-ins so far today (a number to read; the **Check-in** tab opens the screen) |
 | **To do** | Everything waiting for you, amber when there is anything: people at the **Welcome desk**, calls due, feedback asked of you, recordings to review. Tap to see the list |
-| The circles | **Welcome desk**, **Newcomers**, **Instruments**, **Seva roster**, **Events & polls**, **Assessments**, **Lessons**, **Ishtagoshti**. A red number on a circle says something waits there. To scan at the door, tap the **Check-in** tab |
+| The circles | Coloured by kind: green people (**Welcome desk**, **Newcomers**), teal seva (**Instruments**, **Seva roster**), purple learning (**Assessments**, **Lessons**), orange community (**Events & polls**, **Ishtagoshti**). Each screen keeps its circle's colour. A red number on a circle says something waits there. To scan at the door, tap the **Check-in** tab |
 | **Did you know?** | A fact about the mṛdaṅga, a new one each day, as on the student home |
 
 The **side menu**: **Class** (**Overview**, **Groups**), **Teaching** (**Level-ups**, **Practice**,

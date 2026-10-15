@@ -10,10 +10,10 @@
 // One file, so the three never offer a screen twice or forget one (tests/launch-ui.test.mjs checks every
 // staff screen of the old home and of Running the class is still in one of them).
 //
-// Coordinator ring: Welcome desk, Newcomers, Instruments (drums lent at class), Seva roster, Events & polls,
-// Assessments, Lessons, Ishtagoshti.
-// Guru ring: Overview, Level-ups (to decide), Newcomers, Assessments, Welcome desk, Lessons, Events & polls,
-// Ishtagoshti; Follow-ups by coordinator is in the side menu (the Follow-ups tab and the To do box cover the calls).
+// Coordinator ring: Welcome desk, Newcomers, Instruments (drums lent at class), Seva roster, Assessments, Lessons,
+// Events & polls, Ishtagoshti.
+// Guru ring: Overview, Level-ups (to decide), Assessments, Lessons, Events & polls, Ishtagoshti, Welcome desk,
+// Newcomers; Follow-ups by coordinator is in the side menu (the Follow-ups tab and the To do box cover the calls).
 // In class now and today's check-ins are the Today line above the ring (components/staff-today.tsx).
 
 import { router, type Href } from 'expo-router';
@@ -34,47 +34,49 @@ export type StaffModulesProps = {
 export function StaffModules({ guru, promotionsWaiting }: StaffModulesProps) {
   const { t } = useTranslation();
   const shared = {
-    newJoiners: { key: 'newJoiners', icon: 'newJoiner', tone: 'orange', label: t('home.modules.newJoiners'), onPress: () => router.push('/staff/new-joiners') },
+    newJoiners: { key: 'newJoiners', icon: 'newJoiner', tone: 'green', label: t('home.modules.newJoiners'), onPress: () => router.push('/staff/new-joiners') },
     // Phase 2 (docs/DECISIONS.md #52).
-    assessments: { key: 'assessments', icon: 'assessment', tone: 'indigo', label: t('assessments.title'), onPress: () => router.push('/staff/assessments') },
+    assessments: { key: 'assessments', icon: 'assessment', tone: 'purple', label: t('assessments.title'), onPress: () => router.push('/staff/assessments') },
     syllabus: { key: 'syllabus', icon: 'library', tone: 'purple', label: t('syllabusEditor.module'), onPress: () => router.push('/staff/levels') },
     // Phase 2 slice 5: events and polls (C16, C17; docs/DECISIONS.md #61).
-    events: { key: 'events', icon: 'events', tone: 'pink', label: t('events.module'), onPress: () => router.push('/staff/events') },
+    events: { key: 'events', icon: 'events', tone: 'orange', label: t('events.module'), onPress: () => router.push('/staff/events') },
     // On a phone the Ishtagoshti tab does not fit the bottom bar; this opens the tab itself.
     ishtagoshti: { key: 'ishtagoshti', icon: 'ishtagoshti', tone: 'orange', label: t('ishtagoshti.title'), onPress: () => router.push('/staff/ishtagoshti') },
   } satisfies Record<string, Module>;
   // The desk, where sign-ups are accepted and students registered: both roles (the Guru's Follow-ups circle went,
   // Praveen 14-10-2026: the Follow-ups tab is the same; follow-ups by coordinator are in the side menu).
   const register: Module = { key: 'register', icon: 'register', tone: 'green', label: t('staff.registerStudent'), onPress: () => router.push('/staff/register') };
+  // Colour by family (UI audit fix 9, docs/DECISIONS.md #368; lib/module-tone.ts), and the circles of a family side by
+  // side, so the ring reads as a few coloured arcs: blue the class at a glance, green people, purple learning, teal
+  // seva, orange community.
   const ring: Module[] = guru
     ? [
         { key: 'overview', icon: 'status', tone: 'blue', label: t('home.modules.overview'), onPress: () => router.push('/staff/overview') },
         {
           key: 'promotions',
           icon: 'promote',
-          tone: 'green',
+          tone: 'purple',
           label: t('home.modules.promotions'),
           badge: promotionsWaiting,
           badgeSpoken: t('home.badges.waiting', { count: promotionsWaiting }),
           onPress: () => router.push('/staff/promotion'),
         },
-        shared.newJoiners,
         shared.assessments,
-        // Not beside Level-ups: two greens side by side would read as one.
-        register,
         shared.syllabus,
         shared.events,
         shared.ishtagoshti,
+        register,
+        shared.newJoiners,
       ]
     : [
         register,
         shared.newJoiners,
         // Phase 2 slice 8 (docs/DECISIONS.md #65): C19 inventory, C20 duty roster.
         { key: 'instruments', icon: 'drum', tone: 'teal', label: t('modules.instruments'), onPress: () => router.push('/staff/inventory') },
-        { key: 'duty', icon: 'time', tone: 'blue', label: t('duty.title'), onPress: () => router.push('/staff/duty') },
-        shared.events,
+        { key: 'duty', icon: 'time', tone: 'teal', label: t('duty.title'), onPress: () => router.push('/staff/duty') },
         shared.assessments,
         shared.syllabus,
+        shared.events,
         shared.ishtagoshti,
       ];
   return <ModuleRing modules={ring} />;

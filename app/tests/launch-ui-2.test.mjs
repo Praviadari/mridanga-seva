@@ -1,6 +1,6 @@
 // Unit tests for the second round of UI audit fixes (UI_AUDIT_14-10-2026 fixes 5, 6, 8, 9; docs/DECISIONS.md #365
 // onwards, Praveen 14-10-2026 "do remaining too to build world class"): light list rows, the Welcome desk in two steps,
-// Telugu and Hindi serif headings.
+// Telugu and Hindi serif headings, colour by family.
 // Run from app/: npm test.
 
 import { test } from 'node:test';
@@ -103,4 +103,42 @@ test('Telugu and Hindi headings have their own serif: subset Noto Serif files wi
   // English keeps its larger serif sizes; Telugu and Hindi keep the sans sizes.
   assert.match(src('components/app-text.tsx'), /\.\.\.\(isLatinSerif\(serif\) \? serifType\[variant\] : null\)/);
   assert.match(src('theme/use-theme.ts'), /\.\.\.\(titleFont === serifFont \? \{ fontSize: 22 \} : null\)/);
+});
+// ---------------------------------------------------------------- #368 colour by family
+
+test('module colours are five families; pink and indigo are gone; each ring keeps a family side by side', async () => {
+  const { moduleToneFor, TONE_FAMILIES } = await import('../src/lib/module-tone.ts');
+  assert.deepEqual([...TONE_FAMILIES], ['blue', 'green', 'purple', 'teal', 'orange']);
+  const expect = {
+    blue: ['overview', 'waiting', 'attendance', 'follow-up', 'follow-ups-by-coordinator', 'reports', 'visits'],
+    green: ['register', 'new-joiners', 'students', 'here-now', 'groups'],
+    purple: ['levels', 'assessments', 'promotion', 'syllabus'],
+    teal: ['inventory', 'duty', 'fund', 'suggestions', 'practice'],
+    orange: ['announcements', 'events', 'ishtagoshti'],
+  };
+  for (const [tone, routes] of Object.entries(expect)) {
+    for (const route of routes) assert.equal(moduleToneFor(['staff', route]), tone, route);
+  }
+  for (const [route, tone] of [['my-qr', 'blue'], ['visits', 'blue'], ['progress', 'purple'], ['assessments', 'purple'],
+    ['practice', 'teal'], ['announcements', 'orange'], ['events', 'orange'], ['about-you', 'green']]) {
+    assert.equal(moduleToneFor(['student', route]), tone, `student ${route}`);
+  }
+  for (const file of ['lib/module-tone.ts', 'components/staff-shortcuts.tsx', 'app/student/(tabs)/index.tsx', 'screens/ishtagoshti-home.tsx']) {
+    assert.doesNotMatch(src(file), /tone: '(pink|indigo)'|: '(pink|indigo)',/, file);
+  }
+  // A family's circles are side by side: the ring's colours, joined, never come back to a family left earlier.
+  const tonesOf = (text) => [...text.matchAll(/tone: '(\w+)'/g)].map((m) => m[1]);
+  const contiguous = (tones) => tones.every((tone, i) => i === 0 || tone === tones[i - 1] || !tones.slice(0, i).includes(tone));
+  const student = src('app/student/(tabs)/index.tsx');
+  const studentRing = tonesOf(student.slice(student.indexOf('const modules: Module[] = ['), student.indexOf('];', student.indexOf('const modules: Module[] = ['))));
+  assert.deepEqual(studentRing, ['blue', 'blue', 'purple', 'purple', 'teal', 'orange', 'orange', 'green']);
+  assert.ok(contiguous(studentRing));
+  const shortcuts = src('components/staff-shortcuts.tsx');
+  const shared = Object.fromEntries([...shortcuts.matchAll(/(\w+): \{ key: '\w+', icon: '\w+', tone: '(\w+)'/g)].map((m) => [m[1], m[2]]));
+  shared.register = 'green';
+  const ringText = shortcuts.slice(shortcuts.indexOf('const ring: Module[] = guru'), shortcuts.indexOf('return <ModuleRing'));
+  const [guruText, coordinatorText] = ringText.split('\n    : [');
+  const ringTones = (text) => [...text.matchAll(/shared\.(\w+)|^\s+(register),|tone: '(\w+)'/gm)].map((m) => (m[1] ? shared[m[1]] : m[2] ? 'green' : m[3]));
+  assert.deepEqual(ringTones(guruText), ['blue', 'purple', 'purple', 'purple', 'orange', 'orange', 'green', 'green']);
+  assert.deepEqual(ringTones(coordinatorText), ['green', 'green', 'teal', 'teal', 'purple', 'purple', 'orange', 'orange']);
 });
