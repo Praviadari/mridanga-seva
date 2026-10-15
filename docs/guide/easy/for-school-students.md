@@ -52,7 +52,8 @@ You can come to class even without the app. The coordinator will find your name 
 4. Open the email the class sent you, and tap the link inside. This proves the email is yours.
 5. Go back to the app and tap **Sign in**.
 
-If the app says **Waiting for access**, tell a coordinator. They will connect your account. Then tap
+If the app says **Almost there**, come to the class desk. Once a coordinator has registered you, your
+home opens by itself. If it does not, tell a coordinator. They will connect your account. Then tap
 **Check again**.
 
 ## Every class day

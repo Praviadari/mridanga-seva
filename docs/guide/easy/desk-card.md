@@ -50,8 +50,8 @@ Open the student → **Tick syllabus items** → tap the box. Add a remark if us
 ### Something goes wrong
 
 - *"Code not recognised"* → search the name instead.
-- *"Waiting for access"* on a student's phone → their app email is different from the one on their
-  record; tell the Facilitator.
+- *"Almost there"* still on a student's phone a minute after you registered them → their app email is
+  different from the one on their record; tell the Facilitator.
 - Anything else → note the **Version** line at the bottom of the home screen and tell the Facilitator.
 
 ### Never

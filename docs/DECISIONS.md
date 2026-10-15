@@ -5747,3 +5747,49 @@ or 128 on a narrow phone). Each label's size is measured as drawn (onLayout of a
 language, label and text size is handled; a guess from the label's length is used until then. Measured coordinator ring
 at 375 px: drum 133 px, every label clear, the ring 8 px shorter than before (the home still does not scroll); 360 px:
 drum 125 px. The fixed 44 px room under the lowest circle became the lowest label's measured height. JS only.
+
+## 380. A new student's first day: registration on the first screen, then "Almost there" — 15 Oct 2026
+
+**Status: branch `launch-ui-student` (update).** From the student screens audit of 15-10-2026 (worktree
+shots-student/STUDENT_AUDIT_15-10-2026.md, student side 6.3/10; Praveen's picks). Most people on launch day are new
+students, and the first-day path was the weakest part. (1) Sign-in: "New here? New student registration" sits right under
+the language buttons, before the sign-in form, so it is on the first screen of a 375 x 812 phone (it was below it);
+someone who came from an email link already has an account, so for them it stays at the foot. (2) Waiting for access,
+for a new account waiting for the class desk: the title "Almost there" and the three steps of joining as a tracker
+(components/join-steps.tsx): ✓ Account made (signed in as …), ● Come to the class desk with an ID (the step now), ○ Your
+QR card for the door ("your home opens here by itself once you are registered"). The screen asks again by itself every
+30 s and when the app comes back to the front, so the home opens without tapping; Check again stays as the quieter
+button. The other waiting cases (switched off, could not load, door tablet, Ishtagoshti blocked) are unchanged. JS only.
+
+**Why.** Duolingo and Headspace put "Get started" on the first screen and show where a newcomer is in joining; a hidden
+registration button and a passive "Waiting for access" lose people on day one.
+
+## 381. My QR is a bright pass, and a check-in is a moment — 15 Oct 2026
+
+**Status: branch `launch-ui-student` (update).** My QR is drawn like a boarding pass in a phone wallet: a night strip
+with the drum and the app's name in gold (Cormorant), then a white body with the code, the name and the roll number, the
+same in light and dark mode, so the code is the brightest thing on the screen at the door (in dark mode it was a dark
+card). The code's own white border is the pass's margin, so the code is larger (up to 320 px). When today's check-in is
+recorded, "Checked in at 16:05" is a green box ("Hare Krishna! Your visit is recorded.") whose tick pops in (#363); the
+phone gives one success buzz only when the scan lands while My QR is open (not yet checked in, then checked in), not when
+the screen is opened later. "Not checked in yet today" and "Checked out" stay a quiet line. The how-to is one line with
+More; the privacy line is small with an icon. JS only (a brighter screen still needs expo-brightness in an APK).
+
+**Why.** At the door the student holds up the phone and waits; Google Wallet and airline passes show a bright card and
+confirm at once. The audit scored the door moment 7: the scan worked, but only one small line turned green.
+
+## 382. Student wording: weeks in a row, titles that match the tabs — 15 Oct 2026
+
+**Status: branch `launch-ui-student` (update).** (1) My attendance opens with **Visits this week** and **Weeks in a
+row** (weeks with at least one visit, counted back from this week, or from last week while this week has none yet;
+lib/streak.ts, from the months already loaded), in place of "Days since your last visit", a staff measure that read as
+blame to a student; the last visit stays as one line. This month's visits and time stay on the month's card, so the boxes
+do not repeat them. (2) Titles say what their tab says: the News tab's header is **News** (en `announcements.title`; te
+and hi already matched; staff News tab too), the student Slokas tab's header **Slokas** (staff keep "Ishtagoshti",
+#353), and the events screen **Events & polls** (as its circle). (3) About you's initiated-name hint no longer says "the
+name above stays the one on your ID" (there is no name above on About you): "Your name on the class record stays the one
+on your ID" (about.dikshaHintNoName; the sign-up form keeps its own hint). Keys home.student.daysSinceVisit and
+noVisitYet removed (unused).
+
+**Why.** A streak is what learning apps use to keep people coming; a header that differs from its tab makes people
+wonder whether they are in the right place.

@@ -42,11 +42,12 @@ If you are under 18, a parent must sign the consent form first (see
 
 | You see | It means |
 |---|---|
-| **Visits this week** | How often you came this week |
-| **Days since your last visit** | A gentle reminder 🙂 |
+| The ring of round buttons | **My QR**, **News**, **My progress**, **Assessments**, **Practice**, **Attendance**, **Events & polls** |
 | **My level** with a bar | How much of your level's syllabus is ticked |
-| The ring of round buttons | **My QR**, **Announcements**, **My progress**, **Assessments**, **Practice**, **Attendance**, **My profile**, **Events & polls** |
-| The bell | New notifications |
+| **Did you know?** | A mṛdaṅga fact, a new one each day |
+| The person button, the bell | **My profile**, and new notifications |
+
+**Attendance** shows your visits this week and **Weeks in a row**: keep the run going 🙂
 
 Tabs at the bottom: **Home**, **My QR**, **News**, **Slokas**.
 

@@ -43,7 +43,7 @@ hand. The app makes it quicker and lets you see your own progress.
 ## Create your account
 
 1. Open the app. You see **Sign in**.
-2. Tap **New student registration** (under "New here?").
+2. Tap **New student registration** (next to "New here?", just under the language buttons).
 3. Fill in (about a minute):
    - **Full name as on your Aadhaar or other government ID**. The class keeps only the name, never
      the ID number or a copy. At the desk a coordinator checks the name against your ID.
@@ -75,13 +75,17 @@ home-screen app and sign in inside it.
 
 ## Waiting for access
 
-If the app shows **Waiting for access**, your account exists but is not yet joined to a student
-record. This happens when the email you signed up with is not the one on your record, or you have
-not been registered yet.
+After you sign up, the app shows **Almost there** with the three steps of joining:
 
-- Ask the Guru to link this login to your student record.
-- Then tap **Check again**.
-- **Sign out** is on the same screen if you want to use another account.
+1. ✓ **Account made** (done).
+2. ● **Come to the class desk with an ID**: this is your next step. A coordinator checks your name
+   and registers you.
+3. ○ **Your QR card for the door**: your home opens on this screen by itself once you are
+   registered. The screen checks every 30 seconds, and again each time you come back to the app.
+
+**Check again** asks at once. If your home does not open after the desk registered you, the email you
+signed up with may not be the one on your record: ask the Guru to link this login to your student
+record. **Sign out** is on the same screen if you want to use another account.
 
 When the emails match, the app joins your login to your record by itself, as soon as your email is
 confirmed. Nobody has to do anything by hand. (For safety, this joining happens only after the email
@@ -104,13 +108,11 @@ The home screen is the first tab, **Home**. From top to bottom:
 
 | Part | What it shows |
 |---|---|
-| Saffron header | The drum mark, **Hare Krishna** with your name, the maha-mantra, and a bell with the number of unread notifications (see [Notifications](#notifications)) |
-| **My QR card** (big button) | Opens your QR code. It works even without internet |
-| **Visits this week (from Monday)** | How many times you came this week. (If the Facilitator sets "this week" to mean the last 7 days, it says **Visits in the last 7 days**) |
-| **Days since your last visit** | Shown as a number; "—" if you have not come yet |
-| **My level** | Your level (Beginner, Intermediate or Advanced), a progress bar of the syllabus items ticked, and **See every item** |
+| Night-blue header | The app's name in gold, **Hare Krishna** with your name, the person button (My profile) on the left and a bell with the number of unread notifications on the right (see [Notifications](#notifications)) |
 | **Screens** (the ring) | Round buttons around the drum, coloured by kind: **My QR** and **Attendance** (blue), **My progress** and **Assessments** (purple), **Practice** (teal), **News** and **Events & polls** (orange), and **About you** (green) until you finish it |
-| **Announcements** | The latest three announcements for you. **New** marks the ones you have not opened; **New for you: N** counts them. **All announcements** opens the full list |
+| Numbers on the circles | **News**: announcements you have not opened yet; **Events & polls**: polls waiting for your vote |
+| **My level** | Your level and a bar of the syllabus items ticked ("0 of 5"); tap it for **My progress** |
+| **Did you know?** | A fact about the mṛdaṅga, a new one each day |
 | Person (top left), bell (top right) | **My profile** (language, **Appearance**: light or dark screens, **Sign out**, the version line) and your **Notifications** inbox |
 
 At the bottom of the screen are four tabs: **Home**, **My QR**, **News** (announcements) and **Slokas** (sloka study).
@@ -127,8 +129,11 @@ The QR code is how the class records your **visit**: when you came and when you 
 
 1. When you arrive, open **My QR** (the tab, or the big button on Home).
 2. Show the phone to a coordinator. They scan the code with their phone's camera. You are
-   **checked in**.
+   **checked in**: a green box says **Checked in at** and the time, and the phone gives a short buzz.
 3. When you leave, show it again. They scan it again. You are **checked out**.
+
+The card looks like a pass: a dark blue strip with the app's name in gold, then a white card with
+your code, your name and your roll number. It stays white in dark mode too, so it scans easily.
 
 Good to know:
 
@@ -198,7 +203,10 @@ stays in your record, but it does not count in your progress.
 
 ## My attendance
 
-Tap **Attendance** in the ring. The page **My attendance** lists every visit, by month, newest first:
+Tap **Attendance** in the ring. At the top, **Visits this week** and **Weeks in a row**: how many
+weeks in a row you have come at least once (a week without a visit yet does not break it until it
+ends). Under them, your last visit. Then the page **My attendance** lists every visit, by month,
+newest first:
 
 - Each month shows **Visits** and **Time at class**.
 - Each visit shows the day, the time in and out (India time), and how long you stayed.
@@ -255,7 +263,7 @@ The **Slokas** tab is for studying the scriptures, theme by theme (Phase 2).
 Anyone may join the sloka study without joining the mridanga class (Phase 2):
 
 1. **Create an account** (name, email, password) and open the link in the confirmation email.
-2. Sign in. The **Waiting for access** page shows **Ishtagoshti, free for everyone**: tap **Join
+2. Sign in. The waiting page (**Almost there**) shows **Ishtagoshti, free for everyone**: tap **Join
    Ishtagoshti**.
 3. Type the **year you were born** and, if you like, a phone number (only the Facilitator sees it).
    Read the notice and tick **I have read this and agree**.
