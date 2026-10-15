@@ -5793,3 +5793,48 @@ noVisitYet removed (unused).
 
 **Why.** A streak is what learning apps use to keep people coming; a header that differs from its tab makes people
 wonder whether they are in the right place.
+
+## 383. One assessment: the mark first; recordings by number and day; an app recording is audio — 15 Oct 2026
+
+**Status: branch `launch-ui-student` (update).** Audit fix 5 (Praveen's pick). Once a review is in, the student's
+assessment (S7) opens with **Your mark**: the newest reviewed recording's total large ("8 of 15"), Accepted or Please
+record it again with who reviewed it, the comment, the voice note and the score per rubric line; then the task and
+rubric, the send form (for a redo) and My recordings. The "Sent. Waiting for the review." and "Sent." notices move to
+the top with it. Recordings are named by number and day, "Recording 2 · 03-10-2026", numbered from the first one sent
+(lib/assessment-view.ts); the date keeps the class's day-month-year (formatDate), since friendly dates (audit fix 7)
+were not picked. In My recordings the reviewed one shown at the top keeps one line ("8 of 15 · Accepted"); older
+reviews keep their full detail. A recording made with the app's recorder shows as **Audio**: in a browser it is a .webm,
+which the database stores as 'video' (the kind must match the ending, 0016), so the screen shows the kind by the app's
+own names ("recording.webm", "voice note.webm"; MediaList, also on the coordinator's review screen). A voice note's row
+reads "Voice note from …" instead of its file name. JS only, no database change.
+
+**Why.** A student opens a reviewed assessment for the mark; it sat under the task and rubric, and the files read
+"recording.webm · Video · 29 KB" for a sound recording. Google Classroom shows the grade first.
+
+## 384. Practice tools: Start under the tempo, the timer one slim line, beats 2-8 in one row — 15 Oct 2026
+
+**Status: branch `launch-ui-student` (update).** Audit fix 6. On Practice tools (students and staff) the big Start /
+Stop sits right under the tempo number, with the beat dots under it, then −5 / −1 / +1 / +5 and Tap tempo, so Start is
+on the first screen of a 375 x 812 phone (it was a full screen down). The student's Practice timer card becomes one slim
+line at the top: "Timer starts with Start" with **Start now**; while it runs, "Practising: 12 min" with **Stop and
+save**, and Throw away this time under it. The metronome's icon is the music note ('practice'), not the clock. Beats in
+a bar, 2 to 8, are one joined row (ChoiceGroup `segmented`: no wrapping, the width shared, each choice 45 px wide at
+375 px); the beat dots' gap is smaller so eight stay on one line. The taal player also has Start under its tempo. JS only.
+
+**Why.** Headspace-style: one main action per screen, and here it is Start. The timer starts with Start anyway, so its
+card did not need to come first.
+
+## 385. My profile: who you are first; the sign-in account lower and folded; a student's phone only in About you — 15 Oct 2026
+
+**Status: branch `launch-ui-student` (update).** Audit fix 9. My profile (A3, students and staff) opens with a card:
+initials, the name on the roll card, the level, "Roll number MS-2026-0001" and **My QR card** for a student (with the
+line that the coordinators keep that name); the name and role for staff. Then Language and Appearance (Same as phone /
+Light / Dark now one joined row, so Dark no longer wraps alone), then **Sign-in account**: the name in the app and the
+email, with **Change my name** (staff: **Change my name or phone**) opening the field and Save. Then About you, held
+instruments and Sign out. **Praveen 15-10-2026: a student's phone is asked only in About you** (the class record the
+coordinators use); My profile no longer shows or saves it for a student, and the account's phone is left as it is
+(saveMyDetails sends the phone only when the form has one). fetchMyStudent also reads the level. Keys
+myProfile.rollTitle, rollNo, rollName, detailsTitle and role removed (unused). JS only.
+
+**Why.** Two names next to each other ("My name: Student Test", "Name on the roll: Arjun Rao") confused students, and
+the phone was asked twice and saved to two places. Language and Appearance were two screens down.

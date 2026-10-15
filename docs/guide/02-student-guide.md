@@ -219,13 +219,15 @@ service areas. All optional; change them whenever you like. Only the coordinator
 
 Tap **My profile** in the ring or at the foot of the home screen.
 
-- **My details**: your email and role (shown, not changeable), **My name** and **Phone (optional)**.
-  Change them and tap **Save**.
-- **My roll card**: your **Roll number** and the **Name on the roll**. The coordinators keep the
-  name on the roll; ask one of them if it needs correcting.
-- A button to open **My QR card**.
-- Any temple instrument you have borrowed, with the date to bring it back.
-- The **Language** picker and **Sign out**.
+- At the top, **your card**: your initials, the **name on your roll card**, your level, your
+  **Roll number** and the **My QR card** button. The coordinators keep the name on the roll card;
+  ask one of them if it needs correcting.
+- **Language** and **Appearance** (Same as phone, Light or Dark).
+- **Sign-in account**: your **Name in the app** (on your home screen and your replies) and your
+  email. Tap **Change my name** to change the name in the app, then **Save**. Your phone is not
+  here: give it in **About you**, where the coordinators see it.
+- **About you**, any temple instrument you have borrowed (with the date to bring it back), and
+  **Sign out**.
 
 ## Choosing your language
 

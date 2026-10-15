@@ -111,8 +111,10 @@ rubric line, write a **Comment** (what went well and what to practise), and add 
 review**. A redo needs a comment or a voice note. On a level-up assessment, **Send level-up to the
 facilitator** passes the accepted recording on for promotion.
 
-**Student: the result.** The review shows the score per line, the total, the comment and the voice
-note. After **Please record it again**, record and send again.
+**Student: the result.** Once a review is in, **Your mark** comes first on the assessment: the total
+(for example **8 of 15**), **Accepted** or **Please record it again**, who reviewed it, the comment,
+the voice note and the score per line; the task follows under it. Recordings are listed by number
+and day, **Recording 2 · 03-10-2026**. After **Please record it again**, record and send again.
 
 **Privacy and space.** A student can upload at most 10 files a day, and only while an assessment
 waits for them. Recordings are deleted 30 days after the review (level-up recordings are kept until
@@ -164,7 +166,8 @@ A nomination can also be **withdrawn**; the answers stay on record.
 ## Practice tools: metronome, taal player, both heads
 
 Open **Practice** (students, in the ring) or **Practice tools** (staff, under the ring). Under
-**Tool**, choose **Metronome** or **Taal player**. Tap **Start** and **Stop**.
+**Tool**, choose **Metronome** or **Taal player**. The big **Start** (then **Stop**) is right under the
+tempo number.
 
 **Metronome.** Beat 1 is accented. Set the tempo from 30 to 240 beats a minute with −5, −1, +1, +5,
 or **Tap tempo** (tap 3 or 4 times in time). Choose the **Beats in a bar** (2 to 8). Dots show the beat.
@@ -192,9 +195,11 @@ can read the taals; only the Facilitator changes them.
 
 ## Practice timer and practice log
 
-**For students.** On **Practice**, the **Practice timer** starts by itself when you press **Start**.
-When you finish, tap **Stop and save**: 1 minute or more goes into your practice log. (A timer left
-running more than 6 hours is not saved; add the time by hand.)
+**For students.** On **Practice**, the timer is the slim line at the top: **Timer starts with Start**.
+It starts by itself when you press **Start**, or tap **Start now** to time practice without the app's
+sound. While it runs the line shows **Practising:** and the minutes. When you finish, tap **Stop and
+save**: 1 minute or more goes into your practice log. (A timer left running more than 6 hours is not
+saved; add the time by hand.)
 
 **My practice log** shows your practice **By week** for the last 8 weeks (from Monday) and each
 entry, marked **Timer** or **Typed in**. **Add practice** for a day of the last week (1 to 240
