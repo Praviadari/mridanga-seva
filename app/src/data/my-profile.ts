@@ -1,4 +1,4 @@
-// A3 Profile: the signed-in person's own name and phone. Row-level security lets a person
+// A3 Profile: the signed-in person's own name and phone (staff; a student's phone is in About you, #385). Row-level security lets a person
 // update only their own profile (policy own_update, 0001); a database trigger trims and checks
 // both (guard_profile_details in 0013 and 0028, docs/DECISIONS.md #44, #97): a name that is the Guru's or a
 // coordinator's is refused there (name_taken). Role, email and active cannot be
@@ -20,8 +20,11 @@ export const NAME_MAX = 80;
  */
 const HIDDEN_CHARACTER = /[\u0001-\u001f\u007f-\u009f\u200b\u200e\u200f\u2028-\u202e\u2060-\u2064\ufeff]/;
 
-/** What the form edits. */
-export type MyDetails = { fullName: string; phone: string };
+/**
+ * What the form edits. No phone for a student (#385): theirs is asked in About you, on the class record the
+ * coordinators use; the account's phone is then left as it is.
+ */
+export type MyDetails = { fullName: string; phone?: string };
 
 /** Problems with the form, per field. Empty = fine. */
 export type MyDetailsErrors = Partial<Record<'fullName' | 'phone', MessageKey>>;
@@ -36,7 +39,7 @@ export function checkMyDetails(details: MyDetails): MyDetailsErrors {
   else if (problem === 'tooLong') errors.fullName = 'myProfile.errors.nameTooLong';
   else if (HIDDEN_CHARACTER.test(name)) errors.fullName = 'myProfile.errors.nameInvalid';
   else if (problem) errors.fullName = nameMessage(problem);
-  const phone = details.phone.trim();
+  const phone = (details.phone ?? '').trim();
   const digits = phone.replace(/[^0-9]/g, '').length;
   if (phone && (!/^\+?[0-9 ]+$/.test(phone) || digits < 7 || digits > 15)) errors.phone = 'myProfile.errors.phoneInvalid';
   return errors;
@@ -53,11 +56,14 @@ export async function fetchMyPhone(profileId: string): Promise<string | null | u
   return data?.phone ?? null;
 }
 
-/** Saves the name and phone. Nothing = saved. */
+/** Saves the name, and the phone when the form has one. Nothing = saved. */
 export async function saveMyDetails(profileId: string, details: MyDetails): Promise<{ errorKey?: MessageKey }> {
   const { data, error } = await supabase
     .from('profiles')
-    .update({ full_name: cleanName(details.fullName), phone: details.phone.trim() || null })
+    .update({
+      full_name: cleanName(details.fullName),
+      ...(details.phone === undefined ? {} : { phone: details.phone.trim() || null }),
+    })
     .eq('id', profileId)
     .select('id');
   if (error) {

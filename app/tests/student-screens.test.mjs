@@ -1,6 +1,7 @@
 // Unit tests for the student screens polish before launch (docs/DECISIONS.md #380-#389, Praveen 15-10-2026): the way to
 // register on the first screen of Sign-in, the waiting screen's steps and its own check, My QR as a bright pass with
 // the door moment, the weeks in a row on My attendance, titles that match their tabs, and the new texts in en/te/hi.
+// Batch 2 (#383-#385): the assessment's mark first, Practice tools with Start at the top, My profile card first.
 // Run from app/: npm test.
 
 import { test } from 'node:test';
@@ -10,6 +11,7 @@ import { readFileSync } from 'node:fs';
 import './stubs/register.mjs';
 
 const { mondayOf, weeksInARow } = await import('../src/lib/streak.ts');
+const { newestReviewed, recordingNumber, shownKind } = await import('../src/lib/assessment-view.ts');
 
 const src = (path) => readFileSync(new URL(`../src/${path}`, import.meta.url), 'utf8');
 const locale = (lang) => JSON.parse(src(`i18n/locales/${lang}.json`));
@@ -98,8 +100,93 @@ test('the new texts exist in English, Telugu and Hindi', () => {
     'pending.stateNow',
     'about.dikshaHintNoName',
     'visitHistory.weeksInARow',
+    'assessments.submit.recordingName',
+    'assessments.submit.markTitle',
+    'practice.timerIdle',
+    'practice.timerStartNow',
+    'myProfile.rollLine',
+    'myProfile.accountTitle',
+    'myProfile.accountHintStudent',
+    'myProfile.accountName',
+    'myProfile.editName',
+    'myProfile.editDetails',
   ];
   for (const lang of LANGS) {
     for (const key of keys) assert.ok(get(locale(lang), key)?.trim(), `${lang} ${key}`);
+    for (const key of ['number', 'date']) assert.ok(get(locale(lang), 'assessments.submit.recordingName').includes(`{{${key}}}`), `${lang} {{${key}}}`);
+    assert.ok(get(locale(lang), 'myProfile.rollLine').includes('{{rollNo}}'), `${lang} {{rollNo}}`);
+  }
+});
+
+test('assessment: the newest reviewed recording, numbers counted from the first, an app recording shown as audio (#383)', () => {
+  // Newest first, as fetchAssignment gives them.
+  const subs = [{ id: 3, reviewedAt: null }, { id: 2, reviewedAt: '2026-10-04T10:00:00Z' }, { id: 1, reviewedAt: '2026-10-03T10:00:00Z' }];
+  assert.equal(newestReviewed(subs)?.id, 2);
+  assert.equal(newestReviewed([{ id: 1, reviewedAt: null }]), null);
+  assert.equal(newestReviewed([]), null);
+  assert.deepEqual([0, 1, 2].map((i) => recordingNumber(i, 3)), [3, 2, 1]);
+  // The names the app gives its own recordings, in every language.
+  for (const lang of LANGS) {
+    const l = locale(lang);
+    assert.equal(shownKind({ name: `${l.recording.fileName}.webm`, kind: 'video' }), 'audio', `${lang} recording`);
+    assert.equal(shownKind({ name: `${l.recording.voiceNoteName}.webm`, kind: 'video' }), 'audio', `${lang} voice note`);
+  }
+  assert.equal(shownKind({ name: 'recording.m4a', kind: 'audio' }), 'audio');
+  assert.equal(shownKind({ name: 'class video.webm', kind: 'video' }), 'video'); // a chosen video stays a video
+  assert.equal(shownKind({ name: 'VID_2026.mp4', kind: 'video' }), 'video');
+  assert.equal(shownKind({ name: 'notation.pdf', kind: 'pdf' }), 'pdf');
+});
+
+test('assessment: the mark comes before the task, recordings by number and day (#383)', () => {
+  const screen = src('app/student/assessments/[id].tsx');
+  const mark = screen.indexOf('<MarkCard submission={marked}');
+  assert.ok(mark > 0, 'the mark card');
+  assert.ok(mark < screen.indexOf('<Section title={a.title}'), 'before the task');
+  assert.match(screen, /const marked = newestReviewed\(submissions\)/);
+  assert.match(screen, /t\('assessments\.submit\.recordingName'/);
+  assert.match(screen, /name=\{recordingName\(i\)\}/);
+  assert.ok(!screen.includes("t('assessments.review.sentAt'"), 'no "Sent 03-10-2026 21:44" line');
+  const parts = src('components/assessment-parts.tsx');
+  assert.match(parts, /const kind = shownKind\(file\)/);
+  assert.match(parts, /\{name \?\? file\.name\}/);
+});
+
+test('Practice tools: a slim timer line, Start right under the tempo, beats 2 to 8 in one row (#384)', () => {
+  const tools = src('screens/practice-tools.tsx');
+  assert.match(tools, /<PracticeTimerLine profileId=\{profileId\} \/>/);
+  assert.ok(!tools.includes('PracticeTimerCard'));
+  assert.match(tools, /<Section icon="practice" title=\{t\('practice\.metronome'\)\}/);
+  assert.match(tools, /<TempoControl bpm=\{metronomeBpm\} onChange=\{setMetronomeBpm\}>\s*\{startButton\(false\)\}/);
+  assert.match(tools, /<TempoControl bpm=\{taalBpm\} onChange=\{setTaalBpm\}>\s*\{startButton\(!taal\)\}/);
+  // The Start button sits between the number and the −5 … +5 steps.
+  const tempo = tools.slice(tools.indexOf('function TempoControl'));
+  assert.ok(tempo.indexOf("t('practice.bpm'") < tempo.indexOf('{children}'));
+  assert.ok(tempo.indexOf('{children}') < tempo.indexOf('styles.steps'));
+  assert.match(tools, /segmented\s+label=\{t\('practice\.beatsInBar'\)\}/);
+  const choices = src('components/choice-group.tsx');
+  assert.match(choices, /segmentedRow: \{\s*flexWrap: 'nowrap'/);
+  assert.match(src('components/appearance-picker.tsx'), /<ChoiceGroup<AppearanceChoice>\s+segmented/);
+});
+
+test('My profile: who you are first, then language and appearance, then the folded account; no phone for a student (#385)', () => {
+  const profile = src('screens/my-profile.tsx');
+  const card = profile.indexOf('<PersonHeader\n');
+  const language = profile.indexOf('<LanguagePicker />');
+  const appearance = profile.indexOf('<AppearancePicker />');
+  const account = profile.indexOf("t('myProfile.accountTitle')");
+  const about = profile.indexOf("t('about.cardTitle')");
+  const signOut = profile.indexOf('<SignOutButton');
+  assert.ok(card > 0 && card < language && language < appearance && appearance < account && account < about && about < signOut);
+  assert.match(profile, /chips=\{\{ levelId: student\.levelId \}\}/);
+  assert.match(profile, /t\('myProfile\.rollLine', \{ rollNo: student\.rollNo \}\)/);
+  assert.match(profile, /\{isStudent \? null : \(\s*<TextField\s+label=\{t\('myProfile\.phoneLabel'\)\}/);
+  assert.match(profile, /const details = isStudent \? \{ fullName \} : \{ fullName, phone: phone \?\? '' \}/);
+  // A form without a phone leaves the account's phone as it is.
+  const data = src('data/my-profile.ts');
+  assert.match(data, /\.\.\.\(details\.phone === undefined \? \{\} : \{ phone: details\.phone\.trim\(\) \|\| null \}\)/);
+  assert.match(src('data/visits.ts'), /select\('id, roll_no, full_name, level_id'\)/);
+  for (const lang of LANGS) {
+    const l = locale(lang);
+    for (const gone of ['rollTitle', 'rollNo', 'rollName', 'detailsTitle', 'role']) assert.equal(l.myProfile[gone], undefined, `${lang} ${gone}`);
   }
 });

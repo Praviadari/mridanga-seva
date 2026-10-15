@@ -1134,16 +1134,11 @@
   },
   "myProfile": {
     "title": "My profile",
-    "detailsTitle": "My details",
-    "role": "Role",
     "nameLabel": "My name",
     "phoneLabel": "Phone (optional)",
     "phoneHint": "For coordinators to reach you, e.g. +91 98765 43210.",
     "save": "Save",
     "saved": "Saved.",
-    "rollTitle": "My roll card",
-    "rollNo": "Roll number",
-    "rollName": "Name on the roll",
     "rollNameHint": "The name on your roll card is kept by the coordinators. Ask one of them to correct it.",
     "errors": {
       "nameRequired": "Enter your name.",
@@ -1158,7 +1153,13 @@
       "system": "Same as phone",
       "light": "Light",
       "dark": "Dark"
-    }
+    },
+    "rollLine": "Roll number {{rollNo}}",
+    "accountTitle": "Sign-in account",
+    "accountHintStudent": "Your name in the app, on your home screen and your replies. The name on your roll card, at the top, is kept by the coordinators.",
+    "accountName": "Name in the app",
+    "editName": "Change my name",
+    "editDetails": "Change my name or phone"
   },
   "admin": {
     "title": "Set-up",
@@ -1830,7 +1831,9 @@
       "mine": "My recordings ({{count}})",
       "accepted": "Accepted",
       "redoAsked": "Please record it again",
-      "notReviewed": "Not reviewed yet."
+      "notReviewed": "Not reviewed yet.",
+      "recordingName": "Recording {{number}} · {{date}}",
+      "markTitle": "Your mark"
     },
     "files": {
       "play": "Play",
@@ -2154,7 +2157,9 @@
       "fingers": "fingers",
       "wristFingers": "wrist and fingers",
       "slide": "sliding hand"
-    }
+    },
+    "timerIdle": "Timer starts with Start",
+    "timerStartNow": "Start now"
   },
   "practiceLog": {
     "open": "My practice log",

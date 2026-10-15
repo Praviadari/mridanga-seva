@@ -2,14 +2,16 @@
 // the coordinator's notes, the due date, how it is scored), and sending the recording: an audio
 // or video file from the phone (recorded with the phone's own recorder or camera; at most 50 MB)
 // or a recording made here in the app (slice 4, expo-audio), or a link (an unlisted YouTube video,
-// Google Drive ...), with a note. After the review: the
-// score per rubric line, the coordinator's comment, and for a redo the way to send it again.
+// Google Drive ...), with a note. After a review its mark comes first (#383): the newest reviewed recording's
+// total, verdict, comment, voice note and score per rubric line, then the task, and for a redo the way to send it
+// again. Recordings are named by number and day ("Recording 2 · 03-10-2026"); one made in the app reads as audio.
 // Opened from S5 Record myself with ?take=<recording id>, that take is attached, ready to listen to and send.
 // Opening it tells the coordinator it was seen. The address holds the assignment id, so a push
 // notification opens it.
 // Data: src/data/assessments.ts, files src/data/assessment-files.ts (migration 0016).
 
 import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import type { TFunction } from 'i18next';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
@@ -25,6 +27,7 @@ import { Notice } from '@/components/notice';
 import { RouteIdGuard } from '@/components/route-id-guard';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
+import { Chip } from '@/components/status-chip';
 import { TextField } from '@/components/text-field';
 import {
   MAX_MEDIA_BYTES,
@@ -43,10 +46,13 @@ import {
   rubricTotal,
   submitRecording,
   type AssignmentDetail,
+  type RubricLine,
+  type Submission,
   type SubmitFormErrors,
 } from '@/data/assessments';
 import { fileSizeText } from '@/i18n/labels';
-import { formatDateTime, formatDate } from '@/lib/dates';
+import { newestReviewed, recordingNumber } from '@/lib/assessment-view';
+import { formatDate, localDate } from '@/lib/dates';
 import { listMyRecordings } from '@/lib/my-recordings';
 import { takeOf } from '@/lib/recording';
 import { radius, spacing, useTheme } from '@/theme/use-theme';
@@ -169,10 +175,24 @@ function MyAssessmentScreenContent() {
     await load();
   }
 
+  // Recordings by number and day, the first one sent being 1: "Recording 2 · 03-10-2026" (#383).
+  const recordingName = (index: number) =>
+    t('assessments.submit.recordingName', {
+      number: recordingNumber(index, submissions.length),
+      date: formatDate(localDate(submissions[index].submittedAt)),
+    });
+  const marked = newestReviewed(submissions);
+
   return (
     <Screen underHeader onRefresh={load}>
       {header}
       <AssignmentChips status={status} dueOn={release.dueOn} />
+      {sent ? <Notice tone="success">{t('assessments.submit.sent')}</Notice> : null}
+      {status === 'submitted' && !sent ? <Notice tone="info">{t('assessments.submit.waiting')}</Notice> : null}
+
+      {/* The mark first (#383): what the student opens the screen for once a review is in. */}
+      {marked ? <MarkCard submission={marked} rubric={a.rubric} recordingName={recordingName(submissions.indexOf(marked))} /> : null}
+
       <Section title={a.title} description={t('assessments.dueOn', { date: formatDate(release.dueOn) })}>
         {a.instructions ? <AppText>{a.instructions}</AppText> : null}
         <MediaList files={a.media} link={a.mediaLink} />
@@ -188,9 +208,6 @@ function MyAssessmentScreenContent() {
           </AppText>
         ))}
       </Section>
-
-      {sent ? <Notice tone="success">{t('assessments.submit.sent')}</Notice> : null}
-      {status === 'submitted' && !sent ? <Notice tone="info">{t('assessments.submit.waiting')}</Notice> : null}
 
       {canSend ? (
         <Section
@@ -260,43 +277,94 @@ function MyAssessmentScreenContent() {
 
       {submissions.length > 0 ? (
         <Section title={t('assessments.submit.mine', { count: submissions.length })}>
-          {submissions.map((s) => (
-            <View key={s.id} style={styles.history}>
-              <AppText variant="label">{t('assessments.review.sentAt', { date: formatDateTime(s.submittedAt) })}</AppText>
-              <MediaList
-                files={s.file && !s.fileRemovedAt ? [s.file] : []}
-                link={s.link}
-                removedNote={s.fileRemovedAt ? t('assessments.files.removed') : undefined}
-              />
-              {s.reviewedAt ? (
-                <>
-                  <AppText variant="label">
-                    {[
-                      s.outcome === 'redo' ? t('assessments.submit.redoAsked') : t('assessments.submit.accepted'),
-                      ...(s.reviewedByName ? [t('assessments.review.by', { name: s.reviewedByName })] : []),
-                    ].join(' · ')}
-                  </AppText>
-                  <ScoreLines rubric={a.rubric} scores={s.scores} total={s.score} max={s.scoreMax} />
-                  {s.comment ? <AppText>{s.comment}</AppText> : null}
-                  {s.voiceNote && !s.fileRemovedAt ? (
-                    <>
-                      <AppText variant="label">{t('recording.voiceNoteFrom', { name: s.reviewedByName ?? t('assessments.detail.someone') })}</AppText>
-                      <MediaList files={[s.voiceNote]} link={null} />
-                    </>
-                  ) : null}
-                </>
-              ) : (
-                <AppText tone="muted">{t('assessments.submit.notReviewed')}</AppText>
-              )}
-            </View>
-          ))}
+          {submissions.map((s, i) => {
+            const liveFile = s.file && !s.fileRemovedAt ? s.file : null;
+            return (
+              <View key={s.id} style={styles.history}>
+                {/* The recording's own row carries its name; a link-only or deleted one gets it as a line. */}
+                {liveFile ? null : <AppText variant="label">{recordingName(i)}</AppText>}
+                <MediaList
+                  files={liveFile ? [liveFile] : []}
+                  link={s.link}
+                  name={recordingName(i)}
+                  removedNote={s.fileRemovedAt ? t('assessments.files.removed') : undefined}
+                />
+                {s === marked ? (
+                  // Its mark is the card at the top; one line here.
+                  <AppText tone="muted">{[scoreText(t, s), verdictText(t, s)].filter(Boolean).join(' · ')}</AppText>
+                ) : s.reviewedAt ? (
+                  <>
+                    <AppText variant="label">
+                      {[verdictText(t, s), ...(s.reviewedByName ? [t('assessments.review.by', { name: s.reviewedByName })] : [])].join(' · ')}
+                    </AppText>
+                    <ScoreLines rubric={a.rubric} scores={s.scores} total={s.score} max={s.scoreMax} />
+                    {s.comment ? <AppText>{s.comment}</AppText> : null}
+                    {s.voiceNote && !s.fileRemovedAt ? <VoiceNote submission={s} /> : null}
+                  </>
+                ) : (
+                  <AppText tone="muted">{t('assessments.submit.notReviewed')}</AppText>
+                )}
+              </View>
+            );
+          })}
         </Section>
       ) : null}
     </Screen>
   );
 }
 
+/** A review's verdict: Accepted, or Please record it again. */
+function verdictText(t: TFunction, s: Submission): string {
+  return s.outcome === 'redo' ? t('assessments.submit.redoAsked') : t('assessments.submit.accepted');
+}
+
+/** A review's total as "8 of 15"; null when it has none. */
+function scoreText(t: TFunction, s: Submission): string | null {
+  return s.score !== null && s.scoreMax !== null ? t('assessments.scoreOf', { score: s.score, max: s.scoreMax }) : null;
+}
+
+/** The reviewer's voice note as one row: "Voice note from …", Audio, Play. */
+function VoiceNote({ submission: s }: { submission: Submission }) {
+  const { t } = useTranslation();
+  if (!s.voiceNote) return null;
+  return (
+    <MediaList
+      files={[s.voiceNote]}
+      link={null}
+      name={t('recording.voiceNoteFrom', { name: s.reviewedByName ?? t('assessments.detail.someone') })}
+    />
+  );
+}
+
+/**
+ * The newest review, first on the screen (#383): the total large, the verdict and who reviewed, the comment, the
+ * voice note, then the score of each rubric line. Google Classroom shows the mark first in the same way.
+ */
+function MarkCard({ submission: s, rubric, recordingName }: { submission: Submission; rubric: RubricLine[]; recordingName: string }) {
+  const { t } = useTranslation();
+  const redo = s.outcome === 'redo';
+  const total = scoreText(t, s);
+  return (
+    <Section icon="score" title={t('assessments.submit.markTitle')} description={recordingName}>
+      {total ? <AppText variant="number">{total}</AppText> : null}
+      <View style={styles.verdict}>
+        <Chip label={verdictText(t, s)} tone={redo ? 'danger' : 'success'} />
+        {s.reviewedByName ? <AppText tone="muted">{t('assessments.review.by', { name: s.reviewedByName })}</AppText> : null}
+      </View>
+      {s.comment ? <AppText>{s.comment}</AppText> : null}
+      {s.voiceNote && !s.fileRemovedAt ? <VoiceNote submission={s} /> : null}
+      <ScoreLines rubric={rubric} scores={s.scores} total={null} max={null} />
+    </Section>
+  );
+}
+
 const styles = StyleSheet.create({
+  verdict: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
   multiline: {
     minHeight: 80,
     textAlignVertical: 'top',

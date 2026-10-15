@@ -35,6 +35,12 @@ export type ChoiceGroupProps<T> = {
   error?: string;
   /** Rounded pills with the choice's icon before the label, instead of plain buttons. */
   chips?: boolean;
+  /**
+   * One joined row that never wraps, the choices sharing its width (a longer label gets a little more): for a few
+   * short labels such as the beats in a bar, 2 to 8, which fit one row at 375 px with each choice still 44 px wide
+   * (#384), or Same as phone / Light / Dark (#385). A label too long for its share wraps inside its button.
+   */
+  segmented?: boolean;
 };
 
 /** Single-choice buttons that wrap onto more lines when there are many. */
@@ -46,6 +52,7 @@ export function ChoiceGroup<T extends string | number>({
   onChange,
   error,
   chips,
+  segmented,
 }: ChoiceGroupProps<T>) {
   const { colors } = useTheme();
   const keys = useRadioKeys(
@@ -56,7 +63,7 @@ export function ChoiceGroup<T extends string | number>({
   return (
     <View style={styles.wrapper}>
       {label ? <AppText variant="label">{label}</AppText> : null}
-      <View role="radiogroup" accessibilityLabel={label ?? accessibilityLabel} style={styles.row}>
+      <View role="radiogroup" accessibilityLabel={label ?? accessibilityLabel} style={[styles.row, segmented && styles.segmentedRow]}>
         {choices.map((choice, index) => {
           const selected = choice.value === value;
           const textColour = selected ? colors.onPrimary : colors.text;
@@ -74,6 +81,13 @@ export function ChoiceGroup<T extends string | number>({
               style={[
                 styles.option,
                 chips && styles.chip,
+                segmented && [
+                  styles.segment,
+                  index === 0 && styles.segmentFirst,
+                  index === choices.length - 1 && styles.segmentLast,
+                  // The chosen one's border is drawn over its neighbours'.
+                  selected && styles.segmentChosen,
+                ],
                 {
                   borderColor: selected ? colors.primary : error ? colors.danger : colors.controlBorder,
                   backgroundColor: selected ? colors.primary : colors.surface,
@@ -82,7 +96,7 @@ export function ChoiceGroup<T extends string | number>({
               {chips && choice.icon ? (
                 <Icon name={choice.icon} size={18} color={selected ? colors.onPrimary : colors.primary} />
               ) : null}
-              <AppText variant="label" lang={choice.lang} style={{ color: textColour }}>
+              <AppText variant="label" lang={choice.lang} style={[segmented && styles.segmentLabel, { color: textColour }]}>
                 {choice.label}
               </AppText>
             </Pressable>
@@ -122,5 +136,37 @@ const styles = StyleSheet.create({
   chip: {
     minWidth: 0,
     borderRadius: 999,
+  },
+  segmentedRow: {
+    flexWrap: 'nowrap',
+    gap: 0,
+    maxWidth: 480,
+  },
+  segment: {
+    // The room left over is shared equally, so equal labels get equal widths.
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 'auto',
+    minWidth: 0,
+    paddingHorizontal: spacing.xs,
+    borderRadius: 0,
+    // Neighbours share one border line.
+    marginLeft: -1.5,
+  },
+  segmentFirst: {
+    marginLeft: 0,
+    borderTopLeftRadius: radius,
+    borderBottomLeftRadius: radius,
+  },
+  segmentLast: {
+    borderTopRightRadius: radius,
+    borderBottomRightRadius: radius,
+  },
+  segmentChosen: {
+    zIndex: 1,
+  },
+  segmentLabel: {
+    flexShrink: 1,
+    textAlign: 'center',
   },
 });

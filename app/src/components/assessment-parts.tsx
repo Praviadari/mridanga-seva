@@ -17,6 +17,7 @@ import { StyleSheet, View } from 'react-native';
 import { mediaLinks, type MediaFile, type MediaKind } from '@/data/assessment-files';
 import { isOverdue, type AssessmentKind, type AssignmentStatus, type RubricLine } from '@/data/assessments';
 import { fileSizeText } from '@/i18n/labels';
+import { shownKind } from '@/lib/assessment-view';
 import type { ChipTone } from '@/theme/colors';
 import { radius, spacing, useTheme } from '@/theme/use-theme';
 
@@ -64,10 +65,12 @@ export type MediaListProps = {
   link?: string | null;
   /** Shown instead of a file that was deleted after its keep time. */
   removedNote?: string;
+  /** Shown in place of the file's name, for a list of one file: a student's recording, "Recording 2 · 03-10-2026" (#383). */
+  name?: string;
 };
 
 /** The files of an assessment or a recording: one row each, with Open (photo, PDF) or Play (audio, video). */
-export function MediaList({ files, link, removedNote }: MediaListProps) {
+export function MediaList({ files, link, removedNote, name }: MediaListProps) {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const paths = files.map((f) => f.path).join('\n');
@@ -96,14 +99,16 @@ export function MediaList({ files, link, removedNote }: MediaListProps) {
     <View style={styles.list}>
       {files.map((file) => {
         const url = links?.get(file.path);
-        const playable = file.kind === 'audio' || file.kind === 'video';
+        // A recording made in the app is audio, though a browser's .webm is stored as 'video' (#383).
+        const kind = shownKind(file);
+        const playable = kind === 'audio' || kind === 'video';
         return (
           <View key={file.path} style={[styles.row, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Icon name={KIND_ICON[file.kind]} size={24} color={colors.primary} />
+            <Icon name={KIND_ICON[kind]} size={24} color={colors.primary} />
             <View style={styles.rowText}>
-              <AppText variant="label">{file.name}</AppText>
+              <AppText variant="label">{name ?? file.name}</AppText>
               <AppText variant="small" tone="muted">
-                {url || links === undefined ? `${t(`assessments.files.kind.${file.kind}`)} · ${fileSizeText(t, file.size)}` : t('announcements.files.notAvailable')}
+                {url || links === undefined ? `${t(`assessments.files.kind.${kind}`)} · ${fileSizeText(t, file.size)}` : t('announcements.files.notAvailable')}
               </AppText>
             </View>
             <Button

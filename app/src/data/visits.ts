@@ -87,15 +87,15 @@ export async function fetchVisitHistory(studentId: string, months: number): Prom
 }
 
 /** The signed-in student's own record, for S9 and A3. */
-export type MyStudent = { id: string; rollNo: string; fullName: string };
+export type MyStudent = { id: string; rollNo: string; fullName: string; levelId: number };
 
 /** The student record of a login. 'not_found' when it has none, null when it could not be loaded. */
 export async function fetchMyStudent(profileId: string): Promise<MyStudent | 'not_found' | null> {
   const { data, error } = await supabase
     .from('students')
-    .select('id, roll_no, full_name')
+    .select('id, roll_no, full_name, level_id')
     .eq('profile_id', profileId)
-    .maybeSingle<{ id: string; roll_no: string; full_name: string }>();
+    .maybeSingle<{ id: string; roll_no: string; full_name: string; level_id: number }>();
   if (error) return null;
-  return data ? { id: data.id, rollNo: data.roll_no, fullName: data.full_name } : 'not_found';
+  return data ? { id: data.id, rollNo: data.roll_no, fullName: data.full_name, levelId: data.level_id } : 'not_found';
 }

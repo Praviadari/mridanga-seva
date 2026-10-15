@@ -8,12 +8,13 @@
 // - Record myself (slice 4, components/record-myself.tsx): record one's own playing with the
 //   metronome or taal started from its first beat, keep it on the phone, play it back beside the sound.
 // - Practice timer (students only): starts with the first sound or by hand, logs itself on Stop when
-//   it ran at least a minute (S6; lib/practice-timer.ts, data/practice.ts).
+//   it ran at least a minute (S6; lib/practice-timer.ts, data/practice.ts). One slim line at the top,
+//   so the tempo and its big Start come on the first screen (#384).
 // Sound: lib/practice-audio(.web).ts; timing is kept by the audio clock, not by JavaScript timers.
 // The Guru sees "Edit taals" (staff/taals). The sound stops when the screen is left.
 
 import { router, Stack, useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type PropsWithChildren } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
@@ -22,6 +23,7 @@ import { AppText } from '@/components/app-text';
 import { BeatGrid } from '@/components/beat-grid';
 import { Button } from '@/components/button';
 import { ChoiceGroup } from '@/components/choice-group';
+import { Icon } from '@/components/icon';
 import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
 import { RecordMyself } from '@/components/record-myself';
@@ -183,18 +185,28 @@ export function PracticeTools({ area }: PracticeToolsProps) {
   // During a rest nothing is struck: the drum shows no bol.
   const bolNow = head && mode === 'taal' && readBeats[head.beat]?.[0]?.text !== '-' ? readBeats[head.bolBeat]?.[head.part] ?? null : null;
 
+  const startButton = (disabled: boolean) => (
+    <Button
+      size="large"
+      icon={playing ? 'pause' : 'play'}
+      label={playing ? t('practice.stop') : t('practice.start')}
+      disabled={disabled}
+      onPress={() => void toggle()}
+    />
+  );
+
   return (
     <Screen underHeader wide>
       <Stack.Screen options={{ title: t('practice.title') }} />
 
-      {isStudent ? <PracticeTimerCard profileId={profileId} /> : <AppText tone="muted">{t('practice.staffHint')}</AppText>}
+      {isStudent ? <PracticeTimerLine profileId={profileId} /> : <AppText tone="muted">{t('practice.staffHint')}</AppText>}
 
       <ChoiceGroup<Mode>
         label={t('practice.tool')}
         value={mode}
         onChange={switchMode}
         choices={[
-          { value: 'metronome', label: t('practice.metronome'), icon: 'time' },
+          { value: 'metronome', label: t('practice.metronome'), icon: 'practice' },
           { value: 'taal', label: t('practice.taalPlayer'), icon: 'instruments' },
         ]}
       />
@@ -206,21 +218,18 @@ export function PracticeTools({ area }: PracticeToolsProps) {
       ) : null}
 
       {mode === 'metronome' ? (
-        <Section icon="time" title={t('practice.metronome')} description={t('practice.metronomeIntro')}>
-          <TempoControl bpm={metronomeBpm} onChange={setMetronomeBpm} />
+        <Section icon="practice" title={t('practice.metronome')} description={t('practice.metronomeIntro')}>
+          {/* Start right under the tempo, on the first screen (#384); the dots light in time under it. */}
+          <TempoControl bpm={metronomeBpm} onChange={setMetronomeBpm}>
+            {startButton(false)}
+            <BeatDots count={beatsPerBar} current={head?.beat ?? null} />
+          </TempoControl>
           <ChoiceGroup<number>
-            chips
+            segmented
             label={t('practice.beatsInBar')}
             value={beatsPerBar}
             onChange={setBeatsPerBar}
             choices={[2, 3, 4, 5, 6, 7, 8].map((n) => ({ value: n, label: String(n) }))}
-          />
-          <BeatDots count={beatsPerBar} current={head?.beat ?? null} />
-          <Button
-            size="large"
-            icon={playing ? 'pause' : 'play'}
-            label={playing ? t('practice.stop') : t('practice.start')}
-            onPress={() => void toggle()}
           />
         </Section>
       ) : (
@@ -255,7 +264,9 @@ export function PracticeTools({ area }: PracticeToolsProps) {
                 {taal.note ?? t('practice.placeholder')}
               </Notice>
             ) : null}
-            <TempoControl bpm={taalBpm} onChange={setTaalBpm} />
+            <TempoControl bpm={taalBpm} onChange={setTaalBpm}>
+              {startButton(!taal)}
+            </TempoControl>
             <ChoiceGroup<number>
               chips
               label={t('practice.speed')}
@@ -272,13 +283,6 @@ export function PracticeTools({ area }: PracticeToolsProps) {
                 {t('practice.playingAt', { bpm: Math.round(bpm * 10) / 10 })}
               </AppText>
             ) : null}
-            <Button
-              size="large"
-              icon={playing ? 'pause' : 'play'}
-              label={playing ? t('practice.stop') : t('practice.start')}
-              disabled={!taal}
-              onPress={() => void toggle()}
-            />
           </Section>
           {taal ? (
             <Section icon="syllabus" title={t('practice.gridTitle', { name: taal.name })}>
@@ -308,8 +312,8 @@ export function PracticeTools({ area }: PracticeToolsProps) {
   );
 }
 
-/** Tempo: the number, −5 / −1 / +1 / +5 and tap tempo. */
-function TempoControl({ bpm, onChange }: { bpm: number; onChange: (bpm: number) => void }) {
+/** Tempo: the number, then `children` (the Start button, #384), then −5 / −1 / +1 / +5 and tap tempo. */
+function TempoControl({ bpm, onChange, children }: PropsWithChildren<{ bpm: number; onChange: (bpm: number) => void }>) {
   const { t } = useTranslation();
   const [taps, setTaps] = useState<number[]>([]);
   const step = (by: number) => onChange(clampBpm(bpm + by));
@@ -326,6 +330,7 @@ function TempoControl({ bpm, onChange }: { bpm: number; onChange: (bpm: number) 
         <AppText variant="title" family="sans">{bpm}</AppText>
         <AppText tone="muted">{t('practice.bpm', { min: MIN_BPM, max: MAX_BPM })}</AppText>
       </View>
+      {children}
       <View style={styles.steps}>
         {[-5, -1, 1, 5].map((by) => (
           <View key={by} style={styles.step}>
@@ -372,9 +377,13 @@ function BeatDots({ count, current }: { count: number; current: number | null })
   );
 }
 
-/** Students: the practice timer, and what happened when it was stopped. */
-function PracticeTimerCard({ profileId }: { profileId: string }) {
+/**
+ * Students: the practice timer as one slim line above the tools (#384), so Start stays on the first screen; while it
+ * runs, the time with Stop and save, and Throw away under it; what happened when it was stopped.
+ */
+function PracticeTimerLine({ profileId }: { profileId: string }) {
   const { t } = useTranslation();
+  const { colors } = useTheme();
   const timer = usePracticeTimer(profileId);
   const [now, setNow] = useState(() => Date.now());
   const [busy, setBusy] = useState(false);
@@ -417,37 +426,38 @@ function PracticeTimerCard({ profileId }: { profileId: string }) {
   };
 
   return (
-    <Section icon="time" title={t('practice.timerTitle')} description={timer ? undefined : t('practice.timerIntro')}>
-      {timer ? (
-        <AppText variant="subtitle" family="sans">
-          {t('practice.timerRunning', { time: practiceTime(t, minutes) })}
+    <View style={styles.timerWrap}>
+      <View style={[styles.timerLine, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <Icon name="time" size={22} color={colors.primary} />
+        <AppText variant={timer ? 'label' : 'small'} tone={timer ? 'default' : 'muted'} style={styles.timerText}>
+          {timer ? t('practice.timerRunning', { time: practiceTime(t, minutes) }) : t('practice.timerIdle')}
         </AppText>
-      ) : null}
-      {result ? <Notice tone={result.tone}>{result.text}</Notice> : null}
-      {timer ? (
-        <>
-          <Button icon="check" label={t('practice.timerStop')} loading={busy} onPress={() => void stop()} />
+        {timer ? (
+          <Button variant="link" icon="check" label={t('practice.timerStop')} loading={busy} onPress={() => void stop()} />
+        ) : (
           <Button
             variant="link"
-            label={t('practice.timerDiscard')}
+            label={t('practice.timerStartNow')}
+            accessibilityLabel={t('practice.timerStart')}
             onPress={() => {
-              clearPracticeTimer();
               setResult(null);
+              startPracticeTimer(profileId, null);
             }}
           />
-        </>
-      ) : (
+        )}
+      </View>
+      {timer ? (
         <Button
-          variant="secondary"
-          icon="time"
-          label={t('practice.timerStart')}
+          variant="link"
+          label={t('practice.timerDiscard')}
           onPress={() => {
+            clearPracticeTimer();
             setResult(null);
-            startPracticeTimer(profileId, null);
           }}
         />
-      )}
-    </Section>
+      ) : null}
+      {result ? <Notice tone={result.tone}>{result.text}</Notice> : null}
+    </View>
   );
 }
 
@@ -470,8 +480,25 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.md,
+    // Eight dots stay on one line at 375 px.
+    gap: spacing.sm,
     minHeight: 44,
     borderRadius: radius,
+  },
+  timerWrap: {
+    gap: spacing.xs,
+  },
+  timerLine: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    minHeight: 48,
+    paddingLeft: spacing.md,
+    paddingRight: spacing.xs,
+    borderWidth: 1,
+    borderRadius: radius,
+  },
+  timerText: {
+    flex: 1,
   },
 });
