@@ -5907,3 +5907,21 @@ a team question (launch audit report, Q-3).
 
 **Why.** The registration weekend's desk works from the waiting list; an entry that never goes away invites a second
 record.
+
+## 393. A busy sign-in server never signs a person out — 15 Oct 2026
+
+**Status: branch `launch-audit`.** Launch audit finding LA-04 (High for the door). The auth client the app uses
+(@supabase/auth-js 2.117.2) keeps the login after a failed token refresh only when the failure is "no answer" or a
+5xx; any other answer, once the access token has expired (the usual case when the app is opened after an hour), ends
+the login (`_removeSession`). Supabase Auth answers **429** when one internet address refreshes too often (the
+token-refresh rate limit, GO_LIVE_CHECKLIST R5-02): students on the temple's Wi-Fi, or behind a mobile operator's
+shared address, opening the app at the door at once. They were signed out, had to type their password at the door
+(sign-ins have their own, lower limit), and Sign out had deleted the My QR card saved on the phone. Now the app's fetch
+(`src/lib/refresh-guard.ts`, inside the time limit in `src/lib/supabase.ts`) turns a 429 answer to a token refresh
+(`POST /auth/v1/token?grant_type=refresh_token`) into a failure like no internet: the auth client keeps the login and
+tries again on its next tick (30 s), the screens say "Could not reach the server" for that moment, and My QR shows the
+saved card. A 429 to a password sign-in is left as it is (its message shows). Tested against the installed auth client
+(app/tests/launch-audit.test.mjs: without the guard the saved login is deleted, with it the login stays). JS only.
+
+**Why.** The door is where the app must work best; a rate limit is a moment, a sign-out is a password at the door.
+The dashboard limit (R5-02) still matters: this only stops the sign-out, not the waiting.

@@ -72,6 +72,66 @@ test('a form filled from a sign-up that did not connect the login says the sign-
   }
 });
 
+// ---------------------------------------------------------------- #393 a busy token refresh keeps the login
+
+const { isBusyRefresh, refreshGuard, BUSY_REFRESH_MESSAGE } = await import('../src/lib/refresh-guard.ts');
+
+test('only a 429 to a token refresh counts as "busy"', () => {
+  const refresh = 'https://x.supabase.co/auth/v1/token?grant_type=refresh_token';
+  assert.equal(isBusyRefresh(refresh, 'POST', 429), true);
+  assert.equal(isBusyRefresh(refresh, 'POST', 400), false);
+  assert.equal(isBusyRefresh('https://x.supabase.co/auth/v1/token?grant_type=password', 'POST', 429), false);
+  assert.equal(isBusyRefresh('https://x.supabase.co/rest/v1/students?grant_type=refresh_token', 'POST', 429), false);
+  assert.equal(isBusyRefresh(refresh, 'GET', 429), false);
+});
+
+/**
+ * Runs the real auth client (@supabase/auth-js, as installed) on a saved login whose access token has expired, with
+ * a server that answers every token refresh "429 too many requests"; returns whether the login is still saved.
+ */
+async function loginSurvivesBusyRefresh(guarded) {
+  const { createRequire } = await import('node:module');
+  const { GoTrueClient } = createRequire(import.meta.url)('@supabase/auth-js');
+  const key = 'sb-test-auth-token';
+  const saved = new Map();
+  const now = Math.floor(Date.now() / 1000);
+  saved.set(key, JSON.stringify({
+    access_token: 'expired', refresh_token: 'r1', token_type: 'bearer', expires_in: 3600, expires_at: now - 600,
+    user: { id: '00000000-0000-4000-8000-000000000001', aud: 'authenticated', app_metadata: {}, user_metadata: {}, created_at: '' },
+  }));
+  const storage = { getItem: (k) => saved.get(k) ?? null, setItem: (k, v) => void saved.set(k, v), removeItem: (k) => void saved.delete(k) };
+  let refreshes = 0;
+  const realNow = Date.now;
+  const server = async (input) => {
+    if (String(input).includes('grant_type=refresh_token')) {
+      refreshes += 1;
+      // Past the auth client's 30 s retry window after the first try, so the test does not wait for its back-off.
+      Date.now = () => realNow() + 60_000;
+    }
+    return new Response(JSON.stringify({ code: 429, error_code: 'over_request_rate_limit', msg: 'Request rate limit reached' }),
+      { status: 429, headers: { 'content-type': 'application/json' } });
+  };
+  const client = new GoTrueClient({
+    url: 'https://x.supabase.co/auth/v1', storageKey: key, storage, autoRefreshToken: false, persistSession: true,
+    detectSessionInUrl: false, fetch: guarded ? refreshGuard(server) : server,
+  });
+  try {
+    await client.getSession();
+  } finally {
+    Date.now = realNow;
+  }
+  assert.ok(refreshes >= 1, 'a refresh was tried');
+  return saved.has(key);
+}
+
+test('a token refresh refused as busy (429) no longer signs the person out', async () => {
+  // Without the guard the installed auth client deletes the saved login (the bug); with it the login stays.
+  assert.equal(await loginSurvivesBusyRefresh(false), false);
+  assert.equal(await loginSurvivesBusyRefresh(true), true);
+  assert.match(BUSY_REFRESH_MESSAGE, /Network request failed/);
+  assert.match(src('lib/supabase.ts'), /withTimeout\(refreshGuard\(/);
+});
+
 // ---------------------------------------------------------------- #391 My QR asks again on focus
 
 test('My QR loads the card each time it comes into view, not once per mount', () => {

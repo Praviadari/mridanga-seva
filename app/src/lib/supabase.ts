@@ -10,6 +10,7 @@ import { createClient } from '@supabase/supabase-js';
 import { AppState, Platform } from 'react-native';
 
 import { deviceStorage, readLocal, removeLocal } from './local-storage';
+import { refreshGuard } from './refresh-guard';
 import { withTimeout } from './timed-fetch';
 
 // Expo copies EXPO_PUBLIC_* values into the app when it is built, so they are public. That is
@@ -65,9 +66,11 @@ export function setRefusedListener(listener: (() => void) | null): void {
  * fetch for the client: answers as usual, and when the database or Storage refused the call as not
  * allowed (permission code 42501, or the functions' own "not_allowed" / "not allowed"), tells the
  * listener. Sign-in calls (/auth/) are left out: a wrong password is not a lost role.
- * Every call has a time limit for the server's answer (src/lib/timed-fetch.ts, docs/DECISIONS.md #237).
+ * Every call has a time limit for the server's answer (src/lib/timed-fetch.ts, docs/DECISIONS.md #237), and a token
+ * refresh refused as "too many requests" fails like no internet, so it never signs the person out
+ * (src/lib/refresh-guard.ts, #393).
  */
-const timedFetch = withTimeout((input, init) => fetch(input, init));
+const timedFetch = withTimeout(refreshGuard((input, init) => fetch(input, init)));
 const watchedFetch: typeof fetch = async (input, init) => {
   const response = await timedFetch(input, init);
   const address = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
