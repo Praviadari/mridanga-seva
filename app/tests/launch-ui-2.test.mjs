@@ -142,3 +142,43 @@ test('module colours are five families; pink and indigo are gone; each ring keep
   assert.deepEqual(ringTones(guruText), ['blue', 'purple', 'purple', 'purple', 'orange', 'orange', 'green', 'green']);
   assert.deepEqual(ringTones(coordinatorText), ['green', 'green', 'teal', 'teal', 'purple', 'purple', 'orange', 'orange']);
 });
+// ---------------------------------------------------------------- #369 sign-in band in gold, #370 ring labels clear of the drum
+
+test('the sign-in band shows the name and motto in gold, as the home band', () => {
+  const header = src('components/brand.tsx');
+  const band = header.slice(header.indexOf('export function BrandHeader'));
+  assert.match(band, /t\('app\.name'\)/);
+  assert.equal((band.match(/color: colors\.headerGold/g) ?? []).length, 2);
+});
+
+test('ring labels keep clear of the drum circle: the drum shrinks only as far as the labels need', async () => {
+  const { ringLayout, ringAngle, CENTRE_GAP } = await import('../src/lib/ring-layout.ts');
+  const base = { size: 343, side: 16, circle: 64, labelGap: 4, centreMax: 144, centreMin: 96 };
+  const clear = (layout, labels) =>
+    Math.min(...labels.map((label, i) => {
+      const a = ringAngle(i, labels.length);
+      const x = layout.radius * Math.cos(a);
+      const top = layout.radius * Math.sin(a) + base.circle / 2 + base.labelGap;
+      const dx = Math.max(x - label.width / 2, 0, -(x + label.width / 2));
+      const dy = Math.max(top, 0, -(top + label.height));
+      return Math.hypot(dx, dy) - layout.centre / 2;
+    }));
+  // The coordinator ring as measured on a 375 px phone, 15-10-2026.
+  const coordinator = [92, 75, 76, 70, 80, 49, 89, 70].map((width) => ({ width, height: 20 }));
+  const layout = ringLayout({ ...base, labels: coordinator });
+  assert.ok(clear(layout, coordinator) >= CENTRE_GAP - 0.5, `${clear(layout, coordinator)} px`);
+  assert.ok(layout.centre < 144 && layout.centre >= 120, `drum ${layout.centre}`);
+  assert.ok(layout.height <= 373, `ring ${layout.height} px tall: the home must not scroll`);
+  // A side label stays inside the screen.
+  assert.ok(layout.radius + 89 / 2 <= 343 / 2 + 16, 'Events & polls inside the screen');
+  // Short labels (Telugu or a ring of few) leave the drum at its usual size.
+  const short = Array.from({ length: 8 }, () => ({ width: 30, height: 20 }));
+  assert.equal(ringLayout({ ...base, labels: short }).centre, 144);
+  // Very long two-line labels never shrink it below the minimum.
+  const long = Array.from({ length: 8 }, () => ({ width: 120, height: 40 }));
+  assert.equal(ringLayout({ ...base, labels: long }).centre, 96);
+  // Measured on the phone, not fixed: the ring reports each label's size.
+  const ring = src('components/module-ring.tsx');
+  assert.match(ring, /onLabelSize=\{\(label\) => onLabelSize\(module\.key, label\)\}/);
+  assert.match(ring, /measured\[module\.key\] \?\? guessLabel\(module\.label, labelWidth\)/);
+});

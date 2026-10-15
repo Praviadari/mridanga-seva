@@ -11,10 +11,12 @@
 // not hold its labels, so the same modules are shown as a grid of tiles instead. Screen readers
 // get the modules in reading order either way; the drawing position does not matter to them.
 
+import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, useWindowDimensions, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { badgeText, moduleSpokenName } from '@/lib/module-badge';
+import { ringAngle, ringLayout, type LabelSize } from '@/lib/ring-layout';
 import type { ModuleTone } from '@/theme/colors';
 import { cardLook, spacing, useLargeText, useTheme } from '@/theme/use-theme';
 
@@ -59,10 +61,10 @@ export type ModuleRingProps = {
 const CIRCLE = 64;
 /** Width of a module (circle plus the label under it) on the ring. */
 const ITEM_WIDTH = 92;
-/** Room under the lowest circle for its label. */
-const LABEL_ROOM = 44;
-/** Diameter of the drum circle in the middle (since 14-10-2026 only the drum is drawn in it). */
+/** Usual diameter of the drum circle in the middle (since 14-10-2026 only the drum is drawn in it). */
 const CENTRE = 144;
+/** The drum circle never shrinks below this to keep labels clear of it (lib/ring-layout.ts, #369). */
+const CENTRE_MIN = 96;
 /** A label may be a little wider than its circle's slot, e.g. "Announcements" in one word. */
 const LABEL_OVERHANG = 14;
 /** The ring is never drawn wider than this; on a laptop it sits in the middle of the column. */
@@ -123,6 +125,12 @@ function CircleRow({ modules }: { modules: readonly Module[] }) {
   );
 }
 
+/** A label's size before it is measured: one line of small text, two when it is longer than its slot. */
+function guessLabel(label: string, labelWidth: number): LabelSize {
+  const width = label.length * 7.5 + 4;
+  return { width: Math.min(width, labelWidth), height: width > labelWidth ? 40 : 20 };
+}
+
 /** The circles placed around the drum. */
 function Ring({ modules, width }: { modules: readonly Module[]; width: number }) {
   const { t } = useTranslation();
@@ -134,13 +142,27 @@ function Ring({ modules, width }: { modules: readonly Module[]; width: number })
   // A narrow phone (360 px): smaller circles and drum, so the top labels keep clear of the drum (#351).
   const narrow = size < NARROW_RING;
   const circle = ten ? CIRCLE_TEN : dense || narrow ? CIRCLE_DENSE : CIRCLE;
-  const centreSize = narrow ? CENTRE_NARROW : CENTRE;
   const itemWidth = dense ? ITEM_WIDTH_DENSE : ITEM_WIDTH;
-  const radius = size / 2 - itemWidth / 2;
+  const labelWidth = itemWidth + 2 * LABEL_OVERHANG;
+  // Each label's size as drawn (any language, any text size), a guess until measured: the circles sit as far out as
+  // the screen allows and the drum circle shrinks only as far as needed to keep every label clear of it (#369).
+  const [measured, setMeasured] = useState<Record<string, LabelSize>>({});
+  const onLabelSize = useCallback((key: string, label: LabelSize) => {
+    setMeasured((was) => {
+      const old = was[key];
+      return old && Math.abs(old.width - label.width) < 1 && Math.abs(old.height - label.height) < 1 ? was : { ...was, [key]: label };
+    });
+  }, []);
+  const { radius, centre: centreSize, height } = ringLayout({
+    size,
+    side: spacing.md,
+    circle,
+    labelGap: spacing.xs,
+    labels: modules.map((module) => measured[module.key] ?? guessLabel(module.label, labelWidth)),
+    centreMax: narrow ? CENTRE_NARROW : CENTRE,
+    centreMin: CENTRE_MIN,
+  });
   const centre = size / 2;
-  // As tall as the lowest circle and its label need (#241): no empty room under the ring.
-  const lowest = Math.max(...modules.map((_, index) => Math.sin(-Math.PI / 2 + (index * 2 * Math.PI) / modules.length)));
-  const height = Math.max(size, centre + radius * lowest + circle / 2 + LABEL_ROOM);
   return (
     <View style={[styles.ring, { width: size, height }]}>
       {/* The lotus mandala behind the circles (#241). */}
@@ -169,7 +191,7 @@ function Ring({ modules, width }: { modules: readonly Module[]; width: number })
       </View>
       {modules.map((module, index) => {
         // Start at the top and go clockwise.
-        const angle = -Math.PI / 2 + (index * 2 * Math.PI) / modules.length;
+        const angle = ringAngle(index, modules.length);
         const left = centre + radius * Math.cos(angle) - itemWidth / 2;
         const top = centre + radius * Math.sin(angle) - circle / 2;
         return (
@@ -177,7 +199,8 @@ function Ring({ modules, width }: { modules: readonly Module[]; width: number })
             key={module.key}
             module={module}
             circle={circle}
-            labelWidth={itemWidth + 2 * LABEL_OVERHANG}
+            labelWidth={labelWidth}
+            onLabelSize={(label) => onLabelSize(module.key, label)}
             style={{ position: 'absolute', left, top, width: itemWidth }}
           />
         );
@@ -208,10 +231,13 @@ function ModuleButton({
   labelWidth,
   circle = CIRCLE,
   inGrid = false,
+  onLabelSize,
 }: {
   module: Module;
   style: StyleProp<ViewStyle>;
   labelWidth?: number;
+  /** On the ring: told the label's size as drawn, so the ring can keep it clear of the drum circle. */
+  onLabelSize?: (label: LabelSize) => void;
   /** A tile of the large-text grid: the name grows with the phone's text size. */
   inGrid?: boolean;
   /** Diameter of the circle (smaller on a ring of nine). */
@@ -260,13 +286,18 @@ function ModuleButton({
       <View style={labelWidth ? { width: labelWidth } : styles.labelInTile}>
         {/* Capped only on the ring and its rows, where the slots are fixed; a tile of the large-text grid lets
             the name grow with the phone's text size (audit P3-02, #315). */}
-        <AppText
-          variant="small"
-          numberOfLines={inGrid ? 3 : 2}
-          maxFontSizeMultiplier={inGrid ? undefined : 1.2}
-          style={styles.label}>
-          {module.label}
-        </AppText>
+        {/* As wide as its text (up to the slot), so its measured size is the text's own. */}
+        <View
+          style={onLabelSize ? styles.labelFit : null}
+          onLayout={onLabelSize ? (e) => onLabelSize({ width: e.nativeEvent.layout.width, height: e.nativeEvent.layout.height }) : undefined}>
+          <AppText
+            variant="small"
+            numberOfLines={inGrid ? 3 : 2}
+            maxFontSizeMultiplier={inGrid ? undefined : 1.2}
+            style={styles.label}>
+            {module.label}
+          </AppText>
+        </View>
       </View>
     </Pressable>
   );
@@ -302,6 +333,11 @@ const styles = StyleSheet.create({
   },
   labelInTile: {
     alignSelf: 'stretch',
+  },
+  // A ring label's box shrinks to its text (centred), so its measured size is the text's own.
+  labelFit: {
+    alignSelf: 'center',
+    maxWidth: '100%',
   },
   soonMark: {
     position: 'absolute',

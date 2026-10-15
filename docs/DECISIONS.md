@@ -5727,3 +5727,23 @@ module's own screens. JS only.
 
 **Why.** The audit found eight rainbow circles that dilute the night-and-gold palette and carry no meaning; five
 families are fewer colours and teach where a thing belongs (the way Google Workspace or Apple Settings colour by kind).
+
+## 369. The sign-in band's name and motto in gold — 15 Oct 2026
+
+**Status: branch `launch-ui-2` (update).** Praveen during the TEST walk: "Mridanga Seva / Saṅkalpa · Sādhana · Seva in
+the login page — these should be in golden colour". The signed-out screens' band (components/brand.tsx BrandHeader:
+sign-in, sign-up, forgot and reset password, pending) shows the app's name and motto in headerGold, as the home band
+(#352); the one-line description stays ivory. Gold on the night band passes the contrast check (headerGold on header,
+headerDeep and bar are in the tested pairs). JS only.
+
+## 370. Ring labels clear of the drum circle: the drum takes the size the labels leave — 15 Oct 2026
+
+**Status: branch `launch-ui-2` (update).** Praveen during the TEST walk: "sometimes the icon names are colliding with the
+inner circle — check and if possible make dynamic circle size". Measured at 375 px: the top label and the two upper
+diagonal labels (Welcome desk, Newcomers, Ishtagoshti) overlapped the 144 px drum circle's edge. Now lib/ring-layout.ts
+places the circles as far out as the ring and the screen allow (a side label stays 4 px inside the screen), then gives
+the drum circle the largest diameter that keeps every label and circle 6 px clear, between 96 px and its usual size (144,
+or 128 on a narrow phone). Each label's size is measured as drawn (onLayout of a box that shrinks to the text), so any
+language, label and text size is handled; a guess from the label's length is used until then. Measured coordinator ring
+at 375 px: drum 133 px, every label clear, the ring 8 px shorter than before (the home still does not scroll); 360 px:
+drum 125 px. The fixed 44 px room under the lowest circle became the lowest label's measured height. JS only.

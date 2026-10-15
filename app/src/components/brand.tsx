@@ -91,11 +91,12 @@ export function BrandHeader({ compact }: BrandHeaderProps) {
         ]}>
         <MridangaMark size={Math.round(circle * 0.72)} color={colors.headerTop} accent={colors.onHeader} />
       </View>
-      <AppText variant={compact ? 'subtitle' : 'title'} style={{ color: colors.onHeader }}>
+      {/* The name and motto in gold, as on the home band (#352; Praveen 15-10-2026, #369). */}
+      <AppText variant={compact ? 'subtitle' : 'title'} style={{ color: colors.headerGold }}>
         {t('app.name')}
       </AppText>
       {/* The motto, "Saṅkalpa · Sādhana · Seva" (Praveen, 2 Oct 2026; DECISIONS.md #39). */}
-      <AppText variant="small" style={[styles.centreText, styles.motto, { color: colors.onHeaderMuted }]}>
+      <AppText variant="small" style={[styles.centreText, styles.motto, { color: colors.headerGold }]}>
         {t('app.motto')}
       </AppText>
       {compact ? null : (
