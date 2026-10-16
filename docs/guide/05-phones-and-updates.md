@@ -109,9 +109,12 @@ works: [TRANSLATIONS.md](../TRANSLATIONS.md).
 
 ## Without internet
 
-- **My QR card** shows the copy saved on the phone and can still be scanned.
-- If you were signed in before, the app still opens on your home screen from what it saved last
-  time ([DECISIONS.md #37, #42](../DECISIONS.md)). New numbers and announcements load when the
+- **Android app:** **My QR card** shows the copy saved on the phone and can still be scanned.
+- **iPhone (the web version in Safari):** the page needs the internet to open. Open **My QR** before you
+  reach the door, while you still have signal, and keep it open; a page that is already open keeps
+  showing the card (launch audit 16-10-2026: the web version has no offline copy of the app).
+- If you were signed in before, the Android app still opens on your home screen from what it saved
+  last time ([DECISIONS.md #37, #42](../DECISIONS.md)). New numbers and announcements load when the
   connection returns.
 - Marking attendance, saving calls and posting announcements need the internet, because they are
   saved in the class records on the server.
