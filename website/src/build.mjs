@@ -31,7 +31,6 @@ const time = (iso, lang, withYear = true) =>
 /** Fills {{...}} values and [[TEAM: ...]] placeholders in a content file. */
 function fill(html, lang) {
   const vars = {
-    pilotDates: `${time(config.pilot.start, lang, false)} – ${time(config.pilot.end, lang)}`,
     launchDate: time(config.launch, lang),
     noticeDate: time(config.privacyNotice.date, lang),
     noticeVersion: esc(config.privacyNotice.version),

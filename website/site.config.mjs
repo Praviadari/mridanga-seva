@@ -16,14 +16,16 @@ export default {
   draft: true,
 
   /** Shown as "updated" in the footer and as lastmod in sitemap.xml (ISO 8601). */
-  updated: '2026-10-07',
+  updated: '2026-10-16',
 
   /** The privacy notice's version and date. Raise both when its meaning changes. */
   privacyNotice: { version: '0.1-draft', date: '2026-10-07' },
 
-  /** Class dates (NOTES.md timeline, 28-09-2026; unchanged in NOTES_lead.md 06-10-2026). */
-  pilot: { start: '2026-11-16', end: '2026-11-29' },
-  launch: '2026-12-01',
+  /**
+   * The day the class opens to all: Tue 20 Oct 2026 (Dussehra), Praveen's decision of 12-10-2026 (NOTES_lead.md).
+   * There is no separate pilot any more, so the pilot dates left the site (launch audit LA-13, 16-10-2026).
+   */
+  launch: '2026-10-20',
 
   /** Mail aliases on the Zoho domain (NOTES_lead.md, 06-10-2026). */
   emails: {
