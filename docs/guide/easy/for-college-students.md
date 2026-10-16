@@ -36,8 +36,8 @@ If you are under 18, a parent must sign the consent form first (see
 
 - Open the app → **My QR card** → the coordinator scans it when you come and when you leave.
 - In the Android app it works without internet, so a weak signal in the temple hall is fine. On an iPhone (the
-  app in the browser), open it before you reach the hall, while you still have signal, or ask the desk for a
-  printed QR card.
+  app in the browser), keep a screenshot of your QR card in your photos, for yourself only, or ask the desk for
+  a printed QR card. A new card from the Guru needs a new screenshot.
 - Forgot your phone? Tell the coordinator your name; they mark you by hand.
 
 ## What is on your home screen
