@@ -156,3 +156,43 @@ test('My QR loads the card each time it comes into view, not once per mount', ()
   assert.ok(focus >= 0 && screen.indexOf('fetchMyCard(profileId)', focus) > focus, 'fetchMyCard inside useFocusEffect');
   assert.doesNotMatch(screen, /useEffect\(\(\) => \{\s*if \(!profileId\)/);
 });
+
+// ---------------------------------------------------------------- #395 production updates only from a clean, pushed main
+
+const { releaseGitState } = await import('../scripts/lib/release-git.mjs');
+
+/** A stand-in for git: answers per command, null = git failed or is missing. */
+const fakeGit = ({ status = '', branch = 'main\n', head = 'a'.repeat(40), pushed = 'a'.repeat(40) } = {}) => (args) => {
+  const command = args.join(' ');
+  if (command === 'status --porcelain') return status;
+  if (command === 'rev-parse --abbrev-ref HEAD') return branch;
+  if (command === 'rev-parse HEAD') return head;
+  if (command === 'rev-parse --verify --quiet origin/main') return pushed;
+  throw new Error('unexpected git ' + command);
+};
+
+test('a clean main equal to origin/main has nothing against a publish', () => {
+  assert.deepEqual(releaseGitState(fakeGit()), { problems: [], commit: 'aaaaaaa' });
+});
+
+test('a branch, uncommitted or new files, or an unpushed commit are each named (LA-16)', () => {
+  const state = releaseGitState(fakeGit({
+    status: ' M src/app/student/(tabs)/my-qr.tsx\n?? src/app/new-screen.tsx\n',
+    branch: 'launch-audit\n',
+    head: 'b'.repeat(40),
+  }));
+  assert.equal(state.problems.length, 3);
+  assert.match(state.problems[0], /on launch-audit, not main/);
+  assert.match(state.problems[1], /^2 file\(s\) changed or new.*src\/app\/student/);
+  assert.match(state.problems[2], /not origin\/main/);
+  assert.equal(state.commit, 'bbbbbbb');
+  assert.match(releaseGitState(fakeGit({ pushed: null })).problems[0], /origin\/main is unknown/);
+  assert.match(releaseGitState(() => null).problems[0], /git does not run/);
+});
+
+test('publish-update stops a production update on those problems before anything else, preview only warns', () => {
+  const script = readFileSync(new URL('../scripts/publish-update.mjs', import.meta.url), 'utf8');
+  const guard = script.indexOf('const gitState = releaseGitState();');
+  assert.ok(guard > 0 && guard < script.indexOf("'runtimeversion:resolve'"), 'checked before the fingerprint and EAS');
+  assert.match(script, /if \(channel === 'production' && !checkOnly\) \{\s*fail\(/);
+});

@@ -777,7 +777,9 @@ publishes nothing ([DECISIONS.md #152](DECISIONS.md)); there is no flag to skip 
 The script (`app/scripts/publish-update.mjs`):
 
 1. stops if the network cannot upload to EAS (an office network that inspects secure
-   connections), or if no finished APK on that channel has the app's current fingerprint;
+   connections); for **production**, if the folder is not a clean `main` equal to `origin/main`
+   (another branch, a changed or new file in `git status`, a commit not pushed; preview only notes it,
+   [DECISIONS.md #395](DECISIONS.md)); or if no finished APK on that channel has the app's current fingerprint;
 2. takes the Supabase URL and key from the EAS environment of the same name — never from
    the `app/.env*` files, and with `EXPO_NO_DOTENV=1` so Expo loads none of them either — and checks the URL is that channel's project (`preview` = test
    `fhuqyk…`, `production` = live `qeozvv…`), that both have the right shape (a publishable key),

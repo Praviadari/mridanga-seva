@@ -8,7 +8,8 @@
 // preview update made with the live settings would send testers into the class's real data, and
 // a production update made with the test settings would cut the class off from it. So the bundle
 // never reads app/.env or app/.env.test. First it checks the network can upload to EAS (see below).
-// 0. Computes the app's fingerprint (its runtime version) and looks for a finished APK on this
+// 0. Production: stops unless this folder is a clean main equal to origin/main (scripts/lib/release-git.mjs;
+//    preview only warns). Then computes the app's fingerprint (its runtime version) and looks for a finished APK on this
 //    channel with the same one. None means the change touched something native: phones would
 //    never get this update, and a new APK is needed instead (OPERATIONS.md lists what counts).
 // 1. Pulls the channel's settings from the EAS environment of the same name (`eas env:pull`):
@@ -40,6 +41,7 @@ import { connect } from 'node:tls';
 import { listFiles, secretIn, SETTING_NAMES, settingsProblem, supabaseSettingsFrom } from './bundle-checks.mjs';
 // Supabase project of each channel, shared with the APK build guard (scripts/eas-build-guard.mjs).
 import { PROJECTS } from './lib/supabase-projects.mjs';
+import { releaseGitState } from './lib/release-git.mjs';
 
 const OUT = 'dist-update';
 
@@ -135,7 +137,19 @@ if (!storageReachable) {
   );
 }
 
-// ---------------------------------------------------------------- 0. an APK that can take it
+// ---------------------------------------------------------------- 0. which code, and an APK that can take it
+// The bundle is made from the files on disk, so production publishes only a clean main that is on GitHub (LA-16,
+// docs/DECISIONS.md #395); preview is only told. --check-only says what a real production run would stop on.
+const gitState = releaseGitState();
+if (gitState.problems.length > 0) {
+  const lines = gitState.problems.map((problem) => '  - ' + problem).join('\n');
+  if (channel === 'production' && !checkOnly) {
+    fail(`a production update is published only from a clean main equal to origin/main:\n${lines}\nNothing was published.`);
+  }
+  console.warn(`publish-update: ${channel === 'production' ? 'a real production run would stop here' : 'note'}:\n${lines}`);
+}
+console.log(`publish-update: code of commit ${gitState.commit ?? 'unknown'}${gitState.problems.length > 0 ? ' plus the changes above' : ''}.`);
+
 const resolved = spawnSync(
   process.execPath,
   [require.resolve('expo-updates/bin/cli'), 'runtimeversion:resolve', '--platform', 'android'],

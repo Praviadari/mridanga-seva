@@ -5969,3 +5969,21 @@ it needs) and stops asking once it shows "Checked in"; coming back to My QR star
 stays open is no longer shown until the student opens it again. JS only.
 
 **Why.** The door line is a reassurance, not a live feed; the scan is what must be fast.
+
+## 395. A production update is published only from a clean `main` that is on GitHub — 16 Oct 2026
+
+**Status: branch `launch-audit` (round 5).** Launch audit finding LA-16. `npm run update:production` bundled whatever
+files were on disk in the folder it ran from: a worker's branch, edits not yet committed, a new screen file not yet
+added (Expo Router bundles every file in `src/app/`), or a merge not yet pushed. All checks (fingerprint, EAS
+settings, bundle) passed for such code, and the class got code nobody had checked. Now `scripts/publish-update.mjs`
+first asks git (`scripts/lib/release-git.mjs`): for **production** it stops unless the folder is on `main`, `git
+status` is empty (tracked changes and new files that are not ignored) and `HEAD` equals `origin/main`; it names each
+problem and publishes nothing. `--check-only` on production prints the same problems as "a real production run would
+stop here" and goes on, so a check from a worktree still works. **Preview** only prints them as a note (trying a
+branch on the test phones stays possible). Every run prints the commit it publishes. Git must run in the terminal
+(`eas update` needs it anyway; OPERATIONS "Each build" shows how to add it to the path). A script change: not in the
+app bundle, not in the fingerprint (npm scripts and `scripts/` are not counted), so fp 23dc7e4a is unchanged.
+
+**Why.** `eas.json`'s `cli.requireCommit` would do part of this inside EAS CLI, but `eas.json` is in the fingerprint
+(a new APK); and it checks only "committed", not "main" or "pushed". The production channel reaches every phone in
+the class, so it must carry exactly what the lead checked and merged.
