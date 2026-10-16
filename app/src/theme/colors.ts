@@ -113,10 +113,8 @@ export type Palette = {
   barLine: string;
   /** A marigold word on the band (indigo) or a pale one (saffron). */
   headerAccent: string;
-  /** Gold lettering on the band: the app's name and motto, like the team's mockup (#352). */
+  /** Gold lettering on the band and the header bars' titles, like the team's mockup (#352); the brighter gold since #373. */
   headerGold: string;
-  /** A brighter gold for the name and motto on the sign-in screens' band (Praveen 16-10-2026, #373). */
-  signInGold: string;
   /** A faint violet glow on the band, as on the website's night band (decoration only). */
   headerGlow: string;
   /**

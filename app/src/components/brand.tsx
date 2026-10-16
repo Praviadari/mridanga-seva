@@ -91,13 +91,13 @@ export function BrandHeader({ compact }: BrandHeaderProps) {
         ]}>
         <MridangaMark size={Math.round(circle * 0.72)} color={colors.headerTop} accent={colors.onHeader} />
       </View>
-      {/* The name and motto in gold (#369), brighter than the home band's (Praveen 16-10-2026, #373). Each line spans
+      {/* The name and motto in gold, as on the home band (#369; the brighter gold, #373). Each line spans
           the band (styles.line): sized to its own words, Android hid "सेवा" of the Hindi name (#372). */}
-      <AppText variant={compact ? 'subtitle' : 'title'} style={[styles.line, { color: colors.signInGold }]}>
+      <AppText variant={compact ? 'subtitle' : 'title'} style={[styles.line, { color: colors.headerGold }]}>
         {t('app.name')}
       </AppText>
       {/* The motto, "Saṅkalpa · Sādhana · Seva" (Praveen, 2 Oct 2026; DECISIONS.md #39). */}
-      <AppText variant="small" style={[styles.line, styles.motto, { color: colors.signInGold }]}>
+      <AppText variant="small" style={[styles.line, styles.motto, { color: colors.headerGold }]}>
         {t('app.motto')}
       </AppText>
       {compact ? null : (
