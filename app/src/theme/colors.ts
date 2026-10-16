@@ -115,6 +115,8 @@ export type Palette = {
   headerAccent: string;
   /** Gold lettering on the band: the app's name and motto, like the team's mockup (#352). */
   headerGold: string;
+  /** A brighter gold for the name and motto on the sign-in screens' band (Praveen 16-10-2026, #373). */
+  signInGold: string;
   /** A faint violet glow on the band, as on the website's night band (decoration only). */
   headerGlow: string;
   /**

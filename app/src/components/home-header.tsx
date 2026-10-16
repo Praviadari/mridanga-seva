@@ -44,7 +44,13 @@ export function HomeHeader({ name, role, menu }: HomeHeaderProps) {
       <View style={styles.row}>
         <View style={styles.side}>{menu ? <MenuButton place="band" /> : <ProfileButton />}</View>
         <View style={styles.brand}>
-          <AppText variant="title" style={[styles.brandName, { color: colors.headerGold }]} numberOfLines={1}>
+          {/* As wide as the space between the buttons, and smaller rather than cut at large text (#372). */}
+          <AppText
+            variant="title"
+            style={[styles.brandName, { color: colors.headerGold }]}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.6}>
             {t('app.name')}
           </AppText>
           <AppText variant="small" style={[styles.motto, { color: colors.headerGold }]}>
@@ -100,10 +106,14 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
   },
+  // The name and motto span the middle, not just their own words: a box sized to its words can be drawn a little wider
+  // than measured on Android and hide the last word on a second line, as the sign-in band did with "सेवा" (#372).
   brandName: {
+    alignSelf: 'stretch',
     textAlign: 'center',
   },
   motto: {
+    alignSelf: 'stretch',
     textAlign: 'center',
     letterSpacing: 0.6,
   },

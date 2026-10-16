@@ -5772,6 +5772,35 @@ fingerprint unchanged (23dc7e4a).
 calm, devotional depth of the website's night band, with the cards clearly raised on it. The range is small
 (#1A1F55 to #0A0C24) so cheap screens show no bands; the real check is on a phone.
 
+## 372. The app's name spans its band, so Android cannot hide "सेवा" — 16 Oct 2026
+
+**Status: branch `signin-fixes`.** Praveen on the preview APK (EAS 6f4871bb, 15-10-2026): in Hindi the sign-in band shows
+"मृदंग" without "सेवा". The text and the font are right (hi.json `app.name` = "मृदंग सेवा"; the Noto Serif Devanagari
+subset has every glyph, checked with fontTools) and the web shows the whole name. Cause: in the centred band the name's
+text box was as wide as its own words. React Native measures that width with one Android text layout and the TextView
+then draws with its own; when the drawing needs a little more room (the Hindi serif's shaping, 26 px), the last word
+moves to a second line that the one-line box cannot show. Fix: every centred line of the band (components/brand.tsx
+`styles.line`: the sign-in name, motto, description and the splash's name) is as wide as the band (`alignSelf: 'stretch'`,
+`textAlign: 'center'`), so the words have the whole width to spare; the home band's name and motto do the same and the
+name shrinks to fit (`adjustsFontSizeToFit`, down to 60 %) rather than end in "…" at large text. The My QR pass keeps its
+name beside the drum mark (a row; to check on a phone in Hindi). Nothing changes on screen except that the name is whole.
+JS only, fingerprint unchanged (23dc7e4a).
+
+**Why.** A box sized to its words leaves Android no room for a pixel of difference between measuring and drawing; a box
+as wide as the band leaves plenty, in every language and at large text.
+
+## 373. A brighter gold on the sign-in band — 16 Oct 2026
+
+**Status: branch `signin-fixes`.** Praveen (15-10-2026): the sign-in gold should be brighter, "as per mobile app". Every
+band used the same gold (gold.300 #FFD27A), so he chose from four mock-ups on the sign-in band (A today, B vivid gold
+#FFC845, C the icon's gold #E0B25C, D the button saffron #F2A33A): **B, on the sign-in band only** (16-10-2026). New
+primitive gold.200 #FFC845 and role `signInGold` (design/tokens.json), used by BrandHeader for the name and motto (all
+signed-out screens); the home band, header bars and My QR keep headerGold. Contrast pairs signInGold on header and
+headerDeep added: #FFC845 passes on the night band; on the saffron header option it reads 4.28:1, so that option keeps
+gold.300 for the role. 704 pairs, 0 low. JS only, fingerprint unchanged (23dc7e4a).
+
+**Why.** The first screen a new student sees carries the name; a warmer, richer gold reads as gold rather than cream
+on the night band, while the inner screens stay calm.
 ## 380. A new student's first day: registration on the first screen, then "Almost there" — 15 Oct 2026
 
 **Status: branch `launch-ui-student` (update).** From the student screens audit of 15-10-2026 (worktree
