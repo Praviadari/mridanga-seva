@@ -372,6 +372,18 @@ to `app/dist/`. Always use this command, not a bare `npx expo export`, because
 
 | Date | Site | Commit | Built (UTC) | By |
 |---|---|---|---|---|
+| 16-10-2026 | **live** (first upload; project `mridanga-seva` created with wrangler `pages project create --force`, as Pages now delegates to Workers) | 60db35b (main; entry-5ca015a3…; deployment 6bb0dcd6; headers checked: HSTS, nosniff, CSP LIVE only) | 2026-10-16T10:24:05Z | Claude (wrangler 4.149, Praveen's login, his go) |
+| 15-10-2026 | test | fd49d25 (main; dark gradient #371) | 2026-10-15T12:03:52Z | Claude (wrangler 4.149, Praveen's login) |
+| 15-10-2026 | test | 34bf940 (main; student screens batch 2) | 2026-10-15T10:13:44Z | Claude (wrangler 4.149, Praveen's login) |
+| 15-10-2026 | test | 0321bd7 (main; student first day) | 2026-10-15T08:33:24Z | Claude (wrangler 4.149, Praveen's login) |
+| 15-10-2026 | test | 0d5873f (main; launch-ui-2) | 2026-10-15T07:38:58Z | Claude (wrangler 4.149, Praveen's login) |
+| 15-10-2026 | test | 050f309 (main; icon + splash) | 2026-10-15T04:59:33Z | Claude (wrangler 4.149, Praveen's login) |
+| 14-10-2026 | test | 8f2e39b (main; UI audit fixes) | 2026-10-14T17:51:36Z | Claude (wrangler 4.149, Praveen's login) |
+| 14-10-2026 | test | effdc2e (main) | 2026-10-14T16:55:02Z | Claude (wrangler 4.149, Praveen's login) |
+| 14-10-2026 | test | 113c281 (main; Appearance choice) | 2026-10-14T16:15:56Z | Claude (wrangler 4.149, Praveen's login) |
+| 14-10-2026 | test | ac31ea0 (main; side menu own card) | 2026-10-14T16:03:22Z | Claude (wrangler 4.149, Praveen's login) |
+| 14-10-2026 | test | af5b6eb (main; header indigo) | 2026-10-14T15:39:41Z | Claude (wrangler 4.149, Praveen's login) |
+| 14-10-2026 | test | ccc0372 (main; ring centre drum) | 2026-10-14T15:15:49Z | Claude (wrangler 4.149, Praveen's login) |
 | 14-10-2026 | test | 0b055c6 (main; home band one button per side; entry-4e6f06fd…) | 2026-10-14T15:08:09Z | Claude (wrangler 4.149, Praveen's login) |
 | 14-10-2026 | test | 2bc9ca3 (main; launch UI + dark mode midnight navy #358; entry-9ab8a35d…) | 2026-10-14T14:57:23Z | Claude (wrangler 4.149, Praveen's login) |
 | 14-10-2026 | test | 8044238 (main; weekend app + launch-week app + launch UI redesign; entry-f36545e8…; headers checked) | 2026-10-14T14:39:26Z | Claude (wrangler 4.149, Praveen's login) |
