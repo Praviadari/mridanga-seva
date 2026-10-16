@@ -144,19 +144,18 @@ test('module colours are five families; pink and indigo are gone; each ring keep
 });
 // ---------------------------------------------------------------- #369 sign-in band in gold, #370 ring labels clear of the drum
 
-test('the sign-in band shows the name and motto in gold, brighter than the home band (#369, #373)', () => {
+test('the bands and header titles use the brighter gold; the sign-in band too (#369, #373)', () => {
   const header = src('components/brand.tsx');
   const band = header.slice(header.indexOf('export function BrandHeader'));
   assert.match(band, /t\('app\.name'\)/);
-  assert.equal((band.match(/color: colors\.signInGold/g) ?? []).length, 2);
-  // The brighter gold is for the night band; the home band keeps its own (Praveen chose "sign-in only", 16-10-2026).
+  assert.equal((band.match(/color: colors\.headerGold/g) ?? []).length, 2);
+  // Praveen 16-10-2026: gold.200 #FFC845 for every header title; only the light saffron band keeps gold.300 (4.28:1).
   const tokens = JSON.parse(readFileSync(new URL('../../design/tokens.json', import.meta.url), 'utf8'));
   assert.equal(tokens.primitive.gold['200'], '#FFC845');
-  assert.equal(tokens.choiceValues.header.indigo.light.signInGold, 'gold.200');
-  assert.equal(tokens.choiceValues.header.indigo.light.headerGold, 'gold.300');
-  assert.ok(tokens.pairs.text.some(([fg, bg]) => fg === 'signInGold' && bg === 'header'));
+  const { indigo, saffron } = tokens.choiceValues.header;
+  for (const theme of [indigo.light, indigo.dark, saffron.dark]) assert.equal(theme.headerGold, 'gold.200');
+  assert.equal(saffron.light.headerGold, 'gold.300');
 });
-
 test('the app name spans its band, so Android cannot hide its last word (#372: "सेवा")', () => {
   const brand = src('components/brand.tsx');
   assert.match(brand, /line: \{\s*alignSelf: 'stretch',\s*textAlign: 'center',/);

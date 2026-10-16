@@ -41,7 +41,8 @@ test('the default palette is option A: royal-blue header with gold, deep saffron
   // The band runs from deep night (headerDeep) at the top to royal blue (header) below; the app's name is gold.
   assert.equal(light.header, '#22307A');
   assert.equal(light.headerDeep, '#0B0C26');
-  assert.equal(light.headerGold, '#FFD27A');
+  // The brighter gold for every header title (Praveen 16-10-2026, #373; was #FFD27A).
+  assert.equal(light.headerGold, '#FFC845');
   // Option B keeps the saffron header; "bright" keeps today's #B45309: both stay one line away.
   assert.equal(palette(tokens, 'light', { header: 'saffron', primary: 'bright' }).primary, '#B45309');
   assert.equal(palette(tokens, 'light', { header: 'saffron', primary: 'deep' }).header, '#9A4307');
