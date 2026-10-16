@@ -73,6 +73,15 @@ wait for the desk. Tap **Fill the form** on the right person: the form fills wit
 (name, date of birth, email, phone, gender and their About-you answers). **Check the name against
 their Aadhaar or other ID** (never write down the number), take the photo, then save as usual.
 
+**"Possible duplicate"?** After **Next**, and on **Accept**'s card, an amber box lists students already on record
+(or other sign-ups) with the same name and date of birth, or the same phone. If it is the same person, do **not**
+save or accept again: tap **Open the record of …** (or accept their sign-up in the list) instead. Twins or a family
+sharing one phone can still be saved.
+
+**"The sign-up is still waiting"** after saving a form filled from a sign-up: the person's app login was not joined
+to the new record (a child's record never is, and an adult's only when the email is the same). The sign-up stays in
+the list; do not register the person again. If that login should open this record in the app, ask the Guru.
+
 The form has two steps (**Step 1 of 2**, **Step 2 of 2**).
 
 **Step 1: Who is joining**
