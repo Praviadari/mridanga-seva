@@ -80,6 +80,18 @@ export async function fetchStudentHome(): Promise<StudentHome | 'not_found' | nu
   };
 }
 
+/**
+ * Only what My QR's door line needs (lib/door-status.ts): checked in now, and the last check-in. One request
+ * (student_home), not fetchStudentHome's two: the door line asks every few seconds while My QR is open
+ * (launch audit LA-10, docs/DECISIONS.md #394). Null when it could not be loaded or there is no record.
+ */
+export async function fetchDoorVisit(): Promise<{ hereNow: boolean; lastVisitAt: string | null } | null> {
+  const { data, error } = await supabase.rpc('student_home');
+  const row = data as StudentHomeRow | null;
+  if (error || !row) return null;
+  return { hereNow: row.here_now, lastVisitAt: row.last_visit_at };
+}
+
 // ---------------------------------------------------------------- C1 coordinator dashboard
 
 /** A student in their first weeks, for the coordinator to greet and keep an eye on. */

@@ -5925,3 +5925,15 @@ saved card. A 429 to a password sign-in is left as it is (its message shows). Te
 
 **Why.** The door is where the app must work best; a rate limit is a moment, a sign-out is a password at the door.
 The dashboard limit (R5-02) still matters: this only stops the sign-out, not the waiting.
+
+## 394. My QR's door line asks once per tick and stops once checked in — 16 Oct 2026
+
+**Status: branch `launch-audit` (round 2).** Launch audit finding LA-10. My QR's line "Checked in at 16:05" (#342)
+asked `fetchStudentHome` every 5 s for 10 minutes while My QR was open: two requests a tick (student_home and the
+week setting), about 240 per opening, and it went on after the check-in already showed. With a queue of students
+holding My QR open at the door, that is a steady load on the class's small database exactly while the coordinators'
+scans must answer fast. Now the line uses `fetchDoorVisit()` (src/data/home.ts: student_home only, the two values
+it needs) and stops asking once it shows "Checked in"; coming back to My QR starts it again. A check-out while My QR
+stays open is no longer shown until the student opens it again. JS only.
+
+**Why.** The door line is a reassurance, not a live feed; the scan is what must be fast.

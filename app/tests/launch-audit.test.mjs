@@ -132,6 +132,22 @@ test('a token refresh refused as busy (429) no longer signs the person out', asy
   assert.match(src('lib/supabase.ts'), /withTimeout\(refreshGuard\(/);
 });
 
+// ---------------------------------------------------------------- #394 My QR's door line: one call, stops once in
+
+test('the door line asks student_home only, and stops asking once the check-in shows', () => {
+  // data/home.ts loads native modules through its imports, so its function is read, not run.
+  const home = src('data/home.ts');
+  const door = home.slice(home.indexOf('export async function fetchDoorVisit('), home.indexOf('// ---------------------------------------------------------------- C1'));
+  assert.match(door, /supabase\.rpc\('student_home'\)/);
+  assert.doesNotMatch(door, /fetchWeekStarts|\.from\(/);
+  assert.match(door, /hereNow: row\.here_now, lastVisitAt: row\.last_visit_at/);
+  const screen = src('app/student/(tabs)/my-qr.tsx');
+  const hook = screen.slice(screen.indexOf('function useDoorStatus('), screen.indexOf('function DoorLine('));
+  assert.match(hook, /fetchDoorVisit\(\)/);
+  assert.match(hook, /if \(next\.kind === 'in'\) clearInterval\(timer\)/);
+  assert.doesNotMatch(hook, /fetchStudentHome/);
+});
+
 // ---------------------------------------------------------------- #391 My QR asks again on focus
 
 test('My QR loads the card each time it comes into view, not once per mount', () => {
