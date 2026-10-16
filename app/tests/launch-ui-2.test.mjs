@@ -144,11 +144,27 @@ test('module colours are five families; pink and indigo are gone; each ring keep
 });
 // ---------------------------------------------------------------- #369 sign-in band in gold, #370 ring labels clear of the drum
 
-test('the sign-in band shows the name and motto in gold, as the home band', () => {
+test('the sign-in band shows the name and motto in gold, brighter than the home band (#369, #373)', () => {
   const header = src('components/brand.tsx');
   const band = header.slice(header.indexOf('export function BrandHeader'));
   assert.match(band, /t\('app\.name'\)/);
-  assert.equal((band.match(/color: colors\.headerGold/g) ?? []).length, 2);
+  assert.equal((band.match(/color: colors\.signInGold/g) ?? []).length, 2);
+  // The brighter gold is for the night band; the home band keeps its own (Praveen chose "sign-in only", 16-10-2026).
+  const tokens = JSON.parse(readFileSync(new URL('../../design/tokens.json', import.meta.url), 'utf8'));
+  assert.equal(tokens.primitive.gold['200'], '#FFC845');
+  assert.equal(tokens.choiceValues.header.indigo.light.signInGold, 'gold.200');
+  assert.equal(tokens.choiceValues.header.indigo.light.headerGold, 'gold.300');
+  assert.ok(tokens.pairs.text.some(([fg, bg]) => fg === 'signInGold' && bg === 'header'));
+});
+
+test('the app name spans its band, so Android cannot hide its last word (#372: "सेवा")', () => {
+  const brand = src('components/brand.tsx');
+  assert.match(brand, /line: \{\s*alignSelf: 'stretch',\s*textAlign: 'center',/);
+  // Splash (twice), the sign-in name, motto and tagline.
+  assert.equal((brand.match(/\[styles\.line\b/g) ?? []).length, 5);
+  const home = src('components/home-header.tsx');
+  assert.match(home, /brandName: \{\s*alignSelf: 'stretch',/);
+  assert.match(home, /numberOfLines=\{1\}\s*adjustsFontSizeToFit\s*minimumFontScale=\{0\.6\}/);
 });
 
 test('ring labels keep clear of the drum circle: the drum shrinks only as far as the labels need', async () => {

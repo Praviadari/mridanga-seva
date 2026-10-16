@@ -34,7 +34,7 @@ export function BrandSplash({ slow }: { slow?: boolean }) {
         style={{ backgroundColor: brand }}
         contentContainerStyle={styles.slowSplash}>
         <Image source={drum} style={large ? styles.splashImageSmall : styles.splashImage} resizeMode="contain" />
-        <AppText variant="title" family="sans" style={styles.splashText}>
+        <AppText variant="title" family="sans" style={[styles.line, styles.splashText]}>
           {t('app.name')}
         </AppText>
         {/* Read out as soon as it appears. */}
@@ -60,7 +60,7 @@ export function BrandSplash({ slow }: { slow?: boolean }) {
       aria-busy
       accessibilityLabel={t('common.loading')}>
       <Image source={drum} style={styles.splashImage} resizeMode="contain" />
-      <AppText variant="title" family="sans" style={styles.splashText}>
+      <AppText variant="title" family="sans" style={[styles.line, styles.splashText]}>
         {t('app.name')}
       </AppText>
       <ActivityIndicator color={onBrand} />
@@ -91,16 +91,17 @@ export function BrandHeader({ compact }: BrandHeaderProps) {
         ]}>
         <MridangaMark size={Math.round(circle * 0.72)} color={colors.headerTop} accent={colors.onHeader} />
       </View>
-      {/* The name and motto in gold, as on the home band (#352; Praveen 15-10-2026, #369). */}
-      <AppText variant={compact ? 'subtitle' : 'title'} style={{ color: colors.headerGold }}>
+      {/* The name and motto in gold (#369), brighter than the home band's (Praveen 16-10-2026, #373). Each line spans
+          the band (styles.line): sized to its own words, Android hid "सेवा" of the Hindi name (#372). */}
+      <AppText variant={compact ? 'subtitle' : 'title'} style={[styles.line, { color: colors.signInGold }]}>
         {t('app.name')}
       </AppText>
       {/* The motto, "Saṅkalpa · Sādhana · Seva" (Praveen, 2 Oct 2026; DECISIONS.md #39). */}
-      <AppText variant="small" style={[styles.centreText, styles.motto, { color: colors.headerGold }]}>
+      <AppText variant="small" style={[styles.line, styles.motto, { color: colors.signInGold }]}>
         {t('app.motto')}
       </AppText>
       {compact ? null : (
-        <AppText style={[styles.centreText, { color: colors.onHeaderMuted }]}>{t('app.tagline')}</AppText>
+        <AppText style={[styles.line, { color: colors.onHeaderMuted }]}>{t('app.tagline')}</AppText>
       )}
     </SaffronBand>
   );
@@ -155,7 +156,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  centreText: {
+  // A centred line, as wide as the band. On Android a text box sized to its own words is measured once and drawn again;
+  // when the drawing needs a little more width (the Hindi serif in the preview APK, 15-10-2026), its last word goes to a
+  // second line the box has no room for and is hidden: "सेवा" (#372). A full-width box leaves the text room to spare.
+  // The splash's name is the same.
+  line: {
+    alignSelf: 'stretch',
     textAlign: 'center',
   },
   motto: {
