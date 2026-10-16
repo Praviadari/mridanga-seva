@@ -65,7 +65,8 @@ home opens by itself. If it does not, tell a coordinator. They will connect your
 
 **When you leave:** show it again. They scan it again.
 
-**No internet?** No problem. Your QR card still works without internet.
+**No internet?** In the Android app your QR card still works without internet. On an iPhone, open your QR card
+before you reach the door, while you still have signal, or ask the desk for a printed QR card.
 
 ## Look at your progress
 

@@ -111,9 +111,8 @@ works: [TRANSLATIONS.md](../TRANSLATIONS.md).
 
 - **Android app:** **My QR card** shows the copy saved on the phone and can still be scanned.
 - **iPhone and other browsers (the web version):** the page needs the internet to open; the web version keeps
-  no offline copy of the app. Keep a **screenshot of your My QR card** in your phone's photos, for yourself only
-  (never send it to anyone), or ask the desk for a **printed QR card**. Either one scans at the door like My QR.
-  If the Guru gives you a new card, the old screenshot stops working: take a new one.
+  no offline copy of the app. Open **My QR** before you reach the door, while you still have signal, and keep it
+  open, or ask the desk for a **printed QR card**, which scans at the door like My QR.
 - If you were signed in before, the Android app still opens on your home screen from what it saved
   last time ([DECISIONS.md #37, #42](../DECISIONS.md)). New numbers and announcements load when the
   connection returns.

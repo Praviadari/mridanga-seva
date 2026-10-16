@@ -73,8 +73,10 @@ testing. Only when it works there does it go to the real one.
 
 ## Without internet
 
-- Your **QR card** still shows, because a copy is kept on your phone.
-- If you were signed in before, the app opens on your home screen.
+- In the **Android app**, your **QR card** still shows, because a copy is kept on your phone.
+- On an **iPhone** (the app in the browser), the page needs the internet to open. Open your QR card
+  before you reach the door, while you still have signal, or ask the desk for a printed QR card.
+- If you were signed in before, the Android app opens on your home screen.
 - To **save** anything (a visit, a mark, a message), the phone must reach the register, so it needs
   the internet.
 
