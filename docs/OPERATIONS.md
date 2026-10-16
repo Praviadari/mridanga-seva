@@ -641,7 +641,7 @@ SDK 58 is not stable yet). Praveen runs every command, from the main folder; a c
 
 | # | Gate | How to know | If not |
 |---|---|---|---|
-| G1 | **LIVE has every migration the app uses.** The production APK talks to LIVE (`qeozvv…`), which is at 0011; the app needs 0013-0050 (15 Oct 2026). Without them most screens fail after sign-in | [GO_LIVE_CHECKLIST.md](GO_LIVE_CHECKLIST.md) A1-A6 and B done; its probe on LIVE shows `LAST IN ORDER` = `0050`, `MISSING` = `none` | Do not build production. Either run the checklist first, or build `--profile preview` (TEST) for Friday instead: same native code, and testers keep their TEST logins |
+| G1 | **LIVE has every migration the app uses.** The production APK talks to LIVE (`qeozvv…`), which was at 0011; the app needs 0013-0050 (run there on 15 Oct 2026, checklist part B). Without them most screens fail after sign-in | [GO_LIVE_CHECKLIST.md](GO_LIVE_CHECKLIST.md) A1-A6 and B done; its probe on LIVE shows `LAST IN ORDER` = `0050`, `MISSING` = `none` | Do not build production. Either run the checklist first, or build `--profile preview` (TEST) for Friday instead: same native code, and testers keep their TEST logins |
 | G2 | Push on LIVE (needed only for notifications) | GO_LIVE_CHECKLIST C1-C6 done | The APK works without; notices do not arrive. Do C before telling the class to rely on them |
 | G3 | Sign-up and reset emails on LIVE (needed only for new logins and forgotten passwords) | GO_LIVE_CHECKLIST D1, D3-D9 and E1-E2 (the live web site: email links open it) | Existing logins work; new people cannot confirm their email |
 | G4 | `main` holds back-crash and brief9-apk, and nothing native after | `git log --oneline -3` in the main folder; `git status` clean | Ask the lead chat |
@@ -659,7 +659,7 @@ SDK 58 is not stable yet). Praveen runs every command, from the main folder; a c
    `$env:NODE_OPTIONS='--use-system-ca'`; `git pull`; `git status` (clean, on main); `npm ci`;
    `npx eas-cli --version` = `24.12.1`; `npx eas-cli whoami` = the team's Expo account.
 3. **Fingerprint.** `npx expo-updates runtimeversion:resolve --platform android`: write down the
-   `runtimeVersion` (on the brief9-apk branch, 12 Oct 2026: `0dea00a3…`; main after the merge may
+   `runtimeVersion` (main since the icon and splash of 15 Oct 2026: `23dc7e4a…`, the same as the preview APK 6f4871bb; main may
    differ only if something native was merged after it).
 4. **EAS environment.** `npx eas-cli env:list --environment production --format long`: shows
    `EXPO_PUBLIC_SUPABASE_URL` = `https://qeozvvizcojzxcjgnaei.supabase.co` and an
@@ -668,7 +668,9 @@ SDK 58 is not stable yet). Praveen runs every command, from the main folder; a c
    guard would stop the build anyway, after the queue; this saves the wait.)
 5. **Keystore.** `npx eas-cli credentials -p android` → profile `production` → look only: note the
    keystore's SHA-256 and compare it with the one shown for `preview`. Same = a production APK
-   installs over the preview app. If the build in step 6 offers to **generate a new keystore**, answer
+   installs over the preview app. On the same page, **Push Notifications (FCM V1)** must show a Google
+   service account key ("Push notifications" step 5; it belongs to the package, so preview's is the
+   same): without it the APK builds and runs, but no notification ever reaches it. If the build in step 6 offers to **generate a new keystore**, answer
    **no**, stop and ask a chat: a second key means every phone must uninstall the app first, and every
    later production APK must use that key for good.
 6. **Build.** `npx eas-cli build --platform android --profile production`. In the build log, before
@@ -1106,7 +1108,7 @@ Function gets the Supabase service-role key from Supabase by itself; nobody copi
 
 **Deploy again after a change to the function.** The Phase 2 version (assessment and promotion
 notifications from `push_outbox`, deleting expired recordings with `{"cleanup": true}`) is on main
-since 3 Oct 2026; TEST and LIVE still run the older one, which ignores those rows (they wait, nothing
+since 3 Oct 2026; LIVE runs main's version since the go-live run (GO_LIVE_CHECKLIST C4, 15 Oct 2026); an older one ignores those rows (they wait, nothing
 breaks). Praveen deploys it with step 10's command to the test project (`fhuqykssenuhczdqbafu`)
 after the Sunday 4 Oct 2026 demo, and to the live one (`qeozvvizcojzxcjgnaei`) before Phase 2's
 notices are used there. Queued test notices of the last day may then arrive on test phones.
