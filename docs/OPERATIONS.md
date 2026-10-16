@@ -627,6 +627,8 @@ npx eas-cli build -p android --profile preview
 
   | Date | Profile | Build | Fingerprint | SHA-256 (first 16) | By |
   |---|---|---|---|---|---|
+  | 16-10-2026 | **production** (channel production, vc12, main f835830, keystore lzS_QanDLs, 40.7 MB) | 90c6d1cd | 23dc7e4a | pending (needs the APK downloaded) | Praveen (eas build; vc9-11 used by failed uploads, ECONNRESET on the hotspot) |
+  | 15-10-2026 | preview (channel preview, vc8, main 512429d, keystore lzS_QanDLs, 40.7 MB) | 6f4871bb | 23dc7e4a | pending | Praveen (eas build; dc080c84 vc7 failed: lock file vs EAS npm 10) |
   | | | | | | |
 
 ### Friday production build (first production APK, brief 9)
