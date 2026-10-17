@@ -37,7 +37,7 @@ s.16), so a processor abroad is allowed, but it must be recorded and named in th
 
 | Service | What it does for us | Personal data it sees | Where | Terms filed |
 |---|---|---|---|---|
-| Supabase | Database, logins, files, scheduled jobs, Edge Functions | Everything the app stores: students (minors too), parents' contacts, consents, attendance, call notes, logins, photos and recordings | Project region South Asia (Mumbai), per "Setting up a new environment" step 1; the company is in the USA and its support can reach the project. **[[TEAM]]:** check the LIVE project's region in Project Settings | [[TEAM]] |
+| Supabase | Database, logins, files, scheduled jobs, Edge Functions | Everything the app stores: students (minors too), parents' contacts, consents, attendance, call notes, logins, photos and recordings | LIVE project region **Oceania (Sydney), ap-southeast-2** (checked 17-10-2026 with `supabase projects list`; kept, [DECISIONS.md #398](DECISIONS.md)); TEST is Southeast Asia (Singapore). The company is in the USA and its support can reach the project | [[TEAM]] |
 | Expo (EAS Build, EAS Update, push service) | Builds the Android app, sends app updates, passes push notifications on to Google | App code (no data); for each notification: the phone's push token, the title and text (an announcement title, an event, a reply; may hold a name) | USA (provider's own regions) | [[TEAM]] |
 | Google Firebase Cloud Messaging | Delivers push notifications to Android phones | Same as Expo's push service: token, title, text | Google's regions | [[TEAM]] |
 | Brevo (**planned**: live sign-up mail, audit brief 8; parent codes once its key is set) | Sends sign-up confirmations, password resets and Ishtagoshti parent codes | Email address, the person's name in the mail, the mail's text | EU (France) | [[TEAM]] |
@@ -54,7 +54,8 @@ removed or starts seeing different data.
 ## Setting up a new environment
 
 1. **Create a Supabase project** (free plan) inside the "Mridanga Seva" organisation. Region: South
-   Asia (Mumbai). Let Supabase generate the database password and keep it in a password manager —
+   Asia (Mumbai) for a new project (LIVE itself is in Sydney, [DECISIONS.md #398](DECISIONS.md): a new LIVE
+   in another region means changing the processors table and the privacy notice too). Let Supabase generate the database password and keep it in a password manager —
    never in this repository or a chat. Turn on **Enable automatic RLS**.
 2. **Create the tables** — step by step:
    1. On GitHub, open [`supabase/migrations/0001_phase1.sql`](../supabase/migrations/0001_phase1.sql)

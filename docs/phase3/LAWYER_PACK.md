@@ -21,7 +21,7 @@ design, the consent forms and the notice text, and answer the questions below.
    people. No class tablet, no camera at the door.
 3. **Supervised set-up.** The face code is made once at the desk on the student's phone, with a
    coordinator confirming it is the right student. Kept encrypted on the phone and, encrypted, on
-   our server in Mumbai.
+   our server in Sydney, Australia (the app's database region).
 4. **Anti-spoofing.** Live-face check (blink / turn + a passive model), Android's fake-location flag,
    Google Play Integrity (phone/app not tampered with). Refused offline or outside the class window.
 5. **Location, once.** At the student's check-in / check-out tap only, the phone reads its location

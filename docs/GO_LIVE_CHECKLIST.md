@@ -454,7 +454,7 @@ changes later, with the new date.
 | Custom domain | Cloudflare `mridanga-seva` → Custom domains | ⏳ `app.mridangaseva.com` active | | | |
 | Real sign-up mail | D7 | arrived in the inbox, link opened the site | arrived, link opened the site, login pending | 17-10-2026 | Praveen |
 | Real reset mail | D8 | arrived, new password works | arrived in Primary after the sender was verified | 17-10-2026 | Praveen |
-| Region | Project Settings → General | South Asia (Mumbai) (processors table, OPERATIONS) | | | |
+| Region | Project Settings → General (or `supabase projects list`) | South Asia (Mumbai) (processors table, OPERATIONS) | **ap-southeast-2, Sydney** — kept (#398); privacy notice and processors table now say Sydney, Australia | 17-10-2026 | lead chat 11, Praveen's choice |
 
 ## How the replay proves part B
 

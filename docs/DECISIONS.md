@@ -6018,3 +6018,17 @@ auth-actions) so `tests/launch-audit.test.mjs` drives it with the installed auth
 
 **Why.** On the sign-up weekend the email is the one thing outside the app that can run out; the person must know to
 wait or come to the desk, not fight their Wi-Fi.
+
+## 398. LIVE stays in Sydney; the privacy notice says so — 17 Oct 2026
+
+**Status: main.** The go-live record expected the LIVE Supabase project in South Asia (Mumbai), as OPERATIONS
+"Setting up a new environment" says. `supabase projects list` (17 Oct 2026) shows LIVE `qeozvv…` in **ap-southeast-2
+(Sydney, Australia)**; TEST is ap-southeast-1 (Singapore). A region cannot be changed in place: moving means a new
+project and the whole LIVE run again (migrations, functions, vault, mail and auth settings, EAS env, web). Praveen chose
+to keep Sydney. The privacy notice (website privacy.html en/te/hi: processors table and the "outside India" paragraph),
+the OPERATIONS processors table, GO_LIVE_CHECKLIST part G and the lawyer pack now say Sydney, Australia. The phase 3
+drafts (DPIA, face plan, decisions for the Guru) still say Mumbai and are corrected with that work.
+
+**Why.** Three days before launch, a second LIVE run costs more risk than it saves. Indian law (DPDP s.16) allows the
+transfer except to countries the Government restricts, and Australia is not one; measured from Hyderabad, LIVE answers
+as fast as TEST in Singapore (about 0.2-0.6 s). What matters is that the notice people tick tells the truth.
