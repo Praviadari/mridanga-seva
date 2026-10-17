@@ -16,7 +16,7 @@ export default {
   draft: true,
 
   /** Shown as "updated" in the footer and as lastmod in sitemap.xml (ISO 8601). */
-  updated: '2026-10-16',
+  updated: '2026-10-17',
 
   /** The privacy notice's version and date. Raise both when its meaning changes. */
   privacyNotice: { version: '0.1-draft', date: '2026-10-07' },
@@ -34,16 +34,20 @@ export default {
   },
 
   app: {
-    /** The web version of the app; it moves here at go-live (audit brief 8). */
-    webUrl: 'https://app.mridangaseva.com/',
-    /** false shows the web app as "coming soon" without a link. */
-    webLive: false,
     /**
-     * Android APK: the current build page on expo.dev. NOTE (07-10-2026): this build is the
-     * pilot/TEST APK. Swap in the production APK (audit brief 9) before the domain is attached.
+     * The web version of the app: the LIVE site on Cloudflare Pages since 16-10-2026 (GO_LIVE_CHECKLIST E1);
+     * it moves to app.mridangaseva.com once the domain is on Cloudflare (E3).
+     */
+    webUrl: 'https://mridanga-seva.pages.dev/',
+    /** false shows the web app as "coming soon" without a link. */
+    webLive: true,
+    /**
+     * Android APK: the production build's page on expo.dev (90c6d1cd, versionCode 12, fingerprint 23dc7e4a,
+     * 16-10-2026; GO_LIVE_CHECKLIST E7). EAS deletes the build on 30-10-2026: before then, replace this with
+     * the shared Drive folder "Mridanga Seva APKs" link (OPERATIONS "Each build").
      */
     apkUrl:
-      'https://expo.dev/accounts/mridanga-seva/projects/mridanga-seva/builds/0bfc5c14-3af0-4935-a7ed-a5ad7ead9348',
+      'https://expo.dev/accounts/mridanga-seva/projects/mridanga-seva/builds/90c6d1cd-7d56-4840-8a35-55acef76c407',
     /** Google Play listing; null until there is one. */
     playStoreUrl: null,
   },
