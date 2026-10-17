@@ -360,6 +360,42 @@ checks(sort, check_name, ok, found, expected) as (
 select check_name, ok, found, expected from checks order by sort;
 ```
 
+**Day one** (before the desk accepts the weekend's sign-ups, and again on Monday): the people and the class data the app
+needs, which no migration makes on LIVE (the TEST project has them from `seed.sql`, never run on LIVE). Every `ok` should
+be `true` by Tuesday's class; `false` names what to do in the app. READ-ONLY.
+
+<!-- replay: day-one -->
+```sql
+-- Day-one readiness. READ-ONLY: selects only.
+with staff as (select role, active, coalesce(btrim(full_name), '') as name, gender from profiles where role in ('guru', 'coordinator')),
+checks(sort, check_name, ok, found, expected) as (
+  select 1, 'Guru logins', (select count(*) from staff where role = 'guru' and active) >= 1,
+    (select count(*) from staff where role = 'guru' and active)::text,
+    '1 or more (the first Guru: Table Editor → profiles → role guru, OPERATIONS "Setting up a new environment"); 0 = nobody can make coordinators'
+  union all select 2, 'coordinators', (select count(*) from staff where role = 'coordinator' and active) >= 1,
+    (select count(*) from staff where role = 'coordinator' and active)::text,
+    '1 or more by Tuesday: the Guru → Coordinators → a waiting login → Make a coordinator'
+  union all select 3, 'staff without a name', (select count(*) from staff where active and name = '') = 0,
+    (select count(*) from staff where active and name = '')::text, '0 (an empty name shows as blank in "posted by", mentor and reports; each sets it in My profile)'
+  union all select 4, 'staff without a gender', (select count(*) from staff where active and gender is null) = 0,
+    (select count(*) from staff where active and gender is null)::text,
+    '0: students get a mentor of their own gender; without it Accept leaves them "mentor needed" (Coordinators → the person → gender)'
+  union all select 5, 'centres', (select count(*) from centres where active) >= 1,
+    (select string_agg(format('%s %s-%s %s%s%s', name, to_char(opens_at, 'HH24:MI'), to_char(closes_at, 'HH24:MI'), time_zone,
+       case when lat is null then ', no GPS point' else '' end, case when city is null then ', no city' else '' end), '; ' order by id)
+       from centres where active),
+    'the real class hours (open visits are closed at the closing time each night); without a GPS point no check-in is flagged'
+  union all select 6, 'syllabus items (Beginner / Intermediate / Advanced)',
+    (select count(*) from syllabus_items i where i.level_id = 1 and i.retired_at is null) >= 1,
+    (select string_agg(coalesce(n, 0)::text, ' / ' order by l.id) from levels l
+       left join (select level_id, count(*) n from syllabus_items where retired_at is null group by level_id) c on c.level_id = l.id),
+    'Beginner items before progress is ticked (the Guru → Lessons → a level → add an item); 0 = students see their level without a count'
+  union all select 7, 'sign-ups waiting', true,
+    (select count(*) from profiles where role = 'pending' and active)::text, 'information: the desk''s waiting list (and team members not yet made coordinators)'
+)
+select check_name, ok, found, expected from checks order by sort;
+```
+
 <!-- replay: row-counts -->
 ```sql
 -- Rows per table, READ-ONLY (the same query as OPERATIONS "Restoring" step 4). Compare with the

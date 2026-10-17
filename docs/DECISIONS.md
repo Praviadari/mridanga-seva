@@ -5987,3 +5987,18 @@ app bundle, not in the fingerprint (npm scripts and `scripts/` are not counted),
 **Why.** `eas.json`'s `cli.requireCommit` would do part of this inside EAS CLI, but `eas.json` is in the fingerprint
 (a new APK); and it checks only "committed", not "main" or "pushed". The production channel reaches every phone in
 the class, so it must carry exactly what the lead checked and merged.
+## 396. A day-one readiness query in the go-live checklist — 17 Oct 2026
+
+**Status: branch `launch-audit` (round 7).** Launch audit finding LA-21. LIVE gets its structure from the migrations, but
+the people and class data the app needs on day one come from no migration: the TEST project has them from `seed.sql`,
+which never runs on LIVE. LIVE's own record (15 Oct 2026) shows 2 logins, the one centre 0001 makes ("Abids", 14:30-20:00,
+no GPS point, no city), 3 levels and **no syllabus item**; nothing in the checklist checked that one login is the Guru,
+that coordinators exist, or that staff have a gender (Accept gives a student a mentor of the same gender, else "mentor
+needed"). GO_LIVE_CHECKLIST part F now has a read-only **Day one** query (7 rows: Guru logins, coordinators, staff
+without a name, staff without a gender, centres with hours / GPS / city, syllabus items per level, sign-ups waiting),
+each `false` naming what to do in the app. `supabase/tests/live-replay.mjs` runs it on the replayed LIVE. A PGlite probe
+of a LIVE-like database (migrations only, no seed) showed the whole day-one chain works: first Guru → a coordinator made
+in the app (role only; the profile's centre defaults to 1) accepts sign-ups, registers walk-ins and children, scans;
+homes, reports and the nightly jobs run with an empty syllabus (the level strip shows the level without a count).
+
+**Why.** Each of these is a click for the Guru, but found on Tuesday at the desk it is a queue.

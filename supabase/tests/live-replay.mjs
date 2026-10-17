@@ -301,6 +301,20 @@ check('verification SQL: the three sample logins confirmed at sign-up are flagge
   row('logins confirmed within 2 s of sign-up (7 days)')?.found === '3', JSON.stringify(row('logins confirmed within 2 s of sign-up (7 days)')));
 const markers = (sql) => sql.slice(sql.indexOf('with m(migration'), sql.indexOf('\n)') + 2);
 check('the probe and the verification SQL find migrations by the same objects', markers(probeSql) === markers(checklistSql('verify')));
+// Day-one readiness (launch audit LA-21, #396): the replayed LIVE has a Guru, a coordinator, Abids and two Beginner items,
+// and staff without a gender, which it must report.
+const dayOne = (await live.query(checklistSql('day-one'))).rows;
+const day = (name) => dayOne.find((r) => r.check_name === name);
+for (const name of ['Guru logins', 'coordinators', 'staff without a name', 'centres']) {
+  check(`day-one SQL: "${name}" is ok on the replayed LIVE`, day(name)?.ok === true, JSON.stringify(day(name)));
+}
+check('day-one SQL: staff without a gender are reported (mentor matching)', day('staff without a gender')?.ok === false
+  && day('staff without a gender')?.found === '2', JSON.stringify(day('staff without a gender')));
+check('day-one SQL: the centre line names Abids, its hours and the missing GPS point',
+  /^Abids 14:30-20:00 Asia\/Kolkata, no GPS point/.test(day('centres')?.found ?? ''), JSON.stringify(day('centres')));
+check('day-one SQL: syllabus items per level', day('syllabus items (Beginner / Intermediate / Advanced)')?.found === '2 / 0 / 0'
+  && day('syllabus items (Beginner / Intermediate / Advanced)')?.ok === true, JSON.stringify(day('syllabus items (Beginner / Intermediate / Advanced)')));
+check('day-one SQL: seven rows', dayOne.length === 7, String(dayOne.length));
 const rowCounts = (await live.query(checklistSql('row-counts'))).rows;
 check('row-count SQL runs and counts the replayed students and logins',
   rowCounts.find((r) => r.table_name === 'students')?.rows === 3 && rowCounts.find((r) => r.table_name === '(auth.users)')?.rows === 4);
