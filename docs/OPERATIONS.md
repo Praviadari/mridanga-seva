@@ -372,6 +372,7 @@ to `app/dist/`. Always use this command, not a bare `npx expo export`, because
 
 | Date | Site | Commit | Built (UTC) | By |
 |---|---|---|---|---|
+| 17-10-2026 | **live** (email-not-sent message #397; same day production update group 4bcc0e21 from 7d56dd5, same JS) | 739f1ee (main; entry-1ff23caf…; deployment 324fec74; headers checked: HSTS, nosniff, CSP) | 2026-10-17T15:00:53Z | Claude (wrangler, Praveen's login, his "publish") |
 | 16-10-2026 | **live** (first upload; project `mridanga-seva` created with wrangler `pages project create --force`, as Pages now delegates to Workers) | 60db35b (main; entry-5ca015a3…; deployment 6bb0dcd6; headers checked: HSTS, nosniff, CSP LIVE only) | 2026-10-16T10:24:05Z | Claude (wrangler 4.149, Praveen's login, his go) |
 | 15-10-2026 | test | fd49d25 (main; dark gradient #371) | 2026-10-15T12:03:52Z | Claude (wrangler 4.149, Praveen's login) |
 | 15-10-2026 | test | 34bf940 (main; student screens batch 2) | 2026-10-15T10:13:44Z | Claude (wrangler 4.149, Praveen's login) |
