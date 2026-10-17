@@ -135,7 +135,7 @@ test('an adult registered at the desk keeps the privacy notice: the sign-up\'s, 
 });
 
 test('a sign-up the database refuses gets the staff-name hint, not "Something went wrong"', () => {
-  assert.match(src('auth/auth-actions.ts'), /database error saving new user/i);
+  assert.match(src('auth/auth-errors.ts'), /database error saving new user/i); // moved from auth-actions (#397)
   assert.match(src('auth/auth-actions.ts'), /errorKey: signUpErrorKey\(error\)/);
   assertWorded('authErrors.signUpRefused');
   assert.match(text('en', 'authErrors.signUpRefused'), /Guru's or a coordinator's/);

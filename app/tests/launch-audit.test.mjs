@@ -196,3 +196,42 @@ test('publish-update stops a production update on those problems before anything
   assert.ok(guard > 0 && guard < script.indexOf("'runtimeversion:resolve'"), 'checked before the fingerprint and EAS');
   assert.match(script, /if \(channel === 'production' && !checkOnly\) \{\s*fail\(/);
 });
+// ---------------------------------------------------------------- #397 an email that could not be sent is not "no internet"
+
+/** The error the real auth client (@supabase/auth-js, as installed) gives for one call answered with `status` and `body`. */
+async function authErrorFor(call, status, body) {
+  const { createRequire } = await import('node:module');
+  const { GoTrueClient } = createRequire(import.meta.url)('@supabase/auth-js');
+  const memory = new Map();
+  const client = new GoTrueClient({
+    url: 'https://x.supabase.co/auth/v1', headers: { apikey: 'k' }, persistSession: false, autoRefreshToken: false,
+    storage: { getItem: (k) => memory.get(k) ?? null, setItem: (k, v) => void memory.set(k, v), removeItem: (k) => void memory.delete(k) },
+    // Supabase Auth names its API version, which tells auth-js to read `code` from the body.
+    fetch: async () => new Response(JSON.stringify(body), {
+      status, headers: { 'Content-Type': 'application/json', 'x-supabase-api-version': '2024-01-01' },
+    }),
+  });
+  const { error } = await call(client);
+  return error;
+}
+const { authErrorKey, signUpErrorKey } = await import('../src/auth/auth-errors.ts');
+const signUpCall = (c) => c.signUp({ email: 'a@example.org', password: 'long enough 1' });
+const resetCall = (c) => c.resetPasswordForEmail('a@example.org');
+
+test('Supabase could not send the sign-up or reset email (500): the person is told so, not "check your internet" (LA-22)', async () => {
+  const signUpError = await authErrorFor(signUpCall, 500, { code: 'unexpected_failure', msg: 'Error sending confirmation email' });
+  assert.equal(signUpErrorKey(signUpError), 'authErrors.emailNotSent');
+  const resetError = await authErrorFor(resetCall, 500, { code: 'unexpected_failure', msg: 'Error sending recovery email' });
+  assert.equal(authErrorKey(resetError), 'authErrors.emailNotSent');
+  // Unchanged: a refused new login (#292), another server failure, a busy server.
+  assert.equal(signUpErrorKey(await authErrorFor(signUpCall, 500, { msg: 'Database error saving new user' })), 'authErrors.signUpRefused');
+  assert.equal(authErrorKey(await authErrorFor(resetCall, 500, { msg: 'Internal server error' })), 'common.networkError');
+  assert.equal(authErrorKey(await authErrorFor(resetCall, 503, { msg: 'unavailable' })), 'common.networkError');
+});
+
+test('the email limit (per hour, or 60 s per address) says the email waits; other rate limits stay "too many tries"', async () => {
+  const hourly = await authErrorFor(signUpCall, 429, { code: 'over_email_send_rate_limit', msg: 'email rate limit exceeded' });
+  assert.equal(signUpErrorKey(hourly), 'authErrors.emailNotSent');
+  const requests = await authErrorFor(signUpCall, 429, { code: 'over_request_rate_limit', msg: 'Request rate limit reached' });
+  assert.equal(signUpErrorKey(requests), 'authErrors.rateLimited');
+});

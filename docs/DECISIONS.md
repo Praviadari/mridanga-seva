@@ -6002,3 +6002,19 @@ in the app (role only; the profile's centre defaults to 1) accepts sign-ups, reg
 homes, reports and the nightly jobs run with an empty syllabus (the level strip shows the level without a count).
 
 **Why.** Each of these is a click for the Guru, but found on Tuesday at the desk it is a queue.
+## 397. An email that could not be sent says so, not "check your internet" — 17 Oct 2026
+
+**Status: branch `launch-audit` (round 8).** Launch audit finding LA-22. When Supabase Auth cannot hand a sign-up
+confirmation or a reset email to the mail service (Brevo's free plan sends 300 a day; an SMTP failure), it answers
+500 "Error sending confirmation email" / "Error sending recovery email". supabase-js reports every 500 like a lost
+connection, so the sign-up form said "Could not reach the server … check your internet connection" and people on the
+temple Wi-Fi would retry for the rest of the day. Supabase's own email limit (`over_email_send_rate_limit`: 150 an hour
+for the sign-up weekend, or the 60 s before a second email to one address) said "Too many tries", which is not what
+the person did. Both now show `authErrors.emailNotSent`: the email could not be sent just now, try again in a few
+minutes or later in the day, or come to the class and the desk registers you (en/te/hi; te/hi drafts for the native
+review, Q-4). `over_request_rate_limit` keeps "Too many tries"; "Database error saving new user" keeps #292's hint;
+any other 500 keeps the network message. The mapping moved to `src/auth/auth-errors.ts` (pure, re-exported by
+auth-actions) so `tests/launch-audit.test.mjs` drives it with the installed auth client's real errors. JS only.
+
+**Why.** On the sign-up weekend the email is the one thing outside the app that can run out; the person must know to
+wait or come to the desk, not fight their Wi-Fi.

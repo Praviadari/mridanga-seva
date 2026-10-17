@@ -111,6 +111,7 @@
     "userExists": "An account with this email already exists. Sign in instead.",
     "weakPassword": "This password is too easy to guess. Choose a stronger one.",
     "rateLimited": "Too many tries. Please wait a few minutes and try again.",
+    "emailNotSent": "The email could not be sent just now. Please try again in a few minutes, or later in the day. You can also come to the class: the desk registers you there.",
     "samePassword": "The new password must be different from the old one.",
     "sessionEnded": "Your sign-in has ended. Please sign in again.",
     "linkExpired": "This email link has expired or was already used. Ask for a new one.",

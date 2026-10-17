@@ -5,11 +5,6 @@
 // Emails for sign-up and password reset go through Supabase Auth and Brevo SMTP
 // (docs/OPERATIONS.md). Links in those emails open the web version of the app.
 
-import {
-  isAuthApiError,
-  isAuthRetryableFetchError,
-  isAuthWeakPasswordError,
-} from '@supabase/supabase-js';
 import type { ParseKeys } from 'i18next';
 import { Platform } from 'react-native';
 
@@ -19,6 +14,7 @@ import { dropAllDrafts } from '@/lib/form-drafts';
 import { unregisterPush } from '@/lib/push';
 import { forgetStoredLogin, storedRefreshToken, supabase } from '@/lib/supabase';
 
+import { authErrorKey, signUpErrorKey } from './auth-errors';
 import { keepPendingSignOut } from './pending-sign-out';
 import { markOwnSignOut } from './session-end';
 
@@ -41,51 +37,8 @@ function emailLinkTarget(): string | undefined {
   return Platform.OS === 'web' && typeof window !== 'undefined' ? window.location.origin : undefined;
 }
 
-/** Turns any error from Supabase Auth into a message the person can act on. */
-export function authErrorKey(error: unknown): MessageKey {
-  if (isAuthRetryableFetchError(error)) return 'common.networkError';
-  if (isAuthWeakPasswordError(error)) return 'authErrors.weakPassword';
-  if (isAuthApiError(error)) {
-    switch (error.code) {
-      case 'invalid_credentials':
-        return 'authErrors.invalidCredentials';
-      case 'email_not_confirmed':
-        return 'authErrors.emailNotConfirmed';
-      case 'user_already_exists':
-      case 'email_exists':
-        return 'authErrors.userExists';
-      case 'weak_password':
-        return 'authErrors.weakPassword';
-      case 'same_password':
-        return 'authErrors.samePassword';
-      case 'email_address_invalid':
-        return 'validation.emailInvalid';
-      case 'over_email_send_rate_limit':
-      case 'over_request_rate_limit':
-        return 'authErrors.rateLimited';
-      // Audit D8-04: these need a new sign-in, a new link or staff help, not another try.
-      case 'session_expired':
-      case 'session_not_found':
-      case 'refresh_token_not_found':
-      case 'refresh_token_already_used':
-      case 'reauthentication_needed':
-        return 'authErrors.sessionEnded';
-      case 'otp_expired':
-      case 'flow_state_expired':
-      case 'flow_state_not_found':
-      case 'bad_code_verifier':
-        return 'authErrors.linkExpired';
-      case 'signup_disabled':
-      case 'email_provider_disabled':
-        return 'authErrors.signupClosed';
-      case 'user_banned':
-        return 'authErrors.accountOff';
-    }
-  }
-  // A plain network failure (no internet) reaches here as a TypeError from fetch.
-  if (error instanceof TypeError) return 'common.networkError';
-  return 'common.genericError';
-}
+/** The error messages live in ./auth-errors (pure, tested); kept importable from here. */
+export { authErrorKey, signUpErrorKey };
 
 /** Kept here for the screens that import it from auth-actions; the check is in src/lib/email.ts. */
 export { isValidEmail } from '@/lib/email';
@@ -155,24 +108,6 @@ export async function signUp(
   });
   if (error) return { errorKey: signUpErrorKey(error) };
   return { needsConfirmation: !data.session };
-}
-
-/**
- * The message for a failed sign-up. When the database refuses the new login (handle_new_user raises, e.g.
- * name_taken: the name of the Guru or a coordinator, 0028/0047), Supabase Auth hides the reason behind
- * "Database error saving new user" (HTTP 500), so the person gets the likely cause as a hint (R2-03, #292).
- * supabase-js reports a 500 as a retryable fetch error (like no internet) but keeps that message, so the
- * message decides, not the error's kind.
- */
-export function signUpErrorKey(error: unknown): MessageKey {
-  if (
-    (isAuthApiError(error) || isAuthRetryableFetchError(error)) &&
-    error.status === 500 &&
-    /database error saving new user/i.test(error.message)
-  ) {
-    return 'authErrors.signUpRefused';
-  }
-  return authErrorKey(error);
 }
 
 /**
