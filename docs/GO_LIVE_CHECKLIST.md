@@ -384,40 +384,40 @@ changes later, with the new date.
 
 | Setting | Where | Expected | Seen on LIVE | Date | By |
 |---|---|---|---|---|---|
-| Replay commit | A3, `git log -1` | the main commit the replay passed on; migrations, functions (C4, C7) and the web site (E1) all from it | | | |
-| Last migration (probe) | SQL editor | `0050`, MISSING none | | | |
-| Backup before go-live | `backup-log.csv` | archive name, `before go-live` — or on 15 Oct 2026 `waived: LIVE empty (row counts <date>)` (A2 waiver) | | | |
+| Replay commit | A3, `git log -1` | the main commit the replay passed on; migrations, functions (C4, C7) and the web site (E1) all from it | 512429d (replay passed on 600b620; migrations copied from 512429d raw) | 15-10-2026 | lead chat 10 |
+| Last migration (probe) | SQL editor | `0050`, MISSING none | 0050, MISSING none | 16-10-2026 | lead chat 10 (Praveen pasted 0020-0050) |
+| Backup before go-live | `backup-log.csv` | archive name, `before go-live` — or on 15 Oct 2026 `waived: LIVE empty (row counts <date>)` (A2 waiver) | waived: LIVE empty (row counts 15-10-2026: students/visits/guardians/consents 0, 2 team logins) | 15-10-2026 | lead chat 10, Praveen confirmed logins |
 | Owner MFA | supabase.com Account → Security; organisation → Team | on for every Owner; members = __ | | | |
-| Drift before / after | CSVs of A4, B-end | `ALL` hashes noted; KIND rows = TEST except the expected | | | |
-| Scheduled jobs | verification row 3 | 11 of 11 active | | | |
-| pg_net | Database → Extensions | on | | | |
-| Vault secret names | verification row 12 | `mridanga_project_url`, `mridanga_push_secret` | | | |
-| `PUSH_SECRET` | Edge Functions → Secrets | set; SHA-256 = Vault's | | | |
-| `notify-announcements` | `functions list` | ACTIVE, version __, from commit __ | | | |
-| `notify-parents` | `functions list` | ACTIVE, version __, from commit __ | | | |
-| `BREVO_API_KEY`, `NOTICE_FROM`, `NOTICE_REPLY_TO` | Edge Functions → Secrets | set; sender `notices@<domain>` (domain authenticated) — or none yet = dry run | | | |
-| Parent emails (G10) | G10 Settings → Emails to parents | **off** until the consent line (#230, wording approved 10 Oct 2026) is on the paper form and the privacy notice; then on: check-out emails only (#246), "check-in" and "night" boxes unticked | | | |
-| Email provider | Sign In / Providers → Email | on | | | |
-| Other providers, anonymous sign-ins | Sign In / Providers (D6b) | all off | | | |
-| Exposed schemas | Data API settings (D6c) | `public`, `graphql_public` | | | |
-| Confirm email | Sign In / Providers → Email | **on** (auto-confirm off) | | | |
-| Minimum password length | Sign In / Providers → Email | 8 | | | |
-| `/auth/v1/settings` | D9 | `mailer_autoconfirm:false`, `disable_signup:false` | | | |
-| Custom SMTP | Emails → SMTP Settings | on, `smtp-relay.brevo.com:587`, sender __ | | | |
-| Brevo sender | Brevo → Senders | verified: __ | | | |
+| Drift before / after | CSVs of A4, B-end | `ALL` hashes noted; KIND rows = TEST except the expected | before ALL 359 89928db8…; after ALL 1528 bbdb960a…; KIND rows = TEST except config_rows, pg_net, vault, 0049 | 15/16-10-2026 | lead chat 10 |
+| Scheduled jobs | verification row 3 | 11 of 11 active | 11 of 11 active | 17-10-2026 | lead chat 10 |
+| pg_net | Database → Extensions | on | on, 0.20.4 | 16-10-2026 | Praveen |
+| Vault secret names | verification row 12 | `mridanga_project_url`, `mridanga_push_secret` | 2 of 2 | 16-10-2026 | Praveen |
+| `PUSH_SECRET` | Edge Functions → Secrets | set; SHA-256 = Vault's | set; SHA-256 38fe99eb… (Vault digest compare: Praveen) | 16-10-2026 | Praveen |
+| `notify-announcements` | `functions list` | ACTIVE, version __, from commit __ | ACTIVE, version 1, from main (512429d tree) | 16-10-2026 | Praveen |
+| `notify-parents` | `functions list` | ACTIVE, version __, from commit __ | ACTIVE, version 1, from main (512429d tree) | 16-10-2026 | Praveen |
+| `BREVO_API_KEY`, `NOTICE_FROM`, `NOTICE_REPLY_TO` | Edge Functions → Secrets | set; sender `notices@<domain>` (domain authenticated) — or none yet = dry run | none (dry run), as planned (S3-01) | 16-10-2026 | lead chat 10 |
+| Parent emails (G10) | G10 Settings → Emails to parents | **off** until the consent line (#230, wording approved 10 Oct 2026) is on the paper form and the privacy notice; then on: check-out emails only (#246), "check-in" and "night" boxes unticked | off | 17-10-2026 | lead chat 10 |
+| Email provider | Sign In / Providers → Email | on | on | 16-10-2026 | Praveen |
+| Other providers, anonymous sign-ins | Sign In / Providers (D6b) | all off | all off; manual linking off | 16-10-2026 | Praveen |
+| Exposed schemas | Data API settings (D6c) | `public`, `graphql_public` | public, graphql_public | 16-10-2026 | Praveen |
+| Confirm email | Sign In / Providers → Email | **on** (auto-confirm off) | on (D7: confirmed after 354 s, by the link) | 17-10-2026 | Praveen |
+| Minimum password length | Sign In / Providers → Email | 8 | 8 | 16-10-2026 | Praveen |
+| `/auth/v1/settings` | D9 | `mailer_autoconfirm:false`, `disable_signup:false` | mailer_autoconfirm false, disable_signup false | 17-10-2026 | lead chat 10 |
+| Custom SMTP | Emails → SMTP Settings | on, `smtp-relay.brevo.com:587`, sender __ | on, smtp-relay.brevo.com:587, Brevo SMTP login (…@smtp-brevo.com), sender = verified Gmail address (domain sender later) | 16-10-2026 | Praveen |
+| Brevo sender | Brevo → Senders | verified: __ | verified (Gmail address; D8 reset arrived in Primary) | 17-10-2026 | Praveen |
 | Brevo domain | Brevo → Domains | ⏳ authenticated `mridangaseva.com` | | | |
-| Email rate limit | Authentication → Rate Limits | 100 an hour Fri 16 - Sun 18 Oct 2026, then 30 (new row with the date when it goes back) | | | |
-| Token refresh limit | Authentication → Rate Limits | ≥ 150 per 5 minutes per IP (R5-02) | | | |
-| Sign-ups and sign-ins limit | Authentication → Rate Limits | 150 per 5 minutes per IP Fri 16 - Sun 18 Oct 2026, then 30 | | | |
-| EAS `production` environment | `eas-cli env:list --environment production` (E0) | LIVE URL `qeozvv…` + `sb_publishable_…` key | | | |
-| Site URL | URL Configuration | `https://mridanga-seva.pages.dev`, then ⏳ `https://app.mridangaseva.com` | | | |
-| Redirect URLs | URL Configuration | exactly the Site URL's origin (two during the switch); no localhost, no wildcard | | | |
-| Live web site | Cloudflare `mridanga-seva` | `version.txt` commit __ | | | |
-| Production APK | EAS build page; OPERATIONS APK log | build id __, commit __, fingerprint __, versionCode __, same keystore as preview | | | |
-| Website download link | public website `apkUrl` (E7) | the production APK above | | | |
+| Email rate limit | Authentication → Rate Limits | 100 an hour Fri 16 - Sun 18 Oct 2026, then 30 (new row with the date when it goes back) | 150 an hour (plan said 100) — set 30 on 19-10-2026 | 16-10-2026 | Praveen |
+| Token refresh limit | Authentication → Rate Limits | ≥ 150 per 5 minutes per IP (R5-02) | 150 per 5 min | 16-10-2026 | Praveen |
+| Sign-ups and sign-ins limit | Authentication → Rate Limits | 150 per 5 minutes per IP Fri 16 - Sun 18 Oct 2026, then 30 | 150 per 5 min — set 30 on 19-10-2026 | 16-10-2026 | Praveen |
+| EAS `production` environment | `eas-cli env:list --environment production` (E0) | LIVE URL `qeozvv…` + `sb_publishable_…` key | qeozvv… + sb_publishable_okS0… | 16-10-2026 | lead chat 10 |
+| Site URL | URL Configuration | `https://mridanga-seva.pages.dev`, then ⏳ `https://app.mridangaseva.com` | https://mridanga-seva.pages.dev | 16-10-2026 | Praveen |
+| Redirect URLs | URL Configuration | exactly the Site URL's origin (two during the switch); no localhost, no wildcard | https://mridanga-seva.pages.dev only | 16-10-2026 | Praveen |
+| Live web site | Cloudflare `mridanga-seva` | `version.txt` commit __ | version.txt live 60db35b (deployment 6bb0dcd6) | 16-10-2026 | lead chat 10 |
+| Production APK | EAS build page; OPERATIONS APK log | build id __, commit __, fingerprint __, versionCode __, same keystore as preview | 90c6d1cd, f835830, 23dc7e4a, vc12, keystore lzS_QanDLs (same as preview) | 16-10-2026 | Praveen |
+| Website download link | public website `apkUrl` (E7) | the production APK above | 90c6d1cd build page (EAS deletes it 30-10-2026: move to Drive link) | 17-10-2026 | lead chat 10 |
 | Custom domain | Cloudflare `mridanga-seva` → Custom domains | ⏳ `app.mridangaseva.com` active | | | |
-| Real sign-up mail | D7 | arrived in the inbox, link opened the site | | | |
-| Real reset mail | D8 | arrived, new password works | | | |
+| Real sign-up mail | D7 | arrived in the inbox, link opened the site | arrived, link opened the site, login pending | 17-10-2026 | Praveen |
+| Real reset mail | D8 | arrived, new password works | arrived in Primary after the sender was verified | 17-10-2026 | Praveen |
 | Region | Project Settings → General | South Asia (Mumbai) (processors table, OPERATIONS) | | | |
 
 ## How the replay proves part B
