@@ -40,3 +40,5 @@ supabase/.branches/
 # OS files
 .DS_Store
 Thumbs.db
+# wrangler's local cache (Cloudflare Pages uploads)
+.wrangler/
