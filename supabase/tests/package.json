@@ -13,6 +13,6 @@
     "replay": "node live-replay.mjs"
   },
   "devDependencies": {
-    "@electric-sql/pglite": "0.5.8"
+    "@electric-sql/pglite": "0.5.10"
   }
 }
