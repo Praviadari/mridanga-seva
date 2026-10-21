@@ -9,7 +9,8 @@
 // a production update made with the test settings would cut the class off from it. So the bundle
 // never reads app/.env or app/.env.test. First it checks the network can upload to EAS (see below).
 // 0. Production: stops unless this folder is a clean main equal to origin/main (scripts/lib/release-git.mjs;
-//    preview only warns). Then computes the app's fingerprint (its runtime version) and looks for a finished APK on this
+//    preview only warns), and unless What's new has a dated entry for this update (scripts/lib/whats-new-check.mjs,
+//    #406; preview only warns). Then computes the app's fingerprint (its runtime version) and looks for a finished APK on this
 //    channel with the same one. None means the change touched something native: phones would
 //    never get this update, and a new APK is needed instead (OPERATIONS.md lists what counts).
 // 1. Pulls the channel's settings from the EAS environment of the same name (`eas env:pull`):
@@ -42,6 +43,7 @@ import { listFiles, secretIn, SETTING_NAMES, settingsProblem, supabaseSettingsFr
 // Supabase project of each channel, shared with the APK build guard (scripts/eas-build-guard.mjs).
 import { PROJECTS } from './lib/supabase-projects.mjs';
 import { releaseGitState } from './lib/release-git.mjs';
+import { NOTES_FILE, whatsNewState } from './lib/whats-new-check.mjs';
 
 const OUT = 'dist-update';
 
@@ -149,6 +151,17 @@ if (gitState.problems.length > 0) {
   console.warn(`publish-update: ${channel === 'production' ? 'a real production run would stop here' : 'note'}:\n${lines}`);
 }
 console.log(`publish-update: code of commit ${gitState.commit ?? 'unknown'}${gitState.problems.length > 0 ? ' plus the changes above' : ''}.`);
+
+// What's new (#406): the newest entry is what the phones will call their version, so production needs one for this
+// update; preview is only told.
+const notesProblems = whatsNewState();
+if (notesProblems.length > 0) {
+  const lines = notesProblems.map((problem) => '  - ' + problem).join('\n');
+  if (channel === 'production' && !checkOnly) {
+    fail(`What's new (${NOTES_FILE}) is not ready for this update:\n${lines}\nNothing was published.`);
+  }
+  console.warn(`publish-update: ${channel === 'production' ? 'a real production run would stop here' : 'note'}: What's new:\n${lines}`);
+}
 
 const resolved = spawnSync(
   process.execPath,

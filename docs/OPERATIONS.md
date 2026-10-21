@@ -798,6 +798,16 @@ scripts and `.gitignore`. EAS Build does run npm's install hooks (`preinstall`, 
 what it changes: such a hook means a new APK, decided first ([DECISIONS.md #198](DECISIONS.md)). When unsure, just run the
 publish command: it stops with *no finished … APK has fingerprint …* when a new APK is needed.
 
+**What's new first ([DECISIONS.md #406](DECISIONS.md)).** Before every `update:production`, add an entry at the top
+of `app/src/content/whats-new.json` and commit it to `main`: `version` (app.json), `kind` `update`, `id` null (the
+update id is known only after publishing; fill it in the next entry's commit if you like), `date` = the day you
+publish, and 3-8 plain lines in `en`, `te` and `hi` (the same number in each; te/hi drafts for native review), for
+students and staff, not developers. A waiting entry has `date: null` and shows as *Coming in the next update*; set its
+date and delete its `_todo` before publishing. The app shows the newest dated entry as *You have this*, and My profile
+shows a dot on the ⓘ until it is opened. A production run stops when the newest entry has no date, still has a
+`_todo`, or is older than the last commit to `app/src`, `app/assets` or `package-lock.json`; preview and
+`--check-only` only print it. The live web upload goes with the same commit, so it shows the same notes.
+
 **Publishing an update** (from `app/`, logged in to Expo, with the change committed to `main`):
 
 ```bash

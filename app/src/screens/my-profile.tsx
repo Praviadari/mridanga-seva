@@ -2,7 +2,7 @@
 // the name on the roll card, the roll number, the level and My QR for a student; the name, role and email for staff.
 // Then the language switch (the same picker as on the home screens) and light or dark screens (#361); then the
 // sign-in account (email, and the account's name, folded behind "Change my name"; staff also their phone); then About
-// you, held instruments and Sign out, and the app version line (since the simple home, #240). The name on the roll is
+// you, held instruments and Sign out, "ⓘ What's new" (#406) and the app version line (since the simple home, #240). The name on the roll is
 // the coordinators' record and changes only through them; a student's phone is asked in About you (0036), not here.
 // Shown by two routes: student/profile.tsx (from the ring on S1) and staff/profile.tsx (from "My profile" in the menu).
 // Staff see the referral code they give to people they bring.
@@ -29,6 +29,7 @@ import { SignOutButton } from '@/components/sign-out-button';
 import { Section } from '@/components/section';
 import { TextField } from '@/components/text-field';
 import { VersionLine } from '@/components/update-notice';
+import { WhatsNewLink } from '@/components/whats-new-link';
 import { fetchMyReferralCode } from '@/data/about';
 import { checkMyDetails, fetchMyPhone, NAME_MAX, saveMyDetails, type MyDetailsErrors } from '@/data/my-profile';
 import { fetchMyStudent, type MyStudent } from '@/data/visits';
@@ -228,6 +229,8 @@ export function MyProfileScreen() {
       <PushNotice place="profile" />
 
       <SignOutButton icon="signOut" />
+      {/* What changed in each version, just above the version line (#406). */}
+      <WhatsNewLink area={isStudent ? 'student' : 'staff'} />
       {/* The version line, once at the foot of the homes (simple home, docs/DECISIONS.md #240). */}
       <VersionLine />
     </Screen>

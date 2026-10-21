@@ -1,0 +1,110 @@
+{
+  "_comment": "What's new (My profile > What's new, docs/DECISIONS.md #406). Newest first. Add an entry before every production update (docs/OPERATIONS.md 'Publishing an update'). date: the day it is published (YYYY-MM-DD); null = not yet published, shown as 'Coming in the next update'. kind: 'installed' for an APK, 'update' for an update. id: the APK's build id or the update id the version line shows (first 8 characters), once known. notes: 3-8 plain lines in en, te and hi, the same number in each; te/hi are drafts for native review.",
+  "releases": [
+    {
+      "_todo": "Lead: add the Practice lines (0052) when that branch merges, set date at publish time, then delete this _todo. publish-update.mjs refuses production while it is here.",
+      "version": "1.0.0",
+      "kind": "update",
+      "id": null,
+      "date": null,
+      "notes": {
+        "en": [
+          "Children under 18 can sign up at home: a parent or guardian gets an email with a code and agrees on a web page.",
+          "At the first class the desk sees an ID of the parent or the child, and the child becomes a student.",
+          "Welcome desk: see who is waiting for a parent's email and who can be accepted.",
+          "Recordings you kept on the phone are deleted when you sign out, so the next person cannot hear them.",
+          "A form left half-filled on this phone is kept for 3 days, then removed.",
+          "Lesson videos stay on the lesson: the YouTube logo opens YouTube outside the app.",
+          "Uploads for assessments: up to 150 MB a day for each student or coordinator.",
+          "New: What's new on My profile shows what changed in each version."
+        ],
+        "te": [
+          "18 ఏళ్ల లోపు పిల్లలు ఇంటి నుండే సైన్ అప్ చేయవచ్చు: తల్లి/తండ్రి లేదా సంరక్షకుడికి కోడ్‌తో ఈమెయిల్ వస్తుంది, వారు వెబ్ పేజీలో అంగీకరిస్తారు.",
+          "మొదటి క్లాస్‌లో డెస్క్ తల్లిదండ్రుల లేదా పిల్లల గుర్తింపు కార్డు చూస్తుంది, అప్పుడు పిల్లలు విద్యార్థి అవుతారు.",
+          "స్వాగత డెస్క్: తల్లిదండ్రుల ఈమెయిల్ కోసం ఎవరు ఎదురుచూస్తున్నారో, ఎవరిని చేర్చుకోవచ్చో కనిపిస్తుంది.",
+          "ఫోన్‌లో ఉంచుకున్న రికార్డింగ్‌లు సైన్ అవుట్ చేసినప్పుడు తొలగిపోతాయి, తర్వాతి వ్యక్తి వాటిని వినలేరు.",
+          "ఈ ఫోన్‌లో సగం నింపిన ఫారం 3 రోజులు ఉంటుంది, తర్వాత తొలగిపోతుంది.",
+          "పాఠం వీడియోలు పాఠంలోనే ఉంటాయి: YouTube లోగో YouTube ని యాప్ బయట తెరుస్తుంది.",
+          "అసెస్‌మెంట్ అప్‌లోడ్‌లు: ప్రతి విద్యార్థికి లేదా కోఆర్డినేటర్‌కు రోజుకు 150 MB వరకు.",
+          "కొత్తది: నా ప్రొఫైల్‌లో \"కొత్తగా ఏముంది\" ప్రతి వెర్షన్‌లో ఏమి మారిందో చూపిస్తుంది."
+        ],
+        "hi": [
+          "18 साल से कम उम्र के बच्चे घर से साइन अप कर सकते हैं: माता-पिता या अभिभावक को कोड के साथ ईमेल आता है और वे वेब पेज पर सहमति देते हैं।",
+          "पहली कक्षा में डेस्क माता-पिता या बच्चे का पहचान पत्र देखता है, फिर बच्चा विद्यार्थी बन जाता है।",
+          "स्वागत डेस्क: यहाँ दिखता है कि कौन माता-पिता के ईमेल की प्रतीक्षा में है और किसे स्वीकार किया जा सकता है।",
+          "फ़ोन पर रखी रिकॉर्डिंग साइन आउट करने पर हट जाती हैं, ताकि अगला व्यक्ति उन्हें न सुन सके।",
+          "इस फ़ोन पर आधा भरा फ़ॉर्म 3 दिन रहता है, फिर हट जाता है।",
+          "पाठ के वीडियो पाठ में ही रहते हैं: YouTube का लोगो YouTube को ऐप के बाहर खोलता है।",
+          "मूल्यांकन के अपलोड: हर विद्यार्थी या समन्वयक के लिए दिन में 150 MB तक।",
+          "नया: मेरी प्रोफ़ाइल में \"नया क्या है\" दिखाता है कि हर संस्करण में क्या बदला।"
+        ]
+      }
+    },
+    {
+      "_comment": "Production update group 4bcc0e21 (commit 7d56dd5, #397); 01a14a74 is its Android update id, which the version line shows.",
+      "version": "1.0.0",
+      "kind": "update",
+      "id": "01a14a74",
+      "date": "2026-10-17",
+      "notes": {
+        "en": [
+          "If the app cannot send your sign-up email, it now says so, instead of asking you to check your internet.",
+          "The same clear message when the email to reset a forgotten password cannot be sent.",
+          "When the class has sent too many emails for now, you see that message too, not \"Too many tries\".",
+          "It also reminds you that the desk can register you at the class."
+        ],
+        "te": [
+          "మీ సైన్ అప్ ఈమెయిల్ యాప్ పంపలేకపోతే, ఇప్పుడు అదే స్పష్టంగా చెబుతుంది, \"ఇంటర్నెట్ చూడండి\" అని కాదు.",
+          "మర్చిపోయిన పాస్‌వర్డ్ మార్చే ఈమెయిల్ పంపలేకపోయినప్పుడు కూడా ఇదే స్పష్టమైన సందేశం.",
+          "క్లాస్ ప్రస్తుతానికి చాలా ఈమెయిల్స్ పంపినప్పుడు కూడా ఇదే సందేశం, \"చాలా ప్రయత్నాలు\" అని కాదు.",
+          "క్లాస్‌లో డెస్క్ వద్ద కూడా నమోదు చేసుకోవచ్చని గుర్తు చేస్తుంది."
+        ],
+        "hi": [
+          "अगर ऐप आपका साइन अप ईमेल नहीं भेज पाता, तो अब साफ़ यही बताता है, \"इंटरनेट जाँचें\" नहीं।",
+          "भूला हुआ पासवर्ड बदलने का ईमेल न जा पाने पर भी यही साफ़ संदेश।",
+          "जब कक्षा अभी बहुत ईमेल भेज चुकी हो, तब भी यही संदेश दिखता है, \"बहुत बार कोशिश\" नहीं।",
+          "यह भी याद दिलाता है कि कक्षा में डेस्क पर पंजीकरण हो सकता है।"
+        ]
+      }
+    },
+    {
+      "_comment": "Production APK 90c6d1cd (commit f835830, versionCode 12, fingerprint 23dc7e4a): the app at launch.",
+      "version": "1.0.0",
+      "kind": "installed",
+      "id": "90c6d1cd",
+      "date": "2026-10-16",
+      "notes": {
+        "en": [
+          "The first version of the class app, for students, the Guru and coordinators.",
+          "Sign up with your email; the class desk then makes you a student.",
+          "My QR: show it at the door and your attendance is marked.",
+          "Lessons for your level, with videos, and your progress.",
+          "Practice: metronome, taal player, practice log and Record myself.",
+          "Announcements, events, polls and slokas, with notices on your phone.",
+          "For the Guru and coordinators: the door scanner, registering students, follow-up calls, instruments and reports.",
+          "In English, Telugu or Hindi, with light or dark screens."
+        ],
+        "te": [
+          "క్లాస్ యాప్ మొదటి వెర్షన్: విద్యార్థులు, గురువు మరియు కోఆర్డినేటర్ల కోసం.",
+          "మీ ఈమెయిల్‌తో సైన్ అప్ చేయండి; తర్వాత క్లాస్ డెస్క్ మిమ్మల్ని విద్యార్థిగా చేర్చుతుంది.",
+          "నా QR: తలుపు వద్ద చూపించండి, మీ హాజరు నమోదవుతుంది.",
+          "మీ స్థాయికి పాఠాలు, వీడియోలతో, మరియు మీ పురోగతి.",
+          "సాధన: మెట్రోనోమ్, తాళం ప్లేయర్, సాధన లాగ్ మరియు నన్ను నేను రికార్డ్ చేసుకోవడం.",
+          "ప్రకటనలు, కార్యక్రమాలు, పోల్స్ మరియు శ్లోకాలు, మీ ఫోన్‌కు నోటీసులతో.",
+          "గురువు మరియు కోఆర్డినేటర్ల కోసం: తలుపు వద్ద స్కానర్, విద్యార్థుల నమోదు, ఫాలో-అప్ కాల్స్, వాయిద్యాలు మరియు నివేదికలు.",
+          "ఇంగ్లీష్, తెలుగు లేదా హిందీలో, లేత లేదా ముదురు స్క్రీన్లతో."
+        ],
+        "hi": [
+          "कक्षा के ऐप का पहला संस्करण: विद्यार्थियों, गुरु और समन्वयकों के लिए।",
+          "अपने ईमेल से साइन अप करें; फिर कक्षा का डेस्क आपको विद्यार्थी बनाता है।",
+          "मेरा QR: दरवाज़े पर दिखाएँ और आपकी उपस्थिति दर्ज हो जाती है।",
+          "आपके स्तर के पाठ, वीडियो के साथ, और आपकी प्रगति।",
+          "अभ्यास: मेट्रोनोम, ताल प्लेयर, अभ्यास लॉग और ख़ुद को रिकॉर्ड करें।",
+          "घोषणाएँ, कार्यक्रम, पोल और श्लोक, आपके फ़ोन पर सूचनाओं के साथ।",
+          "गुरु और समन्वयकों के लिए: दरवाज़े का स्कैनर, विद्यार्थियों का पंजीकरण, फ़ॉलो-अप कॉल, वाद्य और रिपोर्ट।",
+          "अंग्रेज़ी, तेलुगु या हिंदी में, हल्की या गहरी स्क्रीन के साथ।"
+        ]
+      }
+    }
+  ]
+}

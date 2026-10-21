@@ -6427,3 +6427,30 @@ text for everyone, and the Guru's own.
 **Consequences.** No personal data. 0052 must run before the update that shows it (without the table the row stays
 hidden and the editor cannot save). Praveen (or the Guru) adds the text in the app after 0052 runs. te/hi screen text is
 a draft for native review; the mantra text itself is never translated by the app.
+
+## 406. What's new: release notes bundled with each update, behind an ⓘ on My profile — 21 Oct 2026
+
+**Status: branch `whats-new` (lead chat 11's brief, Praveen's ask "add a info icon with whats new … track the changes as
+per versions through app"). JS only (OTA + web), fingerprint 23dc7e4a unchanged; no migration.**
+
+**Decision.** My profile (students and staff, one screen) has "ⓘ What's new" just above the version line: a button
+with a spoken label and a 44 px target. It opens What's new (`student/whats-new`, `staff/whats-new`): the releases
+newest first, each with its version label ("Version 1.0.0 · update (01a14a74)" / "· the app as installed (90c6d1cd)"),
+date and 3-8 plain lines in the reader's language (en/te/hi; te/hi drafts for native review). The notes are one
+bundled file, `app/src/content/whats-new.json`, so every update carries its own notes: no table, no migration, works
+offline. The newest **dated** entry is the one running ("You have this"), because the file came in the same bundle;
+for it the id shown is what the version line shows (the update id, or the web commit). An entry with `date: null` is
+not published yet and shows as "Coming in the next update". A small dot on the ⓘ shows until What's new is opened for
+the newest dated entry (device storage `whatsNewSeen`, nothing on the server).
+
+**Guard.** `scripts/lib/whats-new-check.mjs`: `update:production` stops when the newest entry has no date, still has a
+`_todo`, or is dated before the last commit to `app/src`, `app/assets` or `package-lock.json` (the notes file left out);
+preview and `--check-only` only print it. Two releases on one day are not told apart (dates have no time). The web
+export is not guarded: the live web goes up with the same commit as the production update.
+
+**Seeded** from OPERATIONS and git: APK 90c6d1cd (16 Oct 2026, launch), update 01a14a74 = group 4bcc0e21 (17 Oct
+2026, #397), and a waiting entry for main after it (launch clean-up #282-#287, under-18 home sign-up #399, What's new);
+its `_todo` asks the lead to add the Practice lines (0052) at that merge and the date at publish time.
+
+**Why.** Praveen wants students and staff to see in the app what each version changed. Notes in the bundle can never
+disagree with the code they describe, and the publish guard makes writing them part of every release.

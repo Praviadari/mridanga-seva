@@ -981,6 +981,16 @@
     "versionUpdate": "Version {{version}} · update of {{date}} ({{id}})",
     "versionWeb": "Web version {{site}} · {{commit}} · {{date}}"
   },
+  "whatsNew": {
+    "title": "What's new",
+    "intro": "What changed in each version of the app, newest first.",
+    "open": "What's new: what changed in each version",
+    "openNew": "What's new: what changed in each version. Something new since you last looked",
+    "labelInstalled": "Version {{version}} · the app as installed",
+    "labelUpdate": "Version {{version}} · update",
+    "comingNext": "Coming in the next update",
+    "youHaveThis": "You have this"
+  },
   "modules": {
     "instruments": "Instruments",
     "events": "Events"
