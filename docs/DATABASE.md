@@ -1589,8 +1589,8 @@ Tests: section "0050 staff dashboard" in `supabase/tests/smoke-test.mjs`.
   father / guardian), email (lower case) and mobile (E.164); the email to the parent (`mail_wanted_at`, claim, tries,
   `mail_outcome` sent / skipped / gave_up / Brevo's code, `mails_sent`); the code as `sha256('<login id>:<code>')`,
   `code_expires_at` (7 days), `code_tries` (5); the parent's answer (`consented_at`, `photo_consent`,
-  `consent_notice_version`). Deleted at Accept, after 30 days unanswered or 180 days unaccepted (`expire_minor_signups`,
-  job `mridanga-minor-signups`), or with the login.
+  `consent_notice_version`). Deleted at Accept; after 30 days unanswered or 180 days unaccepted the whole sign-up is
+  erased with `erase_login` (`expire_minor_signups`, job `mridanga-minor-signups`); deleted with the login.
 - `parent_mail_log`: consent emails handed to Brevo in the last two days, the address hashed (daily limits).
 - `handle_new_user`: under 18 with `parent_*` metadata keeps the date of birth and makes the request (errors
   `parent_name_invalid`, `parent_relation_invalid`, `parent_email_invalid`, `parent_email_own`, `parent_phone_invalid`,
@@ -1604,8 +1604,8 @@ Tests: section "0050 staff dashboard" in `supabase/tests/smoke-test.mjs`.
 - The Edge Function (service role): `claim_consent_codes(limit)` (a new code per claimed row, returned once) and
   `finish_consent_codes(claim, sent, skipped, retry, refused)`; `send_parent_notices()` calls `notify-parents` when a
   consent email is due (`consent_mails_due()`), whether or not check-out emails are on.
-- The desk: `waiting_sign_ups()` adds `parent` (`state`, `name`, `relation`, `email`, `phone`, `consented_at`,
-  `photo_consent`); `accept_minor_sign_up(profile, id_type)` writes the student (linked to the child's login), the
+- The desk: `waiting_sign_ups()` lists a child only once the parent consented and adds `parent` (`state`, `name`, `relation`, `email`, `phone`, `consented_at`,
+  `photo_consent`); `accept_minor_sign_up(profile, id_type)` (the kind of the PARENT's ID seen, Rule 10) writes the student (linked to the child's login), the
   guardian and the `email_code` consents (`given_at` = `otp_verified_at` = the parent's time) and deletes the request;
   errors as `accept_sign_up` plus `not_a_minor`, `minor_needs_desk`, `parent_not_consented`, `id_type_required`.
   `guard_consent_guardian` lets an `email_code` consent in only from that function.
@@ -1784,7 +1784,7 @@ and the helpers `my_role`, `is_guru`, `is_staff`,
 | `mridanga-orphan-files` | 02:00 UTC = 07:30 IST | `orphan_files_daily()` — asks the Edge Function (`{"cleanup": true}`) to delete announcement files no announcement lists (0040), and assessment files nothing lists (0049) |
 | `mridanga-cron-history-purge` | 02:15 UTC = 07:45 IST | Deletes pg_cron's run details older than 7 days (0040) |
 | `mridanga-parent-notices` | Every minute | `send_parent_notices()` — calls the Edge Function `notify-parents` when a parent email waits; nothing while switched off (0043); since 0051 also when a consent email to a child's parent waits, switched off or not |
-| `mridanga-minor-signups` | 20:45 UTC = 02:15 IST | `expire_minor_signups()` — deletes children's parent-consent requests unanswered for 30 days, or consented and not accepted for 180 days (0051) |
+| `mridanga-minor-signups` | 20:45 UTC = 02:15 IST | `expire_minor_signups()` — erases (`erase_login`) a child's sign-up whose parent did not consent within 30 days, or that the desk did not accept within 180 days (0051) |
 
 ## Who can see what
 

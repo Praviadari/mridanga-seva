@@ -1,8 +1,9 @@
 // The waiting screen's card for a child who signed up at home (migration 0051, docs/DECISIONS.md #399): where the
 // parent's consent stands and what the child can do. Waiting: the address the email went to (or that emails to
 // parents are not switched on yet, or that it could not be sent), "Send the email again" and "Change my parent's
-// details". Consented: come to the desk with an ID. No request (an older sign-up, or one unanswered for 30 days):
-// the parent's details, then the email goes. It asks again every 30 s while waiting, like the screen itself (#380).
+// details", and the day the sign-up is erased without consent (30 days). Consented: come to the desk with the
+// parent's ID. No request (rare: an older sign-up): the parent's details, then the email goes. It asks again every
+// 30 s while waiting, like the screen itself (#380).
 
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -25,7 +26,7 @@ import {
   type ParentField,
 } from '@/data/minor-signup';
 import { RELATIONS, type Relation } from '@/data/students';
-import { formatDateTime } from '@/lib/dates';
+import { formatDateTime, formatTypedDate } from '@/lib/dates';
 import { classLocale } from '@/lib/class-locale';
 import { formatPhone, isPhoneCountry, splitE164, toE164, type CountryCode } from '@/lib/phone';
 import { spacing } from '@/theme/use-theme';
@@ -136,6 +137,11 @@ export function ParentConsentCard({ childEmail, onChanged }: ParentConsentCardPr
       <AppText variant="small" tone="muted">
         {t('minorSignUp.card.waitingHint', { name: consent.parentName ?? '' })}
       </AppText>
+      {consent.expiresAt ? (
+        <AppText variant="small" tone="muted">
+          {t('minorSignUp.card.expires', { date: formatTypedDate(consent.expiresAt.slice(0, 10)) })}
+        </AppText>
+      ) : null}
       {notice ? <Notice tone="success">{t(notice)}</Notice> : null}
       {error ? <Notice tone="error">{t(error)}</Notice> : null}
       {consent.mail !== 'waiting' && consent.mailsLeft > 0 ? (

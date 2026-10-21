@@ -1242,10 +1242,13 @@ A child under 18 can sign up at home with a parent's or guardian's name, relatio
 ([DECISIONS.md #399](DECISIONS.md)). Once the child confirms their own email, the parent gets **one**
 email with a 6-digit code and the address of the consent page (`<web app>/parent-consent`). The parent
 types the code there, declares being the parent or guardian and 18 or over, and consents (photos
-separately). At the child's first class a coordinator opens Register a student, sees "Parent consented
-by email; ID not yet seen", looks at an ID of the parent or of the child and taps Accept with the kind of
-ID: the student, the guardian and the consents are saved together. A child whose parent has not answered
-shows "waiting for the parent's consent by email" (Fill the form still works with the parent at the desk).
+separately). Coordinators do not see the sign-up until then. At the child's first class a coordinator
+opens Register a student, sees "Parent consented by email; parent's ID not yet seen", looks at the
+**parent's** ID (the child brings it, or the parent comes: the parent's name, and 18 or over) and taps
+Accept with the kind of ID: the student, the guardian and the consents are saved together. If the parent
+does not consent within 30 days, the job `mridanga-minor-signups` erases the child's whole sign-up
+(`erase_login`, tombstone reference `minor-signup-expiry`). A parent who comes to the desk can still
+give the written consent there (Fill the form).
 
 It goes: `minor_signups` (one row per child) → job `mridanga-parent-notices` (every minute, also when
 check-out emails are off) → Edge Function `notify-parents` (`claim_consent_codes`, a new code each time,
@@ -1279,11 +1282,11 @@ class domain serves the web app).
           code_expires_at = now() + interval '7 days', code_tries = 0
     where profile_id = (select id from auth.users where email = '<the test child''s email>');
    ```
-4. As a coordinator: Register a student → the child → Accept → choose the ID → the roll number. Then
+4. As a coordinator: Register a student → the child (shown only after step 3's consent) → Accept → the kind of the parent's ID → the roll number. Then
    delete the test login (Authentication → Users) when done.
 
-**On LIVE:** the order is in GO_LIVE_CHECKLIST row M0051 and DECISIONS #399 ("Mail on LIVE"): deploy
-`notify-parents`, set `BREVO_API_KEY` + `NOTICE_FROM` (+ `NOTICE_REPLY_TO`), run 0051, one test with a
+**On LIVE:** the order is in GO_LIVE_CHECKLIST row M0051 and DECISIONS #399 ("Mail on LIVE"): 0049 first (0051 uses
+`erase_login`), deploy `notify-parents`, set `BREVO_API_KEY` + `NOTICE_FROM` (+ `NOTICE_REPLY_TO`), run 0051, one test with a
 team member's address, then the OTA. Setting the key does **not** switch on check-out emails (G10) and
 does not touch the Vault (the Ishtagoshti parent code stays off, audit S3-01).
 

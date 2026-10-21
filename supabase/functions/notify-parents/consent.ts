@@ -81,8 +81,8 @@ const TEXTS: Record<Language, Texts> = {
     steps: 'Type this email address and the code below, read the summary of the privacy notice, and tick the boxes.',
     code: 'Your code: {code}',
     valid: 'The code works until {date}. Do not share it with anyone, not even your child: the page is for you.',
-    desk: 'At the first class, the class desk will ask to see your ID or your child\'s ID (only the kind of ID is noted, never its number).',
-    notYou: 'If you do not know about this sign-up, or do not agree, do nothing: nothing more happens without your consent.',
+    desk: 'At the first class, the class desk will ask to see your ID (your child can bring it, or you come): your name and that you are 18 or over. Only the kind of ID is noted, never its number.',
+    notYou: 'If you do not know about this sign-up, or do not agree, do nothing: without your consent the sign-up is deleted after 30 days.',
     signature: 'Mridanga Seva',
   },
   te: {
@@ -94,8 +94,8 @@ const TEXTS: Record<Language, Texts> = {
     steps: 'ఈ ఈమెయిల్ చిరునామా మరియు క్రింది కోడ్‌ను టైప్ చేసి, గోప్యతా నోటీసు సారాంశాన్ని చదివి, పెట్టెలను టిక్ చేయండి.',
     code: 'మీ కోడ్: {code}',
     valid: 'ఈ కోడ్ {date} వరకు పనిచేస్తుంది. దీన్ని ఎవరితోనూ, మీ పిల్లలతో కూడా పంచుకోవద్దు: ఈ పేజీ మీ కోసమే.',
-    desk: 'మొదటి తరగతిలో, తరగతి డెస్క్ మీ లేదా మీ పిల్లల గుర్తింపు కార్డును చూడమని అడుగుతుంది (కార్డు రకం మాత్రమే నమోదు చేస్తారు, దాని నంబర్ ఎప్పుడూ కాదు).',
-    notYou: 'ఈ నమోదు గురించి మీకు తెలియకపోతే, లేదా మీరు అంగీకరించకపోతే, ఏమీ చేయకండి: మీ సమ్మతి లేకుండా ఇంకేమీ జరగదు.',
+    desk: 'మొదటి తరగతిలో, తరగతి డెస్క్ మీ గుర్తింపు కార్డును చూడమని అడుగుతుంది (మీ పిల్లలు తీసుకురావచ్చు, లేదా మీరే రావచ్చు): మీ పేరు, మీ వయస్సు 18 లేదా అంతకు మించి. కార్డు రకం మాత్రమే నమోదు చేస్తారు, దాని నంబర్ ఎప్పుడూ కాదు.',
+    notYou: 'ఈ నమోదు గురించి మీకు తెలియకపోతే, లేదా మీరు అంగీకరించకపోతే, ఏమీ చేయకండి: మీ సమ్మతి లేకుండా ఈ నమోదు 30 రోజుల తర్వాత తొలగించబడుతుంది.',
     signature: 'మృదంగ సేవ',
   },
   hi: {
@@ -107,8 +107,8 @@ const TEXTS: Record<Language, Texts> = {
     steps: 'यह ईमेल पता और नीचे दिया गया कोड टाइप करें, गोपनीयता सूचना का सारांश पढ़ें, और बॉक्स पर टिक करें।',
     code: 'आपका कोड: {code}',
     valid: 'यह कोड {date} तक काम करता है। इसे किसी के साथ साझा न करें, अपने बच्चे के साथ भी नहीं: यह पेज आपके लिए है।',
-    desk: 'पहली कक्षा में, कक्षा डेस्क आपका या आपके बच्चे का पहचान पत्र देखना चाहेगा (केवल पहचान पत्र का प्रकार लिखा जाता है, उसका नंबर कभी नहीं)।',
-    notYou: 'अगर आपको इस पंजीकरण के बारे में नहीं पता, या आप सहमत नहीं हैं, तो कुछ न करें: आपकी सहमति के बिना आगे कुछ नहीं होगा।',
+    desk: 'पहली कक्षा में, कक्षा डेस्क आपका पहचान पत्र देखना चाहेगा (बच्चा ला सकता है, या आप स्वयं आएँ): आपका नाम और कि आपकी आयु 18 वर्ष या अधिक है। केवल पहचान पत्र का प्रकार लिखा जाता है, उसका नंबर कभी नहीं।',
+    notYou: 'अगर आपको इस पंजीकरण के बारे में नहीं पता, या आप सहमत नहीं हैं, तो कुछ न करें: आपकी सहमति के बिना यह पंजीकरण 30 दिन बाद मिटा दिया जाता है।',
     signature: 'मृदंग सेवा',
   },
 };

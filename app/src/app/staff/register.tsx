@@ -26,10 +26,9 @@
 // Since the launch audit (15-10-2026, docs/DECISIONS.md #390) Next and Accept ask possible_duplicates (0047, #274) and
 // show "Possible duplicate" above Save and on Accept's card: a record or sign-up with the same name and date of birth,
 // or the same phone, with a button to open the record. A warning only.
-// Since 0051 (docs/DECISIONS.md #399) a child who signed up at home shows whether the parent consented by email. While the parent has not,
-// the row says so and offers Fill the form (the parent at the desk). Once they have: Accept, whose card shows the parent's details and asks
-// which ID the coordinator saw (the parent's or the child's; only its kind is kept), then registers the child with the guardian and the
-// parent's consents (accept_minor_sign_up).
+// Since 0051 (docs/DECISIONS.md #399) a child who signed up at home appears here only once the parent consented by email (before that the
+// data serves only to ask for consent). Accept's card shows the parent's details and asks which kind of the PARENT's ID the coordinator saw
+// (name and age 18+; only its kind is kept), then registers the child with the guardian and the parent's consents (accept_minor_sign_up).
 
 import { router, Stack, useFocusEffect } from 'expo-router';
 import { use, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -613,7 +612,7 @@ export default function RegisterStudentScreen() {
                           .filter(Boolean)
                           .join('\n')}
                       </Notice>
-                      <AppText variant="label">{t(w.parent ? 'register.minorAccept.checkId' : 'register.acceptCheckId')}</AppText>
+                      <AppText variant="label">{w.parent ? t('register.minorAccept.checkId', { name: w.parent.name }) : t('register.acceptCheckId')}</AppText>
                       {w.parent ? (
                         <ChoiceGroup
                           label={t('register.minorAccept.idSeen')}
@@ -649,7 +648,6 @@ export default function RegisterStudentScreen() {
                       w.phone ? formatPhone(w.phone) : '',
                       t('register.signedUpOn', { when: formatDateTime(w.created_at) }),
                       action === 'noNotice' ? t('register.waitingNoNotice') : '',
-                      action === 'minorWaiting' ? t('register.minorAccept.rowWaiting') : '',
                       action === 'acceptMinor' ? t('register.minorAccept.rowConsented') : '',
                     ].filter(Boolean)}
                     action={

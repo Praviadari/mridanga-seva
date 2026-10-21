@@ -524,7 +524,7 @@
     "adultNoticeShown": "I showed them the privacy notice (kept on the record).",
     "checkInNow": "Check {{name}} in now",
     "minorAccept": {
-      "idRequired": "Choose which ID you saw.",
+      "idRequired": "Choose the kind of the parent's ID you saw.",
       "notConsented": "The parent has not given consent by email yet. Wait, or use Fill the form with the parent at the desk.",
       "notMinor": "This person is 18 or over: use Accept for adults (reload the list).",
       "parentEmailTaken": "The parent's email is already on a child's own record. Use Fill the form and check the details.",
@@ -533,10 +533,9 @@
       "consentedOn": "Parent consented by email on {{when}}",
       "photoYes": "Photos: agreed",
       "photoNo": "Photos: not agreed",
-      "checkId": "Check an ID of the parent or of the child (for example Aadhaar) and the child's name against it. Only the kind of ID is kept.",
-      "idSeen": "ID you saw",
-      "rowWaiting": "Under 18: waiting for the parent's consent by email",
-      "rowConsented": "Parent consented by email; ID not yet seen"
+      "checkId": "Check the parent's ID (for example Aadhaar): the name is {{name}} and the age is 18 or over. Only the kind of ID is kept.",
+      "idSeen": "Parent's ID you saw",
+      "rowConsented": "Parent consented by email; parent's ID not yet seen"
     }
   },
   "statuses": {
@@ -3842,7 +3841,7 @@
   "minorSignUp": {
     "dobHint": "Under 18: a parent or guardian gives consent by email. Add their details below.",
     "parentTitle": "Your parent or guardian",
-    "parentIntro": "We email them once with a code. They give consent on a short page; then you come to your first class with an ID (yours or theirs).",
+    "parentIntro": "We email them once with a code. They give consent on a short page; then you come to your first class with your parent's ID (or your parent comes).",
     "parentName": "Parent's or guardian's full name",
     "parentNameRequired": "Enter your parent's or guardian's name.",
     "parentEmail": "Parent's or guardian's email",
@@ -3852,10 +3851,10 @@
     "parentPhoneRequired": "Enter your parent's or guardian's mobile number.",
     "checkEmailParentTitle": "Then we email your parent",
     "checkEmailParent": "Once you confirm your email, we send {{email}} one email with a code and a link. Your parent opens the link and gives consent.",
-    "nextStep": "After your parent consents, come to your first class with your ID or your parent's. A coordinator checks it and registers you.",
+    "nextStep": "After your parent consents, come to your first class with your parent's ID (for example Aadhaar), or with your parent. A coordinator checks it and registers you.",
     "stepParent": "Your parent gives consent by email",
     "stepParentHint": "They open the link in our email and type the code.",
-    "stepDeskHint": "Bring your ID or your parent's. A coordinator checks it and registers you.",
+    "stepDeskHint": "Bring your parent's ID, or your parent. A coordinator checks it and registers you.",
     "errors": {
       "tooSoon": "Please wait 10 minutes before sending another email.",
       "limit": "No more emails can go to your parent for now (the limit is reached). Try again tomorrow, or come to the class desk with your parent.",
@@ -3877,7 +3876,8 @@
       "save": "Save and email my parent",
       "before": "Now: {{phone}}, {{email}}",
       "consentedTitle": "Your parent has given consent",
-      "consentedBody": "Come to your first class with your ID or your parent's. A coordinator checks it and registers you; then your home opens here by itself."
+      "consentedBody": "Come to your first class with your parent's ID (for example Aadhaar), or with your parent. A coordinator checks it and registers you; then your home opens here by itself.",
+      "expires": "If your parent has not consented by {{date}}, this sign-up is deleted with everything in it; you can then sign up again."
     }
   },
   "parentConsent": {
@@ -3889,8 +3889,8 @@
       "why": "Why: only to run the class and keep children safe. Never sold, never used for advertising.",
       "who": "Who sees it: the class's facilitator and coordinators; your child sees their own record.",
       "where": "Where: the app's database is in Sydney, Australia; the emails go through Brevo (European Union).",
-      "keep": "How long: while your child is in the class. If you do not consent, your details are deleted after 30 days.",
-      "rights": "Your rights: see, correct or delete the data, or withdraw consent at any time, at the class desk or by writing to the class."
+      "keep": "How long: while your child is in the class. If you do not consent within 30 days, your child's sign-up and your details are deleted.",
+      "rights": "Your rights: see, correct or delete the data, or withdraw consent at any time, at the class desk or by writing to the class; and complain to the Data Protection Board of India."
     },
     "fullNotice": "Read the full privacy notice",
     "email": "Your email",
@@ -3918,7 +3918,7 @@
     "yourChild": "your child",
     "donePhotoYes": "You agreed to photos.",
     "donePhotoNo": "You did not agree to photos: none will be kept.",
-    "doneDesk": "At the first class, please send your ID or your child's (for example Aadhaar): a coordinator checks it before registering your child. Only the kind of ID is noted, never its number.",
+    "doneDesk": "At the first class, please send your ID with your child, or come yourself (for example Aadhaar): a coordinator checks your name and that you are 18 or over before registering your child. Only the kind of ID is noted, never its number.",
     "doneWithdraw": "You can withdraw consent at any time, at the class desk or by writing to the class."
   }
 }

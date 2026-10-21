@@ -127,7 +127,7 @@ process.on('uncaughtException', (error) => {
 // D14-10: every check is counted, and the run fails when fewer (or more) checks ran than expected,
 // so a block skipped by a renamed migration or a commented-out section cannot pass unseen.
 // Adding or removing checks? Run the suite and set this to the new total it prints.
-const EXPECTED_CHECKS = 1829; // 0052 more practice: +56; 0051 child's sign-up at home: +79; 0050 staff dashboard: +15; 0049 launch clean-up: +30; 0048 withdrawn records and leaks: +50; 0047 form rules: +109; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
+const EXPECTED_CHECKS = 1830; // 0052 more practice: +56; 0051 child's sign-up at home: +80; 0050 staff dashboard: +15; 0049 launch clean-up: +30; 0048 withdrawn records and leaks: +50; 0047 form rules: +109; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
 let failures = 0;
 let passes = 0;
 
@@ -6043,8 +6043,8 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
     (await asOwner('select consent_mails_due() as r'))[0].r === true && (await asOwner('select send_parent_notices() as r'))[0].r === 'not_set_up');
   const list51 = async (userId) => ((await asApp('authenticated', userId, 'select waiting_sign_ups() as r'))[0].r ?? []).find((w) => w.id === child51);
   const w51 = await list51(coordinator);
-  check('0051: Register a student lists the child with the parent\'s part: waiting for the parent',
-    w51?.parent?.state === 'awaiting_parent' && w51.parent.email === 'radha.51@example.com' && w51.dob === dob51, JSON.stringify(w51?.parent));
+  check('0051 s.9(1): before the parent consents, Register a student does not show the child (data only to ask for consent)',
+    w51 === undefined, JSON.stringify(w51?.parent));
   check('0051: an adult\'s sign-up has no parent part', (await asApp('authenticated', guru, 'select waiting_sign_ups() as r'))[0].r
     .filter((w) => w.id !== child51).every((w) => w.parent === null));
 
@@ -6109,7 +6109,9 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   check('0051: the child sees the consent; About you opens', (await state51(child51)).state === 'consented'
     && (await asApp('authenticated', child51, `select save_about_me('{"about_state":"skipped"}'::jsonb) as r`))[0].r.about_state === 'skipped');
   await refusesWith('0051: no new email after consent', 'not_awaiting_parent', () => asApp('authenticated', child51, 'select resend_parent_email()'));
-  check('0051: the desk list says the parent consented', (await list51(coordinator))?.parent?.state === 'consented');
+  const w51c = await list51(coordinator);
+  check('0051: once the parent consented, Register a student shows the child with the parent\'s part',
+    w51c?.parent?.state === 'consented' && w51c.parent.email === 'radha.51@example.com' && w51c.dob === dob51, JSON.stringify(w51c?.parent));
 
   // The desk: Accept for adults still refuses a child; the child's Accept needs the ID seen.
   await refusesWith('0051: Accept for adults still refuses a child', 'minor_needs_desk', () =>
@@ -6205,13 +6207,22 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   check('0051: a dry run sends nothing and the child sees "not switched on"', dry51.skipped === 1 && dry51.dryRun === true
     && (await state51(third51)).mail === 'not_set_up' && (await request51(third51)).mails_sent === 0);
 
-  // Unanswered for 30 days: the request goes; the child may give the parent's details again.
+  // No consent in 30 days, no data: the whole sign-up is erased (erase_login), with a tombstone.
   await asOwner(`update minor_signups set created_at = now() - interval '31 days' where profile_id = '${third51}'`);
-  check('0051: the daily job deletes a request unanswered for 30 days', (await asOwner('select expire_minor_signups() as n'))[0].n === 1
-    && (await request51(third51)) === null && (await state51(third51)).state === 'needs_parent');
+  const gone51 = async (id) => (await asOwner(`select (select count(*) from auth.users where id = '${id}')::int
+    + (select count(*) from profiles where id = '${id}')::int + (select count(*) from person_details where profile_id = '${id}')::int as n`))[0].n;
+  check('0051: the daily job erases a child\'s sign-up unanswered for 30 days: login, details and the parent\'s details',
+    (await asOwner('select expire_minor_signups() as n'))[0].n === 1 && (await request51(third51)) === null && (await gone51(third51)) === 0);
+  check('0051: ... and keeps a tombstone (erasures, reason, reference)', (await asOwner(
+    `select request_ref from erasures where login_profile = '${third51}'`))[0]?.request_ref === 'minor-signup-expiry');
   check('0051: the job is scheduled daily', (await asOwner(`select command from cron.job where jobname = 'mridanga-minor-signups'`))[0]?.command === 'select expire_minor_signups()');
-  check('0051: the child gives the parent\'s details again', (await asApp('authenticated', third51,
-    `select set_parent_details('Shyam Fiftyone', 'father', 'shyam.51@example.com', '+919800051054') as r`))[0].r.state === 'awaiting_parent');
+  // A child the desk registered by hand meanwhile (written consent, the parent at the desk) keeps the login: only the request goes.
+  const byHand51 = await signUp51('desk.51@example.com', { ...parent51, full_name: 'Desk Fiftyone', parent_email: 'desk.parent.51@example.com' }, true);
+  await register(coordinator, { p_full_name: 'Desk Fiftyone', p_dob: dob51, p_email: 'desk.51@example.com', p_guardian_name: 'Desk Parent',
+    p_guardian_phone: '9876500051', p_guardian_relation: 'mother', p_id_type_checked: 'aadhaar', p_written_consent: true });
+  await asOwner(`update minor_signups set created_at = now() - interval '31 days' where profile_id = '${byHand51}'`);
+  check('0051: a child registered at the desk by hand keeps the login when the request ends',
+    (await asOwner('select expire_minor_signups() as n'))[0].n === 1 && (await request51(byHand51)) === null && (await gone51(byHand51)) > 0);
 
   // The email's text: names hold no link (S3-01), every language has the code and the page.
   for (const language of ['en', 'te', 'hi']) {
@@ -6225,9 +6236,10 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
     === 'https://mridangaseva.com/parent-consent' && consentPageUrl('https://qeozvvizcojzxcjgnaei.supabase.co', 'javascript:alert(1)', 'hi')
     === 'https://mridanga-seva.pages.dev/parent-consent?lang=hi');
 
-  // Erasing the login takes the request with it.
-  await asOwner(`delete from auth.users where id = '${third51}'`);
-  check('0051: deleting the login deletes the request', (await request51(third51)) === null);
+  // Deleting a login (Authentication -> Users) takes the request with it.
+  const cascade51 = await signUp51('cascade.51@example.com', { ...parent51, parent_email: 'cascade.parent.51@example.com' });
+  await asOwner(`delete from auth.users where id = '${cascade51}'`);
+  check('0051: deleting the login deletes the request', (await request51(cascade51)) === null);
   await asOwner(`delete from parent_mail_log`);
 }
 

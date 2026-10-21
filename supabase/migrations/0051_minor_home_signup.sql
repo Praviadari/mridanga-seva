@@ -5,7 +5,8 @@
 -- 1. The child signs up as an adult does, plus the parent's name, relation (mother, father or
 --    guardian), email and mobile number. handle_new_user keeps them in minor_signups and keeps the
 --    child's date of birth. Nothing more about the child is processed until the parent consents:
---    About you refuses (minor_awaits_parent) and the app hides it.
+--    About you refuses (minor_awaits_parent) and the app hides it, and the desk does not see the
+--    sign-up yet (waiting_sign_ups leaves it out): before consent the data serves only to ask for it.
 -- 2. Once the child's email is confirmed, the parent gets one email with a 6-digit code and the
 --    address of the consent page (/parent-consent on the web app; never the code in a link). The
 --    Edge Function notify-parents sends it through Brevo (claim_consent_codes /
@@ -19,17 +20,22 @@
 --    guardian and 18 or over, and ticks the data consent (photos separately, unticked):
 --    give_parent_consent, the one function anon may run besides sign_up_choices. Wrong code, no such
 --    request or an unknown email all answer 'wrong'.
--- 4. The desk (Register a student) sees the sign-up with "parent consented by email, ID not yet
---    seen". Its Accept (accept_minor_sign_up) takes the ID the coordinator saw and writes the
+-- 4. Once the parent consented, the desk (Register a student) sees the sign-up with "parent consented
+--    by email; parent's ID not yet seen". Its Accept (accept_minor_sign_up) takes the kind of the
+--    PARENT's ID the coordinator saw (Rule 10: the parent is an identifiable adult; name and age on
+--    the ID; the child brings it or the parent comes) and writes the
 --    student, the guardian and the consents (scope data, and photo if given; method email_code;
 --    given_at and otp_verified_at = the parent's time) in one step, and links the child's own login
 --    (the login the parent consented for; an exception to #276's "never by email", made explicitly
 --    by staff). Without the parent's consent it answers minor_needs_desk (no request) or
 --    parent_not_consented. accept_sign_up (adults) is not changed.
--- 5. A request the parent does not answer in 30 days is deleted (the parent's details with it) by
---    the daily job mridanga-minor-signups; a consented one that the desk never accepted goes after
---    180 days, when the sign-up leaves the desk list.
--- Needs 0001-0050. Safe to run twice.
+-- 5. No consent, no data: when the parent does not answer in 30 days, the daily job
+--    mridanga-minor-signups ERASES the child's whole sign-up (erase_login, 0049: the login, its
+--    details, the request with the parent's details; a tombstone in erasures); a consented sign-up
+--    the desk never accepted goes the same way after 180 days, when it leaves the desk list.
+-- The Rules are read strictly, without a lawyer (Praveen, 21-10-2026: a seva, not commercial;
+-- docs/DECISIONS.md #399 "How we read the Rules").
+-- Needs 0001-0050, 0049 included (erase_login). Safe to run twice.
 
 -- ---------------------------------------------------------------- 1. the request
 create table if not exists minor_signups (
@@ -528,8 +534,9 @@ end $$;
 
 -- ---------------------------------------------------------------- 6. the desk
 -- 0047's waiting list, with the parent's part of a child's home sign-up: parent = null (an adult,
--- or a child without a request) or {state: awaiting_parent | consented, name, relation, email,
--- phone, consented_at, photo_consent}.
+-- or a child without a request) or {state: consented, name, relation, email, phone, consented_at,
+-- photo_consent}. A child whose parent has not consented yet is left out (s.9(1): nothing but asking
+-- for consent before it is given); the state field stays for the app.
 create or replace function waiting_sign_ups() returns jsonb
 language sql stable security definer set search_path = public, pg_temp as $$
   select case when not is_staff() then null else coalesce((
@@ -555,6 +562,7 @@ language sql stable security definer set search_path = public, pg_temp as $$
      where p.role in ('pending', 'student') and p.active and u.email_confirmed_at is not null
        and not exists (select 1 from students s where s.profile_id = p.id)
        and not exists (select 1 from ig_subscribers i where i.profile_id = p.id)
+       and (m.profile_id is null or m.consented_at is not null)
        and (is_guru() or p.centre_id = (select me.centre_id from profiles me where me.id = auth.uid()))
        and p.created_at > now() - interval '180 days'), '[]') end
 $$;
@@ -578,8 +586,8 @@ end $$;
 
 -- Accept for a child under 18 whose parent consented by email (Register a student; 0048's
 -- accept_sign_up stays as it is for adults and still answers minor_needs_desk for a child, so old
--- apps keep working). p_id_type_checked names the ID the coordinator saw, the parent's or the
--- child's (id_type_required). The student (linked to the child's own login), the guardian and the
+-- apps keep working). p_id_type_checked names the kind of the PARENT's ID the coordinator saw, with
+-- the parent's name and an age of 18 or over on it (Rule 10; id_type_required). The student (linked to the child's own login), the guardian and the
 -- consents (data, and photo when given; method email_code; given_at and otp_verified_at = when the
 -- parent consented; verified_by = the coordinator) are written together, then the request is
 -- deleted. Errors as accept_sign_up, and not_a_minor (an adult: use accept_sign_up),
@@ -634,7 +642,7 @@ begin
     raise exception 'parent_not_consented' using detail = 'The parent has not given consent on the consent page yet.';
   end if;
   if v_id is null or v_id not in ('aadhaar', 'pan', 'driving_licence', 'passport', 'voter_id', 'other') then
-    raise exception 'id_type_required' using detail = 'Choose the ID you saw (the parent''s or the child''s).';
+    raise exception 'id_type_required' using detail = 'Choose the kind of the parent''s ID you saw.';
   end if;
   if btrim(coalesce(v_p.full_name, '')) = '' then raise exception 'name_required'; end if;
   if exists (select 1 from students w where lower(w.email) = v_email and w.withdrawn_at is not null) then
@@ -663,18 +671,35 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------- 7. expiry (daily)
--- A request the parent did not answer in 30 days goes (the parent's details and the code with it):
--- the sign-up then waits as an under-18 sign-up without a request (the desk with a parent, or the
--- child gives the parent's details again). A consented request the desk never accepted goes after
--- 180 days, when the sign-up leaves the desk list. The mail log keeps two days.
+-- No consent, no data. A request the parent did not answer in 30 days, or a consented one the desk
+-- never accepted in 180 days: the child's whole sign-up is erased with erase_login (0049: the login,
+-- its details and this request; a tombstone in erasures). Only the request goes when the login is no
+-- longer a waiting sign-up, or when the desk registered the child by hand with the parent (a record
+-- with the login's email). The mail log keeps two days. Returns how many requests ended.
 create or replace function expire_minor_signups() returns int
 language plpgsql volatile set search_path = public, pg_temp as $$
-declare v_n int;
+declare
+  r   record;
+  v_n int := 0;
 begin
-  delete from minor_signups m
-   where (m.consented_at is null and m.created_at < now() - (minor_mail_limits() ->> 'unanswered_days')::int * interval '1 day')
-      or (m.consented_at is not null and m.created_at < now() - interval '180 days');
-  get diagnostics v_n = row_count;
+  for r in
+    select m.profile_id, m.consented_at from minor_signups m
+     where (m.consented_at is null and m.created_at < now() - (minor_mail_limits() ->> 'unanswered_days')::int * interval '1 day')
+        or (m.consented_at is not null and m.created_at < now() - interval '180 days')
+  loop
+    if not exists (select 1 from students s join auth.users u on lower(s.email) = lower(u.email) where u.id = r.profile_id) then
+      begin
+        perform erase_login(r.profile_id,
+          case when r.consented_at is null then 'Under 18: the parent did not consent within 30 days (#399).'
+               else 'Under 18: consented by email but not registered at the desk within 180 days (#399).' end,
+          'minor-signup-expiry');
+      exception when others then
+        null;  -- not a waiting sign-up any more: only the request goes (below)
+      end;
+    end if;
+    delete from minor_signups where profile_id = r.profile_id;
+    v_n := v_n + 1;
+  end loop;
   delete from parent_mail_log l where l.sent_at < now() - interval '2 days';
   return v_n;
 end $$;
@@ -701,7 +726,7 @@ grant execute on function minor_mail_limits(), parent_address_hash(text), parent
   to service_role;
 
 -- ---------------------------------------------------------------- descriptions
-comment on table minor_signups is 'A child''s sign-up at home (under 18): the parent''s name, relation, email and phone, the email with the hashed 6-digit code, and the parent''s consent from the consent page. Deleted at Accept (then guardians + consents), after 30 days unanswered, or 180 days unaccepted (0051, docs/DECISIONS.md #399).';
+comment on table minor_signups is 'A child''s sign-up at home (under 18): the parent''s name, relation, email and phone, the email with the hashed 6-digit code, and the parent''s consent from the consent page. Deleted at Accept (then guardians + consents); after 30 days unanswered, or 180 days unaccepted, the whole sign-up is erased (0051, docs/DECISIONS.md #399).';
 comment on table parent_mail_log is 'Consent emails handed to Brevo in the last two days (address hashed), for the per-address and app-wide daily limits (0051).';
 comment on function minor_mail_limits() is 'The limits of the parent consent emails and codes (0051): per sign-up, per address a day, app-wide a day, minutes between requests, code days and tries, days unanswered.';
 comment on function parent_address_hash(text) is 'Internal: sha256 of a lower-case email address (0051).';
@@ -718,7 +743,7 @@ comment on function claim_consent_codes(int) is 'Edge Function only: claims read
 comment on function finish_consent_codes(uuid, uuid[], uuid[], uuid[], jsonb) is 'Edge Function only: records sent, skipped (dry run), retry and refused consent emails of one claim (0051).';
 comment on function send_parent_notices() is 'Every minute (pg_cron mridanga-parent-notices): calls the Edge Function notify-parents when a parent notice waits (while switched on) or a consent email waits (0043, 0051); answers off, nothing_due, not_set_up or called.';
 comment on function give_parent_consent(text, text, boolean, boolean, boolean, text) is 'The consent page (anyone): the parent''s email, the code, the two declarations and the photo choice; answers consented, already, wrong, too_many, expired, closed, child_signed_in or declaration_required (0051).';
-comment on function waiting_sign_ups() is 'C2 (staff): confirmed sign-ups waiting for the desk, with what they gave, the notice version they ticked (#280) and a child''s parent-consent request (0051).';
+comment on function waiting_sign_ups() is 'C2 (staff): confirmed sign-ups waiting for the desk, with what they gave, the notice version they ticked (#280) and a child''s parent consent; a child whose parent has not consented is left out (0051).';
 comment on function guard_consent_guardian() is 'Trigger: a consent''s guardian belongs to the same student (#272); an email-code consent only from accept_minor_sign_up (0051).';
-comment on function accept_minor_sign_up(uuid, text) is 'Staff (a coordinator: own centre): registers a child under 18 whose parent consented by email, with the ID seen: the student linked to the child''s login, the guardian and the email-code consents; a second call returns the first record (repeated) (0051).';
-comment on function expire_minor_signups() is 'Daily (pg_cron mridanga-minor-signups): deletes parent-consent requests unanswered for 30 days, or consented and not accepted for 180 days (0051).';
+comment on function accept_minor_sign_up(uuid, text) is 'Staff (a coordinator: own centre): registers a child under 18 whose parent consented by email, with the kind of the parent''s ID seen: the student linked to the child''s login, the guardian and the email-code consents; a second call returns the first record (repeated) (0051).';
+comment on function expire_minor_signups() is 'Daily (pg_cron mridanga-minor-signups): erases a child''s sign-up whose parent did not consent within 30 days, or that the desk did not accept within 180 days (erase_login); returns how many ended (0051).';

@@ -55,8 +55,9 @@ hand. The app makes it quicker and lets you see your own progress.
    - **Date of birth**: pick the day, month and year. **Under 18?** The form then asks for your parent's
      or guardian's name, relation, email and mobile number. After you confirm your own email, we email
      your parent once with a code; they give consent on a short page. Then come to your first class
-     with your ID or your parent's: a coordinator checks it and registers you. (You can also still come
-     to the desk with a parent.)
+     with your parent's ID (or with your parent): a coordinator checks it and registers you. Without
+     the parent's consent in 30 days the sign-up is deleted. (You can also still come to the desk with
+     a parent.)
    - **Gender**: each student gets a coordinator of the same gender.
    - **Mobile number**: pick the country (your centre's is chosen first), then type the number.
    - **Your class centre**: country, then city, then the centre (with one centre it is already chosen).

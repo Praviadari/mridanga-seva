@@ -28,12 +28,12 @@ test("the parent's details: a name by the name rule, mother / father / guardian,
   assert.equal(checkParentDetails({ ...good, phone: null, phoneTyped: true }, 'c@example.com').parentPhone, 'about.errors.phoneInvalid');
 });
 
-test('Register a student: a child whose parent consented gets Accept; one waiting for the parent, the form', () => {
+test('Register a student: a child whose parent consented gets Accept; otherwise the form', () => {
   const year = new Date().getFullYear();
   const child = { full_name: 'Gopal Rao', dob: `${year - 12}-03-10`, notice_version: '0.2-draft' };
   const parent = { name: 'Radha Rao', relation: 'mother', email: 'r@example.com', phone: '+919800051052', consented_at: null, photo_consent: null };
   assert.equal(waitingAction({ ...child, parent: { ...parent, state: 'consented', consented_at: '2026-10-21T10:00:00Z' } }), 'acceptMinor');
-  assert.equal(waitingAction({ ...child, parent: { ...parent, state: 'awaiting_parent' } }), 'minorWaiting');
+  assert.equal(waitingAction({ ...child, parent: { ...parent, state: 'awaiting_parent' } }), 'minor', 'not listed by 0051; the form if ever');
   assert.equal(waitingAction({ ...child, parent: null }), 'minor', 'no request (an older app, or expired): the desk with a parent');
   assert.equal(waitingAction(child), 'minor', 'a server before 0051');
   assert.equal(waitingAction({ ...child, full_name: 'Gopal 2', parent: { ...parent, state: 'consented' } }), 'name',
