@@ -10,7 +10,7 @@
 <ul>
   <li>This website sets no cookies, has no analytics and no trackers, and has no forms.</li>
   <li>The app keeps only what the class needs to teach you and keep children safe. We never sell data and never show ads.</li>
-  <li>For a student under 18, a parent or guardian gives consent in writing.</li>
+  <li>For a student under 18, a parent or guardian gives consent: in writing at the class desk, or by email with a code (an ID is then checked at the first class).</li>
   <li>You can ask to see, correct or delete your data, or withdraw your consent, by writing to {{email:privacy}}.</li>
 </ul>
 
@@ -30,7 +30,7 @@
   <tbody>
     <tr><th scope="row">Students</th><td>Name, date of birth, roll number, phone or email, area or PIN code (not the full address), level, a photo only if consent was given, the app language.</td></tr>
     <tr><th scope="row">Joining and About you</th><td>Given at sign-up: gender, mobile number, class centre and the instruments you want to learn; your Dīkṣā (initiated) name if you give it. Optional, if you give them: an emergency contact such as a parent or spouse (relation, name, phone), how you heard about the class (a source, or the coordinator whose referral code you typed), education or occupation, and the service areas you are interested in.</td></tr>
-    <tr><th scope="row">Parents and guardians of students under 18</th><td>Name, relation to the student, phone number, and the consent record: date, who checked it, and which kind of ID document was looked at. The ID number itself is never stored.</td></tr>
+    <tr><th scope="row">Parents and guardians of students under 18</th><td>Name, relation to the student, phone number, email address, and the consent record: date, how it was given (a signed form at the desk, or the code emailed to the parent), who checked it, and which kind of ID document was looked at. The ID number itself is never stored. While a child's sign-up waits for the parent: the parent's name, relation, email address and mobile number as the child gave them.</td></tr>
     <tr><th scope="row">Learning</th><td>Visits (check-in and check-out times), syllabus items learnt, assessments and answers you send, practice minutes, level changes.</td></tr>
     <tr><th scope="row">Follow-up</th><td>When a student stops coming, a coordinator may call; the date, the reason given and a short note are kept.</td></tr>
     <tr><th scope="row">Messages</th><td>Announcements you have read, your replies, and the notification token of your phone so it can receive notices.</td></tr>
@@ -50,8 +50,13 @@
 <p>We do not use personal data for advertising, profiling or selling, and we do not make decisions about people by automated means.</p>
 
 <h2 id="children">Children</h2>
-<p>Under Indian law a child is anyone under 18. A child is registered only together with the verifiable consent of a parent or lawful guardian: the parent or guardian fills in and signs a written consent form at the desk, and a coordinator checks an ID document. A photo of a child is kept only if the parent agreed to it separately.</p>
-<p>We do not track or monitor the behaviour of children and never direct advertising at them. Children should not create an app login on their own; a parent can ask the coordinators. The app asks the date of birth at sign-up and sends anyone under 18 to the class desk with a parent. [[TEAM: decision D4-08, how the app checks age at sign-up]]</p>
+<p>Under Indian law a child is anyone under 18. A child is registered only with the verifiable consent of a parent or lawful guardian, in one of two ways:</p>
+<ul>
+  <li><strong>At the class desk</strong>: the parent or guardian fills in and signs a written consent form, and a coordinator checks an ID document.</li>
+  <li><strong>At home, by email</strong>: the child signs up in the app and gives the name, relation (mother, father or guardian), email address and mobile number of a parent or guardian. Once the child has confirmed their own email address, we send the parent one email with a 6-digit code. On the consent page the parent types the code, declares that they are the child's parent or legal guardian and 18 or over, and gives consent. At the child's first class a coordinator checks an ID document of the parent or of the child before registering the child; only the kind of ID is noted, never its number.</li>
+</ul>
+<p>Until the parent consents, nothing beyond the sign-up itself is used: the child cannot fill in "About you", is not registered, and appears to coordinators only as a sign-up waiting for the parent. If the parent does not answer within 30 days, the parent's details are deleted; the child can then come to the desk with a parent. A photo of a child is kept only if the parent agreed to it separately; that box is never ticked for them.</p>
+<p>We do not track or monitor the behaviour of children and never direct advertising at them. [[TEAM: decision D4-08 and a lawyer's confirmation of the email route, DECISIONS #399]]</p>
 <p>At 18, a student is asked to give their own consent. [[TEAM: confirm]]</p>
 
 <h2 id="access">Who can see it</h2>
@@ -70,7 +75,7 @@
     <tr><td>Supabase</td><td>Database, logins and stored files of the app</td><td>Sydney, Australia</td></tr>
     <tr><td>Expo (650 Industries)</td><td>App updates; passes notifications to phones</td><td>USA</td></tr>
     <tr><td>Google Firebase Cloud Messaging</td><td>Delivers notifications to Android phones</td><td>Worldwide</td></tr>
-    <tr><td>Brevo</td><td>Sends sign-up and password-reset emails</td><td>European Union</td></tr>
+    <tr><td>Brevo</td><td>Sends sign-up and password-reset emails, and the consent email with a code to a parent</td><td>European Union</td></tr>
     <tr><td>Cloudflare</td><td>Hosts this website and the web version of the app</td><td>Worldwide network</td></tr>
     <tr><td>Zoho Mail</td><td>The team's email, including {{email:info}} and {{email:privacy}}</td><td>[[TEAM: confirm the Zoho data centre]]</td></tr>
     <tr><td>YouTube (Google)</td><td>Plays lesson videos inside the app; YouTube may set its own cookies when a video plays</td><td>Worldwide</td></tr>
@@ -83,6 +88,7 @@
 <ul>
   <li>Students who have left: erased two years after leaving; only the roll number and the dates are kept so that numbers are never reused.</li>
   <li>App logins that were never linked to a student: deleted after 30 days.</li>
+  <li>A child's sign-up whose parent did not consent: the parent's details are deleted after 30 days.</li>
   <li>Logs of changes and of access to sensitive data: at least one year, as the DPDP Rules require, at most two years.</li>
   <li>Notification tokens of phones no longer used: deleted after 90 days.</li>
   <li>Emails to the team: [[TEAM: how long]].</li>

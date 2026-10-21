@@ -10,6 +10,7 @@ import { formatPhone, isPhoneCountry, splitE164, toE164, type CountryCode } from
 import { supabase } from '@/lib/supabase';
 
 import { isNetworkError, type MessageKey } from './errors';
+import type { WaitingParent } from './minor-signup';
 import { optionSetsFrom, OTHER, type Option, type OptionSets } from './options';
 
 /** The database has no such function yet (migration 0036 not run). */
@@ -333,6 +334,11 @@ export type WaitingSignUp = SavedAbout & {
    * notice_not_accepted); undefined before 0047.
    */
   notice_version?: string | null;
+  /**
+   * A child's sign-up at home (since 0051, #399): the parent's details and whether they consented by email; null for
+   * an adult or a child without a request, undefined before 0051.
+   */
+  parent?: WaitingParent | null;
 };
 
 /** Confirmed sign-ups without a student record (own centre for a coordinator). [] before 0036. */

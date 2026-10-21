@@ -172,7 +172,7 @@ change of colour or wording is made in one place.
 ## Logging in
 
 1. **Create an account** (sign-up screen): name as on a government ID, email, password, date of
-   birth (under 18 → the class desk), gender, centre (0036, [DECISIONS.md #162](DECISIONS.md)); the
+   birth (under 18 → the parent's details and consent by email, 0051, #399), gender, centre (0036, [DECISIONS.md #162](DECISIONS.md)); the
    lists come from `sign_up_choices()`, the one function anon may run (#163). The database creates
    a `profiles` row with role `pending` (gender, centre) and keeps an adult's date of birth on
    `person_details`. After the first sign-in **About you** opens once (#164); the desk then

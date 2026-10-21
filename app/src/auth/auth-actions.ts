@@ -70,6 +70,11 @@ export type SignUpDetails = {
    * handle_new_user keeps it from 0047; a database before 0047 ignores it.
    */
   noticeVersion?: string | null;
+  /**
+   * Under 18: the parent or guardian, who gets the consent email (0051, docs/DECISIONS.md #399). The phone in
+   * E.164. A database before 0051 ignores it (and drops a minor's date of birth, as before).
+   */
+  parent?: { name: string; relation: string; email: string; phone: string } | null;
 };
 
 /**
@@ -102,6 +107,14 @@ export async function signUp(
         ...(details.dikshaName ? { diksha_name: details.dikshaName } : {}),
         ...(details.learn && details.learn.length > 0 ? { learn: details.learn } : {}),
         ...(details.noticeVersion ? { notice_version: details.noticeVersion } : {}),
+        ...(details.parent
+          ? {
+              parent_name: details.parent.name,
+              parent_relation: details.parent.relation,
+              parent_email: details.parent.email.trim(),
+              parent_phone: details.parent.phone,
+            }
+          : {}),
       },
       emailRedirectTo: emailLinkTarget(),
     },

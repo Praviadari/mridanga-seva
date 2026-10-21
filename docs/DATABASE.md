@@ -50,6 +50,7 @@ in number order:
 | `0047_form_rules.sql` | Form rules in SQL (audit phase 1, [DECISIONS.md #271-#274](DECISIONS.md)): one name rule `clean_person_name` on every person's name an app user writes (no digits of any script, Telugu/Hindi vowel signs and joiners kept, NFC), a minor needs a guardian with a phone and that guardian's own consent (also when the date of birth changes), About you keeps a student's gender once set, a desk registration gets the coordinator's centre, `possible_duplicates` for the desk; a minor's record is never linked to a login by email (the Guru links it), a student inserted by an app user gets no login, the notice ticked at sign-up is kept and Accept needs it ([#276](DECISIONS.md), [#280](DECISIONS.md)). See "Form rules (0047)" |
 | `0049_launch_cleanup.sql` | Launch clean-up (audit phase 3, brief L8): `erase_login` for a waiting sign-up; erasure matches emails as whole values (`audit_redact`), lists every file in the child's folder and deletes the staff notices about the child (`forget_notices_about`); unlisted assessment files over a day old deleted by the daily clean-up; 150 MB a day per login in `assessment-files`; `push_outbox` kept 30 days ([DECISIONS.md #286-#287](DECISIONS.md)). No new job. See "Launch clean-up (0049)" |
 | `0050_staff_dashboard.sql` | Launch range (placeholder 0063 on branch `after-launch-design`, renumbered 14-10-2026): `staff_dashboard()`, the staff homes' Today numbers and what waits for the caller in one request ([DECISIONS.md #339, #340](DECISIONS.md)). See "Staff home: today and waiting (0050)" |
+| `0051_minor_home_signup.sql` | A child under 18 signs up at home; the parent consents by email with a 6-digit code; the desk sees an ID and Accepts (`accept_minor_sign_up`) ([DECISIONS.md #399](DECISIONS.md)). See "Under-18 sign-up at home (0051)" |
 
 The Phase 2 files were renumbered when they merged into main (#55). TEST ran some under their
 branch numbers (0012, 0014_promotion, 0016_practice, 0017_media, 0021_events_polls), so it skips
@@ -1578,6 +1579,38 @@ no entries), `suggestions` (the Guru: materials with `approved_by` and `decided_
 falls back to the older functions when it is missing (PostgREST `PGRST202`).
 
 Tests: section "0050 staff dashboard" in `supabase/tests/smoke-test.mjs`.
+
+## Under-18 sign-up at home (0051)
+
+[DECISIONS.md #399](DECISIONS.md); operations: OPERATIONS.md "Parent consent by email".
+
+- `minor_signups` (one row per waiting child login; no policy, no app grant): the parent's name, relation (mother /
+  father / guardian), email (lower case) and mobile (E.164); the email to the parent (`mail_wanted_at`, claim, tries,
+  `mail_outcome` sent / skipped / gave_up / Brevo's code, `mails_sent`); the code as `sha256('<login id>:<code>')`,
+  `code_expires_at` (7 days), `code_tries` (5); the parent's answer (`consented_at`, `photo_consent`,
+  `consent_notice_version`). Deleted at Accept, after 30 days unanswered or 180 days unaccepted (`expire_minor_signups`,
+  job `mridanga-minor-signups`), or with the login.
+- `parent_mail_log`: consent emails handed to Brevo in the last two days, the address hashed (daily limits).
+- `handle_new_user`: under 18 with `parent_*` metadata keeps the date of birth and makes the request (errors
+  `parent_name_invalid`, `parent_relation_invalid`, `parent_email_invalid`, `parent_email_own`, `parent_phone_invalid`,
+  from `clean_parent_details`); without it a minor's date of birth is dropped as before. Trigger `person_details_minor_signup`:
+  About you (`save_about_me`) answers `minor_awaits_parent` until the parent consents.
+- The child: `my_parent_consent()` (null, or `needs_parent` / `awaiting_parent` / `consented` with the email's state
+  `waiting` / `sent` / `not_set_up` / `failed`), `resend_parent_email()` and `set_parent_details(name, relation,
+  email, phone)` (`mail_too_soon`, `mail_limit`, `not_awaiting_parent`, `not_a_minor_signup`, `already_consented`).
+- The parent (anon too): `give_parent_consent(email, code, parent_ok, data_ok, photo_ok, notice_version)` answers
+  `consented`, `already`, `wrong`, `too_many`, `expired`, `closed`, `child_signed_in`, `declaration_required`.
+- The Edge Function (service role): `claim_consent_codes(limit)` (a new code per claimed row, returned once) and
+  `finish_consent_codes(claim, sent, skipped, retry, refused)`; `send_parent_notices()` calls `notify-parents` when a
+  consent email is due (`consent_mails_due()`), whether or not check-out emails are on.
+- The desk: `waiting_sign_ups()` adds `parent` (`state`, `name`, `relation`, `email`, `phone`, `consented_at`,
+  `photo_consent`); `accept_minor_sign_up(profile, id_type)` writes the student (linked to the child's login), the
+  guardian and the `email_code` consents (`given_at` = `otp_verified_at` = the parent's time) and deletes the request;
+  errors as `accept_sign_up` plus `not_a_minor`, `minor_needs_desk`, `parent_not_consented`, `id_type_required`.
+  `guard_consent_guardian` lets an `email_code` consent in only from that function.
+- Limits (`minor_mail_limits()`): 5 emails per sign-up, 3 a day per address, 60 a day app-wide, 10 minutes apart.
+
+Tests: section "0051 a child's sign-up at home" in `supabase/tests/smoke-test.mjs`.
 ## Linking a login to a student
 
 A student record can exist without a login (many students never install the app). When a person
@@ -1721,7 +1754,8 @@ and the helpers `my_role`, `is_guru`, `is_staff`,
 | `mridanga-events-polls` | 03:30 UTC = 09:00 IST | `events_polls_daily()` — reminds those going or maybe of an event tomorrow, and those who have not voted on a poll closing within 24 hours; each once (0022) |
 | `mridanga-orphan-files` | 02:00 UTC = 07:30 IST | `orphan_files_daily()` — asks the Edge Function (`{"cleanup": true}`) to delete announcement files no announcement lists (0040), and assessment files nothing lists (0049) |
 | `mridanga-cron-history-purge` | 02:15 UTC = 07:45 IST | Deletes pg_cron's run details older than 7 days (0040) |
-| `mridanga-parent-notices` | Every minute | `send_parent_notices()` — calls the Edge Function `notify-parents` when a parent email waits; nothing while switched off (0043) |
+| `mridanga-parent-notices` | Every minute | `send_parent_notices()` — calls the Edge Function `notify-parents` when a parent email waits; nothing while switched off (0043); since 0051 also when a consent email to a child's parent waits, switched off or not |
+| `mridanga-minor-signups` | 20:45 UTC = 02:15 IST | `expire_minor_signups()` — deletes children's parent-consent requests unanswered for 30 days, or consented and not accepted for 180 days (0051) |
 
 ## Who can see what
 

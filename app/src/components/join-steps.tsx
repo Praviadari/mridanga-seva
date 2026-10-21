@@ -1,10 +1,12 @@
 // The three steps of joining on the waiting screen (src/app/pending.tsx, docs/DECISIONS.md #380): ✓ account made,
 // ● come to the class desk with an ID (the step now), ○ your QR card for the door. Like a delivery tracker: the
 // person sees where they are and what comes next. Each step is one item for screen readers ("Step 2 of 3. …").
+// A child who signed up at home (migration 0051, #399) has one more step before the desk: the parent's consent by email.
 
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
+import type { MinorState } from '@/auth/types';
 import { cardLook, spacing, useTheme } from '@/theme/use-theme';
 
 import { AppText } from './app-text';
@@ -14,22 +16,27 @@ import { Icon } from './icon';
 export type JoinStepsProps = {
   /** The email signed in with, shown under the first step. */
   email: string | undefined;
+  /** A child's sign-up at home: where the parent's consent stands (adds that step before the desk). */
+  minor?: MinorState;
 };
 
-/** The three steps of joining: the account (done), the class desk (now), the QR card (then). */
-export function JoinSteps({ email }: JoinStepsProps) {
+/** The steps of joining: the account (done), a child's parent consent, the class desk, the QR card (then). */
+export function JoinSteps({ email, minor }: JoinStepsProps) {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const steps = [
     { title: t('pending.stepAccount'), hint: email ? t('pending.signedInAs', { email }) : undefined },
-    { title: t('pending.stepDesk'), hint: t('pending.stepDeskHint') },
+    ...(minor ? [{ title: t('minorSignUp.stepParent'), hint: t('minorSignUp.stepParentHint') }] : []),
+    { title: t('pending.stepDesk'), hint: minor ? t('minorSignUp.stepDeskHint') : t('pending.stepDeskHint') },
     { title: t('pending.stepQr'), hint: t('pending.stepQrHint') },
   ];
   return (
     <View style={[styles.steps, cardLook(colors)]}>
       {steps.map((step, index) => {
-        const done = index === 0;
-        const now = index === 1;
+        // The step now: the desk, or before it the parent's consent while it is not given.
+        const current = minor && minor !== 'consented' ? 1 : steps.length - 2;
+        const done = index < current;
+        const now = index === current;
         const last = index === steps.length - 1;
         const state = done ? t('pending.stateDone') : now ? t('pending.stateNow') : undefined;
         return (

@@ -54,6 +54,20 @@ design, the consent forms and the notice text, and answer the questions below.
 7. **Rule 6(1)(e) "one year":** logs only, or also personal data such as a deleted face code?
 8. **Who is the data fiduciary** (temple trust, a society, an individual?) and the grievance officer?
 
+## Added 21-10-2026: a child's sign-up at home with the parent's consent by email (DECISIONS #399)
+
+A child under 18 signs up in the app and names a parent (name, relation, email, mobile). The parent gets one email
+with a 6-digit code, opens a consent page, declares being the parent or legal guardian and 18 or over, and consents
+(photos separately). Nothing beyond the sign-up is used until then; at the first class a coordinator sees an ID of the
+parent or of the child (type only noted) before the child is registered. Unanswered requests are deleted after 30 days.
+
+9. **Rule 10 for a parent who is not a user:** is email control + the parent's declaration, followed by an ID seen in
+   person before registration, verifiable consent? Or does Rule 10(1)(b) (and its illustration for a parent who is not a
+   registered user) expect identity and age details from an authorised entity (DigiLocker) at the moment of consent?
+10. **Processing to ask for consent:** the child's sign-up details and the parent's contact are kept before consent, only
+   to ask for it. Allowed as the minimum? Or should an unconsented child's whole login be erased at 30 days?
+11. **Whose ID:** may the desk see the child's ID instead of the parent's? Is the declaration's wording adequate?
+
 ## What to read
 
 | File (docs/phase3/) | Why | Length |

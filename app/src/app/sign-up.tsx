@@ -1,7 +1,8 @@
 // A1 Create an account (step 1 of joining, about a minute; team MoM 05-10-2026, docs/DECISIONS.md
 // #162; team list 07-10-2026): the full name as on the Aadhaar or another government ID (only the
 // name is kept, never an ID number or a copy) and, optional, the Diksha (initiated) name; email and
-// password; date of birth (the phone's calendar, drop-downs on the web; under 18 → the class desk with a parent); gender; mobile
+// password; date of birth (the phone's calendar, drop-downs on the web; under 18 → the parent's name, relation, email and mobile,
+// and the parent consents by email: migration 0051, docs/DECISIONS.md #399); gender; mobile
 // number (E.164, the centre's country first); the centre (country → city → centre); the instruments
 // the person wants to learn. A new login has no access
 // until the database links it to a student record with the same email, or the Guru gives it a
@@ -44,16 +45,19 @@ import {
   fetchSignUpChoices,
   type SignUpChoices,
 } from '@/data/about';
+import { checkParentDetails, type ParentField } from '@/data/minor-signup';
 import { optionLabel } from '@/data/options';
+import { RELATIONS, type Relation } from '@/data/students';
 import { birthCheck, birthDateOf, NO_BIRTH_PARTS, type BirthParts } from '@/lib/birth-date';
 import { cleanName, nameError } from '@/lib/person-name';
 import { countryName, isPhoneCountry, toE164, type CountryCode } from '@/lib/phone';
 import { PRIVACY_NOTICE_VERSION } from '@/lib/privacy-notice';
 import { spacing } from '@/theme/use-theme';
 
-type Field = 'name' | 'diksha' | 'email' | 'password' | 'confirm' | 'dob' | 'gender' | 'centre' | 'phone' | 'notice';
+type Field = 'name' | 'diksha' | 'email' | 'password' | 'confirm' | 'dob' | ParentField | 'gender' | 'centre' | 'phone' | 'notice';
 /** The fields in the order they are on the page: Create goes to the first one with a problem. */
-const ORDER: readonly Field[] = ['name', 'diksha', 'email', 'password', 'confirm', 'dob', 'phone', 'gender', 'centre', 'notice'];
+const ORDER: readonly Field[] = ['name', 'diksha', 'email', 'password', 'confirm', 'dob', 'parentName', 'parentRelation', 'parentEmail',
+  'parentPhone', 'phone', 'gender', 'centre', 'notice'];
 
 /** Sign-up form. Shows "check your email" when Supabase needs the email confirmed first. */
 export default function SignUpScreen() {
@@ -71,6 +75,12 @@ export default function SignUpScreen() {
   const [confirm, setConfirm] = useState('');
   const [birth, setBirth] = useState<BirthParts>(NO_BIRTH_PARTS);
   const [gender, setGender] = useState<string | null>(null);
+  // Under 18 (#399): the parent or guardian who gets the consent email.
+  const [parentName, setParentName] = useState('');
+  const [parentRelation, setParentRelation] = useState<Relation | null>(null);
+  const [parentEmail, setParentEmail] = useState('');
+  const [parentPhone, setParentPhone] = useState('');
+  const [parentPhoneCountryPicked, setParentPhoneCountry] = useState<CountryCode | null>(null);
   const [country, setCountry] = useState<string | null>(null);
   const [city, setCity] = useState<string | null>(null);
   const [centreId, setCentreId] = useState<number | null>(null);
@@ -80,6 +90,8 @@ export default function SignUpScreen() {
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<Field, MessageKey>>>({});
   const [formError, setFormError] = useState<MessageKey | null>(null);
   const [sentTo, setSentTo] = useState<string | null>(null);
+  // A child's sign-up: the parent's address the consent email goes to once the child confirms (#399).
+  const [sentParent, setSentParent] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const { target, focusFirst, focusField } = useFormFocus<Field>();
 
@@ -109,6 +121,15 @@ export default function SignUpScreen() {
   const ageCheck = birthCheck(birth);
   const centreCountry = lists?.centres.find((c) => c.id === centreId)?.countryCode ?? country;
   const phoneCountry: CountryCode = phoneCountryPicked ?? (isPhoneCountry(centreCountry) ? centreCountry : 'IN');
+  const parentPhoneCountry: CountryCode = parentPhoneCountryPicked ?? phoneCountry;
+  const minor = ageCheck === 'minor';
+  const parentForm = {
+    name: parentName,
+    relation: parentRelation,
+    email: parentEmail,
+    phone: toE164(parentPhone, parentPhoneCountry),
+    phoneTyped: parentPhone.trim() !== '',
+  };
 
   /** Every problem of the form now; empty when it can be sent. */
   function problems(birthNow: BirthParts = birth): Partial<Record<Field, MessageKey>> {
@@ -125,7 +146,7 @@ export default function SignUpScreen() {
     const age = birthCheck(birthNow);
     if (age === 'missing') errors.dob = 'signUp.dobRequired';
     else if (age === 'invalid') errors.dob = 'signUp.dobInvalid';
-    else if (age === 'minor') errors.dob = 'signUp.under18Desk';
+    else if (age === 'minor') Object.assign(errors, checkParentDetails(parentForm, email));
     if (lists && lists.genders.length > 0 && !gender) errors.gender = 'signUp.choose';
     if (lists && lists.centres.length > 0 && !centreId) errors.centre = 'signUp.choose';
     // No centre list (still loading or failed): the account would get no centre (audit P1-05).
@@ -170,10 +191,17 @@ export default function SignUpScreen() {
       dikshaName: cleanName(diksha) || null,
       learn,
       noticeVersion: PRIVACY_NOTICE_VERSION,
+      parent:
+        minor && parentRelation && parentForm.phone
+          ? { name: cleanName(parentName), relation: parentRelation, email: parentEmail.trim().toLowerCase(), phone: parentForm.phone }
+          : null,
     });
     setBusy(false);
     if (result.errorKey) setFormError(result.errorKey);
-    else if (result.needsConfirmation) setSentTo(email.trim());
+    else if (result.needsConfirmation) {
+      setSentTo(email.trim());
+      setSentParent(minor ? parentEmail.trim().toLowerCase() : null);
+    }
     // Otherwise the person is signed in and the app moves on by itself.
   }
 
@@ -185,7 +213,12 @@ export default function SignUpScreen() {
         </Notice>
         {/* The link opens the web version; the phone app needs its own sign-in after it (FLOW-05). */}
         {Platform.OS !== 'web' ? <AppText tone="muted">{t('common.linkOpensInBrowser')}</AppText> : null}
-        <AppText tone="muted">{t('signUp.nextStep')}</AppText>
+        {sentParent ? (
+          <Notice tone="info" title={t('minorSignUp.checkEmailParentTitle')}>
+            {t('minorSignUp.checkEmailParent', { email: sentParent })}
+          </Notice>
+        ) : null}
+        <AppText tone="muted">{t(sentParent ? 'minorSignUp.nextStep' : 'signUp.nextStep')}</AppText>
         <Button label={t('forgotPassword.backToSignIn')} onPress={() => router.replace('/sign-in')} />
       </Screen>
     );
@@ -289,9 +322,66 @@ export default function SignUpScreen() {
           label={t('signUp.dob')}
           value={birth}
           onChange={pickBirth}
-          error={fieldError('dob') ?? (ageCheck === 'minor' ? t('signUp.under18Desk') : undefined)}
-          hint={t('signUp.dobHint')}
+          error={fieldError('dob')}
+          hint={t(minor ? 'minorSignUp.dobHint' : 'signUp.dobHint')}
         />
+
+        {/* Under 18 (#399): the parent or guardian, who gets one email with a code for the consent page. */}
+        {minor ? (
+          <View style={styles.group} role="group" accessibilityLabel={t('minorSignUp.parentTitle')}>
+            <AppText variant="label">{t('minorSignUp.parentTitle')}</AppText>
+            <AppText variant="small" tone="muted">{t('minorSignUp.parentIntro')}</AppText>
+            <TextField
+              ref={target('parentName')}
+              label={t('minorSignUp.parentName')}
+              value={parentName}
+              onChangeText={setParentName}
+              onBlur={() => checkOnLeave('parentName', parentName)}
+              error={fieldError('parentName')}
+              autoComplete="off"
+              autoCapitalize="words"
+              autoCorrect={false}
+              maxLength={100}
+            />
+            <View ref={target('parentRelation')} collapsable={false}>
+              <ChoiceGroup
+                label={t('register.relation')}
+                choices={RELATIONS.map((r) => ({ value: r, label: t(`relations.${r}`) }))}
+                value={parentRelation}
+                onChange={(r) => {
+                  setParentRelation(r);
+                  if (fieldErrors.parentRelation) setFieldErrors((current) => ({ ...current, parentRelation: undefined }));
+                }}
+                error={fieldError('parentRelation')}
+              />
+            </View>
+            <TextField
+              ref={target('parentEmail')}
+              label={t('minorSignUp.parentEmail')}
+              hint={t('minorSignUp.parentEmailHint')}
+              value={parentEmail}
+              onChangeText={setParentEmail}
+              onBlur={() => checkOnLeave('parentEmail', parentEmail)}
+              error={fieldError('parentEmail')}
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoComplete="off"
+              keyboardType="email-address"
+              inputMode="email"
+              maxLength={254}
+            />
+            <PhoneField
+              ref={target('parentPhone')}
+              label={t('minorSignUp.parentPhone')}
+              country={parentPhoneCountry}
+              onCountry={setParentPhoneCountry}
+              number={parentPhone}
+              onNumber={setParentPhone}
+              onBlur={() => checkOnLeave('parentPhone', parentPhone)}
+              error={fieldError('parentPhone')}
+            />
+          </View>
+        ) : null}
 
         <PhoneField
           ref={target('phone')}

@@ -54,15 +54,19 @@ export function filterWaiting<T extends Pick<WaitingSignUp, 'full_name' | 'email
  * the name rule and the privacy tick), or why only Fill the form: 'minor' (under 18, comes with a parent),
  * 'noDob', 'name' (a sign-up from before #267) or 'noNotice' (no privacy tick: an older build, FF-01;
  * Accept would answer notice_not_accepted since 0047). undefined notice_version = a server before 0047,
- * which does not ask for it.
+ * which does not ask for it. A child who signed up at home (0051, #399): 'acceptMinor' once the parent consented by email (Accept,
+ * with the ID the desk sees), 'minorWaiting' while the parent has not (the form, with the parent at the desk).
  */
-export type WaitingAction = 'accept' | 'minor' | 'noDob' | 'name' | 'noNotice';
+export type WaitingAction = 'accept' | 'acceptMinor' | 'minor' | 'minorWaiting' | 'noDob' | 'name' | 'noNotice';
 
 /** See WaitingAction. */
-export function waitingAction(person: Pick<WaitingSignUp, 'full_name' | 'dob' | 'notice_version'>): WaitingAction {
+export function waitingAction(person: Pick<WaitingSignUp, 'full_name' | 'dob' | 'notice_version' | 'parent'>): WaitingAction {
   const age = person.dob ? ageFromForm(formatTypedDate(person.dob)) : null;
   if (!age) return 'noDob';
-  if (age.minor) return 'minor';
+  if (age.minor) {
+    if (person.parent?.state === 'consented') return checkPersonName(person.full_name, { max: 100 }) !== null ? 'name' : 'acceptMinor';
+    return person.parent?.state === 'awaiting_parent' ? 'minorWaiting' : 'minor';
+  }
   if (checkPersonName(person.full_name, { max: 100 }) !== null) return 'name';
   if (person.notice_version === null) return 'noNotice';
   return 'accept';

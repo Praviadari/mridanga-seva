@@ -99,7 +99,8 @@ with m(migration, present) as (values
   ('0047', exists (select 1 from pg_proc where proname = 'clean_person_name' and pronamespace = 'public'::regnamespace)),
   ('0048', exists (select 1 from pg_proc where proname = 'in_audience' and pronamespace = 'public'::regnamespace)),
   ('0049', exists (select 1 from pg_proc where proname = 'erase_login' and pronamespace = 'public'::regnamespace)),
-  ('0050', exists (select 1 from pg_proc where proname = 'staff_dashboard' and pronamespace = 'public'::regnamespace))
+  ('0050', exists (select 1 from pg_proc where proname = 'staff_dashboard' and pronamespace = 'public'::regnamespace)),
+  ('0051', to_regclass('public.minor_signups') is not null)
 )
 select migration, case when present then 'yes' else 'no' end as present from m
 union all
@@ -111,7 +112,7 @@ select 'MISSING', coalesce((select string_agg(a.migration, ' ' order by a.migrat
 order by 1;
 ```
 
-## B. Migrations 0013-0050, one file per run
+## B. Migrations 0013-0051, one file per run
 
 For each row: GitHub main → `supabase/migrations/<file>` → **Copy raw file** → LIVE → SQL Editor →
 New query → paste → check the project → **Run** → then paste the probe again (or keep it in a second
@@ -165,8 +166,9 @@ a second paste. So pasting a file twice by mistake is harmless; still, never do 
 | M0048 | `0048_withdrawn_and_leaks.sql` | Praveen · dashboard | No rows; probe `0048`, `MISSING` `none` | Withdrawn records and leaks ([#281, #288-#290](DECISIONS.md)): **a record whose consent was withdrawn is never linked to a login again** and its login stays off; nothing new is recorded about the student (practice, phones, promotion, loans; events and assessments leave them out), error `student_withdrawn`; `audience_profiles` closed to app users, `event_visible_to` and `staff_name_taken` answer for the caller only; a QR re-scan within 10 minutes of the check-in answers "already in" (setting `qr_rescan_minutes`, no parent "left" email); the sign-up's privacy-notice tick is kept when the login joins a record with About-you details, and Fill the form keeps an adult's. Switches off any login already on a withdrawn record (none expected on LIVE). Was planned as its own run on Sat 17-10 while it was still a branch; it is on main and in the replay since 13 Oct, so **run it on 15 Oct with the rest**, after 0047 (0050 cannot follow without it: the probe counts a gap as `MISSING`) |
 | M0049 | `0049_launch_cleanup.sql` | Praveen · dashboard | No rows; probe `0049`, `MISSING` `none` | Launch clean-up ([#286-#287](DECISIONS.md)): adds `erase_login` (the Guru erases a waiting sign-up on request), unlisted assessment files go in the existing daily clean-up (no new job, no Edge Function deploy), 150 MB a day per login in assessment-files, erasure takes the notices about the child and matches emails as whole values. Verify on TEST and LIVE: `select count(*) from cron.job where jobname like 'mridanga%'` = 11 (unchanged). Safe to run twice. **LIVE took 0050 on 15 Oct 2026 without 0049, so on LIVE it runs after 0050** (0049 replaces no function 0050 uses; the replay of that order matches a fresh build). Until it runs, the probe on LIVE shows `LAST IN ORDER` `0048` and `MISSING` `0049`. Only function replacements and one new empty column on `erasures`: no data changes at the run, under a second. **Done on LIVE 21 Oct 2026** (Praveen): probe 0049 yes, `LAST IN ORDER` `0050`, `MISSING` `none`; erase_login, orphan_assessment_files and `erasures.login_profile` present, jobs 11, files waiting 0; verification all ok except the push job "never ran" (no notice yet) |
 | M0050 | `0050_staff_dashboard.sql` | Praveen · dashboard | No rows; probe `0050`, `MISSING` `none` | **Goes with the launch UI (renumbered from placeholder 0063, 14-10-2026); a read-only function, no data change.** Staff home "Today" and "Waiting for you" in one request ([#339, #340](DECISIONS.md)): one read-only function `staff_dashboard()` (staff only, security invoker); nothing else changes. Run before the OTA that uses it (the app falls back to the older functions without it). **TEST first:** not on TEST on 15 Oct 2026; paste it on TEST (`fhuqyk…`), check the probe there, then LIVE |
+| M0051 | `0051_minor_home_signup.sql` | Praveen · dashboard | No rows; probe `0051`, `MISSING` `none`; verification row 3 `12 of 12` | **A child under 18 signs up at home; the parent consents by email** ([#399](DECISIONS.md)). New tables `minor_signups` and `parent_mail_log` (empty), new job `mridanga-minor-signups` (daily 02:15 IST: unanswered requests go after 30 days), replaced `handle_new_user` (a minor's date of birth is kept only with the parent's details), `waiting_sign_ups` (+ the parent's part), `send_parent_notices` (also calls `notify-parents` for consent emails, check-out emails on or off) and the consent guard; new `accept_minor_sign_up`, the child's `my_parent_consent` / `resend_parent_email` / `set_parent_details` and the consent page's `give_parent_consent` (anon). `accept_sign_up` is not changed. **Order:** TEST first (with Praveen); on LIVE only after (1) `notify-parents` is deployed from the same commit (C7, LIVE ref) and (2) `BREVO_API_KEY` + `NOTICE_FROM` are set in Edge Functions → Secrets (OPERATIONS "Parent consent by email"): without them every consent email is a dry run and children see "emails to parents are not switched on". Then the OTA with the new sign-up screen. Safe to run twice |
 
-**A file newer than 0050 on main:** the replay's first check fails until this table lists it. Add it
+**A file newer than 0051 on main:** the replay's first check fails until this table lists it. Add it
 here, with its own steps, then run it last.
 
 **0049 (launch clean-up)** is on TEST but not on main on 15 Oct 2026. It joins this table when branch
@@ -300,7 +302,8 @@ with m(migration, present) as (values
   ('0047', exists (select 1 from pg_proc where proname = 'clean_person_name' and pronamespace = 'public'::regnamespace)),
   ('0048', exists (select 1 from pg_proc where proname = 'in_audience' and pronamespace = 'public'::regnamespace)),
   ('0049', exists (select 1 from pg_proc where proname = 'erase_login' and pronamespace = 'public'::regnamespace)),
-  ('0050', exists (select 1 from pg_proc where proname = 'staff_dashboard' and pronamespace = 'public'::regnamespace))
+  ('0050', exists (select 1 from pg_proc where proname = 'staff_dashboard' and pronamespace = 'public'::regnamespace)),
+  ('0051', to_regclass('public.minor_signups') is not null)
 ),
 last_in_order as (select coalesce(max(a.migration), 'before 0010') as v from m a
   where a.present and not exists (select 1 from m b where b.migration <= a.migration and not b.present)),
@@ -308,13 +311,13 @@ missing as (select coalesce(string_agg(a.migration, ' ' order by a.migration), '
   where not a.present and exists (select 1 from m b where b.present and b.migration > a.migration)),
 jobs(name) as (values ('mridanga-status-refresh'), ('mridanga-close-visits'), ('mridanga-push'), ('mridanga-inbox-cleanup'),
   ('mridanga-assessments'), ('mridanga-events-polls'), ('mridanga-duty'), ('mridanga-access-log-purge'),
-  ('mridanga-cron-history-purge'), ('mridanga-orphan-files'), ('mridanga-parent-notices')),
+  ('mridanga-cron-history-purge'), ('mridanga-orphan-files'), ('mridanga-parent-notices'), ('mridanga-minor-signups')),
 checks(sort, check_name, ok, found, expected) as (
-  select 1, 'last migration', (select v from last_in_order) = '0050', (select v from last_in_order), '0050'
+  select 1, 'last migration', (select v from last_in_order) = '0051', (select v from last_in_order), '0051'
   union all select 2, 'migrations missing', (select v from missing) = 'none', (select v from missing), 'none'
   union all select 3, 'scheduled jobs',
-    (select count(*) from jobs j join cron.job c on c.jobname = j.name and c.active) = 11,
-    (select count(*) from jobs j join cron.job c on c.jobname = j.name and c.active)::text || ' of 11', '11 of 11 (active)'
+    (select count(*) from jobs j join cron.job c on c.jobname = j.name and c.active) = 12,
+    (select count(*) from jobs j join cron.job c on c.jobname = j.name and c.active)::text || ' of 12', '12 of 12 (active)'
   union all select 4, 'other mridanga jobs', not exists (select 1 from cron.job where jobname like 'mridanga%' and jobname not in (select name from jobs)),
     coalesce((select string_agg(jobname, ', ') from cron.job where jobname like 'mridanga%' and jobname not in (select name from jobs)), 'none'),
     'none'
@@ -333,10 +336,10 @@ checks(sort, check_name, ok, found, expected) as (
   union all select 8, 'anon function rights',
     not exists (select 1 from pg_proc p where p.pronamespace = 'public'::regnamespace and p.prorettype <> 'trigger'::regtype
       and not exists (select 1 from pg_depend d where d.classid = 'pg_proc'::regclass and d.objid = p.oid and d.deptype = 'e')
-      and has_function_privilege('anon', p.oid, 'execute') and p.proname <> 'sign_up_choices'),
+      and has_function_privilege('anon', p.oid, 'execute') and p.proname not in ('sign_up_choices', 'give_parent_consent')),
     coalesce((select string_agg(p.proname, ', ') from pg_proc p where p.pronamespace = 'public'::regnamespace and p.prorettype <> 'trigger'::regtype
       and not exists (select 1 from pg_depend d where d.classid = 'pg_proc'::regclass and d.objid = p.oid and d.deptype = 'e')
-      and has_function_privilege('anon', p.oid, 'execute') and p.proname <> 'sign_up_choices'), 'none'), 'none (sign_up_choices is the one public function, #163)'
+      and has_function_privilege('anon', p.oid, 'execute') and p.proname not in ('sign_up_choices', 'give_parent_consent')), 'none'), 'none (the public functions are sign_up_choices, #163, and give_parent_consent, #399)'
   union all select 9, 'update/delete without where',
     not exists (select 1 from pg_proc p, regexp_split_to_table(regexp_replace(p.prosrc, '--[^\n]*', '', 'g'), ';') as s(stmt)
       where p.pronamespace = 'public'::regnamespace and p.prolang in (select oid from pg_language where lanname in ('sql', 'plpgsql'))

@@ -40,7 +40,7 @@ s.16), so a processor abroad is allowed, but it must be recorded and named in th
 | Supabase | Database, logins, files, scheduled jobs, Edge Functions | Everything the app stores: students (minors too), parents' contacts, consents, attendance, call notes, logins, photos and recordings | LIVE project region **Oceania (Sydney), ap-southeast-2** (checked 17-10-2026 with `supabase projects list`; kept, [DECISIONS.md #398](DECISIONS.md)); TEST is Southeast Asia (Singapore). The company is in the USA and its support can reach the project | [[TEAM]] |
 | Expo (EAS Build, EAS Update, push service) | Builds the Android app, sends app updates, passes push notifications on to Google | App code (no data); for each notification: the phone's push token, the title and text (an announcement title, an event, a reply; may hold a name) | USA (provider's own regions) | [[TEAM]] |
 | Google Firebase Cloud Messaging | Delivers push notifications to Android phones | Same as Expo's push service: token, title, text | Google's regions | [[TEAM]] |
-| Brevo (**planned**: live sign-up mail, audit brief 8; parent codes once its key is set) | Sends sign-up confirmations, password resets and Ishtagoshti parent codes | Email address, the person's name in the mail, the mail's text | EU (France) | [[TEAM]] |
+| Brevo (**planned**: live sign-up mail, audit brief 8; parent codes once its key is set) | Sends sign-up confirmations, password resets, Ishtagoshti parent codes and the consent email to a child's parent (0051) | Email address, the person's name in the mail, the mail's text (a consent email: the child's name, date of birth and centre) | EU (France) | [[TEAM]] |
 | Cloudflare (Pages) | Serves the web version of the app and the public website | Visitors' IP addresses and request details in its logs; the app's data goes from the browser straight to Supabase, not through Cloudflare | Worldwide edge | [[TEAM]] |
 | Zoho Mail | The team's mail: privacy@ and info@ | Whatever parents write to us: requests, complaints, their contact details | **[[TEAM]]:** the account's data centre (zoho.in = India, zoho.com = USA) | [[TEAM]] |
 | YouTube (Google) | Lesson videos shown in the app | The viewer's IP address and device, and YouTube's own cookies on the web; the app sends it no names | Google's regions | YouTube's terms |
@@ -174,8 +174,10 @@ removed or starts seeing different data.
 
 ## Paper consent forms
 
-For a student under 18, the parent fills in and signs a paper consent form at the desk, and the
-coordinator ticks in the app that it was received ([DECISIONS.md #16](DECISIONS.md)). The app
+For a student under 18 registered at the desk, the parent fills in and signs a paper consent form, and the
+coordinator ticks in the app that it was received ([DECISIONS.md #16](DECISIONS.md)). A child who signed up at
+home may instead come with the parent's consent given by email and an ID to show: see "Parent consent by email"
+([DECISIONS.md #399](DECISIONS.md)). The app
 stores only that it was given and the form signed (the tick, required since 0025, #74), when, by whom it
 was checked, and which type of ID was seen.
 
@@ -1233,6 +1235,70 @@ select id, encode(sha256(convert_to(id::text || ':123456', 'UTF8')), 'hex'), now
   from auth.users where email = '<the test child''s email>'
 on conflict (profile_id) do update set code_hash = excluded.code_hash, expires_at = excluded.expires_at, tries = 0;
 ```
+## Parent consent by email (a child's sign-up at home, 0051)
+
+A child under 18 can sign up at home with a parent's or guardian's name, relation, email and mobile
+([DECISIONS.md #399](DECISIONS.md)). Once the child confirms their own email, the parent gets **one**
+email with a 6-digit code and the address of the consent page (`<web app>/parent-consent`). The parent
+types the code there, declares being the parent or guardian and 18 or over, and consents (photos
+separately). At the child's first class a coordinator opens Register a student, sees "Parent consented
+by email; ID not yet seen", looks at an ID of the parent or of the child and taps Accept with the kind of
+ID: the student, the guardian and the consents are saved together. A child whose parent has not answered
+shows "waiting for the parent's consent by email" (Fill the form still works with the parent at the desk).
+
+It goes: `minor_signups` (one row per child) → job `mridanga-parent-notices` (every minute, also when
+check-out emails are off) → Edge Function `notify-parents` (`claim_consent_codes`, a new code each time,
+stored hashed) → Brevo → `finish_consent_codes`. It uses the same function secrets as "Parent notices by
+email" below; **without `BREVO_API_KEY` and `NOTICE_FROM` it is a dry run**: the request is marked
+`skipped`, no email goes, and the child's waiting screen says emails to parents are not switched on (come
+to the desk with your parent).
+
+Limits: 5 emails per child, 3 a day to one parent address, 60 a day for the whole app (Brevo's free 300
+are shared with sign-up confirmations, resets and check-out emails), 10 minutes between requests; a code
+works 7 days and 5 wrong tries. Each child sign-up costs 2 emails (their confirmation and this one).
+The function finds the consent page by the project: LIVE `https://mridanga-seva.pages.dev`, TEST
+`https://mridanga-seva-test.pages.dev`; the secret `APP_WEB_URL` overrides it (for example once the
+class domain serves the web app).
+
+**On TEST, with Praveen** (`fhuqykssenuhczdqbafu`):
+
+1. Deploy `notify-parents` from this commit with the TEST ref (step 2 of "Parent notices by email").
+2. SQL editor: paste `0051_minor_home_signup.sql`; check
+   `select jobname, schedule from cron.job where jobname = 'mridanga-minor-signups';` (one row, `45 20 * * *`).
+3. Sign up on the TEST web app with a date of birth under 18 and your own second address as the
+   parent's; confirm the child's email. Within a minute:
+   ```sql
+   select mail_outcome, mails_sent, code_expires_at, consented_at from minor_signups order by created_at desc limit 3;
+   ```
+   With the secrets set: `sent` and the email arrives. Without them: `skipped` (dry run). To go on
+   without Brevo (TEST only), give the request a known code and type 123456 on `/parent-consent`:
+   ```sql
+   update minor_signups
+      set code_hash = encode(sha256(convert_to(profile_id::text || ':123456', 'UTF8')), 'hex'),
+          code_expires_at = now() + interval '7 days', code_tries = 0
+    where profile_id = (select id from auth.users where email = '<the test child''s email>');
+   ```
+4. As a coordinator: Register a student → the child → Accept → choose the ID → the roll number. Then
+   delete the test login (Authentication → Users) when done.
+
+**On LIVE:** the order is in GO_LIVE_CHECKLIST row M0051 and DECISIONS #399 ("Mail on LIVE"): deploy
+`notify-parents`, set `BREVO_API_KEY` + `NOTICE_FROM` (+ `NOTICE_REPLY_TO`), run 0051, one test with a
+team member's address, then the OTA. Setting the key does **not** switch on check-out emails (G10) and
+does not touch the Vault (the Ishtagoshti parent code stays off, audit S3-01).
+
+**Watching it:**
+```sql
+select count(*) filter (where consented_at is null) as waiting, count(*) filter (where consented_at is not null) as consented,
+       count(*) filter (where mail_outcome = 'skipped') as dry_run, count(*) filter (where mail_outcome not in ('sent', 'skipped')) as failed
+  from minor_signups;
+select count(*) as emails_today from parent_mail_log where sent_at >= (today_ist() at time zone 'Asia/Kolkata');
+```
+`mail_outcome` other than `sent` / `skipped`: `brevo_400` (sender not verified or bad address), `gave_up`
+(5 tries: Brevo down or a wrong key). The child can send again from the waiting screen.
+
+**A parent asks for the code again, or wrote the wrong address:** the child taps "Send the email again"
+or "Change my parent's details" on the waiting screen. Staff never see or send the code.
+
 ## Parent notices by email
 
 When a student under 18 is checked out in the app (QR, door tablet, a coordinator's tap, Check out

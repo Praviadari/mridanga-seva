@@ -6172,3 +6172,85 @@ drafts (DPIA, face plan, decisions for the Guru) still say Mumbai and are correc
 **Why.** Three days before launch, a second LIVE run costs more risk than it saves. Indian law (DPDP s.16) allows the
 transfer except to countries the Government restricts, and Australia is not one; measured from Hyderabad, LIVE answers
 as fast as TEST in Singapore (about 0.2-0.6 s). What matters is that the notice people tick tells the truth.
+
+## 399. A child under 18 signs up at home; the parent consents by email, the desk sees an ID — 21 Oct 2026
+
+**Status: branch `minor-home-signup` (migration 0051); Praveen approves at the merge.** Until now a sign-up under 18 was
+refused ("come to the class desk with a parent", #150): handle_new_user dropped a minor's date of birth and Accept
+answered `minor_needs_desk`. Most students are under 17, and on 20 Oct 2026 several tried at home and gave up. Design B
+of the lead chat (21 Oct 2026):
+
+1. **Sign-up.** The child fills the normal form and, under 18, the parent's or guardian's name, relation (mother, father
+   or guardian), email and mobile. The login is made as today (pending, email confirmation). `handle_new_user` keeps the
+   date of birth only with the parent's details and stores them in `minor_signups` (the parent's email may not be the
+   child's own sign-in email). Nothing more about the child is processed before the parent consents: About you is
+   refused (`minor_awaits_parent`) and the app does not offer it to a child at all.
+2. **One email to the parent**, after the child confirms their own email: a 6-digit code and the address of the
+   consent page `/parent-consent` on the web app (`?lang=te|hi`; never the code in a link). It goes through the Edge
+   Function `notify-parents` (Brevo's API), which the every-minute job now also calls for consent emails whether or not
+   check-out emails are on. The code is stored only as sha256(login id : code), lives 7 days, allows 5 wrong tries, and
+   never returns to the app. Limits, from audit S3-01 (0027's parent code was an open mail relay): 5 emails per
+   sign-up, 3 a day per parent address across all sign-ups, 60 a day for the whole app (Brevo's free plan sends 300,
+   shared with confirmations, resets and check-out emails; each child costs 2: their own confirmation and this one),
+   one request every 10 minutes; names in the email follow the name rule (letters only, #271) and a dot between two
+   letters gets a space, so no name becomes a link. The email has no unsubscribe link: nothing more is sent unless the
+   child asks again.
+3. **The consent page** (`give_parent_consent`, the second function anon may run after `sign_up_choices`): the parent
+   types the email and the code, reads a summary of the notice (link to the whole notice), declares "I am this child's
+   parent or legal guardian and 18 or over", ticks the data consent, and separately chooses photos (unticked). A wrong
+   code and an address with no request get the same answer; the child's name is shown only after the right code; the
+   child's own login signed in on that browser cannot consent (`child_signed_in`).
+4. **The desk.** Register a student shows the child as "waiting for the parent's consent by email" (Fill the form,
+   with a parent at the desk, as before) or "parent consented by email; ID not yet seen" with Accept. Accept for a
+   child is `accept_minor_sign_up(profile, id type)`: the coordinator sees an ID of the parent or of the child (only its
+   kind is kept, #8), then the student, the guardian and the consents (data, and photo if given; method `email_code`;
+   `given_at` and `otp_verified_at` = when the parent consented; `verified_by` = the coordinator; the notice version the
+   parent saw) are written in one step and the request is deleted. The record is linked to the child's own login: the
+   parent consented for that very login, and staff make the link explicitly, so #276's "never link a child by email"
+   stands. `accept_sign_up` (adults) is unchanged, so older app builds keep working.
+5. **Expiry.** A request the parent does not answer in 30 days is deleted with the parent's details (daily job
+   `mridanga-minor-signups`, 02:15 IST); the child can give the details again, or come to the desk with a parent. A
+   consented request the desk never accepts goes after 180 days, when the sign-up leaves the desk list.
+
+The privacy notice (website en/te/hi) says so: two ways to consent, what is kept while a sign-up waits, Brevo sends the
+consent email, 30 days. Its version goes from 0.1-draft to **0.2-draft** (21 Oct 2026) in `site.config.mjs` and
+`PRIVACY_NOTICE_VERSION` (#150). Text in en/te/hi; te/hi are drafts for the native review.
+
+**Legal frame.** DPDP Act 2023 s.9(1): verifiable consent of the parent before processing a child's (under 18) personal
+data. DPDP Rules 2025, Rule 10(1): the Data Fiduciary observes due diligence that the person identifying as the parent
+is an identifiable adult, by reference to reliable identity and age details it holds, or details voluntarily provided or
+a virtual token issued by an authorised entity (DigiLocker). How we meet it: (a) control of the parent's email (the
+code), (b) the parent's own declaration of being the parent or legal guardian and 18 or over, (c) an ID document
+sighted by a coordinator before the child is registered; nothing beyond the sign-up row and the consent evidence exists
+until (c). Commencement, checked 21 Oct 2026: PIB release 2190014 (official, read in the browser) says the Rules were
+notified on 14 Nov 2025 "marking the full operationalisation" of the Act, with an 18-month phased compliance timeline;
+the phases (Rules 1, 2, 17-21 at once; Rule 4 after one year; Rules 3, 5-16, 22, 23 and Act ss.3-17 incl. s.9 after 18
+months, i.e. 13 May 2027; G.S.R. 846(E) and 843(E) of 13 Nov 2025) are as in the DPIA draft and law-firm notes. **The
+Gazette PDF itself (egazette.gov.in) could not be opened from the office network (certificate error), so the phase list
+is not read from the Gazette in this session.** The class follows s.9 now, before it binds.
+
+**What a lawyer must confirm** (add to docs/phase3/LAWYER_PACK.md):
+1. Rule 10 for a parent who is not a user of the app: is "email control + self-declaration, then an ID sighted in
+   person before registration" verifiable consent, or does Rule 10(1)(b) (and its illustration for a parent who is not a
+   registered user) expect identity and age details from an authorised entity (DigiLocker) at the time of consent?
+2. The child's own sign-up details (name, date of birth, email, phone, centre) and the parent's contact are processed to
+   ask for consent, before consent. Is that allowed as the minimum needed to seek verifiable consent? If not: the
+   fallback is to erase an unconsented child's login (`erase_login`, 0049) at 30 days instead of only the parent's
+   details.
+3. Whether the ID may be the child's instead of the parent's (the brief allows either); the declaration's wording; the
+   7-day code; and whether a parent signed in as another user may consent (allowed; only the child's own login is not).
+4. Brevo (EU) sending the parent's email address and the child's name and date of birth: already a listed processor.
+
+**Mail on LIVE (what Praveen must set before this ships).** Supabase Auth's SMTP cannot send it: it sends only Auth's
+own templates (confirmation, reset, magic link), and using one would make the parent a login. So it is
+`notify-parents`, which on LIVE has **no `BREVO_API_KEY`** (dry run): until it does, every consent email is skipped and
+the child sees "emails to parents are not switched on yet; come to the desk with your parent". In order: (1) deploy
+`notify-parents` from the merged commit with the LIVE ref (checklist C7); (2) in Brevo verify the sender and make an
+API key; (3) Supabase → Edge Functions → Secrets: `BREVO_API_KEY` and `NOTICE_FROM` (the verified sender; the Brevo
+sender today is a Gmail address, the domain sender `noreply@mridangaseva.com` waits for D2), optionally
+`NOTICE_REPLY_TO` = the desk; (4) run 0051; (5) one test sign-up with a team member's address; (6) the OTA. Setting the
+key does not switch on check-out emails (G10 setting, still off) and does not touch the Vault: the Ishtagoshti
+parent code (`mridanga_brevo_key`, S3-01) stays off. Without step 3 nothing breaks; children wait for the desk.
+
+**Why.** Children can join from home with a consent the parent gives from their own email, the class still sees an ID
+before anything is recorded about the child, and an outsider cannot use the form to mail strangers in bulk.

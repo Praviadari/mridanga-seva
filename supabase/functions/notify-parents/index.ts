@@ -1,10 +1,12 @@
 // Supabase Edge Function notify-parents: emails a minor's parent when the student is checked in
-// or out (migration 0043, docs/DECISIONS.md #224-#231). Called every minute, only when a notice
+// or out (migration 0043, docs/DECISIONS.md #224-#231), and the parent of a child who signed up at home the
+// code for the consent page (migration 0051, #399; ./consent.ts). Called every minute, only when an email
 // waits, by the database job send_parent_notices() through pg_net, with the push secret.
 //
 // Two kinds of call:
-//   - the job (header x-push-secret): claim the waiting rows, send each through Brevo, record each
-//     (./send.ts). Without the secrets BREVO_API_KEY and NOTICE_FROM (or with
+//   - the job (header x-push-secret): the consent emails first (a child waits for them), then the
+//     check-in / check-out notices: claim the waiting rows, send each through Brevo, record each
+//     (./consent.ts, ./send.ts). Without the secrets BREVO_API_KEY and NOTICE_FROM (or with
 //     PARENT_NOTICES_DRY_RUN=1) it is a dry run: it logs "would send <row> <kind> <language>" and
 //     marks the rows skipped, so the queue can be checked on TEST before any email goes.
 //   - a mail app's one-click unsubscribe (RFC 8058): POST ?stop=<guardian id>.<signature>. The
@@ -19,6 +21,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.117.2';
 
 import { pickServiceKey } from '../notify-announcements/messages.ts';
+import { consentPageUrl, runConsentCodes } from './consent.ts';
 import { brevoMailer, checkStop, runNotices, stopUrl, type Rpc } from './send.ts';
 
 /** Answers the caller with a small JSON object. */
@@ -72,8 +75,12 @@ Deno.serve(async (request) => {
     ? null
     : brevoMailer(fetch, apiKey, { email: from, name: Deno.env.get('NOTICE_FROM_NAME') || 'Mridanga Seva' },
         Deno.env.get('NOTICE_REPLY_TO') || null);
+  // The consent page of this project (APP_WEB_URL, else the web app of the project's ref).
+  const appUrl = Deno.env.get('APP_WEB_URL');
+  const consent = await runConsentCodes(rpc, mailer, (language) => consentPageUrl(url, appUrl, language));
   const functionUrl = `${url.replace(/\/$/, '')}/functions/v1/notify-parents`;
   const result = await runNotices(rpc, mailer, (guardianId) => stopUrl(functionUrl, secret, guardianId));
-  if ('error' in result) return reply(500, result);
-  return reply(200, result);
+  if ('error' in result) return reply(500, { ...result, consent });
+  if ('error' in consent) return reply(500, { error: consent.error, notices: result });
+  return reply(200, { ...result, consent });
 });

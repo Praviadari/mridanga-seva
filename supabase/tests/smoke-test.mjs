@@ -51,11 +51,12 @@
 
 import { PGlite } from '@electric-sql/pglite';
 import { pgcrypto } from '@electric-sql/pglite/contrib/pgcrypto';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { symbolBracket } from './name-symbols.mjs';
 import { readdirSync, readFileSync } from 'node:fs';
 
 import { runPush } from '../functions/notify-announcements/send.ts';
+import { buildConsentEmail, consentPageUrl, runConsentCodes } from '../functions/notify-parents/consent.ts';
 import { runNotices } from '../functions/notify-parents/send.ts';
 
 const supabaseDir = new URL('../', import.meta.url);
@@ -126,7 +127,7 @@ process.on('uncaughtException', (error) => {
 // D14-10: every check is counted, and the run fails when fewer (or more) checks ran than expected,
 // so a block skipped by a renamed migration or a commented-out section cannot pass unseen.
 // Adding or removing checks? Run the suite and set this to the new total it prints.
-const EXPECTED_CHECKS = 1694; // 0050 staff dashboard: +15; 0049 launch clean-up: +30; 0048 withdrawn records and leaks: +50; 0047 form rules: +109; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
+const EXPECTED_CHECKS = 1773; // 0051 child's sign-up at home: +79; 0050 staff dashboard: +15; 0049 launch clean-up: +30; 0048 withdrawn records and leaks: +50; 0047 form rules: +109; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
 let failures = 0;
 let passes = 0;
 
@@ -3005,9 +3006,10 @@ const anonFunctions = await asOwner(`select p.oid::regprocedure::text as f from 
   where p.pronamespace = 'public'::regnamespace and p.prorettype <> 'trigger'::regtype
     and not exists (select 1 from pg_depend d where d.classid = 'pg_proc'::regclass and d.objid = p.oid and d.deptype = 'e')
     and has_function_privilege('anon', p.oid, 'execute')
-    and p.oid <> 'sign_up_choices()'::regprocedure`);
-// The one exception (0036, docs/DECISIONS.md #163): the sign-up form's public centre and gender lists.
-check('grant sweep: anon may run no function of ours but sign_up_choices()', anonFunctions.length === 0, anonFunctions.map((r) => r.f).join(' '));
+    and p.oid not in ('sign_up_choices()'::regprocedure, 'give_parent_consent(text,text,boolean,boolean,boolean,text)'::regprocedure)`);
+// The two exceptions: the sign-up form's public centre and gender lists (0036, docs/DECISIONS.md #163) and the parent's
+// consent page (0051, #399: a code checked against a hash, answers a status only).
+check('grant sweep: anon may run no function of ours but sign_up_choices() and give_parent_consent()', anonFunctions.length === 0, anonFunctions.map((r) => r.f).join(' '));
 await asOwner('create table public.zz_sweep_probe (id int)');
 check('... and a table made later by the owner is not given to anon', (await asOwner(
   `select has_table_privilege('anon', 'public.zz_sweep_probe', 'SELECT') as ok`))[0].ok === false);
@@ -3261,7 +3263,8 @@ const mayAnswer = new Set(['my_role', 'today_ist', 'my_time_zone', 'centre_tz', 
   'practice_weeks', // empty weeks with 0 minutes for a null student
   'scan_qr', // {action: unknown} for a null code
   'my_about', 'sign_up_choices', // 0036: the caller's own About you; the public sign-up lists (#163)
-  'person_name_symbols', 'default_home_centre']); // 0047: the name rule's list of refused signs (#271); a new record's default centre id (#274)
+  'person_name_symbols', 'default_home_centre', // 0047: the name rule's list of refused signs (#271); a new record's default centre id (#274)
+  'give_parent_consent']); // 0051: the consent page answers a status (declaration_required for empty input), no data (#399)
 const answered = [];
 for (const fn of fns) {
   if (skip.has(fn.name)) continue;
@@ -4092,7 +4095,8 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   // the ones on this list. A new function that the app calls goes on the list in the same change
   // (and is revoked from anon); an internal one is revoked from authenticated too (CONTRIBUTING.md).
   // 0036 (#163): the sign-up form's public lists (active centres' name, city, country; gender options).
-  const ANON_MAY_RUN = ['sign_up_choices()'];
+  // 0051 (#399): the parent's consent page (a code checked against a hash; a status only).
+  const ANON_MAY_RUN = ['give_parent_consent(text,text,boolean,boolean,boolean,text)', 'sign_up_choices()'];
   const SIGNED_IN_MAY_RUN = [
     'announcement_file_deletable(text)', 'announcement_file_path_ok(text)', 'announcement_file_readable(text)',
     'announcement_file_uploadable(text)', 'assessment_clean_file(jsonb,text[],boolean)', 'assessment_clean_link(text)',
@@ -4156,6 +4160,9 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
     'erase_login(uuid,text,text)',
     // 0050: the staff homes' numbers (staff only inside)
     'staff_dashboard()',
+    // 0051: a child's sign-up at home (the child's own request; the consent page; Accept for a child, staff only inside)
+    'my_parent_consent()', 'resend_parent_email()', 'set_parent_details(text,text,text,text)',
+    'give_parent_consent(text,text,boolean,boolean,boolean,text)', 'accept_minor_sign_up(uuid,text)',
   ];
   const runnableBy = async (role) => (await asOwner(`select p.oid::regprocedure::text as f from pg_proc p
     where p.pronamespace = 'public'::regnamespace
@@ -4167,7 +4174,7 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
     return { ok: extra.length === 0 && missing.length === 0, detail: `open but not on the list: ${extra.join(' ') || '-'}; on the list but closed or gone: ${missing.join(' ') || '-'}` };
   };
   const anonRuns = diffList(await runnableBy('anon'), ANON_MAY_RUN);
-  check('D14-03: anon may run exactly the functions on its allow-list (sign_up_choices only), trigger functions included', anonRuns.ok, anonRuns.detail);
+  check('D14-03: anon may run exactly the functions on its allow-list (sign_up_choices, give_parent_consent), trigger functions included', anonRuns.ok, anonRuns.detail);
   // 0037 closed 0001's six trigger functions (assign_roll_no, audit_row, ...) too: no exception left.
   const signedInRuns = diffList(await runnableBy('authenticated'), SIGNED_IN_MAY_RUN);
   check('D14-03: signed-in people may run exactly the functions on the allow-list, trigger functions included', signedInRuns.ok, signedInRuns.detail);
@@ -5959,6 +5966,267 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   let again63 = '';
   try { await db.exec(file63); } catch (e) { again63 = String(e.message); }
   check('0050 can run again', again63 === '', again63);
+}
+
+// ---------------------------------------------------------------- 0051 a child's sign-up at home (DECISIONS #399)
+{
+  // 0046-0048 were run again above (their own sections), which put back their versions of handle_new_user,
+  // waiting_sign_ups and the consent guard: 0051 runs again first, which is also its "safe to run twice" check.
+  const file51 = readFileSync(new URL('migrations/0051_minor_home_signup.sql', supabaseDir), 'utf8');
+  let again51 = '';
+  try { await db.exec(file51); } catch (e) { again51 = String(e.message); }
+  check('0051 can run a second time', again51 === '', again51);
+
+  const [{ centre_id: desk51 }] = await asOwner(`select centre_id from profiles where id = '${coordinator}'`);
+  const dob51 = `${year - 14}-03-10`;
+  /** A sign-up as the app sends it (Supabase Auth's insert into auth.users with the metadata). */
+  const signUp51 = async (email, meta, confirmed = false) => (await db.query(
+    `insert into auth.users (email, email_confirmed_at, raw_user_meta_data) values ($1, ${confirmed ? 'now()' : 'null'}, $2::jsonb) returning id`,
+    [email, JSON.stringify({ full_name: 'Gopal Fiftyone', language: 'te', dob: dob51, gender: 'male', centre_id: desk51,
+      phone: '+919800051051', notice_version: '0.1-draft', ...meta })])).rows[0].id;
+  const parent51 = { parent_name: 'Radha Fiftyone', parent_relation: 'mother', parent_email: 'Radha.51@Example.com', parent_phone: '+91 98000 51052' };
+  const request51 = async (id) => (await asOwner(`select * from minor_signups where profile_id = '${id}'`))[0] ?? null;
+  const state51 = async (id) => (await asApp('authenticated', id, 'select my_parent_consent() as r'))[0].r;
+  const consent51 = async (role, userId, email, code, parentOk = true, dataOk = true, photo = false) => (await asApp(role, userId,
+    'select give_parent_consent($1, $2, $3, $4, $5, $6) as r', [email, code, parentOk, dataOk, photo, '0.1-draft']))[0].r;
+  const knownCode51 = async (id, code) => asOwner(`update minor_signups set code_hash = encode(sha256(convert_to(profile_id::text || ':${code}', 'UTF8')), 'hex'),
+    code_expires_at = now() + interval '7 days', code_tries = 0 where profile_id = '${id}'`);
+
+  // Without the parent's details nothing changes: a minor's date of birth is dropped (an older app).
+  const old51 = await signUp51('old.app.51@example.com', {});
+  check('0051: a child\'s sign-up without parent details keeps no date of birth and no request (as before)',
+    (await asOwner(`select dob from person_details where profile_id = '${old51}'`))[0]?.dob == null && (await request51(old51)) === null);
+
+  // The parent's details are checked like the app does; a wrong one refuses the sign-up.
+  for (const [what, meta, code] of [
+    ['the child\'s own email as the parent\'s', { parent_email: 'own.51@example.com' }, 'parent_email_own'],
+    ['a parent phone that is not a mobile number', { parent_phone: '12345' }, 'parent_phone_invalid'],
+    ['a relation other than mother, father, guardian', { parent_relation: 'uncle' }, 'parent_relation_invalid'],
+    ['a parent name with digits', { parent_name: 'Radha 51' }, 'parent_name_invalid'],
+    ['a parent email that is not one', { parent_email: 'radha-at-example' }, 'parent_email_invalid'],
+  ]) {
+    await refusesWith(`0051: a child's sign-up with ${what} is refused`, code, () => signUp51('own.51@example.com', { ...parent51, ...meta }));
+  }
+
+  const child51 = await signUp51('gopal.51@example.com', parent51);
+  const r51 = await request51(child51);
+  check('0051: a child\'s sign-up with a parent keeps the date of birth and stores the request (email wanted, no code yet)',
+    (await asOwner(`select dob::text as d from person_details where profile_id = '${child51}'`))[0]?.d === dob51
+      && r51?.parent_email === 'radha.51@example.com' && r51.parent_phone === '+919800051052' && r51.parent_name === 'Radha Fiftyone'
+      && r51.mail_wanted_at !== null && r51.code_hash === null && r51.consented_at === null, JSON.stringify(r51)?.slice(0, 160));
+  check('0051: the child is a waiting login, nothing more', (await roleOf(child51)) === 'pending'
+    && (await asOwner(`select count(*)::int as n from students where email = 'gopal.51@example.com'`))[0].n === 0);
+  await refusesWith('0051: About you is refused until the parent consents (nothing beyond the sign-up)', 'minor_awaits_parent', () =>
+    asApp('authenticated', child51, `select save_about_me('{"about_state":"skipped"}'::jsonb)`));
+  const s51 = await state51(child51);
+  check('0051: the child sees the request: waiting for the parent, the email waiting to go',
+    s51?.state === 'awaiting_parent' && s51.mail === 'waiting' && s51.parent_email === 'radha.51@example.com' && s51.mails_left === 5, JSON.stringify(s51));
+  check('0051: an adult or staff has no request', (await state51(coordinator)) === null && (await state51(arjun)) === null);
+  await refusesWith('0051: the child cannot read the request table (the code hash is in it)', 'permission denied for table minor_signups', () =>
+    asApp('authenticated', child51, 'select * from minor_signups'));
+  await refusesWith('0051: nor can staff', 'permission denied for table minor_signups', () =>
+    asApp('authenticated', guru, 'select * from minor_signups'));
+  await refusesWith('0051: nor anon', 'permission denied for table minor_signups', () => asApp('anon', null, 'select * from minor_signups'));
+  await refusesWith('0051: nobody but the Edge Function claims consent emails', 'permission denied for function claim_consent_codes', () =>
+    asApp('authenticated', guru, 'select * from claim_consent_codes(5)'));
+  await refusesWith('0051: nor anon', 'permission denied for function claim_consent_codes', () => asApp('anon', null, 'select * from claim_consent_codes(5)'));
+
+  // The email waits for the child's confirmed email; the job then calls the function even with check-out emails off.
+  await asOwner(`update settings set value = 'false' where key = 'parent_notices_enabled'`);
+  check('0051: before the child confirms the email, no consent email is due (job: off)',
+    (await asOwner('select consent_mails_due() as r'))[0].r === false && (await asOwner('select send_parent_notices() as r'))[0].r === 'off');
+  await asOwner(`update auth.users set email_confirmed_at = now() where id = '${child51}'`);
+  check('0051: confirming the email does not link or register a child', (await roleOf(child51)) === 'pending');
+  check('0051: once confirmed the consent email is due and the job calls the function, check-out emails off or not (here not_set_up: no pg_net)',
+    (await asOwner('select consent_mails_due() as r'))[0].r === true && (await asOwner('select send_parent_notices() as r'))[0].r === 'not_set_up');
+  const list51 = async (userId) => ((await asApp('authenticated', userId, 'select waiting_sign_ups() as r'))[0].r ?? []).find((w) => w.id === child51);
+  const w51 = await list51(coordinator);
+  check('0051: Register a student lists the child with the parent\'s part: waiting for the parent',
+    w51?.parent?.state === 'awaiting_parent' && w51.parent.email === 'radha.51@example.com' && w51.dob === dob51, JSON.stringify(w51?.parent));
+  check('0051: an adult\'s sign-up has no parent part', (await asApp('authenticated', guru, 'select waiting_sign_ups() as r'))[0].r
+    .filter((w) => w.id !== child51).every((w) => w.parent === null));
+
+  // The Edge Function's consent.ts against the real claim, as the service role.
+  const mails51 = [];
+  const consentRpc = async (name, args) => {
+    try {
+      if (name === 'claim_consent_codes') return { data: await asApp('service_role', null, 'select * from claim_consent_codes($1)', [args.p_limit]), error: null };
+      await asApp('service_role', null, 'select finish_consent_codes($1::uuid, $2::uuid[], $3::uuid[], $4::uuid[], $5::jsonb)',
+        [args.p_claim, args.p_sent, args.p_skipped, args.p_retry, JSON.stringify(args.p_refused)]);
+      return { data: null, error: null };
+    } catch (failure) {
+      return { data: null, error: { message: String(failure.message ?? failure) } };
+    }
+  };
+  const mailer51 = async (to, email, stop) => { mails51.push({ to, stop, ...email }); return { status: 'sent' }; };
+  const page51 = (language) => consentPageUrl('https://fhuqykssenuhczdqbafu.supabase.co', undefined, language);
+  const run51 = await runConsentCodes(consentRpc, mailer51, page51, () => {});
+  const m51 = mails51[0];
+  const code51 = /: (\d{6})\b/.exec(m51?.text ?? '')?.[1];
+  check('0051: one email, to the parent only, with a 6-digit code', run51.sent === 1 && mails51.length === 1 && m51.to === 'radha.51@example.com'
+    && /^\d{6}$/.test(code51 ?? ''), JSON.stringify(run51));
+  check('0051: the email names the child, the date of birth and the centre, in the child\'s language (te)',
+    m51.subject.includes('Gopal Fiftyone') && m51.text.includes('10-03-' + (year - 14)) && m51.text.includes('మృదంగ సేవ'), m51.subject);
+  check('0051: the link is the TEST consent page with no code in it, and the email has no unsubscribe link',
+    m51.text.includes('https://mridanga-seva-test.pages.dev/parent-consent?lang=te') && !/parent-consent[^\s]*\d{6}/.test(m51.text) && m51.stop === null);
+  const r51b = await request51(child51);
+  check('0051: the code is stored only as a hash of the login and the code, valid 7 days',
+    r51b.code_hash === createHash('sha256').update(`${child51}:${code51}`).digest('hex') && !JSON.stringify(r51b).includes(code51)
+      && Math.round((new Date(r51b.code_expires_at) - Date.now()) / 86400000) === 7, r51b.code_expires_at);
+  check('0051: the email is counted (5 per sign-up, the day\'s log by address hash)', r51b.mails_sent === 1 && r51b.mail_outcome === 'sent'
+    && (await asOwner(`select count(*)::int as n from parent_mail_log where address_hash = parent_address_hash('radha.51@example.com')`))[0].n === 1);
+  check('0051: the child sees the email sent; a second run sends nothing', (await state51(child51)).mail === 'sent'
+    && (await runConsentCodes(consentRpc, mailer51, page51, () => {})).claimed === 0 && mails51.length === 1);
+
+  // Asking again: 10 minutes apart, then a new code; the old one stops working.
+  await refusesWith('0051: asking again within 10 minutes is refused', 'mail_too_soon', () => asApp('authenticated', child51, 'select resend_parent_email()'));
+  await asOwner(`update minor_signups set mail_done_at = now() - interval '11 minutes' where profile_id = '${child51}'`);
+  check('0051: after 10 minutes the child asks again', (await asApp('authenticated', child51, 'select resend_parent_email() as r'))[0].r.mail === 'waiting');
+  await runConsentCodes(consentRpc, mailer51, page51, () => {});
+  const code51b = /: (\d{6})\b/.exec(mails51[1]?.text ?? '')?.[1];
+  check('0051: a second email with a new code', mails51.length === 2 && /^\d{6}$/.test(code51b ?? '') && (await request51(child51)).mails_sent === 2);
+  if (code51b === code51) await knownCode51(child51, code51 === '111111' ? '222222' : '111111'); // the same six digits by chance: made different
+  const code51c = code51b === code51 ? (code51 === '111111' ? '222222' : '111111') : code51b;
+
+  // The consent page (anon).
+  check('0051: without the two declarations nothing is checked', (await consent51('anon', null, 'radha.51@example.com', code51c, false, true)).result === 'declaration_required'
+    && (await consent51('anon', null, 'radha.51@example.com', code51c, true, false)).result === 'declaration_required'
+    && (await request51(child51)).code_tries === 0);
+  check('0051: the first code no longer works (wrong), and the try is counted', (await consent51('anon', null, 'radha.51@example.com', code51)).result === 'wrong'
+    && (await request51(child51)).code_tries === 1);
+  check('0051: an address with no request answers the same "wrong" (who has a request is not told)',
+    (await consent51('anon', null, 'nobody.51@example.com', code51c)).result === 'wrong');
+  check('0051: the child signed in on the same device cannot consent for themselves',
+    (await consent51('authenticated', child51, 'radha.51@example.com', code51c)).result === 'child_signed_in' && (await request51(child51)).consented_at === null);
+  const given51 = await consent51('anon', null, ' Radha.51@EXAMPLE.com ', code51c, true, true, false);
+  const r51c = await request51(child51);
+  check('0051: the parent\'s right code with both declarations: consented, the child\'s name shown, no photo consent',
+    given51.result === 'consented' && given51.child_name === 'Gopal Fiftyone' && given51.photo_consent === false
+      && r51c.consented_at !== null && r51c.photo_consent === false && r51c.consent_notice_version === '0.1-draft', JSON.stringify(given51));
+  check('0051: the same code again says already (a second tap)', (await consent51('anon', null, 'radha.51@example.com', code51c)).result === 'already');
+  check('0051: the child sees the consent; About you opens', (await state51(child51)).state === 'consented'
+    && (await asApp('authenticated', child51, `select save_about_me('{"about_state":"skipped"}'::jsonb) as r`))[0].r.about_state === 'skipped');
+  await refusesWith('0051: no new email after consent', 'not_awaiting_parent', () => asApp('authenticated', child51, 'select resend_parent_email()'));
+  check('0051: the desk list says the parent consented', (await list51(coordinator))?.parent?.state === 'consented');
+
+  // The desk: Accept for adults still refuses a child; the child's Accept needs the ID seen.
+  await refusesWith('0051: Accept for adults still refuses a child', 'minor_needs_desk', () =>
+    asApp('authenticated', coordinator, 'select accept_sign_up($1)', [child51]));
+  await refusesWith('0051: the child\'s Accept needs the ID the desk saw', 'id_type_required', () =>
+    asApp('authenticated', coordinator, 'select accept_minor_sign_up($1, null)', [child51]));
+  await refusesWith('0051: ... one of the known kinds', 'id_type_required', () =>
+    asApp('authenticated', coordinator, `select accept_minor_sign_up($1, 'library card')`, [child51]));
+  await refusesWith('0051: a student cannot accept', 'not_allowed', () =>
+    asApp('authenticated', arjun, `select accept_minor_sign_up($1, 'aadhaar')`, [child51]));
+  await refusesWith('0051: anon cannot', 'permission denied for function accept_minor_sign_up', () =>
+    asApp('anon', null, `select accept_minor_sign_up($1, 'aadhaar')`, [child51]));
+  await refusesWith('0051: an app user still cannot write an email-code consent', 'consent_method_not_allowed', () =>
+    asApp('authenticated', coordinator, `insert into consents (student_id, scope, method) values ($1, 'data', 'email_code')`, [child.id]));
+  const acc51 = (await asApp('authenticated', coordinator, `select accept_minor_sign_up($1, 'aadhaar') as r`, [child51]))[0].r;
+  const rec51 = (await asOwner(`select *, dob::text as dob from students where id = '${acc51.id}'`))[0];
+  const g51 = await asOwner(`select * from guardians where student_id = '${acc51.id}'`);
+  const c51 = await asOwner(`select * from consents where student_id = '${acc51.id}' order by scope`);
+  check('0051: Accept makes the student from the sign-up and links the child\'s own login',
+    /^MS-\d{4}-\d{4}$/.test(acc51.roll_no) && acc51.linked === true && rec51.profile_id === child51 && rec51.dob === dob51
+      && rec51.email === 'gopal.51@example.com' && (await roleOf(child51)) === 'student', JSON.stringify(acc51));
+  check('0051: ... with the parent as guardian (name, mobile, email, relation)', g51.length === 1 && g51[0].full_name === 'Radha Fiftyone'
+    && g51[0].phone === '+919800051052' && g51[0].email === 'radha.51@example.com' && g51[0].relation === 'mother');
+  check('0051: ... and the parent\'s data consent only (no photo): email_code, given and verified at the parent\'s time, the ID kind, the coordinator, the notice',
+    c51.length === 1 && c51[0].scope === 'data' && c51[0].method === 'email_code' && c51[0].guardian_id === g51[0].id
+      && +new Date(c51[0].given_at) === +new Date(r51c.consented_at) && +new Date(c51[0].otp_verified_at) === +new Date(r51c.consented_at)
+      && c51[0].id_type_checked === 'aadhaar' && c51[0].verified_by === coordinator && c51[0].notice_version === '0.1-draft', JSON.stringify(c51));
+  check('0051: ... and the request is deleted (the code hash and parent\'s details with it)', (await request51(child51)) === null);
+  check('0051: the About-you answers moved onto the record', (await asOwner(`select about_state from person_details where student_id = '${acc51.id}'`))[0]?.about_state === 'skipped');
+  check('0051: Accept again answers the same record (repeated)', (await asApp('authenticated', coordinator,
+    `select accept_minor_sign_up($1, 'aadhaar') as r`, [child51]))[0].r.repeated === true);
+  check('0051: the minor rule holds (guardian with a phone and a data consent)', (await asOwner(`select minor_rule_gap('${acc51.id}') as g`))[0].g === null);
+  check('0051: the student\'s home reads as a student now', (await asApp('authenticated', child51, 'select my_student_id() as r'))[0].r === acc51.id);
+
+  // A sibling: same parent email, its own code; photos given; the wrong-try limit; expiry; corrections.
+  const sib51 = await signUp51('meera.51@example.com', { ...parent51, full_name: 'Meera Fiftyone', gender: 'female' }, true);
+  await knownCode51(sib51, '424242');
+  check('0051: a wrong code counts one try', (await consent51('anon', null, 'radha.51@example.com', '000000')).result === 'wrong' && (await request51(sib51)).code_tries === 1);
+  await asOwner(`update minor_signups set code_tries = 5 where profile_id = '${sib51}'`);
+  check('0051: after 5 wrong tries even the right code is refused (too_many: ask for a new code)',
+    (await consent51('anon', null, 'radha.51@example.com', '424242')).result === 'too_many' && (await request51(sib51)).consented_at === null);
+  await knownCode51(sib51, '424242');
+  await asOwner(`update minor_signups set code_expires_at = now() - interval '1 minute' where profile_id = '${sib51}'`);
+  check('0051: an expired code is refused', (await consent51('anon', null, 'radha.51@example.com', '424242')).result === 'expired');
+  await knownCode51(sib51, '424242');
+  check('0051: a parent signed in with another login may consent (only the child\'s own is refused); photos ticked',
+    (await consent51('authenticated', guru, 'radha.51@example.com', '424242', true, true, true)).result === 'consented' && (await request51(sib51)).photo_consent === true);
+  await asApp('authenticated', guru, `select accept_minor_sign_up($1, 'passport')`, [sib51]);
+  const sibStudent = (await asOwner(`select id from students where profile_id = '${sib51}'`))[0].id;
+  check('0051: with photos the Guru\'s Accept writes data and photo consents', (await asOwner(
+    `select string_agg(scope || ':' || method || ':' || id_type_checked, ',' order by scope) as s from consents where student_id = '${sibStudent}'`))[0].s
+    === 'data:email_code:passport,photo:email_code:passport');
+
+  // Not yet consented: the child's Accept waits; a coordinator of another centre cannot.
+  const third51 = await signUp51('hari.51@example.com', { ...parent51, full_name: 'Hari Fiftyone', parent_email: 'father.51@example.com', parent_relation: 'father' }, true);
+  await refusesWith('0051: before the parent consents the child\'s Accept is refused', 'parent_not_consented', () =>
+    asApp('authenticated', coordinator, `select accept_minor_sign_up($1, 'aadhaar')`, [third51]));
+  const adult51 = await signUp51('adult.51@example.com', { dob: '1990-01-01' }, true);
+  await refusesWith('0051: an adult\'s sign-up goes through Accept for adults', 'not_a_minor', () =>
+    asApp('authenticated', coordinator, `select accept_minor_sign_up($1, 'aadhaar')`, [adult51]));
+  await asOwner(`update auth.users set email_confirmed_at = now() where id = '${old51}'`);
+  await refusesWith('0051: a child who signed up without a parent (an older app) has no date of birth: Fill the form at the desk', 'dob_required', () =>
+    asApp('authenticated', coordinator, `select accept_minor_sign_up($1, 'aadhaar')`, [old51]));
+
+  // Corrections and the limits.
+  await refusesWith('0051: a correction to the child\'s own email is refused', 'parent_email_own', () =>
+    asApp('authenticated', third51, `select set_parent_details('Hari Father', 'father', 'HARI.51@example.com', '+919800051053')`));
+  const fixed51 = (await asApp('authenticated', third51, `select set_parent_details('Shyam Fiftyone', 'father', 'Shyam.51@example.com', '+919800051054') as r`))[0].r;
+  check('0051: the child corrects the parent\'s details before consent: new address, a new email wanted', fixed51.parent_email === 'shyam.51@example.com'
+    && fixed51.mail === 'waiting' && (await request51(third51)).code_hash === null);
+  await refusesWith('0051: an adult has no parent details to give', 'not_a_minor_signup', () =>
+    asApp('authenticated', arjun, `select set_parent_details('A Parent', 'mother', 'a.parent@example.com', '+919800051055')`));
+  await refusesWith('0051: a registered child has no parent details to change here', 'not_a_minor_signup', () =>
+    asApp('authenticated', child51, `select set_parent_details('A Parent', 'mother', 'a.parent@example.com', '+919800051055')`));
+  await asOwner(`insert into parent_mail_log (address_hash) select parent_address_hash('shyam.51@example.com') from generate_series(1, 3)`);
+  check('0051: 3 emails today to one address: the next one waits for tomorrow', (await asOwner(
+    `select consent_mail_ready(m) as r from minor_signups m where profile_id = '${third51}'`))[0].r === false
+    && (await runConsentCodes(consentRpc, mailer51, page51, () => {})).claimed === 0);
+  await asOwner(`update minor_signups set mail_wanted_at = null, mail_done_at = now() - interval '1 hour' where profile_id = '${third51}'`);
+  await refusesWith('0051: ... and asking again says so', 'mail_limit', () => asApp('authenticated', third51, 'select resend_parent_email()'));
+  await asOwner(`delete from parent_mail_log where address_hash = parent_address_hash('shyam.51@example.com')`);
+  await asOwner(`update minor_signups set mails_sent = 5 where profile_id = '${third51}'`);
+  await refusesWith('0051: 5 emails for one sign-up is the most', 'mail_limit', () => asApp('authenticated', third51, 'select resend_parent_email()'));
+  await asOwner(`update minor_signups set mails_sent = 0 where profile_id = '${third51}'`);
+  await asOwner(`insert into parent_mail_log (address_hash) select 'x' || g from generate_series(1, 60) g`);
+  await asApp('authenticated', third51, 'select resend_parent_email()');
+  check('0051: 60 emails today for the whole app: none is due (the job does not call)', (await asOwner('select consent_mails_due() as r'))[0].r === false
+    && (await runConsentCodes(consentRpc, mailer51, page51, () => {})).claimed === 0);
+  await asOwner(`delete from parent_mail_log where address_hash like 'x%'`);
+
+  // A dry run (no Brevo key): nothing goes; the child is told emails to parents are not switched on.
+  const dry51 = await runConsentCodes(consentRpc, null, page51, () => {});
+  check('0051: a dry run sends nothing and the child sees "not switched on"', dry51.skipped === 1 && dry51.dryRun === true
+    && (await state51(third51)).mail === 'not_set_up' && (await request51(third51)).mails_sent === 0);
+
+  // Unanswered for 30 days: the request goes; the child may give the parent's details again.
+  await asOwner(`update minor_signups set created_at = now() - interval '31 days' where profile_id = '${third51}'`);
+  check('0051: the daily job deletes a request unanswered for 30 days', (await asOwner('select expire_minor_signups() as n'))[0].n === 1
+    && (await request51(third51)) === null && (await state51(third51)).state === 'needs_parent');
+  check('0051: the job is scheduled daily', (await asOwner(`select command from cron.job where jobname = 'mridanga-minor-signups'`))[0]?.command === 'select expire_minor_signups()');
+  check('0051: the child gives the parent\'s details again', (await asApp('authenticated', third51,
+    `select set_parent_details('Shyam Fiftyone', 'father', 'shyam.51@example.com', '+919800051054') as r`))[0].r.state === 'awaiting_parent');
+
+  // The email's text: names hold no link (S3-01), every language has the code and the page.
+  for (const language of ['en', 'te', 'hi']) {
+    const email = buildConsentEmail({ claim: 'c', profile_id: 'p', email: 'x@example.com', language, parent_name: 'Pay.Example', child_name: 'Go.To.Site',
+      child_dob: '2012-03-10', centre: 'Abids', code: '123456', expires_on: '2026-10-28' }, consentPageUrl(undefined, undefined, language));
+    check(`0051: the ${language} email has the code, the LIVE page, the end date, and no name a mail app could link`,
+      email.text.includes('123456') && email.text.includes('https://mridanga-seva.pages.dev/parent-consent') && email.text.includes('28-10-2026')
+        && !/Pay\.Example|Go\.To/.test(email.text + email.subject + email.html) && email.text.includes('Pay. Example'), email.subject);
+  }
+  check('0051: APP_WEB_URL overrides the page, a bad value does not', consentPageUrl('https://qeozvvizcojzxcjgnaei.supabase.co', 'https://mridangaseva.com', 'en')
+    === 'https://mridangaseva.com/parent-consent' && consentPageUrl('https://qeozvvizcojzxcjgnaei.supabase.co', 'javascript:alert(1)', 'hi')
+    === 'https://mridanga-seva.pages.dev/parent-consent?lang=hi');
+
+  // Erasing the login takes the request with it.
+  await asOwner(`delete from auth.users where id = '${third51}'`);
+  check('0051: deleting the login deletes the request', (await request51(third51)) === null);
+  await asOwner(`delete from parent_mail_log`);
 }
 
 // ---------------------------------------------------------------- row-level security

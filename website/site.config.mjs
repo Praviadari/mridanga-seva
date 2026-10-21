@@ -19,7 +19,7 @@ export default {
   updated: '2026-10-17',
 
   /** The privacy notice's version and date. Raise both when its meaning changes. */
-  privacyNotice: { version: '0.1-draft', date: '2026-10-07' },
+  privacyNotice: { version: '0.2-draft', date: '2026-10-21' },
 
   /**
    * The day the class opens to all: Tue 20 Oct 2026 (Dussehra), Praveen's decision of 12-10-2026 (NOTES_lead.md).

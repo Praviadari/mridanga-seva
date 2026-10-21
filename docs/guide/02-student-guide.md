@@ -52,8 +52,11 @@ hand. The app makes it quicker and lets you see your own progress.
      so your record is linked.
    - **Password**: at least 8 characters. Tap **Show** to see what you typed.
    - **Type the password again**
-   - **Date of birth**: pick the day, month and year. **Under 18?** The app asks you to come to the
-     class desk with a parent instead: the desk registers you with the parent's consent.
+   - **Date of birth**: pick the day, month and year. **Under 18?** The form then asks for your parent's
+     or guardian's name, relation, email and mobile number. After you confirm your own email, we email
+     your parent once with a code; they give consent on a short page. Then come to your first class
+     with your ID or your parent's: a coordinator checks it and registers you. (You can also still come
+     to the desk with a parent.)
    - **Gender**: each student gets a coordinator of the same gender.
    - **Mobile number**: pick the country (your centre's is chosen first), then type the number.
    - **Your class centre**: country, then city, then the centre (with one centre it is already chosen).

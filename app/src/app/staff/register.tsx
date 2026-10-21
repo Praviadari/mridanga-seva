@@ -26,6 +26,10 @@
 // Since the launch audit (15-10-2026, docs/DECISIONS.md #390) Next and Accept ask possible_duplicates (0047, #274) and
 // show "Possible duplicate" above Save and on Accept's card: a record or sign-up with the same name and date of birth,
 // or the same phone, with a button to open the record. A warning only.
+// Since 0051 (docs/DECISIONS.md #399) a child who signed up at home shows whether the parent consented by email. While the parent has not,
+// the row says so and offers Fill the form (the parent at the desk). Once they have: Accept, whose card shows the parent's details and asks
+// which ID the coordinator saw (the parent's or the child's; only its kind is kept), then registers the child with the guardian and the
+// parent's consents (accept_minor_sign_up).
 
 import { router, Stack, useFocusEffect } from 'expo-router';
 import { use, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -68,6 +72,7 @@ import {
   type Referrer,
   type WaitingSignUp,
 } from '@/data/about';
+import { acceptMinorSignUp } from '@/data/minor-signup';
 import { activeSets, fetchAllOptions, type OptionSets } from '@/data/options';
 import {
   acceptSignUp,
@@ -83,6 +88,7 @@ import {
   RELATIONS,
   repeatedOtherPerson,
   type Accepted,
+  type IdType,
   type LevelOption,
   type MentorOption,
   type Registered,
@@ -177,6 +183,8 @@ export default function RegisterStudentScreen() {
   const [acceptBusy, setAcceptBusy] = useState(false);
   const [acceptError, setAcceptError] = useState<MessageKey | null>(null);
   const [accepted, setAccepted] = useState<Accepted | null>(null);
+  // A child's Accept (#399): the ID the coordinator saw, asked on the card.
+  const [acceptIdType, setAcceptIdType] = useState<IdType | null>(null);
   // A Save that returned the record of an earlier person (lost answer, then another person typed): shown, not hidden.
   const [otherSaved, setOtherSaved] = useState<Registered | null>(null);
   // An adult filled in by hand: the coordinator showed them the privacy notice (#290, #292).
@@ -325,6 +333,7 @@ export default function RegisterStudentScreen() {
     setAccepting(person);
     setAcceptError(null);
     setAccepted(null);
+    setAcceptIdType(null);
     // Already on record (registered by hand, or a second sign-up)? Shown on the card when the answer comes (#390).
     setAcceptDuplicates(null);
     void fetchPossibleDuplicates(person.full_name, person.dob, person.phone ?? null, person.id).then((matches) =>
@@ -332,11 +341,19 @@ export default function RegisterStudentScreen() {
     );
   }
 
-  /** Registers the sign-up from its own data (accept_sign_up); it leaves the waiting list. */
+  /**
+   * Registers the sign-up from its own data (accept_sign_up; a child whose parent consented by email: accept_minor_sign_up, with
+   * the ID seen); it leaves the waiting list.
+   */
   async function confirmAccept(person: WaitingSignUp) {
+    const child = person.parent?.state === 'consented';
+    if (child && !acceptIdType) {
+      setAcceptError('register.minorAccept.idRequired');
+      return;
+    }
     setAcceptBusy(true);
     setAcceptError(null);
-    const result = await acceptSignUp(person.id);
+    const result = child && acceptIdType ? await acceptMinorSignUp(person.id, acceptIdType) : await acceptSignUp(person.id);
     setAcceptBusy(false);
     if (!result.accepted) {
       setAcceptError(result.errorKey ?? 'common.genericError');
@@ -575,7 +592,7 @@ export default function RegisterStudentScreen() {
                 // correct), or no privacy tick (FF-01: the form shows the notice).
                 const age = w.dob ? ageFromForm(formatTypedDate(w.dob)) : null;
                 const action = waitingAction(w);
-                const canAccept = action === 'accept';
+                const canAccept = action === 'accept' || action === 'acceptMinor';
                 if (age && accepting?.id === w.id) {
                   return (
                     <View key={w.id} style={styles.confirm}>
@@ -586,11 +603,28 @@ export default function RegisterStudentScreen() {
                           w.centre_name ? t('register.acceptCentre', { value: w.centre_name }) : '',
                           w.phone ? t('register.acceptPhone', { value: formatPhone(w.phone) }) : '',
                           w.email ? t('register.acceptEmail', { value: w.email }) : '',
+                          ...(w.parent ? [
+                            t('register.minorAccept.parent', { name: w.parent.name, relation: t(`relations.${w.parent.relation}`) }),
+                            t('register.minorAccept.parentContact', { phone: formatPhone(w.parent.phone), email: w.parent.email }),
+                            w.parent.consented_at ? t('register.minorAccept.consentedOn', { when: formatDateTime(w.parent.consented_at) }) : '',
+                            t(w.parent.photo_consent ? 'register.minorAccept.photoYes' : 'register.minorAccept.photoNo'),
+                          ] : []),
                         ]
                           .filter(Boolean)
                           .join('\n')}
                       </Notice>
-                      <AppText variant="label">{t('register.acceptCheckId')}</AppText>
+                      <AppText variant="label">{t(w.parent ? 'register.minorAccept.checkId' : 'register.acceptCheckId')}</AppText>
+                      {w.parent ? (
+                        <ChoiceGroup
+                          label={t('register.minorAccept.idSeen')}
+                          choices={ID_TYPES.map((id) => ({ value: id, label: t(`idTypes.${id}`) }))}
+                          value={acceptIdType}
+                          onChange={(id) => {
+                            setAcceptIdType(id);
+                            if (acceptError === 'register.minorAccept.idRequired') setAcceptError(null);
+                          }}
+                        />
+                      ) : null}
                       <PossibleDuplicates place="accept" matches={acceptDuplicates?.id === w.id ? acceptDuplicates.matches : []} />
                       {acceptError ? <Notice tone="error">{t(acceptError)}</Notice> : null}
                       <Button icon="check" label={t('register.accept')} loading={acceptBusy} onPress={() => void confirmAccept(w)} />
@@ -615,6 +649,8 @@ export default function RegisterStudentScreen() {
                       w.phone ? formatPhone(w.phone) : '',
                       t('register.signedUpOn', { when: formatDateTime(w.created_at) }),
                       action === 'noNotice' ? t('register.waitingNoNotice') : '',
+                      action === 'minorWaiting' ? t('register.minorAccept.rowWaiting') : '',
+                      action === 'acceptMinor' ? t('register.minorAccept.rowConsented') : '',
                     ].filter(Boolean)}
                     action={
                       canAccept

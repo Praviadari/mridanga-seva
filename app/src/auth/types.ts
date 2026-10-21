@@ -21,7 +21,16 @@ export type Profile = {
    * (migration 0027, docs/DECISIONS.md #88). Missing for everyone else and before 0027.
    */
   ig_state?: IgState;
+  /**
+   * A waiting child's sign-up at home (migration 0051, docs/DECISIONS.md #399), from my_parent_consent(): the
+   * parent's details still needed, waiting for the parent's consent by email, or consented (the desk next).
+   * Missing for everyone else and before 0051.
+   */
+  minor_state?: MinorState;
 };
+
+/** Where a child's sign-up at home stands: the parent's details needed, waiting for the parent, consented. */
+export type MinorState = 'needs_parent' | 'awaiting_parent' | 'consented';
 
 /** A public login's Ishtagoshti subscription: not joined, waiting for the parent's code, reading, blocked. */
 export type IgState = 'none' | 'awaiting_parent' | 'active' | 'blocked';

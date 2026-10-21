@@ -110,6 +110,8 @@ function RootNavigator() {
         <Stack.Screen name="index" />
         {/* Always open too: an asset label's link (/i/<token>) forwards by area and shows nothing itself. */}
         <Stack.Screen name="i/[token]" />
+        {/* Always open too: a parent's consent page for a child who signed up at home (#399), signed in or not. */}
+        <Stack.Screen name="parent-consent" options={{ title: t('parentConsent.title') }} />
 
         <Stack.Protected guard={area === 'signedOut'}>
           <Stack.Screen name="sign-in" options={{ title: t('signIn.title') }} />

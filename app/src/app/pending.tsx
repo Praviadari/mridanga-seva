@@ -5,6 +5,9 @@
 // lib/ishtagoshti-terms.ts, audit S4-08), or finish a join already started.
 // A new student waiting for the class desk sees "Almost there" and the three steps of joining (account made, come to
 // the desk with an ID, your QR card), and the screen checks by itself every 30 s (#380, 15-10-2026).
+// A child who signed up at home (migration 0051, #399) sees one more step, the parent's consent by email, with a card that
+// says where it stands (src/components/parent-consent-card.tsx); About you waits (nothing beyond the sign-up before the
+// parent consents) and is not offered to a child at all: the desk records what is needed.
 
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
@@ -17,6 +20,7 @@ import { BrandHeader } from '@/components/brand';
 import { Button } from '@/components/button';
 import { JoinSteps } from '@/components/join-steps';
 import { Notice } from '@/components/notice';
+import { ParentConsentCard } from '@/components/parent-consent-card';
 import { Screen } from '@/components/screen';
 import { SignOutButton } from '@/components/sign-out-button';
 import { UpdateNotice } from '@/components/update-notice';
@@ -34,7 +38,9 @@ export default function PendingScreen() {
   const [checking, setChecking] = useState(false);
   // Step 2 of joining (docs/DECISIONS.md #164): opens by itself once; the card below opens it later.
   const waitingForDesk = !!profile?.active && profile.role === 'pending' && profile.ig_state !== 'active' && profile.ig_state !== 'blocked';
-  const aboutOpen = useAboutPrompt(profile?.id, '/about-you', waitingForDesk);
+  // A child's sign-up at home (#399): the parent's consent comes first; About you is not offered.
+  const minor = waitingForDesk ? profile?.minor_state : undefined;
+  const aboutOpen = useAboutPrompt(profile?.id, '/about-you', waitingForDesk && !minor);
 
   async function checkAgain() {
     setChecking(true);
@@ -73,7 +79,12 @@ export default function PendingScreen() {
   } else if (profile.ig_state === 'blocked') {
     message = <Notice tone="error" title={t('ishtagoshtiJoin.blockedTitle')}>{t('ishtagoshtiJoin.blockedBody')}</Notice>;
   } else if (waitingForDesk) {
-    message = <JoinSteps email={session?.user.email} />;
+    message = (
+      <>
+        <JoinSteps email={session?.user.email} minor={minor} />
+        {minor ? <ParentConsentCard childEmail={session?.user.email} onChanged={() => void refreshRef.current()} /> : null}
+      </>
+    );
   } else {
     message = (
       <>
@@ -89,7 +100,7 @@ export default function PendingScreen() {
       {/* A fixed version may be what this person waits for (FLOW-06). */}
       <UpdateNotice />
       {message}
-      {waitingForDesk && aboutOpen !== null ? (
+      {waitingForDesk && !minor && aboutOpen !== null ? (
         <Section icon="about" title={t('about.cardTitle')} description={aboutOpen ? t('about.cardBody') : t('about.cardDone')}>
           <Button
             icon="about"

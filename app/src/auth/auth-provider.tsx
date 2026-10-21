@@ -12,7 +12,8 @@
 // refreshed, instead of landing on sign-in (docs/DECISIONS.md #42).
 // Roles are given by the database, never chosen in the app (docs/ARCHITECTURE.md "Roles").
 // A login without a class role ('pending') that joined Ishtagoshti gets the 'subscriber' area: its
-// state comes from ig_my_state() (migration 0027, docs/DECISIONS.md #88).
+// state comes from ig_my_state() (migration 0027, docs/DECISIONS.md #88). A waiting child who signed up at home has
+// minor_state from my_parent_consent() (migration 0051, #399).
 // The profile is read again when the app comes back to the screen, when the login token is
 // refreshed, and when the database refuses a call as not allowed, so a person the Guru switched
 // off (or whose role changed) loses their screens and the QR scanner at once (docs/DECISIONS.md #99).
@@ -44,7 +45,7 @@ import './email-link';
 import { finishPendingSignOuts } from './pending-sign-out';
 import { forgetSavedProfile, readSavedProfile, saveProfile } from './saved-profile';
 import { noteSignedOut } from './session-end';
-import type { Area, IgState, Profile } from './types';
+import type { Area, IgState, MinorState, Profile } from './types';
 
 /** What useAuth() gives a screen. */
 export type AuthState = {
@@ -288,6 +289,11 @@ async function fetchProfile(userId: string): Promise<ProfileResult> {
       return { userId, profile: null, failed: true, network: isNetworkError(state.error.message) };
     }
     if (!state.error) data.ig_state = ((state.data as { state?: IgState } | null)?.state ?? 'none') as IgState;
+    // A child's sign-up at home (0051, #399): only for the waiting screen's steps, so a failure (or a server
+    // before 0051) leaves it out instead of failing the profile.
+    const minor = await supabase.rpc('my_parent_consent');
+    const minorState = !minor.error ? (minor.data as { state?: MinorState } | null)?.state : undefined;
+    if (minorState) data.minor_state = minorState;
   }
   return { userId, profile: data, failed: false };
 }
