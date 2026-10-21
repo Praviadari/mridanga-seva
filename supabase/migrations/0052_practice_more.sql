@@ -10,6 +10,7 @@
 -- 3. practice_days(): a student's practice minutes per day of the last weeks with their goal (own, level's or
 --    4 x 15), for the "this week" days and the weeks in a row with the goal met (S5, S4 My progress, C8). Runs
 --    as the person asking: a student gets their own days only, staff anyone's (row-level security of 0018).
+-- 4. practice_mantras: mantras to read before practice, written by the Guru and Ishtagoshti editors (#405).
 
 -- ---------------------------------------------------------------- 1. practice_plans
 create table if not exists practice_plans (
@@ -182,9 +183,87 @@ language sql stable set search_path = public as $$
                group by p.practised_on) d), '[]'::jsonb))
 $$;
 
+-- ---------------------------------------------------------------- 4. practice_mantras
+-- Mantras read before practice (#405, Praveen 21-10-2026), e.g. the mridanga pranam and a guru pranam. The TEXT comes
+-- from the Guru in the app: nothing is seeded. Each has a title, the text in Devanagari, Telugu script and/or Roman
+-- transliteration (at least one), the meaning in en/te/hi (optional), a source note and an order. Everyone signed in
+-- with a class role reads the ones switched on; the Guru and Ishtagoshti editors (is_ig_editor, 0021) read all and
+-- write. Errors: mantra_title_invalid (1-80), mantra_text_required, mantra_text_too_long (3000 a script, 2000 a
+-- meaning), mantra_source_too_long (200).
+create table if not exists practice_mantras (
+  id          bigint generated always as identity primary key,
+  title       text not null,
+  devanagari  text,
+  telugu      text,
+  roman       text,
+  meaning_en  text,
+  meaning_te  text,
+  meaning_hi  text,
+  source      text,
+  sort        int not null default 0,
+  active      boolean not null default true,
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now(),
+  updated_by  uuid references profiles (id) on delete set null
+);
+
+create or replace function guard_practice_mantra() returns trigger
+language plpgsql set search_path = public as $$
+begin
+  new.title := btrim(regexp_replace(coalesce(new.title, ''), '\s+', ' ', 'g'));
+  if char_length(new.title) not between 1 and 80 then
+    raise exception 'mantra_title_invalid' using detail = 'A title has 1-80 characters.';
+  end if;
+  new.devanagari := nullif(btrim(new.devanagari, E' \t\r\n'), '');
+  new.telugu     := nullif(btrim(new.telugu, E' \t\r\n'), '');
+  new.roman      := nullif(btrim(new.roman, E' \t\r\n'), '');
+  new.meaning_en := nullif(btrim(new.meaning_en, E' \t\r\n'), '');
+  new.meaning_te := nullif(btrim(new.meaning_te, E' \t\r\n'), '');
+  new.meaning_hi := nullif(btrim(new.meaning_hi, E' \t\r\n'), '');
+  new.source     := nullif(btrim(new.source, E' \t\r\n'), '');
+  if coalesce(new.devanagari, new.telugu, new.roman) is null then
+    raise exception 'mantra_text_required' using detail = 'The mantra in at least one script.';
+  end if;
+  if greatest(char_length(coalesce(new.devanagari, '')), char_length(coalesce(new.telugu, '')), char_length(coalesce(new.roman, ''))) > 3000
+     or greatest(char_length(coalesce(new.meaning_en, '')), char_length(coalesce(new.meaning_te, '')),
+                 char_length(coalesce(new.meaning_hi, ''))) > 2000 then
+    raise exception 'mantra_text_too_long' using detail = 'A script has at most 3000 characters, a meaning 2000.';
+  end if;
+  if char_length(coalesce(new.source, '')) > 200 then
+    raise exception 'mantra_source_too_long' using detail = 'The source note has at most 200 characters.';
+  end if;
+  if tg_op = 'UPDATE' then
+    new.created_at := old.created_at;
+  end if;
+  new.updated_at := now();
+  new.updated_by := coalesce(auth.uid(), new.updated_by);
+  return new;
+end $$;
+
+drop trigger if exists practice_mantras_guard on practice_mantras;
+create trigger practice_mantras_guard before insert or update on practice_mantras
+  for each row execute function guard_practice_mantra();
+drop trigger if exists audit_practice_mantras on practice_mantras;
+create trigger audit_practice_mantras after insert or update or delete on practice_mantras
+  for each row execute function audit_row();
+
+alter table practice_mantras enable row level security;
+drop policy if exists readable on practice_mantras;
+create policy readable on practice_mantras for select to authenticated using (
+  (active and (select has_class_role())) or (select is_ig_editor()));
+drop policy if exists editor_insert on practice_mantras;
+create policy editor_insert on practice_mantras for insert to authenticated with check ((select is_ig_editor()));
+drop policy if exists editor_update on practice_mantras;
+create policy editor_update on practice_mantras for update to authenticated
+  using ((select is_ig_editor())) with check ((select is_ig_editor()));
+drop policy if exists editor_delete on practice_mantras;
+create policy editor_delete on practice_mantras for delete to authenticated using ((select is_ig_editor()));
+revoke all on practice_mantras from public, anon;
+revoke truncate, references, trigger on practice_mantras from authenticated;
+
 -- ---------------------------------------------------------------- who may run functions
 -- docs/DECISIONS.md #14.
-revoke execute on function guard_practice_plan(), practice_days(uuid, int), set_my_practice_goal(int, int)
+revoke execute on function guard_practice_plan(), guard_practice_mantra(), practice_days(uuid, int), set_my_practice_goal(int, int)
   from public, anon, authenticated;
 grant execute on function practice_days(uuid, int), set_my_practice_goal(int, int) to authenticated;
 
@@ -192,5 +271,7 @@ grant execute on function practice_days(uuid, int), set_my_practice_goal(int, in
 comment on table practice_plans is 'S5 practice of the week, per level: weekly goal (goal_days x goal_minutes) and up to 3 items (a taal at a bpm, or a lesson video) with a note. Staff write; a student reads own level (0052, docs/DECISIONS.md #400-#401).';
 comment on function guard_practice_plan is 'Trigger: checks a practice plan: goal 1-7 days and 5-120 minutes, note 300, at most 3 items, each a switched-on taal at 30-240 bpm or an approved lesson video its level can open (0052).';
 comment on function practice_days(uuid, int) is 'S5/S4/C8: a student''s practice minutes per day of the last p_weeks weeks (from Monday, India) and their weekly goal (own, else the level''s, else 4 x 15), as the person asking may see them (0052, #400).';
+comment on table practice_mantras is 'S5: mantras read before practice (title, Devanagari / Telugu / Roman text, meaning en/te/hi, source, order). Text only from the Guru in the app, nothing seeded. Class roles read the ones switched on; the Guru and Ishtagoshti editors write (0052, docs/DECISIONS.md #405).';
+comment on function guard_practice_mantra is 'Trigger: checks a practice mantra: title 1-80, text in at least one script (3000 each), meanings 2000, source 200 (0052, #405).';
 comment on table practice_goals is 'S5: a student''s own weekly practice goal (days x minutes), in place of the level''s. Written only through set_my_practice_goal (0052, #400).';
 comment on function set_my_practice_goal(int, int) is 'S5, student: sets their own weekly goal (1-7 days, 5-120 minutes), or back to the level''s with null days (0052, #400).';

@@ -51,7 +51,7 @@ in number order:
 | `0049_launch_cleanup.sql` | Launch clean-up (audit phase 3, brief L8): `erase_login` for a waiting sign-up; erasure matches emails as whole values (`audit_redact`), lists every file in the child's folder and deletes the staff notices about the child (`forget_notices_about`); unlisted assessment files over a day old deleted by the daily clean-up; 150 MB a day per login in `assessment-files`; `push_outbox` kept 30 days ([DECISIONS.md #286-#287](DECISIONS.md)). No new job. See "Launch clean-up (0049)" |
 | `0050_staff_dashboard.sql` | Launch range (placeholder 0063 on branch `after-launch-design`, renumbered 14-10-2026): `staff_dashboard()`, the staff homes' Today numbers and what waits for the caller in one request ([DECISIONS.md #339, #340](DECISIONS.md)). See "Staff home: today and waiting (0050)" |
 | `0051_minor_home_signup.sql` | A child under 18 signs up at home; the parent consents by email with a 6-digit code; the desk sees an ID and Accepts (`accept_minor_sign_up`) ([DECISIONS.md #399](DECISIONS.md)). See "Under-18 sign-up at home (0051)" |
-| `0052_practice_more.sql` | More home practice ([DECISIONS.md #400-#401](DECISIONS.md)): `practice_plans` (per level: weekly goal, up to three things to practise, a note; staff write, a student reads their own level's) a student's own weekly goal (`practice_goals`, `set_my_practice_goal`) and `practice_days()` (minutes per day with the goal: own, the level's, or 4 x 15). See "Practice of the week and the weekly goal (0052)" |
+| `0052_practice_more.sql` | More home practice ([DECISIONS.md #400-#401](DECISIONS.md)): `practice_plans` (per level: weekly goal, up to three things to practise, a note; staff write, a student reads their own level's) a student's own weekly goal (`practice_goals`, `set_my_practice_goal`), mantras read before practice (`practice_mantras`, #405) and `practice_days()` (minutes per day with the goal: own, the level's, or 4 x 15). See "Practice of the week and the weekly goal (0052)" |
 
 The Phase 2 files were renumbered when they merged into main (#55). TEST ran some under their
 branch numbers (0012, 0014_promotion, 0016_practice, 0017_media, 0021_events_polls), so it skips
@@ -1615,12 +1615,13 @@ Tests: section "0051 a child's sign-up at home" in `supabase/tests/smoke-test.mj
 
 ## Practice of the week and the weekly goal (0052)
 
-[DECISIONS.md #400-#401](DECISIONS.md). Migration `0052_practice_more.sql`. Screens: S5 Practice tools (students: the
+[DECISIONS.md #400-#401, #405](DECISIONS.md). Migration `0052_practice_more.sql`. Screens: S5 Practice tools (students: the
 plan at the top, this week against the goal), S4 My progress and C8 (the week card), staff/practice-plan (the editor).
 
 | Table | One row per | Written by |
 |---|---|---|
 | `practice_plans` | Level (`level_id` unique): `goal_days` 1-7 (default 4), `goal_minutes` 5-120 (default 15), `note` ≤ 300 (blank = null), `items` (JSON list of at most 3: `{"taal": id, "bpm": 30-240}` or `{"lesson": material id}`), `updated_at`, `updated_by` | Guru and coordinators (row-level security: insert and update; no delete from the app); checked by the trigger `practice_plans_guard` (`guard_practice_plan`), audited (`audit_row`) |
+| `practice_mantras` | Mantra read before practice (#405): `title` 1-80, `devanagari` / `telugu` / `roman` (at least one, 3000 each), `meaning_en` / `meaning_te` / `meaning_hi` (2000), `source` (200), `sort`, `active`, `updated_by`. Nothing seeded | The Guru and Ishtagoshti editors (`is_ig_editor`, row-level security); class roles read the ones switched on; checked by `guard_practice_mantra` (`mantra_title_invalid`, `mantra_text_required`, `mantra_text_too_long`, `mantra_source_too_long`), audited |
 | `practice_goals` | Student with an own goal: `student_id` (cascade with the record), `goal_days` 1-7, `goal_minutes` 5-120, `updated_at`. Read by the student and staff | Only `set_my_practice_goal`; refused for a withdrawn record (`refuse_withdrawn`) |
 
 `guard_practice_plan` errors: `plan_goal_invalid`, `plan_note_too_long`, `plan_items_invalid` (not a list of at most

@@ -6389,3 +6389,34 @@ one stroke at a time is how a new theka is learnt.
 **Consequences.** Drum colours stay the instrument's in dark mode; the hands use the theme's surface and outline colours
 with the saffron highlight, so they read in both modes. If the Guru changes a mapping in lib/bols.ts, the drawings,
 words and the L/R row follow by themselves.
+
+## 405. Mantra before practice — 21 Oct 2026
+
+**Status: branch `claude/practice-features-61c475`; migration 0052_practice_more.sql.** Praveen: "i want mridanga mantra
+to be in some part of app so that we can open the mantra to read before practise as i am currently searching in
+internet and reading before starting practise".
+
+**Context.** The mantra the class reads before practice is not in the app; Praveen looks it up on the internet each
+time. The Ishtagoshti slokas (0021) already show verses with Devanagari and transliteration, edited by the Guru and
+Ishtagoshti editors.
+
+**Decision.**
+- **practice_mantras** (in 0052): title (1-80), the mantra in **Devanagari, Telugu script and/or Roman transliteration**
+  (at least one, 3000 characters each), the **meaning in en/te/hi** (optional, 2000), a source note (200), an order and
+  "students see it". Checked by `guard_practice_mantra()` and audited. **Everyone with a class role reads the ones
+  switched on; the Guru and Ishtagoshti editors (`is_ig_editor`, 0021) read all and write**, as for slokas. More than
+  one is allowed (e.g. the mridanga pranam and a guru pranam).
+- **The text comes only from the Guru**, typed or pasted in the app (staff/mantras/[id]). The app and the migration
+  contain no mantra text: nothing typed from memory or copied from the internet.
+- **"Mantra before practice"** is the first row of Practice tools (students and staff): one tap opens a calm reader
+  (staff/mantra, student/mantra): the mantra in large type, a script switch (the reader's language's script first), the
+  meaning with a language switch, the source, a **light or dark reading page** (kept on the phone), the **screen kept
+  awake** while it is open, and "Go to practice". The last list loaded is kept on the phone, so it reads **offline**
+  after the first load. Until a mantra exists students see nothing; the Guru and editors see "Add the mantra".
+
+**Why.** Reading the mantra before taking up the mridanga is part of the practice; it should be one tap away, the same
+text for everyone, and the Guru's own.
+
+**Consequences.** No personal data. 0052 must run before the update that shows it (without the table the row stays
+hidden and the editor cannot save). Praveen (or the Guru) adds the text in the app after 0052 runs. te/hi screen text is
+a draft for native review; the mantra text itself is never translated by the app.

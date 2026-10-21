@@ -183,11 +183,38 @@ test('hands: the drawing follows lib/bols.ts only, and its colours work in dark 
   assert.match(handView, /aria-hidden/);
 });
 
+test('mantra before practice: the reader\'s script first, only scripts the Guru wrote (#405)', async () => {
+  const { firstScript, scriptsOf } = await import('../src/data/mantras.ts');
+  const m = (text) => ({ id: 1, title: 'T', text: { devanagari: null, telugu: null, roman: null, ...text }, meaning: { en: null, te: null, hi: null }, source: null, sort: 0, active: true });
+  const all = m({ devanagari: 'D', telugu: 'T', roman: 'R' });
+  assert.deepEqual(scriptsOf(all), ['devanagari', 'telugu', 'roman']);
+  assert.equal(firstScript(all, 'te'), 'telugu');
+  assert.equal(firstScript(all, 'hi'), 'devanagari');
+  assert.equal(firstScript(all, 'en'), 'roman');
+  assert.equal(firstScript(m({ devanagari: 'D' }), 'te'), 'devanagari', 'falls back to a written script');
+  assert.equal(firstScript(m({}), 'en'), null);
+});
+
+test('mantra before practice: no mantra text in the app or the migration, entry at the top, screen awake (#405)', () => {
+  const sql = readFileSync(new URL('../../supabase/migrations/0052_practice_more.sql', import.meta.url), 'utf8');
+  assert.ok(!/insert into practice_mantras/i.test(sql), 'nothing seeded: the text comes from the Guru');
+  const tools = src('screens/practice-tools.tsx');
+  assert.ok(tools.indexOf('<MantraEntry') < tools.indexOf('<PracticeTimerLine'), 'the mantra comes first on Practice tools');
+  const reader = src('screens/mantra-reader.tsx');
+  assert.match(reader, /activateKeepAwakeAsync\(tag\)/);
+  assert.match(reader, /savedMantras\(\)/, 'the copy on the phone shows at once and offline');
+  assert.match(src('data/mantras.ts'), /writeLocal\(SAVED_KEY/);
+  // Students see nothing until a mantra exists; editors get "Add the mantra".
+  const more = src('components/practice-more.tsx');
+  assert.match(more, /if \(mantras\.length > 0\)[\s\S]*if \(area === 'staff' && canEdit\)[\s\S]*return null;/);
+});
+
 test('the new texts are in English, Telugu and Hindi, the reminder\'s too', () => {
   const keys = ['practice.goalDays', 'practice.goalToGo_other', 'practice.trainer', 'practice.countIn', 'practice.planTitle',
     'practice.reminderTitle', 'practice.reminderBody', 'practicePlan.title', 'practicePlan.errors.plan_bpm_invalid',
     'practice.cycleOf', 'practice.stoppedAfterCycles_other', 'practice.goalChange', 'practice.motionOpen', 'practice.motionClosed',
-    'practice.handsLegend', 'practice.stepMode', 'practice.stepHear'];
+    'practice.handsLegend', 'practice.stepMode', 'practice.stepHear', 'mantras.entry', 'mantras.addFirst', 'mantras.scripts.telugu',
+    'mantras.errors.mantra_text_required', 'mantras.pageDark'];
   for (const lang of ['en', 'te', 'hi']) {
     const json = locale(lang);
     for (const key of keys) {

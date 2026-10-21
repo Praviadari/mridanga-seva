@@ -127,7 +127,7 @@ process.on('uncaughtException', (error) => {
 // D14-10: every check is counted, and the run fails when fewer (or more) checks ran than expected,
 // so a block skipped by a renamed migration or a commented-out section cannot pass unseen.
 // Adding or removing checks? Run the suite and set this to the new total it prints.
-const EXPECTED_CHECKS = 1813; // 0052 more practice: +40; 0051 child's sign-up at home: +79; 0050 staff dashboard: +15; 0049 launch clean-up: +30; 0048 withdrawn records and leaks: +50; 0047 form rules: +109; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
+const EXPECTED_CHECKS = 1829; // 0052 more practice: +56; 0051 child's sign-up at home: +79; 0050 staff dashboard: +15; 0049 launch clean-up: +30; 0048 withdrawn records and leaks: +50; 0047 form rules: +109; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
 let failures = 0;
 let passes = 0;
 
@@ -6341,10 +6341,46 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   check('0052: null goes back to the level\'s goal', back52.goal_days === 4 && back52.goal_minutes === 20 && back52.goal_own === false, JSON.stringify(back52));
   await refusesWith('0052: nobody signed in cannot run practice_days', 'permission denied for function practice_days', () =>
     asApp('anon', null, 'select practice_days(null, 1)'));
+
+  // Mantras before practice (#405): the Guru and Ishtagoshti editors write, class roles read the ones switched on.
+  check('0052: no mantra is seeded (the text comes from the Guru)', (await asOwner('select count(*)::int as n from practice_mantras'))[0].n === 0);
+  const addMantra = (userId, cols) => asApp('authenticated', userId,
+    `insert into practice_mantras (title, devanagari, telugu, roman, meaning_en, source, active)
+     values ($1, $2, $3, $4, $5, $6, $7) returning id, title, devanagari, telugu, meaning_en, updated_by`,
+    [cols.title ?? 'Test pranam', cols.devanagari ?? null, cols.telugu ?? null, cols.roman ?? null, cols.meaning ?? null, cols.source ?? null,
+      cols.active ?? true]).then((r) => r[0]);
+  const mantra52 = await addMantra(guru, { title: '  Test   pranam ', devanagari: ' text one \n', telugu: '   ', meaning: 'A test meaning.' });
+  check('0052: the Guru adds a mantra; title and text trimmed, a blank script is none', mantra52.title === 'Test pranam'
+    && mantra52.devanagari === 'text one' && mantra52.telugu === null && mantra52.updated_by === guru, JSON.stringify(mantra52));
+  check('0052: a student reads it', (await asApp('authenticated', pupilLogin, 'select id from practice_mantras')).length === 1);
+  check('0052: a coordinator reads it', (await asApp('authenticated', coordinator, 'select id from practice_mantras')).length === 1);
+  const waitingLogin52 = await signUp('waiting.52@example.com', true);
+  check('0052: a waiting sign-up (no class role) reads none', (await asApp('authenticated', waitingLogin52, 'select id from practice_mantras')).length === 0);
+  await refusesWith('0052: anon reads no mantra', 'permission denied for table practice_mantras', () => asApp('anon', null, 'select id from practice_mantras'));
+  const off52 = await addMantra(guru, { title: 'Off mantra', roman: 'text two', active: false });
+  check('0052: a switched-off mantra: the Guru sees it, a student does not',
+    (await asApp('authenticated', guru, `select id from practice_mantras where id = ${off52.id}`)).length === 1
+    && (await asApp('authenticated', pupilLogin, `select id from practice_mantras where id = ${off52.id}`)).length === 0);
+  await refusesWith('0052: a coordinator who is not an Ishtagoshti editor cannot add one',
+    'new row violates row-level security policy for table "practice_mantras"', () => addMantra(coordinator, { roman: 'x' }));
+  await refusesWith('0052: nor a student', 'new row violates row-level security policy for table "practice_mantras"', () => addMantra(pupilLogin, { roman: 'x' }));
+  await asOwner(`update profiles set ig_editor = true where id = '${coordinator}'`);
+  const byEditor52 = await addMantra(coordinator, { title: 'Guru pranam (test)', roman: 'text three' });
+  check('0052: a coordinator marked Ishtagoshti editor adds one', byEditor52?.updated_by === coordinator);
+  await asOwner(`update profiles set ig_editor = false where id = '${coordinator}'`);
+  await refusesWith('0052: a mantra needs at least one script', 'mantra_text_required', () => addMantra(guru, { devanagari: ' ', roman: '' }));
+  await refusesWith('0052: a title of 1-80 characters', 'mantra_title_invalid', () => addMantra(guru, { title: 'x'.repeat(81), roman: 'x' }));
+  await refusesWith('0052: a script of at most 3000 characters', 'mantra_text_too_long', () => addMantra(guru, { roman: 'x'.repeat(3001) }));
+  await refusesWith('0052: a source of at most 200 characters', 'mantra_source_too_long', () => addMantra(guru, { roman: 'x', source: 'x'.repeat(201) }));
+  check('0052: mantra changes are in the audit log',
+    (await asOwner(`select count(*)::int as n from audit_log where table_name = 'practice_mantras'`))[0].n === 3);
+  await asApp('authenticated', guru, `delete from practice_mantras where id = $1`, [byEditor52.id]);
+  check('0052: the Guru deletes a mantra', (await asOwner('select count(*)::int as n from practice_mantras'))[0].n === 2);
   let again52 = '';
   try { await db.exec(file52); } catch (e) { again52 = String(e.message); }
   check('0052 can run again', again52 === '', again52);
-  check('0052: ... and the plans stay', (await asOwner('select count(*)::int as n from practice_plans'))[0].n === 3);
+  check('0052: ... and the plans and mantras stay', (await asOwner('select count(*)::int as n from practice_plans'))[0].n === 3
+    && (await asOwner('select count(*)::int as n from practice_mantras'))[0].n === 2);
 }
 
 // ---------------------------------------------------------------- row-level security

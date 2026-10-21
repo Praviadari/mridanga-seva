@@ -2339,6 +2339,61 @@
       "plan_lesson_not_found": "A lesson video is no longer open to this level. Choose another."
     }
   },
+  "mantras": {
+    "entry": "Mantra before practice",
+    "title": "Mantra before practice",
+    "none": "No mantra yet.",
+    "noneEditor": "Add the mantra the class reads before practice: the text as the Guru gives it.",
+    "add": "Add the mantra",
+    "addFirst": "Add the mantra (read before practice)",
+    "addAnother": "Add another mantra",
+    "edit": "Edit this mantra",
+    "which": "Mantra",
+    "script": "Script",
+    "scripts": {
+      "devanagari": "Devanagari",
+      "telugu": "Telugu",
+      "roman": "Roman"
+    },
+    "meaning": "Meaning",
+    "meaningIn": "Meaning in",
+    "languages": {
+      "en": "English",
+      "te": "Telugu",
+      "hi": "Hindi"
+    },
+    "source": "Source: {{source}}",
+    "page": "Reading page",
+    "pageLight": "Light",
+    "pageDark": "Dark",
+    "savedCopy": "No connection: showing the copy saved on this phone.",
+    "switchedOff": "Switched off: students do not see this mantra.",
+    "toPractice": "Go to practice",
+    "newTitle": "New mantra",
+    "editTitle": "Edit mantra",
+    "notFound": "This mantra could not be found.",
+    "editorHint": "Type or paste the mantra exactly as the Guru gives it. Give at least one script; the others and the meanings are optional.",
+    "textTitle": "The mantra",
+    "titleField": "Title",
+    "titleHint": "For example: Mridanga pranam",
+    "scriptsHint": "Students choose the script; their language's script is shown first.",
+    "more": "More",
+    "sourceField": "Source (optional)",
+    "sourceHint": "Where the text comes from, as the Guru names it.",
+    "sort": "Order",
+    "sortHint": "Smaller numbers come first.",
+    "active": "Students see this mantra",
+    "save": "Save",
+    "delete": "Delete",
+    "confirmDelete": "Yes, delete",
+    "errors": {
+      "not_allowed": "Only the Guru and Ishtagoshti editors add or change the mantras.",
+      "mantra_title_invalid": "Give a title of 1 to 80 characters.",
+      "mantra_text_required": "Give the mantra in at least one script.",
+      "mantra_text_too_long": "Too long: at most 3000 characters a script, 2000 a meaning.",
+      "mantra_source_too_long": "The source has at most 200 characters."
+    }
+  },
   "taals": {
     "title": "Rhythms (taals)",
     "edit": "Edit taals",

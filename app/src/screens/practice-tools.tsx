@@ -12,7 +12,8 @@
 //   so the tempo and its big Start come on the first screen (#384).
 // Sound: lib/practice-audio(.web).ts; timing is kept by the audio clock, not by JavaScript timers.
 // The Guru sees "Edit taals" (staff/taals). The sound stops when the screen is left.
-// More practice (docs/DECISIONS.md #400-#404; components/practice-more.tsx):
+// More practice (docs/DECISIONS.md #400-#405; components/practice-more.tsx):
+// - Mantra before practice (everyone): one tap at the top to the mantra reader, once the Guru added one.
 // - Practice of the week (students): what the teachers set for the student's level, each taal with Start at its
 //   tempo, each lesson with Watch, above the tools; staff open the editor (staff/practice-plan).
 // - Count-in (one bar of clicks before beat 1), the cycle counter with stop after N, and the speed trainer (faster
@@ -42,6 +43,7 @@ import { RecordMyself } from '@/components/record-myself';
 import {
   CycleNow,
   GoalFold,
+  MantraEntry,
   PlanSection,
   ReminderFold,
   SpeedTrainerFields,
@@ -62,6 +64,8 @@ import {
   type Taal,
   type TaalList,
 } from '@/data/practice';
+import { fetchCanEdit } from '@/data/ishtagoshti';
+import { fetchMantras, savedMantras, type Mantra } from '@/data/mantras';
 import { levelName } from '@/i18n/labels';
 import type { RecordingSetting } from '@/lib/my-recordings';
 import { createPracticePlayer } from '@/lib/practice-audio';
@@ -136,6 +140,15 @@ export function PracticeTools({ area }: PracticeToolsProps) {
   // Students: the practice of the week and this week against the goal (0052); null where not loaded.
   const [mine, setMine] = useState<MyPracticePlan | null>(null);
   const [goal, setGoal] = useState<PracticeDays | null>(null);
+  // Mantra before practice (#405): the copy on this phone at once, the server's on focus; staff: may they edit.
+  const [mantras, setMantras] = useState<Mantra[]>(() => savedMantras());
+  const [mantraEditor, setMantraEditor] = useState(false);
+
+  const loadMantras = useCallback(async () => {
+    const [loaded, editor] = await Promise.all([fetchMantras(), area === 'staff' ? fetchCanEdit() : Promise.resolve(false)]);
+    setMantras(loaded.mantras.filter((m) => m.active));
+    setMantraEditor(editor);
+  }, [area]);
 
   const loadTaals = useCallback(async () => {
     const loaded = await fetchTaals();
@@ -163,12 +176,13 @@ export function PracticeTools({ area }: PracticeToolsProps) {
     useCallback(() => {
       void loadTaals();
       void loadMine();
+      void loadMantras();
       if (isStudent) void refreshReminder(profileId);
       return () => {
         player.stop();
         setPlaying(false);
       };
-    }, [loadTaals, loadMine, isStudent, profileId, player]),
+    }, [loadTaals, loadMine, loadMantras, isStudent, profileId, player]),
   );
 
   // The screen stays on while the sound plays (a dimmed phone hides the beat).
@@ -403,6 +417,8 @@ export function PracticeTools({ area }: PracticeToolsProps) {
   return (
     <Screen underHeader wide>
       <Stack.Screen options={{ title: t('practice.title') }} />
+
+      <MantraEntry area={area} mantras={mantras} canEdit={mantraEditor} />
 
       {isStudent ? (
         <PracticeTimerLine profileId={profileId} onSaved={practiceSaved} />

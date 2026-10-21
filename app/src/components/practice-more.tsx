@@ -1,4 +1,5 @@
-// More on S5 Practice tools (docs/DECISIONS.md #400-#404):
+// More on S5 Practice tools (docs/DECISIONS.md #400-#405):
+// - MantraEntry: "Mantra before practice" at the top, to the mantra reader (screens/mantra-reader.tsx).
 // - PlanSection: the teachers' practice of the week for the student's level (practice_plans, migration 0052): each
 //   taal at its tempo with Start, each lesson video with Watch, the note and the weekly goal.
 // - SpeedTrainerFields: the speed trainer's settings and where it is (faster by, each step, after every bars/cycles).
@@ -13,6 +14,7 @@ import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
 import { levelName } from '@/i18n/labels';
+import type { Mantra } from '@/data/mantras';
 import { setMyPracticeGoal, type MyPracticePlan, type PracticeDays, type Taal } from '@/data/practice';
 import { GOAL_MINUTE_CHOICES } from '@/lib/practice-goal';
 import { cyclesToNextStep, trainerTempo, type SpeedTrainer } from '@/lib/practice-pattern';
@@ -28,6 +30,44 @@ import { ListRow } from './list-row';
 import { MoreText } from './more-text';
 import { Notice } from './notice';
 import { Section } from './section';
+
+/** Props for MantraEntry. */
+export type MantraEntryProps = {
+  area: 'student' | 'staff';
+  /** The mantras switched on (data/mantras.ts; the copy on the phone while loading or offline). */
+  mantras: readonly Mantra[];
+  /** The Guru or an Ishtagoshti editor. */
+  canEdit: boolean;
+};
+
+/**
+ * "Mantra before practice" at the top of Practice tools (#405): one tap to the reader. Nothing for students until the
+ * Guru has added one; staff who may edit see "Add the mantra" instead.
+ */
+export function MantraEntry({ area, mantras, canEdit }: MantraEntryProps) {
+  const { t } = useTranslation();
+  if (mantras.length > 0) {
+    return (
+      <ListRow
+        leading="sloka"
+        title={t('mantras.entry')}
+        details={[mantras.map((m) => m.title).join(' · ')]}
+        onPress={() => router.push(area === 'staff' ? '/staff/mantra' : '/student/mantra')}
+      />
+    );
+  }
+  if (area === 'staff' && canEdit) {
+    return (
+      <Button
+        variant="secondary"
+        icon="sloka"
+        label={t('mantras.addFirst')}
+        onPress={() => router.push({ pathname: '/staff/mantras/[id]', params: { id: 'new' } })}
+      />
+    );
+  }
+  return null;
+}
 
 /** Props for PlanSection. */
 export type PlanSectionProps = {
