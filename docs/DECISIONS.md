@@ -6449,8 +6449,8 @@ preview and `--check-only` only print it. Two releases on one day are not told a
 export is not guarded: the live web goes up with the same commit as the production update.
 
 **Seeded** from OPERATIONS and git: APK 90c6d1cd (16 Oct 2026, launch), update 01a14a74 = group 4bcc0e21 (17 Oct
-2026, #397), and a waiting entry for main after it (launch clean-up #282-#287, under-18 home sign-up #399, What's new);
-its `_todo` asks the lead to add the Practice lines (0052) at that merge and the date at publish time.
+2026, #397), and a waiting entry for main after it (Practice #400-#405, under-18 home sign-up #399, launch clean-up
+#283-#284; 8 lines, the most); the lead sets its date at publish time.
 
 **Why.** Praveen wants students and staff to see in the app what each version changed. Notes in the bundle can never
 disagree with the code they describe, and the publish guard makes writing them part of every release.

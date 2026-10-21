@@ -2,35 +2,40 @@
   "_comment": "What's new (My profile > What's new, docs/DECISIONS.md #406). Newest first. Add an entry before every production update (docs/OPERATIONS.md 'Publishing an update'). date: the day it is published (YYYY-MM-DD); null = not yet published, shown as 'Coming in the next update'. kind: 'installed' for an APK, 'update' for an update. id: the APK's build id or the update id the version line shows (first 8 characters), once known. notes: 3-8 plain lines in en, te and hi, the same number in each; te/hi are drafts for native review.",
   "releases": [
     {
-      "_todo": "Lead: add up to 2 Practice lines (0052) in en, te and hi when that branch merges (8 lines at most), set date at publish time, then delete this _todo. publish-update.mjs refuses production while it is here.",
       "version": "1.0.0",
       "kind": "update",
       "id": null,
       "date": null,
       "notes": {
         "en": [
-          "Children under 18 can sign up at home: a parent or guardian gets an email with a code and agrees on a web page.",
-          "Welcome desk: see who is waiting for a parent's email; at the first class the desk sees an ID of the parent or the child, and the child becomes a student.",
-          "Recordings you kept on the phone are deleted when you sign out, so the next person cannot hear them.",
-          "A form left half-filled on this phone is kept for 3 days, then removed.",
-          "Lesson videos stay on the lesson: the YouTube logo opens YouTube outside the app.",
-          "New: What's new on My profile shows what changed in each version."
+          "Practice of the week from your teachers, with a Start button.",
+          "A weekly practice goal, and the days you practised this week.",
+          "Taal player: speed trainer, count-in and a cycle counter.",
+          "See which hand plays each stroke, and learn stroke by stroke.",
+          "A daily practice reminder (in the Android app).",
+          "Mantra before practice: read it before you start.",
+          "Students under 18 can sign up at home; a parent agrees by email.",
+          "Recordings on the phone go when you sign out; half-filled forms go after 3 days."
         ],
         "te": [
-          "18 ఏళ్ల లోపు పిల్లలు ఇంటి నుండే సైన్ అప్ చేయవచ్చు: తల్లి/తండ్రి లేదా సంరక్షకుడికి కోడ్‌తో ఈమెయిల్ వస్తుంది, వారు వెబ్ పేజీలో అంగీకరిస్తారు.",
-          "స్వాగత డెస్క్: తల్లిదండ్రుల ఈమెయిల్ కోసం ఎవరు ఎదురుచూస్తున్నారో కనిపిస్తుంది; మొదటి క్లాస్‌లో డెస్క్ తల్లిదండ్రుల లేదా పిల్లల గుర్తింపు కార్డు చూస్తుంది, అప్పుడు పిల్లలు విద్యార్థి అవుతారు.",
-          "ఫోన్‌లో ఉంచుకున్న రికార్డింగ్‌లు సైన్ అవుట్ చేసినప్పుడు తొలగిపోతాయి, తర్వాతి వ్యక్తి వాటిని వినలేరు.",
-          "ఈ ఫోన్‌లో సగం నింపిన ఫారం 3 రోజులు ఉంటుంది, తర్వాత తొలగిపోతుంది.",
-          "పాఠం వీడియోలు పాఠంలోనే ఉంటాయి: YouTube లోగో YouTube ని యాప్ బయట తెరుస్తుంది.",
-          "కొత్తది: నా ప్రొఫైల్‌లో \"కొత్తగా ఏముంది\" ప్రతి వెర్షన్‌లో ఏమి మారిందో చూపిస్తుంది."
+          "మీ గురువుల నుండి ఈ వారం అభ్యాసం, ప్రారంభించండి బటన్‌తో.",
+          "వారపు అభ్యాస లక్ష్యం, ఈ వారం మీరు అభ్యాసం చేసిన రోజులు.",
+          "తాళం ప్లేయర్‌లో: వేగం పెంచే అభ్యాసం, కౌంట్-ఇన్, ఆవృత్తాల లెక్క.",
+          "ప్రతి దెబ్బను ఏ చేయి వాయిస్తుందో చూడండి, దెబ్బ దెబ్బగా నేర్చుకోండి.",
+          "రోజువారీ అభ్యాస గుర్తుచేత (ఆండ్రాయిడ్ యాప్‌లో).",
+          "అభ్యాసానికి ముందు మంత్రం: ప్రారంభించే ముందు చదవండి.",
+          "18 ఏళ్ల లోపు విద్యార్థులు ఇంటి నుండే సైన్ అప్ చేయవచ్చు; తల్లిదండ్రులు ఈమెయిల్ ద్వారా అంగీకరిస్తారు.",
+          "ఫోన్‌లోని రికార్డింగ్‌లు సైన్ అవుట్ చేసినప్పుడు తొలగిపోతాయి; సగం నింపిన ఫారాలు 3 రోజుల తర్వాత."
         ],
         "hi": [
-          "18 साल से कम उम्र के बच्चे घर से साइन अप कर सकते हैं: माता-पिता या अभिभावक को कोड के साथ ईमेल आता है और वे वेब पेज पर सहमति देते हैं।",
-          "स्वागत डेस्क: दिखता है कि कौन माता-पिता के ईमेल की प्रतीक्षा में है; पहली कक्षा में डेस्क माता-पिता या बच्चे का पहचान पत्र देखता है, फिर बच्चा विद्यार्थी बन जाता है।",
-          "फ़ोन पर रखी रिकॉर्डिंग साइन आउट करने पर हट जाती हैं, ताकि अगला व्यक्ति उन्हें न सुन सके।",
-          "इस फ़ोन पर आधा भरा फ़ॉर्म 3 दिन रहता है, फिर हट जाता है।",
-          "पाठ के वीडियो पाठ में ही रहते हैं: YouTube का लोगो YouTube को ऐप के बाहर खोलता है।",
-          "नया: मेरी प्रोफ़ाइल में \"नया क्या है\" दिखाता है कि हर संस्करण में क्या बदला।"
+          "आपके शिक्षकों से इस सप्ताह का अभ्यास, शुरू करें बटन के साथ।",
+          "साप्ताहिक अभ्यास लक्ष्य, और इस सप्ताह आपने किन दिनों अभ्यास किया।",
+          "ताल प्लेयर में: गति बढ़ाने का अभ्यास, काउंट-इन और आवर्तनों की गिनती।",
+          "देखें हर चोट कौन-सा हाथ बजाता है, और एक-एक चोट करके सीखें।",
+          "रोज़ अभ्यास की याद (Android ऐप में)।",
+          "अभ्यास से पहले मंत्र: शुरू करने से पहले पढ़ें।",
+          "18 साल से कम उम्र के विद्यार्थी घर से साइन अप कर सकते हैं; माता-पिता ईमेल से सहमति देते हैं।",
+          "फ़ोन की रिकॉर्डिंग साइन आउट करने पर हटती हैं; आधे भरे फ़ॉर्म 3 दिन बाद हटते हैं।"
         ]
       }
     },
@@ -83,7 +88,7 @@
           "మీ ఈమెయిల్‌తో సైన్ అప్ చేయండి; తర్వాత క్లాస్ డెస్క్ మిమ్మల్ని విద్యార్థిగా చేర్చుతుంది.",
           "నా QR: తలుపు వద్ద చూపించండి, మీ హాజరు నమోదవుతుంది.",
           "మీ స్థాయికి పాఠాలు, వీడియోలతో, మరియు మీ పురోగతి.",
-          "సాధన: మెట్రోనోమ్, తాళం ప్లేయర్, సాధన లాగ్ మరియు నన్ను నేను రికార్డ్ చేసుకోవడం.",
+          "అభ్యాసం: మెట్రోనోమ్, తాళం ప్లేయర్, అభ్యాస లాగ్ మరియు నన్ను నేను రికార్డ్ చేసుకోవడం.",
           "ప్రకటనలు, కార్యక్రమాలు, పోల్స్ మరియు శ్లోకాలు, మీ ఫోన్‌కు నోటీసులతో.",
           "గురువు మరియు కోఆర్డినేటర్ల కోసం: తలుపు వద్ద స్కానర్, విద్యార్థుల నమోదు, ఫాలో-అప్ కాల్స్, వాయిద్యాలు మరియు నివేదికలు.",
           "ఇంగ్లీష్, తెలుగు లేదా హిందీలో, లేత లేదా ముదురు స్క్రీన్లతో."
