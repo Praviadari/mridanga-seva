@@ -1,10 +1,13 @@
 // The beat-name grid of the taal player (S5): one row per vibhag, its mark at the start as the
 // kksongs khol course writes it (X sam, 2 / 3 tali = an open baya stroke, 0 khali), then the beats
-// with their number and bols ('te.re' shown "te re"; '–' a rest). The beat being heard is lit.
+// with their number and bols ('te.re' shown "te re"; '–' a rest). The beat being heard is lit. In the
+// taal player each beat also says which hand plays it (L, R, L+R; #404).
 
+import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
+import { beatHands } from '@/lib/hands';
 import { radius, spacing, useTheme } from '@/theme/use-theme';
 
 import { AppText } from './app-text';
@@ -16,10 +19,12 @@ export type BeatGridProps = {
   marks: readonly string[];
   /** Beat being heard (0-based), or null. */
   current: number | null;
+  /** Under each beat, which hand plays it: L, R or L+R (#404). */
+  hands?: boolean;
 };
 
 /** The vibhags of a taal with their beats. */
-export function BeatGrid({ bols, divisions, marks, current }: BeatGridProps) {
+export function BeatGrid({ bols, divisions, marks, current, hands = false }: BeatGridProps) {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const rows = divisions.map((size, index) => ({
@@ -55,6 +60,11 @@ export function BeatGrid({ bols, divisions, marks, current }: BeatGridProps) {
                   <AppText variant="label" style={{ color: on ? colors.onPrimary : colors.text }}>
                     {bol === '-' ? '–' : bol.split('.').join(' ')}
                   </AppText>
+                  {hands ? (
+                    <AppText variant="small" style={{ color: on ? colors.onPrimary : colors.primary }}>
+                      {handsOf(t, bol) || ' '}
+                    </AppText>
+                  ) : null}
                 </View>
               );
             })}
@@ -64,8 +74,24 @@ export function BeatGrid({ bols, divisions, marks, current }: BeatGridProps) {
       <AppText variant="small" tone="muted">
         {t('practice.marksLegend')}
       </AppText>
+      {hands ? (
+        <AppText variant="small" tone="muted">
+          {t('practice.handsLegend')}
+        </AppText>
+      ) : null}
     </View>
   );
+}
+
+/**
+ * The hands of one beat (#404), a word for each bol: L (left hand, baya), R (right hand, dayan), L+R (both), ? (a bol
+ * the app does not know); nothing for a rest. From lib/bols.ts through lib/hands.ts.
+ */
+function handsOf(t: TFunction, beat: string): string {
+  const word = { left: t('practice.handLeftShort'), right: t('practice.handRightShort'), both: t('practice.handBothShort'), unknown: '?' };
+  return beatHands(beat)
+    .map((hands) => word[hands])
+    .join(' ');
 }
 
 /** The spoken name of a vibhag mark. */

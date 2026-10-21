@@ -1,5 +1,6 @@
 // Practice tools (Phase 2 slice 3, docs/DECISIONS.md #54): the taals the player loops (S5, V1), the
 // Guru's taal editor, and the practice log (S6) with weekly totals for S4 My progress and C8.
+// Since 0052 (#400-#401): practice per day with the level's weekly goal, and the practice of the week per level.
 // Database: supabase/migrations/0018_practice.sql. Row-level security: everyone signed in reads the
 // taals switched on, staff all of them, only the Guru writes; a student reads their own practice
 // and staff everyone's, and practice is written only through log_practice / delete_practice.
@@ -8,6 +9,7 @@
 // placeholder taals are built in as a last resort (a phone that never reached the server).
 
 import { readLocal, writeLocal } from '@/lib/local-storage';
+import { DEFAULT_GOAL, type PracticeDay, type PracticeGoal } from '@/lib/practice-goal';
 import { supabase } from '@/lib/supabase';
 
 import { fallbackErrorKey, isNetworkError, type MessageKey } from './errors';
@@ -245,6 +247,149 @@ export async function fetchMyStudentId(profileId: string): Promise<string | 'not
   const { data, error } = await supabase.from('students').select('id').eq('profile_id', profileId).maybeSingle<{ id: string }>();
   if (error) return null;
   return data ? data.id : 'not_found';
+}
+
+/**
+ * A student's practice per day and their weekly goal (practice_days, migration 0052; #400). `own` = the student set
+ * it; else it is their level's or the default.
+ */
+export type PracticeDays = { goal: PracticeGoal; own: boolean; days: PracticeDay[] };
+
+/** How many weeks of days the goal card reads: enough for a year's weeks in a row. */
+const GOAL_WEEKS = 53;
+
+/** Practice per day of the last year with the goal. null = could not be loaded (or 0052 has not run). */
+export async function fetchPracticeDays(studentId: string): Promise<PracticeDays | null> {
+  const { data, error } = await supabase.rpc('practice_days', { p_student: studentId, p_weeks: GOAL_WEEKS });
+  if (error || !data) return null;
+  const row = data as { goal_days: number; goal_minutes: number; goal_own?: boolean; days: { on: string; minutes: number }[] };
+  return {
+    goal: { days: row.goal_days ?? DEFAULT_GOAL.days, minutes: row.goal_minutes ?? DEFAULT_GOAL.minutes },
+    own: row.goal_own === true,
+    days: (row.days ?? []).map((d) => ({ on: d.on, minutes: d.minutes })),
+  };
+}
+
+/** The signed-in student sets their own weekly goal, or (null) goes back to the class's. null = saved. */
+export async function setMyPracticeGoal(goal: PracticeGoal | null): Promise<MessageKey | null> {
+  const { error } = await supabase.rpc('set_my_practice_goal', { p_days: goal?.days ?? null, p_minutes: goal?.minutes ?? null });
+  return error ? planErrorKey(error.message) : null;
+}
+
+// ---------------------------------------------------------------- practice of the week (0052, #401)
+
+/** One thing to practise: a taal at a tempo, or a lesson video. */
+export type PlanItem = { kind: 'taal'; taalId: number; bpm: number } | { kind: 'lesson'; materialId: number };
+
+/** A level's practice of the week (table practice_plans). */
+export type PracticePlan = {
+  levelId: number;
+  goal: PracticeGoal;
+  note: string | null;
+  items: PlanItem[];
+  updatedAt: string | null;
+};
+
+/** Most items in a plan, as in the database. */
+export const MAX_PLAN_ITEMS = 3;
+/** Longest note, as in the database. */
+export const PLAN_NOTE_MAX = 300;
+
+type PlanRow = {
+  level_id: number;
+  goal_days: number;
+  goal_minutes: number;
+  note: string | null;
+  items: ({ taal: number; bpm: number } | { lesson: number })[];
+  updated_at: string | null;
+};
+
+const PLAN_COLUMNS = 'level_id, goal_days, goal_minutes, note, items, updated_at';
+
+function planOf(row: PlanRow): PracticePlan {
+  return {
+    levelId: row.level_id,
+    goal: { days: row.goal_days, minutes: row.goal_minutes },
+    note: row.note,
+    items: (row.items ?? []).flatMap((item): PlanItem[] =>
+      'taal' in item ? [{ kind: 'taal', taalId: item.taal, bpm: item.bpm }] : 'lesson' in item ? [{ kind: 'lesson', materialId: item.lesson }] : [],
+    ),
+    updatedAt: row.updated_at,
+  };
+}
+
+/** The plan of a level that has none yet: the default goal, nothing to practise. */
+export function emptyPlan(levelId: number): PracticePlan {
+  return { levelId, goal: { ...DEFAULT_GOAL }, note: null, items: [], updatedAt: null };
+}
+
+/** A lesson video named in a plan: its title, when the reader may open it. */
+export type PlanLesson = { id: number; title: string };
+
+/** What the student's Practice tools show: the plan of their level and its lessons they can open. */
+export type MyPracticePlan = { studentId: string; plan: PracticePlan; lessons: Map<number, PlanLesson> };
+
+/** Titles of the lesson videos among `ids` that the reader may open (row-level security of materials). */
+async function planLessons(ids: number[]): Promise<Map<number, PlanLesson>> {
+  if (ids.length === 0) return new Map();
+  const { data, error } = await supabase.from('materials').select('id, title, kind').in('id', ids);
+  if (error || !data) return new Map();
+  return new Map(
+    (data as { id: number; title: string; kind: string }[])
+      .filter((m) => m.kind === 'youtube' || m.kind === 'video')
+      .map((m) => [m.id, { id: m.id, title: m.title }]),
+  );
+}
+
+/**
+ * The signed-in student's practice of the week (their level's). 'not_found' = no student record, null = could not be
+ * loaded (or 0052 has not run): the screen then shows no plan.
+ */
+export async function fetchMyPracticePlan(profileId: string): Promise<MyPracticePlan | 'not_found' | null> {
+  const { data: me, error } = await supabase.from('students').select('id, level_id').eq('profile_id', profileId).maybeSingle<{ id: string; level_id: number }>();
+  if (error) return null;
+  if (!me) return 'not_found';
+  const { data, error: planError } = await supabase.from('practice_plans').select(PLAN_COLUMNS).eq('level_id', me.level_id).maybeSingle<PlanRow>();
+  if (planError) return null;
+  const plan = data ? planOf(data) : emptyPlan(me.level_id);
+  const lessons = await planLessons(plan.items.flatMap((i) => (i.kind === 'lesson' ? [i.materialId] : [])));
+  return { studentId: me.id, plan, lessons };
+}
+
+/** Every level's plan for the staff editor (levels without a row get the empty plan). null = could not be loaded. */
+export async function fetchPracticePlans(levelIds: readonly number[]): Promise<Map<number, PracticePlan> | null> {
+  const { data, error } = await supabase.from('practice_plans').select(PLAN_COLUMNS);
+  if (error) return null;
+  const found = new Map((data as PlanRow[]).map((row) => [row.level_id, planOf(row)]));
+  return new Map(levelIds.map((id) => [id, found.get(id) ?? emptyPlan(id)]));
+}
+
+const PLAN_CODES = [
+  'plan_goal_invalid', 'plan_note_too_long', 'plan_items_invalid', 'plan_bpm_invalid', 'plan_taal_not_found', 'plan_lesson_not_found',
+] as const;
+
+function planErrorKey(message: string | undefined): MessageKey {
+  if (!message) return 'common.genericError';
+  if (isNetworkError(message)) return 'common.networkError';
+  const code = PLAN_CODES.find((c) => message === c);
+  if (code) return `practicePlan.errors.${code}` as MessageKey;
+  if (/row-level security|permission denied/i.test(message)) return 'practicePlan.errors.not_allowed';
+  return fallbackErrorKey(message);
+}
+
+/** Saves a level's plan (staff). null = saved, else the message to show. */
+export async function savePracticePlan(plan: PracticePlan): Promise<MessageKey | null> {
+  const { error } = await supabase.from('practice_plans').upsert(
+    {
+      level_id: plan.levelId,
+      goal_days: plan.goal.days,
+      goal_minutes: plan.goal.minutes,
+      note: plan.note ?? '',
+      items: plan.items.map((i) => (i.kind === 'taal' ? { taal: i.taalId, bpm: i.bpm } : { lesson: i.materialId })),
+    },
+    { onConflict: 'level_id' },
+  );
+  return error ? planErrorKey(error.message) : null;
 }
 
 /** What S6 shows: the weeks and the entries of the last 8 weeks, newest first. */

@@ -9,8 +9,13 @@ import type { Pattern } from './practice-pattern';
 export type PlayerPosition = { beat: number; cycle: number };
 
 export type PracticePlayer = {
-  /** Starts looping `pattern` at `bpm` beats a minute. false = no sound possible here. */
-  start(pattern: Pattern, bpm: number): Promise<boolean>;
+  /**
+   * Starts looping `pattern` at `bpm` beats a minute, after `countIn` clicks at that tempo (the first accented; 0 = none,
+   * #403). No position is given during the count-in. false = no sound possible here.
+   */
+  start(pattern: Pattern, bpm: number, countIn?: number): Promise<boolean>;
+  /** Plays `pattern` once, not looped (step mode: one stroke, #404). Stops what plays. */
+  playOnce(pattern: Pattern, bpm: number): Promise<boolean>;
   /** Changes the tempo while playing, keeping the place in the cycle. */
   setTempo(bpm: number): void;
   stop(): void;

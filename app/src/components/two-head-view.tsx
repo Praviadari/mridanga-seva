@@ -4,8 +4,9 @@
 // (small high head, right hand) on the right. With each bol of the taal player the zone it is
 // struck on lights up (kinar, maidan, the edge of the syahi, the syahi, or the whole head for a flat
 // hand), with a ripple when the stroke rings (open), in time with the sound, at any tempo, offline.
-// The words under each head say the bol, the zone and the fingers (the drawing is hidden from
-// screen readers; the words carry the same). Bols and strokes: lib/bols.ts (with its source).
+// Under each head, the hand that plays it (components/hand-view.tsx, #404): a drawing with the touching
+// fingers lit, the hand, fingers and zone in words, and strike-and-lift (rings) or press-and-stay (damped)
+// (the drawings are hidden from screen readers; the words carry the same). Bols and strokes: lib/bols.ts.
 // Drawn with react-native-svg; it re-renders only when the bol changes (lib/use-playhead.ts).
 
 import { useTranslation } from 'react-i18next';
@@ -16,6 +17,7 @@ import type { Bol, Head, Stroke, Zone } from '@/lib/bols';
 import { spacing } from '@/theme/use-theme';
 
 import { AppText } from './app-text';
+import { HandCard } from './hand-view';
 
 /** Colours of the drum itself: the same in light and dark mode, like the real instrument. */
 const DRUM = {
@@ -110,11 +112,6 @@ export function TwoHeadView({ bol, fresh }: TwoHeadViewProps) {
   const baya = strokeOn('baya');
   const dayan = strokeOn('dayan');
 
-  const words = (head: Head, stroke: Stroke | null) =>
-    stroke
-      ? `${t(`practice.zones.${stroke.zone}`)} · ${t(`practice.touch.${stroke.touch}`)} · ${t(stroke.open ? 'practice.open' : 'practice.closed')}`
-      : t('practice.headIdle');
-
   return (
     <View style={styles.wrap}>
       <AppText variant="title" family="sans" style={styles.bol} accessibilityLabel={t('practice.nowPlaying', { bol: bol?.text ?? '—' })}>
@@ -129,15 +126,11 @@ export function TwoHeadView({ bol, fresh }: TwoHeadViewProps) {
       <View style={styles.captions}>
         <View style={styles.caption}>
           <AppText variant="label">{t('practice.baya')}</AppText>
-          <AppText variant="small" tone={baya ? 'primary' : 'muted'}>
-            {words('baya', baya)}
-          </AppText>
+          <HandCard head="baya" stroke={baya} fresh={fresh} />
         </View>
         <View style={styles.caption}>
           <AppText variant="label">{t('practice.dayan')}</AppText>
-          <AppText variant="small" tone={dayan ? 'primary' : 'muted'}>
-            {words('dayan', dayan)}
-          </AppText>
+          <HandCard head="dayan" stroke={dayan} fresh={fresh} />
         </View>
       </View>
       {bol?.unknown ? (

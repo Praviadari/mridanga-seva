@@ -20,6 +20,8 @@ const stubs = {
   'expo-image': stub('./device-trace-deps.mjs'),
   '@/data/my-student': stub('./device-trace-deps.mjs'),
   '@/lib/push': stub('./device-trace-deps.mjs'),
+  // ... and the daily practice reminder (#402), which loads expo-notifications through push.
+  '@/lib/practice-reminder': stub('./device-trace-deps.mjs'),
 };
 
 /** Node module hook: resolves a stubbed package or app module to its stand-in file. */

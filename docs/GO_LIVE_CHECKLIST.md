@@ -100,7 +100,8 @@ with m(migration, present) as (values
   ('0048', exists (select 1 from pg_proc where proname = 'in_audience' and pronamespace = 'public'::regnamespace)),
   ('0049', exists (select 1 from pg_proc where proname = 'erase_login' and pronamespace = 'public'::regnamespace)),
   ('0050', exists (select 1 from pg_proc where proname = 'staff_dashboard' and pronamespace = 'public'::regnamespace)),
-  ('0051', to_regclass('public.minor_signups') is not null)
+  ('0051', to_regclass('public.minor_signups') is not null),
+  ('0052', to_regclass('public.practice_plans') is not null)
 )
 select migration, case when present then 'yes' else 'no' end as present from m
 union all
@@ -112,7 +113,7 @@ select 'MISSING', coalesce((select string_agg(a.migration, ' ' order by a.migrat
 order by 1;
 ```
 
-## B. Migrations 0013-0051, one file per run
+## B. Migrations 0013-0052, one file per run
 
 For each row: GitHub main → `supabase/migrations/<file>` → **Copy raw file** → LIVE → SQL Editor →
 New query → paste → check the project → **Run** → then paste the probe again (or keep it in a second
@@ -167,8 +168,9 @@ a second paste. So pasting a file twice by mistake is harmless; still, never do 
 | M0049 | `0049_launch_cleanup.sql` | Praveen · dashboard | No rows; probe `0049`, `MISSING` `none` | Launch clean-up ([#286-#287](DECISIONS.md)): adds `erase_login` (the Guru erases a waiting sign-up on request), unlisted assessment files go in the existing daily clean-up (no new job, no Edge Function deploy), 150 MB a day per login in assessment-files, erasure takes the notices about the child and matches emails as whole values. Verify on TEST and LIVE: `select count(*) from cron.job where jobname like 'mridanga%'` = 11 (unchanged). Safe to run twice. **LIVE took 0050 on 15 Oct 2026 without 0049, so on LIVE it runs after 0050** (0049 replaces no function 0050 uses; the replay of that order matches a fresh build). Until it runs, the probe on LIVE shows `LAST IN ORDER` `0048` and `MISSING` `0049`. Only function replacements and one new empty column on `erasures`: no data changes at the run, under a second. **Done on LIVE 21 Oct 2026** (Praveen): probe 0049 yes, `LAST IN ORDER` `0050`, `MISSING` `none`; erase_login, orphan_assessment_files and `erasures.login_profile` present, jobs 11, files waiting 0; verification all ok except the push job "never ran" (no notice yet) |
 | M0050 | `0050_staff_dashboard.sql` | Praveen · dashboard | No rows; probe `0050`, `MISSING` `none` | **Goes with the launch UI (renumbered from placeholder 0063, 14-10-2026); a read-only function, no data change.** Staff home "Today" and "Waiting for you" in one request ([#339, #340](DECISIONS.md)): one read-only function `staff_dashboard()` (staff only, security invoker); nothing else changes. Run before the OTA that uses it (the app falls back to the older functions without it). **TEST first:** not on TEST on 15 Oct 2026; paste it on TEST (`fhuqyk…`), check the probe there, then LIVE |
 | M0051 | `0051_minor_home_signup.sql` | Praveen · dashboard | No rows; probe `0051`, `MISSING` `none`; verification row 3 `12 of 12` | **A child under 18 signs up at home; the parent consents by email** ([#399](DECISIONS.md)). New tables `minor_signups` and `parent_mail_log` (empty), new job `mridanga-minor-signups` (daily 02:15 IST: unanswered requests go after 30 days), replaced `handle_new_user` (a minor's date of birth is kept only with the parent's details), `waiting_sign_ups` (+ the parent's part), `send_parent_notices` (also calls `notify-parents` for consent emails, check-out emails on or off) and the consent guard; new `accept_minor_sign_up`, the child's `my_parent_consent` / `resend_parent_email` / `set_parent_details` and the consent page's `give_parent_consent` (anon). `accept_sign_up` is not changed. **Order:** TEST first (with Praveen); on LIVE only after (1) `notify-parents` is deployed from the same commit (C7, LIVE ref) and (2) `BREVO_API_KEY` + `NOTICE_FROM` are set in Edge Functions → Secrets (OPERATIONS "Parent consent by email"): without them every consent email is a dry run and children see "emails to parents are not switched on". Then the OTA with the new sign-up screen. Safe to run twice |
+| M0052 | `0052_practice_more.sql` | Praveen · dashboard | No rows; probe `0052`, `MISSING` `none` | More home practice ([#400-#404](DECISIONS.md)): adds the table `practice_plans` (per level: the weekly goal, 4 x 15 until changed, and up to three things to practise; staff write, a student reads their own level's), `practice_goals` with `set_my_practice_goal` (a student's own goal) and the read-only function `practice_days` (a student's minutes per day with their goal, row-level security of the asker). No existing row or function changes; safe to run twice. **TEST first** (`fhuqyk…`), then LIVE, **before** the OTA and web upload that use it (without it the app shows no plan and no week card, and the plan editor cannot load). After 0051 |
 
-**A file newer than 0051 on main:** the replay's first check fails until this table lists it. Add it
+**A file newer than 0052 on main:** the replay's first check fails until this table lists it. Add it
 here, with its own steps, then run it last.
 
 **0049 (launch clean-up)** is on TEST but not on main on 15 Oct 2026. It joins this table when branch
@@ -303,7 +305,8 @@ with m(migration, present) as (values
   ('0048', exists (select 1 from pg_proc where proname = 'in_audience' and pronamespace = 'public'::regnamespace)),
   ('0049', exists (select 1 from pg_proc where proname = 'erase_login' and pronamespace = 'public'::regnamespace)),
   ('0050', exists (select 1 from pg_proc where proname = 'staff_dashboard' and pronamespace = 'public'::regnamespace)),
-  ('0051', to_regclass('public.minor_signups') is not null)
+  ('0051', to_regclass('public.minor_signups') is not null),
+  ('0052', to_regclass('public.practice_plans') is not null)
 ),
 last_in_order as (select coalesce(max(a.migration), 'before 0010') as v from m a
   where a.present and not exists (select 1 from m b where b.migration <= a.migration and not b.present)),
@@ -313,7 +316,7 @@ jobs(name) as (values ('mridanga-status-refresh'), ('mridanga-close-visits'), ('
   ('mridanga-assessments'), ('mridanga-events-polls'), ('mridanga-duty'), ('mridanga-access-log-purge'),
   ('mridanga-cron-history-purge'), ('mridanga-orphan-files'), ('mridanga-parent-notices'), ('mridanga-minor-signups')),
 checks(sort, check_name, ok, found, expected) as (
-  select 1, 'last migration', (select v from last_in_order) = '0051', (select v from last_in_order), '0051'
+  select 1, 'last migration', (select v from last_in_order) = '0052', (select v from last_in_order), '0052'
   union all select 2, 'migrations missing', (select v from missing) = 'none', (select v from missing), 'none'
   union all select 3, 'scheduled jobs',
     (select count(*) from jobs j join cron.job c on c.jobname = j.name and c.active) = 12,

@@ -23,6 +23,7 @@ import { TextField } from '@/components/text-field';
 import { announce } from '@/lib/announce';
 import { deletePractice, fetchMyPracticeLog, fetchTaals, logPractice, type PracticeLog } from '@/data/practice';
 import { formatDate, todayLocal } from '@/lib/dates';
+import { notePractisedToday } from '@/lib/practice-reminder';
 
 /** 'YYYY-MM-DD' of the day `back` days before today at the class. */
 function dayBefore(back: number): string {
@@ -71,6 +72,8 @@ export default function PracticeLogScreen() {
       return;
     }
     setMessage({ tone: 'success', text: t('practiceLog.saved', { time: practiceTime(t, value) }) });
+    // Practice typed in for today: no practice reminder today (#402).
+    void notePractisedToday(profileId, dayBefore(day));
     setMinutes('');
     setNote('');
     void load();

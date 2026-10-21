@@ -5,6 +5,7 @@
 // beats into seconds with the tempo, so a tempo change needs no new pattern.
 
 import { readBeat, type Bol, type SoundId } from './bols';
+import type { PlayerPosition } from './practice-player';
 
 /** One sound in the cycle. */
 export type PatternEvent = {
@@ -70,6 +71,60 @@ export const MAX_BPM = 240;
 export function clampBpm(bpm: number): number {
   if (!Number.isFinite(bpm)) return 80;
   return Math.min(MAX_BPM, Math.max(MIN_BPM, Math.round(bpm)));
+}
+
+/**
+ * Cycles completed between two readings of a player's position (lib/practice-player.ts). The browser counts cycles
+ * itself; the phone's loop starts again at 0, so there a jump back of more than half the cycle is one cycle done.
+ */
+export function cyclesPassed(last: PlayerPosition | null, now: PlayerPosition, beats: number): number {
+  if (!last) return 0;
+  if (now.cycle > last.cycle) return now.cycle - last.cycle;
+  if (now.cycle === last.cycle && now.beat < last.beat - beats / 2) return 1;
+  return 0;
+}
+
+/** The speed trainer's settings (#400): up to `target`, `step` beats a minute faster after every `every` cycles. */
+export type SpeedTrainer = { target: number; step: number; every: number };
+
+/**
+ * The speed trainer's tempo after `cycles` cycles from `base`: one step per `every` cycles, never past the target.
+ * A target at or below the base keeps the base.
+ */
+export function trainerTempo(base: number, trainer: SpeedTrainer, cycles: number): number {
+  if (trainer.target <= base || trainer.step <= 0 || trainer.every <= 0) return base;
+  return clampBpm(Math.min(trainer.target, base + Math.floor(Math.max(0, cycles) / trainer.every) * trainer.step));
+}
+
+/** Cycles until the speed trainer's next step, or null when the target is reached. */
+export function cyclesToNextStep(base: number, trainer: SpeedTrainer, cycles: number): number | null {
+  if (trainerTempo(base, trainer, cycles) >= trainer.target) return null;
+  return trainer.every - (Math.max(0, cycles) % trainer.every);
+}
+
+/**
+ * The count-in (#403): one bar of clicks before beat 1. The metronome's bar; for a taal its first vibhag (sam's), which
+ * is how a theka is counted in; 2-8 clicks.
+ */
+export function countInClicks(mode: 'metronome' | 'taal', beatsPerBar: number, divisions: readonly number[]): number {
+  const bar = mode === 'metronome' ? beatsPerBar : divisions[0] ?? 4;
+  return Number.isInteger(bar) ? Math.min(8, Math.max(2, bar)) : 4;
+}
+
+/** One stroke of the step mode (#404): a bol of the cycle that is not a rest, with its beat and place in the beat. */
+export type Step = { beat: number; part: number; bol: Bol };
+
+/** The bols of a taal one by one, rests left out, in the order they are played. */
+export function taalSteps(bols: readonly string[]): Step[] {
+  return readTaal(bols).flatMap((parts, beat) =>
+    parts.flatMap((bol, part) => (bol.text === '-' || bol.strokes.length === 0 ? [] : [{ beat, part, bol }])),
+  );
+}
+
+/** One bol as a pattern of one beat: what the step mode's "Hear it" plays. */
+export function bolPattern(bol: Bol): Pattern {
+  const events = bol.strokes.map((stroke) => ({ at: stroke.delay ?? 0, beat: 0, part: 0, sound: stroke.sound }));
+  return { beats: 1, events: events.sort((a, b) => a.at - b.at), key: `bol:${bol.text}` };
 }
 
 /**

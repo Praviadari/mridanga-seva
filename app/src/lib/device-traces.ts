@@ -11,7 +11,8 @@
 //   (lib/my-recordings.ts: the app's own recordings/ folder, or the open tab's memory in the browser,
 //   listed to whoever signs in next) and every
 //   recording expo-audio wrote to the cache (assessment answers, voice notes: Audio/ on Android,
-//   ExpoAudio/ on iOS).
+//   ExpoAudio/ on iOS);
+// - the daily practice reminder and its scheduled notifications (lib/practice-reminder.ts, #402).
 
 import { Directory, Paths } from 'expo-file-system';
 import { Image } from 'expo-image';
@@ -19,6 +20,7 @@ import { Platform } from 'react-native';
 
 import { clearSavedCard } from '@/data/my-student';
 import { forgetMyRecordings } from '@/lib/my-recordings';
+import { forgetPracticeReminders } from '@/lib/practice-reminder';
 import { dismissNotifications } from '@/lib/push';
 
 /**
@@ -33,6 +35,7 @@ export async function clearDeviceTraces(): Promise<void> {
   await forgetMyRecordings();
   await Promise.all([
     dismissNotifications(),
+    forgetPracticeReminders(),
     Image.clearMemoryCache().catch(() => false),
     Image.clearDiskCache().catch(() => false),
   ]);

@@ -1,6 +1,7 @@
 // Pieces of the practice screens shared by S5, S6, S4 My progress and C8 Student profile: practice
-// time in words, the weekly practice (this week large, the weeks before as bars), and the Practice
-// block that S4 (the student's own) and C8 (staff, any student) show.
+// time in words, the weekly practice (this week large, the weeks before as bars), this week against
+// the weekly goal (#400), and the Practice block that S4 (the student's own) and C8 (staff, any
+// student) show.
 
 import { router, useFocusEffect } from 'expo-router';
 import type { TFunction } from 'i18next';
@@ -8,12 +9,14 @@ import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
-import { fetchMyStudentId, fetchPracticeWeeks, type PracticeWeek } from '@/data/practice';
-import { formatDate } from '@/lib/dates';
+import { fetchMyStudentId, fetchPracticeDays, fetchPracticeWeeks, type PracticeDays, type PracticeWeek } from '@/data/practice';
+import { formatDate, todayLocal } from '@/lib/dates';
+import { goalWeek } from '@/lib/practice-goal';
 import { radius, spacing, useTheme } from '@/theme/use-theme';
 
 import { AppText } from './app-text';
 import { Button } from './button';
+import { Icon } from './icon';
 import { Section } from './section';
 
 /** 135 → "2 h 15 min", 40 → "40 min". */
@@ -63,6 +66,66 @@ export function WeeklyPractice({ weeks }: WeeklyPracticeProps) {
   );
 }
 
+/** Props for GoalWeekView. */
+export type GoalWeekViewProps = { practice: PracticeDays };
+
+/**
+ * This week against the weekly goal (#400): "3 of 5 days this week", one circle a day from Monday (filled = the
+ * minutes a day reached, a dot = some practice, faint = still to come), what is left or "goal met", and the weeks in
+ * a row with the goal met. Kind wording: a missed day is never called a loss.
+ */
+export function GoalWeekView({ practice }: GoalWeekViewProps) {
+  const { t } = useTranslation();
+  const { colors } = useTheme();
+  const today = todayLocal();
+  const week = goalWeek(practice.days, practice.goal, today);
+  const left = Math.max(0, practice.goal.days - week.met);
+  return (
+    <View style={styles.wrap}>
+      <AppText variant="label">{t('practice.goalDays', { met: week.met, goal: practice.goal.days })}</AppText>
+      <View style={styles.days}>
+        {week.days.map((day, i) => {
+          const name = t(`duty.weekdays.${(i + 1) % 7}` as 'duty.weekdays.1');
+          const isToday = day.on === today;
+          return (
+            <View
+              key={day.on}
+              style={styles.day}
+              accessible
+              accessibilityLabel={`${name}: ${day.minutes > 0 ? practiceTime(t, day.minutes) : t('practice.goalNone')}${day.state === 'met' ? `, ${t('practice.goalDayMet')}` : ''}`}>
+              <View
+                style={[
+                  styles.dayCircle,
+                  { borderColor: day.state === 'later' ? colors.border : colors.primary },
+                  day.state === 'met' && { backgroundColor: colors.primary },
+                ]}>
+                {day.state === 'met' ? <Icon name="tick" size={18} color={colors.onPrimary} /> : null}
+                {day.state === 'some' ? <View style={[styles.someDot, { backgroundColor: colors.primary }]} /> : null}
+              </View>
+              <AppText variant="small" tone={isToday ? 'default' : 'muted'} style={isToday ? styles.today : null}>
+                {name}
+              </AppText>
+            </View>
+          );
+        })}
+      </View>
+      <AppText tone="muted">
+        {[
+          week.goalMet ? t('practice.goalMet') : t('practice.goalToGo', { count: left }),
+          t('practice.goalRule', { minutes: practice.goal.minutes }),
+          t(practice.own ? 'practice.goalOwn' : 'practice.goalClass'),
+        ].join(' ')}
+      </AppText>
+      {week.weeksInARow > 0 ? (
+        <View style={styles.inARow}>
+          <Icon name="promote" size={20} color={colors.primary} />
+          <AppText variant="label">{t('practice.goalWeeks', { count: week.weeksInARow })}</AppText>
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
 /** Props for PracticePanel: a student record (C8), or the signed-in student's login (S4). */
 export type PracticePanelProps = { studentId: string } | { profileId: string };
 
@@ -79,6 +142,8 @@ export function PracticePanel(props: PracticePanelProps) {
   const key = own ? props.profileId : props.studentId;
   // undefined = loading, null = could not load, 'none' = no student record for this login.
   const [weeks, setWeeks] = useState<PracticeWeek[] | 'none' | null | undefined>(undefined);
+  // The weekly goal (0052); null until loaded or where 0052 has not run: the card is left out.
+  const [days, setDays] = useState<PracticeDays | null>(null);
 
   const load = useCallback(async () => {
     const studentId = own ? await fetchMyStudentId(key) : key;
@@ -86,7 +151,9 @@ export function PracticePanel(props: PracticePanelProps) {
       setWeeks(studentId === null ? null : 'none');
       return;
     }
-    setWeeks(await fetchPracticeWeeks(studentId, PANEL_WEEKS));
+    const [loadedWeeks, loadedDays] = await Promise.all([fetchPracticeWeeks(studentId, PANEL_WEEKS), fetchPracticeDays(studentId)]);
+    setWeeks(loadedWeeks);
+    setDays(loadedDays);
   }, [own, key]);
 
   useFocusEffect(
@@ -100,6 +167,7 @@ export function PracticePanel(props: PracticePanelProps) {
     <Section icon="practice" title={t('practice.panelTitle')} description={own ? t('practice.panelIntroOwn') : t('practice.panelIntroStaff')}>
       {weeks === undefined ? <AppText tone="muted">{t('practice.loading')}</AppText> : null}
       {weeks === null ? <AppText tone="muted">{t('practiceLog.loadFailed')}</AppText> : null}
+      {weeks && days ? <GoalWeekView practice={days} /> : null}
       {weeks ? <WeeklyPractice weeks={weeks} /> : null}
       {own ? (
         <Button variant="link" icon="time" label={t('practiceLog.open')} onPress={() => router.push('/student/practice-log')} />
@@ -132,5 +200,35 @@ const styles = StyleSheet.create({
   value: {
     width: 84,
     textAlign: 'right',
+  },
+  days: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  day: {
+    flex: 1,
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  dayCircle: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  someDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
+  today: {
+    fontWeight: '700',
+  },
+  inARow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
   },
 });

@@ -12,7 +12,18 @@
 //   so the tempo and its big Start come on the first screen (#384).
 // Sound: lib/practice-audio(.web).ts; timing is kept by the audio clock, not by JavaScript timers.
 // The Guru sees "Edit taals" (staff/taals). The sound stops when the screen is left.
+// More practice (docs/DECISIONS.md #400-#404; components/practice-more.tsx):
+// - Practice of the week (students): what the teachers set for the student's level, each taal with Start at its
+//   tempo, each lesson with Watch, above the tools; staff open the editor (staff/practice-plan).
+// - Count-in (one bar of clicks before beat 1), the cycle counter with stop after N, and the speed trainer (faster
+//   step by step while it plays, up to a top tempo), on the metronome and the taal player.
+// - Hands (taal player): which hand plays each beat in the grid, the hands under the two heads, and a step mode that
+//   shows the strokes one at a time with Hear it.
+// - The screen stays on while the sound plays.
+// - This week against the weekly goal (students; their own goal or the class's), and the daily practice reminder
+//   (Android app).
 
+import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { router, Stack, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState, type PropsWithChildren } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -22,20 +33,54 @@ import { useAuth } from '@/auth/auth-provider';
 import { AppText } from '@/components/app-text';
 import { BeatGrid } from '@/components/beat-grid';
 import { Button } from '@/components/button';
+import { Checkbox } from '@/components/checkbox';
 import { ChoiceGroup } from '@/components/choice-group';
 import { Icon } from '@/components/icon';
 import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
 import { RecordMyself } from '@/components/record-myself';
-import { practiceTime } from '@/components/practice-parts';
+import {
+  CycleNow,
+  GoalFold,
+  PlanSection,
+  ReminderFold,
+  SpeedTrainerFields,
+  StepControls,
+  StopAfterChoice,
+} from '@/components/practice-more';
+import { GoalWeekView, practiceTime } from '@/components/practice-parts';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { TwoHeadView } from '@/components/two-head-view';
-import { fetchTaals, logPractice, type Taal, type TaalList } from '@/data/practice';
+import {
+  fetchMyPracticePlan,
+  fetchPracticeDays,
+  fetchTaals,
+  logPractice,
+  type MyPracticePlan,
+  type PracticeDays,
+  type Taal,
+  type TaalList,
+} from '@/data/practice';
 import { levelName } from '@/i18n/labels';
 import type { RecordingSetting } from '@/lib/my-recordings';
 import { createPracticePlayer } from '@/lib/practice-audio';
-import { clampBpm, effectiveBpm, metronomePattern, readTaal, tapTempo, taalPattern, MAX_BPM, MIN_BPM } from '@/lib/practice-pattern';
+import {
+  bolPattern,
+  clampBpm,
+  countInClicks,
+  effectiveBpm,
+  metronomePattern,
+  readTaal,
+  tapTempo,
+  taalPattern,
+  taalSteps,
+  trainerTempo,
+  MAX_BPM,
+  MIN_BPM,
+  type SpeedTrainer,
+} from '@/lib/practice-pattern';
+import { notePractisedToday, refreshReminder } from '@/lib/practice-reminder';
 import {
   clearPracticeTimer,
   MAX_ENTRY_MINUTES,
@@ -72,6 +117,25 @@ export function PracticeTools({ area }: PracticeToolsProps) {
   const [speed, setSpeed] = useState(1);
   const [list, setList] = useState<TaalList | undefined>(undefined);
   const [taalId, setTaalId] = useState<number | null>(null);
+  // Count-in (#403): one bar of clicks before beat 1 when Start is pressed.
+  const [countIn, setCountIn] = useState(true);
+  // Cycle counter (#403): stop after so many bars or cycles (0 = go on); the number it stopped after, to say so.
+  const [stopAfter, setStopAfter] = useState(0);
+  const [stoppedAfter, setStoppedAfter] = useState<number | null>(null);
+  // Step mode (#404): the taal's strokes one at a time, no loop.
+  const [stepping, setStepping] = useState(false);
+  const [stepIndex, setStepIndex] = useState(0);
+  // Speed trainer (#403): faster by `trainerTotal` in all, `trainer.step` after every `trainer.every` cycles, from
+  // the tempo at the start (`trainerBase`, with the cycle it counts from).
+  const [trainerOn, setTrainerOn] = useState(false);
+  const [trainerTotal, setTrainerTotal] = useState(20);
+  const [trainer, setTrainer] = useState<Omit<SpeedTrainer, 'target'>>({ step: 5, every: 4 });
+  const [trainerBase, setTrainerBase] = useState<{ bpm: number; cycles: number } | null>(null);
+  // Each start of the sound counts the cycles from 0 again (lib/use-playhead.ts).
+  const [starts, setStarts] = useState(0);
+  // Students: the practice of the week and this week against the goal (0052); null where not loaded.
+  const [mine, setMine] = useState<MyPracticePlan | null>(null);
+  const [goal, setGoal] = useState<PracticeDays | null>(null);
 
   const loadTaals = useCallback(async () => {
     const loaded = await fetchTaals();
@@ -81,37 +145,118 @@ export function PracticeTools({ area }: PracticeToolsProps) {
     setTaalId((current) => (current !== null && usable.taals.some((tl) => tl.id === current) ? current : usable.taals[0]?.id ?? null));
   }, []);
 
-  // Load on focus (the Guru may have edited a taal); stop the sound when the screen is left.
+  const loadGoal = useCallback(async (studentId: string) => {
+    setGoal(await fetchPracticeDays(studentId));
+  }, []);
+
+  const loadMine = useCallback(async () => {
+    if (!isStudent) return;
+    const loaded = await fetchMyPracticePlan(profileId);
+    const found = loaded && loaded !== 'not_found' ? loaded : null;
+    setMine(found);
+    if (found) await loadGoal(found.studentId);
+  }, [isStudent, profileId, loadGoal]);
+
+  // Load on focus (the Guru may have edited a taal, the teachers the plan); the reminder's next days are scheduled
+  // again; stop the sound when the screen is left.
   useFocusEffect(
     useCallback(() => {
       void loadTaals();
+      void loadMine();
+      if (isStudent) void refreshReminder(profileId);
       return () => {
         player.stop();
         setPlaying(false);
       };
-    }, [loadTaals, player]),
+    }, [loadTaals, loadMine, isStudent, profileId, player]),
   );
+
+  // The screen stays on while the sound plays (a dimmed phone hides the beat).
+  useEffect(() => {
+    if (!playing) return;
+    const tag = 'practice-tools';
+    activateKeepAwakeAsync(tag).catch(() => undefined); // no wake lock (some browsers): the tools still work
+    return () => {
+      deactivateKeepAwake(tag).catch(() => undefined);
+    };
+  }, [playing]);
 
   const taal: Taal | null = list?.taals.find((tl) => tl.id === taalId) ?? null;
   const pattern = useMemo(
     () => (mode === 'metronome' ? metronomePattern(beatsPerBar) : taal ? taalPattern(taal.bols) : null),
     [mode, beatsPerBar, taal],
   );
-  const bpm = mode === 'metronome' ? metronomeBpm : effectiveBpm(taalBpm, speed);
+  // The cycles heard since the start (lib/use-playhead.ts), read before the tempo: the speed trainer's tempo follows
+  // them. The playhead itself needs the tempo, so it reads the one of the frame before (a step changes it once).
+  const [heardCycles, setHeardCycles] = useState<number | null>(null);
+  // The speed trainer's tempo now, while it runs (#400): derived, so nothing is stored until the sound stops.
+  const trained =
+    trainerOn && playing && trainerBase && heardCycles !== null
+      ? trainerTempo(trainerBase.bpm, { ...trainer, target: trainerBase.bpm + trainerTotal }, heardCycles - trainerBase.cycles)
+      : null;
+  // The tempo the student sets (and the trainer raises): before the taal player's slow-down.
+  const setTempo = mode === 'metronome' ? setMetronomeBpm : setTaalBpm;
+  const tempo = trained ?? (mode === 'metronome' ? metronomeBpm : taalBpm);
+  const bpm = mode === 'metronome' ? tempo : effectiveBpm(tempo, speed);
   const readBeats = useMemo(() => (taal ? readTaal(taal.bols) : []), [taal]);
-  const head = usePlayhead(player, playing ? pattern : null, bpm, playing);
+  const head = usePlayhead(player, playing ? pattern : null, bpm, playing, starts);
+  const cycles = head?.cycles ?? null;
+  if (cycles !== heardCycles) setHeardCycles(cycles);
+  /** The count-in clicks for a start of `forMode` (0 when it is off): one bar, a taal's first vibhag. */
+  const countInFor = (forMode: Mode, tl: Taal | null) => (countIn ? countInClicks(forMode, beatsPerBar, tl?.divisions ?? []) : 0);
+  /** Keeps the tempo the trainer reached (the sound stops, the trainer is switched off, the tool changes). */
+  const keepTrained = () => {
+    if (trained !== null) setTempo(trained);
+  };
 
-  // A new pattern while playing (other taal, other bar) starts it afresh; a new tempo keeps the place.
+  /** After every start of the sound: the cycles count from 0, the trainer from this tempo. */
+  const started = (trainedBpm: number) => {
+    setStarts((n) => n + 1);
+    setTrainerBase({ bpm: trainedBpm, cycles: 0 });
+    setStoppedAfter(null);
+    setStepping(false);
+  };
+
+  // A new pattern while playing (other taal, other bar) starts it afresh, at once; a new tempo keeps the place.
   const playingPattern = useRef<string | null>(null);
   useEffect(() => {
     if (!playing || !pattern) return;
     if (playingPattern.current !== pattern.key) {
       playingPattern.current = pattern.key;
-      void player.start(pattern, bpm);
+      void player.start(pattern, bpm).then((ok) => ok && started(tempo));
     } else {
       player.setTempo(bpm);
     }
+    // Only a new pattern or tempo acts here; the trainer's settings are read as they are then.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playing, pattern, bpm, player]);
+
+  // Stop after so many cycles (#403): the playhead says a cycle ended; the sound stops just after (a timer, as the
+  // stop changes the screen's state).
+  useEffect(() => {
+    if (!playing || stopAfter <= 0 || cycles === null || cycles < stopAfter) return;
+    const id = setTimeout(() => {
+      keepTrained();
+      player.stop();
+      playingPattern.current = null;
+      setPlaying(false);
+      setStoppedAfter(stopAfter);
+    }, 0);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playing, stopAfter, cycles, player]);
+
+  /** The student changes the tempo: while the trainer runs, it goes on from the new tempo. */
+  const changeTempo = (next: number) => {
+    setTempo(next);
+    if (playing) setTrainerBase({ bpm: next, cycles: cycles ?? 0 });
+  };
+
+  const toggleTrainer = (on: boolean) => {
+    if (!on) keepTrained();
+    setTrainerOn(on);
+    if (on && playing) setTrainerBase({ bpm: tempo, cycles: cycles ?? 0 });
+  };
 
   useEffect(() => {
     if (isStudent && mode === 'taal') setPracticeTimerTaal(taalId);
@@ -119,17 +264,19 @@ export function PracticeTools({ area }: PracticeToolsProps) {
 
   const toggle = async () => {
     if (playing) {
+      keepTrained();
       player.stop();
       playingPattern.current = null;
       setPlaying(false);
       return;
     }
     if (!pattern) return;
-    const ok = await player.start(pattern, bpm);
+    const ok = await player.start(pattern, bpm, countInFor(mode, taal));
     setSoundFailed(!ok);
     if (!ok) return;
     playingPattern.current = pattern.key;
     setPlaying(true);
+    started(tempo);
     if (isStudent) startPracticeTimer(profileId, mode === 'taal' ? taalId : null);
   };
 
@@ -141,15 +288,46 @@ export function PracticeTools({ area }: PracticeToolsProps) {
         ? { mode: 'taal', taalId: taal.id, taalName: taal.name, taalBpm, speed }
         : null;
 
-  const startFrom = async (next: NonNullable<typeof pattern>, nextBpm: number, timerTaal: number | null) => {
+  /** Starts `next` afresh (Record myself at once, from beat 1; the practice of the week after its count-in). */
+  const startFrom = async (next: NonNullable<typeof pattern>, nextBpm: number, timerTaal: number | null, clicks = 0, trainedBpm = nextBpm) => {
     player.stop();
-    const ok = await player.start(next, nextBpm);
+    const ok = await player.start(next, nextBpm, clicks);
     setSoundFailed(!ok);
     if (!ok) return false;
     playingPattern.current = next.key;
     setPlaying(true);
+    started(trainedBpm);
     if (isStudent) startPracticeTimer(profileId, timerTaal);
     return true;
+  };
+
+  /** The practice of the week's taal at its tempo, full speed, after the count-in when it is on. */
+  const startPlanTaal = (tl: Taal, planBpm: number) => {
+    const next = clampBpm(planBpm);
+    setMode('taal');
+    setTaalId(tl.id);
+    setTaalBpm(next);
+    setSpeed(1);
+    void startFrom(taalPattern(tl.bols), next, tl.id, countInFor('taal', tl), next);
+  };
+
+  // Step mode (#404): the strokes of the taal one by one; the shown stroke stays within the list.
+  const steps = useMemo(() => (taal ? taalSteps(taal.bols) : []), [taal]);
+  const step = stepping && steps.length > 0 ? steps[Math.min(stepIndex, steps.length - 1)] : null;
+  const toggleStepping = (on: boolean) => {
+    if (on) stopSound();
+    setStepIndex(0);
+    setStepping(on);
+  };
+  /** Plays the shown stroke once, slowly enough to hear both hands of a combined bol. */
+  const hearStep = () => {
+    if (step) void player.playOnce(bolPattern(step.bol), 60).then((ok) => setSoundFailed(!ok));
+  };
+
+  /** The timer saved practice: this week and the reminder know it at once. */
+  const practiceSaved = () => {
+    void notePractisedToday(profileId);
+    if (mine) void loadGoal(mine.studentId);
   };
 
   const startSoundOf = async (s: RecordingSetting) => {
@@ -165,7 +343,7 @@ export function PracticeTools({ area }: PracticeToolsProps) {
     setTaalId(found.id);
     setTaalBpm(s.taalBpm);
     setSpeed(s.speed);
-    return startFrom(taalPattern(found.bols), effectiveBpm(s.taalBpm, s.speed), found.id);
+    return startFrom(taalPattern(found.bols), effectiveBpm(s.taalBpm, s.speed), found.id, 0, s.taalBpm);
   };
 
   const stopSound = () => {
@@ -176,14 +354,41 @@ export function PracticeTools({ area }: PracticeToolsProps) {
 
   const switchMode = (next: Mode) => {
     if (next === mode) return;
+    keepTrained();
     player.stop();
     playingPattern.current = null;
     setPlaying(false);
     setMode(next);
   };
 
-  // During a rest nothing is struck: the drum shows no bol.
-  const bolNow = head && mode === 'taal' && readBeats[head.beat]?.[0]?.text !== '-' ? readBeats[head.bolBeat]?.[head.part] ?? null : null;
+  // During a rest nothing is struck: the drum shows no bol. In the step mode, the stroke shown.
+  const bolNow = step
+    ? step.bol
+    : head && mode === 'taal' && readBeats[head.beat]?.[0]?.text !== '-'
+      ? readBeats[head.bolBeat]?.[head.part] ?? null
+      : null;
+
+  const cycleNow = (unit: 'bars' | 'cycles') => (
+    <CycleNow cycles={cycles} playing={playing} unit={unit} stopAfter={stopAfter} stoppedAfter={stoppedAfter} />
+  );
+
+  /** Under the tool's own settings: the count-in, stop after, and the speed trainer (#403). */
+  const playSettings = (unit: 'bars' | 'cycles') => (
+    <>
+      <Checkbox label={t('practice.countIn')} checked={countIn} onChange={setCountIn} />
+      <StopAfterChoice unit={unit} value={stopAfter} onChange={setStopAfter} />
+      <SpeedTrainerFields
+        on={trainerOn}
+        onToggle={toggleTrainer}
+        total={trainerTotal}
+        onTotal={setTrainerTotal}
+        trainer={trainer}
+        onTrainer={setTrainer}
+        unit={unit}
+        running={playing && trainerOn && trainerBase ? { base: trainerBase.bpm, cycles: (cycles ?? 0) - trainerBase.cycles } : null}
+      />
+    </>
+  );
 
   const startButton = (disabled: boolean) => (
     <Button
@@ -199,7 +404,13 @@ export function PracticeTools({ area }: PracticeToolsProps) {
     <Screen underHeader wide>
       <Stack.Screen options={{ title: t('practice.title') }} />
 
-      {isStudent ? <PracticeTimerLine profileId={profileId} /> : <AppText tone="muted">{t('practice.staffHint')}</AppText>}
+      {isStudent ? (
+        <PracticeTimerLine profileId={profileId} onSaved={practiceSaved} />
+      ) : (
+        <AppText tone="muted">{t('practice.staffHint')}</AppText>
+      )}
+
+      {isStudent && mine && list ? <PlanSection mine={mine} taals={list.taals} onStartTaal={startPlanTaal} /> : null}
 
       <ChoiceGroup<Mode>
         label={t('practice.tool')}
@@ -220,9 +431,10 @@ export function PracticeTools({ area }: PracticeToolsProps) {
       {mode === 'metronome' ? (
         <Section icon="practice" title={t('practice.metronome')} description={t('practice.metronomeIntro')}>
           {/* Start right under the tempo, on the first screen (#384); the dots light in time under it. */}
-          <TempoControl bpm={metronomeBpm} onChange={setMetronomeBpm}>
+          <TempoControl bpm={tempo} onChange={changeTempo}>
             {startButton(false)}
             <BeatDots count={beatsPerBar} current={head?.beat ?? null} />
+            {cycleNow('bars')}
           </TempoControl>
           <ChoiceGroup<number>
             segmented
@@ -231,6 +443,7 @@ export function PracticeTools({ area }: PracticeToolsProps) {
             onChange={setBeatsPerBar}
             choices={[2, 3, 4, 5, 6, 7, 8].map((n) => ({ value: n, label: String(n) }))}
           />
+          {playSettings('bars')}
         </Section>
       ) : (
         <>
@@ -264,8 +477,9 @@ export function PracticeTools({ area }: PracticeToolsProps) {
                 {taal.note ?? t('practice.placeholder')}
               </Notice>
             ) : null}
-            <TempoControl bpm={taalBpm} onChange={setTaalBpm}>
+            <TempoControl bpm={tempo} onChange={changeTempo}>
               {startButton(!taal)}
+              {cycleNow('cycles')}
             </TempoControl>
             <ChoiceGroup<number>
               chips
@@ -283,15 +497,25 @@ export function PracticeTools({ area }: PracticeToolsProps) {
                 {t('practice.playingAt', { bpm: Math.round(bpm * 10) / 10 })}
               </AppText>
             ) : null}
+            {playSettings('cycles')}
           </Section>
           {taal ? (
             <Section icon="syllabus" title={t('practice.gridTitle', { name: taal.name })}>
-              <BeatGrid bols={taal.bols} divisions={taal.divisions} marks={taal.marks} current={head?.beat ?? null} />
+              <BeatGrid bols={taal.bols} divisions={taal.divisions} marks={taal.marks} current={step ? step.beat : head?.beat ?? null} hands />
             </Section>
           ) : null}
           {taal ? (
             <Section icon="instruments" title={t('practice.twoHeadTitle')} description={t('practice.twoHeadIntro')}>
-              <TwoHeadView bol={bolNow} fresh={head?.fresh ?? false} />
+              <StepControls
+                on={stepping}
+                onToggle={toggleStepping}
+                index={Math.min(stepIndex, Math.max(0, steps.length - 1))}
+                total={steps.length}
+                beat={step?.beat ?? null}
+                onIndex={setStepIndex}
+                onHear={hearStep}
+              />
+              <TwoHeadView bol={bolNow} fresh={step ? true : head?.fresh ?? false} />
             </Section>
           ) : null}
         </>
@@ -304,8 +528,19 @@ export function PracticeTools({ area }: PracticeToolsProps) {
         stopSound={stopSound}
       />
 
+      {isStudent && goal && mine ? (
+        <Section icon="promote" title={t('practice.goalTitle')}>
+          <GoalWeekView practice={goal} />
+          <GoalFold practice={goal} onSaved={() => void loadGoal(mine.studentId)} />
+        </Section>
+      ) : null}
+      {isStudent ? <ReminderFold profileId={profileId} /> : null}
+
       {isStudent ? (
         <Button variant="link" icon="time" label={t('practiceLog.open')} onPress={() => router.push('/student/practice-log')} />
+      ) : null}
+      {area === 'staff' && (isGuru || profile?.role === 'coordinator') ? (
+        <Button variant="secondary" icon="todo" label={t('practicePlan.open')} onPress={() => router.push('/staff/practice-plan')} />
       ) : null}
       {isGuru ? <Button variant="secondary" icon="edit" label={t('taals.edit')} onPress={() => router.push('/staff/taals')} /> : null}
     </Screen>
@@ -381,7 +616,7 @@ function BeatDots({ count, current }: { count: number; current: number | null })
  * Students: the practice timer as one slim line above the tools (#384), so Start stays on the first screen; while it
  * runs, the time with Stop and save, and Throw away under it; what happened when it was stopped.
  */
-function PracticeTimerLine({ profileId }: { profileId: string }) {
+function PracticeTimerLine({ profileId, onSaved }: { profileId: string; onSaved: () => void }) {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const timer = usePracticeTimer(profileId);
@@ -423,6 +658,7 @@ function PracticeTimerLine({ profileId }: { profileId: string }) {
     }
     clearPracticeTimer();
     setResult({ tone: 'success', text: t('practice.timerLogged', { time: practiceTime(t, logged) }) });
+    onSaved();
   };
 
   return (

@@ -86,7 +86,9 @@ export function isNoticeScreen(url: string): boolean {
     // one fund entry (slice 9, migration 0026).
     || /^\/staff\/(suggestions|duty|(inventory|fund)\/\d+)$/.test(url)
     // A student's page (C8): "new mentee" and "mentor needed" (0036, inbox only, no push).
-    || /^\/staff\/students\/[0-9a-f-]{36}$/.test(url);
+    || /^\/staff\/students\/[0-9a-f-]{36}$/.test(url)
+    // The daily practice reminder (made on the phone itself, never a server notice; #402).
+    || url === '/student/practice';
 }
 
 /** The screen to open for `notice`, or null when this version cannot open it (or not in this area). */

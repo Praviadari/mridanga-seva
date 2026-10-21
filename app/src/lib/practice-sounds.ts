@@ -131,6 +131,31 @@ export function renderLoop(pattern: Pattern, bpm: number, rate: number): Float32
   return out;
 }
 
+/**
+ * `pattern` once at `bpm`, mixed, its last sound left to ring out (no wrap): the count-in and a single stroke in the
+ * step mode (#403, #404).
+ */
+export function renderOnce(pattern: Pattern, bpm: number, rate: number): Float32Array {
+  const secondsPerBeat = 60 / bpm;
+  const starts = pattern.events.map((event) => Math.round(event.at * secondsPerBeat * rate));
+  const length = Math.max(
+    Math.round(pattern.beats * secondsPerBeat * rate),
+    ...pattern.events.map((event, i) => starts[i] + soundSamples(event.sound, rate).length),
+  );
+  const out = new Float32Array(length);
+  pattern.events.forEach((event, i) => {
+    const samples = soundSamples(event.sound, rate);
+    for (let j = 0; j < samples.length; j++) out[starts[i] + j] += samples[j];
+  });
+  let peak = 0;
+  for (let i = 0; i < length; i++) peak = Math.max(peak, Math.abs(out[i]));
+  if (peak > 0.95) {
+    const scale = 0.95 / peak;
+    for (let i = 0; i < length; i++) out[i] *= scale;
+  }
+  return out;
+}
+
 /** Samples as a mono 16-bit PCM WAV file. */
 export function wavFile(samples: Float32Array, rate: number): Uint8Array {
   const bytes = new Uint8Array(44 + samples.length * 2);

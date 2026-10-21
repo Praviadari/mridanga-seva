@@ -153,11 +153,12 @@ test('assessment: the mark comes before the task, recordings by number and day (
 
 test('Practice tools: a slim timer line, Start right under the tempo, beats 2 to 8 in one row (#384)', () => {
   const tools = src('screens/practice-tools.tsx');
-  assert.match(tools, /<PracticeTimerLine profileId=\{profileId\} \/>/);
+  // Since #400 the line also tells the screen when it saved practice, and the tempo is the trainer's while it runs.
+  assert.match(tools, /<PracticeTimerLine profileId=\{profileId\} onSaved=\{practiceSaved\} \/>/);
   assert.ok(!tools.includes('PracticeTimerCard'));
   assert.match(tools, /<Section icon="practice" title=\{t\('practice\.metronome'\)\}/);
-  assert.match(tools, /<TempoControl bpm=\{metronomeBpm\} onChange=\{setMetronomeBpm\}>\s*\{startButton\(false\)\}/);
-  assert.match(tools, /<TempoControl bpm=\{taalBpm\} onChange=\{setTaalBpm\}>\s*\{startButton\(!taal\)\}/);
+  assert.match(tools, /<TempoControl bpm=\{tempo\} onChange=\{changeTempo\}>\s*\{startButton\(false\)\}/);
+  assert.match(tools, /<TempoControl bpm=\{tempo\} onChange=\{changeTempo\}>\s*\{startButton\(!taal\)\}/);
   // The Start button sits between the number and the −5 … +5 steps.
   const tempo = tools.slice(tools.indexOf('function TempoControl'));
   assert.ok(tempo.indexOf("t('practice.bpm'") < tempo.indexOf('{children}'));

@@ -45,7 +45,9 @@ const GO_LIVE = ['0013', '0014', '0015', '0016', '0017', '0018', '0019', '0020',
   // Placeholder number on branch after-launch-design (#340); the lead renumbers it at the merge.
   '0050',
   // A child's sign-up at home with the parent's consent by email (#399).
-  '0051'];
+  '0051',
+  // More home practice (#400-#404).
+  '0052'];
 
 let failures = 0;
 let passes = 0;

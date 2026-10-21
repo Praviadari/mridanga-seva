@@ -3,10 +3,10 @@
 // with the sound. The screen re-renders only when that changes (a few times a beat), not 60 times
 // a second.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
-import type { Pattern } from './practice-pattern';
-import type { PracticePlayer } from './practice-player';
+import { cyclesPassed, type Pattern } from './practice-pattern';
+import type { PlayerPosition, PracticePlayer } from './practice-player';
 
 /** What is being heard. */
 export type Playhead = {
@@ -19,14 +19,24 @@ export type Playhead = {
   fresh: boolean;
   /** Counts the bols heard, so the same bol played twice in a row is seen as two. */
   count: number;
+  /** Cycles completed since beat 1 (after any count-in): the cycle counter and the speed trainer's clock (#403). */
+  cycles: number;
 };
 
 /** How long a stroke stays bright, seconds (shorter at fast tempos). */
 const FRESH_SECONDS = 0.16;
 
-/** The playhead of `player` while `playing`, or null. */
-export function usePlayhead(player: PracticePlayer, pattern: Pattern | null, bpm: number, playing: boolean): Playhead | null {
+/**
+ * The playhead of `player` while `playing`, or null. `starts` counts the screen's starts of the sound: a new start
+ * (also of the same pattern while playing, e.g. Record myself) counts the cycles from 0 again.
+ */
+export function usePlayhead(player: PracticePlayer, pattern: Pattern | null, bpm: number, playing: boolean, starts = 0): Playhead | null {
   const [head, setHead] = useState<Playhead | null>(null);
+  // Cycles count on across tempo changes (the speed trainer makes them); a new pattern or a new start counts from 0.
+  const counter = useRef<{ lastAt: PlayerPosition | null; cycles: number }>({ lastAt: null, cycles: 0 });
+  useEffect(() => {
+    counter.current = { lastAt: null, cycles: 0 };
+  }, [player, pattern, playing, starts]);
 
   useEffect(() => {
     if (!playing || !pattern || pattern.events.length === 0) return;
@@ -35,6 +45,9 @@ export function usePlayhead(player: PracticePlayer, pattern: Pattern | null, bpm
     const step = () => {
       const at = player.position();
       if (at) {
+        counter.current.cycles += cyclesPassed(counter.current.lastAt, at, pattern.beats);
+        counter.current.lastAt = at;
+        const cycles = counter.current.cycles;
         // The last bol that has started: events are sorted by `at`.
         let index = -1;
         for (let i = 0; i < pattern.events.length; i++) {
@@ -48,10 +61,10 @@ export function usePlayhead(player: PracticePlayer, pattern: Pattern | null, bpm
         const fresh = since < Math.min(FRESH_SECONDS, (0.6 * 60) / bpm);
         const count = cycle * pattern.events.length + (index === -1 ? pattern.events.length - 1 : index);
         const beat = Math.min(pattern.beats - 1, Math.floor(at.beat));
-        const key = `${count}:${fresh}:${beat}`;
+        const key = `${count}:${fresh}:${beat}:${cycles}`;
         if (key !== lastKey) {
           lastKey = key;
-          setHead({ beat, bolBeat: event.beat, part: event.part, fresh, count });
+          setHead({ beat, bolBeat: event.beat, part: event.part, fresh, count, cycles });
         }
       }
     };

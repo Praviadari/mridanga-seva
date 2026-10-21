@@ -60,9 +60,12 @@ function pushPossible(): boolean {
   );
 }
 
-/** expo-notifications, loaded once on first use; null when push cannot work on this build. */
+/**
+ * expo-notifications, loaded once on first use; null when push cannot work on this build. The daily practice
+ * reminder (lib/practice-reminder.ts, #402) uses the same module, set up the same way.
+ */
 let loading: Promise<Notifications | null> | null = null;
-function notifications(): Promise<Notifications | null> {
+export function notifications(): Promise<Notifications | null> {
   loading ??= pushPossible()
     ? import('expo-notifications').then(
         (module) => {

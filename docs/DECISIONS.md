@@ -6254,3 +6254,138 @@ parent code (`mridanga_brevo_key`, S3-01) stays off. Without step 3 nothing brea
 
 **Why.** Children can join from home with a consent the parent gives from their own email, the class still sees an ID
 before anything is recorded about the child, and an outsider cannot use the form to mail strangers in bulk.
+
+## 400. A weekly practice goal each student can change — 21 Oct 2026
+
+**Status: branch `claude/practice-features-61c475`; migration 0052_practice_more.sql.** Praveen asked for more on the
+student's Practice, chosen by looking at other practice apps (shortlist: NOTES_practice_research.md, worker chat
+practice-features). On 21 Oct 2026 he picked features 1-5 and 7 of it, and the hands view (#404), through the lead chat.
+
+**Context.** Practice logged minutes and showed weekly bars, but nothing told a child whether this week was enough.
+Practice apps (Soundbrenner, SurTaal, Duolingo) show a goal and a run of good weeks.
+
+**Decision.** A weekly goal of days a week and minutes a day: **4 days x 15 minutes** (Praveen), **which each student
+can change** for themselves (`practice_goals`, through `set_my_practice_goal`; "Use my class's goal" goes back). Without
+the student's own, the level's goal from the practice of the week (#401) counts, else 4 x 15. A day counts when it has
+the minutes; Practice tools, My progress and the staff student page show this week Monday to Sunday ("3 of 4 days this
+week"), what is left or "goal met", whose goal it is, and the **weeks in a row with the goal met**, counted like the
+visits' weeks in a row (#382): a week is not broken before it ends, and a missed day is never called a loss. No points,
+no badges, no leaderboard (children are not compared with each other). Data: `practice_days()` (minutes per day of up to
+53 weeks with the goal, row-level security of the asker).
+
+**Why.** A week fits a weekly class and is kinder to children than a daily streak (Duolingo moved away from tying the
+streak to a daily amount; critics note loss pressure on children). A goal the child picks is one they keep.
+
+**Consequences.** The student's own goal is a small new fact about the child (days and minutes they chose); it belongs
+with "practice minutes" in the privacy notice's Learning row: Praveen to add "and the practice goal you set" when the
+notice is next edited (the under-18 worker owns the notice files now). It goes with the record at erasure (cascade) and
+is refused for a withdrawn record (#281). All JavaScript: fingerprint stays 23dc7e4a (APK 90c6d1cd). 0052 must run on
+TEST and LIVE before the OTA and web upload; without it the week card is left out. Tests: app/tests/practice-more.test.mjs,
+smoke-test "0052 more practice".
+
+## 401. Practice of the week per level — 21 Oct 2026
+
+**Status: branch `claude/practice-features-61c475`; migration 0052_practice_more.sql.**
+
+**Context.** Volunteers say in class what to practise; children forget by Tuesday. Practice apps for teachers (Tonara,
+PracticeSpace, Modacity) let the teacher set the week's items. The class has levels, not batches (#2); Praveen: per
+level now, per group later.
+
+**Decision.**
+- **practice_plans:** one row per level: the level's weekly goal (#400; 4 x 15 until changed), a note (300 characters)
+  and **up to three items**, each a switched-on taal at a tempo (30-240) or an approved lesson video (YouTube or the
+  team's file) that the level may open (its own level or lower). **The Guru and coordinators write it** (coordinators are
+  the teachers, #11); a student reads only their own level's row; no delete from the app (an empty plan has no items).
+  Every write is checked by `guard_practice_plan()` and audited. Class content only: no personal data.
+- Staff open **Practice of the week** from Practice tools (staff/practice-plan): a level, the goal (days 1-7, minutes
+  as chips), the items and the note; edits of other levels are kept until saved. Students see it **at the top of
+  Practice tools** with **Start** (the taal at its tempo, full speed, after the count-in) and **Watch** (the lesson
+  player); an item the student cannot use (taal switched off since, lesson not open to them) is left out.
+
+**Why.** One place for "this week's practice" saves volunteers repeating it and lets parents on a shared phone see it.
+
+**Consequences.** If 0052 has not run, Practice tools shows no plan and the editor says it could not load. A deleted
+lesson or taal leaves its item in the row; the app hides it until a teacher saves the plan again. #384 (Start on the
+first screen) still holds for the tools; with a practice of the week, its own Start comes first. 0051 (under-18 sign-up)
+is another branch: the checklist rows go 0050, 0051, 0052 when both are on main.
+
+## 402. A daily practice reminder made on the phone — 21 Oct 2026
+
+**Status: branch `claude/practice-features-61c475`; app only, no database change.**
+
+**Context.** Habit apps remind at a chosen time. The Android app already has expo-notifications (announcements push,
+#33); iPhone users have the web version, which has no push yet.
+
+**Decision.** On Practice tools a student may choose **a time** (06:30, 07:30, 17:00, 18:00, 19:00, 20:00; off by
+default). The phone schedules **one-off local notifications for the next 14 days** ("Khol practice" / Praveen's words:
+"Time for your khol practice. Even 10 minutes helps. Hare Krishna!"), on its own channel "Practice reminder", without
+today once the student saved practice today on this phone or the time has passed. Every visit to Practice tools and
+every saved practice schedules the 14 days again; a phone not opened for two weeks stops reminding. A tap opens
+Practice tools. Nothing is sent to a server; the choice is kept per login on the device and **removed at every
+sign-out** with the other traces (#186, #283). The web version says "Reminders work in the Android app." Android without
+the exact-alarm right shows it within some minutes of the time (expo-notifications falls back to an inexact alarm).
+
+**Why.** A cue at a fixed time builds a habit; local notifications need no server, no new data and no new APK. Not
+reminding on a day already practised, and stopping when the app is not used, keeps it gentle for children.
+
+**Consequences.** Needs Praveen's phone check before the production OTA (list in the worker's READY report and NOTES).
+iPhone reminders need web push, a separate project. te/hi wording is a draft for native review.
+
+## 403. Count-in, cycle counter, speed trainer, screen on — 21 Oct 2026
+
+**Status: branch `claude/practice-features-61c475`; app only.**
+
+**Context.** The metronome and taal player started at once, ran at one tempo, never stopped by themselves, and the phone
+dimmed mid-practice. Metronome apps (Time Trainer, Soundbrenner, Unchained) count in, count bars and raise the tempo.
+
+**Decision.**
+- **Count-in** (a tick box, on by default): one bar of clicks before beat 1 when Start is pressed (also the practice of
+  the week's Start); the metronome's bar, or a taal's first vibhag (2-8 clicks). In the browser the clicks are on the
+  audio clock, exact. On the phone the loop is one mixed WAV that loops on the audio hardware; it cannot start a second
+  sound at an exact time, so the count-in is a second short file and the loop (loaded, paused) starts when its time is
+  over by a JavaScript timer: sam may come a few milliseconds early or late, once; from then on the loop keeps time.
+  Record myself starts at once (its takes are compared with the sound from its start).
+- **Cycle counter:** "Bar 3" / "Cycle 3" (or "Cycle 3 of 8") under Start, "Count-in…" before beat 1, and **stop after**
+  4, 8, 16 or 32 bars or cycles ("Stopped after 8 cycles."). Cycles are counted from the player's position: the browser
+  counts them, the phone's loop starts again at 0 (a jump back of more than half a cycle is one cycle); the phone player
+  gives no position while it reloads the loop at a new tempo or counts in, so neither is a cycle.
+- **Speed trainer:** faster by +10/+20/+30/+40 in all, +1/+2/+5/+10 a step, a step after every 1/2/4/8 bars or cycles.
+  The tempo shown is the trainer's while it plays; Stop (or the trainer off, or the other tool) keeps the tempo reached.
+- **The screen stays on while the sound plays** (expo-keep-awake, already in the APK; the browser's wake lock where it has
+  one).
+
+**Why.** Counting in and counting rounds are how a teacher starts and ends a practice; raising the laya step by step is
+how riyaz is done; a dimmed phone hides the beat.
+
+**Consequences.** All JavaScript (fp 23dc7e4a). The phone's count-in-to-sam step is to be heard on a real phone.
+
+## 404. Hands in the taal player — 21 Oct 2026
+
+**Status: branch `claude/practice-features-61c475`; app only.** Praveen: "for taal player, add the hand movements too to
+get clarity".
+
+**Context.** lib/bols.ts already holds, for every known bol, the head (dayan = right hand, baya = left), the zone, what
+touches (index, middle, three fingers, flat hand, fingers, wrist and fingers, slide) and open/closed; the two-head view
+lit the zone and named the touch in small words. No practice app found shows hand drawings per stroke; hand-drum
+notation writes a right-hand and a left-hand row, and teaching describes a muffled stroke as the hand staying on the
+skin.
+
+**Decision.**
+- Under each head, **a drawing of the hand that plays it** (react-native-svg, already in the app): seen from above, the
+  fingers towards the drum, the parts that touch lit in the drum's highlight colour (index; middle; index-middle-ring;
+  four fingers; heel of the hand and fingers; the whole flat hand); an **arrow up = strike and lift (it rings)**, an
+  **arrow down onto a line = press and stay (damped)**; and the same in words ("Right hand · index finger · edge of the
+  syahi", "Strike and lift: it rings"). The hand that does not play is drawn faint ("rests").
+- In the beat grid, **under each beat which hand plays it**: L, R or L+R (te ఎ / కు, hi बा / दा), ? for a bol the app
+  does not know.
+- **Learn stroke by stroke** (a tick box): the loop stops; Previous / Next go through the taal's strokes (rests left
+  out), the grid lights the beat, the heads and hands show the stroke, and **Hear it** plays that one stroke once.
+- Nothing about a stroke is decided by the view: it reads lib/bols.ts, whose unverified mappings (tin → tī, kha/khe →
+  ka, ge/gi → ga, dhi → dhin) are for the Guru to confirm.
+
+**Why.** Seeing which fingers land where, and whether the hand lifts or stays, is what a child copies from the teacher;
+one stroke at a time is how a new theka is learnt.
+
+**Consequences.** Drum colours stay the instrument's in dark mode; the hands use the theme's surface and outline colours
+with the saffron highlight, so they read in both modes. If the Guru changes a mapping in lib/bols.ts, the drawings,
+words and the L/R row follow by themselves.

@@ -1,5 +1,5 @@
-// Stand-ins for what src/lib/device-traces.ts calls besides the files: expo-image's caches, the saved QR card
-// and the push notifications. Each call is counted in globalThis.__testCalls.
+// Stand-ins for what src/lib/device-traces.ts calls besides the files: expo-image's caches, the saved QR card,
+// the push notifications and the practice reminder (#402). Each call is counted in globalThis.__testCalls.
 
 const calls = () => (globalThis.__testCalls ??= []);
 
@@ -14,4 +14,8 @@ export function clearSavedCard() {
 
 export async function dismissNotifications() {
   calls().push('notifications');
+}
+
+export async function forgetPracticeReminders() {
+  calls().push('practice-reminder');
 }

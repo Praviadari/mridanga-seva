@@ -51,6 +51,7 @@ in number order:
 | `0049_launch_cleanup.sql` | Launch clean-up (audit phase 3, brief L8): `erase_login` for a waiting sign-up; erasure matches emails as whole values (`audit_redact`), lists every file in the child's folder and deletes the staff notices about the child (`forget_notices_about`); unlisted assessment files over a day old deleted by the daily clean-up; 150 MB a day per login in `assessment-files`; `push_outbox` kept 30 days ([DECISIONS.md #286-#287](DECISIONS.md)). No new job. See "Launch clean-up (0049)" |
 | `0050_staff_dashboard.sql` | Launch range (placeholder 0063 on branch `after-launch-design`, renumbered 14-10-2026): `staff_dashboard()`, the staff homes' Today numbers and what waits for the caller in one request ([DECISIONS.md #339, #340](DECISIONS.md)). See "Staff home: today and waiting (0050)" |
 | `0051_minor_home_signup.sql` | A child under 18 signs up at home; the parent consents by email with a 6-digit code; the desk sees an ID and Accepts (`accept_minor_sign_up`) ([DECISIONS.md #399](DECISIONS.md)). See "Under-18 sign-up at home (0051)" |
+| `0052_practice_more.sql` | More home practice ([DECISIONS.md #400-#401](DECISIONS.md)): `practice_plans` (per level: weekly goal, up to three things to practise, a note; staff write, a student reads their own level's) a student's own weekly goal (`practice_goals`, `set_my_practice_goal`) and `practice_days()` (minutes per day with the goal: own, the level's, or 4 x 15). See "Practice of the week and the weekly goal (0052)" |
 
 The Phase 2 files were renumbered when they merged into main (#55). TEST ran some under their
 branch numbers (0012, 0014_promotion, 0016_practice, 0017_media, 0021_events_polls), so it skips
@@ -77,7 +78,7 @@ consent), sample visits, groups and an announcement. Never run it on the live pr
 | Communication | `announcements`, `announcement_reads`, `announcement_replies`, `groups`, `group_members`, `push_tokens`, `push_queue`, `push_status` | Groups replace the WhatsApp groups. Views `announcement_audience` and `announcement_seen` give "seen by", `announcement_reply_list` the replies with names, `group_summary` the member counts. `notifications` is each person's inbox (A2, see "Notifications inbox"). Photos and PDFs are files in the Storage bucket `announcement-files`, listed in `announcements.attachments` |
 | Assessments (Phase 2) | `assessments`, `assessment_releases`, `assessment_assignments`, `assessment_submissions`, `push_outbox` | Views `assessment_tracker` (C13) and `assessment_summary` (counts). Files in the Storage bucket `assessment-files` |
 | Promotion (Phase 2) | `promotion_nominations`, `promotion_feedback` | View `promotion_queue` (G7). See "Promotion approval (Phase 2)" |
-| Practice (Phase 2) | `taals`, `practice_logs` | Taals the S5 player loops (the Guru edits them); practice minutes from the S5 timer or typed in (S6). See "Practice tools (Phase 2)" |
+| Practice (Phase 2) | `taals`, `practice_logs`, `practice_plans` | Taals the S5 player loops (the Guru edits them); practice minutes from the S5 timer or typed in (S6); the practice of the week and weekly goal per level (0052). See "Practice tools (Phase 2)" and "Practice of the week and the weekly goal (0052)" |
 | Inventory (Phase 2) | `inventory_items`, `inventory_loans`, `inventory_checks`, `inventory_code_counters`, `inventory_stocktakes`, `inventory_stocktake_items` | Every seva asset with its label code and token, who holds each, every condition seen, the counts (C19). See "Team tools (Phase 2)" and "Asset labels and stocktake (0035)" |
 | Duty roster (Phase 2) | `duty_shifts`, `duty_assignments` | Shifts per date and centre with the people on each (C20). Suggestions (C18) live in `materials` |
 | Ishtagoshti (Phase 2) | `ig_slokas`, `ig_themes`, `ig_theme_slokas`, `ig_daily_pins`, `ig_notes`, `ig_memorised` | Sloka study (I1-I3, I11, I12): the temple's own translations, themes, the sloka of the day, private notes, memorised ticks. Recitations in the Storage bucket `ishtagoshti-audio`. See "Ishtagoshti (Phase 2)" |
@@ -1611,6 +1612,32 @@ Tests: section "0050 staff dashboard" in `supabase/tests/smoke-test.mjs`.
 - Limits (`minor_mail_limits()`): 5 emails per sign-up, 3 a day per address, 60 a day app-wide, 10 minutes apart.
 
 Tests: section "0051 a child's sign-up at home" in `supabase/tests/smoke-test.mjs`.
+
+## Practice of the week and the weekly goal (0052)
+
+[DECISIONS.md #400-#401](DECISIONS.md). Migration `0052_practice_more.sql`. Screens: S5 Practice tools (students: the
+plan at the top, this week against the goal), S4 My progress and C8 (the week card), staff/practice-plan (the editor).
+
+| Table | One row per | Written by |
+|---|---|---|
+| `practice_plans` | Level (`level_id` unique): `goal_days` 1-7 (default 4), `goal_minutes` 5-120 (default 15), `note` ≤ 300 (blank = null), `items` (JSON list of at most 3: `{"taal": id, "bpm": 30-240}` or `{"lesson": material id}`), `updated_at`, `updated_by` | Guru and coordinators (row-level security: insert and update; no delete from the app); checked by the trigger `practice_plans_guard` (`guard_practice_plan`), audited (`audit_row`) |
+| `practice_goals` | Student with an own goal: `student_id` (cascade with the record), `goal_days` 1-7, `goal_minutes` 5-120, `updated_at`. Read by the student and staff | Only `set_my_practice_goal`; refused for a withdrawn record (`refuse_withdrawn`) |
+
+`guard_practice_plan` errors: `plan_goal_invalid`, `plan_note_too_long`, `plan_items_invalid` (not a list of at most
+3 items of those two shapes), `plan_bpm_invalid`, `plan_taal_not_found` (no such taal switched on),
+`plan_lesson_not_found` (no approved `youtube` or `video` material of the plan's level or a lower one or every level).
+
+| Function | Who | Does | Errors |
+|---|---|---|---|
+| `set_my_practice_goal(days, minutes)` | Student (security definer, own record only) | Sets the student's own weekly goal (1-7 days, 5-120 minutes) in `practice_goals`; null days = back to the level's goal | `not_allowed`, `plan_goal_invalid` |
+| `practice_days(student, weeks)` | Anyone (security invoker) | JSON `{goal_days, goal_minutes, goal_own, days: [{on, minutes}]}`: minutes per day with practice from the Monday `weeks` - 1 weeks before this one (1-53, India), newest first, and the student's goal: their own (`goal_own` true), else their level's, else 4 x 15. Row-level security decides: a student gets their own days, staff anyone's; asked about another student, a student gets no days and the default goal | — |
+
+Who sees what: staff read every level's plan; a student reads only the row of their own record's level (a higher
+level's lesson titles stay unseen); anon reads nothing. The policies wrap `is_staff()` and `my_student_id()` in
+`(select ...)` (D9-01). If 0052 has not run, the app shows no plan and no week card.
+
+Tests: section "0052 more practice" in `supabase/tests/smoke-test.mjs`.
+
 ## Linking a login to a student
 
 A student record can exist without a login (many students never install the app). When a person
@@ -1682,6 +1709,7 @@ switched-off login is refused like a stranger.
 | `coordinator_dashboard()` | Guru, coordinator | The coordinator dashboard's numbers. See "Home screens" |
 | `guru_dashboard()` | Guru | The Guru dashboard's numbers. See "Home screens" |
 | `staff_dashboard()` | Guru, coordinator | The staff homes' Today numbers and what waits for the caller, in one request (0050). See "Staff home: today and waiting (0050)" |
+| `practice_days(student, weeks)` | Anyone (security invoker) | A student's practice minutes per day and their weekly goal (0052). See "Practice of the week and the weekly goal (0052)" |
 | `move_syllabus_item(item, up)` | Guru | Moves a syllabus item one place up or down among the items in use. See "Syllabus editor" |
 | `syllabus_item_counts()` | Guru, coordinator | Ticks and materials per syllabus item. See "Syllabus editor" |
 | `week_start_ist()` | Anyone signed in | First day of "this week" at the caller's centre (Monday, or 6 days ago with `week_starts` = `rolling7`); used by the functions above |

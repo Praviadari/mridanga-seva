@@ -10,7 +10,7 @@
 // timing can be checked from the browser console (docs/ARCHITECTURE.md "Practice tools").
 
 import type { SoundId } from './bols';
-import type { Pattern } from './practice-pattern';
+import { metronomePattern, type Pattern } from './practice-pattern';
 import type { PlayerPosition, PracticePlayer } from './practice-player';
 import { soundSamples } from './practice-sounds';
 
@@ -62,25 +62,55 @@ class WebPracticePlayer implements PracticePlayer {
     return this.master;
   }
 
-  async start(pattern: Pattern, bpm: number): Promise<boolean> {
-    this.stop();
+  /** The audio context, made on first use (after a tap, as browsers require). null = no Web Audio here. */
+  private async context(): Promise<AudioContext | null> {
     try {
       if (!this.ctx) {
         const Context = globalThis.AudioContext ?? (globalThis as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-        if (!Context) return false;
+        if (!Context) return null;
         this.ctx = new Context({ latencyHint: 'interactive' });
         this.master = this.ctx.createGain();
         this.master.gain.value = 0.9;
         this.master.connect(this.ctx.destination);
       }
       await this.ctx.resume();
+      return this.ctx;
     } catch {
-      return false;
+      return null;
     }
+  }
+
+  /** Starts one sound at an audio-clock time; stop() takes it back. */
+  private sound(id: SoundId, time: number): void {
+    const ctx = this.ctx;
+    const buffer = this.buffers.get(id);
+    if (!ctx || !this.master || !buffer) return;
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+    source.connect(this.master);
+    source.start(Math.max(time, ctx.currentTime));
+    const entry: Scheduled = { source, time };
+    this.scheduled.push(entry);
+    source.onended = () => {
+      this.scheduled = this.scheduled.filter((s) => s !== entry);
+    };
+  }
+
+  async start(pattern: Pattern, bpm: number, countIn = 0): Promise<boolean> {
+    this.stop();
+    const ctx = await this.context();
+    if (!ctx) return false;
     this.pattern = pattern;
     this.bpm = bpm;
     this.prepare(pattern);
-    this.anchorTime = this.ctx.currentTime + START_DELAY;
+    // The count-in (#403): clicks on the audio clock before beat 1, exact like the loop; position() gives null
+    // until beat 1 (a negative beat).
+    const countInBeats = Math.max(0, Math.round(countIn));
+    const count = metronomePattern(Math.max(1, countInBeats));
+    if (countInBeats > 0) this.prepare(count);
+    const first = ctx.currentTime + START_DELAY;
+    for (let i = 0; i < countInBeats; i++) this.sound(count.events[i].sound, first + (i * 60) / bpm);
+    this.anchorTime = first + (countInBeats * 60) / bpm;
     this.anchorBeat = 0;
     this.nextIndex = 0;
     this.nextCycle = 0;
@@ -91,6 +121,16 @@ class WebPracticePlayer implements PracticePlayer {
     this.lastTick = 0;
     this.tick();
     this.timer = setInterval(() => this.tick(), TICK_MS);
+    return true;
+  }
+
+  async playOnce(pattern: Pattern, bpm: number): Promise<boolean> {
+    this.stop();
+    const ctx = await this.context();
+    if (!ctx) return false;
+    this.prepare(pattern);
+    const first = ctx.currentTime + START_DELAY;
+    for (const event of pattern.events) this.sound(event.sound, first + (event.at * 60) / bpm);
     return true;
   }
 

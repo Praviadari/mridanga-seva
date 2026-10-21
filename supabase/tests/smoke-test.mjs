@@ -127,7 +127,7 @@ process.on('uncaughtException', (error) => {
 // D14-10: every check is counted, and the run fails when fewer (or more) checks ran than expected,
 // so a block skipped by a renamed migration or a commented-out section cannot pass unseen.
 // Adding or removing checks? Run the suite and set this to the new total it prints.
-const EXPECTED_CHECKS = 1773; // 0051 child's sign-up at home: +79; 0050 staff dashboard: +15; 0049 launch clean-up: +30; 0048 withdrawn records and leaks: +50; 0047 form rules: +109; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
+const EXPECTED_CHECKS = 1813; // 0052 more practice: +40; 0051 child's sign-up at home: +79; 0050 staff dashboard: +15; 0049 launch clean-up: +30; 0048 withdrawn records and leaks: +50; 0047 form rules: +109; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
 let failures = 0;
 let passes = 0;
 
@@ -3261,6 +3261,7 @@ const mayAnswer = new Set(['my_role', 'today_ist', 'my_time_zone', 'centre_tz', 
   'ig_sloka_of_day', 'ig_audio_path_ok', 'ig_audio_readable', 'is_public_subscriber', 'has_class_role',
   'gen_random_uuid', // pgcrypto's, in public only here (Supabase keeps it in extensions)
   'practice_weeks', // empty weeks with 0 minutes for a null student
+  'practice_days', // 0052: no days and the default goal (4 x 15) for a null student
   'scan_qr', // {action: unknown} for a null code
   'my_about', 'sign_up_choices', // 0036: the caller's own About you; the public sign-up lists (#163)
   'person_name_symbols', 'default_home_centre', // 0047: the name rule's list of refused signs (#271); a new record's default centre id (#274)
@@ -4121,7 +4122,8 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
     'material_file_deletable(text)', 'material_file_readable(text)', 'material_file_uploadable(text)',
     'move_syllabus_item(bigint,boolean)', 'my_role()', 'my_student_id()', 'next_level(smallint)',
     'nominate_for_promotion(uuid,text,uuid[])', 'poll_is_closed(timestamp with time zone,timestamp with time zone)',
-    'poll_state(bigint[])', 'poll_voters(bigint)', 'practice_weeks(uuid,integer)', 'promotion_criteria(uuid)',
+    'poll_state(bigint[])', 'poll_voters(bigint)', 'practice_days(uuid,integer)', 'practice_weeks(uuid,integer)', 'promotion_criteria(uuid)',
+    'set_my_practice_goal(integer,integer)',
     'promotion_home()', 'promotion_ready_students()', 'reassign_mentees(uuid[],uuid)',
     'record_fund_entry(text,smallint,date,bigint,text,text,text,text,text)', 'register_push_token(text,text)',
     'register_student(text,date,text,text,text,text,smallint,uuid,text,text,text,text,text,boolean,boolean,uuid,text)',
@@ -6227,6 +6229,122 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   await asOwner(`delete from auth.users where id = '${third51}'`);
   check('0051: deleting the login deletes the request', (await request51(third51)) === null);
   await asOwner(`delete from parent_mail_log`);
+}
+
+// ---------------------------------------------------------------- 0052 more practice (DECISIONS #400-#401)
+// Practice of the week per level (practice_plans) and practice per day with the level's goal (practice_days).
+{
+  const file52 = readFileSync(new URL('migrations/0052_practice_more.sql', supabaseDir), 'utf8');
+  const pupilLogin = await signUp('pupil.52@example.com', true);
+  await register(coordinator, { p_full_name: 'Pupil Fiftytwo', p_dob: '1995-02-05', p_email: 'pupil.52@example.com', p_level: 1 });
+  const otherLogin = await signUp('other.52@example.com', true);
+  await register(coordinator, { p_full_name: 'Other Fiftytwo', p_dob: '1994-03-06', p_email: 'other.52@example.com', p_level: 2 });
+  const pupil52 = await studentIdOf(pupilLogin);
+  check('0052: (state) both new students have their login and level', (await linkOf('pupil.52@example.com')) === pupilLogin
+    && (await linkOf('other.52@example.com')) === otherLogin);
+  const [{ id: taal52 }] = await asOwner(`select id from taals where active order by id limit 1`);
+  const [{ id: offTaal52 }] = await asOwner(`insert into taals (name, bols, divisions, marks, active)
+    values ('Off 52', array['tā','ka'], array[2]::smallint[], array['X'], false) returning id`);
+  const material52 = async (title, kind, level, approved) => (await asOwner(`insert into materials (title, kind, url, body, level_id, approved_by)
+    values ('${title}', '${kind}', ${kind === 'youtube' ? `'https://youtu.be/dQw4w9WgXcQ'` : 'null'}, ${kind === 'note' ? `'x'` : 'null'},
+            ${level}, ${approved ? `'${guru}'` : 'null'}) returning id`))[0].id;
+  const lesson52 = await material52('Plan lesson 52', 'youtube', 1, true);
+  const advanced52 = await material52('Advanced lesson 52', 'youtube', 3, true);
+  const note52 = await material52('Plan note 52', 'note', 1, true);
+  const unapproved52 = await material52('Suggested lesson 52', 'youtube', 1, false);
+  const [{ d: today52 }] = await asOwner(`select today_ist()::text as d`);
+  const [{ d: yesterday52 }] = await asOwner(`select (today_ist() - 1)::text as d`);
+  const daysOf = async (userId, studentId) => (await asApp('authenticated', userId, 'select practice_days($1, 53) as r', [studentId]))[0].r;
+
+  // Before any plan: the default goal.
+  const before52 = await daysOf(pupilLogin, pupil52);
+  check('0052: without a plan the goal is 4 days x 15 minutes, and no days yet', before52.goal_days === 4 && before52.goal_minutes === 15
+    && before52.goal_own === false && before52.days.length === 0, JSON.stringify(before52));
+
+  const savePlan = (userId, level, row) => asApp('authenticated', userId,
+    `insert into practice_plans (level_id, goal_days, goal_minutes, note, items) values ($1, $2, $3, $4, $5::jsonb)
+     on conflict (level_id) do update set goal_days = excluded.goal_days, goal_minutes = excluded.goal_minutes, note = excluded.note,
+       items = excluded.items returning level_id, goal_days, goal_minutes, note, items, updated_by`,
+    [level, row.days ?? 5, row.minutes ?? 15, row.note ?? null, JSON.stringify(row.items ?? [])]).then((r) => r[0]);
+  const plan1 = await savePlan(coordinator, 1, { days: 4, minutes: 20, note: '  Play slowly first.  ',
+    items: [{ taal: taal52, bpm: 70 }, { lesson: lesson52 }] });
+  check('0052: a coordinator sets the practice of the week for a level', plan1.goal_days === 4 && plan1.goal_minutes === 20
+    && plan1.note === 'Play slowly first.' && plan1.updated_by === coordinator && plan1.items.length === 2
+    && plan1.items[0].taal === Number(taal52) && plan1.items[0].bpm === 70 && plan1.items[1].lesson === Number(lesson52)
+    && Object.keys(plan1.items[1]).length === 1, JSON.stringify(plan1));
+  const plan2 = await savePlan(guru, 2, { days: 6, minutes: 30, note: '   ' });
+  check('0052: the Guru too; an empty note is no note', plan2.goal_days === 6 && plan2.note === null && plan2.updated_by === guru);
+  const seen52 = await asApp('authenticated', pupilLogin, 'select level_id from practice_plans');
+  check('0052: a student reads only their own level\'s plan', seen52.length === 1 && seen52[0].level_id === 1, JSON.stringify(seen52));
+  check('0052: staff read every level\'s', (await asApp('authenticated', coordinator, 'select level_id from practice_plans')).length === 2);
+  await refusesWith('0052: a student cannot set a plan', 'new row violates row-level security policy for table "practice_plans"', () =>
+    asApp('authenticated', pupilLogin, `insert into practice_plans (level_id) values (3)`));
+  await asApp('authenticated', pupilLogin, `update practice_plans set goal_days = 1 where level_id = 1`);
+  check('0052: ... nor change one (nothing changes)', (await asOwner('select goal_days from practice_plans where level_id = 1'))[0].goal_days === 4);
+  await refusesWith('0052: nobody deletes a plan from the app', 'permission denied for table practice_plans', () =>
+    asApp('authenticated', guru, `delete from practice_plans where level_id = 2`));
+
+  await refusesWith('0052: 1-7 days a week', 'plan_goal_invalid', () => savePlan(coordinator, 1, { days: 8 }));
+  await refusesWith('0052: 5-120 minutes a day', 'plan_goal_invalid', () => savePlan(coordinator, 1, { minutes: 4 }));
+  await refusesWith('0052: a taal at 30-240 beats a minute', 'plan_bpm_invalid', () => savePlan(coordinator, 1, { items: [{ taal: taal52, bpm: 300 }] }));
+  await refusesWith('0052: at most 3 items', 'plan_items_invalid', () =>
+    savePlan(coordinator, 1, { items: [{ lesson: lesson52 }, { lesson: lesson52 }, { lesson: lesson52 }, { lesson: lesson52 }] }));
+  await refusesWith('0052: an item is a taal with its tempo or a lesson, nothing else', 'plan_items_invalid', () =>
+    savePlan(coordinator, 1, { items: [{ lesson: lesson52, note: 'x' }] }));
+  await refusesWith('0052: ... and its id is a number', 'plan_items_invalid', () => savePlan(coordinator, 1, { items: [{ lesson: 'abc' }] }));
+  await refusesWith('0052: an unknown taal is refused', 'plan_taal_not_found', () => savePlan(coordinator, 1, { items: [{ taal: 999999, bpm: 60 }] }));
+  await refusesWith('0052: ... and a switched-off one', 'plan_taal_not_found', () => savePlan(coordinator, 1, { items: [{ taal: offTaal52, bpm: 60 }] }));
+  await refusesWith('0052: a lesson must be a video (not a note)', 'plan_lesson_not_found', () => savePlan(coordinator, 1, { items: [{ lesson: note52 }] }));
+  await refusesWith('0052: ... approved', 'plan_lesson_not_found', () => savePlan(coordinator, 1, { items: [{ lesson: unapproved52 }] }));
+  await refusesWith('0052: ... and open to the level (no Advanced lesson for Beginners)', 'plan_lesson_not_found', () =>
+    savePlan(coordinator, 1, { items: [{ lesson: advanced52 }] }));
+  check('0052: (control) the Advanced lesson is fine for Advanced', (await savePlan(guru, 3, { items: [{ lesson: advanced52 }] })).items.length === 1);
+  await refusesWith('0052: a note of at most 300 characters', 'plan_note_too_long', () => savePlan(coordinator, 1, { note: 'x'.repeat(301) }));
+  check('0052: plan changes are in the audit log',
+    (await asOwner(`select count(*)::int as n from audit_log where table_name = 'practice_plans'`))[0].n >= 3);
+
+  // Practice per day with the level's goal.
+  await asApp('authenticated', pupilLogin, `select log_practice(10, 'manual')`);
+  await asApp('authenticated', pupilLogin, `select log_practice(10, 'manual')`);
+  await asApp('authenticated', pupilLogin, `select log_practice(15, 'manual', $1::date)`, [yesterday52]);
+  const own52 = await daysOf(pupilLogin, pupil52);
+  const minutesOn = (r, day) => r.days.find((d) => d.on === day)?.minutes;
+  check('0052: practice_days adds up a day\'s entries and gives the level\'s goal', own52.goal_days === 4 && own52.goal_minutes === 20
+    && minutesOn(own52, today52) === 20 && minutesOn(own52, yesterday52) === 15 && own52.days.length === 2, JSON.stringify(own52));
+  check('0052: newest day first', own52.days[0].on === today52);
+  check('0052: staff get the same', JSON.stringify(await daysOf(coordinator, pupil52)) === JSON.stringify(own52));
+  const peek52 = await daysOf(otherLogin, pupil52);
+  check('0052: another student gets none of the days (and only the default goal)', peek52.days.length === 0
+    && peek52.goal_days === 4 && peek52.goal_minutes === 15, JSON.stringify(peek52));
+  const other52 = await daysOf(otherLogin, await studentIdOf(otherLogin));
+  check('0052: each student gets their own level\'s goal', other52.goal_days === 6 && other52.goal_minutes === 30, JSON.stringify(other52));
+
+  // A student's own goal (Praveen 21-10-2026: 4 x 15, which each student can change).
+  const setGoal = (userId, days, minutes) => asApp('authenticated', userId, 'select set_my_practice_goal($1, $2)', [days, minutes]);
+  await setGoal(pupilLogin, 3, 30);
+  const mine52 = await daysOf(pupilLogin, pupil52);
+  check('0052: a student sets their own goal; it comes before the level\'s', mine52.goal_days === 3 && mine52.goal_minutes === 30
+    && mine52.goal_own === true, JSON.stringify(mine52));
+  const staffView52 = await daysOf(coordinator, pupil52);
+  check('0052: staff see the student\'s own goal', staffView52.goal_days === 3 && staffView52.goal_own === true);
+  await setGoal(pupilLogin, 5, 20);
+  check('0052: setting it again changes the one row', (await asOwner(`select count(*)::int as n, max(goal_days)::int as d from practice_goals where student_id = '${pupil52}'`))[0].d === 5);
+  await refusesWith('0052: 1-7 days and 5-120 minutes for one\'s own goal too', 'plan_goal_invalid', () => setGoal(pupilLogin, 8, 15));
+  await refusesWith('0052: ... a goal needs its minutes', 'plan_goal_invalid', () => setGoal(pupilLogin, 3, null));
+  await refusesWith('0052: staff have no own practice goal', 'not_allowed', () => setGoal(coordinator, 3, 15));
+  await refusesWith('0052: the goals table is written only through set_my_practice_goal', 'permission denied for table practice_goals', () =>
+    asApp('authenticated', pupilLogin, `insert into practice_goals (student_id, goal_days, goal_minutes) values ($1, 2, 10)`, [pupil52]));
+  check('0052: a student reads only their own goal row', (await asApp('authenticated', otherLogin, 'select student_id from practice_goals')).length === 0
+    && (await asApp('authenticated', pupilLogin, 'select student_id from practice_goals')).length === 1);
+  await setGoal(pupilLogin, null, null);
+  const back52 = await daysOf(pupilLogin, pupil52);
+  check('0052: null goes back to the level\'s goal', back52.goal_days === 4 && back52.goal_minutes === 20 && back52.goal_own === false, JSON.stringify(back52));
+  await refusesWith('0052: nobody signed in cannot run practice_days', 'permission denied for function practice_days', () =>
+    asApp('anon', null, 'select practice_days(null, 1)'));
+  let again52 = '';
+  try { await db.exec(file52); } catch (e) { again52 = String(e.message); }
+  check('0052 can run again', again52 === '', again52);
+  check('0052: ... and the plans stay', (await asOwner('select count(*)::int as n from practice_plans'))[0].n === 3);
 }
 
 // ---------------------------------------------------------------- row-level security
