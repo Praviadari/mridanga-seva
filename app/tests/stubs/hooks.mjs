@@ -22,6 +22,8 @@ const stubs = {
   '@/lib/push': stub('./device-trace-deps.mjs'),
   // ... and the daily practice reminder (#402), which loads expo-notifications through push.
   '@/lib/practice-reminder': stub('./device-trace-deps.mjs'),
+  // ... and the face code in the Keystore (Phase 3 face scan, #310), which loads expo-secure-store.
+  '@/face/face-status': stub('./device-trace-deps.mjs'),
 };
 
 /** Node module hook: resolves a stubbed package or app module to its stand-in file. */
