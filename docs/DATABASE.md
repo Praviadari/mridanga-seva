@@ -52,6 +52,7 @@ in number order:
 | `0050_staff_dashboard.sql` | Launch range (placeholder 0063 on branch `after-launch-design`, renumbered 14-10-2026): `staff_dashboard()`, the staff homes' Today numbers and what waits for the caller in one request ([DECISIONS.md #339, #340](DECISIONS.md)). See "Staff home: today and waiting (0050)" |
 | `0051_minor_home_signup.sql` | A child under 18 signs up at home; the parent consents by email with a 6-digit code; the desk sees an ID and Accepts (`accept_minor_sign_up`) ([DECISIONS.md #399](DECISIONS.md)). See "Under-18 sign-up at home (0051)" |
 | `0052_practice_more.sql` | More home practice ([DECISIONS.md #400-#401](DECISIONS.md)): `practice_plans` (per level: weekly goal, up to three things to practise, a note; staff write, a student reads their own level's) a student's own weekly goal (`practice_goals`, `set_my_practice_goal`), mantras read before practice (`practice_mantras`, #405) and `practice_days()` (minutes per day with the goal: own, the level's, or 4 x 15). See "Practice of the week and the weekly goal (0052)" |
+| `0053_staff_own_record.sql` | Coordinators are students too (placeholder 0061 on branch `staff-own-record`, renumbered 22-10-2026; [DECISIONS.md #316-#321](DECISIONS.md)): `link_staff_record` (the Guru links a coordinator's login to its own student record), `my_student_id()` for staff, `refuse_own_record` (nobody records about their own record), `guard_own_student` (own mentor, own level), `guard_staff_record` (no withdrawal or erasure while a staff login is on the record); replaces `check_out_all` and `assign_mentor`. See "Own record (0053)" |
 
 The Phase 2 files were renumbered when they merged into main (#55). TEST ran some under their
 branch numbers (0012, 0014_promotion, 0016_practice, 0017_media, 0021_events_polls), so it skips
@@ -1639,10 +1640,11 @@ level's lesson titles stay unseen); anon reads nothing. The policies wrap `is_st
 
 Tests: section "0052 more practice" in `supabase/tests/smoke-test.mjs`.
 
-## Own record (0061)
+## Own record (0053)
 
-[DECISIONS.md #316-#321](DECISIONS.md). Migration `0061_staff_own_record.sql` (**placeholder number**, renumbered at
-merge after the launch). Praveen, 13-10-2026: "Coordinators are students too, with more experience — that's it."
+[DECISIONS.md #316-#321](DECISIONS.md). Migration `0053_staff_own_record.sql` (placeholder 0061 on branch `staff-own-record`,
+renumbered at the after-launch merge, 22-10-2026). Praveen, 13-10-2026: "Coordinators are students too, with more
+experience — that's it."
 
 **The link (#316).** `link_staff_record(profile, student)`: the Guru (or the SQL editor, nobody signed in) links an
 active coordinator's or Guru's login to one student record without a login; `students.profile_id` is the staff login,
@@ -1679,7 +1681,7 @@ update of `withdrawn_at` or delete, also in the dashboard): `staff_login_linked`
 login is on the record (`withdraw_consent` would switch the staff login off, `erase_student` would delete it).
 Unlink first. `anonymise_staff` (0040) deletes a leaving staff login; the record then has no login and stays.
 
-Tests: section "0061 staff own record" in `supabase/tests/smoke-test.mjs` (55 checks).
+Tests: section "0053 staff own record" in `supabase/tests/smoke-test.mjs` (55 checks).
 
 ## Linking a login to a student
 
@@ -1705,7 +1707,7 @@ Linking before confirmation would let anyone claim a record by typing its email
 **Since 0047** ([DECISIONS.md #276](DECISIONS.md)) neither automatic path links a record of someone under
 18: a login with a child's record email stays `pending` until the Guru links it (`link_student_login`).
 See "Form rules (0047)". **Since 0048** ([#281](DECISIONS.md)) no path links a withdrawn record, the Guru's included (`student_withdrawn`); see "Withdrawn records and leaks (0048)".
-**Since 0061** ([#316](DECISIONS.md)) a coordinator's or the Guru's login can also be on ONE student record, its own: only the Guru links it (`link_staff_record`), the role stays; no automatic path links a staff login. See "Own record (0061)".
+**Since 0053** ([#316](DECISIONS.md)) a coordinator's or the Guru's login can also be on ONE student record, its own: only the Guru links it (`link_staff_record`), the role stays; no automatic path links a staff login. See "Own record (0053)".
 
 Roles other than `student` are given by the Guru in the app (G2, see "Coordinators and roles"), or for the very first Guru, in the
 Supabase dashboard (OPERATIONS.md). The Guru can also link a pending login to a student record
@@ -1759,8 +1761,8 @@ switched-off login is refused like a stranger.
 | `week_start_ist()` | Anyone signed in | First day of "this week" at the caller's centre (Monday, or 6 days ago with `week_starts` = `rolling7`); used by the functions above |
 | `link_student_login(profile, student)` | Guru | Links a pending login (since 0046 also a `student` login without a record) to a student record without a login; the person becomes that student. Security definer. See "Coordinators and roles" |
 | `reassign_mentees(students, to)` | Guru | Moves the students to another mentor (an active coordinator or the Guru); returns how many. See "Coordinators and roles" |
-| `unlink_student_login(student)` | Guru | Takes the login off a student record; a `student` login goes back to `pending`, a staff login keeps its role (0061). Security definer. See "Linking a login to a student" |
-| `link_staff_record(profile, student)` | Guru (SQL editor: also the Guru's own) | Links an active coordinator's or Guru's login to one student record without a login as their own record; the role stays (0061, #316). Security definer. See "Own record (0061)" |
+| `unlink_student_login(student)` | Guru | Takes the login off a student record; a `student` login goes back to `pending`, a staff login keeps its role (0053). Security definer. See "Linking a login to a student" |
+| `link_staff_record(profile, student)` | Guru (SQL editor: also the Guru's own) | Links an active coordinator's or Guru's login to one student record without a login as their own record; the role stays (0053, #316). Security definer. See "Own record (0053)" |
 | `withdraw_consent(student, note)` | Guru (or the owner in the SQL editor) | Records a withdrawal of consent and freezes the record. See "Withdrawal and erasure (0025)" |
 | `erase_student(student, reason, request_ref)` | Guru (or the owner in the SQL editor) | Erases the student, the login and the audit copies; leaves a tombstone. See "Withdrawal and erasure (0025)" |
 | `import_students(rows)` | Guru | Saves up to 500 adult students, each row on its own; returns the roll number or the error per row. See "Importing students" |

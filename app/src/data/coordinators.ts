@@ -8,7 +8,7 @@
 // The Guru also marks coordinators as Ishtagoshti editors (profiles.ig_editor, migration 0021,
 // docs/DECISIONS.md #57): they may add and edit slokas and themes. And treasurers of the class fund
 // (profiles.is_treasurer, migration 0026, docs/DECISIONS.md #80): they record fund entries.
-// Coordinators are students too (0061, docs/DECISIONS.md #316): the Guru links a coordinator's login to their own
+// Coordinators are students too (0053, docs/DECISIONS.md #316): the Guru links a coordinator's login to their own
 // student record (link_staff_record; the role stays) and takes it off again (unlink_student_login).
 
 import { supabase } from '@/lib/supabase';
@@ -48,7 +48,7 @@ export type MenteeRow = {
   mentorId: string | null;
   /** True when the record already has an app login. */
   hasLogin: boolean;
-  /** The login on the record (profiles.id), or null: a staff member's own record has theirs (0061). */
+  /** The login on the record (profiles.id), or null: a staff member's own record has theirs (0053). */
   loginId: string | null;
 };
 
@@ -205,7 +205,7 @@ export async function linkToStudent(profileId: string, studentId: string): Promi
 }
 
 /**
- * Links a coordinator's (or the Guru's) login to a student record without a login as their own record (0061,
+ * Links a coordinator's (or the Guru's) login to a student record without a login as their own record (0053,
  * #316): the role stays; the staff app then shows Me (My QR, My progress, My attendance, practice).
  */
 export async function linkOwnRecord(profileId: string, studentId: string): Promise<ChangeResult> {
@@ -213,7 +213,7 @@ export async function linkOwnRecord(profileId: string, studentId: string): Promi
   return error ? { errorKey: errorKeyOf(error.message) } : {};
 }
 
-/** The record a staff login is linked to as its own (0061), or undefined. */
+/** The record a staff login is linked to as its own (0053), or undefined. */
 export function ownRecordOf(board: CoordinatorsBoard, profileId: string): MenteeRow | undefined {
   return board.students.find((s) => s.loginId === profileId);
 }
@@ -247,7 +247,7 @@ const KNOWN_ERRORS = [
   'ig_editor_coordinator_only',
   'treasurer_coordinator_only',
   'gender_unknown',
-  // 0061 (#316): the own record of a staff login.
+  // 0053 (#316): the own record of a staff login.
   'profile_not_staff',
   'staff_has_record',
 ] as const;

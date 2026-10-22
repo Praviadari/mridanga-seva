@@ -285,12 +285,12 @@ in the app), `not_yourself`, `reason_required`.
 
 ## A coordinator's own student record
 
-"Coordinators are students too" (Praveen, 13 Oct 2026; [DECISIONS.md #316-#321](DECISIONS.md), migration 0061 after the
-launch). **Until 0061 runs:** each coordinator gets a student record at the desk **without a login** (Register a student,
+"Coordinators are students too" (Praveen, 13 Oct 2026; [DECISIONS.md #316-#321](DECISIONS.md), migration 0053 after the
+launch). **Until 0053 runs:** each coordinator gets a student record at the desk **without a login** (Register a student,
 their own name and date of birth; email optional). Colleagues check them in by name or their printed QR card and tick their
 syllabus; nobody checks themselves in.
 
-**After 0061 (LIVE: its own run, the TEST-run pack in NOTES.md "13-10-2026 — Coordinators are students too"):** the Guru links
+**After 0053 (LIVE: its own run, the TEST-run pack in NOTES.md "13-10-2026 — Coordinators are students too"):** the Guru links
 each of those records to the coordinator's login, one by one:
 
 1. Guru: Running the class → Coordinators → the coordinator → **Own student record** → type 2+ letters of the name or the roll

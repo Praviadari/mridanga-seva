@@ -10,7 +10,7 @@
 // At the end: print the student's QR card, or (the Guru) replace a lost one (0045, P3-1).
 // Under the details, for the Guru: choose the mentor, set the level and joining date, take a wrong login off
 // (components/guru-student-tools.tsx, docs/DECISIONS.md #302).
-// A staff member's own record (0061, docs/DECISIONS.md #316, #318): on their own page a note says a colleague checks
+// A staff member's own record (0053, docs/DECISIONS.md #316, #318): on their own page a note says a colleague checks
 // them in, ticks and nominates them, and those buttons are not shown (the database refuses them anyway, own_record);
 // the app-login line names the colleague whose own record it is.
 
@@ -106,7 +106,7 @@ function StudentProfileScreenContent() {
   const nameOf = (profileId: string | null) =>
     (profileId && staffNames.get(profileId)) || t('profile.unknownPerson');
   const today = todayLocal();
-  // The signed-in person's own record (0061): a colleague marks it, not they.
+  // The signed-in person's own record (0053): a colleague marks it, not they.
   const ownRecord = student.loginId !== null && student.loginId === signedIn?.id;
   const staffLoginName = student.loginId ? staffNames.get(student.loginId) : undefined;
 

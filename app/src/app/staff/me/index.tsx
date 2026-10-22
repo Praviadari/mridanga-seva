@@ -1,10 +1,10 @@
-// Me, a staff member's own student screens (migration 0061, docs/DECISIONS.md #316, #319): "Coordinators are
+// Me, a staff member's own student screens (migration 0053, docs/DECISIONS.md #316, #319): "Coordinators are
 // students too." When the Guru has linked a coordinator's (or the Guru's) login to their own student record, the
 // staff home shows a Me circle that opens this ring of the student's own circles: My QR (saved on the phone, works
 // without internet, #21), My progress (S4, with the practice panel), My attendance (S9) and Practice (S5 with the
 // timer that logs practice). The screens are the student's own (student/...), opened under /staff/me so Back
 // returns here (lib/own-area.ts). What a student's record gets from colleagues (check-in, ticks, the level) still
-// comes from colleagues: nobody records about their own record (0061, own_record).
+// comes from colleagues: nobody records about their own record (0053, own_record).
 
 import { router, Stack, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';

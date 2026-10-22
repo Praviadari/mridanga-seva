@@ -1,5 +1,5 @@
-// Me > Practice (0061, docs/DECISIONS.md #319): S5 as a student sees it, with the practice timer that logs practice
-// on the staff member's own record (log_practice through my_student_id, 0061 #317).
+// Me > Practice (0053, docs/DECISIONS.md #319): S5 as a student sees it, with the practice timer that logs practice
+// on the staff member's own record (log_practice through my_student_id, 0053 #317).
 
 import { PracticeTools } from '@/screens/practice-tools';
 

@@ -1,7 +1,7 @@
--- 0061 Coordinators are students too: a staff login's own student record (Praveen, 13-10-2026:
+-- 0053 Coordinators are students too: a staff login's own student record (Praveen, 13-10-2026:
 -- "Coordinators are students too, with more experience — that's it."; docs/DECISIONS.md #316-#321,
--- docs/DATABASE.md "Own record (0061)"). PLACEHOLDER NUMBER: the lead renumbers it at merge (after the
--- launch of 20-10-2026; the launch uses 0050-0059, 0060 is the face scan's).
+-- docs/DATABASE.md "Own record (0053)"). Built as the placeholder 0061 on
+-- branch staff-own-record (13-10-2026), renumbered 0053 at the after-launch merge (22-10-2026), after 0052.
 -- Before: one login had one role, and every link path needs a login waiting for a record (pending, 0046's
 -- login_awaits_record), so a coordinator's or the Guru's login never reached a student record of their own:
 -- no My QR, My progress, My attendance, practice or face scan for them.

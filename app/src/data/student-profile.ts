@@ -26,7 +26,7 @@ export type StudentDetails = StudentSummary & {
   pincode: string | null;
   /** True when an app login is connected to the record. */
   hasLogin: boolean;
-  /** The login on the record, or null; a staff member's login on their own record (0061, #316). */
+  /** The login on the record, or null; a staff member's login on their own record (0053, #316). */
   loginId: string | null;
 };
 

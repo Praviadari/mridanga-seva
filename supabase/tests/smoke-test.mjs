@@ -4166,7 +4166,7 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
     // 0051: a child's sign-up at home (the child's own request; the consent page; Accept for a child, staff only inside)
     'my_parent_consent()', 'resend_parent_email()', 'set_parent_details(text,text,text,text)',
     'give_parent_consent(text,text,boolean,boolean,boolean,text)', 'accept_minor_sign_up(uuid,text)',
-    // 0061: the Guru links a staff login to its own student record (#316)
+    // 0053: the Guru links a staff login to its own student record (#316)
     'link_staff_record(uuid,uuid)',
   ];
   const runnableBy = async (role) => (await asOwner(`select p.oid::regprocedure::text as f from pg_proc p
@@ -6398,10 +6398,10 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
     && (await asOwner('select count(*)::int as n from practice_mantras'))[0].n === 2);
 }
 
-// ---------------------------------------------------------------- 0061 staff own record (DECISIONS #316-#321)
+// ---------------------------------------------------------------- 0053 staff own record (DECISIONS #316-#321)
 {
-  // Blocks above ran older migrations again (0036's assign_mentor among them): 0061 again.
-  const file61 = readFileSync(new URL('migrations/0061_staff_own_record.sql', supabaseDir), 'utf8');
+  // Blocks above ran older migrations again (0036's assign_mentor among them): 0053 again.
+  const file61 = readFileSync(new URL('migrations/0053_staff_own_record.sql', supabaseDir), 'utf8');
   await db.exec(file61);
   const adultDob61 = `${year - 30}-05-05`;
   const signUp61 = async (email, meta) => (await db.query(
@@ -6414,117 +6414,117 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   const mohan = await signUp61('mohan.61@example.com', { full_name: 'Mohan Sixtyone', gender: 'male' });
   for (const id of [asha, bindu, mohan]) await asApp('authenticated', guru, `update profiles set role = 'coordinator' where id = $1`, [id]);
 
-  // #316: launch practice: the desk made Asha's record (her email on it) before 0061; nothing links it by itself.
+  // #316: launch practice: the desk made Asha's record (her email on it) before 0053; nothing links it by itself.
   const recA = await register(bindu, { p_full_name: 'Asha Sixtyone', p_dob: adultDob61, p_email: 'asha.61@example.com' });
-  check('0061 #316: a record with a coordinator\'s email is not linked to their login by itself, the role stays',
+  check('0053 #316: a record with a coordinator\'s email is not linked to their login by itself, the role stays',
     (await loginOf61(recA.id)) === null && (await roleOf(asha)) === 'coordinator');
   await asOwner(`update auth.users set email_confirmed_at = now() where id = '${asha}'`);
-  check('0061 #316: ... nor when the email is confirmed again', (await loginOf61(recA.id)) === null);
-  await refusesWith('0061 #316: Accept never takes a staff login', 'not_waiting', () =>
+  check('0053 #316: ... nor when the email is confirmed again', (await loginOf61(recA.id)) === null);
+  await refusesWith('0053 #316: Accept never takes a staff login', 'not_waiting', () =>
     asApp('authenticated', guru, 'select accept_sign_up($1) as r', [asha]));
-  await refusesWith('0061 #316: the waiting-login link refuses a staff login', 'profile_not_pending', () =>
+  await refusesWith('0053 #316: the waiting-login link refuses a staff login', 'profile_not_pending', () =>
     asApp('authenticated', guru, 'select link_student_login($1, $2)', [asha, recA.id]));
-  await refusesWith('0061 #316: a coordinator cannot link an own record', 'not_allowed', () =>
+  await refusesWith('0053 #316: a coordinator cannot link an own record', 'not_allowed', () =>
     asApp('authenticated', bindu, 'select link_staff_record($1, $2)', [asha, recA.id]));
-  await refusesWith('0061 #316: anon cannot run link_staff_record', 'permission denied for function link_staff_record', () =>
+  await refusesWith('0053 #316: anon cannot run link_staff_record', 'permission denied for function link_staff_record', () =>
     asApp('anon', null, 'select link_staff_record($1, $2)', [asha, recA.id]));
   // The record's mentor is Asha herself (the desk's mentor rule could pick her while the record had no login).
   await asOwner(`update students set gender = 'female' where id = '${recA.id}'`);
   await asOwner(`update students set mentor_id = '${asha}' where id = '${recA.id}'`);
   await asApp('authenticated', guru, 'select link_staff_record($1, $2)', [asha, recA.id]);
-  check('0061 #316: the Guru links a coordinator\'s login to their own record; the role stays coordinator',
+  check('0053 #316: the Guru links a coordinator\'s login to their own record; the role stays coordinator',
     (await loginOf61(recA.id)) === asha && (await roleOf(asha)) === 'coordinator');
   const newMentor = await mentorOf61(recA.id);
   const [{ g: mentorGender }] = newMentor ? await asOwner(`select gender as g from profiles where id = '${newMentor}'`) : [{ g: null }];
-  check('0061 #319: ... a mentor that was the login itself is taken off, another of the same gender given (or none)',
+  check('0053 #319: ... a mentor that was the login itself is taken off, another of the same gender given (or none)',
     newMentor !== asha && (newMentor === null || mentorGender === 'female'), String(newMentor));
   const recA2 = await register(bindu, { p_full_name: 'Asha Second', p_dob: adultDob61 });
-  await refusesWith('0061 #316: one own record per login', 'staff_has_record', () =>
+  await refusesWith('0053 #316: one own record per login', 'staff_has_record', () =>
     asApp('authenticated', guru, 'select link_staff_record($1, $2)', [asha, recA2.id]));
-  await refusesWith('0061 #316: a record with a login is not linked again', 'student_already_linked', () =>
+  await refusesWith('0053 #316: a record with a login is not linked again', 'student_already_linked', () =>
     asApp('authenticated', guru, 'select link_staff_record($1, $2)', [bindu, recA.id]));
   const gone61 = await register(bindu, { p_full_name: 'Withdrawn Sixtyone', p_dob: adultDob61 });
   await asApp('authenticated', guru, `select withdraw_consent($1, 'by phone')`, [gone61.id]);
-  await refusesWith('0061 #316: never a withdrawn record', 'student_withdrawn', () =>
+  await refusesWith('0053 #316: never a withdrawn record', 'student_withdrawn', () =>
     asApp('authenticated', guru, 'select link_staff_record($1, $2)', [bindu, gone61.id]));
   const waiting61 = await signUp61('waiting.61@example.com', { full_name: 'Waiting Sixtyone' });
-  await refusesWith('0061 #316: a waiting login is not staff (it is linked with link_student_login)', 'profile_not_staff', () =>
+  await refusesWith('0053 #316: a waiting login is not staff (it is linked with link_student_login)', 'profile_not_staff', () =>
     asApp('authenticated', guru, 'select link_staff_record($1, $2)', [waiting61, recA2.id]));
-  await refusesWith('0061 #316: ... nor is a student login', 'profile_not_staff', () =>
+  await refusesWith('0053 #316: ... nor is a student login', 'profile_not_staff', () =>
     asApp('authenticated', guru, 'select link_staff_record($1, $2)', [arjun, recA2.id]));
   const recG = await register(bindu, { p_full_name: 'Guru Own Record', p_dob: adultDob61 });
-  await refusesWith('0061 #316: the Guru does not link their own login in the app', 'own_record', () =>
+  await refusesWith('0053 #316: the Guru does not link their own login in the app', 'own_record', () =>
     asApp('authenticated', guru, 'select link_staff_record($1, $2)', [guru, recG.id]));
   await asOwner(`select link_staff_record('${guru}', '${recG.id}')`);
-  check('0061 #316: the SQL editor links the Guru\'s own record; the role stays guru',
+  check('0053 #316: the SQL editor links the Guru\'s own record; the role stays guru',
     (await loginOf61(recG.id)) === guru && (await roleOf(guru)) === 'guru');
 
   // #317: the own record works like a student's for what the person does themselves.
   const myId = async (who) => (await asApp('authenticated', who, 'select my_student_id() as id'))[0].id;
-  check('0061 #317: my_student_id is the own record for a coordinator and the Guru, null without one',
+  check('0053 #317: my_student_id is the own record for a coordinator and the Guru, null without one',
     (await myId(asha)) === recA.id && (await myId(guru)) === recG.id && (await myId(bindu)) === null && (await myId(arjun)) !== null);
   await asApp('authenticated', asha, `select log_practice(25, 'manual')`);
-  check('0061 #317: a coordinator logs practice on their own record',
+  check('0053 #317: a coordinator logs practice on their own record',
     (await asOwner(`select count(*)::int as n from practice_logs where student_id = '${recA.id}'`))[0].n === 1);
-  check('0061 #317: ... and gets the student home numbers and the QR code of their own record',
+  check('0053 #317: ... and gets the student home numbers and the QR code of their own record',
     (await asApp('authenticated', asha, 'select student_home() as h'))[0].h?.full_name === 'Asha Sixtyone'
     && (await asApp('authenticated', asha, 'select qr_token from students where profile_id = $1', [asha])).length === 1);
-  await refusesWith('0061 #317: (control) a coordinator without an own record logs no practice', 'not_allowed', () =>
+  await refusesWith('0053 #317: (control) a coordinator without an own record logs no practice', 'not_allowed', () =>
     asApp('authenticated', bindu, `select log_practice(25, 'manual')`));
 
   // #318: nobody marks their own attendance, whatever the path; a colleague does.
   const [{ qr_token: qrA }] = await asOwner(`select qr_token from students where id = '${recA.id}'`);
-  await refusesWith('0061 #318: a coordinator cannot check themselves in by name (desk, Mark attendance)', 'own_record', () =>
+  await refusesWith('0053 #318: a coordinator cannot check themselves in by name (desk, Mark attendance)', 'own_record', () =>
     asApp('authenticated', asha, `select mark_visit($1, 'in') as r`, [recA.id]));
-  await refusesWith('0061 #318: ... nor by scanning their own QR code', 'own_record', () =>
+  await refusesWith('0053 #318: ... nor by scanning their own QR code', 'own_record', () =>
     asApp('authenticated', asha, 'select scan_qr($1) as r', [qrA]));
-  await refusesWith('0061 #318: ... nor through toggle_visit', 'own_record', () =>
+  await refusesWith('0053 #318: ... nor through toggle_visit', 'own_record', () =>
     asApp('authenticated', asha, `select toggle_visit($1, 'manual') as r`, [recA.id]));
   const markBy = async (who, id, action) => (await asApp('authenticated', who, 'select mark_visit($1, $2) as r', [id, action]))[0].r.action;
-  check('0061 #318: (control) a colleague checks the coordinator in', (await markBy(bindu, recA.id, 'in')) === 'in');
-  await refusesWith('0061 #318: the coordinator cannot check themselves out', 'own_record', () =>
+  check('0053 #318: (control) a colleague checks the coordinator in', (await markBy(bindu, recA.id, 'in')) === 'in');
+  await refusesWith('0053 #318: the coordinator cannot check themselves out', 'own_record', () =>
     asApp('authenticated', asha, `select mark_visit($1, 'out') as r`, [recA.id]));
-  await refusesWith('0061 #318: ... nor correct their own visit\'s time', 'own_record', () =>
+  await refusesWith('0053 #318: ... nor correct their own visit\'s time', 'own_record', () =>
     asApp('authenticated', asha, `update visits set check_in = check_in - interval '1 minute' where student_id = $1 and check_out is null`, [recA.id]));
   const [{ n: closed61 }] = await asApp('authenticated', asha, 'select check_out_all() as n');
-  check('0061 #318: (control) "Check out everyone" by the coordinator closes their own visit too (end of the day)',
+  check('0053 #318: (control) "Check out everyone" by the coordinator closes their own visit too (end of the day)',
     closed61 >= 1 && (await asOwner(`select count(*)::int as n from visits where student_id = '${recA.id}' and check_out is null`))[0].n === 0);
   // The door tablet's scan comes a while later (a scan within 30 s of a check-out answers already_out).
   await asOwner(`update visits set check_in = check_in - interval '3 minutes', check_out = check_out - interval '2 minutes' where student_id = '${recA.id}'`);
   const [{ r: atDoor }] = await asApp('authenticated', kiosk, 'select scan_qr($1) as r', [qrA]);
-  check('0061 #318: (control) the door tablet checks a coordinator in by their own card, like any student', atDoor.action === 'in', atDoor.action);
-  check('0061 #318: (control) ... and a colleague checks them out', (await markBy(bindu, recA.id, 'out')) === 'out');
-  await refusesWith('0061 #318: the Guru cannot check themselves in either', 'own_record', () =>
+  check('0053 #318: (control) the door tablet checks a coordinator in by their own card, like any student', atDoor.action === 'in', atDoor.action);
+  check('0053 #318: (control) ... and a colleague checks them out', (await markBy(bindu, recA.id, 'out')) === 'out');
+  await refusesWith('0053 #318: the Guru cannot check themselves in either', 'own_record', () =>
     asApp('authenticated', guru, `select mark_visit($1, 'in') as r`, [recG.id]));
 
   // #318: ticks, level, promotion, calls.
   const [{ id: item61 }] = await asOwner(`select id from syllabus_items where level_id = 1 and retired_at is null order by sort limit 1`);
-  await refusesWith('0061 #318: a coordinator cannot tick their own syllabus item', 'own_record', () =>
+  await refusesWith('0053 #318: a coordinator cannot tick their own syllabus item', 'own_record', () =>
     asApp('authenticated', asha, 'insert into student_progress (student_id, item_id) values ($1, $2)', [recA.id, item61]));
   await asApp('authenticated', bindu, 'insert into student_progress (student_id, item_id) values ($1, $2)', [recA.id, item61]);
-  check('0061 #318: (control) a colleague ticks it', (await asOwner(`select count(*)::int as n from student_progress where student_id = '${recA.id}'`))[0].n === 1);
-  await refusesWith('0061 #318: ... the coordinator cannot change its remark', 'own_record', () =>
+  check('0053 #318: (control) a colleague ticks it', (await asOwner(`select count(*)::int as n from student_progress where student_id = '${recA.id}'`))[0].n === 1);
+  await refusesWith('0053 #318: ... the coordinator cannot change its remark', 'own_record', () =>
     asApp('authenticated', asha, `update student_progress set remark = 'Mine' where student_id = $1 and item_id = $2`, [recA.id, item61]));
-  await refusesWith('0061 #318: ... nor untick it', 'own_record', () =>
+  await refusesWith('0053 #318: ... nor untick it', 'own_record', () =>
     asApp('authenticated', asha, 'delete from student_progress where student_id = $1 and item_id = $2', [recA.id, item61]));
-  await refusesWith('0061 #318: a coordinator cannot nominate themselves', 'own_record', () =>
+  await refusesWith('0053 #318: a coordinator cannot nominate themselves', 'own_record', () =>
     asApp('authenticated', asha, `select nominate_for_promotion($1, 'I am ready')`, [recA.id]));
   const [{ nom: nom61 }] = await asApp('authenticated', bindu, `select nominate_for_promotion($1, 'Plays the level well') as nom`, [recA.id]);
-  check('0061 #318: (control) a colleague nominates the coordinator', !!nom61);
-  await refusesWith('0061 #318: ... the coordinator cannot answer their own nomination', 'own_record', () =>
+  check('0053 #318: (control) a colleague nominates the coordinator', !!nom61);
+  await refusesWith('0053 #318: ... the coordinator cannot answer their own nomination', 'own_record', () =>
     asApp('authenticated', asha, `select give_promotion_feedback($1, 'ready', 'Agreed')`, [nom61]));
   const [{ nom: nomG }] = await asApp('authenticated', bindu, `select nominate_for_promotion($1, 'The Guru plays well') as nom`, [recG.id]);
-  await refusesWith('0061 #318: the Guru cannot decide their own nomination', 'own_record', () =>
+  await refusesWith('0053 #318: the Guru cannot decide their own nomination', 'own_record', () =>
     asApp('authenticated', guru, `select decide_promotion($1, 'not_yet', 'Later', current_date + 30)`, [nomG]));
-  await refusesWith('0061 #318: ... nor set their own level', 'own_record', () =>
+  await refusesWith('0053 #318: ... nor set their own level', 'own_record', () =>
     asApp('authenticated', guru, 'update students set level_id = 2 where id = $1', [recG.id]));
   await asApp('authenticated', guru, 'update students set level_id = 2 where id = $1', [recA.id]);
-  check('0061 #318: (control) the Guru sets a coordinator\'s level', (await asOwner(`select level_id from students where id = '${recA.id}'`))[0].level_id === 2);
-  await refusesWith('0061 #318: a coordinator cannot log a call to themselves', 'own_record', () =>
+  check('0053 #318: (control) the Guru sets a coordinator\'s level', (await asOwner(`select level_id from students where id = '${recA.id}'`))[0].level_id === 2);
+  await refusesWith('0053 #318: a coordinator cannot log a call to themselves', 'own_record', () =>
     asApp('authenticated', asha, `select log_call($1, 'not_reachable', null, 'No answer')`, [recA.id]));
   const trig61 = (await asOwner(`select string_agg(c.relname, ',' order by c.relname) as t from pg_trigger t join pg_class c on c.oid = t.tgrelid
     where t.tgname like '%refuse_own_record' and not t.tgisinternal`))[0].t;
-  check('0061 #318: refuse_own_record guards visits, ticks, level history, promotion, assessment reviews, calls and event lists',
+  check('0053 #318: refuse_own_record guards visits, ticks, level history, promotion, assessment reviews, calls and event lists',
     ['assessment_submissions', 'call_logs', 'event_attendance', 'level_history', 'promotion_feedback', 'promotion_nominations',
       'student_progress', 'visits'].every((t) => trig61.split(',').includes(t)), trig61);
 
@@ -6535,41 +6535,41 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   await db.exec(`alter table events disable trigger events_guard; update events set starts_at = now() - interval '1 hour' where id = ${ev61}; alter table events enable trigger events_guard`);
   const evRows = async () => (await asOwner(`select string_agg(student_id::text, ',' order by student_id) as s from event_attendance where event_id = ${ev61}`))[0].s ?? '';
   await asApp('authenticated', asha, 'select mark_event_attendance($1, $2)', [ev61, [recA.id, recA2.id]]);
-  check('0061 #318: a coordinator\'s event list does not mark themselves present (the others are marked)', (await evRows()) === recA2.id, await evRows());
+  check('0053 #318: a coordinator\'s event list does not mark themselves present (the others are marked)', (await evRows()) === recA2.id, await evRows());
   await asApp('authenticated', bindu, 'select mark_event_attendance($1, $2)', [ev61, [recA.id, recA2.id]]);
   await asApp('authenticated', asha, 'select mark_event_attendance($1, $2)', [ev61, [recA2.id]]);
-  check('0061 #318: ... nor takes off their own row a colleague marked', (await evRows()).split(',').includes(recA.id), await evRows());
+  check('0053 #318: ... nor takes off their own row a colleague marked', (await evRows()).split(',').includes(recA.id), await evRows());
 
   // #319: mentors.
-  await refusesWith('0061 #319: nobody is their own mentor', 'own_mentor', () =>
+  await refusesWith('0053 #319: nobody is their own mentor', 'own_mentor', () =>
     asApp('authenticated', bindu, 'update students set mentor_id = $2 where id = $1', [recA.id, asha]));
-  await refusesWith('0061 #319: ... also through the Guru\'s mentor move', 'own_mentor', () =>
+  await refusesWith('0053 #319: ... also through the Guru\'s mentor move', 'own_mentor', () =>
     asApp('authenticated', guru, 'select reassign_mentees($1, $2)', [[recA.id], asha]));
-  await refusesWith('0061 #319: a coordinator cannot choose their own mentor', 'own_record', () =>
+  await refusesWith('0053 #319: a coordinator cannot choose their own mentor', 'own_record', () =>
     asApp('authenticated', asha, 'update students set mentor_id = $2 where id = $1', [recA.id, guru]));
   await asApp('authenticated', guru, 'select reassign_mentees($1, $2)', [[recA.id], bindu]);
-  check('0061 #319: (control) the Guru gives the coordinator a colleague as mentor', (await mentorOf61(recA.id)) === bindu);
+  check('0053 #319: (control) the Guru gives the coordinator a colleague as mentor', (await mentorOf61(recA.id)) === bindu);
   // Mohan's record gets its gender after the link: the mentor rule never picks Mohan himself.
   const recM = await register(bindu, { p_full_name: 'Mohan Sixtyone', p_dob: adultDob61 });
   await asApp('authenticated', guru, 'select link_staff_record($1, $2)', [mohan, recM.id]);
   await asOwner(`update students set gender = 'male', mentor_id = null where id = '${recM.id}'`);
-  check('0061 #319: the mentor rule (same gender, fewest students) never gives a coordinator themselves',
+  check('0053 #319: the mentor rule (same gender, fewest students) never gives a coordinator themselves',
     (await mentorOf61(recM.id)) !== mohan, String(await mentorOf61(recM.id)));
 
 
   // #320: a record with a staff login is not withdrawn or erased while linked.
-  await refusesWith('0061 #320: consent on a coordinator\'s own record is not withdrawn while the login is on it', 'staff_login_linked', () =>
+  await refusesWith('0053 #320: consent on a coordinator\'s own record is not withdrawn while the login is on it', 'staff_login_linked', () =>
     asApp('authenticated', guru, `select withdraw_consent($1, 'asked')`, [recA.id]));
-  await refusesWith('0061 #320: ... nor is it erased', 'staff_login_linked', () =>
+  await refusesWith('0053 #320: ... nor is it erased', 'staff_login_linked', () =>
     asApp('authenticated', guru, `select erase_student($1, 'asked')`, [recA.id]));
-  await refusesWith('0061 #320: ... nor deleted in the dashboard', 'staff_login_linked', () =>
+  await refusesWith('0053 #320: ... nor deleted in the dashboard', 'staff_login_linked', () =>
     asOwner(`delete from students where id = '${recA.id}'`));
-  check('0061 #320: ... the login stays on', (await asOwner(`select active from profiles where id = '${asha}'`))[0].active === true);
+  check('0053 #320: ... the login stays on', (await asOwner(`select active from profiles where id = '${asha}'`))[0].active === true);
   await asApp('authenticated', guru, 'select unlink_student_login($1)', [recA.id]);
-  check('0061 #316: the Guru takes the login off the own record; the role stays coordinator, the record stays',
+  check('0053 #316: the Guru takes the login off the own record; the role stays coordinator, the record stays',
     (await loginOf61(recA.id)) === null && (await roleOf(asha)) === 'coordinator' && (await myId(asha)) === null);
   await asApp('authenticated', guru, 'select link_staff_record($1, $2)', [asha, recA.id]);
-  check('0061 #316: (control) and links it again', (await loginOf61(recA.id)) === asha);
+  check('0053 #316: (control) and links it again', (await loginOf61(recA.id)) === asha);
 
   // Run twice: nothing changes.
   const counts61 = async () => (await asOwner(`select (select count(*) from students where profile_id is not null)::int as l,
@@ -6578,7 +6578,7 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   const c61 = await counts61();
   let again61 = '';
   try { await db.exec(file61); } catch (e) { again61 = String(e.message); }
-  check('0061: a second run changes nothing', again61 === '' && JSON.stringify(await counts61()) === JSON.stringify(c61), `${again61} ${JSON.stringify(c61)}`);
+  check('0053: a second run changes nothing', again61 === '' && JSON.stringify(await counts61()) === JSON.stringify(c61), `${again61} ${JSON.stringify(c61)}`);
 }
 
 // ---------------------------------------------------------------- row-level security

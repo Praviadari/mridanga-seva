@@ -50,11 +50,13 @@ export function StaffModules({ guru, promotionsWaiting, me = false }: StaffModul
   } satisfies Record<string, Module>;
   // The desk, where sign-ups are accepted and students registered: both roles (the Guru's Follow-ups circle went,
   // Praveen 14-10-2026: the Follow-ups tab is the same; follow-ups by coordinator are in the side menu).
+  // Me first, only with an own record (0053): green, people, as About you; on the ring it sits beside the green
+  // Welcome desk (coordinator) or Newcomers (the Guru's last circle).
+  const own: Module[] = [...(me ? [{ key: 'me', icon: 'person', tone: 'green', label: t('me.title'), onPress: () => router.push('/staff/me') } satisfies Module] : [])];
   const register: Module = { key: 'register', icon: 'register', tone: 'green', label: t('staff.registerStudent'), onPress: () => router.push('/staff/register') };
   // Colour by family (UI audit fix 9, docs/DECISIONS.md #368; lib/module-tone.ts), and the circles of a family side by
   // side, so the ring reads as a few coloured arcs: blue the class at a glance, green people, purple learning, teal
   // seva, orange community.
-  const own: Module[] = me ? [{ key: 'me', icon: 'person', tone: 'green', label: t('me.title'), onPress: () => router.push('/staff/me') }] : [];
   const ring: Module[] = guru
     ? [
         { key: 'overview', icon: 'status', tone: 'blue', label: t('home.modules.overview'), onPress: () => router.push('/staff/overview') },

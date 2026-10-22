@@ -1,4 +1,4 @@
-// Unit tests for "Coordinators are students too" (migration 0061, docs/DECISIONS.md #316-#321): Me in the staff
+// Unit tests for "Coordinators are students too" (migration 0053, docs/DECISIONS.md #316-#321): Me in the staff
 // app for a staff member's own student record, the own_record / own_mentor / staff_login_linked messages, the
 // mentor picker without the record's own login, and the Guru's link on Coordinators.
 // Run from app/: npm test.
@@ -81,7 +81,7 @@ test('hasOwnRecord: the server decides; without internet the card saved on this 
   myStudent.clearSavedCard();
   fakeCardClient({ data: null, error: null });
   assert.equal(await myStudent.hasOwnRecord('c1'), false, 'a coordinator without an own record: no Me');
-  fakeCardClient({ data: { full_name: 'Asha Sixtyone', roll_no: 'MS-2026-0061', qr_token: 'tok-61' }, error: null });
+  fakeCardClient({ data: { full_name: 'Asha Sixtyone', roll_no: 'MS-2026-0053', qr_token: 'tok-61' }, error: null });
   assert.equal(await myStudent.hasOwnRecord('c1'), true, 'linked: Me');
   assert.equal(myStudent.savedCardFor('c1')?.qrToken, 'tok-61', 'and the card is saved on the way');
   fakeCardClient({ data: null, error: { message: 'TypeError: Network request failed' } });

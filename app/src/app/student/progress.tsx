@@ -6,7 +6,7 @@
 // or the browser, PDFs and photos in the browser; components/material-row.tsx), and the lessons for
 // the whole level come first. An item the facilitator retired shows only when it was ticked, and
 // does not count (docs/DECISIONS.md #44).
-// Also Me > My progress in the staff app, for a staff member's own record (0061, #319; staff/me/progress.tsx).
+// Also Me > My progress in the staff app, for a staff member's own record (0053, #319; staff/me/progress.tsx).
 
 import { router, Stack, useFocusEffect, usePathname } from 'expo-router';
 import { useCallback, useState } from 'react';

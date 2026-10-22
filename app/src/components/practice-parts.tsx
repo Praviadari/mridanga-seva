@@ -140,7 +140,7 @@ const PANEL_WEEKS = 4;
 export function PracticePanel(props: PracticePanelProps) {
   const { t } = useTranslation();
   const own = 'profileId' in props;
-  // S4 of a student, or Me > My progress of a staff member's own record (0061, #319).
+  // S4 of a student, or Me > My progress of a staff member's own record (0053, #319).
   const area = ownAreaOf(usePathname());
   const key = own ? props.profileId : props.studentId;
   // undefined = loading, null = could not load, 'none' = no student record for this login.

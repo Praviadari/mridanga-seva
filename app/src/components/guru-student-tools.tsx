@@ -1,7 +1,7 @@
 // The Guru's tools on a student's profile (C8; audit R3-01..03, docs/DECISIONS.md #302), for week 1 after
 // the registration weekend: choose or change the mentor ("Mentor needed" notices open this page), set the
 // real level and joining date (Accept and the desk start everyone as Beginner, joined today), and take a
-// wrong app login off the record. A coordinator's own record (0061, #316, #319): never their own mentor; the Guru's own
+// wrong app login off the record. A coordinator's own record (0053, #316, #319): never their own mentor; the Guru's own
 // record: no Set level (nobody changes their own level), and taking a staff login off keeps its role. The Guru only; the database checks each change again
 // (src/data/student-admin.ts). Taking a login off asks first, in place, as the other destructive actions do.
 
@@ -32,7 +32,7 @@ export type ToolsStudent = {
   joinedOn: string;
   mentorId: string | null;
   hasLogin: boolean;
-  /** The login on the record, or null (a staff member's own record has theirs, 0061). */
+  /** The login on the record, or null (a staff member's own record has theirs, 0053). */
   loginId: string | null;
 };
 
@@ -54,7 +54,7 @@ export function GuruStudentTools({ student, staff, onChanged }: { student: Tools
   if (profile?.role !== 'guru') return null;
 
   const choices = mentorChoices(staff, student.mentorId, student.loginId);
-  // The Guru's own record (0061): the level is a colleague's decision, not theirs.
+  // The Guru's own record (0053): the level is a colleague's decision, not theirs.
   const ownRecord = student.loginId !== null && student.loginId === profile.id;
   // A staff member's own record: taking the login off keeps the role (it only takes Me away).
   const staffLogin = student.loginId !== null && staff.some((s) => s.id === student.loginId);

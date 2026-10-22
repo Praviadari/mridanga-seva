@@ -9,7 +9,7 @@
 // docs/DECISIONS.md #57).
 // Staff also get a gender (the Guru sets it; students are matched with a coordinator of the same gender)
 // and show their referral code (migration 0036, docs/DECISIONS.md #165).
-// Coordinators are students too (0061, docs/DECISIONS.md #316): a coordinator's own student record is linked to
+// Coordinators are students too (0053, docs/DECISIONS.md #316): a coordinator's own student record is linked to
 // their login here (the role stays; their app then shows Me), or taken off again. The Guru's own record is linked
 // in the SQL editor (docs/OPERATIONS.md), so their own page only shows it.
 // Data: src/data/coordinators.ts; rules: migration 0014 (docs/DECISIONS.md #45).
@@ -133,7 +133,7 @@ function PersonScreenContent() {
   const isStaff = person.role === 'guru' || person.role === 'coordinator';
   const isMe = person.id === profile.id;
   const others = board.staff.filter((s) => s.active && s.id !== person.id);
-  // The person's own student record (0061, #316), when their login is on one.
+  // The person's own student record (0053, #316), when their login is on one.
   const own = ownRecordOf(board, person.id);
 
   /** Runs a change, shows its result and loads the page again. */
@@ -216,7 +216,7 @@ function PersonScreenContent() {
         </Section>
       ) : null}
 
-      {/* Coordinators are students too (0061, #316): the person's own student record. */}
+      {/* Coordinators are students too (0053, #316): the person's own student record. */}
       {isStaff && person.active ? (
         <Section icon="students" title={t('coordinators.ownTitle')} description={t('coordinators.ownHint')}>
           {own ? (

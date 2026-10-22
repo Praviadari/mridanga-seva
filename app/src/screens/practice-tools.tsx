@@ -7,7 +7,7 @@
 //   two-head view V1 (components/two-head-view.tsx) lit in time with the sound.
 // - Record myself (slice 4, components/record-myself.tsx): record one's own playing with the
 //   metronome or taal started from its first beat, keep it on the phone, play it back beside the sound.
-// - Practice timer (students, and Me > Practice of a staff member's own record, 0061 #319): starts with the first
+// - Practice timer (students, and Me > Practice of a staff member's own record, 0053 #319): starts with the first
 //   sound or by hand, logs itself on Stop when it ran at least a minute (S6; lib/practice-timer.ts,
 //   data/practice.ts). One slim line at the top, so the tempo and its big Start come on the first screen (#384).
 //   Me > Practice also shows the student parts below (the week's plan, the goal, the reminder) for the own record.
@@ -101,7 +101,7 @@ type Mode = 'metronome' | 'taal';
 
 /** Props for PracticeTools. */
 export type PracticeToolsProps = {
-  /** student: S5 of a student; staff: the tools only; me: Me > Practice, a staff member's own record (0061, #319). */
+  /** student: S5 of a student; staff: the tools only; me: Me > Practice, a staff member's own record (0053, #319). */
   area: 'student' | 'staff' | 'me';
 };
 
@@ -110,7 +110,7 @@ export function PracticeTools({ area }: PracticeToolsProps) {
   const { t } = useTranslation();
   const { profile } = useAuth();
   const profileId = profile?.id ?? '';
-  // Logs practice on the person's own record: a student's, or a staff member's own (log_practice, 0061 #317).
+  // Logs practice on the person's own record: a student's, or a staff member's own (log_practice, 0053 #317).
   const isStudent = (area === 'student' && profile?.role === 'student') || area === 'me';
   const isGuru = profile?.role === 'guru';
 

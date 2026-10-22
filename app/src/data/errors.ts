@@ -25,7 +25,7 @@ export function isNetworkError(message: string): boolean {
  * student, or the general "something went wrong". The error mappers end with this, so these are worded
  * once. student_withdrawn: since 0048 (#281) nothing new is recorded about a student whose consent was
  * withdrawn — Accept, a desk Save, a loan, a practice log, a nomination all refuse it (#292).
- * own_record, own_mentor, staff_login_linked: a staff member's own student record (0061, #318-#320): nobody
+ * own_record, own_mentor, staff_login_linked: a staff member's own student record (0053, #318-#320): nobody
  * marks, ticks, nominates, calls or mentors themselves, from any screen; a colleague does.
  */
 export function fallbackErrorKey(message: string): MessageKey {

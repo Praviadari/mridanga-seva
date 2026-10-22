@@ -3,7 +3,7 @@
 // Since 15-10-2026 (#382) the top shows this week's visits and the weeks in a row with a visit (lib/streak.ts, from
 // the months below) and the last visit as one line (student_home() through src/data/home.ts); before, the second box
 // was the days since the last visit, once on the home (#240).
-// Also Me > My attendance in the staff app, for a staff member's own record (0061, #319; staff/me/visits.tsx).
+// Also Me > My attendance in the staff app, for a staff member's own record (0053, #319; staff/me/visits.tsx).
 
 import { router, Stack, usePathname } from 'expo-router';
 import { useEffect, useState } from 'react';

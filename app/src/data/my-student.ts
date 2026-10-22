@@ -80,7 +80,7 @@ export async function keepMyCardSaved(profileId: string): Promise<void> {
 }
 
 /**
- * Whether a staff login has a student record of its own (migration 0061, docs/DECISIONS.md #316, #319): the staff
+ * Whether a staff login has a student record of its own (migration 0053, docs/DECISIONS.md #316, #319): the staff
  * home shows Me then. Asks the server each time the home comes into view (the Guru may link the record while the
  * app runs) and saves the My QR card on the phone on the way (fetchMyCard). Without an answer (no internet) the
  * card saved on this phone decides, so Me and My QR stay at the door without signal.

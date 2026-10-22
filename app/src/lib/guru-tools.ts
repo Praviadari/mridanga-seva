@@ -13,7 +13,7 @@ export type MentorCandidate = { id: string; fullName: string; role: 'guru' | 'co
 /**
  * The people a student can be given as mentor: active coordinators and the Guru (the database refuses
  * anyone else, mentor_not_staff), by name, without the mentor the student has now, and never the student's own login:
- * a coordinator's own record needs another coordinator as mentor (0061, own_mentor, docs/DECISIONS.md #319).
+ * a coordinator's own record needs another coordinator as mentor (0053, own_mentor, docs/DECISIONS.md #319).
  */
 export function mentorChoices<T extends MentorCandidate>(
   staff: readonly T[],

@@ -5463,7 +5463,7 @@ with the next web upload, not the OTA.
 
 ## 316. A coordinator's login can have its own student record; the Guru links it — 13 Oct 2026
 
-**Status: built on branch `staff-own-record` (migration 0061, placeholder number); merged after the launch of 20 Oct 2026.**
+**Status: built on branch `staff-own-record` (placeholder 0061); merged after the launch of 20 Oct 2026 as migration 0053 (22 Oct 2026).**
 
 **Context.** Praveen (13 Oct 2026): "Coordinators are students too, with more experience — that's it." Until now one login
 had one role, and every link path needs a login that waits for a record (`pending`; #13, #96, #265), so a coordinator's or
@@ -5486,7 +5486,7 @@ sign-up, so Accept has nothing to accept. The Guru checks the person and links o
 
 **Consequences.** 0046-0048's link rules are untouched (`login_awaits_record`, minors never auto-linked, guardian email
 rules). A student who becomes a coordinator: the Guru takes the login off the record (it waits), makes it a coordinator,
-then links the record as their own (OPERATIONS.md). Tests: "0061 staff own record" in smoke-test.mjs.
+then links the record as their own (OPERATIONS.md). Tests: "0053 staff own record" in smoke-test.mjs.
 
 ## 317. The own record works like a student's for what the person does themselves — 13 Oct 2026
 
