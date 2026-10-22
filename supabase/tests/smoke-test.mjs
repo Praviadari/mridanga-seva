@@ -129,7 +129,7 @@ process.on('uncaughtException', (error) => {
 // D14-10: every check is counted, and the run fails when fewer (or more) checks ran than expected,
 // so a block skipped by a renamed migration or a commented-out section cannot pass unseen.
 // Adding or removing checks? Run the suite and set this to the new total it prints.
-const EXPECTED_CHECKS = 2011; // 0071 face self-scan (branch face-scan, placeholder number): +58; 0070 face scan server side (branch face-scan, placeholder number): +123; 0052 more practice: +56; 0051 child's sign-up at home: +80; 0050 staff dashboard: +15; 0049 launch clean-up: +30; 0048 withdrawn records and leaks: +50; 0047 form rules: +109; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
+const EXPECTED_CHECKS = 2016; // face test data deleted (#433): +5; 0071 face self-scan (branch face-scan, placeholder number): +58; 0070 face scan server side (branch face-scan, placeholder number): +123; 0052 more practice: +56; 0051 child's sign-up at home: +80; 0050 staff dashboard: +15; 0049 launch clean-up: +30; 0048 withdrawn records and leaks: +50; 0047 form rules: +109; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
 let failures = 0;
 let passes = 0;
 
@@ -7085,6 +7085,38 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
     `${again64} ${JSON.stringify(before64)}`);
   await asOwner(`update centres set lat = ${centreBefore.lat ?? 'null'}, lng = ${centreBefore.lng ?? 'null'}, radius_m = ${centreBefore.radius_m},
     opens_at = '${centreBefore.o}', closes_at = '${centreBefore.c}' where id = 1`);
+}
+
+// ---------------------------------------------------------------- face test data deleted (#433)
+// OPERATIONS.md "Face scan: deleting the test face data": its two SQL blocks, run exactly as written, on the
+// database the face blocks above filled. A face table the runbook forgets fails here before it fails on TEST.
+{
+  const ops = readFileSync(new URL('../docs/OPERATIONS.md', supabaseDir), 'utf8');
+  const block = (name) => ops.match(new RegExp(`-- ${name}: begin\\n([\\s\\S]*?)-- ${name}: end`))?.[1] ?? '';
+  const deleteSql = block('face-test-delete');
+  const verifySql = block('face-test-verify');
+  check('face test data: OPERATIONS has the delete and the read-only verify block',
+    /^begin;$/m.test(deleteSql) && /^commit;$/m.test(deleteSql) && /^select$/m.test(verifySql) && !/\b(update|delete|insert)\b/i.test(verifySql.replace(/--.*$/gm, '')));
+  const counts = async () => (await asOwner(`select (select count(*) from face_enrolments)::int as enrolments,
+    (select count(*) from consents where scope = 'face')::int as face_consents, (select count(*) from consents where scope <> 'face')::int as other_consents,
+    (select count(*) from visits where method = 'face' or check_out_method = 'face')::int as face_visits,
+    (select count(*) from visits where method is distinct from 'face' and check_out_method is distinct from 'face' and liveness_ok is null)::int as other_visits,
+    (select count(*) from audit_log where table_name not in ('visits', 'consents', 'settings'))::int as other_audit`))[0];
+  const before = await counts();
+  check('face test data: (control) the face blocks left enrolments, face consents and face visits to delete',
+    before.enrolments > 0 && before.face_consents > 0 && before.face_visits > 0, JSON.stringify(before));
+  await asOwner(`update settings set value = 'true' where key = 'face_enabled'`);
+  await db.exec(deleteSql);
+  const verify = (await asOwner(verifySql))[0];
+  check('face test data: after the delete the verify row is false | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0',
+    JSON.stringify(Object.values(verify)) === JSON.stringify([false, 0, 0, 0, 0, 0, 0, 0, 0]), JSON.stringify(verify));
+  const after = await counts();
+  check('face test data: other consents, other visits and other audit rows stay (the audit rows of the switch aside)',
+    after.other_consents === before.other_consents && after.other_visits === before.other_visits && after.other_audit === before.other_audit,
+    JSON.stringify({ before, after }));
+  let again = '';
+  try { await db.exec(deleteSql); } catch (e) { again = String(e.message); }
+  check('face test data: the delete can run again', again === '', again);
 }
 
 // ---------------------------------------------------------------- row-level security

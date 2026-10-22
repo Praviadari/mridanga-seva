@@ -33,7 +33,7 @@ since 0044), #248.
 | Data subjects | Students (~200, **many under 18**) at Abids (Hyderabad) first; parents/guardians of minors (email); coordinators (enrolment confirmation) |
 | Data | (a) **Face template** of the student (numbers computed on the phone; no image kept); (b) the face consent record; (c) per visit: method `face`, match score, liveness pass, location **result** inside/outside + distance in metres (never the position, #70); (d) the guardian's email for the check-out notice (#227) |
 | Not collected | Face images or video; location coordinates; continuous, periodic or background location; location history; any location outside a check-in/out action; emotion, attention or behaviour analysis; any face data of anyone except the enrolled student |
-| Where | The **student's own phone** (their own template, encrypted with the Android Keystore); Supabase Postgres in Mumbai (ap-south-1) — the **enrolment record** (no face code: Gate 2, #295), the visits and, for 60 days, each face check-in's match score; Brevo (EU) sends the parent email (processor — D4-12 register) |
+| Where | The **student's own phone** (their own template, encrypted with the Android Keystore); Supabase Postgres in **Sydney, Australia** (ap-southeast-2; DECISIONS #398) — the **enrolment record** (no face code: Gate 2, #295), the visits and, for 60 days, each face check-in's match score; Brevo (EU) sends the parent email (processor — D4-12 register) |
 | Who sees | Templates: no person; only the student's own app reads its own template, through a logged function. Visits: as today (#70). Check-out email: the guardian on record |
 | Retention | §7 |
 | Scale | ~200 people, one centre; more centres and abroad later |
@@ -79,7 +79,7 @@ queues the parent email (0043/0044).
 | Breach notice to the Board and each affected person | s.8(6), **Rule 7** | The breach runbook (OPERATIONS) gains "template exposure": tell the people affected without delay; detailed report to the Board within 72 hours of becoming aware (Rule 7(2)) |
 | Erase when consent is withdrawn or the purpose ends | s.8(7) | §7 |
 | Grievance, rights (access, correction, erasure, nomination) | s.11-14 | The privacy contact and erasure (#76) cover templates |
-| Transfers abroad | s.16 | Allowed except to countries the government restricts; none notified (D4-12). The template stays on the phone and in Mumbai; only the parent email leaves India (Brevo, EU) and it carries no face or location data |
+| Transfers abroad | s.16 | Allowed except to countries the government restricts; none notified (D4-12). The face code never leaves the phone. The class's server is in **Sydney, Australia** (#398): the enrolment record, visits, check-in location results and, for 60 days, match scores are stored outside India, which s.16 allows (Australia is not restricted); the notice says so. The adult face test uses the TEST project in **Singapore** (ap-southeast-1), also outside India, with test logins only. The parent email goes through Brevo (EU) and carries no face or location data |
 
 **Commencement (re-verified 10-10-2026, secondary sources):** the Rules and the commencement
 notification were published on 13-11-2025 (PIB and one law firm say the Gazette is dated
@@ -153,7 +153,8 @@ licence to track.
   and Art. 35-36 (no DPIA); "less intrusive ways" existed.
 - **What makes our case different, and must stay true:** face is optional with an equally easy QR
   path; no disadvantage, pressure or ranking for those who say no; no images kept; the student's
-  template stays on their phone and our server in India; matching is 1:1 only (the app never
+  template stays on their phone (Gate 2: our server, in Sydney, Australia, #398, keeps only the
+  enrolment record); matching is 1:1 only (the app never
   searches a face among others); the child's own refusal counts; deletion at will. If the team cannot
   keep these, face should not go ahead for minors.
 - **Proposed conclusion (for the Guru/lawyer):** proportionate **only** as an optional convenience

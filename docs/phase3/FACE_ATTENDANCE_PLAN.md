@@ -223,7 +223,7 @@ cheap phone cameras is unknown — measure in the pilot (MODEL_OPTIONS §5).
 
 | Item | Where | Form | Who reads |
 |---|---|---|---|
-| Face template | Supabase (Mumbai, ap-south-1 — OPERATIONS) new table `face_templates` (student, model_version, created_at, created_by, expires_at, template **encrypted**) | Bytes, encrypted with a key held in Supabase Vault; decrypted only inside a security-definer function | Only the `kiosk` login and staff of the student's centre, through a logging function (like #146), only to fill the scanner cache |
+| Face template | Supabase (then thought to be Mumbai; the class's server is in Sydney, Australia, ap-southeast-2: DECISIONS #398) new table `face_templates` (student, model_version, created_at, created_by, expires_at, template **encrypted**) | Bytes, encrypted with a key held in Supabase Vault; decrypted only inside a security-definer function | Only the `kiosk` login and staff of the student's centre, through a logging function (like #146), only to fill the scanner cache |
 | Scanner cache | Tablet / staff phone, while the scanner is in use | Encrypted SQLite (expo-sqlite's SQLCipher option — **verify** in SDK 57) or in memory only | The app |
 | Self-scan template | Proposal: the student's **own** template only, on their phone, encrypted with the Android Keystore; plus the server copy for re-install | — | The app |
 | Visit | `visits` as today, `method = 'face'`, plus proposed `match_score` and `liveness_ok` | Numbers only | As today (#70 rules) |

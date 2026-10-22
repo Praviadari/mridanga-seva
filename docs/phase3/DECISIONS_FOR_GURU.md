@@ -49,8 +49,9 @@ check-out only (#231 answers). Still open for the Guru: items 1, 3 (minimum age)
    InsightFace's free models (non-commercial only). Cloud (AWS Rekognition, Mumbai) only as Plan B.
 
 8. **Data location and keeping.** **Changed by the audit (Gate 2, 13-10-2026, #295): face codes on the student's own phone only — no server copy;
-   a new phone means setting it up again at the desk.** Original recommendation, for history: face codes encrypted on the class's Supabase server
-   in Mumbai and on the student's own phone only (no class device holds face codes, #248); no photos kept; deleted at once on withdrawal, 30 days
+   the class's server (Supabase, in Sydney, Australia: DECISIONS #398) keeps only the enrolment record (who, which phone, until
+   when); a new phone means setting it up again at the desk.** Original recommendation, for history: face codes encrypted on the
+   class's Supabase server (then thought to be in Mumbai) and on the student's own phone only (no class device holds face codes, #248); no photos kept; deleted at once on withdrawal, 30 days
    after a student leaves, after 12 months (minors) / 24 months (adults), or on a model change.
 
 9. **Location consent.** *Recommended:* tell it in the notice and the consent form (L-P / L-A text),

@@ -1551,7 +1551,78 @@ its open hours covering the test time.
 4. Reports → **Face scan use** shows the counts (outside, mocked, no match …), no names.
 5. A minor's parent email on check-out only (dry run, notices on for a test guardian) — only when the Guru and the
    lawyer have allowed minors (face_min_age stays 18 until then).
-Write the times (location read, scan, integrity, save) and the scores from C26 into SPIKE_RESULT §9.## Files no announcement uses
+Write the times (location read, scan, integrity, save) and the scores from C26 into SPIKE_RESULT §9.## Face scan: deleting the test face data
+
+**TEST only (`fhuqyk…`, Singapore), never LIVE ([DECISIONS.md #433](DECISIONS.md)).** After the adult face test
+(docs/phase3/ADULT_TEST.md), **within 7 days of the last test day**, every face record of the test goes: on the
+phones and on the TEST server. The signed paper consent forms hold no face data; the desk keeps them as the proof of
+consent (the Guru decides how long; they are not scanned).
+
+**1. Phones (each tester, at the desk).** In "Mridanga Seva TEST": My profile → **Face scan → Turn face scan off**
+(ends the server record and wipes the face code), then uninstall the app (Settings → Apps → Mridanga Seva TEST →
+Uninstall). A phone that is not brought back: its face code stays in that app's Keystore until it is uninstalled,
+but it opens nothing once step 2 has run (the server has no enrolment for it). Note those phones in NOTES_face_scan.md.
+
+**2. TEST server (the lead or Praveen, in the TEST project's SQL editor; check the project name at the top of the
+dashboard first).** One run, all or nothing:
+```sql
+-- face-test-delete: begin
+-- Deletes ALL face data on this project: the adult face test's (TEST only, never LIVE; OPERATIONS.md
+-- "Face scan: deleting the test face data"). Switches face scan off first. Safe to run twice.
+begin;
+update settings set value = 'false' where key = 'face_enabled';
+-- The test's face check-ins and check-outs (attendance on TEST made by the face path) and their match scores.
+delete from visit_face_scores where visit_id is not null;
+delete from visits where method = 'face' or check_out_method = 'face' or liveness_ok is not null;
+-- Enrolment records, integrity challenges and passes, failure counts.
+delete from face_enrolments where id is not null;
+delete from integrity_challenges where challenge is not null;
+delete from face_scan_failures where id is not null;
+-- The face consents recorded at the desk (the signed paper forms stay with the desk).
+delete from consents where scope = 'face';
+-- The audit copies of those visits and consents (written by audit_row, also by the deletes above).
+delete from audit_log
+ where (table_name = 'visits'
+        and ('face' in (new_row ->> 'method', old_row ->> 'method', new_row ->> 'check_out_method', old_row ->> 'check_out_method')
+             or new_row ->> 'liveness_ok' is not null or old_row ->> 'liveness_ok' is not null))
+    or (table_name = 'consents' and 'face' in (new_row ->> 'scope', old_row ->> 'scope'));
+-- Who looked at the desk's enrolment list (staff reads of get_face_enrolments).
+delete from access_log where function_name = 'get_face_enrolments';
+commit;
+-- face-test-delete: end
+```
+Then this check (read-only):
+```sql
+-- face-test-verify: begin
+-- Face test data on this project after the deletion. READ-ONLY (selects only). Expected one row:
+-- false | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0
+select
+  coalesce((select value from settings where key = 'face_enabled') = 'true'::jsonb, false)      as face_on,
+  (select count(*) from face_enrolments)::int                                                   as enrolments,
+  (select count(*) from visit_face_scores)::int                                                 as match_scores,
+  (select count(*) from integrity_challenges)::int                                              as challenges,
+  (select count(*) from face_scan_failures)::int                                                as failures,
+  (select count(*) from consents where scope = 'face')::int                                     as face_consents,
+  (select count(*) from visits where method = 'face' or check_out_method = 'face' or liveness_ok is not null)::int
+                                                                                                as face_visits,
+  (select count(*) from audit_log
+    where (table_name = 'visits'
+           and ('face' in (new_row ->> 'method', old_row ->> 'method', new_row ->> 'check_out_method', old_row ->> 'check_out_method')
+                or new_row ->> 'liveness_ok' is not null or old_row ->> 'liveness_ok' is not null))
+       or (table_name = 'consents' and 'face' in (new_row ->> 'scope', old_row ->> 'scope')))::int
+                                                                                                as audit_copies,
+  (select count(*) from access_log where function_name = 'get_face_enrolments')::int           as access_rows;
+-- face-test-verify: end
+```
+Paste the row into NOTES_face_scan.md with the date. Anything but `false | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0`: stop and
+tell the lead. The smoke test runs both blocks on the replayed database ("face test data deleted"), so a change to the
+face tables that the runbook misses fails there first.
+
+**3. Elsewhere.** No face data leaves the phone or the server: nothing to delete in Brevo (adults get no parent
+emails), EAS or GitHub. Supabase's own backups of TEST (the free plan keeps none) and the Edge Function logs
+(`verify-integrity`: request results, no faces; kept 1 day on the free plan) need nothing.
+
+## Files no announcement uses
 
 ## Face scan: the test app (Mridanga Seva TEST)
 
