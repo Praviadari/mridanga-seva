@@ -103,7 +103,7 @@ with m(migration, present) as (values
   ('0051', to_regclass('public.minor_signups') is not null),
   ('0052', to_regclass('public.practice_plans') is not null),
   ('0053', exists (select 1 from pg_proc where proname = 'link_staff_record' and pronamespace = 'public'::regnamespace)),
-  ('0062', exists (select 1 from pg_proc where proname = 'undo_import' and pronamespace = 'public'::regnamespace))
+  ('0054', exists (select 1 from pg_proc where proname = 'undo_import' and pronamespace = 'public'::regnamespace))
 )
 select migration, case when present then 'yes' else 'no' end as present from m
 union all
@@ -115,7 +115,7 @@ select 'MISSING', coalesce((select string_agg(a.migration, ' ' order by a.migrat
 order by 1;
 ```
 
-## B. Migrations 0013-0053, one file per run
+## B. Migrations 0013-0054, one file per run
 
 For each row: GitHub main → `supabase/migrations/<file>` → **Copy raw file** → LIVE → SQL Editor →
 New query → paste → check the project → **Run** → then paste the probe again (or keep it in a second
@@ -172,9 +172,9 @@ a second paste. So pasting a file twice by mistake is harmless; still, never do 
 | M0051 | `0051_minor_home_signup.sql` | Praveen · dashboard | No rows; probe `0051`, `MISSING` `none`; verification row 3 `12 of 12` | **A child under 18 signs up at home; the parent consents by email** ([#399](DECISIONS.md)). New tables `minor_signups` and `parent_mail_log` (empty), new job `mridanga-minor-signups` (daily 02:15 IST: a child's sign-up without the parent's consent in 30 days is erased with `erase_login`), replaced `handle_new_user` (a minor's date of birth is kept only with the parent's details), `waiting_sign_ups` (+ the parent's part; a child appears only once the parent consented), `send_parent_notices` (also calls `notify-parents` for consent emails, check-out emails on or off) and the consent guard; new `accept_minor_sign_up`, the child's `my_parent_consent` / `resend_parent_email` / `set_parent_details` and the consent page's `give_parent_consent` (anon). `accept_sign_up` is not changed. **Order:** TEST first (with Praveen); on LIVE only after 0049 (it uses `erase_login`) and after (1) `notify-parents` is deployed from the same commit (C7, LIVE ref) and (2) `BREVO_API_KEY` + `NOTICE_FROM` are set in Edge Functions → Secrets (OPERATIONS "Parent consent by email"): without them every consent email is a dry run and children see "emails to parents are not switched on". Then the OTA with the new sign-up screen. Safe to run twice |
 | M0052 | `0052_practice_more.sql` | Praveen · dashboard | No rows; probe `0052`, `MISSING` `none` | More home practice ([#400-#405](DECISIONS.md)): adds the table `practice_plans` (per level: the weekly goal, 4 x 15 until changed, and up to three things to practise; staff write, a student reads their own level's), `practice_goals` with `set_my_practice_goal` (a student's own goal), `practice_mantras` (the mantra before practice, Guru and Ishtagoshti editors write; nothing seeded) and the read-only function `practice_days` (a student's minutes per day with their goal, row-level security of the asker). No existing row or function changes; safe to run twice. **TEST first** (`fhuqyk…`), then LIVE, **before** the OTA and web upload that use it (without it the app shows no plan and no week card, and the plan editor cannot load). After 0051 |
 | M0053 | `0053_staff_own_record.sql` | Praveen · dashboard | No rows; probe `0053`, `MISSING` `none` | Coordinators are students too (placeholder 0061 on branch `staff-own-record`, renumbered 22-10-2026) ([#316-#321](DECISIONS.md)): `link_staff_record` (the Guru links a coordinator's login to their own student record; the role stays); `my_student_id` covers staff, so practice and face enrolment work on an own record; **nobody records about their own record** (check-in or out by name, QR or Mark attendance, ticks, level, promotion, assessment reviews, calls: error `own_record`; an event list leaves the own row as it is); nobody is their own mentor (`own_mentor`); a record with a staff login is not withdrawn or erased while linked (`staff_login_linked`). Changes no stored row. TEST first (NOTES.md "13-10-2026 — Coordinators are students too" TEST-run pack). After 0052 |
-| M0062 | `0062_after_launch_forms.sql` (placeholder number: the lead renumbers it at the merge) | Praveen · dashboard | No rows; probe `0062`, `MISSING` `none` | After-launch forms ([#322, #324-#326, #328, #329](DECISIONS.md)): creates saved once per request id (`request_id` on 10 tables; twins of `record_fund_entry`, `log_call`, `log_practice`); an approved material's file only the Guru deletes; `change_event_attendance`; the Guru's `delete_student_record` and `undo_import` (`students.import_id`); **phones kept as E.164**: stored national numbers on students, guardians, profiles and Ishtagoshti subscribers are rewritten once (`+91`; a number it cannot read stays as it is, OPERATIONS `Phones that are not E.164`); at most 3 parent codes a day to one address. **After the launch**, with the app update that uses it |
+| M0054 | `0054_after_launch_forms.sql` (placeholder 0062 on branch `after-launch-forms`, renumbered 22-10-2026) | Praveen · dashboard | No rows; probe `0054`, `MISSING` `none`. **Changes stored rows:** run OPERATIONS "Phones that are not E.164" step 1 before and step 2 after; the counts must match | After-launch forms ([#322, #324-#326, #328, #329](DECISIONS.md)): creates saved once per request id (`request_id` on 10 tables; twins of `record_fund_entry`, `log_call`, `log_practice`); an approved material's file only the Guru deletes; `change_event_attendance`; the Guru's `delete_student_record` and `undo_import` (`students.import_id`); **phones kept as E.164**: stored national numbers on students, guardians, profiles and Ishtagoshti subscribers are rewritten once (`+91`; a number it cannot read stays as it is, OPERATIONS `Phones that are not E.164`); at most 3 parent codes a day to one address. **After the launch**, with the app update that uses it |
 
-**A file newer than 0053 on main:** the replay's first check fails until this table lists it. Add it
+**A file newer than 0054 on main:** the replay's first check fails until this table lists it. Add it
 here, with its own steps, then run it last.
 
 **0049 (launch clean-up)** is on TEST but not on main on 15 Oct 2026. It joins this table when branch
@@ -312,7 +312,7 @@ with m(migration, present) as (values
   ('0051', to_regclass('public.minor_signups') is not null),
   ('0052', to_regclass('public.practice_plans') is not null),
   ('0053', exists (select 1 from pg_proc where proname = 'link_staff_record' and pronamespace = 'public'::regnamespace)),
-  ('0062', exists (select 1 from pg_proc where proname = 'undo_import' and pronamespace = 'public'::regnamespace))
+  ('0054', exists (select 1 from pg_proc where proname = 'undo_import' and pronamespace = 'public'::regnamespace))
 ),
 last_in_order as (select coalesce(max(a.migration), 'before 0010') as v from m a
   where a.present and not exists (select 1 from m b where b.migration <= a.migration and not b.present)),
@@ -322,7 +322,7 @@ jobs(name) as (values ('mridanga-status-refresh'), ('mridanga-close-visits'), ('
   ('mridanga-assessments'), ('mridanga-events-polls'), ('mridanga-duty'), ('mridanga-access-log-purge'),
   ('mridanga-cron-history-purge'), ('mridanga-orphan-files'), ('mridanga-parent-notices'), ('mridanga-minor-signups')),
 checks(sort, check_name, ok, found, expected) as (
-  select 1, 'last migration', (select v from last_in_order) = '0062', (select v from last_in_order), '0062'
+  select 1, 'last migration', (select v from last_in_order) = '0054', (select v from last_in_order), '0054'
   union all select 2, 'migrations missing', (select v from missing) = 'none', (select v from missing), 'none'
   union all select 3, 'scheduled jobs',
     (select count(*) from jobs j join cron.job c on c.jobname = j.name and c.active) = 12,

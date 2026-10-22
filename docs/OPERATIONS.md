@@ -258,7 +258,7 @@ user for this: it leaves the name, phone and email in the audit log.
 Errors: `not_pending` (a student or staff login), `has_student_record` (use `erase_student`),
 `profile_not_found`, `reason_required`.
 
-## A record entered by mistake, an import undone (0062)
+## A record entered by mistake, an import undone (0054)
 
 Not an erasure ([DECISIONS.md #326](DECISIONS.md)): a second copy of a student typed at the desk, or the
 records of a wrong Excel file.
@@ -274,8 +274,34 @@ records of a wrong Excel file.
 
 ## Phones that are not E.164
 
-0062 keeps every phone as E.164 (`+919876543210`, [DECISIONS.md #324](DECISIONS.md)) and rewrote the stored
-numbers it could read. The rest stay as they were; list them after running 0062:
+0054 keeps every phone as E.164 (`+919876543210`, [DECISIONS.md #324](DECISIONS.md)) and rewrote the stored
+numbers it could read. The rest stay as they were.
+
+**1. Before 0054 (read-only): what it will rewrite.** Same rules as `phone_e164` (spaces, brackets, dots and dashes
+dropped; `00` read as `+`; 10 digits, 11 with a leading 0, or 12 starting 91 read as Indian). Note the four columns:
+
+```sql
+with p(kind, phone) as (
+  select 'student', phone from students union all
+  select 'guardian', phone from guardians union all
+  select 'login', phone from profiles union all
+  select 'ishtagoshti', phone from ig_subscribers),
+c as (select kind, phone, regexp_replace(btrim(phone), '[\s().-]', '', 'g') as v from p where phone is not null),
+r as (select kind, phone, v ~ '^\+[1-9][0-9]{6,14}$' or v ~ '^00[1-9][0-9]{6,14}$' or v ~ '^0?[1-9][0-9]{9}$'
+                          or v ~ '^91[1-9][0-9]{9}$' as readable from c)
+select kind, count(*) as with_phone,
+       count(*) filter (where phone ~ '^\+[1-9][0-9]{6,14}$') as already_e164,
+       count(*) filter (where readable and phone !~ '^\+[1-9][0-9]{6,14}$') as to_rewrite,
+       count(*) filter (where not readable) as left_as_is
+  from r group by kind order by kind;
+```
+
+The rewrite changes only the `to_rewrite` rows (one `update` per table, each changed row gets an audit-log row); the
+run takes well under a second at the class's size. The app's sign-up, About you and Accept have sent E.164 since
+launch (0051 refuses anything else), so on LIVE `to_rewrite` should be the desk's and imports' national numbers.
+
+**2. After 0054: every row is E.164 except `left_as_is`.** The list below must have exactly the step-1
+`left_as_is` rows (guardians and logins included), and running step 1 again shows `to_rewrite` 0:
 
 ```sql
 select 'student' as kind, roll_no as who, phone from students where phone is not null and phone !~ '^\+[1-9][0-9]{6,14}$'
@@ -283,7 +309,10 @@ union all
 select 'guardian', s.roll_no, g.phone from guardians g join students s on s.id = g.student_id
  where g.phone is not null and g.phone !~ '^\+[1-9][0-9]{6,14}$'
 union all
-select 'login', p.full_name, p.phone from profiles p where p.phone is not null and p.phone !~ '^\+[1-9][0-9]{6,14}$';
+select 'login', p.full_name, p.phone from profiles p where p.phone is not null and p.phone !~ '^\+[1-9][0-9]{6,14}$'
+union all
+select 'ishtagoshti', p.full_name, i.phone from ig_subscribers i join profiles p on p.id = i.profile_id
+ where i.phone is not null and i.phone !~ '^\+[1-9][0-9]{6,14}$';
 ```
 
 Correct each one with the person (C8 Edit details, or the Table Editor for a guardian); a saved number that is

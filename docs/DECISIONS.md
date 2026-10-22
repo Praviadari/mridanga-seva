@@ -5566,7 +5566,7 @@ call note, practice entry, event or poll (which told everyone twice), assessment
 theme or reply. Some of those saves also deleted the files they had just uploaded, although the saved row listed
 them. Only register_student (#126) and announcements (D6-10) were safe.
 
-**Decision (migration 0062 + JS).** Each open form holds one request id (a uuid, `lib/use-request-id.ts`) and
+**Decision (migration 0054 + JS).** Each open form holds one request id (a uuid, `lib/use-request-id.ts`) and
 sends it with every Save. Ten tables get a unique `request_id` (fund_entries, call_logs, practice_logs, events,
 polls, assessments, materials, syllabus_items, ig_themes, announcement_replies). Direct inserts send it as a
 column; a repeat is refused by the unique index and the app reads the first row back (`data/create-once.ts`
@@ -5612,7 +5612,7 @@ only where the box is number-like.
 +919876543210 and 98765 43210; #164 had left the desk's own field national. Duplicate checks, search, dialling
 and exports disagreed.
 
-**Decision (migration 0062 + JS).** Retires #164's exception. `phone_e164()` reads a number with +, with 00, or a
+**Decision (migration 0054 + JS).** Retires #164's exception. `phone_e164()` reads a number with +, with 00, or a
 national Indian number (10 digits, 11 with a leading 0, 12 starting 91); a trigger keeps students, guardians,
 profiles and Ishtagoshti subscribers as E.164 on every changed phone and refuses what is not a number
 (`phone_invalid`); an unchanged old value is left alone, so editing other fields never fails on it. The run
@@ -5638,7 +5638,7 @@ YYYY-MM-DD dates; the fund CSV adds a signed "Effect on balance" column; the for
 leading tab, CR and the full-width = + - @. The audit log can filter and name fund entries and categories,
 instruments, counts, events and polls, with paise as rupees. Reports check a custom range at its fields (both
 dates, from before to, at most a year) and show only the newest load. A Settings refusal says to reload and
-check, not "{{min}} to {{max}}". (Migration 0062) an approved material's file can be deleted by the Guru only.
+check, not "{{min}} to {{max}}". (Migration 0054) an approved material's file can be deleted by the Guru only.
 
 **Why.** A treasurer must never read a wrong balance; staff search the code printed on the label.
 
@@ -5649,7 +5649,7 @@ check, not "{{min}} to {{max}}". (Migration 0062) an approved material's file ca
 **Context.** Audit phase 2 R3-04 (#302 left it): a duplicate from the desk or a mis-mapped import could only be
 removed by Praveen in the SQL editor, as an "erasure".
 
-**Decision (migration 0062 + JS).** `delete_student_record(id, reason)`, the Guru only: deletes a record that
+**Decision (migration 0054 + JS).** `delete_student_record(id, reason)`, the Guru only: deletes a record that
 nothing hangs on, with what was made with it (guardians, consents, About-you details, tasks, status and level
 history), and writes the reason on its audit-log row (the row keeps the record's copy). It refuses a record
 with a login (`student_linked`: take the login off first), a withdrawn one (`student_withdrawn`: erasure is
@@ -5693,7 +5693,7 @@ the previous page (a react-navigation web limit). The form drafts of #218 still 
 **Context.** Audit phase 2 F11 (R2-07: two phones marking one event replaced each other's whole list) and F12
 (R3-06: a withdrawn record looked normal; staff learned it only from a refused action).
 
-**Decision.** (Migration 0062) `change_event_attendance(event, came, not_came)` changes only the students given,
+**Decision.** (Migration 0054) `change_event_attendance(event, came, not_came)` changes only the students given,
 with mark_event_attendance's rules; (JS) the attendance screen sends what this phone changed since it loaded,
 then loads again with the other phones' ticks. (JS) The student profile shows "Consent withdrawn on <date>"
 and what that means. A Guru "Record withdrawal" form stays a team decision (withdraw_consent in SQL, OPERATIONS).
@@ -5710,7 +5710,7 @@ few accounts could use up the app's 100 a day; the email carried the user's own 
 get a new confirmation email after "confirm your email first"; F5-09: server codes shown as "Something went
 wrong").
 
-**Decision.** (Migration 0062) ig_send_parent_code refuses a fourth code a day to the same parent address, from
+**Decision.** (Migration 0054) ig_send_parent_code refuses a fourth code a day to the same parent address, from
 any child (`code_parent_limit`, worded in the app); the names in the email are cut to letters, marks, spaces,
 ' and - (no link, no lines of one's own). (JS) Sign-in shows "Send a new confirmation email" after "confirm your
 email first"; `group_inactive` and `member_not_allowed` have their own words.

@@ -3,7 +3,7 @@
 // Accept made them Beginner / today (a direct update the database allows the Guru only: guard_student_level
 // 0017, level_history written by note_level_change 0025), and take a wrong login off the record
 // (unlink_student_login, 0025: the login goes back to waiting). No migration: the rules were all there.
-// Since 0062 (audit R3-04, #326): delete a record entered by mistake (delete_student_record), refused when
+// Since 0054 (audit R3-04, #326): delete a record entered by mistake (delete_student_record), refused when
 // anything hangs on it.
 
 import { supabase } from '@/lib/supabase';

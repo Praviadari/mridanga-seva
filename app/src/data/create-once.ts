@@ -2,7 +2,7 @@
 // P1-02 / F5-01 / F4-01, docs/DECISIONS.md #322). On a weak network the server can store the row while
 // its answer is lost; the screen then says "try again", and before this the second Save made a second
 // fund entry, call note, event or poll (which told everyone twice). Now each open form holds one request
-// id (a uuid) and sends it with the row; the tables have a unique request_id (migration 0062), so a
+// id (a uuid) and sends it with the row; the tables have a unique request_id (migration 0054), so a
 // repeat is refused by the database and the app looks the first row up instead. register_student has
 // done the same since #126 (p_request_id).
 
@@ -17,7 +17,7 @@ export function newRequestId(): string {
   return Crypto.randomUUID().toLowerCase();
 }
 
-/** The tables whose creates carry a request id (0062). */
+/** The tables whose creates carry a request id (0054). */
 export type OnceTable =
   | 'events'
   | 'polls'
@@ -29,7 +29,7 @@ export type OnceTable =
 
 type DbError = { message: string; code?: string };
 
-/** True when the database refused the row because this request id was saved already (0062's unique index). */
+/** True when the database refused the row because this request id was saved already (0054's unique index). */
 export function isRepeatedRequest(error: DbError): boolean {
   return error.code === '23505' && error.message.includes('request_id');
 }
@@ -47,7 +47,7 @@ export async function savedWith(table: OnceTable, requestId: string): Promise<nu
 }
 
 /**
- * Calls a request-id twin of a database function (0062: record_fund_entry, log_call, log_practice with
+ * Calls a request-id twin of a database function (0054: record_fund_entry, log_call, log_practice with
  * p_request_id). The twin itself returns the row saved earlier; only when two Saves of the same form
  * were in flight at once does the second meet the unique index, and is then asked once more.
  */

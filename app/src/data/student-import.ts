@@ -5,7 +5,7 @@
 // checked here and shown with its problems → only the good rows are sent to import_students
 // (supabase/migrations/0014_guru_admin.sql), which checks them again and gives each saved row its
 // roll number. Adults only: under-18s need the parent's consent form (C2). docs/DECISIONS.md #46.
-// Since 0062 (#326, audit R3-04, R3-07, R2-13): each import has an id, sent with every row, so the Guru can
+// Since 0054 (#326, audit R3-04, R3-07, R2-13): each import has an id, sent with every row, so the Guru can
 // undo it (undo_import: the records nothing hangs on are deleted); rows not sent are counted, not lost.
 
 import * as DocumentPicker from 'expo-document-picker';
