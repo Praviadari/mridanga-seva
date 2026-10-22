@@ -6743,3 +6743,57 @@ export is not guarded: the live web goes up with the same commit as the producti
 
 **Why.** Praveen wants students and staff to see in the app what each version changed. Notes in the bundle can never
 disagree with the code they describe, and the publish guard makes writing them part of every release.
+
+## 430. "Mridanga Seva TEST": a separate test app for the face-scan class test (APP_VARIANT=facetest) — 22 Oct 2026
+
+**Status: branch `face-scan` (placeholder number, renumbered at the merge into main). Agreed 22-10-2026 (lead chat 12
+with Praveen): the face-scan test runs on its own app so the testers keep the class's app.**
+
+**Decision.** `app/app.config.js` hands `app.json` on unchanged unless `APP_VARIANT` is set. `APP_VARIANT=facetest`
+builds "Mridanga Seva TEST": package `org.mridangaseva.app.test` (installs next to `org.mridangaseva.app`; a phone
+keeps both), link scheme `mridangasevatest` (links for the class's app never open it), the app icon and Android
+adaptive layers with a red **TEST** band (`scripts/make-facetest-icons.mjs` writes `assets/images/facetest/`; the band
+stays inside Android's safe zone). An unknown variant stops the build. EAS profile `facetest` in `eas.json`: an APK,
+its own update channel `facetest`, `env.APP_VARIANT = facetest`, the EAS environment `preview` (the TEST project's URL
+and publishable key). The build guard (`scripts/eas-build-guard.mjs` `BUILD_PROFILES`, #256) maps `facetest` to the
+TEST project `fhuqyk…` only and refuses LIVE; it also refuses `facetest` without its variant, and `preview` /
+`production` with any variant. The hidden face developer screen (#312) also opens on the `facetest` channel.
+
+**Why.** Testers must not lose the class's app (and their sign-in, My QR, practice log) to try face scan, and a test
+build must never reach LIVE data. A second package id is the only way Android keeps two copies; the red band and the
+name stop a tester mixing them up at the door.
+
+**Consequences.** The test app has its own signing key on EAS (made at its first build, never the class app's), so
+`verify-integrity` on TEST needs that key's SHA-256 and `PLAY_INTEGRITY_PACKAGE=org.mridangaseva.app.test`
+(OPERATIONS.md "Face scan: the test app"). Each test-app build is one of the free plan's Android builds.
+
+## 431. The test app has no push notifications and no updates — 22 Oct 2026
+
+**Status: branch `face-scan` (placeholder number).**
+
+**Decision.** `APP_VARIANT=facetest` leaves out `google-services.json` (it names only `org.mridangaseva.app`, and
+Google's build step refuses a package it does not list), so the test app gets no push notifications; the app already
+handles a refused push registration quietly (#305). `npm run update:preview` / `update:production` refuse to run while
+`APP_VARIANT` is set (the update would carry the test app's fingerprint and reach none of the channel's APKs), and
+there is no `update:facetest`: a fix for the testers is a new `facetest` build.
+
+**Why.** Push and over-the-air updates for a second package need a Firebase app, FCM credentials and an EAS
+environment of their own: set-up the short adult test does not need. Keeping both out keeps the class's own push and
+update paths exactly as they are.
+
+## 432. eas.json is part of the fingerprint: the facetest profile stays on the branch — 22 Oct 2026
+
+**Status: measured 22-10-2026 on a clean checkout of main 4b522f9 (@expo/fingerprint 0.20.13).**
+
+**Decision.** Expo's fingerprint hashes the whole `eas.json` (source "easBuild"; no source skip leaves it out).
+Measured: main = **23dc7e4a**; main + `app.config.js` = **23dc7e4a**, with `expo config --type public` byte-identical
+(the introspected config differs only in `_internal.dynamicConfigPath`, which is not shipped); main + `app.config.js` +
+the `facetest` profile = **cf8dc1e9**. So `app.config.js` could go to main at any time, but the `facetest` profile must
+not reach main before the production APK that carries face scan (that APK has a new fingerprint anyway). The branch's
+own fingerprints (with and without the variant) are in NOTES_face_scan.md.
+
+**Why.** A changed fingerprint on main would stop every production update from reaching today's phones (fp 23dc7e4a).
+
+**Consequences.** From the face merge on, `eas.json` with the `facetest` profile is part of the production fingerprint
+like the rest of the file: any later edit of it, this profile included, means a new production APK. If the test app is
+no longer wanted by then, drop the profile at the merge, before that APK is built.

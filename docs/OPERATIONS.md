@@ -558,6 +558,7 @@ build:
 |---|---|---|
 | `preview` | the test Supabase project (settings from the EAS environment `preview`, copied from `app/.env.test` with `env:push` below; `eas.json` `"environment"`) | demos, testers, volunteers |
 | `production` | the live Supabase project (settings from the EAS environment `production`, copied from `app/.env.live` with `env:push`) | the class, from the pilot on |
+| `facetest` (branch `face-scan` only) | the test project, as `preview`; builds "Mridanga Seva TEST" (`org.mridangaseva.app.test`, `APP_VARIANT=facetest`) | adult face-scan testers: "Face scan: the test app" ([#430](DECISIONS.md)) |
 
 Both have the same package name, so a phone holds one or the other: installing one replaces the
 other, and the person signs in again. Each profile is also the **update channel** of the same
@@ -620,7 +621,9 @@ npx eas-cli build -p android --profile preview
 - **The settings guard** ([DECISIONS.md #256](DECISIONS.md)): before `npm install`, EAS runs
   `app/scripts/eas-build-guard.mjs` (the `eas-build-pre-install` script). It stops the build unless
   the profile's EAS environment has a publishable key and the URL of that profile's project
-  (`preview` = test `fhuqyk…`, `production` = live `qeozvv…`, in `app/scripts/lib/supabase-projects.mjs`).
+  (`preview` = test `fhuqyk…`, `production` = live `qeozvv…`, in `app/scripts/lib/supabase-projects.mjs`;
+  on branch `face-scan` also `facetest` = test only, with `APP_VARIANT=facetest`, and the class's profiles only
+  without a variant: `BUILD_PROFILES` in the guard, [#430](DECISIONS.md)).
   The build log shows `eas-build-guard: profile … → project …` before the install of the packages,
   never the key. If it stops: fix the environment with `env:push` (above) and build again.
 - EAS needs `git` in the terminal. If it says *git command not found*, Git is installed but not
@@ -1465,7 +1468,7 @@ Face scan stays **off** (`face_enabled` false) after it.
 **3. Deploy the function (TEST ref only; the CLI on Praveen's PC is logged in and really deploys).** From
 the repository folder, on the branch that has the function:
 ```bash
-npx supabase@latest functions deploy verify-integrity --project-ref fhuqykssenuhczdqbafu --use-api
+npx supabase@2.118.0 functions deploy verify-integrity --project-ref fhuqykssenuhczdqbafu --use-api
 ```
 No `--no-verify-jwt`: the gateway checks the student's sign-in (`supabase/config.toml` says
 `verify_jwt = true`). `functions list` must show `verify-integrity` ACTIVE.
@@ -1499,6 +1502,55 @@ tokens of our package, nothing more; it cannot read the database.
 the LIVE project, `0070` in the go-live order (GO_LIVE_CHECKLIST row M0070), the same deploy with the LIVE
 ref, Google added to the processor register as a live processor and to the privacy notice (N4, after the
 lawyer), then `face_enabled` true only on Praveen's word.
+## Face scan: the test app (Mridanga Seva TEST)
+
+**Branch `face-scan` only, not merged ([DECISIONS.md #430-#432](DECISIONS.md)). The build is Praveen's, after the
+lead's go; never a worker's.** "Mridanga Seva TEST" is a separate APK for the face-scan class test: package
+`org.mridangaseva.app.test`, a red TEST band on its icon, the **TEST** Supabase project only (`fhuqyk…`), update
+channel `facetest`, no push notifications, no updates. It installs **next to** the class's app: a tester keeps "Mridanga
+Seva" (LIVE) and signs in to the TEST app with a **TEST** login.
+
+**Free builds.** The Expo free plan gives 15 Android builds a month (NOTES.md, 2026). October 2026 so far (22-10,
+`npx eas-cli build:list --platform android`): **6** (preview ×4 incl. 1 errored on 15-10, preview vc8 15-10,
+production vc12 16-10), so 9 left this month. Each test-app build is one of them; so is a rebuild for a fix.
+
+**Before the first build (once):**
+1. The lead's go on branch `face-scan` at a commit whose checks are green (NOTES_face_scan.md), and the TEST database
+   has the face migrations (`0070`, `0071` on the branch; "Face scan: integrity check" step 2 and "Face self-scan").
+2. The EAS environment `preview` holds the TEST values (the facetest profile uses it): from `app\`,
+   `npx eas-cli env:list --environment preview` shows `EXPO_PUBLIC_SUPABASE_URL` = `https://fhuqyk….supabase.co`.
+   Wrong or missing → `npx eas-cli env:push --environment preview --path .env.test` ("Building the Android app").
+3. A **phone hotspot** (the office network blocks EAS uploads) and Git on the terminal's path ("Building the Android
+   app": the PATH line).
+
+**Build (Praveen, from `app\` in a checkout of `face-scan`, clean and committed, after `npm ci`):**
+```bash
+npx eas-cli build -p android --profile facetest
+```
+- The **first** build asks *Generate a new Android Keystore?* → **Yes**. That makes the test app's own key on EAS.
+  Never choose the class app's keystore, and do not add `--non-interactive` to this first build (it cannot answer).
+- The build log shows `eas-build-guard: profile facetest → project fhuqykssenuhczdqbafu, app variant facetest,
+  publishable key.` before the package install. Anything else stops the build: a LIVE URL, a missing variant.
+- On the build's page: Application identifier `org.mridangaseva.app.test`, channel `facetest`, version code 1 (EAS
+  counts the test app separately).
+
+**After the build:**
+1. `npx eas-cli credentials -p android` → profile `facetest` / `org.mridangaseva.app.test` → copy the **SHA256
+   Fingerprint**. Supabase **TEST** → Edge Functions → Secrets: `PLAY_INTEGRITY_PACKAGE` = `org.mridangaseva.app.test`
+   and `PLAY_INTEGRITY_CERT_SHA256` = that fingerprint (keep the preview key's too, comma-separated, if the preview APK
+   is also tested). TEST only: LIVE never gets the test app's package or key.
+2. Download the APK from the build page; note its SHA-256 (`certutil -hashfile <file>.apk SHA256`) in
+   NOTES_face_scan.md. Share the link **only** with the consenting adult testers ("Face scan: class test with adults").
+3. Face scan stays off until the test day: `face_enabled` true on TEST only for the test ("Face scan: integrity
+   check", Switching).
+
+**Never:** `APP_VARIANT` on a `preview` or `production` build or update (the guard and `update:*` refuse it); the
+`facetest` profile with the `production` environment; the `facetest` profile on `main` before the production APK that
+carries face scan (#432: `eas.json` is part of the fingerprint; on main it would block every production update).
+
+**After the test:** testers uninstall "Mridanga Seva TEST" (Settings → Apps → Mridanga Seva TEST → Uninstall): the
+face codes in its Keystore go with it. Then "Face scan: deleting the test face data" for the server side.
+
 ## Files no announcement uses
 
 Photos and PDFs are removed from Storage by the app when an announcement or one of its files is

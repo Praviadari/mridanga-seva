@@ -104,6 +104,8 @@ function jsonIn(text) {
 const args = process.argv.slice(2);
 const channel = args[0];
 if (!(channel in PROJECTS)) fail('first argument must be preview or production.');
+// An app variant (app.config.js, #430) changes the fingerprint: the update would reach no APK of the channel.
+if (String(process.env.APP_VARIANT ?? '').trim()) fail(`APP_VARIANT is set (${process.env.APP_VARIANT}): updates are for the class's app only.`);
 const message = argValue(args, '--message', '-m');
 if (!message) fail('say what changed: --message "Clearer follow-up card".');
 // One plain line, as it shows in `eas update:list`: no quotes, %, $, backticks, backslashes or
