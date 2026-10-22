@@ -107,7 +107,8 @@ export default function StudentHomeScreen() {
           {
             key: 'selfScan',
             icon: selfScanAction === 'check_in' ? 'hereNow' : 'signOut',
-            tone: 'green',
+            // The door's family, next to My QR (#368).
+            tone: 'blue',
             label: t(selfScanAction === 'check_in' ? 'selfScan.checkIn' : 'selfScan.checkOut'),
             onPress: () => router.push({ pathname: '/student/self-scan', params: { action: selfScanAction } }),
           } satisfies Module,

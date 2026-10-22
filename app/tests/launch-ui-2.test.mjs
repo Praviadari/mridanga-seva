@@ -131,7 +131,8 @@ test('module colours are five families; pink and indigo are gone; each ring keep
   const contiguous = (tones) => tones.every((tone, i) => i === 0 || tone === tones[i - 1] || !tones.slice(0, i).includes(tone));
   const student = src('app/student/(tabs)/index.tsx');
   const studentRing = tonesOf(student.slice(student.indexOf('const modules: Module[] = ['), student.indexOf('];', student.indexOf('const modules: Module[] = ['))));
-  assert.deepEqual(studentRing, ['blue', 'blue', 'purple', 'purple', 'teal', 'orange', 'orange', 'green']);
+  // Branch face-scan: the face self-scan circle (Check in / Check out, #344) comes first, in the door's blue.
+  assert.deepEqual(studentRing, ['blue', 'blue', 'blue', 'purple', 'purple', 'teal', 'orange', 'orange', 'green']);
   assert.ok(contiguous(studentRing));
   const shortcuts = src('components/staff-shortcuts.tsx');
   const shared = Object.fromEntries([...shortcuts.matchAll(/(\w+): \{ key: '\w+', icon: '\w+', tone: '(\w+)'/g)].map((m) => [m[1], m[2]]));

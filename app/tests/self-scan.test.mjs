@@ -211,5 +211,6 @@ test('nothing shows while face scan is off, on the web, or on a phone without a 
 test('the coordinator\'s way is on every step of the self-scan page', () => {
   const page = read('src/app/student/self-scan.tsx');
   assert.ok((page.match(/<AskCoordinator \/>/g) ?? []).length >= 3);
-  assert.match(page, /router\.replace\('\/student\/my-qr'\)/);
+  // The stack copy of My QR, not the tab address (#301: a screen on top of the tabs never opens a tab).
+  assert.match(page, /router\.replace\('\/student\/qr'\)/);
 });

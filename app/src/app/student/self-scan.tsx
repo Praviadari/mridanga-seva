@@ -262,7 +262,7 @@ function AskCoordinator() {
   return (
     <Section icon="qr" title={t('selfScan.ask.title')}>
       <AppText>{t('selfScan.ask.body')}</AppText>
-      <Button variant="secondary" icon="qr" label={t('selfScan.ask.openQr')} onPress={() => router.replace('/student/my-qr')} />
+      <Button variant="secondary" icon="qr" label={t('selfScan.ask.openQr')} onPress={() => router.replace('/student/qr')} />
     </Section>
   );
 }
