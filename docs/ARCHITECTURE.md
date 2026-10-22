@@ -444,6 +444,13 @@ their beats, `lib/bols.ts` saying which head, zone, fingers and sound a bol is).
   the screen and reloads); Stop calls `log_practice` (DATABASE.md "Practice tools").
 - **Offline**: taals are saved on the device after each load, with the seeded placeholders built in
   as a last resort; sounds need no network.
+- **Practice extras** ([DECISIONS.md #490-#495](DECISIONS.md)) are built into the pattern, so the engines stay as they
+  are: layakari (`taalPattern(bols, laya)`: k written beats in each beat), the kartal (`withKartal`: events on a
+  `layer` with its own volume, `setLayerVolume` — a gain node in the browser, mixed into the loop on the phone) and
+  silent cycles (`withSilentCycles`: one loop of play + mute cycles, at most 160 s for the phone's file; the playhead
+  counts taal cycles with `cycleAt` and says when a cycle is silent). Milestones are worked out on the phone
+  (`lib/milestones.ts`) from `practice_history`; "How did it go?" is saved on the practice entry
+  (`set_practice_feeling`); staff read the week per student from `staff_practice_week` (migration 0056).
 
 **Drift, measured 3 Oct 2026** (Chrome in the desktop app's browser pane, 80 beats a minute,
 2+ minutes, click onsets detected in the audio output itself by an AudioWorklet on the audio thread, stamped with `currentFrame`):

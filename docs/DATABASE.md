@@ -54,6 +54,7 @@ in number order:
 | `0052_practice_more.sql` | More home practice ([DECISIONS.md #400-#401](DECISIONS.md)): `practice_plans` (per level: weekly goal, up to three things to practise, a note; staff write, a student reads their own level's) a student's own weekly goal (`practice_goals`, `set_my_practice_goal`), mantras read before practice (`practice_mantras`, #405) and `practice_days()` (minutes per day with the goal: own, the level's, or 4 x 15). See "Practice of the week and the weekly goal (0052)" |
 | `0053_staff_own_record.sql` | Coordinators are students too (placeholder 0061 on branch `staff-own-record`, renumbered 22-10-2026; [DECISIONS.md #316-#321](DECISIONS.md)): `link_staff_record` (the Guru links a coordinator's login to its own student record), `my_student_id()` for staff, `refuse_own_record` (nobody records about their own record), `guard_own_student` (own mentor, own level), `guard_staff_record` (no withdrawal or erasure while a staff login is on the record); replaces `check_out_all` and `assign_mentor`. See "Own record (0053)" |
 | `0054_after_launch_forms.sql` | After-launch forms and flows (placeholder 0062 on branch `after-launch-forms`, renumbered 22-10-2026; [DECISIONS.md #322-#329](DECISIONS.md)): `request_id` (unique) on 10 tables and the request-id twins of `record_fund_entry`, `log_call`, `log_practice` (a create saved once); `material_file_deletable` (an approved material's file: the Guru only); `change_event_attendance`; the Guru's `delete_student_record` and `undo_import` (`students.import_id`, `import_students` stamps it); phones kept as E.164 (`phone_e164`, trigger `keep_phone_e164` on students, guardians, profiles, Ishtagoshti subscribers; stored numbers rewritten once, OPERATIONS "Phones that are not E.164"); `ig_send_parent_code` at most 3 codes a day per parent address, `name_for_email` |
+| `0056_practice_extras.sql` | Practice extras ([DECISIONS.md #493-#495](DECISIONS.md)): how a practice session went (`practice_logs.feeling`, `practised`, written by `set_practice_feeling`), `practice_history()` for the milestones and the staff list `staff_practice_week()`. See "Practice extras (0056)" |
 
 The Phase 2 files were renumbered when they merged into main (#55). TEST ran some under their
 branch numbers (0012, 0014_promotion, 0016_practice, 0017_media, 0021_events_polls), so it skips
@@ -1641,6 +1642,30 @@ level's lesson titles stay unseen); anon reads nothing. The policies wrap `is_st
 
 Tests: section "0052 more practice" in `supabase/tests/smoke-test.mjs`.
 
+## Practice extras (0056)
+
+[DECISIONS.md #493-#495](DECISIONS.md). Migration `0056_practice_extras.sql`. Screens: S5 Practice tools ("How did it go?"
+under the timer), S6 My practice log (the same on Add practice), S4 My progress and C8 (milestones; how the sessions
+went), staff/practice-week (practice this week per student). Additive: no existing row or function changes.
+
+| Table / column | What it holds | Who writes |
+|---|---|---|
+| `practice_logs.feeling` | How the session went, said by the student after it: 1 hard, 2 okay, 3 good; null = not said (every entry made before 0056) | Only `set_practice_feeling` (check `practice_logs_feeling_check`) |
+| `practice_logs.practised` | What was practised: `taal`, `lesson` and/or `free` (once each, in that order); null = not said | Only `set_practice_feeling` (check `practice_logs_practised_check`) |
+
+| Function | Who | What | Errors |
+|---|---|---|---|
+| `set_practice_feeling(id, feeling, practised)` | Student (security definer, own entry only) | Sets (or with nulls clears) how an own entry of the last 14 days went | `not_allowed`, `too_old`, `feeling_invalid`, `practised_invalid` |
+| `practice_history(student)` | Anyone (security invoker) | JSON `{goal_days, goal_minutes, goal_own, days: [{on, minutes}]}`: `practice_days`' goal and every day with practice ever, oldest first (for the milestones). Row-level security decides, as `practice_days` | — |
+| `staff_practice_week(weeks_ago)` | Staff (security invoker; `not_allowed` for others) | One row per student still in the class (not `left`, not withdrawn, not the caller's own record): `student_id`, `roll_no`, `full_name`, `level_id`, `status`, `mentor_id`, `week_start` (Monday, India, 0-8 weeks ago), `minutes`, `days`, `goal_days`, `goal_minutes` (own, else level's, else 4 x 15), `last_on` (last day with practice ever), `hard` / `okay` / `good` (that week's entries); least minutes first, then fewest days, then longest since practice | `not_allowed` |
+
+Who sees what: `feeling` and `practised` are read like the rest of a practice entry (0018): the student their own, staff
+everyone's. The staff list shows the whole class, as the Students tab. **New data about a child (a self-rating):** the
+privacy notice's "Learning" row names it. If 0056 has not run, the app shows no milestones, does not ask how it went
+(the log still loads, without it) and the staff list says it could not load.
+
+Tests: section "0056 practice extras" in `supabase/tests/smoke-test.mjs`.
+
 ## Own record (0053)
 
 [DECISIONS.md #316-#321](DECISIONS.md). Migration `0053_staff_own_record.sql` (placeholder 0061 on branch `staff-own-record`,
@@ -1757,6 +1782,9 @@ switched-off login is refused like a stranger.
 | `guru_dashboard()` | Guru | The Guru dashboard's numbers. See "Home screens" |
 | `staff_dashboard()` | Guru, coordinator | The staff homes' Today numbers and what waits for the caller, in one request (0050). See "Staff home: today and waiting (0050)" |
 | `practice_days(student, weeks)` | Anyone (security invoker) | A student's practice minutes per day and their weekly goal (0052). See "Practice of the week and the weekly goal (0052)" |
+| `practice_history(student)` | Anyone (security invoker) | Every practice day ever with the goal, for the milestones (0056). See "Practice extras (0056)" |
+| `set_practice_feeling(id, feeling, practised)` | Student, own entry | How a practice session went (0056, #494). See "Practice extras (0056)" |
+| `staff_practice_week(weeks_ago)` | Staff (security invoker) | Practice of a week per student, least first (0056, #495). See "Practice extras (0056)" |
 | `move_syllabus_item(item, up)` | Guru | Moves a syllabus item one place up or down among the items in use. See "Syllabus editor" |
 | `syllabus_item_counts()` | Guru, coordinator | Ticks and materials per syllabus item. See "Syllabus editor" |
 | `week_start_ist()` | Anyone signed in | First day of "this week" at the caller's centre (Monday, or 6 days ago with `week_starts` = `rolling7`); used by the functions above |

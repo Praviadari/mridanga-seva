@@ -6844,3 +6844,125 @@ export is not guarded: the live web goes up with the same commit as the producti
 
 **Why.** Praveen wants students and staff to see in the app what each version changed. Notes in the bundle can never
 disagree with the code they describe, and the publish guard makes writing them part of every release.
+
+## 490. Silent bars and cycles: keep the time without the sound — 22 Oct 2026
+
+**Status: branch `practice-extras`; app only.** Shortlist item 6 (NOTES_practice_research.md), Praveen's "next phase of
+advanced features" (22 Oct 2026).
+
+**Context.** A kirtan player keeps the taal while the singers and other drums come and go. Time Trainer's "bar breaks"
+and Unchained's silent bars train exactly that: the click plays, falls silent, and comes back; landing together shows
+whether the inner time held.
+
+**Decision.**
+- A tick box under the metronome and the taal player, "Silent bars / cycles": **play 1-4, then 1-4 silent**, round again
+  (default 2 + 2). Count-in, stop after N and the speed trainer work as before and count every cycle, silent or not.
+- The loop itself holds the silent cycles (`withSilentCycles`), so both engines play them with no change of their own:
+  the browser schedules nothing there, the phone's one looping WAV has silence there.
+- During a silent cycle the **beat grid stays lit** (children may follow the count with their eyes), the two-head view
+  shows nothing and "Silent: keep playing" appears under the cycle counter.
+- The phone mixes the whole loop into one file: **at most 160 seconds** (about 7 MB). A slow taal with many cycles that
+  would be longer plays without the silent part and the screen says so ("choose fewer cycles or a faster tempo").
+
+**Why.** Inner time is the skill this trains; showing the beat keeps it kind for beginners (the sound, not the eye, is
+taken away). The cap keeps a cheap phone's memory safe without a second engine.
+
+**Consequences.** JavaScript only (fp 23dc7e4a). The kartal layer (#492) falls silent with the strokes.
+
+## 491. Layakari: dugun, tigun and chaugun in the taal player — 22 Oct 2026
+
+**Status: branch `practice-extras`; app only.** Shortlist item 8.
+
+**Decision.**
+- A choice under the speed: **Barabar 1× · Dugun 2× · Tigun 3× · Chaugun 4×.** At k×, each beat of the cycle holds k
+  written beats (beat b holds written beats b·k … b·k + k − 1, round the cycle), each a 1/k of the beat with its bols
+  evenly inside it (a written 'te.re' keeps its two halves). The theka goes round k times in one cycle; sam, the vibhags
+  and the tempo stay.
+- **The grid shows it:** each written beat as one word inside the beat ("dhā ti", "tere dhā", a rest "–"), the hands
+  under it per written beat ("L+R R", "R·R L+R").
+- Barabar is exactly the old pattern (same key and strokes, tested). The step mode goes through the bols as written,
+  so its grid goes back to 1×. A Record myself take keeps its layakari, so "play with the sound" matches.
+
+**Why.** Dugun-tigun-chaugun is the standard next step of riyaz once a theka is steady; the cycle and sam staying put is
+what makes it layakari and not just a faster tempo.
+
+**Consequences.** At chaugun of a fast tempo the synthesised strokes overlap; the mix is kept below clipping. The Guru may
+find a taal whose layakari is written differently in the class: the rule is in `layaGroups` (lib/practice-pattern.ts).
+
+## 492. A kartal layer under the taal — 22 Oct 2026
+
+**Status: branch `practice-extras`; app only.** Shortlist item 9.
+
+**Decision.**
+- A tick box "Kartal under the taal" (off by default) with its own volume 25 / 50 / 75 / 100 % (default 50 %).
+- Two synthesised kartal sounds (bright inharmonic partials over a hiss): **a ringing stroke on the first beat of each
+  vibhag, a short closed one on every other beat**, on the beats also at layakari. This is a plain time-keeping pattern,
+  **a placeholder until the Guru gives the class's kartal pattern** (one function, `withKartal`).
+- Each player has a volume per layer (`setLayerVolume`): the browser through its own gain (instant); the phone mixes the
+  kartal into its loop, so a volume change mixes the loop again at the same beat, like a tempo change.
+
+**Why.** Kirtan is played against kartals; practising with them feels like the class and gives a steady pulse under the
+bols.
+
+**Consequences.** The sound is a likeness; recorded kartals can replace it with the sample loader (creative-tools). Count-in
+clicks and the step mode's single stroke have no kartal.
+
+## 493. Practice milestones, seen only by the student and staff — 22 Oct 2026
+
+**Status: branch `practice-extras`; migration 0056 (`practice_history`).** Shortlist item 10.
+
+**Decision.**
+- Milestones on the Practice block of **My progress (the student) and the Student profile (staff)** only: first
+  practice; 7, 30 and 100 practice days; 10, 25, 50 and 100 hours; the weekly goal 4 and 12 weeks in a row; every day of
+  one week. Each reached one is a gold-ringed medal with the day it was reached, newest first; the two nearest next show
+  a bar with how far ("6 h 20 min of 10 hours").
+- Worked out on the phone (lib/milestones.ts) from `practice_history(student)`, every practice day ever (practice_days
+  stops at a year). The weeks in a row use the student's goal of today. A reached milestone stays (the history only
+  grows; an entry deleted within its 14 days may take one back).
+- **No points, no ranking, no leaderboard, nothing compared between children,** and no "lost" wording.
+
+**Why.** Children like a small celebration of steady practice; comparing them would show one child's data to others and
+is not the class's spirit (research note: "Not recommended").
+
+**Consequences.** Nothing new is stored. Without 0056 the milestones are simply left out.
+
+## 494. "How did it go?" after a practice session — 22 Oct 2026
+
+**Status: branch `practice-extras`; migration 0056 (`practice_logs.feeling`, `practised`, `set_practice_feeling`).**
+Shortlist item 11.
+
+**Decision.**
+- After Stop and save of the practice timer, a card: **three faces (Hard, Okay, Good)** and **"What did you practise?"
+  Taal / Lesson / Free practice** (Taal ticked at first when the timer played a taal). **Tapping a face saves at once**;
+  a chip changed after that saves again; **Skip** is one tap and saves nothing. The typed-in entry (My practice log) has
+  the same faces and chips, optional.
+- Saved on that practice entry: `feeling` 1-3 and `practised` (taal, lesson, free), only through
+  `set_practice_feeling` — the student, an own entry of the last 14 days (as Delete). Read as practice entries are: the
+  student and staff. Staff see it on the Student profile ("how the sessions of the last 4 weeks went": Good / Okay /
+  Hard counts) and in the practice-this-week list (#495).
+- The faces are drawn (SVG), not emoji, so they look the same on every phone and follow light and dark.
+
+**Why.** A coordinator can spot a child who keeps finding practice hard and call with help, not a reminder.
+
+**Consequences.** **New data about minors (a self-rating):** the privacy notice's "Learning" row must name it before the
+update that asks it reaches phones. Nothing is asked again after Skip.
+
+## 495. Staff: practice this week per student, least first — 22 Oct 2026
+
+**Status: branch `practice-extras`; migration 0056 (`staff_practice_week`).** Shortlist item 12.
+
+**Decision.**
+- A staff screen "Practice this week" (button "Students' practice this week" on Practice tools, Guru and coordinators):
+  each student still in the class with that week's minutes and days against their goal, "Weekly goal met", the last day
+  they practised and the week's Good / Okay / Hard; **least practice first**; a row opens the Student profile. This
+  week, last week or two weeks ago; filters My students (mentees) and level.
+- **Scope = the Students tab's:** staff see the whole class (row-level security gives staff every student's practice;
+  no student list in the app is scoped by centre). The function runs as the caller (security invoker), refuses anyone
+  who is not staff (`not_allowed`), and leaves out students who left, withdrawn records and the caller's own record
+  (0053).
+- "Goal met" here is a guess from the week's days and total minutes (the list has no minutes per day).
+
+**Why.** Coordinators already read each child's practice on the profile; one list sorted for follow-up calls saves
+opening every profile, and starts with those who may need a kind word.
+
+**Consequences.** Nothing new is stored. Nothing of this list is shown to students.
