@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Face scan test — forms</title>
+<style>
+  @page { size: A4; margin: 14mm 14mm 12mm; }
+  body { font-family: "Segoe UI", "Nirmala UI", "Noto Sans", Arial, sans-serif; font-size: 10pt; line-height: 1.38; color: #000; margin: 0; }
+  .page { page-break-after: always; }
+  .page:last-child { page-break-after: auto; }
+  p { margin: 0 0 6pt; }
+  ul { margin: 0 0 6pt 14pt; padding: 0; }
+  li { margin-bottom: 2pt; }
+  h2 { font-size: 13pt; margin: 0 0 8pt; }
+  h3 { font-size: 11pt; margin: 10pt 0 4pt; }
+  .tick { margin-top: 10pt; font-size: 10.5pt; }
+  .sign { margin-top: 16pt; }
+  .line { display: inline-block; width: 38mm; border-bottom: 1px solid #000; margin: 0 4pt; }
+  .draft { border: 2px solid #b00; color: #b00; font-weight: bold; padding: 4pt 6pt; margin-bottom: 8pt; }
+  .small { font-size: 8.5pt; }
+  .foot { font-size: 7.5pt; color: #555; margin-top: 10pt; }
+  table { width: 100%; border-collapse: collapse; font-size: 8.5pt; margin-bottom: 6pt; }
+  th, td { border: 1px solid #000; padding: 3pt 4pt; vertical-align: top; text-align: left; }
+  td:nth-child(n+4) { width: 12mm; }
+</style></head><body>
+
+<section class="page" lang="en">
+  
+  <p><strong>Face scan test — consent of an adult volunteer</strong></p>
+<p>Mridanga Seva, a volunteer team headed by Regula Sarvesh Chandra, Hanuman Tekdi, Abids, Hyderabad 500001, Telangana, India ("the class") is testing a face check-in for its app, before deciding whether to offer it to students. We ask adult volunteers to try it. <strong>Taking part is your free choice.</strong> Saying no, or stopping later, changes nothing for you in the class: you keep checking in with your QR code or at the desk.</p>
+<p><strong>What the test does.</strong> You install a separate test app, "Mridanga Seva TEST", next to the class's app. At the desk the test app takes a few pictures of your face and turns them into a <strong>face code</strong> (a list of numbers). The pictures are not kept. During the test you check in and out with the test app: it reads your face, compares it <strong>only with your own face code</strong> (it never searches among other people), reads the phone's location <strong>once</strong>, at that moment, and asks Google Play to confirm the phone and the app are genuine.</p>
+<p><strong>What is kept, and where.</strong> - Your <strong>face code</strong>: only on your phone, locked by Android (Keystore). It never leaves the phone. - On the class's <strong>test server</strong> (Supabase, in <strong>Singapore</strong>, outside India): a record that you enrolled (which phone, which model, who confirmed it, when); for each test check-in or check-out its time, whether it was inside the class area and how far, whether the live-face check passed, and the match score; counts of failed tries (no names). - <strong>Google Play</strong> receives a check request from the phone (about the phone and the app; no face, no location). - No photos, no video, no location trail. Nothing of this is in the class's real app or real records.</p>
+<p><strong>Why.</strong> Only to find out whether face check-in works reliably and fairly at our class (wrong person accepted, right person refused, photo tricks, speed), so the class can decide whether to offer it.</p>
+<p class="sign"><strong>How long.</strong> The test runs from <span class="line"></span> to <span class="line"></span>. Within <strong>7 days</strong> after it ends, all face data is deleted: you turn face scan off and uninstall the test app at the desk, and the test server's face records are deleted. You will be told when it is done.</p>
+<p><strong>Your rights.</strong> You can stop at any time: "Turn face scan off" in the test app, or tell the desk; your face data is then deleted. You can ask what is kept about you, ask for a correction or deletion, and name someone to act for you. Questions or complaints: Regula Sarvesh Chandra, privacy@mridangaseva.com, +91 99893 36301 (head of Mridanga Seva, privacy contact). If we do not resolve your complaint, you may complain to the Data Protection Board of India.</p>
+<p class="tick">☐ I am <strong>18 or older</strong> and I <strong>agree</strong> to take part in the face scan test as described above. I know I can stop at any time and keep checking in with my QR code.</p>
+<p class="sign">Name: <span class="line"></span> Tester code (filled by the desk): T__ Signature: <span class="line"></span> Date: <span class="line"></span> Desk: consent recorded in the app by <span class="line"></span> on <span class="line"></span>.</p>
+  <p class="foot">Mridanga Seva · face scan test · ADULT_TEST.md §1 · form en</p>
+</section>
+
+<section class="page" lang="te">
+  <div class="draft">DRAFT — native review needed before use. Until then testers sign the English form.</div>
+  <p><strong>ముఖ స్కాన్ పరీక్ష — వయోజన స్వచ్ఛంద పాల్గొనేవారి అంగీకారం</strong></p>
+<p>Mridanga Seva (Regula Sarvesh Chandra నాయకత్వంలోని స్వచ్ఛంద బృందం), Hanuman Tekdi, Abids, Hyderabad 500001, Telangana, India ("తరగతి") తన యాప్ కోసం ముఖంతో హాజరు వేయడాన్ని, విద్యార్థులకు ఇవ్వాలా వద్దా అని నిర్ణయించే ముందు, పరీక్షిస్తోంది. దీన్ని ప్రయత్నించమని వయోజన స్వచ్ఛంద సేవకులను కోరుతున్నాం. <strong>పాల్గొనడం పూర్తిగా మీ ఇష్టం.</strong> వద్దు అన్నా, తర్వాత ఆపేసినా తరగతిలో మీకు ఏమీ మారదు: మీ QR కోడ్‌తో లేదా డెస్క్ వద్ద హాజరు వేస్తూనే ఉంటారు.</p>
+<p><strong>పరీక్షలో ఏమి జరుగుతుంది.</strong> తరగతి యాప్‌తో పాటు "Mridanga Seva TEST" అనే వేరే పరీక్ష యాప్‌ను వేసుకుంటారు. డెస్క్ వద్ద పరీక్ష యాప్ మీ ముఖపు కొన్ని చిత్రాలు తీసి వాటిని <strong>ముఖ కోడ్</strong>‌గా (సంఖ్యల జాబితా) మారుస్తుంది. చిత్రాలు ఉంచబడవు. పరీక్ష సమయంలో పరీక్ష యాప్‌తో హాజరు వేసి, వెళ్లేటప్పుడు నమోదు చేస్తారు: అది మీ ముఖాన్ని <strong>మీ సొంత ముఖ కోడ్‌తో మాత్రమే</strong> పోలుస్తుంది (ఇతరుల మధ్య ఎప్పుడూ వెతకదు), ఆ క్షణంలో ఫోన్ స్థానాన్ని <strong>ఒక్కసారి</strong> చూస్తుంది, ఫోన్, యాప్ అసలైనవని Google Play ద్వారా నిర్ధారిస్తుంది.</p>
+<p><strong>ఏమి, ఎక్కడ ఉంచబడుతుంది.</strong> - మీ <strong>ముఖ కోడ్</strong>: మీ ఫోన్‌లో మాత్రమే, Android తాళంలో (Keystore). అది ఫోన్ దాటి వెళ్లదు. - తరగతి <strong>పరీక్ష సర్వర్</strong>‌లో (Supabase, <strong>సింగపూర్</strong>‌లో, భారతదేశం బయట): మీరు నమోదు చేసుకున్న వివరం (ఏ ఫోన్, ఏ మోడల్, ఎవరు నిర్ధారించారు, ఎప్పుడు); ప్రతి పరీక్ష హాజరుకు సమయం, తరగతి ప్రాంతం లోపలా బయటా, ఎంత దూరం, ప్రత్యక్ష ముఖ తనిఖీ నెగ్గిందా, పోలిక స్కోరు; విఫల ప్రయత్నాల లెక్కలు (పేర్లు లేకుండా). - <strong>Google Play</strong>‌కు ఫోన్ నుండి ఒక తనిఖీ అభ్యర్థన వెళ్తుంది (ఫోన్, యాప్ గురించి; ముఖం, స్థానం కాదు). - ఫోటోలు, వీడియో, స్థాన చరిత్ర ఏవీ ఉండవు. ఇవేవీ తరగతి అసలు యాప్‌లో గానీ అసలు రికార్డుల్లో గానీ ఉండవు.</p>
+<p><strong>ఎందుకు.</strong> మా తరగతిలో ముఖ హాజరు నమ్మకంగా, న్యాయంగా పనిచేస్తుందో లేదో (తప్పు వ్యక్తిని అంగీకరించడం, సరైన వ్యక్తిని తిరస్కరించడం, ఫోటో మోసాలు, వేగం) తెలుసుకోవడానికి మాత్రమే.</p>
+<p class="sign"><strong>ఎంత కాలం.</strong> పరీక్ష <span class="line"></span> నుండి <span class="line"></span> వరకు. ముగిసిన <strong>7 రోజుల్లో</strong> ముఖ డేటా అంతా తొలగించబడుతుంది: డెస్క్ వద్ద ముఖ స్కాన్ ఆపి పరీక్ష యాప్ తీసేస్తారు, పరీక్ష సర్వర్‌లోని ముఖ రికార్డులు తొలగించబడతాయి. పూర్తయినప్పుడు మీకు చెబుతాం.</p>
+<p><strong>మీ హక్కులు.</strong> ఎప్పుడైనా ఆపవచ్చు: పరీక్ష యాప్‌లో "ఫేస్ స్కాన్ ఆఫ్ చేయండి" (యాప్‌లోని బటన్), లేదా డెస్క్‌కు చెప్పండి; అప్పుడు మీ ముఖ డేటా తొలగించబడుతుంది. మీ గురించి ఏమి ఉంచారో అడగవచ్చు, సవరణ లేదా తొలగింపు కోరవచ్చు, మీ తరఫున ఒకరిని నియమించవచ్చు. ప్రశ్నలు, ఫిర్యాదులు: Regula Sarvesh Chandra, privacy@mridangaseva.com, +91 99893 36301. మేము పరిష్కరించకపోతే Data Protection Board of India‌కు ఫిర్యాదు చేయవచ్చు.</p>
+<p class="tick">☐ నాకు <strong>18 ఏళ్లు లేదా ఎక్కువ</strong>, పైన వివరించిన ముఖ స్కాన్ పరీక్షలో పాల్గొనడానికి నేను <strong>అంగీకరిస్తున్నాను</strong>. ఎప్పుడైనా ఆపి నా QR కోడ్‌తో హాజరు వేయవచ్చని నాకు తెలుసు.</p>
+<p class="sign">పేరు: <span class="line"></span> పరీక్ష కోడ్ (డెస్క్ నింపుతుంది): T__ సంతకం: <span class="line"></span> తేదీ: <span class="line"></span></p>
+  <p class="foot">Mridanga Seva · face scan test · ADULT_TEST.md §1 · form te (draft)</p>
+</section>
+
+<section class="page" lang="hi">
+  <div class="draft">DRAFT — native review needed before use. Until then testers sign the English form.</div>
+  <p><strong>चेहरा स्कैन परीक्षण — वयस्क स्वयंसेवक की सहमति</strong></p>
+<p>Mridanga Seva (Regula Sarvesh Chandra के नेतृत्व वाली स्वयंसेवक टीम), Hanuman Tekdi, Abids, Hyderabad 500001, Telangana, India ("कक्षा") अपने ऐप के लिए चेहरे से हाज़िरी का परीक्षण कर रही है, यह तय करने से पहले कि इसे विद्यार्थियों को दिया जाए या नहीं। हम वयस्क स्वयंसेवकों से इसे आज़माने का अनुरोध करते हैं। <strong>भाग लेना पूरी तरह आपकी मर्ज़ी है।</strong> मना करने या बाद में रोकने से कक्षा में आपके लिए कुछ नहीं बदलता: आप QR कोड से या डेस्क पर हाज़िरी लगाते रहेंगे।</p>
+<p><strong>परीक्षण में क्या होता है।</strong> आप कक्षा के ऐप के साथ एक अलग परीक्षण ऐप "Mridanga Seva TEST" इंस्टॉल करते हैं। डेस्क पर परीक्षण ऐप आपके चेहरे की कुछ तस्वीरें लेकर उन्हें एक <strong>चेहरा कोड</strong> (संख्याओं की सूची) में बदलता है। तस्वीरें रखी नहीं जातीं। परीक्षण के दौरान आप परीक्षण ऐप से आने-जाने की हाज़िरी लगाते हैं: वह आपके चेहरे की तुलना <strong>केवल आपके अपने चेहरा कोड</strong> से करता है (दूसरों में कभी नहीं खोजता), उसी पल फ़ोन का स्थान <strong>एक बार</strong> देखता है, और Google Play से पुष्टि करता है कि फ़ोन और ऐप असली हैं।</p>
+<p><strong>क्या रखा जाता है, और कहाँ।</strong> - आपका <strong>चेहरा कोड</strong>: केवल आपके फ़ोन में, Android के ताले (Keystore) में। वह फ़ोन से बाहर नहीं जाता। - कक्षा के <strong>परीक्षण सर्वर</strong> पर (Supabase, <strong>सिंगापुर</strong> में, भारत के बाहर): आपके नामांकन का रिकॉर्ड (कौन-सा फ़ोन, कौन-सा मॉडल, किसने पुष्टि की, कब); हर परीक्षण हाज़िरी का समय, कक्षा क्षेत्र के अंदर या बाहर और कितनी दूर, जीवित-चेहरा जाँच सफल हुई या नहीं, और मिलान स्कोर; असफल प्रयासों की गिनती (बिना नाम)। - <strong>Google Play</strong> को फ़ोन से एक जाँच अनुरोध जाता है (फ़ोन और ऐप के बारे में; चेहरा या स्थान नहीं)। - कोई फ़ोटो, वीडियो या स्थान का इतिहास नहीं। इनमें से कुछ भी कक्षा के असली ऐप या असली रिकॉर्ड में नहीं है।</p>
+<p><strong>क्यों।</strong> केवल यह जानने के लिए कि हमारी कक्षा में चेहरे से हाज़िरी भरोसेमंद और निष्पक्ष रूप से काम करती है या नहीं (गलत व्यक्ति स्वीकार, सही व्यक्ति अस्वीकार, फ़ोटो से धोखा, गति)।</p>
+<p class="sign"><strong>कितने समय।</strong> परीक्षण <span class="line"></span> से <span class="line"></span> तक है। समाप्ति के <strong>7 दिनों</strong> के भीतर सारा चेहरा डेटा मिटाया जाता है: डेस्क पर आप चेहरा स्कैन बंद करके परीक्षण ऐप हटा देते हैं, और परीक्षण सर्वर के चेहरा रिकॉर्ड मिटा दिए जाते हैं। पूरा होने पर आपको बताया जाएगा।</p>
+<p><strong>आपके अधिकार।</strong> आप कभी भी रोक सकते हैं: परीक्षण ऐप में "फ़ेस स्कैन बंद करें" (ऐप का बटन), या डेस्क को बताएँ; तब आपका चेहरा डेटा मिटा दिया जाता है। आप पूछ सकते हैं कि आपके बारे में क्या रखा है, सुधार या मिटाने को कह सकते हैं, और अपनी ओर से किसी को नामित कर सकते हैं। प्रश्न या शिकायत: Regula Sarvesh Chandra, privacy@mridangaseva.com, +91 99893 36301। यदि हम आपकी शिकायत हल न करें, तो आप Data Protection Board of India में शिकायत कर सकते हैं।</p>
+<p class="tick">☐ मेरी आयु <strong>18 वर्ष या अधिक</strong> है और मैं ऊपर बताए अनुसार चेहरा स्कैन परीक्षण में भाग लेने के लिए <strong>सहमत</strong> हूँ। मुझे पता है कि मैं कभी भी रोक सकता/सकती हूँ और अपने QR कोड से हाज़िरी लगाता/लगाती रह सकता/सकती हूँ।</p>
+<p class="sign">नाम: <span class="line"></span> परीक्षण कोड (डेस्क भरेगा): T__ हस्ताक्षर: <span class="line"></span> तारीख: <span class="line"></span></p>
+  <p class="foot">Mridanga Seva · face scan test · ADULT_TEST.md §1 · form hi (draft)</p>
+</section>
+
+<section class="page">
+  <h2>Face scan test — results sheet</h2>
+  <p>Tester code: T____ &nbsp; Phone model: ______________________ &nbsp; Android version: ______ &nbsp; Date: __________</p>
+  <p class="small">Results by tester code only, never a name. Stop at once (face scan off on TEST, tell the lead) if check 7 or 8
+  is ever accepted. Consent recorded in the app (C25) by: ______________ &nbsp; Enrolment confirmed by: ______________</p>
+  <table>
+    <thead><tr><th>#</th><th>Check</th><th>Expected</th><th>Result</th><th>Tries</th><th>Seconds</th></tr></thead>
+    <tbody><tr><td>1</td><td>Enrolment as above</td><td>On; C25 shows the enrolment; the phone keeps the code</td><td></td><td></td><td></td></tr><tr><td>2</td><td>Enrolment without a recorded consent</td><td>Refused before the camera</td><td></td><td></td><td></td></tr><tr><td>3</td><td>Check in at the class, inside the area, open hours</td><td>Saved, method face; Who is here now shows the tester</td><td></td><td></td><td></td></tr><tr><td>4</td><td>Check out within 10 minutes</td><td>"Less than 10 minutes" (desk path)</td><td></td><td></td><td></td></tr><tr><td>5</td><td>Check out after 10 minutes, ≥ 150 m outside</td><td>Saved and flagged "away from the class"</td><td></td><td></td><td></td></tr><tr><td>6</td><td>Check in from outside the area / location off / fake-GPS app / outside open hours / airplane mode</td><td>Refused, each with "Or ask a coordinator"</td><td></td><td></td><td></td></tr><tr><td>7</td><td>Another tester's face on an enrolled phone (each tester tries 2 others, 3 tries each)</td><td><strong>Never accepted</strong></td><td></td><td></td><td></td></tr><tr><td>8</td><td>A printed photo of the tester; a video of the tester on another phone</td><td>Refused (live-face check)</td><td></td><td></td><td></td></tr><tr><td>9</td><td>The tester themself, normal light, glasses on/off</td><td>Accepted; count the tries needed (false refusals)</td><td></td><td></td><td></td></tr><tr><td>10</td><td>Dim light, strong backlight</td><td>Note result and tries; refusal is acceptable, a wrong accept is not</td><td></td><td></td><td></td></tr><tr><td>11</td><td>Turn face scan off in the app</td><td>Server enrolment ended, code wiped; the home circle is gone</td><td></td><td></td><td></td></tr><tr><td>12</td><td>Throughout</td><td>QR check-in still works; the class's own app on the same phone is untouched and still signed in</td><td></td><td></td><td></td></tr><tr><td>13</td><td>Staff: Reports → Face scan use (C27)</td><td>Counts by reason, no names</td><td></td><td></td><td></td></tr><tr><td>14</td><td>Timings</td><td>Location read, scan, integrity, save (seconds) into SPIKE_RESULT §9</td><td></td><td></td><td></td></tr></tbody>
+  </table>
+  <p class="foot">Mridanga Seva · face scan test · ADULT_TEST.md §2</p>
+</section>
+
+<section class="page">
+  <h2>Face scan test — deletion record</h2>
+  <p>Within 7 days of the last session (OPERATIONS.md "Face scan: deleting the test face data"). Last session: __________</p>
+  <h3>1. Phones (at the desk)</h3>
+  <table>
+    <thead><tr><th>Tester</th><th>Face scan turned off</th><th>"Mridanga Seva TEST" uninstalled</th><th>Date</th><th>Desk</th></tr></thead>
+    <tbody><tr><td>T1</td><td>☐</td><td>☐</td><td></td><td></td></tr><tr><td>T2</td><td>☐</td><td>☐</td><td></td><td></td></tr><tr><td>T3</td><td>☐</td><td>☐</td><td></td><td></td></tr><tr><td>T4</td><td>☐</td><td>☐</td><td></td><td></td></tr><tr><td>T5</td><td>☐</td><td>☐</td><td></td><td></td></tr><tr><td>T6</td><td>☐</td><td>☐</td><td></td><td></td></tr><tr><td>T7</td><td>☐</td><td>☐</td><td></td><td></td></tr><tr><td>T8</td><td>☐</td><td>☐</td><td></td><td></td></tr><tr><td>T9</td><td>☐</td><td>☐</td><td></td><td></td></tr><tr><td>T10</td><td>☐</td><td>☐</td><td></td><td></td></tr></tbody>
+  </table>
+  <p class="small">A phone not brought back: write its tester code here and in NOTES_face_scan.md: ______________________</p>
+  <h3>2. TEST server</h3>
+  <p>Delete SQL run on TEST (fhuqyk…, never LIVE) by: ______________ on __________ at ______</p>
+  <p>Verify row (expected <strong>false | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0</strong>): ____________________________________</p>
+  <p>Testers told the deletion is done on: __________ &nbsp; by: ______________</p>
+  <p class="small">The signed consent forms stay with the desk as the proof of consent (the Guru decides how long); they hold no face data.</p>
+  <p class="foot">Mridanga Seva · face scan test · OPERATIONS.md "Face scan: deleting the test face data"</p>
+</section>
+</body></html>
