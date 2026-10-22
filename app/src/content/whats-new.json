@@ -2,9 +2,10 @@
   "_comment": "What's new (My profile > What's new, docs/DECISIONS.md #406). Newest first. Add an entry before every production update (docs/OPERATIONS.md 'Publishing an update'). date: the day it is published (YYYY-MM-DD); null = not yet published, shown as 'Coming in the next update'. kind: 'installed' for an APK, 'update' for an update. id: the APK's build id or the update id the version line shows (first 8 characters), once known. notes: 3-8 plain lines in en, te and hi, the same number in each; te/hi are drafts for native review.",
   "releases": [
     {
+      "_comment": "Production update group 8b737a14 (commit 76dbce1, 22-10-2026); 01a16413 is its Android update id, which the version line shows.",
       "version": "1.0.0",
       "kind": "update",
-      "id": null,
+      "id": "01a16413",
       "date": "2026-10-22",
       "notes": {
         "en": [
