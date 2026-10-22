@@ -2,7 +2,7 @@
 // out with their face, on their own phone, at the class only. Opened from the home's "Check in" / "Check out"
 // circle, which shows only while face scan is on, this phone keeps a face code, and (to check in) the centre
 // is open (self_scan_state, 0071). The coordinator's way — the printed QR card, My QR, or the roll number at
-// the desk — is offered on every step.
+// the desk — is offered on every step. A staff member's own record opens it under Me (/staff/me/self-scan, #434).
 //
 // One self-scan, in order (each step refuses at once, never a guess):
 //   1. ONE position, in the foreground, at most 8 s (src/face/self-scan-location.ts). A check-in goes on only
@@ -16,7 +16,7 @@
 // A failure on the phone is counted per centre and reason, no name (note_self_scan_failure). Three failed
 // tries in a day → only the coordinator's way is offered. The web app has no self-scan: it only says so.
 
-import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { router, Stack, useLocalSearchParams, usePathname } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -55,6 +55,7 @@ import {
   type Tries,
 } from '@/face/self-scan-rules';
 import { localTime, todayLocal } from '@/lib/dates';
+import { ownAreaOf } from '@/lib/own-area';
 
 /** Failed tries today on this phone; memory only (a restart starts again; the server's limits still hold). */
 let tries: Tries | null = null;
@@ -259,10 +260,11 @@ function Done({ outcome }: { outcome: Extract<Step, { kind: 'done' }>['outcome']
 /** The coordinator's way, on every step (WORK_PLAN P3-5: always offered). */
 function AskCoordinator() {
   const { t } = useTranslation();
+  const myQr = ownAreaOf(usePathname()) === 'me' ? '/staff/me/qr' : '/student/qr';
   return (
     <Section icon="qr" title={t('selfScan.ask.title')}>
       <AppText>{t('selfScan.ask.body')}</AppText>
-      <Button variant="secondary" icon="qr" label={t('selfScan.ask.openQr')} onPress={() => router.replace('/student/qr')} />
+      <Button variant="secondary" icon="qr" label={t('selfScan.ask.openQr')} onPress={() => router.replace(myQr)} />
     </Section>
   );
 }

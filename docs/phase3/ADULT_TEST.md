@@ -138,7 +138,9 @@ of India में शिकायत कर सकते हैं।
 group, never one by one by their own coordinator, so nobody feels pressed; a "no" is never recorded anywhere. No minors,
 not even with a parent's yes (section 3). Each tester gets a **TEST student login** (made by the lead on TEST; not
 their LIVE account) and a tester code T1…Tn; results use the codes, never names. Two **TEST coordinator logins** (two
-people) confirm the desk codes: nobody confirms their own enrolment (0070 refuses it).
+people) confirm the desk codes: nobody confirms their own enrolment (0070 refuses it). A coordinator may test too,
+with their TEST staff login linked to an own TEST record (0053): Me → Face scan, a colleague records the consent and
+confirms ([#434](../DECISIONS.md)).
 
 **Ready before the first session** (the lead ticks each in NOTES_face_scan.md):
 1. TEST has 0070 + 0071 with both verify rows as expected (OPERATIONS "Face scan: integrity check" step 2, "Face
@@ -154,8 +156,8 @@ scan on or off"); LIVE never.
 
 **Enrolment at the desk (once per tester).** Consent read and signed → coordinator A records it in C25 → the tester
 opens Face scan (S15) in the TEST app → blink / turn, 5 pictures → a 6-digit code on the tester's phone → coordinator A
-types it on C25 on **their own** phone → "Face scan is on". Coordinator B enrols coordinator A if A also tests (with
-their TEST student login).
+types it on C25 on **their own** phone → "Face scan is on". A coordinator who tests is enrolled the same way from Me, with
+the other coordinator recording and confirming.
 
 **What is checked** (each row: tester code, phone model, Android version, result, time):
 
@@ -204,7 +206,7 @@ followed strictly).
 6. **The production path:** minors use face scan only in the class's own app, after face is merged into main and a new
    production APK is out (DECISIONS #432), on LIVE with 0070/0071 run there, the LIVE service account and certificate
    set, and `face_enabled` true on LIVE only on Praveen's word. Minors never use the TEST app.
-7. **Coordinators who are also students** (staff-own-record on main): the one-line `own_record` exception for the
-   self-scan path and the Me entry to Face scan, so a coordinator's own face check-in works.
+7. **Coordinators who are also students:** built (#434: Me → Face scan, the self-scan let through `own_record`); tested
+   in the adult round.
 8. Re-enrolment of minors every 12 months (`face_expiry_months_minor`), and the parent's check-out email (0043/0044)
    tested with a face check-out on TEST.

@@ -7336,3 +7336,25 @@ the face production APK.
 **Why.** A test proves what the spike measured only on phones and faces of the class, and adults can consent for
 themselves. Biometric data kept for a test is kept no longer than the test needs (DPDP s.8(7)): the test data has no
 use once the results are counted.
+
+## 434. A coordinator's own record uses face scan through the self-scan only — 22 Oct 2026
+
+**Status: branch `face-scan` (placeholder number), after main took staff own record (0053, #316-#321) on 22-10-2026.**
+
+**Decision.** A staff login linked to its own student record (0053) gets face scan like a student, under Me: the
+"Check in" / "Check out" circle first in Me's ring (blue, the door's family) and the Face scan row below it, opening
+`/staff/me/self-scan` and `/staff/me/face-scan` (the student's S16 and S15, as Me's other screens are, #319). Every
+step another person does for a student is done by a colleague here too: the face consent (`record_face_consent` on
+one's own record answers `own_record`, 0070) and the desk confirmation (`approve_face_enrolment` already refused one's
+own). The visit itself is the person's own act, so 0071 replaces 0053's `refuse_own_record` with one more way through:
+a visits insert or update while `app.face_visit` is on, which only `self_scan` sets, for its own transaction, after
+its checks (integrity pass, this phone's colleague-confirmed enrolment, place, hours, face). Every other way of
+recording one's own visit (name, QR, Mark attendance, edits) stays `own_record`. S16's "Open My QR" opens the own
+area's copy. The app shows `own_record` with the shared words (common.ownRecord).
+
+**Why.** "Coordinators are students too" (#316) and face scan is the student's own act on their own phone, checked
+by the server; the rule of #318 is about one person marking another's attendance, which the self-scan is not.
+
+**Consequences.** A later migration that replaces `refuse_own_record` keeps the self-scan line (comment in 0071).
+The wipe rule for a staff phone runs when Me opens (not at app start, as for a student), so a staff phone holding a
+code the server has ended keeps it until then; the server refuses it anyway.

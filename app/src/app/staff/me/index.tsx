@@ -4,7 +4,9 @@
 // without internet, #21), My progress (S4, with the practice panel), My attendance (S9) and Practice (S5 with the
 // timer that logs practice). The screens are the student's own (student/...), opened under /staff/me so Back
 // returns here (lib/own-area.ts). What a student's record gets from colleagues (check-in, ticks, the level) still
-// comes from colleagues: nobody records about their own record (0053, own_record).
+// comes from colleagues: nobody records about their own record (0053, own_record). Face scan (Phase 3, #434): the
+// Face scan row and, once a colleague has confirmed this phone, the "Check in" / "Check out" circle — the self-scan is
+// the one way to record one's own visit; all hidden while face scan is off.
 
 import { router, Stack, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
@@ -13,12 +15,14 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/auth/auth-provider';
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
+import { FaceProfileSection } from '@/components/face-entries';
 import { ModuleRing, type Module } from '@/components/module-ring';
 import { Notice } from '@/components/notice';
 import { ProgressBar } from '@/components/progress-bar';
 import { Screen } from '@/components/screen';
 import { fetchStudentHome, type StudentHome } from '@/data/home';
 import { keepMyCardSaved } from '@/data/my-student';
+import { useSelfScanState } from '@/face/use-self-scan';
 import { levelName } from '@/i18n/labels';
 import { useLatestLoad } from '@/lib/latest-load';
 
@@ -45,7 +49,21 @@ export default function MeScreen() {
     }, [load]),
   );
 
+  // Face self-scan (#344, #434): as on the student home, first and in the door's blue.
+  const selfScanAction = useSelfScanState(profile?.id)?.action ?? null;
+
   const modules: Module[] = [
+    ...(selfScanAction
+      ? [
+          {
+            key: 'selfScan',
+            icon: selfScanAction === 'check_in' ? 'hereNow' : 'signOut',
+            tone: 'blue',
+            label: t(selfScanAction === 'check_in' ? 'selfScan.checkIn' : 'selfScan.checkOut'),
+            onPress: () => router.push({ pathname: '/staff/me/self-scan', params: { action: selfScanAction } }),
+          } satisfies Module,
+        ]
+      : []),
     { key: 'qr', icon: 'qr', tone: 'blue', label: t('tabs.myQr'), onPress: () => router.push('/staff/me/qr') },
     { key: 'progress', icon: 'syllabus', tone: 'purple', label: t('progress.title'), onPress: () => router.push('/staff/me/progress') },
     { key: 'visits', icon: 'visits', tone: 'teal', label: t('visitHistory.module'), onPress: () => router.push('/staff/me/visits') },
@@ -73,6 +91,7 @@ export default function MeScreen() {
       {/* Shown while loading and without internet too: My QR works offline from the card saved on the phone. */}
       {home !== 'not_found' ? <ModuleRing modules={modules} /> : null}
       {home && home !== 'not_found' ? <LevelLine home={home} /> : null}
+      {home && home !== 'not_found' && myId ? <FaceProfileSection profileId={myId} /> : null}
     </Screen>
   );
 }

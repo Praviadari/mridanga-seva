@@ -213,6 +213,18 @@ test('nothing shows while face scan is off, on the web, or on a phone without a 
 test('the coordinator\'s way is on every step of the self-scan page', () => {
   const page = read('src/app/student/self-scan.tsx');
   assert.ok((page.match(/<AskCoordinator \/>/g) ?? []).length >= 3);
-  // The stack copy of My QR, not the tab address (#301: a screen on top of the tabs never opens a tab).
-  assert.match(page, /router\.replace\('\/student\/qr'\)/);
+  // The stack copy of My QR, not the tab address (#301: a screen on top of the tabs never opens a tab); under Me, Me's.
+  assert.match(page, /ownAreaOf\(usePathname\(\)\) === 'me' \? '\/staff\/me\/qr' : '\/student\/qr'/);
+  assert.match(page, /router\.replace\(myQr\)/);
+});
+
+test('#434: a staff member\'s own record has face scan under Me, the self-scan circle first', () => {
+  const me = read('src/app/staff/me/index.tsx');
+  assert.match(me, /useSelfScanState\(profile\?\.id\)/);
+  assert.match(me, /\.\.\.\(selfScanAction\s*\?[\s\S]{0,400}pathname: '\/staff\/me\/self-scan'/);
+  assert.match(me, /<FaceProfileSection profileId=\{myId\} \/>/);
+  assert.match(read('src/app/staff/me/self-scan.tsx'), /import SelfScanScreen from '\.\.\/\.\.\/student\/self-scan'/);
+  assert.match(read('src/app/staff/me/face-scan.tsx'), /import FaceScanScreen from '\.\.\/\.\.\/student\/face-scan'/);
+  // The Face scan row opens the own area's copy of S15.
+  assert.match(read('src/components/face-entries.tsx'), /ownAreaOf\(usePathname\(\)\) === 'me' \? '\/staff\/me\/face-scan' : '\/student\/face-scan'/);
 });

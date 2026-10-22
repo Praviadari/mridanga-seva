@@ -2,14 +2,14 @@
 // unless the server's switch is on (face_enabled, default off) — so today nobody sees anything face-related —
 // and on the web, which has no face scan. One exception: a student whose phone still keeps a face code sees
 // the row even while the switch is off, so they can always turn face scan off.
-// - FaceProfileSection: My profile, for a student → S15 Face scan.
+// - FaceProfileSection: My profile, for a student, and Me, for staff with an own record (#434) → S15 Face scan.
 // - FaceReEnrolNotice: the student home, when the enrolment ends within 30 days.
 // - FaceDevSection: My profile, for staff, on a TEST (preview) build only → the hidden developer screen.
 // - FaceDeskEntry: the student's profile (C8), for staff → C25 Face scan at the desk (also on the web: no camera).
 // - FaceCountsEntry: Reports (C21/G8), for staff → C27 Face scan use (counts per centre, P3-6).
 // The self-scan's "Check in" / "Check out" circle on the student home is src/face/use-self-scan.ts (S16).
 
-import { router } from 'expo-router';
+import { router, usePathname } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -24,10 +24,12 @@ import { EXPIRY_PROMPT_DAYS } from '@/face/face-settings';
 import { useFaceStatus } from '@/face/face-status';
 import { FACE_SCAN_SUPPORTED } from '@/face/face-store';
 import { formatDate, localDate } from '@/lib/dates';
+import { ownAreaOf } from '@/lib/own-area';
 
-/** My profile (student): the Face scan row, with this phone's state. */
+/** My profile (student) or Me (staff, own record): the Face scan row, with this phone's state. */
 export function FaceProfileSection({ profileId }: { profileId: string }) {
   const { t } = useTranslation();
+  const page = ownAreaOf(usePathname()) === 'me' ? '/staff/me/face-scan' : '/student/face-scan';
   const status = useFaceStatus(FACE_SCAN_SUPPORTED ? profileId : undefined);
   if (!FACE_SCAN_SUPPORTED || !status) return null;
   const on = status.server?.face_enabled === true;
@@ -44,7 +46,7 @@ export function FaceProfileSection({ profileId }: { profileId: string }) {
   return (
     <Section icon="face" title={t('face.title')}>
       <AppText>{line}</AppText>
-      <Button variant="secondary" icon="face" label={t('face.profile.open')} onPress={() => router.push('/student/face-scan')} />
+      <Button variant="secondary" icon="face" label={t('face.profile.open')} onPress={() => router.push(page)} />
     </Section>
   );
 }

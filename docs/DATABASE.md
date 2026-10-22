@@ -1799,6 +1799,11 @@ desk, the night job, every check-out before 0071). Locked for app users (`guard_
 
 Tests: section "0071 face self-scan" in `supabase/tests/smoke-test.mjs`; the phone's rules in
 `app/tests/self-scan.test.mjs`.
+
+**A staff member's own record (#434, needs 0053):** 0071 also replaces 0053's `refuse_own_record`: a visits insert or
+update while `app.face_visit` is on (set only by `self_scan`, for its own transaction) is let through, so a coordinator
+linked to their own record checks themself in and out by face; every other own-record write stays `own_record`.
+0070's `record_face_consent` answers `own_record` for one's own record (a colleague records it).
 ## Linking a login to a student
 
 A student record can exist without a login (many students never install the app). When a person
