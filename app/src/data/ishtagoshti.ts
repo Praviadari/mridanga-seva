@@ -11,6 +11,7 @@ import * as Crypto from 'expo-crypto';
 import { todayLocal } from '@/lib/dates';
 import { supabase } from '@/lib/supabase';
 
+import { insertOnce } from './create-once';
 import { bodyOf, endingFor, pickRecordingFiles, recordingAsMedia, type PickedMedia } from './assessment-files';
 import { isNetworkError, type MessageKey } from './errors';
 
@@ -61,6 +62,33 @@ type SlokaRow = {
 
 const SLOKA_COLUMNS =
   'id, ref, devanagari, transliteration, word_meanings, translation_en, translation_te, translation_hi, purport_en, purport_te, purport_hi, translator, own_text, audio_path, audio_name, sample, published, sort';
+
+/**
+ * A sloka in a list: what a row shows and what the search looks in. The purports (up to 20,000
+ * characters each, three languages) and the word meanings are read only on the sloka's own page
+ * (audit phase 4 P5-03, docs/DECISIONS.md #330).
+ */
+export type SlokaListItem = Pick<Sloka, 'id' | 'ref' | 'devanagari' | 'transliteration' | 'translation' | 'sample' | 'published' | 'sort'>;
+
+type SlokaListRow = Pick<
+  SlokaRow,
+  'id' | 'ref' | 'devanagari' | 'transliteration' | 'translation_en' | 'translation_te' | 'translation_hi' | 'sample' | 'published' | 'sort'
+>;
+
+const SLOKA_LIST_COLUMNS = 'id, ref, devanagari, transliteration, translation_en, translation_te, translation_hi, sample, published, sort';
+
+function slokaListItemOf(row: SlokaListRow): SlokaListItem {
+  return {
+    id: row.id,
+    ref: row.ref,
+    devanagari: row.devanagari,
+    transliteration: row.transliteration,
+    translation: byLanguage(row.translation_en, row.translation_te, row.translation_hi),
+    sample: row.sample,
+    published: row.published,
+    sort: row.sort,
+  };
+}
 
 function byLanguage(en: string | null, te: string | null, hi: string | null): ByLanguage {
   const out: ByLanguage = {};
@@ -137,10 +165,10 @@ export async function fetchCanEdit(): Promise<boolean> {
   return !error && data === true;
 }
 
-/** Every sloka the person can see (editors: drafts too), in order. Null = could not load. */
-export async function fetchSlokas(): Promise<Sloka[] | null> {
-  const { data, error } = await supabase.from('ig_slokas').select(SLOKA_COLUMNS).order('sort').order('id');
-  return error ? null : (data as SlokaRow[]).map(slokaOf);
+/** Every sloka the person can see (editors: drafts too), in order, as list items. Null = could not load. */
+export async function fetchSlokas(): Promise<SlokaListItem[] | null> {
+  const { data, error } = await supabase.from('ig_slokas').select(SLOKA_LIST_COLUMNS).order('sort').order('id');
+  return error ? null : (data as SlokaListRow[]).map(slokaListItemOf);
 }
 
 /** Every theme the person can see, in order, with its slokas. Null = could not load. */
@@ -166,18 +194,18 @@ export async function fetchThemes(): Promise<Theme[] | null> {
   }));
 }
 
-/** What I1 shows. */
+/** What the themes and slokas lists (I2) show. */
 export type IshtagoshtiHome = {
   /** The sloka of the day; null when no sloka is published yet. */
-  today: Sloka | null;
+  today: SlokaListItem | null;
   themes: Theme[];
-  slokas: Sloka[];
+  slokas: SlokaListItem[];
   /** The slokas the person has ticked as memorised. */
   memorised: Set<number>;
   canEdit: boolean;
 };
 
-/** Loads I1. Null = could not load (usually no internet). */
+/** Loads the lists of I2. Null = could not load (usually no internet). */
 export async function fetchIshtagoshtiHome(profileId: string): Promise<IshtagoshtiHome | null> {
   const [today, themes, slokas, memorised, canEdit] = await Promise.all([
     supabase.rpc('ig_sloka_of_day'),
@@ -193,6 +221,33 @@ export async function fetchIshtagoshtiHome(profileId: string): Promise<Ishtagosh
     themes,
     slokas,
     memorised: new Set((memorised.data as { sloka_id: number }[]).map((m) => m.sloka_id)),
+    canEdit,
+  };
+}
+
+/** What the I1 home shows: counts and the sloka of the day's id, no sloka text (P5-03). */
+export type IshtagoshtiCounts = {
+  todayId: number | null;
+  published: number;
+  memorised: number;
+  canEdit: boolean;
+};
+
+/** Loads I1. Null = could not load (usually no internet). */
+export async function fetchIshtagoshtiCounts(profileId: string): Promise<IshtagoshtiCounts | null> {
+  const [today, slokas, memorised, canEdit] = await Promise.all([
+    supabase.rpc('ig_sloka_of_day'),
+    supabase.from('ig_slokas').select('id, published'),
+    supabase.from('ig_memorised').select('sloka_id').eq('profile_id', profileId),
+    fetchCanEdit(),
+  ]);
+  if (today.error || slokas.error || memorised.error) return null;
+  const rows = slokas.data as { id: number; published: boolean }[];
+  const todayId = typeof today.data === 'number' && rows.some((s) => s.id === today.data) ? today.data : null;
+  return {
+    todayId,
+    published: rows.filter((s) => s.published).length,
+    memorised: (memorised.data as unknown[]).length,
     canEdit,
   };
 }
@@ -283,8 +338,14 @@ export type SlokaInput = {
   audio: { path: string; name: string } | null;
 };
 
-/** Saves a sloka (new when `id` is null). Returns its id or the message to show. */
-export async function saveSloka(id: number | null, input: SlokaInput): Promise<{ id: number } | { errorKey: MessageKey }> {
+/**
+ * Saves a sloka (new when `id` is null). Returns its id or the message to show; `noAnswer` when the
+ * server did not answer, so the sloka may be saved with a just-uploaded recording (F4-02: keep it).
+ */
+export async function saveSloka(
+  id: number | null,
+  input: SlokaInput,
+): Promise<{ id: number } | { errorKey: MessageKey; noAnswer?: boolean }> {
   const row = {
     ref: input.ref,
     devanagari: input.devanagari,
@@ -308,7 +369,7 @@ export async function saveSloka(id: number | null, input: SlokaInput): Promise<{
     ? supabase.from('ig_slokas').insert(row).select('id').single<{ id: number }>()
     : supabase.from('ig_slokas').update(row).eq('id', id).select('id').single<{ id: number }>();
   const { data, error } = await query;
-  if (error || !data) return { errorKey: errorKeyOf(error?.message) };
+  if (error || !data) return { errorKey: errorKeyOf(error?.message), noAnswer: !!error && isNetworkError(error.message) };
   return { id: data.id };
 }
 
@@ -329,8 +390,15 @@ export type ThemeInput = {
   slokaIds: number[];
 };
 
-/** Saves a theme and its slokas in order (new when `id` is null). Returns its id or the message. */
-export async function saveTheme(id: number | null, input: ThemeInput): Promise<{ id: number } | { errorKey: MessageKey }> {
+/**
+ * Saves a theme and its slokas in order (new when `id` is null). Returns its id or the message. A new
+ * theme goes with the open form's `requestId` (#322): Save again after a lost answer saves it once.
+ */
+export async function saveTheme(
+  id: number | null,
+  input: ThemeInput,
+  requestId: string,
+): Promise<{ id: number } | { errorKey: MessageKey }> {
   const row = {
     title: input.title,
     intro: input.intro,
@@ -339,14 +407,19 @@ export async function saveTheme(id: number | null, input: ThemeInput): Promise<{
     sample: input.sample,
     sort: input.sort,
   };
-  const query = id === null
-    ? supabase.from('ig_themes').insert(row).select('id').single<{ id: number }>()
-    : supabase.from('ig_themes').update(row).eq('id', id).select('id').single<{ id: number }>();
-  const { data, error } = await query;
-  if (error || !data) return { errorKey: errorKeyOf(error?.message) };
-  const linked = await supabase.rpc('set_theme_slokas', { p_theme: data.id, p_slokas: input.slokaIds });
+  let themeId: number;
+  if (id === null) {
+    const saved = await insertOnce('ig_themes', row, requestId);
+    if ('error' in saved) return { errorKey: errorKeyOf(saved.error.message) };
+    themeId = saved.id;
+  } else {
+    const { data, error } = await supabase.from('ig_themes').update(row).eq('id', id).select('id').single<{ id: number }>();
+    if (error || !data) return { errorKey: errorKeyOf(error?.message) };
+    themeId = data.id;
+  }
+  const linked = await supabase.rpc('set_theme_slokas', { p_theme: themeId, p_slokas: input.slokaIds });
   if (linked.error) return { errorKey: errorKeyOf(linked.error.message) };
-  return { id: data.id };
+  return { id: themeId };
 }
 
 /** Deletes a theme; its slokas stay. */

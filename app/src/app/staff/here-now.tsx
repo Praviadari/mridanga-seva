@@ -28,12 +28,15 @@ import {
 import { formatDuration } from '@/i18n/labels';
 import { locationFlagText } from '@/i18n/location-flag';
 import { localDate, formatDate, localTime, todayLocal } from '@/lib/dates';
+import { RefreshFailed } from '@/components/refresh-failed';
+import { useKeptLoad } from '@/lib/kept-load';
+import { useReloadOnResume } from '@/lib/reload-on-resume';
 
 /** List of open visits, one check-out button each, and "Check out all" with a confirm step. */
 export default function HereNowScreen() {
   const { t } = useTranslation();
   // undefined = loading, null = could not load.
-  const [today, setToday] = useState<AttendanceToday | null | undefined>(undefined);
+  const [today, setToday, refreshFailed] = useKeptLoad<AttendanceToday | null | undefined>();
   const [outcome, setOutcome] = useState<MarkOutcome | null>(null);
   const [closedAll, setClosedAll] = useState<number | null>(null);
   const [allError, setAllError] = useState<MessageKey | null>(null);
@@ -44,8 +47,10 @@ export default function HereNowScreen() {
 
   const load = useCallback(async () => {
     setToday(await fetchAttendanceToday());
-  }, []);
+  }, [setToday]);
 
+  // F9 / R4-04 (#327): back after a while (a phone that slept), the screen loads again.
+  useReloadOnResume(load);
   useFocusEffect(
     useCallback(() => {
       void load();
@@ -104,6 +109,8 @@ export default function HereNowScreen() {
 
   return (
     <Screen underHeader onRefresh={load}>
+      {/* F9 (#327): a failed refresh keeps what is shown and says so. */}
+      <RefreshFailed at={refreshFailed} onRetry={() => load()} />
       {header}
       {today ? (
         <AppText variant="label">{t('hereNow.count', { number: today.hereNow.length })}</AppText>
@@ -142,7 +149,7 @@ export default function HereNowScreen() {
       {today && today.hereNow.length > 0 ? (
         confirming ? (
           <>
-            <Notice tone="info" title={t('hereNow.confirmTitle', { number: today.hereNow.length })} announced>
+            <Notice tone="info" title={t('hereNow.confirmTitle', { number: today.hereNow.length })} focused announced>
               {t('hereNow.confirmBody')}
             </Notice>
             <Button

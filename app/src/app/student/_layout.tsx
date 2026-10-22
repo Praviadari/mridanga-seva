@@ -7,6 +7,8 @@ import { StatusBar } from 'expo-status-bar';
 import { useTranslation } from 'react-i18next';
 
 import { useAuth } from '@/auth/auth-provider';
+import { headerTitleOptions } from '@/components/header-title';
+import { webBackOptions } from '@/components/web-back-button';
 import { useFaceStatus } from '@/face/face-status';
 import { documentTitleLayout } from '@/lib/document-title';
 import { useHeadingFont } from '@/theme/fonts';
@@ -23,6 +25,7 @@ export const unstable_settings = { anchor: '(tabs)' };
 export default function StudentLayout() {
   const { colors } = useTheme();
   const titleFont = useHeadingFont();
+  const bar = headerBarOptions(colors, titleFont);
   const { t } = useTranslation();
   const { profile } = useAuth();
   // Face scan (Phase 3, #310): at every start, ask the server about this phone's enrolment and apply the
@@ -32,7 +35,7 @@ export default function StudentLayout() {
     <>
       {/* Light status-bar icons on the saffron headers. */}
       <StatusBar style="light" />
-      <Stack screenLayout={documentTitleLayout} screenOptions={headerBarOptions(colors, titleFont)}>
+      <Stack screenLayout={documentTitleLayout} screenOptions={{ ...bar, ...headerTitleOptions(bar.headerTitleStyle), ...webBackOptions }}>
         {/* No bar of its own (the tabs have theirs); the title is what Back says on the next screen. */}
         <Stack.Screen name="(tabs)" options={{ headerShown: false, title: t('home.title') }} />
       </Stack>

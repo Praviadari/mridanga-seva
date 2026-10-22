@@ -156,7 +156,9 @@ const code = (text) => text.replace(/^\s*\/\/.*$/gm, '').replace(/\/\*\*[\s\S]*?
 test('0071: every code self_scan raises to the app has a message; every answered refusal has its text', () => {
   const raised = new Set([...sql64.matchAll(/raise exception '([a-z_]+)'/g)].map((m) => m[1]));
   const notForTheApp = new Set(['setting_required', 'setting_invalid', 'setting_unknown', 'setting_owner_only', 'location_locked', 'face_visit_reserved']);
-  assert.deepEqual([...raised].filter((c) => !notForTheApp.has(c) && !F.FACE_ERROR_CODES.includes(c)), []);
+  // own_record: 0053's refuse_own_record, replaced in 0071 (#434); the shared message (data/errors.ts).
+  assert.equal(F.faceErrorKey('own_record'), 'common.ownRecord');
+  assert.deepEqual([...raised].filter((c) => c !== 'own_record' && !notForTheApp.has(c) && !F.FACE_ERROR_CODES.includes(c)), []);
   const failCase = sql64.slice(sql64.indexOf('v_fail := case'), sql64.indexOf('end;', sql64.indexOf('v_fail := case')));
   const answered = [...failCase.matchAll(/then '([a-z_]+)'/g)].map((m) => m[1]);
   assert.equal(answered.length, 7);

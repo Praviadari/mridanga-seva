@@ -3,8 +3,9 @@
 // Since 15-10-2026 (#382) the top shows this week's visits and the weeks in a row with a visit (lib/streak.ts, from
 // the months below) and the last visit as one line (student_home() through src/data/home.ts); before, the second box
 // was the days since the last visit, once on the home (#240).
+// Also Me > My attendance in the staff app, for a staff member's own record (0053, #319; staff/me/visits.tsx).
 
-import { router, Stack } from 'expo-router';
+import { router, Stack, usePathname } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -19,6 +20,7 @@ import { fetchStudentHome, type StudentHome } from '@/data/home';
 import { fetchMyStudent, type MyStudent, type VisitHistory } from '@/data/visits';
 import { lastVisitText } from '@/i18n/labels';
 import { localDate, todayLocal } from '@/lib/dates';
+import { ownAreaOf } from '@/lib/own-area';
 import { weeksInARow } from '@/lib/streak';
 import { VisitHistoryScreen } from '@/screens/visit-history';
 
@@ -27,6 +29,7 @@ export default function MyVisitsScreen() {
   const { t } = useTranslation();
   const { profile } = useAuth();
   const myId = profile?.id ?? '';
+  const area = ownAreaOf(usePathname());
   const [me, setMe] = useState<MyStudent | 'not_found' | null | undefined>(undefined);
   // The week's numbers; left out when they do not load (the months below still show).
   const [week, setWeek] = useState<StudentHome | null>(null);
@@ -65,7 +68,7 @@ export default function MyVisitsScreen() {
           <Button icon="refresh" label={t('common.tryAgain')} onPress={() => setAttempt((n) => n + 1)} />
         </>
       ) : null}
-      <Button variant="link" icon="home" label={t('comingSoon.back')} onPress={() => router.dismissTo('/student')} />
+      <Button variant="link" icon="home" label={t('comingSoon.back')} onPress={() => router.dismissTo(area === 'me' ? '/staff/me' : '/student')} />
     </Screen>
   );
 }

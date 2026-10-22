@@ -3,6 +3,8 @@
 // Accept made them Beginner / today (a direct update the database allows the Guru only: guard_student_level
 // 0017, level_history written by note_level_change 0025), and take a wrong login off the record
 // (unlink_student_login, 0025: the login goes back to waiting). No migration: the rules were all there.
+// Since 0054 (audit R3-04, #326): delete a record entered by mistake (delete_student_record), refused when
+// anything hangs on it.
 
 import { supabase } from '@/lib/supabase';
 import type { LevelPatch } from '@/lib/guru-tools';
@@ -21,6 +23,11 @@ const KNOWN_ERRORS = [
   'mentor_not_staff',
   'student_not_found',
   'student_not_linked',
+  'student_linked',
+  'student_visited',
+  'student_has_history',
+  'reason_required',
+  'reason_too_long',
 ] as const;
 
 /** The message for an error of these changes. */
@@ -42,6 +49,18 @@ export async function setLevel(studentId: string, patch: LevelPatch): Promise<Ad
   const { data, error } = await supabase.from('students').update(patch).eq('id', studentId).select('id');
   if (error) return { errorKey: studentAdminErrorKey(error.message) };
   return data && data.length > 0 ? {} : { errorKey: 'studentTools.errors.not_allowed' };
+}
+
+/**
+ * Deletes a record entered by mistake, such as a second copy of a student (the Guru only, with a reason;
+ * #326). The database refuses it when the record has a login, a visit or anything recorded about the student.
+ */
+export async function deleteStudentRecord(studentId: string, reason: string): Promise<AdminResult> {
+  const { error } = await supabase.rpc('delete_student_record', { p_student: studentId, p_reason: reason.trim() });
+  if (!error) return {};
+  // A withdrawn record stays: erasure is a separate step, so this refusal has its own words here.
+  if (error.message === 'student_withdrawn') return { errorKey: 'studentTools.errors.student_withdrawn' };
+  return { errorKey: studentAdminErrorKey(error.message) };
 }
 
 /** Takes the app login off the record (the Guru only); the login goes back to waiting for a role. */

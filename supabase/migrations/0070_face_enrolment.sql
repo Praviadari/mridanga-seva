@@ -230,6 +230,10 @@ begin
   perform face_require_on();
   select * into s from students where id = p_student for update;
   if not found then raise exception 'student_not_found'; end if;
+  -- A coordinator's own record (0053): a colleague records their consent (#318, #434).
+  if s.profile_id = auth.uid() then
+    raise exception 'own_record' using detail = 'Nobody records their own face consent: a colleague does it.';
+  end if;
   if s.withdrawn_at is not null then
     raise exception 'student_withdrawn' using detail = 'Consent was withdrawn: nothing new is recorded for this student.';
   end if;

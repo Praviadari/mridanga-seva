@@ -44,6 +44,8 @@ import {
 } from '@/data/events';
 import { audienceName } from '@/i18n/labels';
 import { googleCalendarLink, shareCalendarFile } from '@/lib/calendar-file';
+import { RefreshFailed } from '@/components/refresh-failed';
+import { useKeptLoad } from '@/lib/kept-load';
 
 type Loaded = { item: EventItem; names: EventNames; people: EventPerson[] | null };
 
@@ -53,7 +55,7 @@ export function EventDetailScreen({ id, area }: { id: number; area: 'student' | 
   const { profile, area: myArea } = useAuth();
   const myId = profile?.id ?? '';
   const isStaff = area === 'staff';
-  const [loaded, setLoaded] = useState<Loaded | 'not_found' | null | undefined>(undefined);
+  const [loaded, setLoaded, refreshFailed] = useKeptLoad<Loaded | 'not_found' | null | undefined>();
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState<{ tone: 'success' | 'error' | 'info'; text: string } | null>(null);
   const [confirming, setConfirming] = useState<'cancel' | 'delete' | null>(null);
@@ -67,7 +69,7 @@ export function EventDetailScreen({ id, area }: { id: number; area: 'student' | 
     }
     const people = isStaff ? await fetchEventPeople(id) : null;
     setLoaded({ ...found, people });
-  }, [id, isStaff]);
+  }, [id, isStaff, setLoaded]);
 
   useFocusEffect(
     useCallback(() => {
@@ -160,6 +162,8 @@ export function EventDetailScreen({ id, area }: { id: number; area: 'student' | 
 
   return (
     <Screen underHeader onRefresh={load}>
+      {/* F9 (#327): a failed refresh keeps what is shown and says so. */}
+      <RefreshFailed at={refreshFailed} onRetry={() => load()} />
       {header}
       {cancelled ? (
         <Notice tone="error" title={t('events.cancelled')}>

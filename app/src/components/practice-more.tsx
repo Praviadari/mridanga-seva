@@ -8,7 +8,7 @@
 // - GoalFold: the student's own weekly goal (practice_goals), or back to the class's.
 // - ReminderFold: the daily practice reminder (lib/practice-reminder.ts), Android app only.
 
-import { router } from 'expo-router';
+import { router, usePathname } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
@@ -16,6 +16,7 @@ import { StyleSheet, View } from 'react-native';
 import { levelName } from '@/i18n/labels';
 import type { Mantra } from '@/data/mantras';
 import { setMyPracticeGoal, type MyPracticePlan, type PracticeDays, type Taal } from '@/data/practice';
+import { ownAreaOf } from '@/lib/own-area';
 import { GOAL_MINUTE_CHOICES } from '@/lib/practice-goal';
 import { cyclesToNextStep, trainerTempo, type SpeedTrainer } from '@/lib/practice-pattern';
 import { readReminder, REMINDER_TIMES, remindersPossible, setReminder, type ReminderTime } from '@/lib/practice-reminder';
@@ -85,6 +86,8 @@ export type PlanSectionProps = {
 export function PlanSection({ mine, taals, onStartTaal }: PlanSectionProps) {
   const { t } = useTranslation();
   const { plan, lessons } = mine;
+  // A student's S5, or Me > Practice of a staff member's own record (0053, #319): the lesson opens in the same app.
+  const lessonPath = ownAreaOf(usePathname()) === 'me' ? '/staff/lesson/[id]' : '/student/lesson/[id]';
   const rows = plan.items.flatMap((item, i) => {
     if (item.kind === 'taal') {
       const taal = taals.find((tl) => tl.id === item.taalId);
@@ -107,7 +110,7 @@ export function PlanSection({ mine, taals, onStartTaal }: PlanSectionProps) {
         leading="lessonVideo"
         title={lesson.title}
         details={[t('practice.planLesson')]}
-        action={{ label: t('practice.planWatch'), variant: 'secondary', onPress: () => router.push({ pathname: '/student/lesson/[id]', params: { id: String(lesson.id) } }) }}
+        action={{ label: t('practice.planWatch'), variant: 'secondary', onPress: () => router.push({ pathname: lessonPath, params: { id: String(lesson.id) } }) }}
       />,
     ];
   });

@@ -9,6 +9,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { AppState, Platform } from 'react-native';
 
+import { noteRequest } from './data-version';
 import { deviceStorage, readLocal, removeLocal } from './local-storage';
 import { refreshGuard } from './refresh-guard';
 import { withTimeout } from './timed-fetch';
@@ -72,8 +73,10 @@ export function setRefusedListener(listener: (() => void) | null): void {
  */
 const timedFetch = withTimeout(refreshGuard((input, init) => fetch(input, init)));
 const watchedFetch: typeof fetch = async (input, init) => {
-  const response = await timedFetch(input, init);
   const address = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+  // Lists kept for a minute are loaded again after any save (src/lib/data-version.ts, #330).
+  noteRequest(address, (init?.method ?? (typeof input === 'object' && 'method' in input ? input.method : 'GET')).toUpperCase());
+  const response = await timedFetch(input, init);
   if (onRefused && response.status >= 400 && response.status < 500 && !address.includes('/auth/v1/')) {
     response
       .clone()

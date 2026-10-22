@@ -8,7 +8,7 @@
 import type { ParseKeys, TFunction } from 'i18next';
 
 import { levelName, statusName } from '@/i18n/labels';
-import { formatDate, todayLocal } from '@/lib/dates';
+import { todayLocal } from '@/lib/dates';
 import { supabase } from '@/lib/supabase';
 import type { StudentStatus } from './student-overview';
 
@@ -222,7 +222,8 @@ export function reportFileName(report: ClassReport): string {
  * headings in the app's language (Excel reads them as they are). Dates as day-month-year.
  */
 export function reportCsvRows(report: ClassReport, t: TFunction): (string | number | null)[][] {
-  const date = (iso: string | null) => (iso ? formatDate(iso) : '');
+  // ISO dates (YYYY-MM-DD): Excel reads them as dates whatever its own format (audit F3-10, #325).
+  const date = (iso: string | null) => (iso ? iso.slice(0, 10) : '');
   return [
     [t('reports.csv.range'), date(report.from), date(report.to)],
     [t('reports.csv.totals'), t('reports.visits'), report.visits, t('reports.visitors'), report.visitors, t('reports.hours'), report.hours, t('attendanceLocation.csvColumn'), report.visitsFlagged],

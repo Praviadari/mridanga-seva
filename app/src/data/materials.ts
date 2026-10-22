@@ -16,6 +16,7 @@ import { Linking } from 'react-native';
 import type { LessonSource } from '@/lib/lesson-player-html';
 import { supabase } from '@/lib/supabase';
 
+import { forgetUploads, insertOnce, uploadOnce } from './create-once';
 import {
   pickPdfs,
   pickPhotos,
@@ -26,7 +27,7 @@ import {
   type PickLimit,
   type PickResult,
 } from './announcement-files';
-import { fallbackErrorKey, type MessageKey } from './errors';
+import { fallbackErrorKey, isNetworkError, type MessageKey } from './errors';
 
 /** The private Storage bucket (migration 0013). */
 export const MATERIALS_BUCKET = 'material-files';
@@ -211,20 +212,27 @@ export async function pickMaterialFile(kind: 'pdf' | 'image'): Promise<PickResul
 export type SaveOutcome = { id?: number; errorKey?: MessageKey };
 
 /**
- * Adds a material: uploads its file first (into the Guru's own folder), then saves the row. If
- * the row cannot be saved, the uploaded file is removed again.
+ * Adds a material: uploads its file first (into the Guru's own folder), then saves the row. If the
+ * database refuses the row, the uploaded file is removed again; with no answer it stays, since the row
+ * may be saved with it (P1-03). `requestId` is the open form's (#322): Save again after a lost answer
+ * returns the first material, with the file uploaded the first time.
  */
-export async function addMaterial(myId: string, form: MaterialForm): Promise<SaveOutcome> {
+export async function addMaterial(myId: string, form: MaterialForm, requestId: string): Promise<SaveOutcome> {
   let file: { path: string; name: string; size: number } | null = null;
   if (form.kind === 'pdf' || form.kind === 'image') {
-    if (!form.file) return { errorKey: 'materials.errors.fileRequired' };
-    const uploaded = await uploadFiles(myId, [form.file], MATERIALS_BUCKET);
-    if (!uploaded.attachments) return { errorKey: uploaded.errorKey ?? 'materials.errors.uploadFailed' };
-    file = uploaded.attachments[0];
+    const picked = form.file;
+    if (!picked) return { errorKey: 'materials.errors.fileRequired' };
+    let failedKey: MessageKey | undefined;
+    file = await uploadOnce(requestId, picked.key, async () => {
+      const uploaded = await uploadFiles(myId, [picked], MATERIALS_BUCKET);
+      failedKey = uploaded.errorKey;
+      return uploaded.attachments?.[0] ?? null;
+    });
+    if (!file) return { errorKey: failedKey ?? 'materials.errors.uploadFailed' };
   }
-  const { data, error } = await supabase
-    .from('materials')
-    .insert({
+  const saved = await insertOnce(
+    'materials',
+    {
       title: form.title.trim(),
       kind: form.kind,
       url: form.kind === 'youtube' || form.kind === 'video' ? form.link.trim() : null,
@@ -236,14 +244,18 @@ export async function addMaterial(myId: string, form: MaterialForm): Promise<Sav
       level_id: form.levelId,
       item_id: form.itemId,
       suggest_reason: form.reason?.trim() || null,
-    })
-    .select('id')
-    .single<{ id: number }>();
-  if (error) {
-    if (file) await removeFiles([file.path], MATERIALS_BUCKET);
-    return { errorKey: materialErrorKey(error.message, error.code) };
+    },
+    requestId,
+  );
+  if ('error' in saved) {
+    if (!isNetworkError(saved.error.message)) {
+      if (file) await removeFiles([file.path], MATERIALS_BUCKET);
+      forgetUploads(requestId);
+    }
+    return { errorKey: materialErrorKey(saved.error.message, saved.error.code) };
   }
-  return { id: data.id };
+  forgetUploads(requestId);
+  return { id: saved.id };
 }
 
 /** Saves a changed title, link, note, level or item. The file and kind stay as they are. */

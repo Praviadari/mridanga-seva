@@ -30,17 +30,20 @@ export default function StocktakesScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const profileId = profile?.id;
+
+  // On the id, not the profile object, which is replaced at start (audit phase 4 P4-04).
   const load = useCallback(async () => {
     const [list, all, mine] = await Promise.all([
       fetchStocktakes(),
       fetchCentres(),
-      profile ? fetchMyCentreId(profile.id) : Promise.resolve(null),
+      profileId ? fetchMyCentreId(profileId) : Promise.resolve(null),
     ]);
     setCounts(list);
     const active = (all ?? []).filter((c) => c.active);
     setCentres(active);
     setCentre((current) => current ?? mine ?? active[0]?.id ?? null);
-  }, [profile]);
+  }, [profileId]);
 
   useFocusEffect(
     useCallback(() => {

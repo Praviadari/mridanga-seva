@@ -30,7 +30,11 @@
 --    own location result, like 0024's location_check for the check-in; locked against app edits.
 -- 5. face_match_percent (#348): the 1:1 threshold, 55 (cosine 0.55; the spike's same person 0.81,
 --    different 0.11-0.31, OpenCV's 0.363), SQL editor only like every face_* setting.
--- Every UPDATE/DELETE has a WHERE (Supabase safeupdate). Needs 0001-0048 and 0070. Safe to run twice.
+-- 6. A staff member's own record (0053, #434): 0053's refuse_own_record lets the self-scan path through, so a
+--    coordinator linked to their own record checks themself in and out with their face like a student; every
+--    other way of recording about one's own record stays refused (#318), and a colleague records their face
+--    consent and confirms the enrolment (0070).
+-- Every UPDATE/DELETE has a WHERE (Supabase safeupdate). Needs 0001-0054 and 0070. Safe to run twice.
 
 -- ---------------------------------------------------------------- 1. the threshold (#348)
 insert into settings (key, value) values ('face_match_percent', '55') on conflict (key) do nothing;
@@ -437,3 +441,43 @@ comment on function close_earlier_open_visit is 'Internal: closes a student''s o
 comment on function self_scan_state is 'Student''s phone: whether the home shows Check in (open hours) or Check out (a visit of today open), the centre''s point and radius, the match threshold (0071, #344).';
 comment on function self_scan is 'Student''s phone: the face self-scan check-in or check-out; re-checks the integrity pass, consent, enrolment of this phone, location, open hours, liveness and score; check-out outside is saved and flagged (0071, #345).';
 comment on function note_self_scan_failure is 'Student''s phone: counts a self-scan that failed on the phone (outside, mocked, liveness, no_match) per centre, no student id; at most 200 a centre an hour (0071, #346).';
+
+-- ---------------------------------------------------------------- 6. a staff member's own face check-in (#434)
+-- 0053's refuse_own_record (#318: nobody records about themselves), with the face self-scan let through: self_scan
+-- sets app.face_visit only for its own transaction, after it has checked the integrity pass, this phone's
+-- enrolment (confirmed by a colleague), the place, the open hours and the face. A later migration that replaces
+-- refuse_own_record keeps this line.
+create or replace function refuse_own_record() returns trigger
+language plpgsql security definer set search_path = public, pg_temp as $$
+declare
+  v_row     jsonb;
+  v_student uuid;
+begin
+  -- Nobody signed in (the dashboard, pg_cron, seed.sql), and the student's own paths (a student and the
+  -- door tablet record nothing here but what they may: row-level security and the functions refuse them).
+  if auth.uid() is null or not coalesce(is_staff(), false) then
+    if tg_op = 'DELETE' then return old; end if;
+    return new;
+  end if;
+  if tg_op = 'DELETE' then v_row := to_jsonb(old); else v_row := to_jsonb(new); end if;
+  -- Fields read through jsonb: each table has only some of them.
+  v_student := case tg_table_name
+    when 'promotion_feedback' then (select n.student_id from promotion_nominations n where n.id = (v_row ->> 'nomination_id')::bigint)
+    when 'assessment_submissions' then (select a.student_id from assessment_assignments a where a.id = (v_row ->> 'assignment_id')::bigint)
+    else (v_row ->> 'student_id')::uuid
+  end;
+  if v_student is not null and exists (select 1 from students s where s.id = v_student and s.profile_id = auth.uid()) then
+    -- The face self-scan (0071, #434): self_scan sets app.face_visit for its own transaction after its own checks.
+    if tg_table_name = 'visits' and tg_op in ('INSERT', 'UPDATE') and coalesce(current_setting('app.face_visit', true), '') = 'on' then
+      return new;
+    end if;
+    if tg_table_name = 'event_attendance' then
+      return null;
+    end if;
+    if not (tg_table_name = 'visits' and tg_op = 'UPDATE' and coalesce(current_setting('app.check_out_all', true), '') = 'on') then
+      raise exception 'own_record' using detail = 'Nobody records this about themselves: a colleague does it.';
+    end if;
+  end if;
+  if tg_op = 'DELETE' then return old; end if;
+  return new;
+end $$;

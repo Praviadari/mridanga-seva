@@ -26,6 +26,10 @@ export type StudentDetails = StudentSummary & {
   pincode: string | null;
   /** True when an app login is connected to the record. */
   hasLogin: boolean;
+  /** The login on the record, or null; a staff member's login on their own record (0053, #316). */
+  loginId: string | null;
+  /** When the parent (or the adult student) withdrew consent: the record is frozen (#281, F12 #328). */
+  withdrawnAt: string | null;
 };
 
 /** One visit: ISO timestamps; `checkOut` is null while the student is still here. */
@@ -108,7 +112,7 @@ export async function fetchStudentProfile(studentId: string): Promise<StudentPro
       supabase.from('student_overview').select(OVERVIEW_COLUMNS).eq('id', studentId).maybeSingle(),
       supabase
         .from('students')
-        .select('dob, phone, email, area, pincode, profile_id')
+        .select('dob, phone, email, area, pincode, profile_id, withdrawn_at')
         .eq('id', studentId)
         .maybeSingle(),
       supabase
@@ -167,6 +171,7 @@ export async function fetchStudentProfile(studentId: string): Promise<StudentPro
     area: string | null;
     pincode: string | null;
     profile_id: string | null;
+    withdrawn_at: string | null;
   };
 
   // The syllabus is read after the student, because it depends on their level. Items the Guru
@@ -191,6 +196,8 @@ export async function fetchStudentProfile(studentId: string): Promise<StudentPro
       area: details.area,
       pincode: details.pincode,
       hasLogin: details.profile_id !== null,
+      loginId: details.profile_id,
+      withdrawnAt: details.withdrawn_at,
     },
     minor: details.dob !== null && isMinorOn(details.dob, todayLocal()),
     recentVisits: (visits.data as { id: number; check_in: string; check_out: string | null; method: string }[]).map(

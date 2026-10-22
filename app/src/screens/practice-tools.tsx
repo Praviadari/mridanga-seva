@@ -7,9 +7,10 @@
 //   two-head view V1 (components/two-head-view.tsx) lit in time with the sound.
 // - Record myself (slice 4, components/record-myself.tsx): record one's own playing with the
 //   metronome or taal started from its first beat, keep it on the phone, play it back beside the sound.
-// - Practice timer (students only): starts with the first sound or by hand, logs itself on Stop when
-//   it ran at least a minute (S6; lib/practice-timer.ts, data/practice.ts). One slim line at the top,
-//   so the tempo and its big Start come on the first screen (#384).
+// - Practice timer (students, and Me > Practice of a staff member's own record, 0053 #319): starts with the first
+//   sound or by hand, logs itself on Stop when it ran at least a minute (S6; lib/practice-timer.ts,
+//   data/practice.ts). One slim line at the top, so the tempo and its big Start come on the first screen (#384).
+//   Me > Practice also shows the student parts below (the week's plan, the goal, the reminder) for the own record.
 // Sound: lib/practice-audio(.web).ts; timing is kept by the audio clock, not by JavaScript timers.
 // The Guru sees "Edit taals" (staff/taals). The sound stops when the screen is left.
 // More practice (docs/DECISIONS.md #400-#405; components/practice-more.tsx):
@@ -94,19 +95,24 @@ import {
   usePracticeTimer,
 } from '@/lib/practice-timer';
 import { usePlayhead } from '@/lib/use-playhead';
+import { useRequestId } from '@/lib/use-request-id';
 import { radius, spacing, useTheme } from '@/theme/use-theme';
 
 type Mode = 'metronome' | 'taal';
 
 /** Props for PracticeTools. */
-export type PracticeToolsProps = { area: 'student' | 'staff' };
+export type PracticeToolsProps = {
+  /** student: S5 of a student; staff: the tools only; me: Me > Practice, a staff member's own record (0053, #319). */
+  area: 'student' | 'staff' | 'me';
+};
 
 /** The practice tools screen. */
 export function PracticeTools({ area }: PracticeToolsProps) {
   const { t } = useTranslation();
   const { profile } = useAuth();
   const profileId = profile?.id ?? '';
-  const isStudent = area === 'student' && profile?.role === 'student';
+  // Logs practice on the person's own record: a student's, or a staff member's own (log_practice, 0053 #317).
+  const isStudent = (area === 'student' && profile?.role === 'student') || area === 'me';
   const isGuru = profile?.role === 'guru';
 
   const [player] = useState(createPracticePlayer);
@@ -418,7 +424,7 @@ export function PracticeTools({ area }: PracticeToolsProps) {
     <Screen underHeader wide>
       <Stack.Screen options={{ title: t('practice.title') }} />
 
-      <MantraEntry area={area} mantras={mantras} canEdit={mantraEditor} />
+      <MantraEntry area={area === 'me' ? 'staff' : area} mantras={mantras} canEdit={mantraEditor} />
 
       {isStudent ? (
         <PracticeTimerLine profileId={profileId} onSaved={practiceSaved} />
@@ -553,7 +559,7 @@ export function PracticeTools({ area }: PracticeToolsProps) {
       {isStudent ? <ReminderFold profileId={profileId} /> : null}
 
       {isStudent ? (
-        <Button variant="link" icon="time" label={t('practiceLog.open')} onPress={() => router.push('/student/practice-log')} />
+        <Button variant="link" icon="time" label={t('practiceLog.open')} onPress={() => router.push(area === 'me' ? '/staff/me/practice-log' : '/student/practice-log')} />
       ) : null}
       {area === 'staff' && (isGuru || profile?.role === 'coordinator') ? (
         <Button variant="secondary" icon="todo" label={t('practicePlan.open')} onPress={() => router.push('/staff/practice-plan')} />
@@ -577,7 +583,8 @@ function TempoControl({ bpm, onChange, children }: PropsWithChildren<{ bpm: numb
   };
   return (
     <View style={styles.tempo}>
-      <View style={styles.tempoValue} accessible accessibilityLabel={t('practice.bpmLabel', { bpm })}>
+      {/* Spoken again after each change, so a blind student hears the new tempo (audit P2-04, #332). */}
+      <View style={styles.tempoValue} accessible accessibilityLabel={t('practice.bpmLabel', { bpm })} accessibilityLiveRegion="polite">
         <AppText variant="title" family="sans">{bpm}</AppText>
         <AppText tone="muted">{t('practice.bpm', { min: MIN_BPM, max: MAX_BPM })}</AppText>
       </View>
@@ -588,6 +595,7 @@ function TempoControl({ bpm, onChange, children }: PropsWithChildren<{ bpm: numb
             <Button
               variant="secondary"
               label={by > 0 ? `+${by}` : `−${-by}`}
+              accessibilityLabel={by > 0 ? t('practice.tempoFaster', { by }) : t('practice.tempoSlower', { by: -by })}
               disabled={(by < 0 && bpm <= MIN_BPM) || (by > 0 && bpm >= MAX_BPM)}
               onPress={() => step(by)}
             />
@@ -633,6 +641,8 @@ function BeatDots({ count, current }: { count: number; current: number | null })
  * runs, the time with Stop and save, and Throw away under it; what happened when it was stopped.
  */
 function PracticeTimerLine({ profileId, onSaved }: { profileId: string; onSaved: () => void }) {
+  // #322: one id per timed session, so Stop tapped again after a lost answer logs it once.
+  const { requestId, renew: renewRequestId } = useRequestId();
   const { t } = useTranslation();
   const { colors } = useTheme();
   const timer = usePracticeTimer(profileId);
@@ -665,7 +675,7 @@ function PracticeTimerLine({ profileId, onSaved }: { profileId: string; onSaved:
     }
     setBusy(true);
     const logged = Math.min(done, MAX_ENTRY_MINUTES);
-    const errorKey = await logPractice({ minutes: logged, source: 'timer', startedAt: timer.startedAt, taalId: timer.taalId });
+    const errorKey = await logPractice({ minutes: logged, source: 'timer', startedAt: timer.startedAt, taalId: timer.taalId }, requestId());
     setBusy(false);
     if (errorKey) {
       // Kept running, so nothing is lost; the student can try again or type it in S6.
@@ -673,6 +683,7 @@ function PracticeTimerLine({ profileId, onSaved }: { profileId: string; onSaved:
       return;
     }
     clearPracticeTimer();
+    renewRequestId();
     setResult({ tone: 'success', text: t('practice.timerLogged', { time: practiceTime(t, logged) }) });
     onSaved();
   };

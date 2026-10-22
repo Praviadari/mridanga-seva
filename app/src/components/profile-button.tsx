@@ -31,6 +31,7 @@ export function ProfileButton() {
 
 const styles = StyleSheet.create({
   button: {
+    // 40 px as the side menu's band button, so the name stays on the centre line (#352); audit P2-08 asked 48.
     width: 40,
     height: 40,
     borderRadius: 20,

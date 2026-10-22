@@ -180,11 +180,12 @@ test('My profile: who you are first, then language and appearance, then the fold
   assert.ok(card > 0 && card < language && language < appearance && appearance < account && account < about && about < signOut);
   assert.match(profile, /chips=\{\{ levelId: student\.levelId \}\}/);
   assert.match(profile, /t\('myProfile\.rollLine', \{ rollNo: student\.rollNo \}\)/);
-  assert.match(profile, /\{isStudent \? null : \(\s*<TextField\s+label=\{t\('myProfile\.phoneLabel'\)\}/);
+  assert.match(profile, /\{isStudent \? null : \(\s*<TextField kind="phone"\s+label=\{t\('myProfile\.phoneLabel'\)\}/);
   assert.match(profile, /const details = isStudent \? \{ fullName \} : \{ fullName, phone: phone \?\? '' \}/);
   // A form without a phone leaves the account's phone as it is.
   const data = src('data/my-profile.ts');
-  assert.match(data, /\.\.\.\(details\.phone === undefined \? \{\} : \{ phone: details\.phone\.trim\(\) \|\| null \}\)/);
+  // ... and a typed one is saved as E.164 (#324).
+  assert.match(data, /\.\.\.\(details\.phone === undefined \? \{\} : \{ phone: savedPhone\(details\.phone\) \}\)/);
   assert.match(src('data/visits.ts'), /select\('id, roll_no, full_name, level_id'\)/);
   for (const lang of LANGS) {
     const l = locale(lang);

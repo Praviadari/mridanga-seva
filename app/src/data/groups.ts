@@ -8,6 +8,7 @@
 // switched off, never deleted, so old announcements keep their group.
 
 import type { AppRole } from '@/auth/types';
+import { readAllPages } from '@/lib/read-all';
 import { searchFold } from '@/lib/search-text';
 import { supabase } from '@/lib/supabase';
 
@@ -142,23 +143,25 @@ const MEMBER_ROLES: readonly AppRole[] = ['guru', 'coordinator', 'student'];
  * Loads one group with its members and the people who could be added. Returns 'not_found' when
  * the group is not there, null when it could not be loaded.
  *
- * Everyone comes in one go and the search filters on the phone, as on the student list: fine for
- * a class of a few hundred (Supabase returns at most 1,000 rows per request).
+ * Everyone comes in and the search filters on the phone, as on the student list; profiles and
+ * students are read page by page past Supabase's 1,000 rows per request (D9-04, #330).
  */
 export async function fetchGroup(id: number): Promise<GroupDetail | 'not_found' | null> {
   const [group, memberRows, profiles, students] = await Promise.all([
     supabase.from('group_summary').select('id, name, purpose, active, members').eq('id', id).maybeSingle(),
     supabase.from('group_members').select('profile_id').eq('group_id', id),
-    supabase.from('profiles').select('id, full_name, role, active'),
-    supabase.from('students').select('profile_id, full_name, roll_no').not('profile_id', 'is', null),
+    readAllPages<{ id: string; full_name: string; role: AppRole; active: boolean }>((from, to) =>
+      supabase.from('profiles').select('id, full_name, role, active').order('id').range(from, to),
+    ),
+    readAllPages<{ profile_id: string; full_name: string; roll_no: string }>((from, to) =>
+      supabase.from('students').select('profile_id, full_name, roll_no').not('profile_id', 'is', null).order('id').range(from, to),
+    ),
   ]);
-  if (group.error || memberRows.error || profiles.error || students.error) return null;
+  if (group.error || memberRows.error || !profiles || !students) return null;
   if (!group.data) return 'not_found';
 
-  const studentOf = new Map(
-    (students.data as { profile_id: string; full_name: string; roll_no: string }[]).map((s) => [s.profile_id, s]),
-  );
-  const people = (profiles.data as { id: string; full_name: string; role: AppRole; active: boolean }[]).map(
+  const studentOf = new Map(students.map((s) => [s.profile_id, s]));
+  const people = profiles.map(
     (p): GroupPerson => {
       const student = studentOf.get(p.id);
       return {
@@ -227,6 +230,9 @@ function groupErrorKey(message: string, code: string | undefined): MessageKey {
       return 'groups.errors.nameTooLong';
     case 'group_purpose_too_long':
       return 'groups.errors.purposeTooLong';
+    // F5-09 (#329): only switched-on staff and students with a record join a group.
+    case 'member_not_allowed':
+      return 'groups.errors.memberNotAllowed';
   }
   // 23505 = another group already has this name (the capitals do not matter).
   if (code === '23505') return 'groups.errors.nameTaken';

@@ -21,9 +21,14 @@ import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { TextField } from '@/components/text-field';
 import { announce } from '@/lib/announce';
+import { confirmReady, confirmShown } from '@/lib/second-tap';
 import { deletePractice, fetchMyPracticeLog, fetchTaals, logPractice, type PracticeLog } from '@/data/practice';
 import { formatDate, todayLocal } from '@/lib/dates';
+import { asciiDigits } from '@/lib/digits';
 import { notePractisedToday } from '@/lib/practice-reminder';
+import { useRequestId } from '@/lib/use-request-id';
+import { RefreshFailed } from '@/components/refresh-failed';
+import { useKeptLoad } from '@/lib/kept-load';
 
 /** 'YYYY-MM-DD' of the day `back` days before today at the class. */
 function dayBefore(back: number): string {
@@ -36,13 +41,15 @@ export default function PracticeLogScreen() {
   const { t } = useTranslation();
   const { profile } = useAuth();
   const profileId = profile?.id ?? '';
-  const [log, setLog] = useState<PracticeLog | 'not_found' | null | undefined>(undefined);
+  const [log, setLog, refreshFailed] = useKeptLoad<PracticeLog | 'not_found' | null | undefined>();
   const [taalNames, setTaalNames] = useState<Map<number, string>>(new Map());
 
   const [day, setDay] = useState(0);
   const [minutes, setMinutes] = useState('');
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
+  // #322: one id per entry being typed; a new one after it is saved.
+  const { requestId, renew } = useRequestId();
   const [message, setMessage] = useState<{ tone: 'success' | 'error'; text: string } | null>(null);
   const [confirming, setConfirming] = useState<number | null>(null);
 
@@ -50,7 +57,7 @@ export default function PracticeLogScreen() {
     const [loaded, taals] = await Promise.all([fetchMyPracticeLog(profileId), fetchTaals()]);
     setLog(loaded);
     setTaalNames(new Map(taals.taals.map((tl) => [tl.id, tl.name])));
-  }, [profileId]);
+  }, [profileId, setLog]);
 
   useFocusEffect(
     useCallback(() => {
@@ -59,18 +66,20 @@ export default function PracticeLogScreen() {
   );
 
   const save = async () => {
-    const value = Number(minutes.trim());
+    // Digits of the Telugu or Hindi keyboard too (P1-09).
+    const value = Number(asciiDigits(minutes.trim()));
     if (!Number.isInteger(value) || value < 1 || value > 240) {
       setMessage({ tone: 'error', text: t('practiceLog.errors.minutes_invalid') });
       return;
     }
     setSaving(true);
-    const errorKey = await logPractice({ minutes: value, source: 'manual', practisedOn: dayBefore(day), note });
+    const errorKey = await logPractice({ minutes: value, source: 'manual', practisedOn: dayBefore(day), note }, requestId());
     setSaving(false);
     if (errorKey) {
       setMessage({ tone: 'error', text: t(errorKey) });
       return;
     }
+    renew();
     setMessage({ tone: 'success', text: t('practiceLog.saved', { time: practiceTime(t, value) }) });
     // Practice typed in for today: no practice reminder today (#402).
     void notePractisedToday(profileId, dayBefore(day));
@@ -82,10 +91,13 @@ export default function PracticeLogScreen() {
   const remove = async (id: number) => {
     if (confirming !== id) {
       setConfirming(id);
+      confirmShown();
       // Only the button's words change; TalkBack does not read them again by itself (P2-01, #314).
       announce(t('practiceLog.confirmDelete'));
       return;
     }
+    // "Yes, delete" sits where Delete was: a double tap must not delete unseen (P2-06, #332).
+    if (!confirmReady()) return;
     setConfirming(null);
     const errorKey = await deletePractice(id);
     setMessage(errorKey ? { tone: 'error', text: t(errorKey) } : { tone: 'success', text: t('practiceLog.deleted') });
@@ -120,6 +132,8 @@ export default function PracticeLogScreen() {
 
   return (
     <Screen underHeader onRefresh={load}>
+      {/* F9 (#327): a failed refresh keeps what is shown and says so. */}
+      <RefreshFailed at={refreshFailed} onRetry={() => load()} />
       {header}
       <Section icon="time" title={t('practiceLog.weeks')}>
         <WeeklyPractice weeks={log.weeks} />

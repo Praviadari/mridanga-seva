@@ -58,6 +58,7 @@ function StocktakeScreenContent() {
   const [note, setNote] = useState('');
   const [finishing, setFinishing] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [asking, setAsking] = useState<'finish' | 'delete' | null>(null);
   const working = useRef(false);
   const lastLabel = useRef<{ token: string; at: number } | null>(null);
 
@@ -121,9 +122,13 @@ function StocktakeScreenContent() {
         {loaded === undefined ? <LoadingCards /> : null}
         {loaded === 'not_found' ? <EmptyState icon="stocktake" title={t('stocktake.notFound')} /> : null}
         {loaded === null ? (
-          <Notice tone="error" title={t('stocktake.loadFailed')}>
-            {t('common.networkError')}
-          </Notice>
+          <>
+            <Notice tone="error" title={t('stocktake.loadFailed')}>
+              {t('common.networkError')}
+            </Notice>
+            {/* R3-09 (#327): not a dead end on a weak signal. */}
+            <Button icon="refresh" label={t('common.tryAgain')} onPress={() => void load()} />
+          </>
         ) : null}
       </Screen>
     );
@@ -178,38 +183,68 @@ function StocktakeScreenContent() {
 
       <Section icon="check" title={t('stocktake.finishTitle')} description={t('stocktake.finishHint')}>
         <TextField label={t('inventory.noteLabel')} value={note} onChangeText={setNote} multiline maxLength={NOTES_MAX} />
-        <View style={styles.row}>
-          <Button
-            icon="check"
-            label={t('stocktake.finish')}
-            loading={finishing}
-            disabled={finishing}
-            onPress={() =>
-              void (async () => {
-                setFinishing(true);
-                const outcome = await finishStocktake(stocktake.id, note);
-                setFinishing(false);
-                if (outcome.errorKey) setLast({ tone: 'error', text: t(outcome.errorKey) });
-                else await load();
-              })()
-            }
-          />
-          {isGuru ? (
-            <Button
-              variant="link"
-              icon="delete"
-              label={t('stocktake.delete')}
-              onPress={() =>
-                void (async () => {
-                  const outcome = await deleteStocktake(stocktake.id);
-                  if (outcome.errorKey) setLast({ tone: 'error', text: t(outcome.errorKey) });
-                  else goBackOr('/staff/inventory/stocktake');
-                })()
-              }
-            />
-          ) : null}
-        </View>
+        {/* P1-23 (#325): both act at once and cannot be undone, so each asks first; Delete sits apart from Finish. */}
+        {asking === 'finish' ? (
+          <>
+            <Notice tone="info" title={t('stocktake.finishAsk')} announced>
+              {notSeen.length > 0 ? t('stocktake.finishAskBody', { count: notSeen.length }) : t('stocktake.finishAskAllSeen')}
+            </Notice>
+            <View style={styles.row}>
+              <Button
+                icon="check"
+                label={t('stocktake.finishYes')}
+                loading={finishing}
+                disabled={finishing}
+                onPress={() =>
+                  void (async () => {
+                    setFinishing(true);
+                    const outcome = await finishStocktake(stocktake.id, note);
+                    setFinishing(false);
+                    setAsking(null);
+                    if (outcome.errorKey) setLast({ tone: 'error', text: t(outcome.errorKey) });
+                    else await load();
+                  })()
+                }
+              />
+              <Button variant="link" label={t('syllabusEditor.cancel')} onPress={() => setAsking(null)} />
+            </View>
+          </>
+        ) : (
+          <Button icon="check" label={t('stocktake.finish')} onPress={() => setAsking('finish')} />
+        )}
       </Section>
+      {isGuru ? (
+        <Section icon="delete" title={t('stocktake.delete')} description={t('stocktake.deleteHint')}>
+          {asking === 'delete' ? (
+            <>
+              <Notice tone="error" title={t('stocktake.deleteAsk')}>
+                {t('stocktake.deleteAskBody', { count: seenCount })}
+              </Notice>
+              <View style={styles.row}>
+                <Button
+                  icon="delete"
+                  label={t('duty.deleteYes')}
+                  loading={finishing}
+                  disabled={finishing}
+                  onPress={() =>
+                    void (async () => {
+                      setFinishing(true);
+                      const outcome = await deleteStocktake(stocktake.id);
+                      setFinishing(false);
+                      setAsking(null);
+                      if (outcome.errorKey) setLast({ tone: 'error', text: t(outcome.errorKey) });
+                      else goBackOr('/staff/inventory/stocktake');
+                    })()
+                  }
+                />
+                <Button variant="link" label={t('syllabusEditor.cancel')} onPress={() => setAsking(null)} />
+              </View>
+            </>
+          ) : (
+            <Button variant="link" icon="delete" label={t('stocktake.delete')} onPress={() => setAsking('delete')} />
+          )}
+        </Section>
+      ) : null}
     </Screen>
   );
 }

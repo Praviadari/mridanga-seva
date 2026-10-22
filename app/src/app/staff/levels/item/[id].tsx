@@ -40,6 +40,7 @@ import {
 } from '@/data/syllabus-editor';
 import { levelName } from '@/i18n/labels';
 import { spacing } from '@/theme/use-theme';
+import { useRequestId } from '@/lib/use-request-id';
 
 type Loaded = { item: EditorItem | null; levelId: number; position: number; materials: Material[] };
 
@@ -55,6 +56,8 @@ function SyllabusItemScreenContent() {
   const [loaded, setLoaded] = useState<Loaded | 'not_found' | null | undefined>(undefined);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  // #322: one id for a new item, so Add again after a lost answer adds it once.
+  const { requestId } = useRequestId();
   const [errors, setErrors] = useState<ItemFormErrors>({});
   const [busy, setBusy] = useState<'save' | 'retire' | 'restore' | 'delete' | null>(null);
   const [asking, setAsking] = useState<'retire' | 'delete' | null>(null);
@@ -145,7 +148,7 @@ function SyllabusItemScreenContent() {
     setErrors(found);
     if (Object.keys(found).length > 0) return;
     if (isNew) {
-      const outcome = await run('save', () => addItem(levelId, title, description), t('syllabusEditor.added'));
+      const outcome = await run('save', () => addItem(levelId, title, description, requestId()), t('syllabusEditor.added'));
       // Opens the new item, where the Guru can add its lessons straight away.
       if (outcome.id) router.replace({ pathname: '/staff/levels/item/[id]', params: { id: String(outcome.id) } });
       return;
@@ -178,7 +181,7 @@ function SyllabusItemScreenContent() {
           <Chip label={t('syllabusEditor.retiredChip')} tone="neutral" />
         </View>
       ) : null}
-      {message ? <Notice tone={message.tone}>{message.text}</Notice> : null}
+      {message && !(isGuru && message.tone === 'error') ? <Notice tone={message.tone}>{message.text}</Notice> : null}
 
       {isGuru ? (
         <Section icon="edit" title={t('syllabusEditor.textTitle')}>
@@ -197,9 +200,12 @@ function SyllabusItemScreenContent() {
             onChangeText={setDescription}
             multiline
             maxLength={ITEM_DESCRIPTION_MAX + 50}
+            counter={ITEM_DESCRIPTION_MAX}
             error={errors.description ? t(errors.description) : undefined}
           />
           {item && item.ticks > 0 ? <AppText variant="small" tone="muted">{t('syllabusEditor.ticksKept', { count: item.ticks })}</AppText> : null}
+          {/* P1-11 (#323): a refusal beside the button, not above the form. */}
+          {message?.tone === 'error' ? <Notice tone="error">{message.text}</Notice> : null}
           <Button
             icon="check"
             label={isNew ? t('syllabusEditor.addItem') : t('syllabusEditor.save')}

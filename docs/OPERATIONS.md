@@ -259,6 +259,66 @@ user for this: it leaves the name, phone and email in the audit log.
 Errors: `not_pending` (a student or staff login), `has_student_record` (use `erase_student`),
 `profile_not_found`, `reason_required`.
 
+## A record entered by mistake, an import undone (0054)
+
+Not an erasure ([DECISIONS.md #326](DECISIONS.md)): a second copy of a student typed at the desk, or the
+records of a wrong Excel file.
+- **In the app (the Guru):** the student's profile → "Delete this record (entered by mistake)", with a reason
+  and the name typed again. Database → Import → "Imports of the last 30 days" → Undo this import. Both delete
+  only records nothing hangs on; the audit log keeps the deleted row with the reason
+  (`select old_row, new_row from audit_log where table_name = 'students' and action = 'DELETE' order by id desc;`).
+- **Refused, two records with history** (`student_visited`, `student_has_history`): merge them by hand. In the
+  SQL editor, move the visits, calls, ticks and practice of the wrong record to the right one
+  (`update visits set student_id = '<right>' where student_id = '<wrong>';`, the same for `call_logs`,
+  `student_progress`, `practice_logs`), check the wrong record's guardians and consents, then delete it in the
+  app (it now has nothing left). A record with a login: the Guru takes the login off first (#302).
+
+## Phones that are not E.164
+
+0054 keeps every phone as E.164 (`+919876543210`, [DECISIONS.md #324](DECISIONS.md)) and rewrote the stored
+numbers it could read. The rest stay as they were.
+
+**1. Before 0054 (read-only): what it will rewrite.** Same rules as `phone_e164` (spaces, brackets, dots and dashes
+dropped; `00` read as `+`; 10 digits, 11 with a leading 0, or 12 starting 91 read as Indian). Note the four columns:
+
+```sql
+with p(kind, phone) as (
+  select 'student', phone from students union all
+  select 'guardian', phone from guardians union all
+  select 'login', phone from profiles union all
+  select 'ishtagoshti', phone from ig_subscribers),
+c as (select kind, phone, regexp_replace(btrim(phone), '[\s().-]', '', 'g') as v from p where phone is not null),
+r as (select kind, phone, v ~ '^\+[1-9][0-9]{6,14}$' or v ~ '^00[1-9][0-9]{6,14}$' or v ~ '^0?[1-9][0-9]{9}$'
+                          or v ~ '^91[1-9][0-9]{9}$' as readable from c)
+select kind, count(*) as with_phone,
+       count(*) filter (where phone ~ '^\+[1-9][0-9]{6,14}$') as already_e164,
+       count(*) filter (where readable and phone !~ '^\+[1-9][0-9]{6,14}$') as to_rewrite,
+       count(*) filter (where not readable) as left_as_is
+  from r group by kind order by kind;
+```
+
+The rewrite changes only the `to_rewrite` rows (one `update` per table, each changed row gets an audit-log row); the
+run takes well under a second at the class's size. The app's sign-up, About you and Accept have sent E.164 since
+launch (0051 refuses anything else), so on LIVE `to_rewrite` should be the desk's and imports' national numbers.
+
+**2. After 0054: every row is E.164 except `left_as_is`.** The list below must have exactly the step-1
+`left_as_is` rows (guardians and logins included), and running step 1 again shows `to_rewrite` 0:
+
+```sql
+select 'student' as kind, roll_no as who, phone from students where phone is not null and phone !~ '^\+[1-9][0-9]{6,14}$'
+union all
+select 'guardian', s.roll_no, g.phone from guardians g join students s on s.id = g.student_id
+ where g.phone is not null and g.phone !~ '^\+[1-9][0-9]{6,14}$'
+union all
+select 'login', p.full_name, p.phone from profiles p where p.phone is not null and p.phone !~ '^\+[1-9][0-9]{6,14}$'
+union all
+select 'ishtagoshti', p.full_name, i.phone from ig_subscribers i join profiles p on p.id = i.profile_id
+ where i.phone is not null and i.phone !~ '^\+[1-9][0-9]{6,14}$';
+```
+
+Correct each one with the person (C8 Edit details, or the Table Editor for a guardian); a saved number that is
+not a number is refused (`phone_invalid`).
+
 ## Staff who leave
 
 A coordinator who stops: the Guru switches the login off in the app (G2); that is enough for a
@@ -284,6 +344,47 @@ work cannot simply be deleted: the records say who registered, marked or called.
 Errors: `switch_off_first` (step 1), `not_staff` (a student: "Erasure request"; a subscriber leaves
 in the app), `not_yourself`, `reason_required`.
 
+## A coordinator's own student record
+
+"Coordinators are students too" (Praveen, 13 Oct 2026; [DECISIONS.md #316-#321](DECISIONS.md), migration 0053 after the
+launch). **Until 0053 runs:** each coordinator gets a student record at the desk **without a login** (Register a student,
+their own name and date of birth; email optional). Colleagues check them in by name or their printed QR card and tick their
+syllabus; nobody checks themselves in.
+
+**After 0053 (LIVE: its own run, the TEST-run pack in NOTES.md "13-10-2026 — Coordinators are students too"):** the Guru links
+each of those records to the coordinator's login, one by one:
+
+1. Guru: Running the class → Coordinators → the coordinator → **Own student record** → type 2+ letters of the name or the roll
+   number → **Link** on the right record → read the question → **Link as own record**.
+2. The coordinator pulls down on their home: a **Me** circle comes first (My QR, My progress, My attendance, Practice). Their
+   role and everything else stay as they were.
+3. A wrong record: the same section → **Take the login off this record** (the record keeps its visits and ticks; only Me goes),
+   then link the right one.
+
+**The Guru's own record** is linked in the SQL editor (the app refuses the Guru's own login, `own_record`):
+
+```sql
+select id, full_name from profiles where role = 'guru' and active;
+select id, roll_no, full_name from students where profile_id is null and full_name ilike '%<part of the name>%';
+select link_staff_record('<guru profile id>', '<record id>');
+select s.roll_no, s.full_name, p.role from students s join profiles p on p.id = s.profile_id where s.profile_id = '<guru profile id>';
+```
+
+The last line shows one row with role `guru`. Errors: `profile_not_staff` (not an active coordinator or Guru),
+`staff_has_record` (already linked: take it off first), `student_already_linked` (the record has a login),
+`student_withdrawn`.
+
+**Rules the database keeps** (error `own_record`, one message in the app): nobody checks themselves in or out (name, QR,
+Mark attendance, a time edit), ticks their own syllabus, nominates, answers or decides their own promotion, changes their own
+level or mentor, logs a call to themselves. "Check out everyone" also closes one's own visit. The door tablet checks a
+coordinator in like any student. Nobody is their own mentor (`own_mentor`).
+
+**A student who becomes a coordinator:** on their student page the Guru takes the login off the record (it waits for a role),
+makes it a coordinator on Coordinators (typing the name), then links the record as their own (step 1).
+
+**Withdrawal or erasure of a coordinator's own record:** refused while the login is on it (`staff_login_linked`): take the
+login off first (step 3), then "Consent withdrawal" / "Erasure request" as for any record. A coordinator who leaves for good
+("Staff who leave"): the record stays without a login.
 ## Requests from parents
 
 A parent (for a child) or an adult student may ask what we keep about them, have it corrected or
@@ -399,6 +500,7 @@ to `app/dist/`. Always use this command, not a bare `npx expo export`, because
 
 | Date | Site | Commit | Built (UTC) | By |
 |---|---|---|---|---|
+| 22-10-2026 | test (after-launch merge: staff own record, forms, a11y, deps; 0053 + 0054 on TEST) | 3b9ffdb (main; entry-073cee12…; deployment d11f9e81) | 2026-10-22T07:20:32Z | Claude (wrangler, Praveen's login) |
 | 21-10-2026 | test (What's new behind the info icon on My profile, #406) | 3adfecc (main; entry-adbd3347…; deployment 098ddf13) | 2026-10-21T17:22:45Z | Claude (wrangler, Praveen's login) |
 | 21-10-2026 | test (under-18 sign-up read strictly by the Rules; new 0051 re-run on TEST) | 3f74b53 (main; entry-f007543b…; deployment 9f19423c) | 2026-10-21T17:06:28Z | Claude (wrangler, Praveen's login) |
 | 21-10-2026 | test (under-18 home sign-up 0051 + practice features and mantra reader 0052; both migrations on TEST) | 7c846ed (main; entry-c0e5b777…; deployment 1bc44ee0) | 2026-10-21T16:34:06Z | Claude (wrangler, Praveen's login) |

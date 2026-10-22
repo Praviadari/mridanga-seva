@@ -6,10 +6,11 @@
 
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useIsFocused } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
+import { moveFocusTo } from '@/lib/a11y-focus';
 import { prepareQrReader } from '@/lib/qr-reader';
 import { radius, spacing, useTheme } from '@/theme/use-theme';
 
@@ -50,6 +51,13 @@ export function QrScanner({ onScan, paused }: QrScannerProps) {
   // expo-camera allows one camera picture at a time, and asks apps to remove it when the screen
   // is covered by another one (e.g. "Who is here now" opened on top).
   const isFocused = useIsFocused();
+  // Once per scanner: the camera frame takes the screen reader's focus the first time it is drawn.
+  const focusedOnce = useRef(false);
+  const focusOnFirstDraw = useCallback((node: View | null) => {
+    if (!node || focusedOnce.current) return;
+    focusedOnce.current = true;
+    moveFocusTo(node);
+  }, []);
 
   if (!permission || !readerReady) return <AppText tone="muted">{t('common.loading')}</AppText>;
 
@@ -73,6 +81,8 @@ export function QrScanner({ onScan, paused }: QrScannerProps) {
 
   return (
     <View
+      // The button that opened the camera is gone: TalkBack's focus goes to the camera (P2-02, #332).
+      ref={focusOnFirstDraw}
       // accessible + role, or the label on a plain View is never read out.
       accessible
       role="img"

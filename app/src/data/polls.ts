@@ -11,6 +11,7 @@ import { formatTypedDate, localDate, localMoment, localTime, parseDayMonthYear, 
 import { supabase } from '@/lib/supabase';
 
 import type { Audience } from './announcements';
+import { insertOnce } from './create-once';
 import { isNetworkError, type MessageKey } from './errors';
 
 /** Longest question and answer, and how many answers a poll has (C17); the database checks them too. */
@@ -315,10 +316,13 @@ function rowOf(form: PollForm) {
   };
 }
 
-/** Creates a poll; everyone it is for is told. Returns the new id. */
-export async function createPoll(form: PollForm): Promise<{ id?: number; errorKey?: MessageKey }> {
-  const { data, error } = await supabase.from('polls').insert(rowOf(form)).select('id').single<{ id: number }>();
-  return error ? { errorKey: errorKeyOf(error.message) } : { id: data.id };
+/**
+ * Creates a poll; everyone it is for is told. Returns the new id. equestId is the open form's
+ * (#322): Create again after a lost answer returns the first poll, so nobody is told twice.
+ */
+export async function createPoll(form: PollForm, requestId: string): Promise<{ id?: number; errorKey?: MessageKey }> {
+  const saved = await insertOnce('polls', rowOf(form), requestId);
+  return 'error' in saved ? { errorKey: errorKeyOf(saved.error.message) } : { id: saved.id };
 }
 
 /**

@@ -37,6 +37,7 @@ import {
   type StaffAnnouncementDetail,
 } from '@/data/announcements';
 import { announce } from '@/lib/announce';
+import { confirmReady, confirmShown } from '@/lib/second-tap';
 import { audienceName } from '@/i18n/labels';
 import { withMyReceipt } from '@/lib/announcement-receipt';
 import { formatDateTime } from '@/lib/dates';
@@ -131,8 +132,8 @@ function StaffAnnouncementScreenContent() {
   const personLine = (m: (typeof audience)[number]) => (m.rollNo ? [m.rollNo] : []);
   const writerOf = (r: Reply) => (r.rollNo ? `${r.fullName} · ${r.rollNo}` : r.fullName);
 
-  async function reply(body: string) {
-    const outcome = await sendReply(a.id, body);
+  async function reply(body: string, requestId: string) {
+    const outcome = await sendReply(a.id, body, requestId);
     if (!outcome.errorKey) await load();
     return outcome.errorKey;
   }
@@ -157,6 +158,7 @@ function StaffAnnouncementScreenContent() {
           onPress: () => {
             setReplyError(null);
             setConfirmingReply(r.id);
+            confirmShown();
             // The reply's buttons change in place; TalkBack does not read them by itself (P2-01, #314).
             announce(t('announcements.replies.deleteYes'));
           },
@@ -164,7 +166,8 @@ function StaffAnnouncementScreenContent() {
       ];
     }
     return [
-      { label: t('announcements.replies.deleteYes'), loading: busy, onPress: () => void removeReply(r.id) },
+      // "Yes, delete" sits where Delete was: a double tap must not delete unseen (P2-06, #332).
+      { label: t('announcements.replies.deleteYes'), loading: busy, onPress: () => void (confirmReady() && removeReply(r.id)) },
       { label: t('announcements.detail.cancel'), onPress: () => setConfirmingReply(null) },
     ];
   };
@@ -354,7 +357,7 @@ function StaffAnnouncementScreenContent() {
       ) : null}
       {confirmingDelete ? (
         <>
-          <Notice tone="info" title={t('announcements.detail.deleteTitle', { title: a.title })} announced>
+          <Notice tone="info" title={t('announcements.detail.deleteTitle', { title: a.title })} focused announced>
             {t('announcements.detail.deleteBody')}
           </Notice>
           <Button

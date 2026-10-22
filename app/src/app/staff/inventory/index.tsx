@@ -66,7 +66,7 @@ export default function InventoryScreen() {
   const today = todayLocal();
   const term = searchFold(search);
   const found = (item: InventoryItem) =>
-    !term || searchFold(` ${item.label} ${item.category ?? ''}`).includes(term);
+    !term || searchFold(`${item.code} ${item.label} ${item.category ?? ''}`).includes(term);
   const shown = items?.filter((item) => matches(item, filter) && found(item)) ?? [];
   const count = (f: Filter) => items?.filter((item) => matches(item, f)).length ?? 0;
 
@@ -113,7 +113,7 @@ export default function InventoryScreen() {
               key={item.id}
               leading="instruments"
               highlight={overdue || item.condition === 'damaged' ? 'attention' : undefined}
-              title={` · ${item.label}`}
+              title={`${item.code} · ${item.label}`}
               details={[
                 [item.category ?? t(`inventory.kinds.${item.kind}`), t(`inventory.conditions.${item.condition}`)].join(' · '),
                 ...(item.holder

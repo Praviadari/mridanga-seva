@@ -39,6 +39,8 @@ import {
   parseRupees,
   pickBill,
   recordEntry,
+  ENTRY_FIELDS,
+  fundErrorField,
   REFERENCE_MAX,
   reverseEntry,
   withdrawEntry,
@@ -49,7 +51,11 @@ import {
 } from '@/data/fund';
 import { fileSizeText } from '@/i18n/labels';
 import { formatDate, formatDateTime, formatTypedDate, parseDayMonthYear, todayLocal } from '@/lib/dates';
+import { useRequestId } from '@/lib/use-request-id';
 import { spacing } from '@/theme/use-theme';
+import { FormErrorSummary } from '@/components/form-error-summary';
+import { useFormFocus } from '@/components/form-focus';
+import { useFormChanged, useLeaveGuard } from '@/lib/use-leave-guard';
 
 type Mode = 'decline' | 'withdraw' | 'reverse' | null;
 
@@ -74,7 +80,13 @@ function FundEntryScreenContent() {
   const [mode, setMode] = useState<Mode>(null);
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
+  // #322: one id for this new entry, so Save again after a lost answer records it once.
+  const { requestId } = useRequestId();
+  // #323: the summary beside Save lists each problem as a link to its field.
+  const { target, focusFirst } = useFormFocus<(typeof ENTRY_FIELDS)[number]>();
   const [message, setMessage] = useState<{ tone: 'error' | 'success'; text: string } | null>(null);
+  // #327: Back asks before a half-filled new entry is thrown away.
+  const { allowLeave } = useLeaveGuard(useFormChanged(form, isNew));
 
   const load = useCallback(async () => {
     setBook(await fetchFundBook(profile?.id ?? null, profile?.role === 'guru'));
@@ -95,9 +107,13 @@ function FundEntryScreenContent() {
         {header}
         {book === undefined ? <LoadingCards /> : null}
         {book === null ? (
-          <Notice tone="error" title={t('fund.loadFailed')}>
-            {t('common.networkError')}
-          </Notice>
+          <>
+            <Notice tone="error" title={t('fund.loadFailed')}>
+              {t('common.networkError')}
+            </Notice>
+            {/* R3-09 (#327): not a dead end on a weak signal. */}
+            <Button icon="refresh" label={t('common.tryAgain')} onPress={() => void load()} />
+          </>
         ) : null}
         {book && isNew && !book.isKeeper ? <Notice tone="info">{t('fund.keeperOnly')}</Notice> : null}
         {book && !isNew && !entry ? <EmptyState icon="fund" title={t('fund.notFound')} /> : null}
@@ -124,11 +140,26 @@ function FundEntryScreenContent() {
 
   // ---------------------------------------------------------------- the form
   if (isNew) {
-    const update = (patch: Partial<EntryForm>) => setForm((current) => ({ ...current, ...patch }));
+    const update = (patch: Partial<EntryForm>) => {
+      setForm((current) => ({ ...current, ...patch }));
+      // F1-11: a field's message goes once the field is changed (the summary follows).
+      const changed = new Set(Object.keys(patch).map((key) => (key === 'categoryId' ? 'category' : key)));
+      setErrors((current) => Object.fromEntries(Object.entries(current).filter(([key]) => !changed.has(key))));
+    };
     const paise = parseRupees(form.amount);
     const choices = book.categories.filter((c) => c.direction === form.direction && !c.retired);
     const needsBill = form.direction === 'expense' && paise !== null && paise > book.billLimitPaise;
     const willWait = form.direction === 'expense' && paise !== null && paise > book.approvalLimitPaise;
+    const fieldLabel = (key: (typeof ENTRY_FIELDS)[number]) =>
+      ({
+        category: t('fund.categoryLabel'),
+        amount: t('fund.amountLabel'),
+        date: t('fund.dateLabel'),
+        party: form.direction === 'income' ? t('fund.fromLabel') : t('fund.toLabel'),
+        reference: t('fund.referenceLabel'),
+        note: t('fund.noteLabel'),
+        bill: needsBill ? t('fund.billRequiredTitle') : t('fund.billTitle'),
+      })[key];
 
     async function choose(kind: 'image' | 'pdf') {
       const picked = await pickBill(kind);
@@ -145,15 +176,23 @@ function FundEntryScreenContent() {
       const problems = checkEntryForm(form, isoDate, today, book?.billLimitPaise ?? 0);
       setErrors(problems);
       if (Object.keys(problems).length > 0 || !isoDate || !profile) {
-        setMessage({ tone: 'error', text: t('fund.fixFirst') });
+        focusFirst(ENTRY_FIELDS, problems);
         return;
       }
       setBusy(true);
       setMessage(null);
-      const outcome = await recordEntry(profile.id, form, isoDate);
+      const outcome = await recordEntry(profile.id, form, isoDate, requestId());
       setBusy(false);
-      if (outcome.errorKey) setMessage({ tone: 'error', text: t(outcome.errorKey) });
-      else if (outcome.id) router.replace({ pathname: '/staff/fund/[id]', params: { id: String(outcome.id) } });
+      const field = outcome.errorKey ? fundErrorField(outcome.errorKey) : null;
+      if (outcome.errorKey && field) {
+        // F3-08: a refusal about one field shows at that field.
+        setErrors({ [field]: outcome.errorKey });
+        focusFirst(ENTRY_FIELDS, { [field]: true });
+      } else if (outcome.errorKey) setMessage({ tone: 'error', text: t(outcome.errorKey) });
+      else if (outcome.id) {
+        allowLeave();
+        router.replace({ pathname: '/staff/fund/[id]', params: { id: String(outcome.id) } });
+      }
     }
 
     return (
@@ -166,15 +205,18 @@ function FundEntryScreenContent() {
             value={form.direction}
             onChange={(direction) => update({ direction, categoryId: null })}
           />
-          <ChoiceGroup<number>
-            chips
-            label={t('fund.categoryLabel')}
-            choices={choices.map((c) => ({ value: c.id, label: categoryName(t, c) }))}
-            value={form.categoryId}
-            onChange={(categoryId) => update({ categoryId })}
-            error={errors.category ? t(errors.category) : undefined}
-          />
+          <View ref={target('category')}>
+            <ChoiceGroup<number>
+              chips
+              label={t('fund.categoryLabel')}
+              choices={choices.map((c) => ({ value: c.id, label: categoryName(t, c) }))}
+              value={form.categoryId}
+              onChange={(categoryId) => update({ categoryId })}
+              error={errors.category ? t(errors.category) : undefined}
+            />
+          </View>
           <TextField
+            ref={target('amount')}
             label={t('fund.amountLabel')}
             hint={t('fund.amountHint')}
             value={form.amount}
@@ -185,6 +227,7 @@ function FundEntryScreenContent() {
           />
           {paise !== null ? <AppText variant="small" tone="muted">{formatRupees(paise)}</AppText> : null}
           <TextField
+            ref={target('date')}
             label={t('fund.dateLabel')}
             hint={t('fund.dateHint')}
             value={form.date}
@@ -194,6 +237,7 @@ function FundEntryScreenContent() {
             error={errors.date ? t(errors.date) : undefined}
           />
           <TextField
+            ref={target('party')}
             label={form.direction === 'income' ? t('fund.fromLabel') : t('fund.toLabel')}
             value={form.party}
             onChangeText={(party) => update({ party })}
@@ -201,6 +245,7 @@ function FundEntryScreenContent() {
             error={errors.party ? t(errors.party) : undefined}
           />
           <TextField
+            ref={target('reference')}
             label={t('fund.referenceLabel')}
             hint={t('fund.referenceHint')}
             value={form.reference}
@@ -209,11 +254,13 @@ function FundEntryScreenContent() {
             error={errors.reference ? t(errors.reference) : undefined}
           />
           <TextField
+            ref={target('note')}
             label={t('fund.noteLabel')}
             value={form.note}
             onChangeText={(text) => update({ note: text })}
             multiline
             maxLength={NOTE_MAX + 20}
+            counter={NOTE_MAX}
             error={errors.note ? t(errors.note) : undefined}
           />
         </Section>
@@ -223,6 +270,7 @@ function FundEntryScreenContent() {
           title={needsBill ? t('fund.billRequiredTitle') : t('fund.billTitle')}
           description={t('fund.billHint', { amount: formatRupees(book.billLimitPaise) })}
         >
+          <View ref={target('bill')} />
           {form.bill ? (
             <ListRow
               leading={form.bill.kind === 'pdf' ? 'pdf' : 'photo'}
@@ -242,7 +290,13 @@ function FundEntryScreenContent() {
         {willWait ? (
           <Notice tone="info">{t('fund.willWait', { amount: formatRupees(book.approvalLimitPaise) })}</Notice>
         ) : null}
-        {message ? <Notice tone={message.tone}>{message.text}</Notice> : null}
+        <FormErrorSummary
+          errors={errors}
+          fields={ENTRY_FIELDS.map((key) => ({ key, label: fieldLabel(key) }))}
+          onGoTo={(key) => focusFirst(ENTRY_FIELDS, { [key]: true })}
+          serverError={message?.tone === 'error' ? message.text : null}
+        />
+        {message && message.tone !== 'error' ? <Notice tone={message.tone}>{message.text}</Notice> : null}
         <Button icon="check" label={t('fund.save')} loading={busy} disabled={busy} onPress={() => void save()} />
         <AppText variant="small" tone="muted">
           {t('fund.neverDeleted')}

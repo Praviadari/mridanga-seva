@@ -48,6 +48,7 @@ import { localDate, formatDate, localTime, todayLocal } from '@/lib/dates';
 import { scanFeedback } from '@/lib/haptics';
 import { useLatestLoad } from '@/lib/latest-load';
 import { useTheme } from '@/theme/use-theme';
+import { useReloadOnResume } from '@/lib/reload-on-resume';
 
 /**
  * How long the same QR code is ignored after it was read, in milliseconds. The camera sees a
@@ -107,6 +108,8 @@ export default function MarkAttendanceScreen() {
   }, [beginLoad]);
 
   // Reload whenever the screen comes back into view, e.g. after "Who is here now".
+  // F9 / R4-04 (#327): back after a while (a phone that slept), the screen loads again.
+  useReloadOnResume(loadToday);
   useFocusEffect(
     useCallback(() => {
       void loadToday();

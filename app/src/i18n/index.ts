@@ -2,21 +2,20 @@
 // All text shown to users lives in ./locales/*.json; screens get it with
 // `const { t } = useTranslation()` from react-i18next. See docs/TRANSLATIONS.md and
 // docs/DECISIONS.md #12.
+//
+// English is always in (it is the fallback for a missing text). Telugu and Hindi are loaded only when they are
+// the start language or chosen (./locale-loaders.ts on the phone, at once; ./locale-loaders.web.ts on the web,
+// a separate download, while the app's splash stays up: useLanguageReady) (audit P4-06 / D9-11, #331).
 
 import { getLocales } from 'expo-localization';
 import { createInstance } from 'i18next';
+import { useSyncExternalStore } from 'react';
 import { initReactI18next } from 'react-i18next';
 
 import { readLocal, removeLocal, writeLocal } from '@/lib/local-storage';
 
+import { loadLocale, type Translations } from './locale-loaders';
 import en from './locales/en.json';
-import hiJson from './locales/hi.json';
-import teJson from './locales/te.json';
-
-// Typing Telugu and Hindi as `typeof en` makes `npx tsc --noEmit` fail when either file is
-// missing a key that English has, so no screen shows a raw key name.
-const te: typeof en = teJson;
-const hi: typeof en = hiJson;
 
 /** Language codes the app supports. Same list as the `profiles.language` check in the database. */
 export type Language = 'en' | 'te' | 'hi';
@@ -66,13 +65,15 @@ function startLanguage(): Language {
 
 // Our own instance (not i18next's global default), handed to react-i18next by initReactI18next.
 const i18n = createInstance();
+const start = startLanguage();
+// The start language's texts, when they are at hand already (always on the phone; never on the web).
+const startTexts = start === 'en' ? null : loadLocale(start);
 i18n.use(initReactI18next).init({
   resources: {
     en: { translation: en },
-    te: { translation: te },
-    hi: { translation: hi },
+    ...(startTexts && !(startTexts instanceof Promise) ? { [start]: { translation: startTexts } } : {}),
   },
-  lng: startLanguage(),
+  lng: start,
   fallbackLng: 'en',
   // React already escapes text, so i18next must not do it a second time.
   interpolation: { escapeValue: false },
@@ -80,6 +81,57 @@ i18n.use(initReactI18next).init({
   initAsync: false,
   react: { useSuspense: false },
 });
+
+// ---------------------------------------------------------------- loading Telugu and Hindi when needed
+
+/** Languages being downloaded (web only); the app shows its splash meanwhile. */
+const loading = new Set<Language>();
+const readyListeners = new Set<() => void>();
+function setLoading(language: Language, on: boolean): void {
+  if (on) loading.add(language);
+  else loading.delete(language);
+  readyListeners.forEach((listener) => listener());
+}
+
+/**
+ * Makes sure the texts of `language` are in. On the phone this happens at once and `then` runs before it
+ * returns; on the web the file is downloaded first (a failed download leaves the app in English, the
+ * fallback, and the next choice tries again).
+ */
+function withLanguage(language: Language, then: () => void): void {
+  if (language === 'en' || i18n.hasResourceBundle(language, 'translation')) {
+    then();
+    return;
+  }
+  const add = (texts: Translations) => {
+    i18n.addResourceBundle(language, 'translation', texts);
+    then();
+  };
+  const texts = loadLocale(language);
+  if (!(texts instanceof Promise)) {
+    add(texts);
+    return;
+  }
+  setLoading(language, true);
+  texts.then(add, () => undefined).finally(() => setLoading(language, false));
+}
+
+// The web: the start language downloads now; switching to it once it is in draws the app in it.
+if (startTexts instanceof Promise) withLanguage(start, () => void i18n.changeLanguage(start));
+
+/**
+ * False while the start language is still downloading (the web only), so the root layout keeps the app's
+ * splash up instead of showing the app in English for a moment.
+ */
+export function useLanguageReady(): boolean {
+  return useSyncExternalStore(
+    (listener) => {
+      readyListeners.add(listener);
+      return () => readyListeners.delete(listener);
+    },
+    () => !loading.has(start),
+  );
+}
 
 /**
  * On the web, the page's language follows the app's (<html lang>), so screen readers such as
@@ -104,7 +156,7 @@ export function currentLanguage(): Language {
 export function chooseLanguage(language: Language): void {
   writeLocal(STORAGE_KEY, language);
   writeLocal(UNSAVED_KEY, '1');
-  void i18n.changeLanguage(language);
+  withLanguage(language, () => void i18n.changeLanguage(language));
 }
 
 /**
@@ -114,7 +166,7 @@ export function chooseLanguage(language: Language): void {
 export function applyProfileLanguage(language: string): void {
   if (!isLanguage(language)) return;
   writeLocal(STORAGE_KEY, language);
-  if (language !== currentLanguage()) void i18n.changeLanguage(language);
+  if (language !== currentLanguage()) withLanguage(language, () => void i18n.changeLanguage(language));
 }
 
 export default i18n;

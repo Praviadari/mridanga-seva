@@ -129,7 +129,7 @@ process.on('uncaughtException', (error) => {
 // D14-10: every check is counted, and the run fails when fewer (or more) checks ran than expected,
 // so a block skipped by a renamed migration or a commented-out section cannot pass unseen.
 // Adding or removing checks? Run the suite and set this to the new total it prints.
-const EXPECTED_CHECKS = 2016; // face test data deleted (#433): +5; 0071 face self-scan (branch face-scan, placeholder number): +58; 0070 face scan server side (branch face-scan, placeholder number): +123; 0052 more practice: +56; 0051 child's sign-up at home: +80; 0050 staff dashboard: +15; 0049 launch clean-up: +30; 0048 withdrawn records and leaks: +50; 0047 form rules: +109; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
+const EXPECTED_CHECKS = 2126; // face test data deleted (#433): +5; 0071 face self-scan (branch face-scan, placeholder number): +64 (6 of them #434); 0070 face scan server side (branch face-scan, placeholder number): +123; 0054 after-launch forms: +49; 0053 staff own record: +55; 0052 more practice: +56; 0051 child's sign-up at home: +80; 0050 staff dashboard: +15; 0049 launch clean-up: +30; 0048 withdrawn records and leaks: +50; 0047 form rules: +109; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
 let failures = 0;
 let passes = 0;
 
@@ -1530,8 +1530,8 @@ check('material changes go to the audit log', (await asOwner(
 // Own name and phone (A3)
 await asApp('authenticated', late, `update profiles set full_name = '  Late Joiner  ', phone = ' +91 98765 43210 ' where id = auth.uid()`);
 const [lateProfile] = await asOwner(`select full_name, phone from profiles where id = '${late}'`);
-check('a student changes their own name and phone, trimmed',
-  lateProfile.full_name === 'Late Joiner' && lateProfile.phone === '+91 98765 43210', JSON.stringify(lateProfile));
+check('a student changes their own name and phone, trimmed (0054 #324: the phone kept as E.164)',
+  lateProfile.full_name === 'Late Joiner' && lateProfile.phone === '+919876543210', JSON.stringify(lateProfile));
 await refusesWith('an empty name is refused', 'name_required', () => asApp('authenticated', late, `update profiles set full_name = ' ' where id = auth.uid()`));
 await refusesWith('a phone with letters is refused', 'phone_invalid', () => asApp('authenticated', late, `update profiles set phone = 'call me' where id = auth.uid()`));
 check('a student cannot change someone else\'s profile', (await asApp('authenticated', late,
@@ -3073,8 +3073,8 @@ await refusesWith('a year of birth is checked', 'birth_year_invalid', () => igJo
 await refusesWith('the terms must be agreed', 'terms_required', () => igJoin(pubAdult, { year: 1990, terms: ' ' }));
 await refusesWith('a phone, when given, is a phone number', 'phone_invalid', () => igJoin(pubAdult, { year: 1990, phone: 'call me' }));
 const adultState = await igJoin(pubAdult, { year: 1990, phone: ' +91 98765 43210 ' });
-check('an adult joins at once: state active, phone kept, no parent asked', adultState.state === 'active'
-  && adultState.minor === false && adultState.phone === '+91 98765 43210' && adultState.parent_email === null, JSON.stringify(adultState));
+check('an adult joins at once: state active, phone kept (0054 #324: as E.164), no parent asked', adultState.state === 'active'
+  && adultState.minor === false && adultState.phone === '+919876543210' && adultState.parent_email === null, JSON.stringify(adultState));
 check('... and reads the published slokas, themes and the sloka of the day', (await igSlokas(pubAdult)).length === publishedSlokas
   && (await asApp('authenticated', pubAdult, 'select id from ig_themes')).length > 0 && (await dayOf(pubAdult, null)) !== null);
 await refusesWith('joining twice is refused', 'already_joined', () => igJoin(pubAdult, { year: 1991 }));
@@ -3324,7 +3324,7 @@ for (const bad of ['1 2 3 4', '+ 9', '1234567890123456']) {
     asApp('authenticated', arjun, 'update profiles set phone = $2 where id = $1', [arjun, bad]));
 }
 const [goodPhone] = await asApp('authenticated', arjun, `update profiles set phone = '+91 98765 43210' where id = $1 returning phone`, [arjun]);
-check('... and "+91 98765 43210" is kept', goodPhone?.phone === '+91 98765 43210');
+check('... and "+91 98765 43210" is kept (0054 #324: as +919876543210)', goodPhone?.phone === '+919876543210');
 await asOwner(`update auth.users set email = 'arjun.new@example.com' where id = '${arjun}'`);
 check('a changed sign-in email reaches the profile (FS1a-19)',
   (await asOwner(`select email from profiles where id = '${arjun}'`))[0].email === 'arjun.new@example.com');
@@ -3741,7 +3741,7 @@ for (const [fn, expected] of [['get_guardians', 1], ['get_consents', 2], ['get_c
     && entry.student_id === alMinor.id && entry.row_count === expected, `${rows.length} ${JSON.stringify(entry)}`);
 }
 check('... get_guardians gives the phone, get_consents the notice version, get_call_notes the note',
-  (await asApp('authenticated', coordinator, 'select phone from get_guardians($1)', [alMinor.id]))[0]?.phone === '9000077777'
+  (await asApp('authenticated', coordinator, 'select phone from get_guardians($1)', [alMinor.id]))[0]?.phone === '+919000077777'
   && (await asApp('authenticated', coordinator, 'select notice_version from get_consents($1)', [alMinor.id]))[0]?.notice_version === '0.1-draft'
   && (await asApp('authenticated', coordinator, 'select comment from get_call_notes($1, 1)', [alMinor.id]))[0]?.comment === 'Access log call note');
 check('... the Guru\'s reads through the functions are logged too', await (async () => {
@@ -4167,6 +4167,13 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
     // 0051: a child's sign-up at home (the child's own request; the consent page; Accept for a child, staff only inside)
     'my_parent_consent()', 'resend_parent_email()', 'set_parent_details(text,text,text,text)',
     'give_parent_consent(text,text,boolean,boolean,boolean,text)', 'accept_minor_sign_up(uuid,text)',
+    // 0053: the Guru links a staff login to its own student record (#316)
+    'link_staff_record(uuid,uuid)',
+    // 0054: creates once per request id (#322), event attendance per student (#328), a record entered by
+    // mistake and an import undone (#326, the Guru inside), the phone normaliser the phone trigger runs as the person (#324)
+    'record_fund_entry(uuid,text,smallint,date,bigint,text,text,text,text,text)', 'log_call(uuid,uuid,call_outcome,text,text,date)',
+    'log_practice(uuid,integer,text,date,timestamp with time zone,bigint,text)', 'change_event_attendance(bigint,uuid[],uuid[])',
+    'delete_student_record(uuid,text)', 'undo_import(uuid)', 'phone_e164(text)',
     // 0070: face scan (the desk, the student's phone, staff counts; each checks the caller and the switch inside)
     'approve_face_enrolment(uuid,text)', 'enrol_face(bigint,text)', 'face_use_counts(date,date)', 'get_face_enrolments(uuid)',
     'issue_integrity_challenge(text)', 'my_face_enrolment(text)', 'record_face_consent(uuid,boolean,uuid,text,boolean,text)',
@@ -4610,7 +4617,7 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   await refusesWith('FS1a-17: a name over 120 characters is refused', 'name_too_long', setStudent('full_name', 'N'.repeat(121)));
   await refusesWith('FS1a-17: a phone over 30 characters is refused', 'phone_invalid', setStudent('phone', '9'.repeat(31)));
   await asApp('authenticated', coordinator, `update students set phone = '98480 12345', email = 'Backlog.37@Example.com', joined_on = '2026-01-06' where id = $1`, [s37]);
-  check('FS1a-17: ... plausible values still save', (await asOwner(`select phone = '98480 12345' as ok from students where id = '${s37}'`))[0].ok === true);
+  check('FS1a-17: ... plausible values still save (0054 #324: the phone as E.164)', (await asOwner(`select phone = '+919848012345' as ok from students where id = '${s37}'`))[0].ok === true);
 
   // D1b-09: a switched-off sign-up is not linked when its email is confirmed.
   await asOwner(`insert into students (full_name, dob, email) values ('Linked 37', '1990-01-01', 'off.signup.37@example.com')`);
@@ -6403,6 +6410,395 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
     && (await asOwner('select count(*)::int as n from practice_mantras'))[0].n === 2);
 }
 
+// ---------------------------------------------------------------- 0053 staff own record (DECISIONS #316-#321)
+{
+  // Blocks above ran older migrations again (0036's assign_mentor among them): 0053 again.
+  const file61 = readFileSync(new URL('migrations/0053_staff_own_record.sql', supabaseDir), 'utf8');
+  await db.exec(file61);
+  const adultDob61 = `${year - 30}-05-05`;
+  const signUp61 = async (email, meta) => (await db.query(
+    `insert into auth.users (email, email_confirmed_at, raw_user_meta_data) values ($1, now(), $2) returning id`,
+    [email, JSON.stringify({ notice_version: 'v1', dob: adultDob61, centre_id: 1, ...meta })])).rows[0].id;
+  const loginOf61 = async (id) => (await asOwner(`select profile_id from students where id = '${id}'`))[0].profile_id;
+  const mentorOf61 = async (id) => (await asOwner(`select mentor_id from students where id = '${id}'`))[0].mentor_id;
+  const asha = await signUp61('asha.61@example.com', { full_name: 'Asha Sixtyone', gender: 'female' });
+  const bindu = await signUp61('bindu.61@example.com', { full_name: 'Bindu Sixtyone', gender: 'female' });
+  const mohan = await signUp61('mohan.61@example.com', { full_name: 'Mohan Sixtyone', gender: 'male' });
+  for (const id of [asha, bindu, mohan]) await asApp('authenticated', guru, `update profiles set role = 'coordinator' where id = $1`, [id]);
+
+  // #316: launch practice: the desk made Asha's record (her email on it) before 0053; nothing links it by itself.
+  const recA = await register(bindu, { p_full_name: 'Asha Sixtyone', p_dob: adultDob61, p_email: 'asha.61@example.com' });
+  check('0053 #316: a record with a coordinator\'s email is not linked to their login by itself, the role stays',
+    (await loginOf61(recA.id)) === null && (await roleOf(asha)) === 'coordinator');
+  await asOwner(`update auth.users set email_confirmed_at = now() where id = '${asha}'`);
+  check('0053 #316: ... nor when the email is confirmed again', (await loginOf61(recA.id)) === null);
+  await refusesWith('0053 #316: Accept never takes a staff login', 'not_waiting', () =>
+    asApp('authenticated', guru, 'select accept_sign_up($1) as r', [asha]));
+  await refusesWith('0053 #316: the waiting-login link refuses a staff login', 'profile_not_pending', () =>
+    asApp('authenticated', guru, 'select link_student_login($1, $2)', [asha, recA.id]));
+  await refusesWith('0053 #316: a coordinator cannot link an own record', 'not_allowed', () =>
+    asApp('authenticated', bindu, 'select link_staff_record($1, $2)', [asha, recA.id]));
+  await refusesWith('0053 #316: anon cannot run link_staff_record', 'permission denied for function link_staff_record', () =>
+    asApp('anon', null, 'select link_staff_record($1, $2)', [asha, recA.id]));
+  // The record's mentor is Asha herself (the desk's mentor rule could pick her while the record had no login).
+  await asOwner(`update students set gender = 'female' where id = '${recA.id}'`);
+  await asOwner(`update students set mentor_id = '${asha}' where id = '${recA.id}'`);
+  await asApp('authenticated', guru, 'select link_staff_record($1, $2)', [asha, recA.id]);
+  check('0053 #316: the Guru links a coordinator\'s login to their own record; the role stays coordinator',
+    (await loginOf61(recA.id)) === asha && (await roleOf(asha)) === 'coordinator');
+  const newMentor = await mentorOf61(recA.id);
+  const [{ g: mentorGender }] = newMentor ? await asOwner(`select gender as g from profiles where id = '${newMentor}'`) : [{ g: null }];
+  check('0053 #319: ... a mentor that was the login itself is taken off, another of the same gender given (or none)',
+    newMentor !== asha && (newMentor === null || mentorGender === 'female'), String(newMentor));
+  const recA2 = await register(bindu, { p_full_name: 'Asha Second', p_dob: adultDob61 });
+  await refusesWith('0053 #316: one own record per login', 'staff_has_record', () =>
+    asApp('authenticated', guru, 'select link_staff_record($1, $2)', [asha, recA2.id]));
+  await refusesWith('0053 #316: a record with a login is not linked again', 'student_already_linked', () =>
+    asApp('authenticated', guru, 'select link_staff_record($1, $2)', [bindu, recA.id]));
+  const gone61 = await register(bindu, { p_full_name: 'Withdrawn Sixtyone', p_dob: adultDob61 });
+  await asApp('authenticated', guru, `select withdraw_consent($1, 'by phone')`, [gone61.id]);
+  await refusesWith('0053 #316: never a withdrawn record', 'student_withdrawn', () =>
+    asApp('authenticated', guru, 'select link_staff_record($1, $2)', [bindu, gone61.id]));
+  const waiting61 = await signUp61('waiting.61@example.com', { full_name: 'Waiting Sixtyone' });
+  await refusesWith('0053 #316: a waiting login is not staff (it is linked with link_student_login)', 'profile_not_staff', () =>
+    asApp('authenticated', guru, 'select link_staff_record($1, $2)', [waiting61, recA2.id]));
+  await refusesWith('0053 #316: ... nor is a student login', 'profile_not_staff', () =>
+    asApp('authenticated', guru, 'select link_staff_record($1, $2)', [arjun, recA2.id]));
+  const recG = await register(bindu, { p_full_name: 'Guru Own Record', p_dob: adultDob61 });
+  await refusesWith('0053 #316: the Guru does not link their own login in the app', 'own_record', () =>
+    asApp('authenticated', guru, 'select link_staff_record($1, $2)', [guru, recG.id]));
+  await asOwner(`select link_staff_record('${guru}', '${recG.id}')`);
+  check('0053 #316: the SQL editor links the Guru\'s own record; the role stays guru',
+    (await loginOf61(recG.id)) === guru && (await roleOf(guru)) === 'guru');
+
+  // #317: the own record works like a student's for what the person does themselves.
+  const myId = async (who) => (await asApp('authenticated', who, 'select my_student_id() as id'))[0].id;
+  check('0053 #317: my_student_id is the own record for a coordinator and the Guru, null without one',
+    (await myId(asha)) === recA.id && (await myId(guru)) === recG.id && (await myId(bindu)) === null && (await myId(arjun)) !== null);
+  await asApp('authenticated', asha, `select log_practice(25, 'manual')`);
+  check('0053 #317: a coordinator logs practice on their own record',
+    (await asOwner(`select count(*)::int as n from practice_logs where student_id = '${recA.id}'`))[0].n === 1);
+  check('0053 #317: ... and gets the student home numbers and the QR code of their own record',
+    (await asApp('authenticated', asha, 'select student_home() as h'))[0].h?.full_name === 'Asha Sixtyone'
+    && (await asApp('authenticated', asha, 'select qr_token from students where profile_id = $1', [asha])).length === 1);
+  await refusesWith('0053 #317: (control) a coordinator without an own record logs no practice', 'not_allowed', () =>
+    asApp('authenticated', bindu, `select log_practice(25, 'manual')`));
+
+  // #318: nobody marks their own attendance, whatever the path; a colleague does.
+  const [{ qr_token: qrA }] = await asOwner(`select qr_token from students where id = '${recA.id}'`);
+  await refusesWith('0053 #318: a coordinator cannot check themselves in by name (desk, Mark attendance)', 'own_record', () =>
+    asApp('authenticated', asha, `select mark_visit($1, 'in') as r`, [recA.id]));
+  await refusesWith('0053 #318: ... nor by scanning their own QR code', 'own_record', () =>
+    asApp('authenticated', asha, 'select scan_qr($1) as r', [qrA]));
+  await refusesWith('0053 #318: ... nor through toggle_visit', 'own_record', () =>
+    asApp('authenticated', asha, `select toggle_visit($1, 'manual') as r`, [recA.id]));
+  const markBy = async (who, id, action) => (await asApp('authenticated', who, 'select mark_visit($1, $2) as r', [id, action]))[0].r.action;
+  check('0053 #318: (control) a colleague checks the coordinator in', (await markBy(bindu, recA.id, 'in')) === 'in');
+  await refusesWith('0053 #318: the coordinator cannot check themselves out', 'own_record', () =>
+    asApp('authenticated', asha, `select mark_visit($1, 'out') as r`, [recA.id]));
+  await refusesWith('0053 #318: ... nor correct their own visit\'s time', 'own_record', () =>
+    asApp('authenticated', asha, `update visits set check_in = check_in - interval '1 minute' where student_id = $1 and check_out is null`, [recA.id]));
+  const [{ n: closed61 }] = await asApp('authenticated', asha, 'select check_out_all() as n');
+  check('0053 #318: (control) "Check out everyone" by the coordinator closes their own visit too (end of the day)',
+    closed61 >= 1 && (await asOwner(`select count(*)::int as n from visits where student_id = '${recA.id}' and check_out is null`))[0].n === 0);
+  // The door tablet's scan comes a while later (a scan within 30 s of a check-out answers already_out).
+  await asOwner(`update visits set check_in = check_in - interval '3 minutes', check_out = check_out - interval '2 minutes' where student_id = '${recA.id}'`);
+  const [{ r: atDoor }] = await asApp('authenticated', kiosk, 'select scan_qr($1) as r', [qrA]);
+  check('0053 #318: (control) the door tablet checks a coordinator in by their own card, like any student', atDoor.action === 'in', atDoor.action);
+  check('0053 #318: (control) ... and a colleague checks them out', (await markBy(bindu, recA.id, 'out')) === 'out');
+  await refusesWith('0053 #318: the Guru cannot check themselves in either', 'own_record', () =>
+    asApp('authenticated', guru, `select mark_visit($1, 'in') as r`, [recG.id]));
+
+  // #318: ticks, level, promotion, calls.
+  const [{ id: item61 }] = await asOwner(`select id from syllabus_items where level_id = 1 and retired_at is null order by sort limit 1`);
+  await refusesWith('0053 #318: a coordinator cannot tick their own syllabus item', 'own_record', () =>
+    asApp('authenticated', asha, 'insert into student_progress (student_id, item_id) values ($1, $2)', [recA.id, item61]));
+  await asApp('authenticated', bindu, 'insert into student_progress (student_id, item_id) values ($1, $2)', [recA.id, item61]);
+  check('0053 #318: (control) a colleague ticks it', (await asOwner(`select count(*)::int as n from student_progress where student_id = '${recA.id}'`))[0].n === 1);
+  await refusesWith('0053 #318: ... the coordinator cannot change its remark', 'own_record', () =>
+    asApp('authenticated', asha, `update student_progress set remark = 'Mine' where student_id = $1 and item_id = $2`, [recA.id, item61]));
+  await refusesWith('0053 #318: ... nor untick it', 'own_record', () =>
+    asApp('authenticated', asha, 'delete from student_progress where student_id = $1 and item_id = $2', [recA.id, item61]));
+  await refusesWith('0053 #318: a coordinator cannot nominate themselves', 'own_record', () =>
+    asApp('authenticated', asha, `select nominate_for_promotion($1, 'I am ready')`, [recA.id]));
+  const [{ nom: nom61 }] = await asApp('authenticated', bindu, `select nominate_for_promotion($1, 'Plays the level well') as nom`, [recA.id]);
+  check('0053 #318: (control) a colleague nominates the coordinator', !!nom61);
+  await refusesWith('0053 #318: ... the coordinator cannot answer their own nomination', 'own_record', () =>
+    asApp('authenticated', asha, `select give_promotion_feedback($1, 'ready', 'Agreed')`, [nom61]));
+  const [{ nom: nomG }] = await asApp('authenticated', bindu, `select nominate_for_promotion($1, 'The Guru plays well') as nom`, [recG.id]);
+  await refusesWith('0053 #318: the Guru cannot decide their own nomination', 'own_record', () =>
+    asApp('authenticated', guru, `select decide_promotion($1, 'not_yet', 'Later', current_date + 30)`, [nomG]));
+  await refusesWith('0053 #318: ... nor set their own level', 'own_record', () =>
+    asApp('authenticated', guru, 'update students set level_id = 2 where id = $1', [recG.id]));
+  await asApp('authenticated', guru, 'update students set level_id = 2 where id = $1', [recA.id]);
+  check('0053 #318: (control) the Guru sets a coordinator\'s level', (await asOwner(`select level_id from students where id = '${recA.id}'`))[0].level_id === 2);
+  await refusesWith('0053 #318: a coordinator cannot log a call to themselves', 'own_record', () =>
+    asApp('authenticated', asha, `select log_call($1, 'not_reachable', null, 'No answer')`, [recA.id]));
+  const trig61 = (await asOwner(`select string_agg(c.relname, ',' order by c.relname) as t from pg_trigger t join pg_class c on c.oid = t.tgrelid
+    where t.tgname like '%refuse_own_record' and not t.tgisinternal`))[0].t;
+  check('0053 #318: refuse_own_record guards visits, ticks, level history, promotion, assessment reviews, calls and event lists',
+    ['assessment_submissions', 'call_logs', 'event_attendance', 'level_history', 'promotion_feedback', 'promotion_nominations',
+      'student_progress', 'visits'].every((t) => trig61.split(',').includes(t)), trig61);
+
+  // #318: an event's attendance list leaves the caller's own row as it is.
+  const [{ id: ev61 }] = await asOwner(`insert into events (title, starts_at, place, audience, created_by)
+    values ('Kirtan Sixtyone', now() + interval '1 hour', 'Temple hall', 'all', '${guru}') returning id`);
+  // Moved into the past by hand, as above (the guard keeps the app from doing that).
+  await db.exec(`alter table events disable trigger events_guard; update events set starts_at = now() - interval '1 hour' where id = ${ev61}; alter table events enable trigger events_guard`);
+  const evRows = async () => (await asOwner(`select string_agg(student_id::text, ',' order by student_id) as s from event_attendance where event_id = ${ev61}`))[0].s ?? '';
+  await asApp('authenticated', asha, 'select mark_event_attendance($1, $2)', [ev61, [recA.id, recA2.id]]);
+  check('0053 #318: a coordinator\'s event list does not mark themselves present (the others are marked)', (await evRows()) === recA2.id, await evRows());
+  await asApp('authenticated', bindu, 'select mark_event_attendance($1, $2)', [ev61, [recA.id, recA2.id]]);
+  await asApp('authenticated', asha, 'select mark_event_attendance($1, $2)', [ev61, [recA2.id]]);
+  check('0053 #318: ... nor takes off their own row a colleague marked', (await evRows()).split(',').includes(recA.id), await evRows());
+
+  // #319: mentors.
+  await refusesWith('0053 #319: nobody is their own mentor', 'own_mentor', () =>
+    asApp('authenticated', bindu, 'update students set mentor_id = $2 where id = $1', [recA.id, asha]));
+  await refusesWith('0053 #319: ... also through the Guru\'s mentor move', 'own_mentor', () =>
+    asApp('authenticated', guru, 'select reassign_mentees($1, $2)', [[recA.id], asha]));
+  await refusesWith('0053 #319: a coordinator cannot choose their own mentor', 'own_record', () =>
+    asApp('authenticated', asha, 'update students set mentor_id = $2 where id = $1', [recA.id, guru]));
+  await asApp('authenticated', guru, 'select reassign_mentees($1, $2)', [[recA.id], bindu]);
+  check('0053 #319: (control) the Guru gives the coordinator a colleague as mentor', (await mentorOf61(recA.id)) === bindu);
+  // Mohan's record gets its gender after the link: the mentor rule never picks Mohan himself.
+  const recM = await register(bindu, { p_full_name: 'Mohan Sixtyone', p_dob: adultDob61 });
+  await asApp('authenticated', guru, 'select link_staff_record($1, $2)', [mohan, recM.id]);
+  await asOwner(`update students set gender = 'male', mentor_id = null where id = '${recM.id}'`);
+  check('0053 #319: the mentor rule (same gender, fewest students) never gives a coordinator themselves',
+    (await mentorOf61(recM.id)) !== mohan, String(await mentorOf61(recM.id)));
+
+
+  // #320: a record with a staff login is not withdrawn or erased while linked.
+  await refusesWith('0053 #320: consent on a coordinator\'s own record is not withdrawn while the login is on it', 'staff_login_linked', () =>
+    asApp('authenticated', guru, `select withdraw_consent($1, 'asked')`, [recA.id]));
+  await refusesWith('0053 #320: ... nor is it erased', 'staff_login_linked', () =>
+    asApp('authenticated', guru, `select erase_student($1, 'asked')`, [recA.id]));
+  await refusesWith('0053 #320: ... nor deleted in the dashboard', 'staff_login_linked', () =>
+    asOwner(`delete from students where id = '${recA.id}'`));
+  check('0053 #320: ... the login stays on', (await asOwner(`select active from profiles where id = '${asha}'`))[0].active === true);
+  await asApp('authenticated', guru, 'select unlink_student_login($1)', [recA.id]);
+  check('0053 #316: the Guru takes the login off the own record; the role stays coordinator, the record stays',
+    (await loginOf61(recA.id)) === null && (await roleOf(asha)) === 'coordinator' && (await myId(asha)) === null);
+  await asApp('authenticated', guru, 'select link_staff_record($1, $2)', [asha, recA.id]);
+  check('0053 #316: (control) and links it again', (await loginOf61(recA.id)) === asha);
+
+  // Run twice: nothing changes.
+  const counts61 = async () => (await asOwner(`select (select count(*) from students where profile_id is not null)::int as l,
+    (select count(*) from pg_trigger where tgname like '%own%' and not tgisinternal)::int as t,
+    (select count(*) from visits)::int as v, (select count(*) from notifications)::int as n`))[0];
+  const c61 = await counts61();
+  let again61 = '';
+  try { await db.exec(file61); } catch (e) { again61 = String(e.message); }
+  check('0053: a second run changes nothing', again61 === '' && JSON.stringify(await counts61()) === JSON.stringify(c61), `${again61} ${JSON.stringify(c61)}`);
+}
+
+// ---------------------------------------------------------------- 0054 after-launch forms (DECISIONS #322, #324-#326, #328, #329)
+{
+  // The 0048 block ran 0046-0048 again; 0054 redefines import_students and ig_send_parent_code after them: again.
+  const file62 = readFileSync(new URL('migrations/0054_after_launch_forms.sql', supabaseDir), 'utf8');
+  await db.exec(file62);
+  const adultDob62 = `${year - 30}-05-05`;
+  const rid = () => newId();
+
+  // #322 (P1-02): each create is saved once per request id.
+  const fundRid = await rid();
+  const fundOnce = async (userId, requestId) => Number((await asApp('authenticated', userId,
+    `select record_fund_entry(p_request_id => $1, p_direction => 'income', p_category => $2::smallint, p_on_date => $3::date,
+       p_amount_paise => 4200::bigint, p_party => 'Sixtytwo') as id`, [requestId, donation, fundToday]))[0].id);
+  const balance62 = await balanceAs(guru);
+  const fund1 = await fundOnce(guru, fundRid);
+  const fund2 = await fundOnce(guru, fundRid);
+  check('0054 #322: a fund entry saved again with the same request id returns the first entry',
+    fund1 === fund2 && (await asOwner(`select count(*)::int as n from fund_entries where request_id = '${fundRid}'`))[0].n === 1);
+  check('0054 #322: ... and the balance moved once', (await balanceAs(guru)) === balance62 + 4200);
+  const wasTreasurer = (await asOwner(`select is_treasurer from profiles where id = '${coordinator2}'`))[0].is_treasurer;
+  await asApp('authenticated', guru, 'update profiles set is_treasurer = true where id = $1', [coordinator2]);
+  await refusesWith('0054 #322: another keeper cannot reuse the id', /fund_entries_request_id_key/, () => fundOnce(coordinator2, fundRid));
+  await asApp('authenticated', guru, 'update profiles set is_treasurer = $2 where id = $1', [coordinator2, wasTreasurer]);
+  await refusesWith('0054 #322: the request-id twin needs an id', 'request_id_required', () => fundOnce(guru, null));
+  await refusesWith('0054 #322: (control) the twin keeps the keeper rule', 'not_allowed', async () => fundOnce(coordinator, await rid()));
+  const plain62 = await record(guru, 'income', donation, 100);
+  check('0054 #322: (control) the function without an id still records, with no id',
+    (await asOwner(`select request_id from fund_entries where id = ${plain62}`))[0].request_id === null);
+
+  const callee62 = await register(coordinator, { p_full_name: 'Call Sixtytwo', p_dob: adultDob62 });
+  const callRid = await rid();
+  const call62 = () => logCall(coordinator, { p_request_id: callRid, p_student: callee62.id, p_outcome: 'not_reachable', p_reason: null,
+    p_comment: 'No answer (0054)' });
+  const tasks62 = async () => (await asOwner(`select count(*)::int as n from follow_up_tasks where student_id = '${callee62.id}' and kind = 'retry'`))[0].n;
+  const firstCall = await call62();
+  const tasksAfter = await tasks62();
+  check('0054 #322: a call note saved again returns the first and adds no second retry task',
+    (await call62()) === firstCall && (await tasks62()) === tasksAfter
+    && (await asOwner(`select count(*)::int as n from call_logs where student_id = '${callee62.id}'`))[0].n === 1);
+  await refusesWith('0054 #322: (control) the twin keeps log_call\'s rules', 'comment_required', async () => logCall(coordinator, {
+    p_request_id: await rid(),
+    p_student: callee62.id, p_outcome: 'not_reachable', p_reason: null, p_comment: ' ' }));
+
+  const practiceRid = await rid();
+  const practise62 = async () => Number((await asApp('authenticated', arjun,
+    `select log_practice(p_request_id => $1, p_minutes => 15, p_source => 'manual') as id`, [practiceRid]))[0].id);
+  const p1 = await practise62();
+  check('0054 #322: practice logged again with the same id is saved once', (await practise62()) === p1
+    && (await asOwner(`select count(*)::int as n from practice_logs where request_id = '${practiceRid}'`))[0].n === 1);
+  await refusesWith('0054 #322: (control) a coordinator still logs no practice', 'not_allowed', async () => asApp('authenticated', coordinator,
+    `select log_practice(p_request_id => $1, p_minutes => 15, p_source => 'manual')`, [await rid()]));
+
+  const eventRid = await rid();
+  const addEvent62 = () => asApp('authenticated', coordinator, `insert into events (title, starts_at, centre_id, audience, request_id)
+    values ('Sixtytwo kirtan', now() + interval '3 days', 1, 'all', $1) returning id`, [eventRid]);
+  const [{ id: ev62 }] = await addEvent62();
+  await refusesWith('0054 #322: an event created again with the same id is refused (no second notice to everyone)', /events_request_id_key/, addEvent62);
+  check('0054 #322: ... and the first is found by its id', (await asApp('authenticated', coordinator,
+    'select id from events where request_id = $1', [eventRid]))[0]?.id === ev62);
+  const pollRid = await rid();
+  const addPoll62 = () => asApp('authenticated', coordinator, `insert into polls (question, options, closes_at, audience, request_id)
+    values ('Sixtytwo?', '{Yes,No}', now() + interval '3 days', 'all', $1) returning id`, [pollRid]);
+  await addPoll62();
+  await refusesWith('0054 #322: a poll created again with the same id is refused', /polls_request_id_key/, addPoll62);
+  const [{ id: ann62 }] = await asOwner(`insert into announcements (title, body, audience) values ('Sixtytwo notice', 'x', 'all') returning id`);
+  const replyRid = await rid();
+  const reply62 = () => asApp('authenticated', arjun, 'insert into announcement_replies (announcement_id, body, request_id) values ($1, $2, $3) returning id',
+    [ann62, 'Thank you', replyRid]);
+  const [{ id: r62 }] = await reply62();
+  await refusesWith('0054 #322: a reply sent again with the same id is refused', /announcement_replies_request_id_key/, reply62);
+  check('0054 #322: ... and the writer finds the first by its id', (await asApp('authenticated', arjun,
+    'select id from announcement_replies where request_id = $1', [replyRid]))[0]?.id === r62);
+  const themeRid = await rid();
+  await asApp('authenticated', guru, `insert into ig_themes (title, request_id) values ('Sixtytwo theme', $1)`, [themeRid]);
+  await refusesWith('0054 #322: a theme, an assessment, a material and a syllabus item take the id too', /ig_themes_request_id_key/, () =>
+    asApp('authenticated', guru, `insert into ig_themes (title, request_id) values ('Sixtytwo theme', $1)`, [themeRid]));
+  const idCols = (await asOwner(`select string_agg(table_name, ',' order by table_name) as t from information_schema.columns
+    where table_schema = 'public' and column_name = 'request_id'`))[0].t;
+  check('0054 #322: request_id on every create the app retries', ['announcement_replies', 'assessments', 'call_logs', 'events', 'fund_entries',
+    'ig_themes', 'materials', 'polls', 'practice_logs', 'students', 'syllabus_items'].every((t) => idCols.split(',').includes(t)), idCols);
+  await db.exec(`delete from events where id = ${ev62}; delete from polls where request_id = '${pollRid}'; delete from announcements where id = ${ann62};
+    delete from ig_themes where request_id = '${themeRid}'`);
+
+  // #325 (P1-22): an approved material's file is the Guru's to delete.
+  const matPath = await filePath(coordinator, 'pdf');
+  const deletable = async (who) => (await asApp('authenticated', who, 'select material_file_deletable($1) as ok', [matPath]))[0].ok;
+  check('0054 #325: (control) the uploader may delete their file while no approved material lists it', (await deletable(coordinator)) === true);
+  const [{ id: mat62 }] = await asOwner(`insert into materials (kind, title, storage_path, file_name, file_size, level_id, uploaded_by, approved_by)
+    values ('pdf', 'Sixtytwo notes', '${matPath}', 'notes.pdf', 1000, 1, '${coordinator}', '${guru}') returning id`);
+  check('0054 #325: once approved, the uploader may not delete its file', (await deletable(coordinator)) === false);
+  check('0054 #325: (control) the Guru may', (await deletable(guru)) === true);
+  await asOwner(`delete from materials where id = ${mat62}`);
+
+  // #328 (R2-07): two phones tick attendance without undoing each other.
+  await asOwner('alter table events disable trigger events_guard');
+  const [{ id: day62 }] = await asOwner(`insert into events (title, starts_at, centre_id, audience, created_by)
+    values ('Sixtytwo day', now() - interval '1 hour', 1, 'all', '${guru}') returning id`);
+  await asOwner('alter table events enable trigger events_guard');
+  const [{ id: arjunRec }] = await asOwner(`select id from students where profile_id = '${arjun}'`);
+  const change = (who, came, gone) => asApp('authenticated', who, 'select change_event_attendance($1, $2::uuid[], $3::uuid[]) as n', [day62, came, gone]);
+  await change(coordinator, [arjunRec], []);
+  const [{ n: both }] = await change(coordinator2, [callee62.id], []);
+  check('0054 #328: a second phone\'s tick keeps the first phone\'s', both === 2);
+  const [{ n: one }] = await change(coordinator, [], [arjunRec]);
+  check('0054 #328: an untick takes off that student only', one === 1
+    && (await asOwner(`select student_id from event_attendance where event_id = ${day62}`))[0].student_id === callee62.id);
+  await refusesWith('0054 #328: a student cannot mark attendance', 'not_allowed', () => change(arjun, [arjunRec], []));
+  await refusesWith('0054 #328: an unknown student is refused', 'student_invalid', async () => change(coordinator, [await rid()], []));
+  await db.exec(`delete from event_attendance where event_id = ${day62}; delete from events where id = ${day62}`);
+
+  // #326 (R3-04): a record entered by mistake.
+  const dup62 = await register(coordinator, { p_full_name: 'Duplicate Sixtytwo', p_dob: adultDob62, p_phone: '98480 62062' });
+  await refusesWith('0054 #326: a coordinator cannot delete a record', 'not_allowed', () =>
+    asApp('authenticated', coordinator, 'select delete_student_record($1, $2)', [dup62.id, 'Typed twice']));
+  await refusesWith('0054 #326: the Guru gives a reason', 'reason_required', () =>
+    asApp('authenticated', guru, 'select delete_student_record($1, $2)', [dup62.id, ' ']));
+  const [{ r: gone62 }] = await asApp('authenticated', guru, 'select delete_student_record($1, $2) as r', [dup62.id, 'Typed twice at the desk']);
+  const [auditDel] = await asOwner(`select old_row ->> 'full_name' as name, new_row from audit_log
+    where table_name = 'students' and row_id = '${dup62.id}' and action = 'DELETE'`);
+  check('0054 #326: the Guru deletes an unused duplicate; the audit log keeps it with the reason', gone62 === dup62.roll_no
+    && (await asOwner(`select 1 from students where id = '${dup62.id}'`)).length === 0
+    && auditDel?.name === 'Duplicate Sixtytwo' && auditDel.new_row?.reason === 'Typed twice at the desk', JSON.stringify(auditDel));
+  const del62 = (id) => asApp('authenticated', guru, 'select delete_student_record($1, $2)', [id, 'A mistake']);
+  await refusesWith('0054 #326: a record with a login is kept', 'student_linked', () => del62(arjunRec));
+  const visited62 = await register(coordinator, { p_full_name: 'Visited Sixtytwo', p_dob: adultDob62 });
+  await asApp('authenticated', coordinator, `select mark_visit($1, 'in')`, [visited62.id]);
+  await refusesWith('0054 #326: a record with a visit is kept', 'student_visited', () => del62(visited62.id));
+  await refusesWith('0054 #326: a record with a call note is kept', 'student_has_history', () => del62(callee62.id));
+  const withdrawn62 = await register(coordinator, { p_full_name: 'Withdrawn Sixtytwo', p_dob: adultDob62 });
+  await asApp('authenticated', guru, `select withdraw_consent($1, 'by phone')`, [withdrawn62.id]);
+  await refusesWith('0054 #326: a withdrawn record is kept (erasure is the way)', 'student_withdrawn', () => del62(withdrawn62.id));
+  const kid62 = await register(coordinator, { p_full_name: 'Child Sixtytwo', p_dob: `${year - 9}-02-02`, p_guardian_name: 'Parent Sixtytwo',
+    p_guardian_phone: '9876562062', p_guardian_relation: 'father', p_id_type_checked: 'aadhaar', p_written_consent: true });
+  check('0054 #324: the desk\'s national guardian phone is kept as E.164',
+    (await asOwner(`select phone from guardians where student_id = '${kid62.id}'`))[0].phone === '+919876562062');
+  await del62(kid62.id);
+  check('0054 #326: a child entered twice goes with the guardian and consent typed with it',
+    (await asOwner(`select (select count(*) from guardians where student_id = '${kid62.id}')::int
+      + (select count(*) from consents where student_id = '${kid62.id}')::int as n`))[0].n === 0);
+
+  // #326: an Excel import undone.
+  const imp62 = await rid();
+  const rows62 = ['Import One', 'Import Two', 'Import Three'].map((n, i) => ({ line: i + 2, full_name: `${n} Sixtytwo`, dob: adultDob62, import_id: imp62 }));
+  const res62 = (await asApp('authenticated', guru, 'select import_students($1::jsonb) as r', [JSON.stringify(rows62)]))[0].r;
+  check('0054 #326: the import keeps its id on each record', res62.every((r) => r.id)
+    && (await asOwner(`select count(*)::int as n from students where import_id = '${imp62}'`))[0].n === 3, JSON.stringify(res62));
+  await asApp('authenticated', coordinator, `select mark_visit($1, 'in')`, [res62[0].id]);
+  await refusesWith('0054 #326: a coordinator cannot undo an import', 'not_allowed', () => asApp('authenticated', coordinator, 'select undo_import($1)', [imp62]));
+  await refusesWith('0054 #326: an unknown import', 'import_not_found', () => asApp('authenticated', guru, 'select undo_import($1)', [fundRid]));
+  const undo62 = (await asApp('authenticated', guru, 'select undo_import($1) as r', [imp62]))[0].r;
+  check('0054 #326: undo deletes the import\'s unused records and keeps the visited one, saying why', undo62.deleted === 2
+    && undo62.kept.length === 1 && undo62.kept[0].reason === 'student_visited'
+    && (await asOwner(`select count(*)::int as n from students where import_id = '${imp62}'`))[0].n === 1, JSON.stringify(undo62));
+  await refusesWith('0054 #326: the import id is frozen', 'import_id_frozen', () =>
+    asApp('authenticated', guru, 'update students set import_id = null where id = $1', [res62[0].id]));
+  await refusesWith('0054 #326: only the Guru\'s import sets it', 'not_allowed', () =>
+    asApp('authenticated', coordinator, 'insert into students (full_name, dob, import_id) values ($1, $2, $3)', ['Tagged Sixtytwo', adultDob62, imp62]));
+
+  // #324 (P1-07): phones in one format.
+  const e164 = async (text) => (await asApp('authenticated', coordinator, 'select phone_e164($1) as p', [text]))[0].p;
+  const cases = [['98765 43210', '+919876543210'], ['09876543210', '+919876543210'], ['919876543210', '+919876543210'],
+    ['0044 20 7946 0958', '+442079460958'], ['+1 (555) 010-0199', '+15550100199'], ['040-2345 6789', '+914023456789'], ['call me', null], ['12345', null]];
+  const got = [];
+  for (const [text] of cases) got.push(await e164(text));
+  check('0054 #324: phone_e164 reads national, 00 and + numbers, nothing else', cases.every(([, want], i) => got[i] === want), JSON.stringify(got));
+  const phoned62 = await register(coordinator, { p_full_name: 'Phone Sixtytwo', p_dob: adultDob62, p_phone: '098480 62063' });
+  check('0054 #324: register_student stores +91 for a typed 0-number', (await asOwner(`select phone from students where id = '${phoned62.id}'`))[0].phone === '+919848062063');
+  await refusesWith('0054 #324: a phone that is not a number is refused', 'phone_invalid', () =>
+    asApp('authenticated', coordinator, `update students set phone = 'ask mother' where id = $1`, [phoned62.id]));
+  await asOwner('alter table students disable trigger students_phone_e164');
+  await asOwner(`update students set phone = 'old junk' where id = '${phoned62.id}'`);
+  await asOwner('alter table students enable trigger students_phone_e164');
+  await asApp('authenticated', coordinator, `update students set area = 'Abids', phone = 'old junk' where id = $1`, [phoned62.id]);
+  check('0054 #324: (control) an old phone that is not E.164 does not stop an edit of other fields',
+    (await asOwner(`select area from students where id = '${phoned62.id}'`))[0].area === 'Abids');
+
+  // #329 (P1-13): the parent's address gets at most 3 codes a day; the email's names carry no link.
+  const nameFor = async (text) => (await asOwner(`select name_for_email('${text}', 100) as n`))[0].n;
+  check('0054 #329: a name in the email loses links and signs', (await nameFor('Ravi <a href=http://evil.example/x>')) === 'Ravi a href http evil example x');
+  check('0054 #329: (control) Telugu and Hindi names stay whole', (await nameFor('రవి కుమార్')) === 'రవి కుమార్' && (await nameFor('राम')) === 'राम');
+  const kidA = await signUp('ig.kid.a62@example.com', true);
+  const kidB = await signUp('ig.kid.b62@example.com', true);
+  const kidC = await signUp('ig.kid.c62@example.com', true);
+  for (const [kid, mail] of [[kidA, 'shared.parent62@example.com'], [kidB, 'SHARED.parent62@example.com'], [kidC, 'other.parent62@example.com']]) {
+    await igJoin(kid, { year: thisYear - 13, parent: 'Parent', parentEmail: mail });
+  }
+  await asOwner(`insert into ig_parent_codes (profile_id, code_hash, expires_at, sends, sent_at) values ('${kidA}', '-', now(), 3, now() - interval '2 minutes')`);
+  await refusesWith('0054 #329: a fourth code to the same parent address in a day is refused, from another child too', 'code_parent_limit', () => sendCode(kidB));
+  check('0054 #329: (control) another parent\'s code still goes', (await sendCode(kidC)) === 'not_set_up');
+  await asOwner(`delete from ig_parent_codes where profile_id in ('${kidA}', '${kidB}', '${kidC}')`);
+
+  // Safe to run twice: a stored national number is written as E.164 by the run; a second run changes nothing.
+  await asOwner('alter table guardians disable trigger guardians_phone_e164');
+  await asOwner(`update guardians set phone = '98765 62064' where student_id = (select id from students where full_name = 'Scan Child Fortyeight')`);
+  await asOwner('alter table guardians enable trigger guardians_phone_e164');
+  const counts62 = async () => (await asOwner(`select (select count(*) from students)::int as s, (select count(*) from fund_entries)::int as f,
+    (select string_agg(phone, ',' order by id) from guardians) as g, (select count(*) from pg_trigger where tgname like '%phone_e164')::int as t`))[0];
+  let again62 = '';
+  try { await db.exec(file62); } catch (e) { again62 = String(e.message); }
+  check('0054 can run again, and writes a stored national number as E.164', again62 === ''
+    && (await asOwner(`select phone from guardians where student_id = (select id from students where full_name = 'Scan Child Fortyeight')`))[0].phone === '+919876562064', again62);
+  const c62 = await counts62();
+  try { await db.exec(file62); } catch (e) { again62 = String(e.message); }
+  check('0054: a second run changes nothing', again62 === '' && JSON.stringify(await counts62()) === JSON.stringify(c62), `${again62} ${JSON.stringify(c62)}`);
+}
+
 // ---------------------------------------------------------------- 0070 face scan, server side (DECISIONS #295-#300)
 // Phase 3, branch face-scan (placeholder number, was 0060 on p3-server). Gate 2: an enrolment record and no face code;
 // Gate 1: the integrity challenge, the Edge Function's two calls and the one-time pass.
@@ -7073,6 +7469,35 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   await setting64('face_min_age', '18');
   const kidState = await state64(kid);
   check('0071 #344: back at 18, the minor\'s home shows no circle and says why', kidState.action === null && kidState.blocked === 'face_too_young', JSON.stringify(kidState));
+
+  // #434: a coordinator linked to their own record (0053) uses face scan like a student, through the self-scan only.
+  {
+    const DEV_C = 'selfscanC-0123456789abcd';
+    const email = 'self64.staff@example.com';
+    const staff = (await db.query(`insert into auth.users (email, email_confirmed_at, raw_user_meta_data) values ($1, now(), $2) returning id`,
+      [email, JSON.stringify({ notice_version: 'v1', dob: adultDob64, centre_id: 1, full_name: 'Self Scan Staff' })])).rows[0].id;
+    await asApp('authenticated', guru, `update profiles set role = 'coordinator' where id = $1`, [staff]);
+    const rec = await register(coordinator, { p_full_name: 'Self Scan Staff', p_dob: adultDob64, p_email: email });
+    await asApp('authenticated', guru, 'select link_staff_record($1, $2)', [staff, rec.id]);
+    const me = { login: staff, id: rec.id };
+    await refusesWith('0071 #434: a coordinator cannot record their own face consent', 'own_record', () =>
+      asApp('authenticated', staff, `select record_face_consent(p_student => $1, p_signed_form => true, p_notice_version => 'v0.3')`, [rec.id]));
+    await asApp('authenticated', coordinator, `select record_face_consent(p_student => $1, p_signed_form => true, p_notice_version => 'v0.3')`, [rec.id]);
+    const req = (await one(staff, 'select start_face_enrolment($1, $2) as r', [DEV_C, MODEL])).r;
+    await refusesWith('0071 #434: ... nor confirm their own enrolment', 'not_allowed', () => one(staff, 'select approve_face_enrolment($1, $2)', [rec.id, req.code]));
+    await one(coordinator, 'select approve_face_enrolment($1, $2)', [rec.id, req.code]);
+    await one(staff, 'select enrol_face($1, $2)', [req.request, DEV_C]);
+    const staffState = await state64(me, DEV_C);
+    check('0071 #434: a colleague records the consent and confirms: the coordinator\'s home state shows Check in',
+      staffState.action === 'check_in' && staffState.enrolled === true, JSON.stringify(staffState));
+    const staffIn = await scan64(me, 'check_in', AT, await pass64(staff, 'check_in', 'inside'), { device: DEV_C });
+    check('0071 #434: the coordinator checks themself in with their face', staffIn.ok === true && staffIn.action === 'in', JSON.stringify(staffIn));
+    await refusesWith('0071 #434: ... while every other own path stays refused (own_record)', 'own_record', () =>
+      asApp('authenticated', staff, `select mark_visit($1, 'out') as r`, [rec.id]));
+    await asOwner(`update visits set check_in = now() - interval '45 minutes' where student_id = '${rec.id}' and check_out is null`);
+    const staffOut = await scan64(me, 'check_out', AT, await pass64(staff, 'check_out', 'inside'), { device: DEV_C });
+    check('0071 #434: ... and out with their face', staffOut.ok === true && staffOut.action === 'out', JSON.stringify(staffOut));
+  }
 
   // Safe to run twice.
   const snap64 = async () => (await asOwner(`select (select count(*) from visits)::int as v, (select count(*) from face_scan_failures)::int as f,

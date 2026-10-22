@@ -5,7 +5,7 @@
 // student sees (docs/DECISIONS.md #25). Data: src/data/announcements.ts.
 
 import { router, Stack, useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useAuth } from '@/auth/auth-provider';
@@ -19,6 +19,8 @@ import { Screen } from '@/components/screen';
 import { fetchMyAnnouncements, type MyAnnouncementList } from '@/data/announcements';
 import { authorLine } from '@/i18n/labels';
 import { formatDateTime } from '@/lib/dates';
+import { RefreshFailed } from '@/components/refresh-failed';
+import { useKeptLoad } from '@/lib/kept-load';
 
 /** One card per announcement addressed to the student. */
 export default function MyAnnouncementsScreen() {
@@ -26,11 +28,11 @@ export default function MyAnnouncementsScreen() {
   const { profile } = useAuth();
   const myId = profile?.id ?? '';
   // undefined = loading, null = could not load.
-  const [loaded, setLoaded] = useState<MyAnnouncementList | null | undefined>(undefined);
+  const [loaded, setLoaded, refreshFailed] = useKeptLoad<MyAnnouncementList | null | undefined>();
 
   const load = useCallback(async () => {
     setLoaded(await fetchMyAnnouncements(myId));
-  }, [myId]);
+  }, [myId, setLoaded]);
 
   // Reload when coming back from an announcement, so its "New" badge goes.
   useFocusEffect(
@@ -55,6 +57,8 @@ export default function MyAnnouncementsScreen() {
 
   return (
     <Screen underHeader wide onRefresh={load}>
+      {/* F9 (#327): a failed refresh keeps what is shown and says so. */}
+      <RefreshFailed at={refreshFailed} onRetry={() => load()} />
       {header}
       {loaded === undefined ? <LoadingCards /> : null}
       {loaded && loaded.announcements.length === 0 ? (

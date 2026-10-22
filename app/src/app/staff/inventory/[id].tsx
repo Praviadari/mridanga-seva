@@ -149,9 +149,13 @@ function InventoryItemScreenContent() {
         {loaded === undefined ? <LoadingCards /> : null}
         {loaded === 'not_found' ? <EmptyState icon="instruments" title={t('inventory.notFound')} /> : null}
         {loaded === null ? (
-          <Notice tone="error" title={t('inventory.loadFailed')}>
-            {t('common.networkError')}
-          </Notice>
+          <>
+            <Notice tone="error" title={t('inventory.loadFailed')}>
+              {t('common.networkError')}
+            </Notice>
+            {/* R3-09 (#327): not a dead end on a weak signal. */}
+            <Button icon="refresh" label={t('common.tryAgain')} onPress={() => void load()} />
+          </>
         ) : null}
       </Screen>
     );
@@ -224,15 +228,18 @@ function InventoryItemScreenContent() {
     </>
   );
 
+  // P1-11 (#323): while a form is open, its refusal shows beside its button, not at the top of the page.
+  const nearButton = message?.tone === 'error' && mode !== null ? <Notice tone="error">{message.text}</Notice> : null;
+
   return (
     <Screen underHeader onRefresh={isNew ? undefined : load}>
       {header}
-      {message ? <Notice tone={message.tone}>{message.text}</Notice> : null}
+      {message && !nearButton ? <Notice tone={message.tone}>{message.text}</Notice> : null}
 
       {item ? (
         <Section
           icon="instruments"
-          title={` · ${item.label}`}
+          title={`${item.code} · ${item.label}`}
           description={[t(`inventory.kinds.${item.kind}`), item.category, item.centreName].filter(Boolean).join(' · ')}>
           <AppText>
             {t('inventory.conditionNow', { condition: t(`inventory.conditions.${item.condition}`) })}
@@ -317,6 +324,7 @@ function InventoryItemScreenContent() {
           )}
           {conditionFields(LENDABLE)}
           <TextField label={t('inventory.dueLabel')} hint={t('inventory.dueHint')} value={due} onChangeText={setDue} keyboardType={DATE_KEYBOARD} />
+          {nearButton}
           <View style={styles.row}>
             <Button icon="send" label={t('inventory.lendSave')} loading={busy} disabled={busy || !borrower} onPress={lend} />
             <Button variant="link" label={t('syllabusEditor.cancel')} onPress={() => setMode(null)} />
@@ -327,6 +335,7 @@ function InventoryItemScreenContent() {
       {mode === 'return' && item?.holder ? (
         <Section icon="restore" title={t('inventory.returnTitle', { name: item.holder.name })}>
           {conditionFields()}
+          {nearButton}
           <View style={styles.row}>
             <Button
               icon="check"
@@ -346,6 +355,7 @@ function InventoryItemScreenContent() {
       {mode === 'check' && item ? (
         <Section icon="check" title={t('inventory.checkTitle')} description={t('inventory.checkHint')}>
           {conditionFields()}
+          {nearButton}
           <View style={styles.row}>
             <Button
               icon="check"
@@ -392,6 +402,7 @@ function InventoryItemScreenContent() {
             onChangeText={(notes) => update({ notes })}
             multiline
             maxLength={NOTES_MAX + 20}
+            counter={NOTES_MAX}
             error={errors.notes ? t(errors.notes) : undefined}
           />
           {isNew ? (
@@ -413,6 +424,7 @@ function InventoryItemScreenContent() {
               />
             </>
           ) : null}
+          {nearButton}
           <View style={styles.row}>
             <Button icon="check" label={isNew ? t('inventory.addSave') : t('inventory.save')} loading={busy} disabled={busy} onPress={() => void saveForm()} />
             {!isNew ? <Button variant="link" label={t('syllabusEditor.cancel')} onPress={() => setMode(null)} /> : null}
@@ -460,6 +472,7 @@ function InventoryItemScreenContent() {
           <Notice tone="error" title={t('inventory.deleteAsk')}>
             {t('inventory.deleteAskBody')}
           </Notice>
+          {nearButton}
           <View style={styles.row}>
             <Button
               icon="delete"

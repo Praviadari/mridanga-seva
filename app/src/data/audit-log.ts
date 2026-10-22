@@ -8,9 +8,13 @@
 // 0034: pages are read through get_audit_log, which writes each page read to the access log; the
 // access log itself (who read parents' details, consents, call notes or this log) is the second
 // view of G11, read straight from access_log (the Guru only).
+// #325 (audit F3-11): the fund, its categories, instruments, counts, events and polls are logged too and can
+// be filtered and named here; amounts in paise show as rupees.
 
 import { readLogged } from '@/lib/logged-read';
 import { supabase } from '@/lib/supabase';
+import { formatMoney } from '@/lib/money';
+import { readAllRows } from '@/lib/paged-read';
 
 /** Tables whose changes are logged, in the order the filter offers them. */
 export const AUDITED_TABLES = [
@@ -29,6 +33,12 @@ export const AUDITED_TABLES = [
   'centres',
   'ig_slokas',
   'ig_themes',
+  'fund_entries',
+  'fund_categories',
+  'inventory_items',
+  'inventory_stocktakes',
+  'events',
+  'polls',
 ] as const;
 export type AuditedTable = (typeof AUDITED_TABLES)[number];
 
@@ -151,12 +161,13 @@ export type AuditNames = { people: Map<string, string>; students: Map<string, st
 
 /** Loads the names once for the whole log. Null = could not load. */
 export async function fetchAuditNames(): Promise<AuditNames | null> {
+  // Every row, past PostgREST's 1,000-row cap (#325).
   const [people, students, items] = await Promise.all([
-    supabase.from('profiles').select('id, full_name, email'),
-    supabase.from('students').select('id, full_name, roll_no'),
-    supabase.from('syllabus_items').select('id, title'),
+    readAllRows((from, to) => supabase.from('profiles').select('id, full_name, email').order('id').range(from, to)),
+    readAllRows((from, to) => supabase.from('students').select('id, full_name, roll_no').order('id').range(from, to)),
+    readAllRows((from, to) => supabase.from('syllabus_items').select('id, title').order('id').range(from, to)),
   ]);
-  if (people.error || students.error || items.error) return null;
+  if (people.error || students.error || items.error || !people.data || !students.data || !items.data) return null;
   return {
     people: new Map(
       (people.data as { id: string; full_name: string; email: string | null }[]).map((p) => [p.id, p.full_name || p.email || '']),
@@ -201,7 +212,20 @@ export function subjectOf(entry: AuditEntry, names: AuditNames): string {
     case 'ig_slokas':
       return text(row.ref);
     case 'ig_themes':
+    case 'events':
       return text(row.title);
+    case 'polls':
+      return text(row.question).slice(0, 60);
+    case 'fund_entries':
+      return [`#${entry.rowId}`, typeof row.amount_paise === 'number' ? formatMoney(row.amount_paise, 'INR') : '', text(row.party)]
+        .filter(Boolean)
+        .join(' · ');
+    case 'fund_categories':
+      return text(row.name) || text(row.code);
+    case 'inventory_items':
+      return [text(row.code), text(row.label)].filter(Boolean).join(' · ');
+    case 'inventory_stocktakes':
+      return `#${entry.rowId}`;
   }
   return entry.rowId;
 }
@@ -227,6 +251,8 @@ const PERSON_FIELDS = new Set([
 
 /** A value as short text; ids of people, students and syllabus items become their names. */
 function namedValue(field: string, value: unknown, names: AuditNames): string {
+  // Whole paise as rupees: 125050 reads Rs 1,250.50, not Rs 1,25,050 (F3-11).
+  if (field.endsWith('_paise') && typeof value === 'number') return formatMoney(value, 'INR');
   const id = typeof value === 'string' || typeof value === 'number' ? String(value) : null;
   if (id !== null) {
     if (PERSON_FIELDS.has(field) && names.people.has(id)) return names.people.get(id) ?? id;

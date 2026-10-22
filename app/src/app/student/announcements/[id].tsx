@@ -7,7 +7,7 @@
 // Data: src/data/announcements.ts.
 
 import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { AnnouncementDetail } from '@/components/announcement-detail';
@@ -22,6 +22,8 @@ import { Screen } from '@/components/screen';
 import { fetchAnnouncement, markRead, sendReply, type MyAnnouncement } from '@/data/announcements';
 import { audienceName } from '@/i18n/labels';
 import { formatDateTime } from '@/lib/dates';
+import { RefreshFailed } from '@/components/refresh-failed';
+import { useKeptLoad } from '@/lib/kept-load';
 
 /** The announcement's title, message, details and the reply box. */
 function MyAnnouncementScreenContent() {
@@ -29,7 +31,7 @@ function MyAnnouncementScreenContent() {
   const { id: idParam } = useLocalSearchParams<{ id: string }>();
   const id = Number(idParam);
   // undefined = loading, null = could not load, 'not_found' = not there or not addressed to me.
-  const [loaded, setLoaded] = useState<MyAnnouncement | 'not_found' | null | undefined>(undefined);
+  const [loaded, setLoaded, refreshFailed] = useKeptLoad<MyAnnouncement | 'not_found' | null | undefined>();
   // True once the read receipt went out, so coming back to the screen does not send it again.
   const receiptSent = useRef(false);
 
@@ -40,7 +42,7 @@ function MyAnnouncementScreenContent() {
     if (result && result !== 'not_found' && !receiptSent.current) {
       receiptSent.current = await markRead(id);
     }
-  }, [id]);
+  }, [id, setLoaded]);
 
   useFocusEffect(
     useCallback(() => {
@@ -78,14 +80,16 @@ function MyAnnouncementScreenContent() {
 
   const { announcement: a, groupName, authorName, myReplies } = loaded;
 
-  async function reply(body: string) {
-    const outcome = await sendReply(a.id, body);
+  async function reply(body: string, requestId: string) {
+    const outcome = await sendReply(a.id, body, requestId);
     if (!outcome.errorKey) await load();
     return outcome.errorKey;
   }
 
   return (
     <Screen underHeader onRefresh={load}>
+      {/* F9 (#327): a failed refresh keeps what is shown and says so. */}
+      <RefreshFailed at={refreshFailed} onRetry={() => load()} />
       {header}
       <AnnouncementDetail
         title={a.title}

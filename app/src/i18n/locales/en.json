@@ -11,14 +11,45 @@
     "signOut": "Sign out",
     "tryAgain": "Try again",
     "loading": "Loading…",
+    "back": "Back",
+    "required": "required",
     "language": "Language",
     "genericError": "Something went wrong. Please try again.",
+    "serverErrors": {
+      "frozen": "This can no longer be changed.",
+      "locked": "This detail cannot be changed here.",
+      "notFound": "It is not there any more. Refresh and try again.",
+      "openLoan": "This student still has an instrument on loan. Take it back first.",
+      "rollNoFrozen": "The roll number can no longer be changed.",
+      "rollNoMissing": "A roll number is needed.",
+      "needsCallLog": "Log a call first, then change the status.",
+      "groupInactive": "That group is switched off.",
+      "memberNotAllowed": "This person cannot be added to the group.",
+      "switchOffFirst": "Switch the login off first.",
+      "notYourself": "You cannot do this to your own login.",
+      "guruOnly": "Only the Guru can do this.",
+      "staffOnly": "Only coordinators and the Guru can do this.",
+      "centreInUse": "This centre is in use and cannot be deleted. Switch it off instead.",
+      "fundKept": "Fund entries are never deleted.",
+      "alreadySaved": "This was saved already.",
+      "visitFuture": "A visit cannot be in the future.",
+      "settingRequired": "This setting cannot be left empty.",
+      "tooManyRows": "Too many rows at once. Split the sheet and try again."
+    },
     "studentWithdrawn": "Consent for this student was withdrawn. Nothing new can be recorded for them; ask the Guru.",
     "networkError": "Could not reach the server, or it did not answer. Check your internet connection and try again; if it keeps happening, tell a coordinator.",
+    "refreshFailed": "Could not refresh. Showing what was loaded at {{time}}.",
     "fixFieldsAbove": "Some fields need a fix ({{count}}). Each has its message under it, above.",
+    "charactersUsed": "{{used}} of {{max}} characters",
+    "fixFieldsTitle_one": "{{count}} field needs a fix",
+    "fixFieldsTitle_other": "{{count}} fields need a fix",
+    "goToField": "Goes to the field",
     "linkOpensInBrowser": "The link opens in your web browser. When you are done there, come back to this app and sign in.",
     "foundCount_one": "{{count}} found",
     "foundCount_other": "{{count}} found",
+    "ownRecord": "This is your own student record: a colleague records it (check-in, ticks, level, calls). Ask another coordinator.",
+    "ownMentor": "A student is never their own mentor. Choose another coordinator of the same gender.",
+    "staffLoginLinked": "This record is a staff member's own. Take the app login off it first (Coordinators), then withdraw or erase.",
     "more": "More",
     "less": "Less"
   },
@@ -392,6 +423,12 @@
     "statusInBody": "Hare Krishna! Your visit is recorded.",
     "statusOut": "Checked out. Today's visit began at {{time}}."
   },
+  "me": {
+    "title": "Me",
+    "intro": "Your own student record: your QR card, progress, attendance and practice, as a student sees them. A colleague checks you in and ticks your syllabus.",
+    "noRecordTitle": "No own student record",
+    "noRecordBody": "Your login is not linked to a student record of your own. The Guru links it on Coordinators."
+  },
   "levels": {
     "1": "Beginner",
     "2": "Intermediate",
@@ -650,7 +687,12 @@
     "noLevelChanges": "No level changes yet.",
     "levelChange": "{{from}} → {{to}}",
     "approvedBy": "approved by {{name}}",
-    "tickSyllabus": "Tick syllabus items"
+    "tickSyllabus": "Tick syllabus items",
+    "withdrawnTitle": "Consent withdrawn on {{date}}",
+    "withdrawnBody": "Nothing new is recorded for this student (visits, calls, practice, loans); the record stays as it is. Erasing it is a separate step for the app team.",
+    "ownTitle": "This is your own student record",
+    "ownBody": "A colleague checks you in and out, ticks your syllabus, logs calls and nominates you; the Guru decides your level. Your QR card and progress are under Me on your home.",
+    "staffLogin": "Yes: {{name}}'s own record"
   },
   "syllabus": {
     "title": "Mark progress",
@@ -889,7 +931,8 @@
       "replyGone": "This announcement is no longer there, or no longer for you.",
       "changedMeanwhile": "Not saved: someone else changed this announcement while you were editing. Load the latest version and make your change again.",
       "maybeSaved": "No answer from the server, so it is not known whether this was saved. Check the announcements list before you try again.",
-      "dateTooFar": "Choose a date at most 6 months ahead."
+      "dateTooFar": "Choose a date at most 6 months ahead.",
+      "groupInactive": "This group is switched off. Switch it on in Groups, or choose another audience."
     },
     "files": {
       "sectionTitle": "Photos and PDFs",
@@ -968,7 +1011,8 @@
       "nameTaken": "Another group already has this name.",
       "notAllowed": "Only coordinators and the facilitator can change groups.",
       "cannotChange": "Not changed: the group is no longer there.",
-      "changedMeanwhile": "Not saved: someone else changed this group meanwhile. Their version is shown now; make your change again."
+      "changedMeanwhile": "Not saved: someone else changed this group meanwhile. Their version is shown now; make your change again.",
+      "memberNotAllowed": "Only switched-on staff and students with a student record can join a group."
     }
   },
   "push": {
@@ -1193,7 +1237,7 @@
       "nameTooLong": "The name is too long (at most 80 characters).",
       "nameInvalid": "Use letters and spaces only; the name holds a hidden or control character.",
       "nameTaken": "This is the name of the Guru or a coordinator. Add your surname or an initial.",
-      "phoneInvalid": "Enter a phone number of 7 to 15 digits; it may start with +."
+      "phoneInvalid": "Enter a real phone number; for a number abroad start with + and the country code."
     },
     "appearance": "Appearance",
     "appearanceHint": "Light or dark screens on this phone. Same as phone follows the phone's own setting.",
@@ -1311,7 +1355,9 @@
       "mentor_not_staff": "A mentor must be an active coordinator or the facilitator.",
       "ig_editor_coordinator_only": "Only a coordinator can be made an Ishtagoshti editor.",
       "treasurer_coordinator_only": "Only a coordinator can be a treasurer.",
-      "gender_unknown": "This gender is not in the form choices."
+      "gender_unknown": "This gender is not in the form choices.",
+      "profile_not_staff": "Only an active coordinator's login gets an own record. Pull down to refresh.",
+      "staff_has_record": "This login already has its own record. Take it off that one first."
     },
     "igEditorTitle": "Ishtagoshti editor",
     "igEditorHint": "An editor adds and edits slokas and themes, and pins the sloka of the day. The facilitator always can.",
@@ -1332,7 +1378,18 @@
     "waitingSearchHint": "At least 2 letters of the name or email, or 3 digits of the phone.",
     "waitingNoMatch": "Nobody waiting matches this.",
     "typeNameLabel": "Type their name to confirm",
-    "typeNameHint": "Type: {{name}}"
+    "typeNameHint": "Type: {{name}}",
+    "ownTitle": "Own student record",
+    "ownHint": "Coordinators are students too. Link this person's login to their own student record: their app then shows Me (My QR, progress, attendance, practice). The role stays. Search the name or roll number; only records without a login are shown.",
+    "ownSelf": "Your own student record is linked in the database's SQL editor, not here: ask the person who runs the database.",
+    "ownAsk": "Link {{student}} ({{roll}}) as their own record?",
+    "ownAskBody": "{{person}} keeps their role and also gets this record's QR card, progress and attendance under Me. Colleagues check them in and tick their syllabus; they never do it for themselves.",
+    "ownLink": "Link as own record",
+    "ownLinked": "Linked. The person now sees Me in their app.",
+    "ownUnlink": "Take the login off this record",
+    "ownUnlinkAsk": "Take {{name}}'s login off their own record?",
+    "ownUnlinkBody": "The record stays, with its visits and progress. The person keeps their role; only Me goes from their app.",
+    "ownUnlinked": "The login is off the record. The role stays."
   },
   "database": {
     "title": "All students",
@@ -1396,6 +1453,24 @@
     "importButton": "Import the good rows ({{count}})",
     "doneTitle": "Import finished",
     "doneLine": "Saved: {{saved}}. Refused: {{refused}}.",
+    "notSent_one": "Not sent: {{count}} row. The connection dropped; it is not saved yet.",
+    "notSent_other": "Not sent: {{count}} rows. The connection dropped; they are not saved yet.",
+    "importRest": "Import the rest",
+    "undoButton": "Undo this import",
+    "undoAsk_one": "Undo the import of {{count}} student?",
+    "undoAsk_other": "Undo the import of {{count}} students?",
+    "undoBody": "Its records are deleted, except those with an app login, a visit or anything recorded since: they stay and are listed. The audit log keeps a copy; their roll numbers are not given again.",
+    "undoYes": "Yes, undo the import",
+    "undoDone_one": "Undone: {{count}} record deleted.",
+    "undoDone_other": "Undone: {{count}} records deleted.",
+    "undoKept_one": "{{count}} record was kept:",
+    "undoKept_other": "{{count}} records were kept:",
+    "keptLine": "{{roll}} · {{name}}: {{reason}}",
+    "undoNotFound": "Nothing of this import is left to undo.",
+    "recentTitle": "Imports of the last 30 days",
+    "recentHint": "A wrong file or a wrong column match can be undone here.",
+    "recentLine_one": "{{date}} · {{count}} record",
+    "recentLine_other": "{{date}} · {{count}} records",
     "savedLine": "Row {{line}} → {{roll}}",
     "openDatabase": "Back to All students"
   },
@@ -1474,6 +1549,7 @@
     },
     "errors": {
       "range": "Enter a whole number from {{min}} to {{max}}.",
+      "serverRefused": "A value was refused. Pull down to reload, check the numbers and save again.",
       "inactiveAfter": "Inactive must come after Irregular: give it more days.",
       "time": "Enter a time like 14:30.",
       "window": "The class must open before it closes.",
@@ -1546,7 +1622,13 @@
       "ig_slokas": "Sloka",
       "ig_themes": "Ishtagoshti theme",
       "consents": "Consent",
-      "guardians": "Parent or guardian"
+      "guardians": "Parent or guardian",
+      "fund_entries": "Fund entry",
+      "fund_categories": "Fund category",
+      "inventory_items": "Instrument or item",
+      "inventory_stocktakes": "Stocktake",
+      "events": "Event",
+      "polls": "Poll"
     },
     "show": "Show",
     "views": {
@@ -2158,6 +2240,8 @@
     "twoHeadIntro": "The drum as you see it when you play: baya (left hand) on the left, dayan (right hand) on the right. The ring that is struck lights up, and under each head the hand that plays it, with the fingers that touch.",
     "bpm": "beats a minute ({{min}}-{{max}})",
     "bpmLabel": "{{bpm}} beats a minute",
+    "tempoSlower": "Slower by {{by}}",
+    "tempoFaster": "Faster by {{by}}",
     "tap": "Tap tempo",
     "tapHint": "Tap 3 or 4 times in time; the tempo follows.",
     "timerTitle": "Practice timer",
@@ -3245,6 +3329,7 @@
       "kind": "Kind",
       "category": "Category",
       "amount": "Amount (Rs)",
+      "effect": "Effect on balance (Rs)",
       "status": "Status",
       "party": "From / to",
       "reference": "Reference",
@@ -3400,7 +3485,7 @@
       "already_joined": "You have already joined Ishtagoshti.",
       "age_change_not_allowed": "The year of birth cannot be changed to 18 or older now. Please speak to the facilitator.",
       "birth_year_invalid": "Type the year you were born in, with 4 digits (for example 1998).",
-      "phone_invalid": "Type a phone number with digits only (a + at the start is fine), or leave it empty.",
+      "phone_invalid": "Type a real phone number (with + and the country code for a number abroad), or leave it empty.",
       "terms_required": "Please read the notice and tick that you agree.",
       "parent_name_invalid": "Type your parent's name (at most 100 characters).",
       "parent_email_invalid": "Type your parent's email address.",
@@ -3410,6 +3495,7 @@
       "not_awaiting_parent": "There is no parent's code to send or check for this account.",
       "code_too_soon": "A code was sent less than a minute ago. Please wait a moment.",
       "code_limit": "Three codes have been sent today. Please try again tomorrow.",
+      "code_parent_limit": "Three codes have already gone to this parent's email today. Please try again tomorrow.",
       "code_daily_cap": "Too many codes were sent today. Please try again tomorrow.",
       "not_subscriber": "This account has not joined Ishtagoshti as a public member.",
       "not_allowed": "You are not allowed to do this.",
@@ -3554,7 +3640,16 @@
     "finishTitle": "Finish the count",
     "finishHint": "Finish when every shelf is done. Items neither seen nor lent out are listed as missing.",
     "finish": "Finish the count",
+    "finishAsk": "Finish the count now?",
+    "finishAskBody_one": "{{count}} item is not seen yet; it will be listed as missing (or lent out). A finished count cannot be opened again.",
+    "finishAskBody_other": "{{count}} items are not seen yet; they will be listed as missing (or lent out). A finished count cannot be opened again.",
+    "finishAskAllSeen": "Every item has been seen. A finished count cannot be opened again.",
+    "finishYes": "Yes, finish",
     "delete": "Delete this count",
+    "deleteHint": "Only for a count started by mistake: every scan of it is thrown away.",
+    "deleteAsk": "Delete this count?",
+    "deleteAskBody_one": "{{count}} item seen so far is thrown away too. This cannot be undone.",
+    "deleteAskBody_other": "{{count}} items seen so far are thrown away too. This cannot be undone.",
     "finishedBy": "Finished by {{name}}, {{date}}",
     "missingTitle_one": "Missing ({{count}})",
     "missingTitle_other": "Missing ({{count}})",
@@ -3832,14 +3927,35 @@
     "unlinkBody": "That login no longer sees this record (QR card, visits, progress) and waits for a role again. Then link the right record on Coordinators.",
     "unlinkYes": "Take the login off",
     "unlinked": "The login is off this record and waits for a role.",
+    "delete": "Delete this record (entered by mistake)",
+    "deleteAsk": "Delete {{name}}'s record?",
+    "deleteBody": "Only for a record entered by mistake, such as a second copy of the same student. It goes with the parent's details and consent typed with it; the audit log keeps a copy and the roll number is never given again. A record with an app login, a visit or anything recorded about the student is kept.",
+    "deleteReason": "Why (kept in the audit log)",
+    "deleteReasonHint": "For example: typed twice at the desk; the right record is MS-2026-0012.",
+    "deleteTypeName": "Type the name to confirm: {{name}}",
+    "deleteYes": "Delete the record",
     "errors": {
       "not_allowed": "Only the facilitator can do this.",
       "level_guru_only": "Only the facilitator changes a level.",
       "joined_on_invalid": "A joining date lies between 1900 and today.",
       "mentor_not_staff": "A mentor must be an active coordinator or the facilitator.",
       "student_not_found": "This student record is gone. Pull down to refresh.",
-      "student_not_linked": "This record has no app login any more. Pull down to refresh."
-    }
+      "student_not_linked": "This record has no app login any more. Pull down to refresh.",
+      "student_linked": "This record has an app login, so it is kept. Take the login off first if it is the wrong one.",
+      "student_visited": "This record has visits, so it is kept. Ask the app team to merge the two records.",
+      "student_has_history": "Something is recorded about this student (a call, a tick, practice, a loan, an event or an assessment), so the record is kept. Ask the app team to merge the two records.",
+      "student_withdrawn": "Consent for this student was withdrawn: the record stays as it is. Erasing it is a separate step for the app team.",
+      "reason_required": "Write why the record is deleted.",
+      "reason_too_long": "The reason is too long (at most 500 characters)."
+    },
+    "unlinkStaffBody": "This record is a coordinator's own. The login keeps its role; only Me goes from their app.",
+    "unlinkedStaff": "The login is off this record. The role stays."
+  },
+  "leaveGuard": {
+    "title": "Discard what you typed?",
+    "body": "It is not saved. If you leave now it is lost.",
+    "keep": "Keep editing",
+    "discard": "Discard"
   },
   "welcome": {
     "title": "Hare Krishna, {{name}}. Welcome to the class.",

@@ -8,6 +8,7 @@
 //   in the app's origin, where the login is kept.
 
 import { createElement, forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import {
   lessonPlayerHtml,
@@ -48,6 +49,7 @@ type YouTubeFrameProps = Omit<LessonVideoFrameProps, 'source'> & { videoId: stri
 
 /** YouTube's embed page, driven by messages. */
 const YouTubeFrame = forwardRef<LessonVideoFrameHandle, YouTubeFrameProps>(function YouTubeFrame({ videoId, height, background, onEvent }, ref) {
+  const { t } = useTranslation();
   const frame = useRef<HTMLIFrameElement | null>(null);
   const src = useMemo(() => youtubeEmbedUrl(videoId, window.location.origin), [videoId]);
   const player = useRef<YouTubeEmbedPlayer | null>(null);
@@ -102,7 +104,8 @@ const YouTubeFrame = forwardRef<LessonVideoFrameHandle, YouTubeFrameProps>(funct
     ref: frame,
     key: src,
     src,
-    title: 'lesson video',
+    // The frame's name for screen readers, in the app's language (audit P1-05, #335).
+    title: t('lessonPlayer.title'),
     sandbox: YOUTUBE_FRAME_SANDBOX,
     allow: ALLOW,
     allowFullScreen: true,
@@ -113,6 +116,7 @@ const YouTubeFrame = forwardRef<LessonVideoFrameHandle, YouTubeFrameProps>(funct
 
 /** The V3 player page for a video file, in a srcdoc iframe. */
 const FileFrame = forwardRef<LessonVideoFrameHandle, LessonVideoFrameProps>(function FileFrame({ source, height, background, onEvent }, ref) {
+  const { t } = useTranslation();
   const frame = useRef<HTMLIFrameElement | null>(null);
   const html = useMemo(() => lessonPlayerHtml(source, window.location.origin, background), [source, background]);
   const listener = useRef(onEvent);
@@ -135,7 +139,8 @@ const FileFrame = forwardRef<LessonVideoFrameHandle, LessonVideoFrameProps>(func
   return createElement('iframe', {
     ref: frame,
     srcDoc: html,
-    title: 'lesson video',
+    // The frame's name for screen readers, in the app's language (audit P1-05, #335).
+    title: t('lessonPlayer.title'),
     allow: ALLOW,
     allowFullScreen: true,
     onLoad: () => frame.current?.contentWindow?.postMessage(JSON.stringify({ cmd: 'hello', tag: PLAYER_MESSAGE_TAG }), '*'),

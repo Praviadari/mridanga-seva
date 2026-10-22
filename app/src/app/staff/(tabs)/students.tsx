@@ -5,7 +5,7 @@
 // filtered on the phone, so the search answers as the coordinator types.
 
 import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useDeferredValue, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
@@ -35,6 +35,8 @@ import {
 } from '@/data/student-overview';
 import { lastVisitText, LEVEL_IDS, levelName, statusName } from '@/i18n/labels';
 import { spacing, useWide } from '@/theme/use-theme';
+import { RefreshFailed } from '@/components/refresh-failed';
+import { useKeptLoad } from '@/lib/kept-load';
 
 /** Students drawn at a time; "Show more" adds as many. */
 const STUDENT_PAGE = 50;
@@ -48,7 +50,7 @@ export default function StudentListScreen() {
   const { profile } = useAuth();
   const myId = profile?.id ?? null;
   // undefined = loading, null = could not load.
-  const [loaded, setLoaded] = useState<Loaded | null | undefined>(undefined);
+  const [loaded, setLoaded, refreshFailed] = useKeptLoad<Loaded | null | undefined>();
   // The Guru's "In class" tile opens the list as ?status=notLeft, so it matches the number (FS2-06).
   const { status: statusParam } = useLocalSearchParams<{ status?: string }>();
   const [filters, setFilters] = useState<StudentFilters>(statusParam === 'notLeft' ? { ...NO_FILTERS, status: 'notLeft' } : NO_FILTERS);
@@ -69,10 +71,19 @@ export default function StudentListScreen() {
     setLimit(STUDENT_PAGE);
   }
 
-  const load = useCallback(async () => {
-    const [students, staff] = await Promise.all([fetchStudentSummaries(), fetchStaff()]);
-    setLoaded(students && staff ? { students, staff } : null);
-  }, []);
+  // The class is kept for a minute and shared with the Calls tab, so Back from a profile does not download it
+  // again; any save drops it, and pull to refresh / Try again always load (P5-05, #330).
+  const load = useCallback(
+    async (fresh = false) => {
+      const [students, staff] = await Promise.all([
+        fetchStudentSummaries({ keepFor: myId ?? undefined, fresh }),
+        fetchStaff(),
+      ]);
+      setLoaded(students && staff ? { students, staff } : null);
+    },
+    [myId, setLoaded],
+  );
+  const reload = useCallback(() => load(true), [load]);
 
   // Reload whenever the screen comes back into view, e.g. after a call was logged on a profile.
   useFocusEffect(
@@ -81,9 +92,11 @@ export default function StudentListScreen() {
     }, [load]),
   );
 
+  // The search box answers each key at once; the list follows when the phone has time (D9-08).
+  const search = useDeferredValue(filters.search);
   const shown = useMemo(
-    () => (loaded ? filterStudents(loaded.students, filters, myId) : []),
-    [loaded, filters, myId],
+    () => (loaded ? filterStudents(loaded.students, { ...filters, search }, myId) : []),
+    [loaded, filters, search, myId],
   );
 
   const mentorChoices = useMemo((): Choice<string>[] => {
@@ -113,7 +126,7 @@ export default function StudentListScreen() {
         <Notice tone="error" title={t('students.loadFailed')}>
           {t('common.networkError')}
         </Notice>
-        <Button icon="refresh" label={t('common.tryAgain')} onPress={() => void load()} />
+        <Button icon="refresh" label={t('common.tryAgain')} onPress={() => void reload()} />
       </Screen>
     );
   }
@@ -155,7 +168,9 @@ export default function StudentListScreen() {
   );
 
   return (
-    <Screen underHeader wide onRefresh={load}>
+    <Screen underHeader wide onRefresh={reload}>
+      {/* F9 (#327): a failed refresh keeps what is shown and says so. */}
+      <RefreshFailed at={refreshFailed} onRetry={() => reload()} />
       {header}
       {wide ? (
         <View style={styles.toolbar}>

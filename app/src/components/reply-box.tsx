@@ -8,6 +8,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { checkReply, REPLY_MAX_LENGTH } from '@/data/announcements';
+import { useRequestId } from '@/lib/use-request-id';
 
 import { Button } from './button';
 import { Notice } from './notice';
@@ -24,7 +25,8 @@ export type ReplyBoxProps = {
    * Sends the reply (already checked). Resolves to the key of an error message, or undefined
    * when it was sent.
    */
-  onSend: (body: string) => Promise<ParseKeys | undefined>;
+  /** `requestId`: this reply's own id (#322), the same on Send again after a lost answer. */
+  onSend: (body: string, requestId: string) => Promise<ParseKeys | undefined>;
 };
 
 /** A reply form in a titled card. Empties itself and says "Sent" after a reply goes out. */
@@ -34,6 +36,7 @@ export function ReplyBox({ title, note, onSend }: ReplyBoxProps) {
   const [error, setError] = useState<ParseKeys | undefined>(undefined);
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
+  const { requestId, renew } = useRequestId();
 
   async function send() {
     if (sending) return;
@@ -42,7 +45,7 @@ export function ReplyBox({ title, note, onSend }: ReplyBoxProps) {
     setSent(false);
     if (problem) return;
     setSending(true);
-    const failed = await onSend(text);
+    const failed = await onSend(text, requestId());
     setSending(false);
     if (failed) {
       setError(failed);
@@ -50,6 +53,7 @@ export function ReplyBox({ title, note, onSend }: ReplyBoxProps) {
     }
     // Words typed while it was sending stay in the box (FS4-07); the part that went out goes.
     setText((current) => (current.startsWith(text) ? current.slice(text.length).trimStart() : current));
+    renew();
     setSent(true);
   }
 

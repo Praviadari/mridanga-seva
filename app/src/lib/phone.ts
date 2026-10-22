@@ -21,6 +21,11 @@ export function isPhoneCountry(code: string | null | undefined): code is Country
   return !!code && (PHONE_COUNTRIES as readonly string[]).includes(code);
 }
 
+/** A country code as a phone country; 'IN' (the class's first country) when the code is unknown. */
+export function phoneCountryOf(code: string | null | undefined): CountryCode {
+  return isPhoneCountry(code) ? code : 'IN';
+}
+
 /** '+91' for 'IN'. */
 export function callingCode(country: CountryCode): string {
   return `+${getCountryCallingCode(country)}`;

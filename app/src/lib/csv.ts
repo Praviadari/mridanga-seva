@@ -6,7 +6,8 @@
 function cell(value: string | number | null | undefined): string {
   const text = value === null || value === undefined ? '' : String(value);
   // A cell starting with = + - @ would be run as a formula by Excel: a leading apostrophe stops it.
-  const safe = /^[=+\-@]/.test(text) && !/^-?\d+(\.\d+)?$/.test(text) ? `'${text}` : text;
+  // Also a leading tab or carriage return and the full-width ＝＋－＠ (OWASP CSV injection; audit F3-17).
+  const safe = /^[=+\-@\t\r＝＋－＠]/.test(text) && !/^-?\d+(\.\d+)?$/.test(text) ? `'${text}` : text;
   return /[",\r\n]|^\s|\s$/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
 }
 

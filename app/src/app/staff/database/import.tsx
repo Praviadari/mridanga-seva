@@ -3,9 +3,12 @@
 // under 18, duplicate phone, email, roll number or student) → import only the good rows. The
 // database gives each saved student a roll number, as for C2, and refuses a bad row on its own.
 // Data: src/data/student-import.ts; rules: import_students in migration 0014 (DECISIONS #46).
+// Since #326 (audit R3-04, R3-07, R2-13): rows a dropped connection did not send are counted with "Import
+// the rest"; an import can be undone (its records nothing hangs on are deleted), right after it or from
+// the list of the last 30 days' imports.
 
-import { Stack } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { Stack, useFocusEffect } from 'expo-router';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
@@ -20,12 +23,16 @@ import { Section } from '@/components/section';
 import {
   checkRows,
   fetchExistingStudents,
+  fetchRecentImports,
   guessColumns,
   IMPORT_FIELDS,
   importRows,
   importToday,
   pickSheet,
   REQUIRED_FIELDS,
+  undoImport,
+  type KeptRecord,
+  type RecentImport,
   type ColumnMap,
   type ExistingStudents,
   type ImportField,
@@ -33,10 +40,12 @@ import {
   type PreviewRow,
 } from '@/data/student-import';
 import { levelName } from '@/i18n/labels';
-import { formatDate } from '@/lib/dates';
+import { formatDate, formatDateTime } from '@/lib/dates';
 import { goBackOr } from '@/lib/go-back';
 import type { SheetRows } from '@/lib/sheet-reader';
 import { spacing, useTheme } from '@/theme/use-theme';
+import { useRequestId } from '@/lib/use-request-id';
+import type { MessageKey } from '@/data/errors';
 
 /** How many rows of each kind the preview lists; the counts always cover every row. */
 const PREVIEW_ROWS = 50;
@@ -55,6 +64,20 @@ export default function ImportScreen() {
   const [showing, setShowing] = useState<'problems' | 'good'>('problems');
   const [asking, setAsking] = useState(false);
   const [results, setResults] = useState<ImportResult[] | null>(null);
+  // Good rows a dropped connection did not send (R3-07): counted, and Import the rest checks them again.
+  const [notSent, setNotSent] = useState(0);
+  // One id per chosen file, sent with every row, so the import can be undone (#326).
+  const { requestId: importId, renew: newImport } = useRequestId();
+  const [recent, setRecent] = useState<RecentImport[] | null | undefined>(undefined);
+
+  const loadRecent = useCallback(async () => {
+    setRecent(await fetchRecentImports());
+  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      void loadRecent();
+    }, [loadRecent]),
+  );
 
   const preview = useMemo<PreviewRow[]>(
     () => (sheet ? checkRows(sheet.rows, columns, sheet.existing, importToday()) : []),
@@ -70,6 +93,8 @@ export default function ImportScreen() {
     setBusy(true);
     setErrorKey(null);
     setResults(null);
+    setNotSent(0);
+    newImport();
     const picked = await pickSheet();
     if (picked && 'errorKey' in picked) {
       setBusy(false);
@@ -94,11 +119,30 @@ export default function ImportScreen() {
   async function runImport() {
     setBusy(true);
     setErrorKey(null);
-    const outcome = await importRows(good);
+    const outcome = await importRows(good, importId());
     setBusy(false);
     setAsking(false);
     setResults(outcome.results);
+    setNotSent(good.length - outcome.results.length);
     if (outcome.errorKey) setErrorKey(outcome.errorKey);
+    void loadRecent();
+  }
+
+  /** R3-07: the rows not sent are checked again against what is saved now (the same import id). */
+  async function importRest() {
+    if (!sheet) return;
+    setBusy(true);
+    setErrorKey(null);
+    const existing = await fetchExistingStudents();
+    setBusy(false);
+    if (!existing) {
+      setErrorKey('common.networkError');
+      return;
+    }
+    setSheet({ ...sheet, existing });
+    setResults(null);
+    setNotSent(0);
+    setShowing('good');
   }
 
   const headings = sheet?.rows[0] ?? [];
@@ -122,7 +166,18 @@ export default function ImportScreen() {
       <Notice tone="info" title={t('importStudents.howTitle')}>
         {t('importStudents.how')}
       </Notice>
-      {errorKey ? <Notice tone="error">{t(errorKey as never)}</Notice> : null}
+      {errorKey && !results ? <Notice tone="error">{t(errorKey as never)}</Notice> : null}
+
+      {!sheet && recent && recent.length > 0 ? (
+        <Section icon="file" title={t('importStudents.recentTitle')} description={t('importStudents.recentHint')}>
+          {recent.map((r) => (
+            <View key={r.importId} style={[styles.previewRow, { borderColor: colors.border }]}>
+              <AppText variant="small">{t('importStudents.recentLine', { date: formatDateTime(r.at), count: r.count })}</AppText>
+              <UndoImport importId={r.importId} count={r.count} onDone={() => void loadRecent()} />
+            </View>
+          ))}
+        </Section>
+      ) : null}
 
       <Button
         variant={sheet ? 'secondary' : 'primary'}
@@ -213,9 +268,16 @@ export default function ImportScreen() {
 
       {results ? (
         <Section icon="check" title={t('importStudents.doneTitle')}>
-          <Notice tone={refused.length === 0 ? 'success' : 'info'}>
+          <Notice tone={errorKey || notSent > 0 ? 'error' : refused.length === 0 ? 'success' : 'info'}>
             {t('importStudents.doneLine', { saved: saved.length, refused: refused.length })}
           </Notice>
+          {errorKey ? <Notice tone="error">{t(errorKey as never)}</Notice> : null}
+          {notSent > 0 ? (
+            <>
+              <AppText tone="danger">{t('importStudents.notSent', { count: notSent })}</AppText>
+              <Button icon="refresh" label={t('importStudents.importRest')} loading={busy} disabled={busy} onPress={() => void importRest()} />
+            </>
+          ) : null}
           {refused.map((r) => (
             <AppText key={`r${r.line}`} variant="small" tone="danger">
               {t('importStudents.line', { line: r.line })} · {t(`importErrors.${r.problem ?? 'row_failed'}`)}
@@ -232,9 +294,59 @@ export default function ImportScreen() {
             </AppText>
           ) : null}
           <Button icon="students" label={t('importStudents.openDatabase')} onPress={() => goBackOr('/staff/database')} />
+          {saved.length > 0 ? <UndoImport importId={importId()} count={saved.length} onDone={() => void loadRecent()} /> : null}
         </Section>
       ) : null}
     </Screen>
+  );
+}
+
+/** Undo of one import (#326): asks first, then says how many records went and which stayed, and why. */
+function UndoImport({ importId, count, onDone }: { importId: string; count: number; onDone: () => void }) {
+  const { t } = useTranslation();
+  const [asking, setAsking] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [outcome, setOutcome] = useState<{ deleted: number; kept: KeptRecord[] } | { errorKey: MessageKey } | null>(null);
+
+  async function undo() {
+    setBusy(true);
+    const result = await undoImport(importId);
+    setBusy(false);
+    setAsking(false);
+    setOutcome(result);
+    if (!('errorKey' in result)) onDone();
+  }
+
+  if (outcome && !('errorKey' in outcome)) {
+    return (
+      <>
+        <Notice tone="success">{t('importStudents.undoDone', { count: outcome.deleted })}</Notice>
+        {outcome.kept.length > 0 ? <AppText tone="muted">{t('importStudents.undoKept', { count: outcome.kept.length })}</AppText> : null}
+        {outcome.kept.map((k) => (
+          <AppText key={k.rollNo} variant="small">
+            {t('importStudents.keptLine', { roll: k.rollNo, name: k.fullName, reason: t(`studentTools.errors.${k.reason as 'student_linked'}`) })}
+          </AppText>
+        ))}
+      </>
+    );
+  }
+  return (
+    <>
+      {outcome && 'errorKey' in outcome ? <Notice tone="error">{t(outcome.errorKey)}</Notice> : null}
+      {asking ? (
+        <>
+          <Notice tone="error" title={t('importStudents.undoAsk', { count })}>
+            {t('importStudents.undoBody')}
+          </Notice>
+          <View style={styles.counts}>
+            <Button icon="delete" label={t('importStudents.undoYes')} loading={busy} disabled={busy} onPress={() => void undo()} />
+            <Button variant="link" label={t('syllabusEditor.cancel')} disabled={busy} onPress={() => setAsking(false)} />
+          </View>
+        </>
+      ) : (
+        <Button variant="link" icon="restore" label={t('importStudents.undoButton')} onPress={() => setAsking(true)} />
+      )}
+    </>
   );
 }
 

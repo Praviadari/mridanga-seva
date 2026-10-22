@@ -26,6 +26,7 @@ import { isNoticeScreen } from '@/data/notifications';
 import i18n from '@/i18n';
 
 import { readLocal, removeLocal, writeLocal } from './local-storage';
+import { forgetRegistration, recentRegistration, rememberRegistration } from './push-registered';
 import { setPushState } from './push-state';
 import { storedLoginUserId, supabase } from './supabase';
 
@@ -41,6 +42,7 @@ const CHANNEL_ID = 'announcements';
  */
 let savedToken: string | null = null;
 const PUSH_TOKEN_KEY = 'pushToken';
+
 
 /** Notifications whose tap has been handled, so one tap never opens the screen twice. */
 const handled = new Set<string>();
@@ -160,11 +162,20 @@ async function register(ask: boolean): Promise<void> {
       setPushState('denied');
       return;
     }
+    const user = storedLoginUserId();
+    // Registered within the week for this login: no call to Expo or the database (P4-05, src/lib/push-registered.ts).
+    const recent = recentRegistration(user, readLocal(PUSH_TOKEN_KEY));
+    if (recent) {
+      savedToken = recent;
+      setPushState('on');
+      return;
+    }
     const token = (await module.getExpoPushTokenAsync({ projectId })).data;
     const { error } = await supabase.rpc('register_push_token', { p_token: token, p_platform: 'android' });
     if (!error) {
       savedToken = token;
       writeLocal(PUSH_TOKEN_KEY, token);
+      if (user) rememberRegistration(user, token);
     }
     setPushState(error ? 'failed' : 'on');
   } catch {
@@ -183,6 +194,8 @@ async function register(ask: boolean): Promise<void> {
 export async function unregisterPush(): Promise<void> {
   // The next login on this phone starts with no notice; its own registration sets the state.
   setPushState('unknown');
+  // Signing in again registers at once, whoever it is (P4-05).
+  forgetRegistration();
   const token = savedToken ?? readLocal(PUSH_TOKEN_KEY);
   if (!token) return;
   savedToken = null;

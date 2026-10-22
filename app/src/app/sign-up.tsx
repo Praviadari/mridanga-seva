@@ -234,7 +234,7 @@ export default function SignUpScreen() {
       <LanguagePicker />
 
       <Section title={t('signUp.title')} description={t('signUp.subtitle')}>
-        <TextField
+        <TextField kind="name"
           ref={target('name')}
           label={t('signUp.fullNameId')}
           hint={t('signUp.fullNameIdHint')}
@@ -251,7 +251,7 @@ export default function SignUpScreen() {
           submitBehavior="submit"
           maxLength={80}
         />
-        <TextField
+        <TextField kind="name"
           ref={target('diksha')}
           label={t('about.dikshaName')}
           hint={t('about.dikshaHint')}

@@ -24,6 +24,12 @@ const stubs = {
   '@/lib/practice-reminder': stub('./device-trace-deps.mjs'),
   // ... and the face code in the Keystore (Phase 3 face scan, #310), which loads expo-secure-store.
   '@/face/face-status': stub('./device-trace-deps.mjs'),
+  // src/data/fund.ts and announcement-files.ts (the fund CSV, #325): file pickers and the browser, never called
+  // (expo-file-system: the device-traces stand-in above, which has File too).
+  'expo-web-browser': stub('./expo-media.mjs'),
+  'expo-document-picker': stub('./expo-media.mjs'),
+  'expo-image-manipulator': stub('./expo-media.mjs'),
+  'expo-image-picker': stub('./expo-media.mjs'),
 };
 
 /** Node module hook: resolves a stubbed package or app module to its stand-in file. */

@@ -34,6 +34,7 @@ import {
   type TrackerRow,
 } from '@/data/assessments';
 import { announce } from '@/lib/announce';
+import { confirmReady, confirmShown } from '@/lib/second-tap';
 import { levelName } from '@/i18n/labels';
 import { formatDateTime, formatDate } from '@/lib/dates';
 import { spacing } from '@/theme/use-theme';
@@ -266,8 +267,10 @@ function StaffAssessmentScreenContent() {
             label={confirmDelete ? t('assessments.detail.deleteYes') : t('assessments.detail.delete')}
             loading={busy === 'delete'}
             onPress={() => {
-              if (confirmDelete) return void remove();
+              // "Yes, delete" sits where Delete was: a double tap must not delete unseen (P2-06, #332).
+              if (confirmDelete) return void (confirmReady() && remove());
               setConfirmDelete(true);
+              confirmShown();
               // Only the button's words change; TalkBack does not read them again by itself (P2-01, #314).
               announce(t('assessments.detail.deleteYes'));
             }}

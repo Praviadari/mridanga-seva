@@ -25,7 +25,8 @@ import {
   fetchEvent,
   fetchEventStudents,
   PART_MAX,
-  saveAttendance,
+  attendanceChange,
+  changeAttendance,
   savePerformers,
   whenText,
   type ClassEvent,
@@ -38,6 +39,9 @@ import { searchFold } from '@/lib/search-text';
 /** The parts offered as chips; any other can be typed. */
 const PARTS = ['mridanga', 'kartal', 'leadSinger', 'harmonium'] as const;
 
+/** Rows drawn at a time: "everyone" lists the whole class (audit phase 4 P5-09, docs/DECISIONS.md #330). */
+const ROW_PAGE = 50;
+
 /** The screen. `mode` picks performers or attendance. */
 export function EventStudentsScreen({ id, mode }: { id: number; mode: 'performers' | 'attendance' }) {
   const { t } = useTranslation();
@@ -48,6 +52,8 @@ export function EventStudentsScreen({ id, mode }: { id: number; mode: 'performer
   // Performers: student id → part. Attendance: the ids ticked. Filled once from the database.
   const [parts, setParts] = useState<Map<string, string> | null>(null);
   const [ticked, setTicked] = useState<Set<string> | null>(null);
+  // The ticks as last loaded: Save sends only what this phone changed (#328).
+  const [loadedTicks, setLoadedTicks] = useState<Set<string>>(new Set());
   const [newPart, setNewPart] = useState<string>(t('events.performers.parts.mridanga'));
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ tone: 'success' | 'error'; text: string } | null>(null);
@@ -58,7 +64,9 @@ export function EventStudentsScreen({ id, mode }: { id: number; mode: 'performer
     setStudents(list);
     if (list) {
       setParts((current) => current ?? new Map(list.filter((s) => s.part).map((s) => [s.studentId, s.part as string])));
-      setTicked((current) => current ?? new Set(list.filter((s) => s.attended).map((s) => s.studentId)));
+      const attended = new Set(list.filter((s) => s.attended).map((s) => s.studentId));
+      setTicked((current) => current ?? attended);
+      setLoadedTicks(attended);
     }
   }, [id, everyone]);
 
@@ -72,6 +80,13 @@ export function EventStudentsScreen({ id, mode }: { id: number; mode: 'performer
     const q = searchFold(search);
     return (students ?? []).filter((s) => !q || searchFold(s.fullName).includes(q) || s.rollNo.toLowerCase().includes(q));
   }, [students, search]);
+  // 50 rows at a time, from the top again when the search or "everyone" changes; a tick re-draws only those.
+  const [limit, setLimit] = useState(ROW_PAGE);
+  const [limitFor, setLimitFor] = useState({ search, everyone });
+  if (limitFor.search !== search || limitFor.everyone !== everyone) {
+    setLimitFor({ search, everyone });
+    setLimit(ROW_PAGE);
+  }
 
   const title = mode === 'performers' ? t('events.performers.title') : t('events.attendance.title');
   const header = <Stack.Screen options={{ title }} />;
@@ -111,10 +126,17 @@ export function EventStudentsScreen({ id, mode }: { id: number; mode: 'performer
       if (result.errorKey) setMessage({ tone: 'error', text: t(result.errorKey) });
       else setMessage({ tone: 'success', text: t('events.performers.saved', { n: result.notified ?? 0 }) });
     } else {
-      const result = await saveAttendance(id, [...(ticked as Set<string>)]);
+      const change = attendanceChange(loadedTicks, ticked as Set<string>);
+      const result = await changeAttendance(id, change.came, change.notCame);
       setSaving(false);
-      if (result.errorKey) setMessage({ tone: 'error', text: t(result.errorKey) });
-      else setMessage({ tone: 'success', text: t('events.attendance.saved', { n: (ticked as Set<string>).size }) });
+      if (result.errorKey) {
+        setMessage({ tone: 'error', text: t(result.errorKey) });
+        return;
+      }
+      setMessage({ tone: 'success', text: t('events.attendance.saved', { n: result.count ?? 0 }) });
+      // Load again, with the ticks another phone saved meanwhile.
+      setTicked(null);
+      void load();
     }
   }
 
@@ -173,7 +195,7 @@ export function EventStudentsScreen({ id, mode }: { id: number; mode: 'performer
       <TextField label={t('events.performers.search')} value={search} onChangeText={setSearch} />
       <Checkbox label={t('events.performers.everyone')} checked={everyone} onChange={setEveryone} />
       {shown.length === 0 ? <AppText tone="muted">{t('events.performers.noStudents')}</AppText> : null}
-      {shown.map((s) =>
+      {shown.slice(0, limit).map((s) =>
         mode === 'performers' ? (
           <ListRow
             key={s.studentId}
@@ -198,6 +220,9 @@ export function EventStudentsScreen({ id, mode }: { id: number; mode: 'performer
           />
         ),
       )}
+      {shown.length > limit ? (
+        <Button variant="secondary" label={t('database.showMore', { count: shown.length - limit })} onPress={() => setLimit(limit + ROW_PAGE)} />
+      ) : null}
 
       {message ? <Notice tone={message.tone}>{message.text}</Notice> : null}
       <Button label={t('events.performers.save')} loading={saving} onPress={() => void save()} />

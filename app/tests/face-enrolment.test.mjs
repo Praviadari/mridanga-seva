@@ -230,7 +230,10 @@ test("every refusal code the server's face functions raise has a message", () =>
   for (const m of sql.matchAll(/return '([a-z_]+)';/g)) raised.add(m[1]);
   // Raised only by the Edge Function's own calls (service role) or the server's settings guard for other keys.
   const notForTheApp = new Set(['setting_required', 'setting_invalid', 'setting_unknown', 'result_invalid', 'pass_hash_invalid', 'student_withdrawn']);
-  const missing = [...raised].filter((c) => !notForTheApp.has(c) && !F.FACE_ERROR_CODES.includes(c));
+  // A staff member's own record (0053, #434): the shared message (data/errors.ts).
+  const shared = new Set(['own_record']);
+  for (const c of shared) assert.equal(F.faceErrorKey(c), 'common.ownRecord', c);
+  const missing = [...raised].filter((c) => !notForTheApp.has(c) && !shared.has(c) && !F.FACE_ERROR_CODES.includes(c));
   assert.deepEqual(missing, []);
 });
 

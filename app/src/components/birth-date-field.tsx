@@ -39,11 +39,15 @@ function toParts(date: Date): BirthParts {
   return { day: date.getDate(), month: date.getMonth() + 1, year: date.getFullYear() };
 }
 
-/** '15 June 2012' in the app's language; the typed form when Intl cannot name the month. */
-function longDate(iso: string): string {
+/**
+ * '15 June 2012' in `language`; the typed form when Intl cannot name the month. The language is passed in, not
+ * read inside: the React Compiler keeps a call's answer while its arguments stay the same, so a date read the
+ * language itself stayed English after a switch to Telugu (audit P1-04, docs/DECISIONS.md #334).
+ */
+function longDate(iso: string, language: string): string {
   try {
     const [year, month, day] = iso.split('-').map(Number);
-    return new Intl.DateTimeFormat(intlLocale(), { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }).format(
+    return new Intl.DateTimeFormat(intlLocale(language), { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }).format(
       new Date(Date.UTC(year, month - 1, day)),
     );
   } catch {
@@ -54,7 +58,7 @@ function longDate(iso: string): string {
 /** A box that opens the phone's calendar. */
 export function BirthDateField({ label, value, onChange, error, hint, startAge = 18, ref }: BirthDateFieldProps) {
   const { colors } = useTheme();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   // iPhone: the picker shows under the box (no dialog API there).
   const [iosOpen, setIosOpen] = useState(false);
   const iso = birthDateOf(value);
@@ -82,7 +86,7 @@ export function BirthDateField({ label, value, onChange, error, hint, startAge =
       <AppText variant="label">{label}</AppText>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`${label}: ${iso ? longDate(iso) : t('birthDate.pick')}`}
+        accessibilityLabel={`${label}: ${iso ? longDate(iso, i18n.language) : t('birthDate.pick')}`}
         accessibilityHint={note ? `${note} ${t('birthDate.opensCalendar')}` : t('birthDate.opensCalendar')}
         onPress={open}
         style={({ pressed }) => [
@@ -93,7 +97,7 @@ export function BirthDateField({ label, value, onChange, error, hint, startAge =
           },
         ]}>
         <AppText style={[styles.value, typography.body]} tone={iso ? undefined : 'muted'}>
-          {iso ? longDate(iso) : t('birthDate.pick')}
+          {iso ? longDate(iso, i18n.language) : t('birthDate.pick')}
         </AppText>
         <Icon name="date" color={colors.primary} />
       </Pressable>

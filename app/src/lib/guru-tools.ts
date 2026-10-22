@@ -12,11 +12,16 @@ export type MentorCandidate = { id: string; fullName: string; role: 'guru' | 'co
 
 /**
  * The people a student can be given as mentor: active coordinators and the Guru (the database refuses
- * anyone else, mentor_not_staff), by name, without the mentor the student has now.
+ * anyone else, mentor_not_staff), by name, without the mentor the student has now, and never the student's own login:
+ * a coordinator's own record needs another coordinator as mentor (0053, own_mentor, docs/DECISIONS.md #319).
  */
-export function mentorChoices<T extends MentorCandidate>(staff: readonly T[], currentMentorId: string | null): T[] {
+export function mentorChoices<T extends MentorCandidate>(
+  staff: readonly T[],
+  currentMentorId: string | null,
+  ownLoginId: string | null = null,
+): T[] {
   return staff
-    .filter((s) => s.active && s.id !== currentMentorId)
+    .filter((s) => s.active && s.id !== currentMentorId && s.id !== ownLoginId)
     .sort((a, b) => a.fullName.localeCompare(b.fullName));
 }
 

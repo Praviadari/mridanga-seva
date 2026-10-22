@@ -53,12 +53,15 @@ export function IshtagoshtiSloka({ area }: { area: IgArea }) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ tone: 'success' | 'error'; text: string } | null>(null);
 
+  const profileId = profile?.id;
+
+  // On the id, not the profile object, which is replaced at start (audit phase 4 P4-04).
   const load = useCallback(async () => {
-    if (!profile) return;
-    const loaded = await fetchSlokaPage(slokaId, profile.id);
+    if (!profileId) return;
+    const loaded = await fetchSlokaPage(slokaId, profileId);
     setPage(loaded);
     if (loaded && loaded !== 'not_found') setNote(loaded.note);
-  }, [profile, slokaId]);
+  }, [profileId, slokaId]);
 
   useFocusEffect(
     useCallback(() => {
@@ -220,7 +223,7 @@ export function IshtagoshtiSloka({ area }: { area: IgArea }) {
                   }}
                 />
               ))}
-              <TextField label={t('ishtagoshti.pinDate')} hint={t('ishtagoshti.pinDateHint')} value={pinDay} onChangeText={setPinDay} maxLength={10} />
+              <TextField kind="date" label={t('ishtagoshti.pinDate')} hint={t('ishtagoshti.pinDateHint')} value={pinDay} onChangeText={setPinDay} maxLength={10} />
               <Button variant="secondary" icon="today" label={t('ishtagoshti.pin')} loading={busy} onPress={pin} />
             </>
           ) : (

@@ -3,7 +3,7 @@
 // the weekly goal (#400), and the Practice block that S4 (the student's own) and C8 (staff, any
 // student) show.
 
-import { router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect, usePathname } from 'expo-router';
 import type { TFunction } from 'i18next';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -11,8 +11,9 @@ import { StyleSheet, View } from 'react-native';
 
 import { fetchMyStudentId, fetchPracticeDays, fetchPracticeWeeks, type PracticeDays, type PracticeWeek } from '@/data/practice';
 import { formatDate, todayLocal } from '@/lib/dates';
+import { ownAreaOf } from '@/lib/own-area';
 import { goalWeek } from '@/lib/practice-goal';
-import { radius, spacing, useTheme } from '@/theme/use-theme';
+import { radius, spacing, useLargeText, useTheme } from '@/theme/use-theme';
 
 import { AppText } from './app-text';
 import { Button } from './button';
@@ -36,6 +37,9 @@ export type WeeklyPracticeProps = {
 export function WeeklyPractice({ weeks }: WeeklyPracticeProps) {
   const { t } = useTranslation();
   const { colors } = useTheme();
+  // At large text the week and the time share a line and the bar goes under them: three columns of fixed
+  // width left the bar no room at 200 % (audit P3-13, docs/DECISIONS.md #333).
+  const large = useLargeText();
   if (weeks.length === 0) return null;
   const [thisWeek, ...earlier] = weeks;
   const most = Math.max(1, ...weeks.map((w) => w.minutes));
@@ -45,23 +49,29 @@ export function WeeklyPractice({ weeks }: WeeklyPracticeProps) {
         <AppText variant="title" family="sans">{practiceTime(t, thisWeek.minutes)}</AppText>
         <AppText tone="muted">{t('practice.thisWeek', { date: formatDate(thisWeek.weekStart) })}</AppText>
       </View>
-      {earlier.map((week) => (
-        <View
-          key={week.weekStart}
-          style={styles.row}
-          accessible
-          accessibilityLabel={`${t('practice.weekOf', { date: formatDate(week.weekStart) })}: ${practiceTime(t, week.minutes)}`}>
-          <AppText variant="small" tone="muted" style={styles.label}>
-            {t('practice.weekOf', { date: formatDate(week.weekStart) })}
-          </AppText>
-          <View style={[styles.track, { backgroundColor: colors.skeleton }]}>
+      {earlier.map((week) => {
+        const track = (
+          <View style={[styles.track, large && styles.trackLarge, { backgroundColor: colors.skeleton }]}>
             <View style={[styles.bar, { width: `${(week.minutes / most) * 100}%`, backgroundColor: colors.primary }]} />
           </View>
-          <AppText variant="small" style={styles.value}>
-            {practiceTime(t, week.minutes)}
-          </AppText>
-        </View>
-      ))}
+        );
+        return (
+          <View
+            key={week.weekStart}
+            style={large ? styles.rowLarge : styles.row}
+            accessible
+            accessibilityLabel={`${t('practice.weekOf', { date: formatDate(week.weekStart) })}: ${practiceTime(t, week.minutes)}`}>
+            <AppText variant="small" tone="muted" style={large ? styles.labelLarge : styles.label}>
+              {t('practice.weekOf', { date: formatDate(week.weekStart) })}
+            </AppText>
+            {large ? null : track}
+            <AppText variant="small" style={large ? styles.valueLarge : styles.value}>
+              {practiceTime(t, week.minutes)}
+            </AppText>
+            {large ? track : null}
+          </View>
+        );
+      })}
     </View>
   );
 }
@@ -139,6 +149,8 @@ const PANEL_WEEKS = 4;
 export function PracticePanel(props: PracticePanelProps) {
   const { t } = useTranslation();
   const own = 'profileId' in props;
+  // S4 of a student, or Me > My progress of a staff member's own record (0053, #319).
+  const area = ownAreaOf(usePathname());
   const key = own ? props.profileId : props.studentId;
   // undefined = loading, null = could not load, 'none' = no student record for this login.
   const [weeks, setWeeks] = useState<PracticeWeek[] | 'none' | null | undefined>(undefined);
@@ -170,7 +182,7 @@ export function PracticePanel(props: PracticePanelProps) {
       {weeks && days ? <GoalWeekView practice={days} /> : null}
       {weeks ? <WeeklyPractice weeks={weeks} /> : null}
       {own ? (
-        <Button variant="link" icon="time" label={t('practiceLog.open')} onPress={() => router.push('/student/practice-log')} />
+        <Button variant="link" icon="time" label={t('practiceLog.open')} onPress={() => router.push(area === 'me' ? '/staff/me/practice-log' : '/student/practice-log')} />
       ) : null}
     </Section>
   );
@@ -230,5 +242,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
+  },
+  // Large text: week and time on the first line, the bar across the whole width under them.
+  rowLarge: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    columnGap: spacing.sm,
+    rowGap: spacing.xs,
+  },
+  labelLarge: {
+    flexGrow: 1,
+    flexShrink: 1,
+  },
+  valueLarge: {
+    textAlign: 'right',
+  },
+  trackLarge: {
+    flexBasis: '100%',
   },
 });

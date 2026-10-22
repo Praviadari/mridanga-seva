@@ -36,6 +36,8 @@ import {
 } from '@/data/events';
 import { todayLocal } from '@/lib/dates';
 import { eventDates } from '@/lib/quick-times';
+import { useRequestId } from '@/lib/use-request-id';
+import { useFormChanged, useLeaveGuard } from '@/lib/use-leave-guard';
 
 type Loaded = {
   options: ComposeOptions;
@@ -54,7 +56,11 @@ export function EventFormScreen({ eventId }: { eventId?: number }) {
   const [errors, setErrors] = useState<EventFormErrors>({});
   const [serverError, setServerError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  // #322: one id for a new event, so Create again after a lost answer does not tell everyone twice.
+  const { requestId } = useRequestId();
   const filled = useRef(false);
+  // #327: Back asks before a half-filled form is thrown away.
+  const { allowLeave } = useLeaveGuard(useFormChanged(form, typeof loaded === 'object' && loaded !== null));
 
   const load = useCallback(async () => {
     const [options, centres, existing] = await Promise.all([
@@ -136,14 +142,16 @@ export function EventFormScreen({ eventId }: { eventId?: number }) {
         setServerError(t(result.errorKey));
         return;
       }
+      allowLeave();
       router.back();
     } else {
-      const result = await createEvent(form);
+      const result = await createEvent(form, requestId());
       setSaving(false);
       if (result.errorKey || result.id === undefined) {
         setServerError(t(result.errorKey ?? 'common.genericError'));
         return;
       }
+      allowLeave();
       router.replace({ pathname: '/staff/events/[id]', params: { id: String(result.id) } });
     }
   }

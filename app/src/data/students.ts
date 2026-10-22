@@ -96,6 +96,16 @@ export function cleanPhone(phone: string): string {
 }
 
 /**
+ * The phone as the database keeps it, E.164 (#324, audit P1-07): '98765 43210' → '+919876543210'. Empty =
+ * null. Call after the form's check (isValidPhone) passed.
+ */
+export function phoneToSave(typed: string): string | null {
+  const clean = cleanPhone(typed);
+  if (!clean) return null;
+  return toE164(clean, 'IN') ?? clean;
+}
+
+/**
  * After cleanPhone: an Indian mobile (10 digits starting 6-9, a leading 0 allowed), or a number
  * with + and a country code that is a real number (D6-21: '0000000000' or '1234567890' would be
  * saved and make follow-up calls for a minor impossible).
@@ -201,7 +211,7 @@ export async function registerStudent(
   const args = {
     p_full_name: cleanName(form.fullName),
     p_dob: parseDayMonthYear(form.dob),
-    p_phone: cleanPhone(form.phone) || null,
+    p_phone: phoneToSave(form.phone),
     p_email: form.email.trim() || null,
     p_area: form.area.trim() || null,
     p_pincode: form.pincode.trim() || null,
@@ -209,7 +219,7 @@ export async function registerStudent(
     p_mentor: form.mentorId,
     // Guardian and consent go to the database only for a minor.
     p_guardian_name: minor ? cleanName(form.guardianName) : null,
-    p_guardian_phone: minor ? cleanPhone(form.guardianPhone) : null,
+    p_guardian_phone: minor ? phoneToSave(form.guardianPhone) : null,
     p_guardian_email: minor ? form.guardianEmail.trim() || null : null,
     p_guardian_relation: minor ? form.relation : null,
     p_id_type_checked: minor ? form.idType : null,

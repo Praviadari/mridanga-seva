@@ -5750,6 +5750,396 @@ still for reduced motion, no script: the site policy allows none inline); React 
 **Consequences.** Large-text checks are phone-only (the web reports text size 100 %). The splash reaches users
 with the next web upload, not the OTA.
 
+## 316. A coordinator's login can have its own student record; the Guru links it — 13 Oct 2026
+
+**Status: built on branch `staff-own-record` (placeholder 0061); merged after the launch of 20 Oct 2026 as migration 0053 (22 Oct 2026).**
+
+**Context.** Praveen (13 Oct 2026): "Coordinators are students too, with more experience — that's it." Until now one login
+had one role, and every link path needs a login that waits for a record (`pending`; #13, #96, #265), so a coordinator's or
+the Guru's login could never be on a student record: no My QR, My progress, My attendance, practice or face scan in their
+own app. For the launch each coordinator gets a student record at the desk **without a login**; colleagues check them in by
+name or the printed card.
+
+**Decision.** `link_staff_record(profile, student)` (security definer): the Guru links an active coordinator's (or Guru's)
+login to ONE student record without a login, as their **own record**; the role stays. Never a withdrawn record
+(`student_withdrawn`, #281), never a second one (`staff_has_record`). The Guru does it on Coordinators (G2), on the
+person's page, section "Own student record"; the launch-time records made without a login are linked that way. **The Guru's
+own record** is linked by Praveen in the SQL editor with the same function (`own_record` from the app): one person does
+not give themselves a second kind of access. Unlinking is the student's `unlink_student_login` (G2 or the student
+profile); it resets only a `student` role, so the staff login keeps its role and only loses Me.
+
+**Not Accept, not the email link.** Neither the automatic email paths (a confirmed email, an email saved on a record) nor
+Accept link a staff login. Desk records of coordinators often carry their email (the smoke test has one since 0002), and a
+silent link would change what a staff login does without anyone deciding it; an existing coordinator never has a waiting
+sign-up, so Accept has nothing to accept. The Guru checks the person and links on purpose (#13's reasoning).
+
+**Consequences.** 0046-0048's link rules are untouched (`login_awaits_record`, minors never auto-linked, guardian email
+rules). A student who becomes a coordinator: the Guru takes the login off the record (it waits), makes it a coordinator,
+then links the record as their own (OPERATIONS.md). Tests: "0053 staff own record" in smoke-test.mjs.
+
+## 317. The own record works like a student's for what the person does themselves — 13 Oct 2026
+
+**Decision.** `my_student_id()` (0016) returns the caller's own record for coordinators and the Guru too (before: students
+only). Practice (`log_practice`, `delete_practice`), the student's assessment functions, `event_counts` (my part, I
+attended) and Phase 3's face enrolment (p3-server's functions use `my_student_id`) act on it with no change of their own.
+`student_home()` already reads the caller's own record for any role. Row-level security gave staff every row before.
+
+**Consequences.** **Face scan (P3):** once linked, a coordinator enrols like any student (start, a colleague approves:
+p3-server's `approve_face_enrolment` already refuses one's own record, today with `not_allowed`; at merge it may answer
+`own_record`). p3-native's Face scan screen opens from the student's My profile: for a staff member it needs a Me entry
+(the p3 branches add it on their rebase). The future face self check-in RPC is a student's own proof, not a staff mark:
+it must set `app.self_check_in` and `refuse_own_record` must let that through (one line) when it is built.
+
+## 318. Nobody records about their own record — 13 Oct 2026
+
+**Decision.** For a signed-in staff caller, the database refuses with `own_record` anything recorded about the caller's
+own record, whatever the path: a check-in or check-out (the desk's name check-in, Mark attendance, a QR scan of one's own
+code, `toggle_visit`, a visit time edit), a syllabus tick, remark or untick, a level change (`level_history`; the Guru's
+"Set level" and "promote" alike), a promotion nomination, answer, withdrawal or decision, an assessment review, a call log.
+One trigger function, `refuse_own_record`, on each table, so a new function writing these tables is covered too. An
+event's attendance list leaves the caller's own row as it is, without an error (a list is saved at once). "Check out
+everyone" closes the caller's own visit too: it is the end of the day, not a mark. The door tablet (its own kiosk login)
+checks a coordinator in like any student. Students and the dashboard are not affected (students are refused by
+row-level security first, as before).
+
+**App.** One message for every screen (`fallbackErrorKey`): "This is your own student record: a colleague records it…".
+On their own Student profile a staff member sees a note instead of Log a call, Check in / out and Tick the syllabus;
+the Guru sees no Set level on their own record.
+
+**Why.** Attendance, ticks and the level are the class's record of a student's learning, given by someone else. Praveen's
+launch rule is the same: "check in each other, not yourself".
+
+## 319. Me in the staff app; nobody is their own mentor — 13 Oct 2026
+
+**Decision.** When the login has an own record, the staff home (Guru and coordinator) shows a **Me** circle first on the
+ring (nine circles, drawn smaller, as module-ring.tsx allows). Me opens a ring of four: **My QR**, **My progress**, **My
+attendance**, **Practice**, the student's own screens opened under `/staff/me` (no copies: the routes re-export
+student/…; `lib/own-area.ts` sends their Back-home and practice-log links to Me). The home asks the server each time it
+comes into view (the Guru may link while the app runs) and saves the My QR card on the phone; without internet the card
+saved on the phone keeps Me and My QR at the door. Hidden without an own record. Assessments, events and announcements
+stay in the staff screens (see #321).
+
+**Mentors.** Nobody is their own mentor (`own_mentor`, whoever sets it, also through the Guru's mentor move) and nobody
+changes their own record's mentor or level (`own_record`). The mentor rule (`assign_mentor`, #165: the referral first,
+else the same-gender coordinator of the centre with the fewest students) never picks the record's own login; the link
+takes off a mentor that is the login itself (the desk's rule could pick the coordinator while the record had no login)
+and gives another; nobody of that gender = the Guru's "Mentor needed" notice. The Guru's mentor picker leaves out the
+record's own login.
+
+## 320. A record with a staff login is not withdrawn or erased while linked — 13 Oct 2026
+
+**Decision.** `withdraw_consent` switches the record's login off and `erase_student` deletes it: for a coordinator's own
+record that would switch off or delete their staff access. Both (and a delete in the dashboard) are refused with
+`staff_login_linked` while a staff login is on the record; the Guru unlinks first, then withdraws or erases (the record
+alone). When a coordinator leaves, `anonymise_staff` (0040) deletes the staff login and the record stays without one.
+
+## 321. Coordinator-students count as students everywhere — 13 Oct 2026
+
+**Decision.** An own record is a student record like any other, so it counts wherever students count, with no special case:
+Overview and the dashboards (in class, came this week, by level and status, new joiners), reports, the class list, Here now,
+follow-up calls (an irregular coordinator-student gets a call task for their mentor, another coordinator), promotion
+("ready" lists), events' and assessments' audiences by level. Praveen's rule ("coordinators are students too … that's it")
+and one number for "how many learn at level 2" both say so; leaving them out would need a flag on every count.
+
+**Consequences (after launch, not built).** An assessment given to a coordinator-student's level makes an assignment they
+cannot open yet (no Me > Assessments; its push opens a /student address, which the staff app does not have). Announcements
+and polls "to students" reach student logins only (`audience_profiles`); a coordinator sees them as staff anyway. Asks for
+Praveen (after 21 Oct): the Guru's own record (default: allowed, linked in the SQL editor, nobody self-marks); Me >
+Assessments; whether follow-up calls should skip coordinators.
+
+## 322. A create is saved once, however often Save is tapped after a lost answer — 13 Oct 2026
+
+**Context.** Audit phase 1 P1-02 / P1-03 (F5-01, F4-01, F4-02, F3-02, F5-02). On a weak network the server can
+store a row while its answer is lost; the screen said "try again", and the second Save made a second fund entry,
+call note, practice entry, event or poll (which told everyone twice), assessment, material, syllabus item,
+theme or reply. Some of those saves also deleted the files they had just uploaded, although the saved row listed
+them. Only register_student (#126) and announcements (D6-10) were safe.
+
+**Decision (migration 0054 + JS).** Each open form holds one request id (a uuid, `lib/use-request-id.ts`) and
+sends it with every Save. Ten tables get a unique `request_id` (fund_entries, call_logs, practice_logs, events,
+polls, assessments, materials, syllabus_items, ig_themes, announcement_replies). Direct inserts send it as a
+column; a repeat is refused by the unique index and the app reads the first row back (`data/create-once.ts`
+insertOnce). The three functions get a twin with `p_request_id` first (record_fund_entry, log_call,
+log_practice) that returns the row saved earlier by the same person; the twin passes the id to the row through
+a transaction setting (`app.request_id`, trigger `stamp_request_id`), so the original functions stay unchanged
+and older apps keep calling them. Files: a repeated Save reuses the upload of the first try (`uploadOnce`); with
+no answer the files are kept (the row may list them; unused files are cleaned up as in OPERATIONS.md); only a
+refusal removes them. The same for a sloka's recording and an assessment edit.
+
+**Why.** Money, a child's call record and a push to the whole class must not happen twice because the hall's
+signal dropped.
+
+**Consequences.** "Try again" after a network error is now safe on these forms. Two keepers cannot share an id
+(the twin looks only at the caller's rows). Updates are not covered (they are idempotent already).
+
+## 323. Shared form parts: kinds, native digits, the hint kept, linked error summary, a self-guarding button — 13 Oct 2026
+
+**Context.** Audit phase 1 B4: P1-09 (Telugu/Hindi digits refused or deleted in number boxes), P1-11 (server
+messages at the top of long forms; the summary listed nothing), F5-08 (autocorrect on names), F5-10..F5-16,
+F1-11, F4-13, F4-15.
+
+**Decision (JS).** TextField: a `kind` preset (name, email, url, phone, number, decimal, date, time, code) sets
+keyboard, autocorrect, capitals and length (the caller's props win); in number-like boxes Telugu and Devanagari
+digits become 0-9 as they are typed; the hint stays and the error shows under it, both read out; a 2 px primary
+border while focused and a muted look when read-only; a "n of max" counter from 200 characters (`counter` gives
+the real limit when maxLength leaves room for a "too long" message); a multiline box starts about four lines
+tall. FormErrorSummary: given the form's fields it lists each problem as a link that scrolls to and focuses the
+field, and carries the server's refusal beside the button (fund entry first; materials, inventory item, syllabus
+item and Join Ishtagoshti moved their message beside the button). Button: an onPress that returns a promise keeps
+the button busy until it settles. The fund form checks the 366-day limit itself and shows a server refusal at
+its field (F3-08).
+
+**Why.** One change in four shared parts lifts every form (GOV.UK error summary and error message, WCAG 3.3.1,
+2.4.7; Apple HIG keyboards).
+
+**Consequences.** Other forms keep the count-only summary until they pass their fields. Native digits are read
+only where the box is number-like.
+
+## 324. Phone numbers are kept in one format, E.164 — 13 Oct 2026
+
+**Context.** Audit phase 1 P1-07 (F2-06, F1-05, F5-04): the same number was stored as 9876543210, 09876543210,
++919876543210 and 98765 43210; #164 had left the desk's own field national. Duplicate checks, search, dialling
+and exports disagreed.
+
+**Decision (migration 0054 + JS).** Retires #164's exception. `phone_e164()` reads a number with +, with 00, or a
+national Indian number (10 digits, 11 with a leading 0, 12 starting 91); a trigger keeps students, guardians,
+profiles and Ishtagoshti subscribers as E.164 on every changed phone and refuses what is not a number
+(`phone_invalid`); an unchanged old value is left alone, so editing other fields never fails on it. The run
+rewrites the stored numbers it can read, once. The desk, My profile and Join Ishtagoshti send E.164 (the class's
+country for a national number); the import goes through the same function.
+
+**Why.** One person, one number: duplicates are found and the call screen dials the right one.
+
+**Consequences.** India is assumed for a national number without a code in SQL (the app sends E.164). Numbers
+the run cannot read stay as they are: OPERATIONS.md "Phones that are not E.164" lists them.
+
+## 325. Fund and inventory past 1,000 rows; CSV, stocktake, suggestions, audit log, reports — 13 Oct 2026
+
+**Context.** Audit phase 1 B6: P1-19 (one unpaged read: past 1,000 fund entries the balance stopped at the
+1,000th), P1-21 (inventory lost its label code), P1-22 (Take back deleted an approved material's file),
+P1-23 (stocktake Finish / Delete on one tap), F3-09, F3-10, F3-11, F3-13, F3-17; phase 2 R3-08.
+
+**Decision.** (JS) `lib/paged-read.ts` reads every row 1,000 at a time in a total order: fund entries,
+inventory items and open loans, a count's ticks, the import's existing students, the audit log's names. The
+inventory list shows and searches `code · name` again. Finish and Delete of a count each ask first (Delete in
+its own section). Take back deletes the suggestion row first and its file only then. CSV exports write
+YYYY-MM-DD dates; the fund CSV adds a signed "Effect on balance" column; the formula guard also covers a
+leading tab, CR and the full-width = + - @. The audit log can filter and name fund entries and categories,
+instruments, counts, events and polls, with paise as rupees. Reports check a custom range at its fields (both
+dates, from before to, at most a year) and show only the newest load. A Settings refusal says to reload and
+check, not "{{min}} to {{max}}". (Migration 0054) an approved material's file can be deleted by the Guru only.
+
+**Why.** A treasurer must never read a wrong balance; staff search the code printed on the label.
+
+**Consequences.** No list in these screens is capped any more; 50,000 rows is the safety stop.
+
+## 326. The Guru deletes a record entered by mistake, and can undo an Excel import — 13 Oct 2026
+
+**Context.** Audit phase 2 R3-04 (#302 left it): a duplicate from the desk or a mis-mapped import could only be
+removed by Praveen in the SQL editor, as an "erasure".
+
+**Decision (migration 0054 + JS).** `delete_student_record(id, reason)`, the Guru only: deletes a record that
+nothing hangs on, with what was made with it (guardians, consents, About-you details, tasks, status and level
+history), and writes the reason on its audit-log row (the row keeps the record's copy). It refuses a record
+with a login (`student_linked`: take the login off first), a withdrawn one (`student_withdrawn`: erasure is
+the way), one with visits (`student_visited`) or anything recorded about the student (`student_has_history`:
+a call, a tick, practice, a loan, an assessment submission, an event, a nomination). On the student profile:
+"Delete this record (entered by mistake)", with a reason and the name typed again, only for a record without a
+login. Imports: each chosen file gets an id sent with every row (`students.import_id`, set only by the Guru's
+import, frozen after); `undo_import(id)` deletes the import's records that nothing hangs on and lists the
+others with why. The import screen offers Undo after an import and for the last 30 days' imports; rows a
+dropped connection did not send are counted ("Not sent: n", Import the rest) instead of a green "finished"
+(R3-07, R2-13).
+
+**Why.** Week 1 brings duplicates and a first import; the Guru must fix them from the phone without an erasure
+record.
+
+**Consequences.** Two records of one student that both have history are merged by the app team (SQL), as
+before. Roll numbers of deleted records are never given again.
+
+## 327. Back asks before typed work is lost; a failed refresh keeps the data; screens reload after a while — 13 Oct 2026
+
+**Context.** Audit phase 1 P1-10 (Back threw away a half-filled form, F5-05, F4-03) and phase 2 F9: R1-04 /
+R2-10 (a failed reload after an action replaced the page with "Could not load"), R4-04 (a tab left open
+overnight showed yesterday), R3-09 (load failures with no Try again).
+
+**Decision (JS).** `useLeaveGuard(dirty)` (lib/use-leave-guard.ts, React Navigation's usePreventRemove from
+`expo-router/react-navigation`; SDK 58 brings its own) asks "Discard what you typed?" on Back, the swipe and
+the header arrow while a form holds unsaved changes (register, new announcement, event, poll, assessment, call
+note, fund entry, material); on the web also before a reload or closing the tab. A form calls allowLeave()
+before it leaves after a save. `useKeptLoad` keeps the last data when a reload fails and shows "Could not
+refresh. Showing what was loaded at HH:MM" with Try again, on twelve screens; the first load still shows its
+error. `useReloadOnResume` loads again when the app returns after 5 minutes or more (homes, Attendance, Here now,
+Follow-up, the inbox). Fund entry, inventory item and a count offer Try again when they could not load.
+
+**Why.** Two minutes of a child's registration must not vanish on a slip; a sent reply must not look lost.
+
+**Consequences.** On the web the browser's own Back keeps the form and asks, but the address bar already shows
+the previous page (a react-navigation web limit). The form drafts of #218 still cover a forced sign-out.
+
+## 328. Event attendance per student; a withdrawn record says so — 13 Oct 2026
+
+**Context.** Audit phase 2 F11 (R2-07: two phones marking one event replaced each other's whole list) and F12
+(R3-06: a withdrawn record looked normal; staff learned it only from a refused action).
+
+**Decision.** (Migration 0054) `change_event_attendance(event, came, not_came)` changes only the students given,
+with mark_event_attendance's rules; (JS) the attendance screen sends what this phone changed since it loaded,
+then loads again with the other phones' ticks. (JS) The student profile shows "Consent withdrawn on <date>"
+and what that means. A Guru "Record withdrawal" form stays a team decision (withdraw_consent in SQL, OPERATIONS).
+
+**Why.** Several coordinators mark a festival's attendance at once; a frozen record must be recognisable.
+
+**Consequences.** mark_event_attendance stays for older apps. The Students list has no withdrawn chip yet (it
+needs the overview view to carry the date).
+
+## 329. The parent's code email is capped per address; small sign-in and message gaps closed — 13 Oct 2026
+
+**Context.** Audit phase 1 B10 (P1-13: any address could get the code email three times a day per login, and a
+few accounts could use up the app's 100 a day; the email carried the user's own text) and B8 (P1-14: no way to
+get a new confirmation email after "confirm your email first"; F5-09: server codes shown as "Something went
+wrong").
+
+**Decision.** (Migration 0054) ig_send_parent_code refuses a fourth code a day to the same parent address, from
+any child (`code_parent_limit`, worded in the app); the names in the email are cut to letters, marks, spaces,
+' and - (no link, no lines of one's own). (JS) Sign-in shows "Send a new confirmation email" after "confirm your
+email first"; `group_inactive` and `member_not_allowed` have their own words.
+
+**Why.** The class's email sender must not be usable to send other people's text, and one parent's inbox must
+not be flooded.
+
+**Consequences.** The consent wording (#88) and a minimum age of the login stay team decisions.
+
+## 330. Lists and homes load only what they show; long reads go page by page — 13 Oct 2026
+
+**Context.** Audit phase 4 B4-5 (P5-03, P5-05, P5-06, P5-09, P5-10, D9-04, P1-19). The Ishtagoshti home and
+sloka lists downloaded every sloka's purports in three languages (up to 20,000 characters each) on every
+visit; the student home made ~10 requests, four of them for things it never shows; the Students and Calls
+tabs downloaded the whole class again on every return; Supabase sends at most 1,000 rows per request, so a
+class past 1,000 students (and the fund ledger past 1,000 entries) silently lost its last rows; an event's
+"everyone" list drew every student; a scan right after "Scan the next student" started a second location
+reading with its own 8 s wait.
+
+**Decision (JS).** Sloka lists read a list column set (no purports, no word meanings); the I1 home reads only
+counts and the sloka of the day's id, and draws Themes and All slokas at once. The student home reads ids and
+the student's own reads for the News badge, not posts, group or staff names, and no week setting. The class
+(`student_overview`) is kept for 60 s for the signed-in person and shared by the Students and Calls tabs; any
+call that may save (every non-read call except a list of read-only database functions, `lib/data-version.ts`)
+drops it, and pull to refresh / Try again always load. Whole-table reads go through `lib/read-all.ts`
+(1,000-row pages, ordered on id): Students, Calls, group members, Print QR cards, the Guru's database, the
+fund ledger, the import's duplicate check. Event performers and attendance draw 50 rows at a time. A scan
+joins the location reading already under way and waits only its remaining time.
+
+**Why.** Slow data in the hall and low-end phones; the 1,000-row cap was a silent data loss waiting for growth.
+
+**Consequences.** A change made by another phone shows on Students / Calls within a minute, or at once on
+pull to refresh. A new database function that only reads should be added to the list in data-version.ts,
+or it costs a reload (never a stale screen). Not done here: announcement photo thumbnails (P5-11, with the
+photo descriptions of P2-10 they need the attachment rules of 0010 changed: a migration round), the promotion
+count on every staff home (P5-07, needs a migration), the staff Announcements seen-count second step (the
+seen-count view cannot be ordered like the list), D9-05 / D9-09.
+
+## 331. Telugu and Hindi load when chosen; fewer calls at start — 13 Oct 2026
+
+**Context.** Audit phase 4 B4-6 (P4-03, P4-04, P4-05, P4-06, D9-11). Every start evaluated all three
+languages (6,000 Telugu and Hindi strings) and the web's one script carried them for every visitor; eight
+screens reloaded when the fetched profile replaced the remembered one (the sloka editor reloaded the sloka
+over unsaved edits when the app came back to the front); push registration called Expo and the database on
+every cold start; the loading shapes faded on the JavaScript thread.
+
+**Decision (JS + web upload).** English stays in the app (the fallback). Telugu and Hindi load only when they
+are the start language or chosen: on the phone through a `require` inside a function (`i18n/locale-loaders.ts`,
+evaluated on the first call); on the web as their own files (`locale-loaders.web.ts`, `import()`), with the
+app's splash kept over the app until the start language is in. The loaders return English's shape, so tsc
+still fails on a missing key. Loads depend on the profile id, not the object. A push registration counts for a
+week for the same login and token (`lib/push-registered.ts`, forgotten at sign-out). The fade runs on the native
+driver on phones. Hashed web assets (`/assets/*`) are cached for a year like `/_expo/static/*`.
+
+**Why.** Start-up and first web visit on slow data and small phones.
+
+**Consequences.** Web build of TEST, measured 13 Oct 2026 (main script): before (e46ed0c) 4,458 KB raw,
+1,106 KB gzip, 826 KB brotli; after 3,403 KB, 979 KB, 741 KB; Telugu and Hindi are separate files of ~51 KB
+brotli each, fetched only by their readers. Expo Router's `asyncRoutes` (the rest of D9-11) is an app.json
+option, which changes the fingerprint: next APK, not here.
+
+## 332. Screen readers: focus follows the question, one stop per row, the web in the app's language — 13 Oct 2026
+
+**Context.** Audit phase 4 B4-7 (P2-02, -04, -05, -06, -07, -08, -09, -12; F5-13; F1-11). Nothing moved
+TalkBack's focus when the pressed button disappeared; the tempo buttons said "plus 5"; the My QR code, beat
+marks and progress bars carried labels TalkBack never read; a double tap could delete through a same-place
+"Yes, delete"; the web back button was English; the bell and profile buttons were 40 dp; plain list rows were
+3-5 stops each; "Remove animations" was ignored; required fields were not exposed.
+
+**Decision (JS).** `lib/a11y-focus.ts` moves focus (phone: an accessibility focus event; web: the element,
+tabindex -1) and `Notice focused` reads a confirm as one stop: desk Accept, its result, Delete announcement,
+Check out everyone, Replace QR card; the camera frame when it opens; a date, choice or tick with a form error.
+Tempo buttons say "Faster by 5" and the tempo is a live region. The three views are `accessible`. A
+same-place confirm ignores taps for 600 ms (`lib/second-tap.ts`). The web header's back button is our own,
+named `common.back`. Bell and profile 48 dp, one-digit chips 48 wide, table rows 48. A plain row's words are
+one stop (phones). `lib/reduced-motion.ts` stops the loading fade, the drop-down fade and the smooth scroll.
+TextField `required` (web aria-required, ", required" on the phone), used on Register a student's name.
+
+**Why.** Blind and low-vision members and staff; the confirm questions of #314 needed the focus too.
+
+**Consequences.** F1-11 (a repeated identical error) is covered where a form uses useFormFocus: focus moves to
+the field and its error is read as its hint. Marking optional fields on screen stays a team decision (F5-13);
+other forms can pass `required`. Photo descriptions (P2-10) wait for the team and a migration. TalkBack
+behaviour is a phone check.
+
+## 333. Large text and colour polish within the palette — 13 Oct 2026
+
+**Context.** Audit phase 4 B4-8 (P3-05, -07, -08, -12, -13; lead L2). At 200 %: drop-down rows overlapped,
+the home header cut the name and the bell count spilled, header titles ended in "…", the weekly practice
+bars had no room, chip labels ran past the pill; the sidebar's open tab label was 4.3:1.
+
+**Decision (JS, no new colours).** Drop-down rows grow to two lines of the scaled text; the box shows the
+whole value. At large text the home header puts the greeting and name on their own line; the bell count is
+capped at 130 % (its label says the number) and the name's line height is 1.45 for Telugu and Devanagari.
+Header titles are drawn whole (`components/header-title.tsx`, stacks and tabs): on the phone a long title shrinks to fit the bar's fixed height (down to 60 %), on the web it may take two lines. Weekly practice puts the
+bar under week and time at large text. Chip labels shrink and wrap. The sidebar's open tab uses
+onPrimarySoft (6.7:1).
+
+**Why.** Many members use the phone's large text.
+
+**Consequences.** Left to the design branch (new tokens, tab pill): P3-06 open tab by colour only, P3-09
+green for problem states, P3-11 the ring motto size and the ring centre's line height. Phone checks at
+200 %.
+
+## 334. Telugu and Hindi fixes that need no native judgement; server refusals worded — 13 Oct 2026
+
+**Context.** Audit phase 4 B4-9 (P1-02, P1-04, D8-21; P1-01, P1-05, P1-06 noted). Five te/hi sentences named
+the "My QR" tab in English; a chosen date of birth and the web month list stayed in the old language after a
+switch (the React Compiler kept the first answer); 50 database refusal codes showed "Something went wrong".
+
+**Decision (JS).** The five sentences name the tab as it is called (“నా QR” / “मेरा QR”). The birth-date
+field passes the language into its date and month helpers. 32 codes the screens can meet (a frozen record,
+a locked detail, a record gone, an open loan, roll number, call log first, group off, Guru or staff only,
+centre in use, fund entries kept, saved already, a visit in the future, empty setting, too many rows) map to
+19 messages under `common.serverErrors` (te/hi drafts); the rest are refusals of input the screens never send.
+
+**Why.** Words the audit was certain of; the consent word is not (P1-01).
+
+**Consequences.** P1-01 (అనుమతి vs సమ్మతి on the minor-consent lines) is NOT changed: it is first on the review
+sheet (#335). P1-05 (the web lesson video frame's English title) is done at the rebase on the launch code,
+which rewrites that file (launch-cleanup S5-01). The 18 unused keys (P1-06) stay in the files and are marked
+"skip" on the sheet, to keep this branch's language-file changes small.
+
+## 335. A review sheet for the native Telugu and Hindi review — 13 Oct 2026
+
+**Context.** All Telugu and Hindi texts are drafts (D8-10); the reviewers need every text with its English,
+where it shows and what to look at first.
+
+**Decision.** `app/scripts/translation-review.mjs` builds `docs/translation-review/te-hi-review.xlsx` from the
+language files and docs/TRANSLATIONS.md: "Read me"; "Check first" (P1-01 consent lines, P1-02 changed lines,
+the new texts of #332-#334, plural pairs still identical, Hindi gendered forms); "Terms" (one thing named two
+ways, with counts and the texts using the less used word; the consent row carries the audit's suggestion);
+"All texts" (key, English, Telugu, Hindi, what to check, screens, columns for the reviewer's fixes).
+Screens are named as people call them where known, else from the file.
+
+**Why.** One file a reviewer can work through on a laptop; rebuilt after every text change.
+
+**Consequences.** Run `node scripts/translation-review.mjs` from app/ after changing texts and commit the new
+sheet. The reviewers' fixes come back as a sheet; a worker copies them into the language files.
+
 ## 336. Design tokens from one file; option A palette by default, switchable — 13 Oct 2026
 
 **Status: built on branch `after-launch-design` (merge after launch); the palette is a team decision (audit phase
