@@ -42,7 +42,8 @@ test('B4-5: readAllPages reads 1,000-row pages until a short one, in order', asy
 test('B4-5: whole-table reads go through readAllPages, ordered on something unique', () => {
   for (const file of ['data/student-overview.ts', 'data/groups.ts', 'data/qr-cards.ts', 'data/student-database.ts', 'data/fund.ts', 'data/student-import.ts']) {
     const code = src(file);
-    assert.ok(code.includes('readAllPages'), file);
+    // fund.ts and student-import.ts read through the forms branch's lib/paged-read.ts (#325), merged first.
+    assert.ok(code.includes('readAllPages') || code.includes('readAllRows'), file);
     assert.ok(/\.order\('id'\)\.range\(from, to\)|\.order\('id'\)\s*\.range\(from, to\)/.test(code.replace(/\n\s+/g, '')), `${file}: ordered on id, then the range`);
   }
   assert.ok(!src('data/student-import.ts').includes('.limit(5000)'), 'the 5000 limit never lifted the 1,000 cap');
@@ -193,9 +194,11 @@ test('P2-02 / P2-05 / P2-07 / P2-12 / F5-13: focus, labels and names for screen 
 
 test('B4-8: large text and colour within the palette', () => {
   assert.ok(src('components/select-field.tsx').includes('rowHeightFor(fontScale)'));
-  assert.ok(src('components/home-header.tsx').includes('{large ? names : null}'));
+  // The launch UI's band (#352) puts the greeting and the name on a centred line of their own that wraps (P3-08).
+  assert.ok(src('components/home-header.tsx').includes("flexWrap: 'wrap'"));
   assert.ok(src('components/inbox-bell.tsx').includes('maxFontSizeMultiplier={1.3}'));
-  assert.ok(src('theme/use-theme.ts').includes('tabBarActiveTintColor: sidebar ? colors.onPrimarySoft : colors.primary'));
+  // P3-07: the tab colours are the design tokens since #336 (contrast-checked with #371).
+  assert.ok(src('theme/use-theme.ts').includes('tabBarActiveTintColor: colors.tabActive'));
   for (const area of ['staff', 'student', 'subscriber']) assert.ok(src(`app/${area}/(tabs)/_layout.tsx`).includes('...headerTitleOptions'), area);
   assert.ok(src('components/practice-parts.tsx').includes('{large ? track : null}'));
   // No new colours: the design branch owns new tokens.
@@ -231,8 +234,8 @@ test('B4-9: P1-02 names the tab as it is called; new texts exist in all three la
   for (const key of ['practice.tempoFaster', 'practice.tempoSlower']) {
     for (const lang of ['te', 'hi']) assert.ok(text(locale(lang), key).includes('{{by}}'), `${lang}: ${key} keeps {{by}}`);
   }
-  // P1-01 stays for the native reviewer: the consent lines are not changed in this round.
-  assert.ok(text(locale('te'), 'register.writtenConsent').includes('అనుమతి'));
+  // P1-01 settled by Praveen on 14-10-2026 (a native speaker): సమ్మతి is consent; అనుమతి stays for permission.
+  assert.ok(text(locale('te'), 'register.writtenConsent').includes('సమ్మతి'));
 });
 
 test('B4-9: the review sheet builds, with every text and the flagged ones first', () => {
@@ -245,7 +248,7 @@ test('B4-9: the review sheet builds, with every text and the flagged ones first'
     const workbook = new TextDecoder().decode(files['xl/workbook.xml']);
     for (const name of ['Read me', 'Check first', 'Terms', 'All texts']) assert.ok(workbook.includes(`name="${name}"`), name);
     const first = new TextDecoder().decode(files['xl/worksheets/sheet2.xml']);
-    assert.ok(first.includes('register.writtenConsent') && first.includes('P1-01'), 'the consent line is flagged');
+    assert.ok(!first.includes('P1-01'), 'no consent line says అనుమతి any more (P1-01 settled 14-10-2026)');
     assert.ok(first.includes('attendance.scanIntro') && first.includes('P1-02'));
     const all = new TextDecoder().decode(files['xl/worksheets/sheet4.xml']);
     const flat = (o) => Object.values(o).flatMap((v) => (v && typeof v === 'object' ? flat(v) : [v]));
