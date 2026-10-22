@@ -499,6 +499,7 @@ to `app/dist/`. Always use this command, not a bare `npx expo export`, because
 
 | Date | Site | Commit | Built (UTC) | By |
 |---|---|---|---|---|
+| 22-10-2026 | test (after-launch merge: staff own record, forms, a11y, deps; 0053 + 0054 on TEST) | 3b9ffdb (main; entry-073cee12…; deployment d11f9e81) | 2026-10-22T07:20:32Z | Claude (wrangler, Praveen's login) |
 | 21-10-2026 | test (What's new behind the info icon on My profile, #406) | 3adfecc (main; entry-adbd3347…; deployment 098ddf13) | 2026-10-21T17:22:45Z | Claude (wrangler, Praveen's login) |
 | 21-10-2026 | test (under-18 sign-up read strictly by the Rules; new 0051 re-run on TEST) | 3f74b53 (main; entry-f007543b…; deployment 9f19423c) | 2026-10-21T17:06:28Z | Claude (wrangler, Praveen's login) |
 | 21-10-2026 | test (under-18 home sign-up 0051 + practice features and mantra reader 0052; both migrations on TEST) | 7c846ed (main; entry-c0e5b777…; deployment 1bc44ee0) | 2026-10-21T16:34:06Z | Claude (wrangler, Praveen's login) |
