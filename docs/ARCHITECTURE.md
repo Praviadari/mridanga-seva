@@ -450,6 +450,36 @@ their beats, `lib/bols.ts` saying which head, zone, fingers and sound a bol is).
 no sound missed (183 clicks over 136.5 s), drift at the end −0.16 ms, worst error 0.16 ms (the detector's own resolution, about 7 samples), every interval 749.84-750.16 ms, each click 0.39-0.54 ms after its planned time (a constant: the click's 2 ms fade-in), 0 sounds scheduled late. The tab was in the background during the run, its timer slowed to about 1 a second, and the look-ahead grew to 1.5 s by itself. A plain `setInterval` metronome run beside it was off by up to 16 ms (539 ms in an earlier run while the page's main thread stalled). Tempo change 80 → 85 while playing: the next sounds came at 705.88 ms, none late; slow-down 50 % of 60 = 2000 ms a beat. In development builds the web player is on `globalThis.__practicePlayer` (schedule
 log, `late`, `minLead`) for such checks.
 
+### Play and learn: the creative practice tools
+
+[DECISIONS.md #470-#474](DECISIONS.md). Tiles under Practice tools (`components/play-and-learn.tsx`) open four screens
+(`screens/tap-pad.tsx`, `which-bol.tsx`, `echo-me.tsx`, `learn-more.tsx`; routes in `student/` and `staff/`).
+
+- **Tap pad** (#470): the practice player loops the taal (or only the beat); two pads (`components/play-parts.tsx`)
+  take `onPressIn`. A tap reads `player.position()` at once; `lib/tap-grading.ts` turns positions into absolute
+  beats (`BeatClock`: the phone's loop restarts at 0, the browser counts cycles), takes off the phone's delay found
+  once with "Tune to this phone" (12 clicks, the middle of the tap errors), and matches the tap to the nearest
+  untapped stroke of that hand (`taalHits` from `lib/bols.ts`): on time ≤ 70 ms, early/late ≤ 160 ms (less when the
+  same hand's strokes are closer), else an extra tap. A cycle is scored once its last stroke's late window is over:
+  on time 1, close ½, extra −¼ → ★★★ 85 %, ★★ 60 %, ★ 30 %. `lib/use-tap-game.ts` runs this on a 50 ms timer and keeps
+  the best per taal (`lib/play-bests.ts`, this phone, this login, wiped at sign-out). In "only the beat" a tap sounds
+  its stroke at once (`lib/pad-sound(.web).ts`: Web Audio, or two preloaded expo-audio players a stroke).
+- **Which bol?** (#471, `lib/ear-quiz.ts`): the bols of the level's taals (and lower levels', and every level's),
+  one card per sound (`soundKey`), at least three; phrases of 2-4 follow the taal round the cycle and the other cards
+  change one bol. Played with `playOnce`. A count in a row and its best on the phone.
+- **Echo me** (#472, `lib/echo.ts`): one looping pattern of call (a vibhag's strokes) + answer (as long, clicks or
+  quiet), all vibhags in turn or one; answers on the pads are graded with the answer's strokes only (extra taps count
+  only while answering). Record myself lists Echo me's takes apart (`RecordingSetting` mode `echo`), so "Play with
+  the sound" plays the calls beside the answers.
+- **Learn more** (#474): `data/practice-links.ts` (table `practice_links`, 0055), the copy on the phone offline,
+  `expo-web-browser` to open.
+- **Real khol sounds, prepared** (#473): `lib/khol-samples.ts` loads WAVs listed in `KHOL_SAMPLE_FILES` (empty until
+  the Guru records; docs/KHOL_RECORDINGS.md) through `lib/asset-bytes(.web).ts`, cuts and levels them
+  (`lib/stroke-samples.ts`) and hands them to `practice-sounds.ts` (`setRecordedSounds`); `soundsVersion()` makes the
+  web player and the pads prepare their buffers again. The choice is kept on the phone.
+
+Nothing in these tools is sent anywhere; they need no network except Learn more's list and links.
+
 ## Media: lesson videos and recording (Phase 2, branch `phase2-media`)
 
 On the branch `phase2-media`, rebased on main after the Phase 2 merge; not on main yet ([DECISIONS.md #56](DECISIONS.md)).
