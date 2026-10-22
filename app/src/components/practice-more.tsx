@@ -204,10 +204,12 @@ export type CycleNowProps = {
   stopAfter: number;
   /** The sound stopped by itself after this many, or null. */
   stoppedAfter: number | null;
+  /** A silent bar or cycle is heard now (#490). */
+  silent?: boolean;
 };
 
-/** The cycle counter (#403), under Start: "Count-in…", "Cycle 3 of 8", or that it stopped after 8. */
-export function CycleNow({ cycles, playing, unit, stopAfter, stoppedAfter }: CycleNowProps) {
+/** The cycle counter (#403), under Start: "Count-in…", "Cycle 3 of 8", or that it stopped after 8; "Silent: keep playing" (#490). */
+export function CycleNow({ cycles, playing, unit, stopAfter, stoppedAfter, silent = false }: CycleNowProps) {
   const { t } = useTranslation();
   const text = playing
     ? cycles === null
@@ -220,9 +222,16 @@ export function CycleNow({ cycles, playing, unit, stopAfter, stoppedAfter }: Cyc
       : null;
   if (!text) return null;
   return (
-    <AppText variant="subtitle" family="sans" style={styles.center} accessibilityLiveRegion="polite">
-      {text}
-    </AppText>
+    <>
+      <AppText variant="subtitle" family="sans" style={styles.center} accessibilityLiveRegion="polite">
+        {text}
+      </AppText>
+      {playing && silent ? (
+        <AppText variant="label" tone="primary" style={styles.center} accessibilityLiveRegion="polite">
+          {t('practiceExtras.silentNow')}
+        </AppText>
+      ) : null}
+    </>
   );
 }
 

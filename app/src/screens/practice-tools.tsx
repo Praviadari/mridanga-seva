@@ -24,6 +24,12 @@
 // - The screen stays on while the sound plays.
 // - This week against the weekly goal (students; their own goal or the class's), and the daily practice reminder
 //   (Android app).
+// Practice extras (#490-#495; components/practice-extras.tsx, practice-feeling.tsx):
+// - Silent bars / cycles (metronome and taal player): play N, then M without sound, round again; the beat stays lit.
+// - Layakari (taal player): dugun, tigun, chaugun: 2, 3 or 4 written beats in each beat, shown in the grid.
+// - Kartal under the taal, with its own volume.
+// - "How did it go?" under the timer after Stop and save (students): three faces and what was practised; Skip.
+// - Staff: Practice this week, per student, least first (staff/practice-week).
 
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { router, Stack, useFocusEffect } from 'expo-router';
@@ -51,6 +57,8 @@ import {
   StepControls,
   StopAfterChoice,
 } from '@/components/practice-more';
+import { KartalFields, LayaChoice, SilentFields, type SilentSetting } from '@/components/practice-extras';
+import { FeelingPrompt } from '@/components/practice-feeling';
 import { GoalWeekView, practiceTime } from '@/components/practice-parts';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
@@ -62,6 +70,7 @@ import {
   logPractice,
   type MyPracticePlan,
   type PracticeDays,
+  type Practised,
   type Taal,
   type TaalList,
 } from '@/data/practice';
@@ -75,14 +84,19 @@ import {
   clampBpm,
   countInClicks,
   effectiveBpm,
+  layaBeats,
   metronomePattern,
-  readTaal,
+  silentFits,
   tapTempo,
   taalPattern,
   taalSteps,
   trainerTempo,
+  withKartal,
+  withSilentCycles,
   MAX_BPM,
   MIN_BPM,
+  type Laya,
+  type Pattern,
   type SpeedTrainer,
 } from '@/lib/practice-pattern';
 import { notePractisedToday, refreshReminder } from '@/lib/practice-reminder';
@@ -143,6 +157,11 @@ export function PracticeTools({ area }: PracticeToolsProps) {
   const [trainerBase, setTrainerBase] = useState<{ bpm: number; cycles: number } | null>(null);
   // Each start of the sound counts the cycles from 0 again (lib/use-playhead.ts).
   const [starts, setStarts] = useState(0);
+  // Layakari (#491) and the kartal layer with its volume (#492), taal player; silent bars / cycles (#490), both tools.
+  const [laya, setLaya] = useState<Laya>(1);
+  const [kartalOn, setKartalOn] = useState(false);
+  const [kartalVolume, setKartalVolume] = useState(0.5);
+  const [silent, setSilent] = useState<SilentSetting>({ on: false, play: 2, mute: 2 });
   // Students: the practice of the week and this week against the goal (0052); null where not loaded.
   const [mine, setMine] = useState<MyPracticePlan | null>(null);
   const [goal, setGoal] = useState<PracticeDays | null>(null);
@@ -201,11 +220,15 @@ export function PracticeTools({ area }: PracticeToolsProps) {
     };
   }, [playing]);
 
+  // The kartal's volume changes in place, also while it plays (#492).
+  useEffect(() => player.setLayerVolume('kartal', kartalVolume), [player, kartalVolume]);
+
   const taal: Taal | null = list?.taals.find((tl) => tl.id === taalId) ?? null;
-  const pattern = useMemo(
-    () => (mode === 'metronome' ? metronomePattern(beatsPerBar) : taal ? taalPattern(taal.bols) : null),
-    [mode, beatsPerBar, taal],
-  );
+  const cycle = useMemo(() => cyclePattern(mode, beatsPerBar, taal, laya, kartalOn), [mode, beatsPerBar, taal, laya, kartalOn]);
+  // Silent cycles make one long loop: only while it fits at the tempo set (the speed trainer only makes it shorter).
+  const setBpm = mode === 'metronome' ? metronomeBpm : effectiveBpm(taalBpm, speed);
+  const silentOk = cycle ? silentFits(cycle.beats, setBpm, silent.play, silent.mute) : true;
+  const pattern = useMemo(() => (cycle ? loopPattern(cycle, silent, silentOk) : null), [cycle, silent, silentOk]);
   // The cycles heard since the start (lib/use-playhead.ts), read before the tempo: the speed trainer's tempo follows
   // them. The playhead itself needs the tempo, so it reads the one of the frame before (a step changes it once).
   const [heardCycles, setHeardCycles] = useState<number | null>(null);
@@ -218,7 +241,7 @@ export function PracticeTools({ area }: PracticeToolsProps) {
   const setTempo = mode === 'metronome' ? setMetronomeBpm : setTaalBpm;
   const tempo = trained ?? (mode === 'metronome' ? metronomeBpm : taalBpm);
   const bpm = mode === 'metronome' ? tempo : effectiveBpm(tempo, speed);
-  const readBeats = useMemo(() => (taal ? readTaal(taal.bols) : []), [taal]);
+  const readBeats = useMemo(() => (taal ? layaBeats(taal.bols, laya) : []), [taal, laya]);
   const head = usePlayhead(player, playing ? pattern : null, bpm, playing, starts);
   const cycles = head?.cycles ?? null;
   if (cycles !== heardCycles) setHeardCycles(cycles);
@@ -305,8 +328,14 @@ export function PracticeTools({ area }: PracticeToolsProps) {
     mode === 'metronome'
       ? { mode: 'metronome', bpm: metronomeBpm, beatsPerBar }
       : taal
-        ? { mode: 'taal', taalId: taal.id, taalName: taal.name, taalBpm, speed }
+        ? { mode: 'taal', taalId: taal.id, taalName: taal.name, taalBpm, speed, laya }
         : null;
+
+  /** A taal's loop with the extras chosen now (layakari, kartal, silent cycles), at `atBpm`. */
+  const taalLoop = (tl: Taal, atBpm: number, tlLaya: Laya = laya) => {
+    const next = cyclePattern('taal', beatsPerBar, tl, tlLaya, kartalOn) as Pattern;
+    return loopPattern(next, silent, silentFits(next.beats, atBpm, silent.play, silent.mute));
+  };
 
   /** Starts `next` afresh (Record myself at once, from beat 1; the practice of the week after its count-in). */
   const startFrom = async (next: NonNullable<typeof pattern>, nextBpm: number, timerTaal: number | null, clicks = 0, trainedBpm = nextBpm) => {
@@ -328,7 +357,7 @@ export function PracticeTools({ area }: PracticeToolsProps) {
     setTaalId(tl.id);
     setTaalBpm(next);
     setSpeed(1);
-    void startFrom(taalPattern(tl.bols), next, tl.id, countInFor('taal', tl), next);
+    void startFrom(taalLoop(tl, next), next, tl.id, countInFor('taal', tl), next);
   };
 
   // Step mode (#404): the strokes of the taal one by one; the shown stroke stays within the list.
@@ -351,19 +380,24 @@ export function PracticeTools({ area }: PracticeToolsProps) {
   };
 
   const startSoundOf = async (s: RecordingSetting) => {
+    // The pattern started is the one the screen then shows (same key), so it is not started again.
     if (s.mode === 'metronome') {
       setMode('metronome');
       setMetronomeBpm(s.bpm);
       setBeatsPerBar(s.beatsPerBar);
-      return startFrom(metronomePattern(s.beatsPerBar), s.bpm, null);
+      const bar = metronomePattern(s.beatsPerBar);
+      return startFrom(loopPattern(bar, silent, silentFits(bar.beats, s.bpm, silent.play, silent.mute)), s.bpm, null);
     }
     const found = list?.taals.find((tl) => tl.id === s.taalId);
     if (!found) return false;
+    const recordedLaya = s.laya ?? 1;
     setMode('taal');
     setTaalId(found.id);
     setTaalBpm(s.taalBpm);
     setSpeed(s.speed);
-    return startFrom(taalPattern(found.bols), effectiveBpm(s.taalBpm, s.speed), found.id, 0, s.taalBpm);
+    setLaya(recordedLaya);
+    const at = effectiveBpm(s.taalBpm, s.speed);
+    return startFrom(taalLoop(found, at, recordedLaya), at, found.id, 0, s.taalBpm);
   };
 
   const stopSound = () => {
@@ -381,22 +415,24 @@ export function PracticeTools({ area }: PracticeToolsProps) {
     setMode(next);
   };
 
-  // During a rest nothing is struck: the drum shows no bol. In the step mode, the stroke shown.
+  // During a rest, or a silent cycle (#490), nothing is struck: the drum shows no bol. In the step mode, the stroke
+  // shown.
   const bolNow = step
     ? step.bol
-    : head && mode === 'taal' && readBeats[head.beat]?.[0]?.text !== '-'
+    : head && mode === 'taal' && !head.silent && !readBeats[head.beat]?.every((b) => b.text === '-')
       ? readBeats[head.bolBeat]?.[head.part] ?? null
       : null;
 
   const cycleNow = (unit: 'bars' | 'cycles') => (
-    <CycleNow cycles={cycles} playing={playing} unit={unit} stopAfter={stopAfter} stoppedAfter={stoppedAfter} />
+    <CycleNow cycles={cycles} playing={playing} unit={unit} stopAfter={stopAfter} stoppedAfter={stoppedAfter} silent={head?.silent ?? false} />
   );
 
-  /** Under the tool's own settings: the count-in, stop after, and the speed trainer (#403). */
+  /** Under the tool's own settings: the count-in, stop after, silent bars / cycles (#490) and the speed trainer (#403). */
   const playSettings = (unit: 'bars' | 'cycles') => (
     <>
       <Checkbox label={t('practice.countIn')} checked={countIn} onChange={setCountIn} />
       <StopAfterChoice unit={unit} value={stopAfter} onChange={setStopAfter} />
+      <SilentFields value={silent} onChange={setSilent} unit={unit} fits={silentOk} />
       <SpeedTrainerFields
         on={trainerOn}
         onToggle={toggleTrainer}
@@ -519,11 +555,21 @@ export function PracticeTools({ area }: PracticeToolsProps) {
                 {t('practice.playingAt', { bpm: Math.round(bpm * 10) / 10 })}
               </AppText>
             ) : null}
+            <LayaChoice value={laya} onChange={setLaya} />
+            <KartalFields on={kartalOn} onToggle={setKartalOn} volume={kartalVolume} onVolume={setKartalVolume} />
             {playSettings('cycles')}
           </Section>
           {taal ? (
             <Section icon="syllabus" title={t('practice.gridTitle', { name: taal.name })}>
-              <BeatGrid bols={taal.bols} divisions={taal.divisions} marks={taal.marks} current={step ? step.beat : head?.beat ?? null} hands />
+              {/* The step mode goes through the bols as written, so its grid is as written too. */}
+              <BeatGrid
+                bols={taal.bols}
+                divisions={taal.divisions}
+                marks={taal.marks}
+                current={step ? step.beat : head?.beat ?? null}
+                hands
+                laya={step ? 1 : laya}
+              />
             </Section>
           ) : null}
           {taal ? (
@@ -563,6 +609,9 @@ export function PracticeTools({ area }: PracticeToolsProps) {
       ) : null}
       {area === 'staff' && (isGuru || profile?.role === 'coordinator') ? (
         <Button variant="secondary" icon="todo" label={t('practicePlan.open')} onPress={() => router.push('/staff/practice-plan')} />
+      ) : null}
+      {area === 'staff' && (isGuru || profile?.role === 'coordinator') ? (
+        <Button variant="secondary" icon="students" label={t('practiceExtras.weekOpen')} onPress={() => router.push('/staff/practice-week')} />
       ) : null}
       {isGuru ? <Button variant="secondary" icon="edit" label={t('taals.edit')} onPress={() => router.push('/staff/taals')} /> : null}
     </Screen>
@@ -649,6 +698,8 @@ function PracticeTimerLine({ profileId, onSaved }: { profileId: string; onSaved:
   const [now, setNow] = useState(() => Date.now());
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{ tone: 'success' | 'info' | 'error'; text: string } | null>(null);
+  // "How did it go?" (#494) for the entry just saved; the chips start with Taal when the timer played one.
+  const [asking, setAsking] = useState<{ id: number; initial: Practised[] } | null>(null);
 
   useEffect(() => {
     if (!timer) return;
@@ -675,16 +726,17 @@ function PracticeTimerLine({ profileId, onSaved }: { profileId: string; onSaved:
     }
     setBusy(true);
     const logged = Math.min(done, MAX_ENTRY_MINUTES);
-    const errorKey = await logPractice({ minutes: logged, source: 'timer', startedAt: timer.startedAt, taalId: timer.taalId }, requestId());
+    const saved = await logPractice({ minutes: logged, source: 'timer', startedAt: timer.startedAt, taalId: timer.taalId }, requestId());
     setBusy(false);
-    if (errorKey) {
+    if ('errorKey' in saved) {
       // Kept running, so nothing is lost; the student can try again or type it in S6.
-      setResult({ tone: 'error', text: t(errorKey) });
+      setResult({ tone: 'error', text: t(saved.errorKey) });
       return;
     }
     clearPracticeTimer();
     renewRequestId();
     setResult({ tone: 'success', text: t('practice.timerLogged', { time: practiceTime(t, logged) }) });
+    setAsking(saved.id !== null ? { id: saved.id, initial: timer.taalId !== null ? ['taal'] : [] } : null);
     onSaved();
   };
 
@@ -704,6 +756,7 @@ function PracticeTimerLine({ profileId, onSaved }: { profileId: string; onSaved:
             accessibilityLabel={t('practice.timerStart')}
             onPress={() => {
               setResult(null);
+              setAsking(null);
               startPracticeTimer(profileId, null);
             }}
           />
@@ -720,8 +773,22 @@ function PracticeTimerLine({ profileId, onSaved }: { profileId: string; onSaved:
         />
       ) : null}
       {result ? <Notice tone={result.tone}>{result.text}</Notice> : null}
+      {asking && !timer ? <FeelingPrompt key={asking.id} entryId={asking.id} initial={asking.initial} onClose={() => setAsking(null)} /> : null}
     </View>
   );
+}
+
+/** One cycle to play: the metronome's bar, or the taal at its layakari (#491) with the kartal when on (#492). */
+function cyclePattern(mode: Mode, beatsPerBar: number, tl: Taal | null, laya: Laya, kartal: boolean): Pattern | null {
+  if (mode === 'metronome') return metronomePattern(beatsPerBar);
+  if (!tl) return null;
+  const cycle = taalPattern(tl.bols, laya);
+  return kartal ? withKartal(cycle, tl.divisions) : cycle;
+}
+
+/** The loop: the cycle, then the silent cycles when they are on and `fits` (#490). */
+function loopPattern(cycle: Pattern, silent: SilentSetting, fits: boolean): Pattern {
+  return silent.on && fits ? withSilentCycles(cycle, silent.play, silent.mute) : cycle;
 }
 
 const styles = StyleSheet.create({

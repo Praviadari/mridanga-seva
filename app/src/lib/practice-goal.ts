@@ -78,3 +78,11 @@ export function goalWeek(days: readonly PracticeDay[], goal: PracticeGoal, today
   const met = week.filter((d) => d.state === 'met').length;
   return { days: week, met, goalMet: met >= goal.days, weeksInARow: goalWeeksInARow(days, goal, today) };
 }
+
+/**
+ * The staff list's guess that a week met the goal (#495): the goal's days with practice and, in all, its minutes. The list
+ * knows the week's days and minutes, not the minutes of each day, so a day under the minutes a day may count.
+ */
+export function weekGoalMet(week: { days: number; minutes: number; goal: PracticeGoal }): boolean {
+  return week.days >= week.goal.days && week.minutes >= week.goal.days * week.goal.minutes;
+}

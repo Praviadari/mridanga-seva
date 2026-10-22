@@ -127,7 +127,7 @@ process.on('uncaughtException', (error) => {
 // D14-10: every check is counted, and the run fails when fewer (or more) checks ran than expected,
 // so a block skipped by a renamed migration or a commented-out section cannot pass unseen.
 // Adding or removing checks? Run the suite and set this to the new total it prints.
-const EXPECTED_CHECKS = 1934; // 0054 after-launch forms: +49; 0053 staff own record: +55; 0052 more practice: +56; 0051 child's sign-up at home: +80; 0050 staff dashboard: +15; 0049 launch clean-up: +30; 0048 withdrawn records and leaks: +50; 0047 form rules: +109; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
+const EXPECTED_CHECKS = 1969; // 0056 practice extras: +35; 0054 after-launch forms: +49; 0053 staff own record: +55; 0052 more practice: +56; 0051 child's sign-up at home: +80; 0050 staff dashboard: +15; 0049 launch clean-up: +30; 0048 withdrawn records and leaks: +50; 0047 form rules: +109; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
 let failures = 0;
 let passes = 0;
 
@@ -3262,6 +3262,7 @@ const mayAnswer = new Set(['my_role', 'today_ist', 'my_time_zone', 'centre_tz', 
   'gen_random_uuid', // pgcrypto's, in public only here (Supabase keeps it in extensions)
   'practice_weeks', // empty weeks with 0 minutes for a null student
   'practice_days', // 0052: no days and the default goal (4 x 15) for a null student
+  'practice_history', // 0056: no days and the default goal for a null student
   'scan_qr', // {action: unknown} for a null code
   'my_about', 'sign_up_choices', // 0036: the caller's own About you; the public sign-up lists (#163)
   'person_name_symbols', 'default_home_centre', // 0047: the name rule's list of refused signs (#271); a new record's default centre id (#274)
@@ -4172,6 +4173,9 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
     'record_fund_entry(uuid,text,smallint,date,bigint,text,text,text,text,text)', 'log_call(uuid,uuid,call_outcome,text,text,date)',
     'log_practice(uuid,integer,text,date,timestamp with time zone,bigint,text)', 'change_event_attendance(bigint,uuid[],uuid[])',
     'delete_student_record(uuid,text)', 'undo_import(uuid)', 'phone_e164(text)',
+    // 0056: how a practice session went (the student's own entry), the practice history (as practice_days), the staff
+    // list of practice this week (staff only inside)
+    'set_practice_feeling(bigint,integer,text[])', 'practice_history(uuid)', 'staff_practice_week(integer)',
   ];
   const runnableBy = async (role) => (await asOwner(`select p.oid::regprocedure::text as f from pg_proc p
     where p.pronamespace = 'public'::regnamespace
@@ -6789,6 +6793,126 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   const c62 = await counts62();
   try { await db.exec(file62); } catch (e) { again62 = String(e.message); }
   check('0054: a second run changes nothing', again62 === '' && JSON.stringify(await counts62()) === JSON.stringify(c62), `${again62} ${JSON.stringify(c62)}`);
+}
+
+// ---------------------------------------------------------------- 0056 practice extras (DECISIONS #493-#495)
+// "How did it go?" on a practice entry (feeling, practised), the whole history for the milestones, and the staff list of
+// practice this week per student.
+{
+  const file56 = readFileSync(new URL('migrations/0056_practice_extras.sql', supabaseDir), 'utf8');
+  check('0056: (state) the new columns are empty on every entry made before', (await asOwner(
+    `select count(*)::int as n from practice_logs where feeling is not null or practised is not null`))[0].n === 0);
+  const pupilLogin = await signUp('pupil.56@example.com', true);
+  await register(coordinator, { p_full_name: 'Pupil Fiftysix', p_dob: '1996-04-04', p_email: 'pupil.56@example.com', p_level: 1 });
+  const otherLogin = await signUp('other.56@example.com', true);
+  await register(coordinator, { p_full_name: 'Other Fiftysix', p_dob: '1995-05-05', p_email: 'other.56@example.com', p_level: 2 });
+  const pupil56 = await studentIdOf(pupilLogin);
+  const other56 = await studentIdOf(otherLogin);
+  const [{ d: today56 }] = await asOwner(`select today_ist()::text as d`);
+  const logOnce = async (minutes) => Number((await asApp('authenticated', pupilLogin, `select log_practice($1, 'manual') as id`, [minutes]))[0].id);
+  const feel = (userId, id, feeling, practised) =>
+    asApp('authenticated', userId, 'select set_practice_feeling($1, $2, $3::text[])', [id, feeling, practised]);
+  const rowOf = async (id) => (await asOwner(`select feeling, practised from practice_logs where id = ${id}`))[0];
+  // A date column comes back as a Date at midnight UTC.
+  const ymd = (v) => (v instanceof Date ? v.toISOString() : String(v)).slice(0, 10);
+
+  // 1. How did it go (#494).
+  const e1 = await logOnce(20);
+  await feel(pupilLogin, e1, 3, ['lesson', 'taal', 'taal']);
+  const r1 = await rowOf(e1);
+  check('0056 #494: the student says how an own entry went; practised kept once each, in the order taal, lesson, free',
+    r1.feeling === 3 && JSON.stringify(r1.practised) === '["taal","lesson"]', JSON.stringify(r1));
+  await feel(pupilLogin, e1, 1, null);
+  const r2 = await rowOf(e1);
+  check('0056 #494: saying it again replaces it', r2.feeling === 1 && r2.practised === null, JSON.stringify(r2));
+  await feel(pupilLogin, e1, 2, []);
+  check('0056 #494: no chip is no practised (null)', (await rowOf(e1)).practised === null);
+  await refusesWith('0056 #494: a face is 1-3', 'feeling_invalid', () => feel(pupilLogin, e1, 4, null));
+  await refusesWith('0056 #494: practised is taal, lesson or free', 'practised_invalid', () => feel(pupilLogin, e1, 2, ['dance']));
+  await refusesWith('0056 #494: ... and never an empty element', 'practised_invalid', () => feel(pupilLogin, e1, 2, ['taal', null]));
+  await refusesWith('0056 #494: another student cannot say it for this entry', 'not_allowed', () => feel(otherLogin, e1, 3, null));
+  await refusesWith('0056 #494: nor staff (it is the student\'s own word)', 'not_allowed', () => feel(coordinator, e1, 3, null));
+  await refusesWith('0056 #494: an unknown entry', 'not_allowed', () => feel(pupilLogin, 99999999, 3, null));
+  const [{ id: old56 }] = await asOwner(`insert into practice_logs (student_id, practised_on, minutes, source)
+    values ('${pupil56}', today_ist() - 20, 30, 'manual') returning id`);
+  await refusesWith('0056 #494: an entry older than 14 days stays as it is', 'too_old', () => feel(pupilLogin, old56, 3, null));
+  await refusesWith('0056 #494: the table itself keeps a face to 1-3', 'new row for relation "practice_logs" violates check constraint "practice_logs_feeling_check"', () =>
+    asOwner(`update practice_logs set feeling = 5 where id = ${e1}`));
+  await refusesWith('0056 #494: ... and practised to the three words', 'new row for relation "practice_logs" violates check constraint "practice_logs_practised_check"', () =>
+    asOwner(`update practice_logs set practised = array['song'] where id = ${e1}`));
+  await refusesWith('0056 #494: the student cannot write the columns directly', 'permission denied for table practice_logs', () =>
+    asApp('authenticated', pupilLogin, `update practice_logs set feeling = 3 where id = ${e1}`));
+  await feel(pupilLogin, e1, 3, ['free']);
+  check('0056 #494: staff read how it went', (await asApp('authenticated', coordinator, `select feeling from practice_logs where id = ${e1}`))[0]?.feeling === 3);
+  check('0056 #494: another student reads nothing of it', (await asApp('authenticated', otherLogin, `select feeling from practice_logs where id = ${e1}`)).length === 0);
+  await refusesWith('0056 #494: nobody signed in cannot run set_practice_feeling', 'permission denied for function set_practice_feeling', () =>
+    asApp('anon', null, `select set_practice_feeling(1, 1, null)`));
+
+  // 2. practice_history (#493): every day ever, with the goal of practice_days.
+  await asOwner(`insert into practice_logs (student_id, practised_on, minutes, source) values ('${pupil56}', today_ist() - 400, 45, 'manual')`);
+  const e2 = await logOnce(10);
+  await feel(pupilLogin, e2, 1, null);
+  const history = async (userId, studentId) => (await asApp('authenticated', userId, 'select practice_history($1) as r', [studentId]))[0].r;
+  const own56 = await history(pupilLogin, pupil56);
+  const days56 = (await asApp('authenticated', pupilLogin, 'select practice_days($1, 53) as r', [pupil56]))[0].r;
+  check('0056 #493: the history has every day, oldest first, a day\'s entries added up', own56.days.length === 3
+    && own56.days[0].minutes === 45 && own56.days[2].on === today56 && own56.days[2].minutes === 30
+    && own56.days.every((d, i) => i === 0 || own56.days[i - 1].on < d.on), JSON.stringify(own56.days));
+  check('0056 #493: ... also a day older than practice_days\' year', days56.days.length === 2);
+  check('0056 #493: the goal is practice_days\' (own, else the level\'s, else 4 x 15)', own56.goal_days === days56.goal_days
+    && own56.goal_minutes === days56.goal_minutes && own56.goal_own === days56.goal_own, JSON.stringify(own56));
+  check('0056 #493: staff get the same', JSON.stringify(await history(coordinator, pupil56)) === JSON.stringify(own56));
+  const peek56 = await history(otherLogin, pupil56);
+  check('0056 #493: another student gets no days and only the default goal', peek56.days.length === 0 && peek56.goal_days === 4
+    && peek56.goal_minutes === 15, JSON.stringify(peek56));
+  await refusesWith('0056 #493: nobody signed in cannot run practice_history', 'permission denied for function practice_history', () =>
+    asApp('anon', null, `select practice_history(null)`));
+
+  // 3. staff_practice_week (#495).
+  const week = async (userId, ago = 0) => asApp('authenticated', userId, 'select * from staff_practice_week($1)', [ago]);
+  await refusesWith('0056 #495: a student cannot see the class\'s practice', 'not_allowed', () => week(pupilLogin));
+  await refusesWith('0056 #495: nobody signed in cannot run it', 'permission denied for function staff_practice_week', () =>
+    asApp('anon', null, 'select * from staff_practice_week(0)'));
+  const rows56 = await week(coordinator);
+  const pupilRow = rows56.find((r) => r.student_id === pupil56);
+  const otherRow = rows56.find((r) => r.student_id === other56);
+  check('0056 #495: a student\'s minutes and days this week, goal, last day and how the sessions went', pupilRow?.minutes === 30
+    && pupilRow.days === 1 && pupilRow.goal_days === days56.goal_days && pupilRow.goal_minutes === days56.goal_minutes
+    && ymd(pupilRow.last_on) === today56 && pupilRow.good === 1 && pupilRow.hard === 1 && pupilRow.okay === 0,
+    JSON.stringify(pupilRow));
+  check('0056 #495: a student without practice is there with 0, never practised', otherRow?.minutes === 0 && otherRow.days === 0
+    && otherRow.last_on === null, JSON.stringify(otherRow));
+  check('0056 #495: least practice first', rows56.every((r, i) => i === 0 || rows56[i - 1].minutes <= r.minutes)
+    && rows56.indexOf(otherRow) < rows56.indexOf(pupilRow));
+  check('0056 #495: the week starts on Monday (India)', ymd(rows56[0].week_start)
+    === (await asOwner(`select date_trunc('week', today_ist()::timestamp)::date::text as d`))[0].d);
+  const guruIds56 = (await week(guru)).map((r) => r.student_id);
+  check('0056 #495: the Guru sees the class too', guruIds56.includes(pupil56) && guruIds56.includes(other56));
+  await asOwner(`insert into practice_logs (student_id, practised_on, minutes, source) values ('${other56}', today_ist() - 7, 25, 'manual')`);
+  const last56 = (await week(coordinator, 1)).find((r) => r.student_id === other56);
+  check('0056 #495: last week\'s list counts last week', last56?.minutes === 25 && last56.days === 1, JSON.stringify(last56));
+  check('0056 #495: ... and weeks_ago stays within 0-8', ymd((await week(coordinator, 99))[0].week_start)
+    === (await asOwner(`select (date_trunc('week', today_ist()::timestamp)::date - 56)::text as d`))[0].d);
+  const gone56 = await register(coordinator, { p_full_name: 'Withdrawn Fiftysix', p_dob: '1993-03-03' });
+  await asApp('authenticated', guru, `select withdraw_consent($1, 'by phone')`, [gone56.id]);
+  const left56 = await register(coordinator, { p_full_name: 'Left Fiftysix', p_dob: '1992-02-02' });
+  await db.exec(`select set_config('app.via_call_log', 'on', false); update students set status = 'left' where id = '${left56.id}';
+    select set_config('app.via_call_log', '', false)`);
+  const ids56 = (await week(coordinator)).map((r) => r.student_id);
+  check('0056 #495: a withdrawn record and a student who left are not in the list', !ids56.includes(gone56.id) && !ids56.includes(left56.id)
+    && ids56.includes(pupil56));
+  const ownRecord56 = (await asOwner(`select id from students where profile_id = '${coordinator}'`))[0]?.id ?? null;
+  check('0056 #495: the caller\'s own record (0053) is left out', ownRecord56 === null || !ids56.includes(ownRecord56), String(ownRecord56));
+
+  // Safe to run twice: nothing changes.
+  const state56 = async () => (await asOwner(`select (select count(*) from practice_logs)::int as n,
+    (select string_agg(coalesce(feeling::text, '-') || coalesce(array_to_string(practised, '+'), ''), ',' order by id) from practice_logs) as f,
+    (select count(*) from pg_constraint where conname like 'practice_logs_%_check')::int as c`))[0];
+  const before56 = await state56();
+  let again56 = '';
+  try { await db.exec(file56); } catch (e) { again56 = String(e.message); }
+  check('0056 can run again, and changes no entry', again56 === '' && JSON.stringify(await state56()) === JSON.stringify(before56),
+    `${again56} ${JSON.stringify(before56)}`);
 }
 
 // ---------------------------------------------------------------- row-level security

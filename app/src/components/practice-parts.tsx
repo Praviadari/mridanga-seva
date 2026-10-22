@@ -1,7 +1,7 @@
 // Pieces of the practice screens shared by S5, S6, S4 My progress and C8 Student profile: practice
 // time in words, the weekly practice (this week large, the weeks before as bars), this week against
 // the weekly goal (#400), and the Practice block that S4 (the student's own) and C8 (staff, any
-// student) show.
+// student) show, with the milestones (#493) and how the last sessions went (#494, both from 0056).
 
 import { router, useFocusEffect, usePathname } from 'expo-router';
 import type { TFunction } from 'i18next';
@@ -9,15 +9,27 @@ import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
-import { fetchMyStudentId, fetchPracticeDays, fetchPracticeWeeks, type PracticeDays, type PracticeWeek } from '@/data/practice';
+import {
+  fetchMyStudentId,
+  fetchPracticeDays,
+  fetchPracticeHistory,
+  fetchPracticeWeeks,
+  fetchRecentFeelings,
+  type FeelingTally,
+  type PracticeDays,
+  type PracticeWeek,
+} from '@/data/practice';
 import { formatDate, todayLocal } from '@/lib/dates';
+import { milestones, milestoneSummary, type Milestone, type MilestoneKind } from '@/lib/milestones';
 import { ownAreaOf } from '@/lib/own-area';
 import { goalWeek } from '@/lib/practice-goal';
 import { radius, spacing, useLargeText, useTheme } from '@/theme/use-theme';
 
 import { AppText } from './app-text';
 import { Button } from './button';
-import { Icon } from './icon';
+import { Icon, type IconName } from './icon';
+import { FeelingCounts } from './practice-feeling';
+import { ProgressBar } from './progress-bar';
 import { Section } from './section';
 
 /** 135 → "2 h 15 min", 40 → "40 min". */
@@ -156,6 +168,9 @@ export function PracticePanel(props: PracticePanelProps) {
   const [weeks, setWeeks] = useState<PracticeWeek[] | 'none' | null | undefined>(undefined);
   // The weekly goal (0052); null until loaded or where 0052 has not run: the card is left out.
   const [days, setDays] = useState<PracticeDays | null>(null);
+  // The milestones from the whole history and how the panel's weeks went (0056); null: left out.
+  const [history, setHistory] = useState<PracticeDays | null>(null);
+  const [feelings, setFeelings] = useState<FeelingTally | null>(null);
 
   const load = useCallback(async () => {
     const studentId = own ? await fetchMyStudentId(key) : key;
@@ -163,9 +178,16 @@ export function PracticePanel(props: PracticePanelProps) {
       setWeeks(studentId === null ? null : 'none');
       return;
     }
-    const [loadedWeeks, loadedDays] = await Promise.all([fetchPracticeWeeks(studentId, PANEL_WEEKS), fetchPracticeDays(studentId)]);
+    const [loadedWeeks, loadedDays, loadedHistory, loadedFeelings] = await Promise.all([
+      fetchPracticeWeeks(studentId, PANEL_WEEKS),
+      fetchPracticeDays(studentId),
+      fetchPracticeHistory(studentId),
+      fetchRecentFeelings(studentId, PANEL_WEEKS),
+    ]);
     setWeeks(loadedWeeks);
     setDays(loadedDays);
+    setHistory(loadedHistory);
+    setFeelings(loadedFeelings);
   }, [own, key]);
 
   useFocusEffect(
@@ -181,6 +203,15 @@ export function PracticePanel(props: PracticePanelProps) {
       {weeks === null ? <AppText tone="muted">{t('practiceLog.loadFailed')}</AppText> : null}
       {weeks && days ? <GoalWeekView practice={days} /> : null}
       {weeks ? <WeeklyPractice weeks={weeks} /> : null}
+      {weeks && feelings && feelings.hard + feelings.okay + feelings.good > 0 ? (
+        <View style={styles.wrap}>
+          <AppText variant="small" tone="muted">
+            {t('practiceExtras.feelingsLately', { count: PANEL_WEEKS })}
+          </AppText>
+          <FeelingCounts {...feelings} />
+        </View>
+      ) : null}
+      {weeks && history ? <MilestonesView items={milestones(history.days, history.goal, todayLocal())} own={own} /> : null}
       {own ? (
         <Button variant="link" icon="time" label={t('practiceLog.open')} onPress={() => router.push(area === 'me' ? '/staff/me/practice-log' : '/student/practice-log')} />
       ) : null}
@@ -188,8 +219,123 @@ export function PracticePanel(props: PracticePanelProps) {
   );
 }
 
+/** The icon of each kind of milestone. */
+const KIND_ICON: Record<MilestoneKind, IconName> = { days: 'today', hours: 'time', weeks: 'promote', week: 'attended' };
+
+/** Props for MilestonesView. */
+export type MilestonesViewProps = {
+  items: readonly Milestone[];
+  /** The student's own (S4): "you"; staff (C8): about the student. */
+  own: boolean;
+};
+
+/**
+ * The milestones (#493): each one reached as a gold-ringed medal with its date, newest first, then the next two with
+ * how far. Kind words only: nothing is lost, nothing compared.
+ */
+export function MilestonesView({ items, own }: MilestonesViewProps) {
+  const { t } = useTranslation();
+  const { colors } = useTheme();
+  const { reached, upcoming } = milestoneSummary(items);
+  return (
+    <View style={styles.group}>
+      <AppText variant="label">{t('practiceExtras.milestonesTitle')}</AppText>
+      <AppText variant="small" tone="muted">
+        {t(own ? 'practiceExtras.milestonesIntroOwn' : 'practiceExtras.milestonesIntroStaff')}
+      </AppText>
+      {reached.length === 0 ? (
+        <AppText tone="muted">{t(own ? 'practiceExtras.milestonesNoneOwn' : 'practiceExtras.milestonesNoneStaff')}</AppText>
+      ) : (
+        <View style={styles.medals}>
+          {reached.map((m) => (
+            <View
+              key={m.id}
+              style={styles.medal}
+              accessible
+              accessibilityLabel={t('practiceExtras.milestoneReached', { name: milestoneName(t, m), date: formatDate(m.reachedOn ?? '') })}>
+              <View style={[styles.medalRing, { borderColor: colors.ornament, backgroundColor: colors.primarySoft }]}>
+                <Icon name={m.id === 'first' ? 'practice' : KIND_ICON[m.kind]} size={26} color={colors.onPrimarySoft} />
+              </View>
+              <AppText variant="small" style={styles.medalText}>
+                {milestoneName(t, m)}
+              </AppText>
+              <AppText variant="small" tone="muted" style={styles.medalText}>
+                {formatDate(m.reachedOn ?? '')}
+              </AppText>
+            </View>
+          ))}
+        </View>
+      )}
+      {upcoming.map((m) => (
+        <ProgressBar
+          key={m.id}
+          done={m.kind === 'hours' ? m.have : Math.min(m.have, m.target)}
+          total={m.kind === 'hours' ? m.target * 60 : m.target}
+          label={t('practiceExtras.milestoneNext', { name: milestoneName(t, m) })}
+          valueText={milestoneSoFar(t, m)}
+          showComplete={false}
+        />
+      ))}
+    </View>
+  );
+}
+
+/** "7 practice days", "10 hours of practice", "4 weeks in a row", "Every day of a week", "First practice". */
+export function milestoneName(t: TFunction, m: Milestone): string {
+  if (m.id === 'first') return t('practiceExtras.milestoneFirst');
+  switch (m.kind) {
+    case 'days':
+      return t('practiceExtras.milestoneDays', { count: m.target });
+    case 'hours':
+      return t('practiceExtras.milestoneHours', { count: m.target });
+    case 'weeks':
+      return t('practiceExtras.milestoneWeeks', { count: m.target });
+    case 'week':
+    default:
+      return t('practiceExtras.milestoneFullWeek');
+  }
+}
+
+/** How far, in words: "4 of 7 days", "6 h 20 min of 10 hours", "2 of 4 weeks", "5 of 7 days in one week". */
+function milestoneSoFar(t: TFunction, m: Milestone): string {
+  switch (m.kind) {
+    case 'hours':
+      return t('practiceExtras.soFarHours', { time: practiceTime(t, m.have), count: m.target });
+    case 'weeks':
+      return t('practiceExtras.soFarWeeks', { n: m.have, count: m.target });
+    case 'week':
+      return t('practiceExtras.soFarWeek', { n: m.have });
+    case 'days':
+    default:
+      return t('practiceExtras.soFarDays', { n: m.have, count: m.target });
+  }
+}
+
 const styles = StyleSheet.create({
-  wrap: {
+  group: {
+    gap: spacing.sm,
+  },
+  medals: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.md,
+  },
+  medal: {
+    width: 96,
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  medalRing: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    borderWidth: 3,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  medalText: {
+    textAlign: 'center',
+  },  wrap: {
     gap: spacing.sm,
   },
   row: {

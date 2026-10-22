@@ -1,13 +1,15 @@
 // The beat-name grid of the taal player (S5): one row per vibhag, its mark at the start as the
 // kksongs khol course writes it (X sam, 2 / 3 tali = an open baya stroke, 0 khali), then the beats
 // with their number and bols ('te.re' shown "te re"; '–' a rest). The beat being heard is lit. In the
-// taal player each beat also says which hand plays it (L, R, L+R; #404).
+// taal player each beat also says which hand plays it (L, R, L+R; #404). At layakari (#491) a beat holds 2-4 written
+// beats, each a word ("tere dhā"), and their hands.
 
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
-import { beatHands } from '@/lib/hands';
+import { beatHands, bolHands } from '@/lib/hands';
+import { layaGroups, layaText, type Laya, type LayaGroup } from '@/lib/practice-pattern';
 import { radius, spacing, useTheme } from '@/theme/use-theme';
 
 import { AppText } from './app-text';
@@ -21,12 +23,15 @@ export type BeatGridProps = {
   current: number | null;
   /** Under each beat, which hand plays it: L, R or L+R (#404). */
   hands?: boolean;
+  /** Layakari (#491): written beats in each beat; 1 = as written. */
+  laya?: Laya;
 };
 
 /** The vibhags of a taal with their beats. */
-export function BeatGrid({ bols, divisions, marks, current, hands = false }: BeatGridProps) {
+export function BeatGrid({ bols, divisions, marks, current, hands = false, laya = 1 }: BeatGridProps) {
   const { t } = useTranslation();
   const { colors } = useTheme();
+  const groups = laya > 1 ? layaGroups(bols, laya) : null;
   const rows = divisions.map((size, index) => ({
     index,
     start: divisions.slice(0, index).reduce((sum, d) => sum + d, 0),
@@ -59,11 +64,11 @@ export function BeatGrid({ bols, divisions, marks, current, hands = false }: Bea
                     {beat + 1}
                   </AppText>
                   <AppText variant="label" style={{ color: on ? colors.onPrimary : colors.text }}>
-                    {bol === '-' ? '–' : bol.split('.').join(' ')}
+                    {groups ? layaText(groups[beat]) : bol === '-' ? '–' : bol.split('.').join(' ')}
                   </AppText>
                   {hands ? (
                     <AppText variant="small" style={{ color: on ? colors.onPrimary : colors.primary }}>
-                      {handsOf(t, bol) || ' '}
+                      {(groups ? groupHands(t, groups[beat]) : handsOf(t, bol)) || ' '}
                     </AppText>
                   ) : null}
                 </View>
@@ -92,6 +97,15 @@ function handsOf(t: TFunction, beat: string): string {
   const word = { left: t('practice.handLeftShort'), right: t('practice.handRightShort'), both: t('practice.handBothShort'), unknown: '?' };
   return beatHands(beat)
     .map((hands) => word[hands])
+    .join(' ');
+}
+
+/** The hands of a beat at layakari (#491): each written beat's hands run together with "·", the written beats apart. */
+function groupHands(t: TFunction, groups: readonly LayaGroup[]): string {
+  const word = { left: t('practice.handLeftShort'), right: t('practice.handRightShort'), both: t('practice.handBothShort'), unknown: '?' };
+  return groups
+    .map((g) => g.bols.filter((b) => b.text !== '-').map((b) => word[bolHands(b)]).join('·'))
+    .filter((w) => w !== '')
     .join(' ');
 }
 

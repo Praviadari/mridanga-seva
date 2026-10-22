@@ -2,7 +2,8 @@
 // weeks, from Monday), the entries of those weeks (from the S5 timer or typed in), a form to type in
 // practice (a day of the last 7, 1-240 minutes, a note) and Delete for an entry of the last 14 days.
 // Opened from S5 Practice tools and from S4 My progress. Data: data/practice.ts; the limits are
-// the database's (log_practice in supabase/migrations/0018_practice.sql).
+// the database's (log_practice in supabase/migrations/0018_practice.sql). Since 0056 (#494) the form also asks
+// "How did it go?" (three faces, what was practised; optional), and each entry shows what was said.
 
 import { Stack, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
@@ -16,13 +17,23 @@ import { EmptyState } from '@/components/empty-state';
 import { ListRow } from '@/components/list-row';
 import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
+import { FeelingFields, feelingWords } from '@/components/practice-feeling';
 import { practiceTime, WeeklyPractice } from '@/components/practice-parts';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { TextField } from '@/components/text-field';
 import { announce } from '@/lib/announce';
 import { confirmReady, confirmShown } from '@/lib/second-tap';
-import { deletePractice, fetchMyPracticeLog, fetchTaals, logPractice, type PracticeLog } from '@/data/practice';
+import {
+  deletePractice,
+  fetchMyPracticeLog,
+  fetchTaals,
+  logPractice,
+  setPracticeFeeling,
+  type Feeling,
+  type PracticeLog,
+  type Practised,
+} from '@/data/practice';
 import { formatDate, todayLocal } from '@/lib/dates';
 import { asciiDigits } from '@/lib/digits';
 import { notePractisedToday } from '@/lib/practice-reminder';
@@ -47,6 +58,9 @@ export default function PracticeLogScreen() {
   const [day, setDay] = useState(0);
   const [minutes, setMinutes] = useState('');
   const [note, setNote] = useState('');
+  // How it went (#494): optional, saved with the entry.
+  const [feeling, setFeeling] = useState<Feeling | null>(null);
+  const [practised, setPractised] = useState<Practised[]>([]);
   const [saving, setSaving] = useState(false);
   // #322: one id per entry being typed; a new one after it is saved.
   const { requestId, renew } = useRequestId();
@@ -73,18 +87,28 @@ export default function PracticeLogScreen() {
       return;
     }
     setSaving(true);
-    const errorKey = await logPractice({ minutes: value, source: 'manual', practisedOn: dayBefore(day), note }, requestId());
-    setSaving(false);
-    if (errorKey) {
-      setMessage({ tone: 'error', text: t(errorKey) });
+    const saved = await logPractice({ minutes: value, source: 'manual', practisedOn: dayBefore(day), note }, requestId());
+    if ('errorKey' in saved) {
+      setSaving(false);
+      setMessage({ tone: 'error', text: t(saved.errorKey) });
       return;
     }
     renew();
-    setMessage({ tone: 'success', text: t('practiceLog.saved', { time: practiceTime(t, value) }) });
+    // The entry is kept even when how it went could not be saved; the message says so.
+    const said = feeling !== null || practised.length > 0;
+    const feelingError = said && saved.id !== null ? await setPracticeFeeling(saved.id, feeling, practised) : null;
+    setSaving(false);
+    setMessage(
+      feelingError
+        ? { tone: 'error', text: `${t('practiceLog.saved', { time: practiceTime(t, value) })} ${t('practiceExtras.feelingFailed')}` }
+        : { tone: 'success', text: t('practiceLog.saved', { time: practiceTime(t, value) }) },
+    );
     // Practice typed in for today: no practice reminder today (#402).
     void notePractisedToday(profileId, dayBefore(day));
     setMinutes('');
     setNote('');
+    setFeeling(null);
+    setPractised([]);
     void load();
   };
 
@@ -159,6 +183,7 @@ export default function PracticeLogScreen() {
           maxLength={3}
         />
         <TextField label={t('practiceLog.note')} value={note} onChangeText={setNote} maxLength={200} />
+        <FeelingFields feeling={feeling} onFeeling={setFeeling} practised={practised} onPractised={setPractised} />
         {message ? <Notice tone={message.tone}>{message.text}</Notice> : null}
         <Button icon="add" label={t('practiceLog.save')} loading={saving} onPress={() => void save()} />
       </Section>
@@ -174,6 +199,7 @@ export default function PracticeLogScreen() {
               t(entry.source === 'timer' ? 'practiceLog.fromTimer' : 'practiceLog.typedIn'),
               ...(entry.taalId !== null && taalNames.has(entry.taalId) ? [taalNames.get(entry.taalId) as string] : []),
               ...(entry.note ? [entry.note] : []),
+              ...(feelingWords(t, entry.feeling, entry.practised) ? [feelingWords(t, entry.feeling, entry.practised) as string] : []),
             ]}
             action={
               entry.practisedOn >= oldestDeletable

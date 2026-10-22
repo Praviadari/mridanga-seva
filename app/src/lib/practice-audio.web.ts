@@ -10,7 +10,7 @@
 // timing can be checked from the browser console (docs/ARCHITECTURE.md "Practice tools").
 
 import type { SoundId } from './bols';
-import { metronomePattern, type Pattern } from './practice-pattern';
+import { metronomePattern, type Layer, type Pattern, type PatternEvent } from './practice-pattern';
 import type { PlayerPosition, PracticePlayer } from './practice-player';
 import { soundSamples } from './practice-sounds';
 
@@ -38,6 +38,9 @@ export type ScheduleEntry = { beat: number; time: number; lead: number };
 class WebPracticePlayer implements PracticePlayer {
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
+  /** One gain per layer (#492), between its sounds and the master. */
+  private layers = new Map<Layer, GainNode>();
+  private volumes = new Map<Layer, number>();
   private buffers = new Map<SoundId, AudioBuffer>();
   private pattern: Pattern | null = null;
   private bpm = 80;
@@ -72,6 +75,7 @@ class WebPracticePlayer implements PracticePlayer {
         this.master = this.ctx.createGain();
         this.master.gain.value = 0.9;
         this.master.connect(this.ctx.destination);
+        this.layers.clear();
       }
       await this.ctx.resume();
       return this.ctx;
@@ -134,6 +138,28 @@ class WebPracticePlayer implements PracticePlayer {
     return true;
   }
 
+  setLayerVolume(layer: Layer, volume: number): void {
+    const v = Math.min(1, Math.max(0, volume));
+    this.volumes.set(layer, v);
+    const gain = this.layers.get(layer);
+    if (gain && this.ctx) gain.gain.setValueAtTime(v, this.ctx.currentTime);
+  }
+
+  /** Where an event's sound goes: its layer's gain (made on first use), else the master. */
+  private outputOf(event: PatternEvent): AudioNode | null {
+    const ctx = this.ctx;
+    if (!ctx || !this.master) return null;
+    if (!event.layer) return this.master;
+    let gain = this.layers.get(event.layer);
+    if (!gain) {
+      gain = ctx.createGain();
+      gain.gain.value = this.volumes.get(event.layer) ?? 1;
+      gain.connect(this.master);
+      this.layers.set(event.layer, gain);
+    }
+    return gain;
+  }
+
   setTempo(bpm: number): void {
     const ctx = this.ctx;
     if (!ctx || !this.pattern || this.timer === null || bpm === this.bpm) {
@@ -192,6 +218,7 @@ class WebPracticePlayer implements PracticePlayer {
     void this.ctx?.close();
     this.ctx = null;
     this.master = null;
+    this.layers.clear();
     this.buffers.clear();
   }
 
@@ -249,10 +276,11 @@ class WebPracticePlayer implements PracticePlayer {
       const time = this.timeOf(beat);
       if (time > until) break;
       const buffer = this.buffers.get(event.sound);
-      if (buffer) {
+      const output = this.outputOf(event);
+      if (buffer && output) {
         const source = ctx.createBufferSource();
         source.buffer = buffer;
-        source.connect(this.master);
+        source.connect(output);
         const lead = time - ctx.currentTime;
         source.start(Math.max(time, ctx.currentTime));
         const entry: Scheduled = { source, time };

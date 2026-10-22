@@ -8,7 +8,7 @@
 // plays it as a looping WAV file (wavFile), the browser engine plays each sound on the audio clock.
 
 import type { SoundId } from './bols';
-import type { Pattern } from './practice-pattern';
+import type { Layer, Pattern, PatternEvent } from './practice-pattern';
 
 /** A small fixed-seed random generator, so the noise in a sound is the same every time. */
 function noise(seed: number): () => number {
@@ -93,6 +93,19 @@ export function renderSound(id: SoundId, rate: number): Float32Array {
         { freq: 90, gain: 0.7, decay: 0.3, bendTo: 150, bendTime: 0.3 },
         { freq: 180, gain: 0.12, decay: 0.12, bendTo: 300, bendTime: 0.3 },
       ], { gain: 0.2, decay: 0.006 }, 11);
+    // Kartal (#492): two small cymbals, bright inharmonic partials over a hiss; open rings, closed is damped at once.
+    case 'kartal':
+      return membrane(rate, 0.45, [
+        { freq: 2960, gain: 0.22, decay: 0.22 },
+        { freq: 4210, gain: 0.18, decay: 0.16 },
+        { freq: 5730, gain: 0.12, decay: 0.12 },
+        { freq: 7480, gain: 0.08, decay: 0.08 },
+      ], { gain: 0.35, decay: 0.01 }, 13);
+    case 'kartalClosed':
+      return membrane(rate, 0.08, [
+        { freq: 3150, gain: 0.16, decay: 0.018 },
+        { freq: 5210, gain: 0.12, decay: 0.012 },
+      ], { gain: 0.45, decay: 0.008 }, 14);
     case 'plain':
     default:
       return membrane(rate, 0.15, [{ freq: 400, gain: 0.4, decay: 0.04 }], { gain: 0.3, decay: 0.006 }, 12);
@@ -112,15 +125,25 @@ export function soundSamples(id: SoundId, rate: number): Float32Array {
   return samples;
 }
 
-/** One cycle of `pattern` at `bpm`, mixed, with the tails wrapped round to the start. */
-export function renderLoop(pattern: Pattern, bpm: number, rate: number): Float32Array {
+/** The volume of each layer, 0-1 (#492); a layer not named plays at 1. */
+export type LayerVolumes = Partial<Record<Layer, number>>;
+
+/** How loud an event plays: 1 for the strokes, its layer's volume for a layer. */
+export function eventGain(event: PatternEvent, volumes: LayerVolumes): number {
+  return event.layer ? Math.min(1, Math.max(0, volumes[event.layer] ?? 1)) : 1;
+}
+
+/** One cycle of `pattern` at `bpm`, mixed, with the tails wrapped round to the start; layers at their volume. */
+export function renderLoop(pattern: Pattern, bpm: number, rate: number, volumes: LayerVolumes = {}): Float32Array {
   const secondsPerBeat = 60 / bpm;
   const length = Math.round(pattern.beats * secondsPerBeat * rate);
   const out = new Float32Array(length);
   for (const event of pattern.events) {
+    const gain = eventGain(event, volumes);
+    if (gain === 0) continue;
     const samples = soundSamples(event.sound, rate);
     const start = Math.round(event.at * secondsPerBeat * rate);
-    for (let i = 0; i < samples.length; i++) out[(start + i) % length] += samples[i];
+    for (let i = 0; i < samples.length; i++) out[(start + i) % length] += gain * samples[i];
   }
   let peak = 0;
   for (let i = 0; i < length; i++) peak = Math.max(peak, Math.abs(out[i]));

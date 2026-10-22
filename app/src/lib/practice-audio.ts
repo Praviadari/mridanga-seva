@@ -8,15 +8,15 @@
 // The count-in (#403) is a second, short file played once (lib/practice-sounds.ts renderOnce); the loop, already loaded and paused, starts
 // when the count-in's time is over (a JavaScript timer, so sam may come some milliseconds early or
 // late, once; from then on the loop keeps the time). The same second player plays one stroke in the step
-// mode (#404).
+// mode (#404). A layer's volume (the kartal, #492) is mixed in, so a change mixes the loop again like a tempo change.
 // The browser version is practice-audio.web.ts (Web Audio API, look-ahead scheduler).
 
 import { createAudioPlayer, setAudioModeAsync, type AudioPlayer } from 'expo-audio';
 import { File, Paths } from 'expo-file-system';
 
-import { metronomePattern, type Pattern } from './practice-pattern';
+import { metronomePattern, type Layer, type Pattern } from './practice-pattern';
 import type { PlayerPosition, PracticePlayer } from './practice-player';
-import { renderLoop, renderOnce, wavFile } from './practice-sounds';
+import { renderLoop, renderOnce, wavFile, type LayerVolumes } from './practice-sounds';
 
 export type { PlayerPosition, PracticePlayer } from './practice-player';
 
@@ -53,6 +53,8 @@ class NativePracticePlayer implements PracticePlayer {
   /** The count-in is sounding: the loop waits, paused. */
   private counting = false;
   private countTimer: ReturnType<typeof setTimeout> | null = null;
+  /** The layers' volumes (#492): mixed into the loop, so a change mixes it again. */
+  private volumes: LayerVolumes = {};
 
   private async audioMode(): Promise<void> {
     if (!audioModeSet) {
@@ -119,6 +121,23 @@ class NativePracticePlayer implements PracticePlayer {
     });
   }
 
+  setLayerVolume(layer: Layer, volume: number): void {
+    const v = Math.min(1, Math.max(0, volume));
+    if (this.volumes[layer] === v) return;
+    this.volumes = { ...this.volumes, [layer]: v };
+    // Only a loop that has this layer is mixed again, at the same place (as a tempo change).
+    if (!this.playing || !this.pattern?.events.some((e) => e.layer === layer)) return;
+    if (this.counting) {
+      void this.load(0, false).catch(() => this.stop());
+      return;
+    }
+    const at = this.position();
+    if (!at) return;
+    void this.load(at.beat, true).catch(() => {
+      this.playing = false;
+    });
+  }
+
   stop(): void {
     this.playing = false;
     this.counting = false;
@@ -153,7 +172,7 @@ class NativePracticePlayer implements PracticePlayer {
       this.flip = !this.flip;
       this.player ??= createAudioPlayer(null);
       const player = this.player;
-      await loadInto(player, this.flip ? 'practice-loop-a.wav' : 'practice-loop-b.wav', renderLoop(pattern, this.bpm, RATE), true);
+      await loadInto(player, this.flip ? 'practice-loop-a.wav' : 'practice-loop-b.wav', renderLoop(pattern, this.bpm, RATE, this.volumes), true);
       if (beat > 0) await player.seekTo((beat * 60) / this.bpm);
       if (play) player.play();
     } finally {
