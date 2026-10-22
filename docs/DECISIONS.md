@@ -6925,3 +6925,24 @@ own fingerprints (with and without the variant) are in NOTES_face_scan.md.
 **Consequences.** From the face merge on, `eas.json` with the `facetest` profile is part of the production fingerprint
 like the rest of the file: any later edit of it, this profile included, means a new production APK. If the test app is
 no longer wanted by then, drop the profile at the merge, before that APK is built.
+
+## 433. The face test: consenting adults, the test app, TEST only, all face data deleted within 7 days — 22 Oct 2026
+
+**Status: branch `face-scan` (placeholder number). Agreed 22-10-2026 (lead chat 12 with Praveen); no lawyer, the DPDP
+Act and Rules followed strictly (as #399).**
+
+**Decision.** The first real use of face scan is a class test with **adult volunteers only** (18+, `face_min_age` 18),
+on "Mridanga Seva TEST" (#430) and the TEST project (Singapore), with TEST student logins: never the class's app, LIVE
+or a minor. Each tester signs a separate written consent (docs/phase3/ADULT_TEST.md §1, en master, te/hi drafts for
+native review) that names what is kept and where (face code on the phone only; enrolment record, check-in results and
+match scores on the TEST server outside India; a Google Play check), the purpose, the test's dates, deletion within 7
+days, the rights and the Data Protection Board. `face_enabled` is true on TEST only during a session. Within **7 days
+of the last session** every face record goes: on the phones (Turn face scan off, uninstall) and on TEST by one SQL run
+with a read-only verify row (OPERATIONS.md "Face scan: deleting the test face data"); the smoke test runs that SQL as
+written. Minors only after ADULT_TEST.md §3: the adult test passed and deleted, the Guru's minimum age (item 3),
+written verifiable parent consent with the child's own yes, the papers final, and only in the class's own app after
+the face production APK.
+
+**Why.** A test proves what the spike measured only on phones and faces of the class, and adults can consent for
+themselves. Biometric data kept for a test is kept no longer than the test needs (DPDP s.8(7)): the test data has no
+use once the results are counted.

@@ -33,6 +33,13 @@ A/B there are dropped), [MODEL_OPTIONS.md](MODEL_OPTIONS.md), [DPIA_DRAFT.md](DP
 | P3-7 | Phase 3 APK, TEST calibration, pilot, runbooks | `p3-pilot` | all above | Apr 2027 | 3 + Praveen | builds the APK | open |
 | | **Total** | | | | **≈30.5 worker-days** | | |
 
+
+**22-10-2026 — rebuilt on main (branch `face-scan`, lead chat 12):** P3-2/P3-6 server, P3-3/P3-4 and P3-5/P3-6 app
+re-applied onto main 4b522f9; migrations **0070** (was 0060) and **0071** (was 0064), DECISIONS numbers kept, new
+#430-#433; the separate test app "Mridanga Seva TEST" (EAS profile `facetest`, TEST only); the adult class test and the
+deletion of its data: [ADULT_TEST.md](ADULT_TEST.md). Merged into main only right before the next production APK. Log:
+NOTES_face_scan.md. The rows below are the history of the old branches.
+
 **Never more than 2 worktrees at once.** Waves:
 
 ```
