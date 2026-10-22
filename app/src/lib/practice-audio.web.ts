@@ -12,7 +12,7 @@
 import type { SoundId } from './bols';
 import { metronomePattern, type Pattern } from './practice-pattern';
 import type { PlayerPosition, PracticePlayer } from './practice-player';
-import { soundSamples } from './practice-sounds';
+import { soundSamples, soundsVersion } from './practice-sounds';
 
 export type { PlayerPosition, PracticePlayer } from './practice-player';
 
@@ -39,6 +39,7 @@ class WebPracticePlayer implements PracticePlayer {
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
   private buffers = new Map<SoundId, AudioBuffer>();
+  private soundsVersion = soundsVersion();
   private pattern: Pattern | null = null;
   private bpm = 80;
   private anchorTime = 0;
@@ -223,6 +224,11 @@ class WebPracticePlayer implements PracticePlayer {
   private prepare(pattern: Pattern): void {
     const ctx = this.ctx;
     if (!ctx) return;
+    // Synthesised or recorded strokes changed (lib/khol-samples.ts): prepare them again.
+    if (this.soundsVersion !== soundsVersion()) {
+      this.buffers.clear();
+      this.soundsVersion = soundsVersion();
+    }
     for (const event of pattern.events) {
       if (this.buffers.has(event.sound)) continue;
       const samples = soundSamples(event.sound, ctx.sampleRate);

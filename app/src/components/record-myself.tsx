@@ -40,6 +40,8 @@ const MAX_SECONDS = 10 * 60;
 
 /** Props for RecordMyself. */
 export type RecordMyselfProps = {
+  /** Which takes are listed: Practice tools' (the default) or Echo me's (#472), each where its sound can play. */
+  kind?: 'tools' | 'echo';
   /** What is chosen on the screen now (metronome or taal and its tempo); null when nothing can play. */
   setting: RecordingSetting | null;
   /** Starts the chosen sound from its first beat. False when it could not start. */
@@ -58,7 +60,9 @@ export function useSettingText() {
         ? t('recordMyself.noSound')
         : s.mode === 'metronome'
           ? t('recordMyself.metronomeAt', { bpm: s.bpm, beats: s.beatsPerBar })
-          : s.speed < 1
+          : s.mode === 'echo'
+            ? t('recordMyself.echoAt', { name: s.taalName, bpm: s.taalBpm })
+            : s.speed < 1
             ? t('recordMyself.taalAtSpeed', { name: s.taalName, bpm: s.taalBpm, percent: Math.round(s.speed * 100) })
             : t('recordMyself.taalAt', { name: s.taalName, bpm: s.taalBpm }),
     [t],
@@ -66,7 +70,7 @@ export function useSettingText() {
 }
 
 /** Record, keep and compare one's own playing. */
-export function RecordMyself({ setting, startSound, startSoundOf, stopSound }: RecordMyselfProps) {
+export function RecordMyself({ kind = 'tools', setting, startSound, startSoundOf, stopSound }: RecordMyselfProps) {
   const { t } = useTranslation();
   const settingText = useSettingText();
   const [withSound, setWithSound] = useState(true);
@@ -75,9 +79,10 @@ export function RecordMyself({ setting, startSound, startSoundOf, stopSound }: R
   // The setting of the take being recorded (null when recorded without the sound).
   const [recordingSetting, setRecordingSetting] = useState<RecordingSetting | null>(null);
 
+  const mine = useCallback((r: MyRecording) => (r.setting?.mode === 'echo') === (kind === 'echo'), [kind]);
   useEffect(() => {
-    void listMyRecordings().then(setList);
-  }, []);
+    void listMyRecordings().then((all) => setList(all.filter(mine)));
+  }, [mine]);
 
   return (
     <Section icon="record" title={t('recordMyself.title')} description={t('recordMyself.intro')}>
@@ -104,7 +109,7 @@ export function RecordMyself({ setting, startSound, startSoundOf, stopSound }: R
         onTake={async (take) => {
           try {
             const kept = await keepMyRecording(take, recordingSetting);
-            setList((current) => [kept, ...current].slice(0, MAX_RECORDINGS));
+            if (mine(kept)) setList((current) => [kept, ...current].slice(0, MAX_RECORDINGS));
           } catch {
             setProblem(t('recordMyself.keepFailed'));
           }

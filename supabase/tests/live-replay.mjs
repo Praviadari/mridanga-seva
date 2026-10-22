@@ -51,7 +51,9 @@ const GO_LIVE = ['0013', '0014', '0015', '0016', '0017', '0018', '0019', '0020',
   // Coordinators are students too (#316-#321; placeholder 0061 on branch staff-own-record).
   '0053',
   // After-launch forms and flows (#322-#329; placeholder 0062 on branch after-launch-forms).
-  '0054'];
+  '0054',
+  // Learn more links under Practice (#474).
+  '0055'];
 
 let failures = 0;
 let passes = 0;

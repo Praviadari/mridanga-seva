@@ -24,6 +24,7 @@
 // - The screen stays on while the sound plays.
 // - This week against the weekly goal (students; their own goal or the class's), and the daily practice reminder
 //   (Android app).
+// Play and learn (#470-#474; components/play-and-learn.tsx): tiles to the tap pad, Which bol?, Echo me and Learn more.
 
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { router, Stack, useFocusEffect } from 'expo-router';
@@ -51,6 +52,7 @@ import {
   StepControls,
   StopAfterChoice,
 } from '@/components/practice-more';
+import { PlayAndLearn } from '@/components/play-and-learn';
 import { GoalWeekView, practiceTime } from '@/components/practice-parts';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
@@ -549,6 +551,8 @@ export function PracticeTools({ area }: PracticeToolsProps) {
         startSoundOf={startSoundOf}
         stopSound={stopSound}
       />
+
+      <PlayAndLearn area={area} />
 
       {isStudent && goal && mine ? (
         <Section icon="promote" title={t('practice.goalTitle')}>
