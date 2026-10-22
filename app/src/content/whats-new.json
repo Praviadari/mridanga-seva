@@ -2,39 +2,40 @@
   "_comment": "What's new (My profile > What's new, docs/DECISIONS.md #406). Newest first. Add an entry before every production update (docs/OPERATIONS.md 'Publishing an update'). date: the day it is published (YYYY-MM-DD); null = not yet published, shown as 'Coming in the next update'. kind: 'installed' for an APK, 'update' for an update. id: the APK's build id or the update id the version line shows (first 8 characters), once known. notes: 3-8 plain lines in en, te and hi, the same number in each; te/hi are drafts for native review.",
   "releases": [
     {
+      "_comment": "Production update group 8b737a14 (commit 76dbce1, 22-10-2026); 01a16413 is its Android update id, which the version line shows.",
       "version": "1.0.0",
       "kind": "update",
-      "id": null,
+      "id": "01a16413",
       "date": "2026-10-22",
       "notes": {
         "en": [
-          "Practice of the week from your teachers, with a Start button.",
-          "A weekly practice goal, and the days you practised this week.",
-          "Taal player: speed trainer, count-in and a cycle counter.",
-          "See which hand plays each stroke, and learn stroke by stroke.",
-          "A daily practice reminder (in the Android app).",
-          "Mantra before practice: read it before you start.",
+          "Practice of the week from your teachers, a weekly goal, and the days you practised.",
+          "Taal player: speed trainer, count-in, cycle counter, and which hand plays each stroke.",
+          "A daily practice reminder (in the Android app), and the mantra to read before practice.",
           "Students under 18 can sign up at home; a parent agrees by email.",
+          "Coordinators who are also students get Me: their own QR, progress and practice.",
+          "Forms are never saved twice, phone numbers are kept as +91…, and Back asks before you lose what you typed.",
+          "Easier to read: screen titles fit at large text sizes, and screen readers get clearer labels.",
           "Recordings on the phone go when you sign out; half-filled forms go after 3 days."
         ],
         "te": [
-          "మీ గురువుల నుండి ఈ వారం అభ్యాసం, ప్రారంభించండి బటన్‌తో.",
-          "వారపు అభ్యాస లక్ష్యం, ఈ వారం మీరు అభ్యాసం చేసిన రోజులు.",
-          "తాళం ప్లేయర్‌లో: వేగం పెంచే అభ్యాసం, కౌంట్-ఇన్, ఆవృత్తాల లెక్క.",
-          "ప్రతి దెబ్బను ఏ చేయి వాయిస్తుందో చూడండి, దెబ్బ దెబ్బగా నేర్చుకోండి.",
-          "రోజువారీ అభ్యాస గుర్తుచేత (ఆండ్రాయిడ్ యాప్‌లో).",
-          "అభ్యాసానికి ముందు మంత్రం: ప్రారంభించే ముందు చదవండి.",
+          "మీ గురువుల నుండి ఈ వారం అభ్యాసం, వారపు లక్ష్యం, ఈ వారం మీరు అభ్యాసం చేసిన రోజులు.",
+          "తాళం ప్లేయర్‌లో: వేగం పెంచే అభ్యాసం, కౌంట్-ఇన్, ఆవృత్తాల లెక్క, ప్రతి దెబ్బను ఏ చేయి వాయిస్తుందో.",
+          "రోజువారీ అభ్యాస గుర్తుచేత (ఆండ్రాయిడ్ యాప్‌లో), అభ్యాసానికి ముందు చదవడానికి మంత్రం.",
           "18 ఏళ్ల లోపు విద్యార్థులు ఇంటి నుండే సైన్ అప్ చేయవచ్చు; తల్లిదండ్రులు ఈమెయిల్ ద్వారా అంగీకరిస్తారు.",
+          "విద్యార్థులు కూడా అయిన కోఆర్డినేటర్లకు నేను: వారి స్వంత QR, పురోగతి మరియు అభ్యాసం.",
+          "ఫారాలు రెండుసార్లు సేవ్ కావు, ఫోన్ నంబర్లు +91… గా ఉంటాయి, మీరు టైప్ చేసినది పోయే ముందు వెనుకకు అడుగుతుంది.",
+          "చదవడం సులభం: పెద్ద అక్షరాలలో కూడా స్క్రీన్ శీర్షికలు సరిపోతాయి, స్క్రీన్ రీడర్‌లకు స్పష్టమైన లేబుల్స్.",
           "ఫోన్‌లోని రికార్డింగ్‌లు సైన్ అవుట్ చేసినప్పుడు తొలగిపోతాయి; సగం నింపిన ఫారాలు 3 రోజుల తర్వాత."
         ],
         "hi": [
-          "आपके शिक्षकों से इस सप्ताह का अभ्यास, शुरू करें बटन के साथ।",
-          "साप्ताहिक अभ्यास लक्ष्य, और इस सप्ताह आपने किन दिनों अभ्यास किया।",
-          "ताल प्लेयर में: गति बढ़ाने का अभ्यास, काउंट-इन और आवर्तनों की गिनती।",
-          "देखें हर चोट कौन-सा हाथ बजाता है, और एक-एक चोट करके सीखें।",
-          "रोज़ अभ्यास की याद (Android ऐप में)।",
-          "अभ्यास से पहले मंत्र: शुरू करने से पहले पढ़ें।",
+          "आपके शिक्षकों से इस सप्ताह का अभ्यास, साप्ताहिक लक्ष्य, और इस सप्ताह आपने किन दिनों अभ्यास किया।",
+          "ताल प्लेयर में: गति बढ़ाने का अभ्यास, काउंट-इन, आवर्तनों की गिनती, और हर चोट कौन-सा हाथ बजाता है।",
+          "रोज़ अभ्यास की याद (Android ऐप में), और अभ्यास से पहले पढ़ने के लिए मंत्र।",
           "18 साल से कम उम्र के विद्यार्थी घर से साइन अप कर सकते हैं; माता-पिता ईमेल से सहमति देते हैं।",
+          "जो समन्वयक विद्यार्थी भी हैं, उन्हें मैं मिलता है: अपना QR, प्रगति और अभ्यास।",
+          "फ़ॉर्म दो बार सेव नहीं होते, फ़ोन नंबर +91… के रूप में रखे जाते हैं, और आपका लिखा खोने से पहले पीछे जाना पूछता है।",
+          "पढ़ना आसान: बड़े अक्षरों में भी स्क्रीन के शीर्षक समा जाते हैं, और स्क्रीन रीडर को साफ़ लेबल मिलते हैं।",
           "फ़ोन की रिकॉर्डिंग साइन आउट करने पर हटती हैं; आधे भरे फ़ॉर्म 3 दिन बाद हटते हैं।"
         ]
       }

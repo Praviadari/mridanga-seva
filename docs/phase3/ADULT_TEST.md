@@ -13,14 +13,14 @@ Contents: 1. Consent for adult testers (en, te, hi) · 2. Test plan · 3. Before
 One paper form per tester, **separate** from every other consent of the class, nothing pre-ticked, read and signed at
 the desk before enrolment. The desk records it in the app (C25 "Face scan at the desk": the adult's own written
 consent) and keeps the paper. English is the master; **Telugu and Hindi are machine-assisted drafts: NATIVE REVIEW
-NEEDED before use.** `[ … ]` = filled in before printing (the same [[TEAM]] facts as the privacy notice: the
-controller's name, postal address and privacy contact).
+NEEDED before use.** The controller, address and privacy contact are the privacy notice's (website, filled 22-10-2026, main 76dbce1);
+names and address stay in Latin letters in te/hi, as there. The test dates are written in by hand (`________`).
 
 ### English (master)
 
 **Face scan test — consent of an adult volunteer**
 
-[Class name, postal address] ("the class") is testing a face check-in for its app, before deciding whether to offer it
+Mridanga Seva, a volunteer team headed by Regula Sarvesh Chandra, Hanuman Tekdi, Abids, Hyderabad 500001, Telangana, India ("the class") is testing a face check-in for its app, before deciding whether to offer it
 to students. We ask adult volunteers to try it. **Taking part is your free choice.** Saying no, or stopping later,
 changes nothing for you in the class: you keep checking in with your QR code or at the desk.
 
@@ -41,13 +41,13 @@ Google Play to confirm the phone and the app are genuine.
 **Why.** Only to find out whether face check-in works reliably and fairly at our class (wrong person accepted, right
 person refused, photo tricks, speed), so the class can decide whether to offer it.
 
-**How long.** The test runs from [date] to [date]. Within **7 days** after it ends, all face data is deleted: you turn
+**How long.** The test runs from ________ to ________. Within **7 days** after it ends, all face data is deleted: you turn
 face scan off and uninstall the test app at the desk, and the test server's face records are deleted. You will be told
 when it is done.
 
 **Your rights.** You can stop at any time: "Turn face scan off" in the test app, or tell the desk; your face data is
 then deleted. You can ask what is kept about you, ask for a correction or deletion, and name someone to act for you.
-Questions or complaints: [privacy contact]. If we do not resolve your complaint, you may complain to the Data
+Questions or complaints: Regula Sarvesh Chandra, privacy@mridangaseva.com, +91 99893 36301 (head of Mridanga Seva, privacy contact). If we do not resolve your complaint, you may complain to the Data
 Protection Board of India.
 
 ☐ I am **18 or older** and I **agree** to take part in the face scan test as described above. I know I can stop at
@@ -60,7 +60,7 @@ Desk: consent recorded in the app by ________ on ________.
 
 **ముఖ స్కాన్ పరీక్ష — వయోజన స్వచ్ఛంద పాల్గొనేవారి అంగీకారం**
 
-[తరగతి పేరు, చిరునామా] ("తరగతి") తన యాప్ కోసం ముఖంతో హాజరు వేయడాన్ని, విద్యార్థులకు ఇవ్వాలా వద్దా అని
+Mridanga Seva (Regula Sarvesh Chandra నాయకత్వంలోని స్వచ్ఛంద బృందం), Hanuman Tekdi, Abids, Hyderabad 500001, Telangana, India ("తరగతి") తన యాప్ కోసం ముఖంతో హాజరు వేయడాన్ని, విద్యార్థులకు ఇవ్వాలా వద్దా అని
 నిర్ణయించే ముందు, పరీక్షిస్తోంది. దీన్ని ప్రయత్నించమని వయోజన స్వచ్ఛంద సేవకులను కోరుతున్నాం. **పాల్గొనడం పూర్తిగా మీ
 ఇష్టం.** వద్దు అన్నా, తర్వాత ఆపేసినా తరగతిలో మీకు ఏమీ మారదు: మీ QR కోడ్‌తో లేదా డెస్క్ వద్ద హాజరు వేస్తూనే ఉంటారు.
 
@@ -81,12 +81,12 @@ Google Play ద్వారా నిర్ధారిస్తుంది.
 **ఎందుకు.** మా తరగతిలో ముఖ హాజరు నమ్మకంగా, న్యాయంగా పనిచేస్తుందో లేదో (తప్పు వ్యక్తిని అంగీకరించడం, సరైన వ్యక్తిని
 తిరస్కరించడం, ఫోటో మోసాలు, వేగం) తెలుసుకోవడానికి మాత్రమే.
 
-**ఎంత కాలం.** పరీక్ష [తేదీ] నుండి [తేదీ] వరకు. ముగిసిన **7 రోజుల్లో** ముఖ డేటా అంతా తొలగించబడుతుంది: డెస్క్ వద్ద
+**ఎంత కాలం.** పరీక్ష ________ నుండి ________ వరకు. ముగిసిన **7 రోజుల్లో** ముఖ డేటా అంతా తొలగించబడుతుంది: డెస్క్ వద్ద
 ముఖ స్కాన్ ఆపి పరీక్ష యాప్ తీసేస్తారు, పరీక్ష సర్వర్‌లోని ముఖ రికార్డులు తొలగించబడతాయి. పూర్తయినప్పుడు మీకు చెబుతాం.
 
 **మీ హక్కులు.** ఎప్పుడైనా ఆపవచ్చు: పరీక్ష యాప్‌లో "ఫేస్ స్కాన్ ఆఫ్ చేయండి" (యాప్‌లోని బటన్), లేదా డెస్క్‌కు చెప్పండి; అప్పుడు మీ ముఖ డేటా
 తొలగించబడుతుంది. మీ గురించి ఏమి ఉంచారో అడగవచ్చు, సవరణ లేదా తొలగింపు కోరవచ్చు, మీ తరఫున ఒకరిని నియమించవచ్చు.
-ప్రశ్నలు, ఫిర్యాదులు: [గోప్యతా సంప్రదింపు]. మేము పరిష్కరించకపోతే Data Protection Board of India‌కు ఫిర్యాదు చేయవచ్చు.
+ప్రశ్నలు, ఫిర్యాదులు: Regula Sarvesh Chandra, privacy@mridangaseva.com, +91 99893 36301. మేము పరిష్కరించకపోతే Data Protection Board of India‌కు ఫిర్యాదు చేయవచ్చు.
 
 ☐ నాకు **18 ఏళ్లు లేదా ఎక్కువ**, పైన వివరించిన ముఖ స్కాన్ పరీక్షలో పాల్గొనడానికి నేను **అంగీకరిస్తున్నాను**. ఎప్పుడైనా
 ఆపి నా QR కోడ్‌తో హాజరు వేయవచ్చని నాకు తెలుసు.
@@ -97,7 +97,7 @@ Google Play ద్వారా నిర్ధారిస్తుంది.
 
 **चेहरा स्कैन परीक्षण — वयस्क स्वयंसेवक की सहमति**
 
-[कक्षा का नाम, डाक पता] ("कक्षा") अपने ऐप के लिए चेहरे से हाज़िरी का परीक्षण कर रही है, यह तय करने से पहले कि इसे
+Mridanga Seva (Regula Sarvesh Chandra के नेतृत्व वाली स्वयंसेवक टीम), Hanuman Tekdi, Abids, Hyderabad 500001, Telangana, India ("कक्षा") अपने ऐप के लिए चेहरे से हाज़िरी का परीक्षण कर रही है, यह तय करने से पहले कि इसे
 विद्यार्थियों को दिया जाए या नहीं। हम वयस्क स्वयंसेवकों से इसे आज़माने का अनुरोध करते हैं। **भाग लेना पूरी तरह आपकी मर्ज़ी
 है।** मना करने या बाद में रोकने से कक्षा में आपके लिए कुछ नहीं बदलता: आप QR कोड से या डेस्क पर हाज़िरी लगाते रहेंगे।
 
@@ -118,13 +118,13 @@ Google Play ద్వారా నిర్ధారిస్తుంది.
 **क्यों।** केवल यह जानने के लिए कि हमारी कक्षा में चेहरे से हाज़िरी भरोसेमंद और निष्पक्ष रूप से काम करती है या नहीं (गलत
 व्यक्ति स्वीकार, सही व्यक्ति अस्वीकार, फ़ोटो से धोखा, गति)।
 
-**कितने समय।** परीक्षण [तारीख] से [तारीख] तक है। समाप्ति के **7 दिनों** के भीतर सारा चेहरा डेटा मिटाया जाता है: डेस्क
+**कितने समय।** परीक्षण ________ से ________ तक है। समाप्ति के **7 दिनों** के भीतर सारा चेहरा डेटा मिटाया जाता है: डेस्क
 पर आप चेहरा स्कैन बंद करके परीक्षण ऐप हटा देते हैं, और परीक्षण सर्वर के चेहरा रिकॉर्ड मिटा दिए जाते हैं। पूरा होने पर
 आपको बताया जाएगा।
 
 **आपके अधिकार।** आप कभी भी रोक सकते हैं: परीक्षण ऐप में "फ़ेस स्कैन बंद करें" (ऐप का बटन), या डेस्क को बताएँ; तब आपका चेहरा
 डेटा मिटा दिया जाता है। आप पूछ सकते हैं कि आपके बारे में क्या रखा है, सुधार या मिटाने को कह सकते हैं, और अपनी ओर से किसी
-को नामित कर सकते हैं। प्रश्न या शिकायत: [गोपनीयता संपर्क]। यदि हम आपकी शिकायत हल न करें, तो आप Data Protection Board
+को नामित कर सकते हैं। प्रश्न या शिकायत: Regula Sarvesh Chandra, privacy@mridangaseva.com, +91 99893 36301। यदि हम आपकी शिकायत हल न करें, तो आप Data Protection Board
 of India में शिकायत कर सकते हैं।
 
 ☐ मेरी आयु **18 वर्ष या अधिक** है और मैं ऊपर बताए अनुसार चेहरा स्कैन परीक्षण में भाग लेने के लिए **सहमत** हूँ। मुझे
