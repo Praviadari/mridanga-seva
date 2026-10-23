@@ -6877,7 +6877,8 @@ reference and a clock, and nothing depends on the Guru reaching the SQL editor.
 
 **Decision (lead, under Praveen's delegation).** `answer_by` = made + **30 days** for every kind. The Gurus get a notice
 when a request is filed (no name in the phone's bar) and once more three days before the date (job
-`mridanga-data-requests`); the To do list shows open requests first, amber at three days or less. The privacy notice
+`mridanga-data-requests`); the To do list shows open requests first, amber at three days or less. (The phone push needs
+`notify-announcements` deployed with its new screen list; before that the notices reach the inbox only.) The privacy notice
 already says "We reply within 30 days", with a [[TEAM]] blank to confirm: this confirms it.
 
 **Why 30 and not more.** Rule 14(3) allows a grievance period of up to 90 days; GDPR Art. 12(3) gives one month. The
