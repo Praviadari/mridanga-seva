@@ -6844,3 +6844,109 @@ export is not guarded: the live web goes up with the same commit as the producti
 
 **Why.** Praveen wants students and staff to see in the app what each version changed. Notes in the bundle can never
 disagree with the code they describe, and the publish guard makes writing them part of every release.
+
+## 550. My data and rights in the app — 23 Oct 2026
+
+**Status: branch `data-rights` (migration 0059); the lead decides under Praveen's delegation of 23 Oct 2026 ("take
+decisions … score full vs world class").** The world-class audit of 22 Oct 2026 (§2.10, fix 17) found no data-principal
+self-service: access, correction, erasure, withdrawal and complaints worked only by emailing the team, and the Guru ran
+`withdraw_consent` / `erase_student` / `erase_login` in the SQL editor, which the lead cannot do on LIVE and which is
+error-prone for a volunteer.
+
+**Decision.** My profile has **My data and rights** (`student/my-data`, `staff/my-data`) for students and for staff with
+their own login. (a) **A summary of my data** from `my_data_summary()`: the sign-in account, the student record (no QR
+token), About you, parents, every consent with its scope, how it was given, the date, the kind of ID seen and the notice
+version, the level and status history, visits, practice, and counts of the rest (ticks, follow-up calls, assessments,
+events, loans, phones, notices, replies, answers, votes), the processors of the privacy notice (the app's list is tested
+against the notice's table), and the person's own requests. Each read goes to the access log. It downloads as JSON
+(phone: the share sheet through expo-sharing, already in the APK; web: a download) and prints or saves as a PDF in the
+web app (an escaped page under `<body>`, as the label sheets). (b-e) **Ask us**: correct something (the field and what
+is wrong), withdraw the photo consent (offered only while one is current), withdraw consent (the record), erase, name a
+nominee (DPDP Act s.14), make a complaint; each with a plain warning of what stops. Each becomes a row in
+`data_requests` with type, status, made / answer-by / closed times; the person sees where it stands and the answer, and
+may take an open one back. One open request per kind, at most 5 a day.
+
+Not in the app yet: a waiting login or an Ishtagoshti subscriber (no My profile) asks by email and the Guru records it;
+the summary refuses them (`not_allowed`) because the database sweep forbids a function answering a subscriber with data.
+
+**Why.** DPDP Act ss.11-14 and Rule 14 want the means to exercise the rights published and usable; GDPR Arts. 15-20 the
+same for EU/UK residents. In the app the rights are as easy as the consent was to give (s.6(4)), every request has a
+reference and a clock, and nothing depends on the Guru reaching the SQL editor.
+
+## 551. Every data request is answered within 30 days — 23 Oct 2026
+
+**Decision (lead, under Praveen's delegation).** `answer_by` = made + **30 days** for every kind. The Gurus get a notice
+when a request is filed (no name in the phone's bar) and once more three days before the date (job
+`mridanga-data-requests`); the To do list shows open requests first, amber at three days or less. The privacy notice
+already says "We reply within 30 days", with a [[TEAM]] blank to confirm: this confirms it.
+
+**Why 30 and not more.** Rule 14(3) allows a grievance period of up to 90 days; GDPR Art. 12(3) gives one month. The
+stricter reading (#399) is the shorter one, and a class of ~100 people can meet it. A withdrawal should be carried out
+much sooner (s.6(6) "within a reasonable time"): the runbook asks for it in days, the 30 days are the outer limit.
+
+## 552. A child's requests come from the parent, at the desk or by email — 23 Oct 2026
+
+**Decision.** A record under 18 (`is_minor`) cannot file in the app (`parent_asks`): the child reads their summary and
+is told that their parent or guardian asks, at the class desk (the coordinator sees the parent's ID, as at Accept,
+Rule 10) or by email from the address the class has for them. The Guru records it on Data requests ("Record a request":
+roll number, desk / email, asked by parent / guardian, what was checked); `record_data_request` refuses "the person
+themselves" for a child. What a parent or the desk recorded is not shown to the child (the person reads only requests
+they made). A child's home sign-up that has no record yet (0051): the parent writes from the address that got the
+consent email, the Guru records it with the child's sign-in email and erases with `erase_login`. A parent request
+through the consent page is **not built**: it needs a second parent-code channel (sending, hashing, limits as 0051)
+for a case the 30-day expiry and the email path already cover.
+
+**Why.** DPDP s.9 and Rule 10: the parent acts for the child, and the class must check that the person is the parent.
+The desk check is the one already used for consent.
+
+## 553. How long data requests are kept — 23 Oct 2026
+
+**Decision.** A request's text (`field`, `body`, `answer`) is blanked **one year after the request closed**, with its
+audit-log copies (`audit_redact`); the bare row (kind, status, dates, reference) is deleted **two years after it
+closed**. Open requests are never purged. After an erasure carried out from a request, the request keeps only its type,
+dates and reference at once (the person asked to be forgotten; the tombstone in `erasures` holds the reason).
+
+**Why.** Rule 8(3) keeps logs of processing for at least a year; the request is the proof that a right was honoured
+and may be questioned before the Board. Two years is the audit log's own upper limit in the notice.
+
+## 554. The Guru acts on a request in the app, with the roll number typed — 23 Oct 2026
+
+**Decision.** Data requests (`staff/data-requests`, Guru only; coordinators read no request and can neither record nor
+act: tested). A request is answered in words (done, with "I corrected the record" for a correction, or refused) or,
+for a withdrawal or an erasure, carried out by `act_on_data_request`: the Guru types the person's **roll number** (or,
+for a login without a record, its email) and a note (the answer and the reason, 1-500). The action must fit the request
+(`action_not_for_kind`); "done" on a withdrawal or erasure is refused (`use_the_action`). Photo withdrawal revokes the
+current photo consents (the app keeps no student photo: `photo_path` is unused); data withdrawal runs
+`withdraw_consent` (note `DR-…: …`). Everything is audited (`audit_row` on `data_requests`, plus the functions' own
+audit rows). A request made in the app sends the person a notice when it is answered.
+
+**Why.** A typed roll number is the confirmation the audit asked for, the database checks it too, and the SQL editor
+stays only for the owner.
+
+## 555. An erasure from a request keeps its reference — 23 Oct 2026
+
+**Decision.** Erase runs `erase_student(record, note, 'DR-…')` for a person with a record, else
+`erase_login(login, note, 'DR-…')`; the tombstone in `erasures` carries the request's reference, and the request
+stays (done, no person, no text). Every key from `data_requests` to a person is `on delete set null`, so the erasure
+cannot be blocked or cascade the proof away. A staff login without a record is not erased here (`not_pending`):
+`anonymise_staff` in the SQL editor (OPERATIONS "Staff who leave"). The private erasure register (Backups → Restoring,
+step 5) still gets the roll number and the reference: a restore from an older backup would bring the person back.
+
+## 556. Lines the privacy notice needs for 0059 — 23 Oct 2026
+
+For the privacy-notice 1.0 work (website/content/*/privacy.html is not edited on this branch):
+1. **In short**: "You can see and download your data in the app (My profile → My data and rights) and ask there to
+   correct or delete it, withdraw your consent or complain; or write to {{email:privacy}}."
+2. **Your rights**, after the list: "In the app: My profile → My data and rights shows what we keep about you and lets
+   you download it; there you can also ask for a correction or an erasure, withdraw a consent, name someone to act for
+   you, or make a complaint, and see our answer." Replace "[[TEAM: confirm the reply period]]" with: "We answer every
+   request, complaints included, within 30 days."
+3. **Children**: "For a student under 18 the parent or guardian makes these requests: at the class desk, where we see
+   their ID first, or by email from the address the class has for them. The child can read their own data in the app."
+4. **Withdrawal**: "Withdrawing your consent freezes your record and switches your sign-in off; withdrawing the photo
+   consent only stops photos."
+5. **How long we keep data**: "Data requests: the text one year after we answered, the request itself (type and dates)
+   two years; after an erasure only its type, dates and reference."
+6. **Who can see it**: "Data requests are read only by the facilitator (Guru); reading your own summary is logged."
+7. **Complaints**: "Use My data and rights → Make a complaint, or write to the privacy contact."
+Bump the notice version when these go in (#150): the app's `PRIVACY_NOTICE_VERSION` and `site.config.mjs` together.

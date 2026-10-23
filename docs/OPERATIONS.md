@@ -188,7 +188,58 @@ Suggested practice, until the team agrees its own (with the temple's legal advis
   A request to delete the data: "Erasure request".
 - The wording of the form itself is still to be agreed.
 
+## Data requests (0059, in the app)
+
+A person's requests about their data — a correction, an erasure, a withdrawal of the photo or data consent, a
+nominee, a complaint, a copy — are rows in `data_requests` ([DECISIONS.md #550-#556](DECISIONS.md)). Each is
+answered **within 30 days** (#551); the To do list shows them first, and the Gurus get a notice when one is filed
+and again three days before its answer-by date.
+
+**Where requests come from**
+- **In the app** (adults and staff with their own login): My profile → My data and rights → Ask us. The same screen
+  shows the person what the class holds (and downloads it as JSON; the web app prints it or saves a PDF).
+- **At the desk, for a child (Rule 10):** a child under 18 cannot ask in the app; the app tells them their parent or
+  guardian asks. The parent (or guardian) comes to the desk. The coordinator **sees the parent's ID document**
+  (name, and 18 or over; only its kind is noted, never its number, as at Accept) and checks the parent is the one on
+  the child's record (the student's details show the parents). The coordinator passes it to the Guru the same day (the
+  Guru's phone, or an email to privacy@ with the roll number and what was asked). The Guru opens **Data requests →
+  Record a request**: roll number, what was asked, "At the desk", asked by Parent / Guardian, and in the text what
+  was checked ("mother, Aadhaar seen by <coordinator>, 23-10-2026").
+- **By email** to privacy@mridangaseva.com: for a child, accept it only from the parent's address on the record (or
+  the consent email address of a home sign-up); otherwise ask them to come to the desk. Record it the same way, "By
+  email". An adult writing from the email on their record is enough; else ask them to use the app or the desk.
+- **A child's home sign-up waiting for the parent or the desk (0051)**: there is no record yet. The parent writes to
+  privacy@ from the address that got the consent email; record it with the child's sign-in email (Record a request
+  → the email), and act with `erase_login` (Data requests → Erase, typing that email). Without consent the sign-up
+  is erased after 30 days anyway (`mridanga-minor-signups`). A parent request through the consent page itself is not
+  built: it would need a second parent-code flow (#552).
+- **A waiting login or an Ishtagoshti subscriber** (no My profile): by email, recorded as above.
+
+**Answering (Guru: To do → Data requests → the request)**
+1. Read who it is about. A child's record is marked: act only on a parent's or guardian's request.
+2. *Correction*: change the record where it lives (Students → the student → Edit these details; About you is the
+   person's own), then answer with what changed and tick "I corrected the record". *Copy / complaint / nominee*:
+   answer in words (a nominee: write the person, relation and phone in the answer; it is kept with the request).
+   Refuse with a reason when the law allows it (for example the identity could not be checked).
+3. *Withdrawal or erasure*: type the roll number (or the sign-in email for a login without a record) and a note
+   ("Asked in the app" / "mother at the desk, ID seen"); the button runs `withdraw_consent`, the photo withdrawal or
+   `erase_student` / `erase_login`. The erasure's tombstone gets the request's reference (`DR-…`), the request keeps
+   only its type and dates. Then do the steps below that the app cannot: tell the coordinators (withdrawal), answer
+   a withdrawn person by phone or email (their sign-in is off), and **add the roll number, the date and the `DR-`
+   reference to the private erasure register** (Backups → Restoring, step 5: a restore would bring the person back).
+4. A staff login without a student record cannot be erased here (`not_pending`): use "Staff who leave".
+5. An open loan stops an erasure: take the lent instrument back and record the return first.
+
+**Retention** (#553): the text of a request is blanked a year after it closed (with its audit copies) and the
+request deleted two years after; an erasure blanks its text at once. Job `mridanga-data-requests`, 02:30 IST.
+
+**Check (SQL editor, read-only):**
+`select status, count(*), min(answer_by) filter (where status = 'open') as first_due from data_requests group by 1;`
+
 ## Consent withdrawal
+
+**Since 0059, do this in the app** (Data requests → the request → Withdraw consent; see "Data requests"); the
+steps below are for the owner in the SQL editor when the app cannot be used.
 
 Only the Guru records a withdrawal ([DECISIONS.md #75](DECISIONS.md)). It **freezes** the record:
 the student's login is switched off, their phones get no more notifications, all consents are
@@ -214,6 +265,9 @@ values ('<id>', 'data', 'written', '<id type>', true, '<Guru''s login id>');`), 
 login on again in G2.
 
 ## Erasure request
+
+**Since 0059, do this in the app** (Data requests → the request → Erase; see "Data requests"); the steps below are
+for the owner in the SQL editor when the app cannot be used, and step 4's checks apply to both.
 
 Only the Guru erases ([DECISIONS.md #76](DECISIONS.md)). It cannot be undone, so check the
 request first.

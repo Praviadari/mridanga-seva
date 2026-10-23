@@ -54,6 +54,7 @@ in number order:
 | `0052_practice_more.sql` | More home practice ([DECISIONS.md #400-#401](DECISIONS.md)): `practice_plans` (per level: weekly goal, up to three things to practise, a note; staff write, a student reads their own level's) a student's own weekly goal (`practice_goals`, `set_my_practice_goal`), mantras read before practice (`practice_mantras`, #405) and `practice_days()` (minutes per day with the goal: own, the level's, or 4 x 15). See "Practice of the week and the weekly goal (0052)" |
 | `0053_staff_own_record.sql` | Coordinators are students too (placeholder 0061 on branch `staff-own-record`, renumbered 22-10-2026; [DECISIONS.md #316-#321](DECISIONS.md)): `link_staff_record` (the Guru links a coordinator's login to its own student record), `my_student_id()` for staff, `refuse_own_record` (nobody records about their own record), `guard_own_student` (own mentor, own level), `guard_staff_record` (no withdrawal or erasure while a staff login is on the record); replaces `check_out_all` and `assign_mentor`. See "Own record (0053)" |
 | `0054_after_launch_forms.sql` | After-launch forms and flows (placeholder 0062 on branch `after-launch-forms`, renumbered 22-10-2026; [DECISIONS.md #322-#329](DECISIONS.md)): `request_id` (unique) on 10 tables and the request-id twins of `record_fund_entry`, `log_call`, `log_practice` (a create saved once); `material_file_deletable` (an approved material's file: the Guru only); `change_event_attendance`; the Guru's `delete_student_record` and `undo_import` (`students.import_id`, `import_students` stamps it); phones kept as E.164 (`phone_e164`, trigger `keep_phone_e164` on students, guardians, profiles, Ishtagoshti subscribers; stored numbers rewritten once, OPERATIONS "Phones that are not E.164"); `ig_send_parent_code` at most 3 codes a day per parent address, `name_for_email` |
+| `0059_data_rights.sql` | A person's data rights in the app (audit 22-10-2026 fix 17; [DECISIONS.md #550-#556](DECISIONS.md)): `data_requests` (a person reads their own, the Guru all; written only by the functions), `my_data_summary`, `file_data_request`, `cancel_data_request`, the Guru's `record_data_request`, `answer_data_request`, `act_on_data_request`; job `mridanga-data-requests`. See "Data requests (0059)" |
 
 The Phase 2 files were renumbered when they merged into main (#55). TEST ran some under their
 branch numbers (0012, 0014_promotion, 0016_practice, 0017_media, 0021_events_polls), so it skips
@@ -1684,6 +1685,40 @@ Unlink first. `anonymise_staff` (0040) deletes a leaving staff login; the record
 
 Tests: section "0053 staff own record" in `supabase/tests/smoke-test.mjs` (55 checks).
 
+## Data requests (0059)
+
+[DECISIONS.md #550-#556](DECISIONS.md). Migration `0059_data_rights.sql`; operations: OPERATIONS.md "Data requests".
+Screens: My data and rights (student/my-data, staff/my-data, from My profile) and the Guru's Data requests
+(staff/data-requests). Until 0059 had run, access, correction, erasure and withdrawal worked only by email and the
+Guru ran `withdraw_consent` / `erase_student` / `erase_login` in the SQL editor.
+
+**`data_requests`** (one row per request; audited by `audit_row`): `no` (identity; the reference `DR-0001`), `kind`
+(`access` — desk only —, `correction`, `erasure`, `withdraw_photo`, `withdraw_data`, `grievance`, `nominate`),
+`status` (`open`, `done`, `refused`, `cancelled`; open exactly while `closed_at` is null), `source` (`app`, `desk`,
+`email`), `asked_by` (`self`, `parent`, `guardian`), `profile_id` / `student_id` (who it is about), `made_by`,
+`field` (1-80, a correction's detail), `body` and `answer` (1-2000), `action` (what closed it: `answered`,
+`corrected`, `refused`, `cancelled`, `withdraw_photo`, `withdraw_consent`, `erase_student`, `erase_login`),
+`created_at`, `answer_by` (created + 30 days, #551), `reminded_at`, `closed_at`, `closed_by`, `text_purged_at`. Every
+key to a person is `on delete set null`: an erasure leaves the bare request as the proof.
+
+Who sees it: a person reads the rows they made about themselves (`made_by` and `profile_id` both theirs: what a parent
+or the desk recorded is not shown to a child); the Guru reads all; nobody writes the table (no insert, update or
+delete right): only the functions below, as the owner.
+
+| Function | Who | Does | Errors |
+|---|---|---|---|
+| `my_data_summary()` | A signed-in student, coordinator or Guru (security definer, own data only) | One JSON object: the login (no referral code), About you, the record (no QR token, mentor id, import or request id), `minor`, level / centre / mentor names, parents, consents (scope, method, given / revoked, ID kind, notice version), level and status history, visits (count, first, last, list), practice (count, minutes, list), counts of ticks, calls (and the last), assessments, events, phones, notices, replies, event answers, poll votes; loans; the Ishtagoshti row; own requests. Written to `access_log` (`my_data_summary`) | `not_allowed` (also a waiting login or subscriber) |
+| `file_data_request(kind, field, body)` | The person (student, coordinator, Guru) | Files a request about themselves; the Gurus get a notice (`/staff/data-requests`, no name). Returns `{id, ref, answer_by}` | `not_allowed`, `kind_invalid`, `parent_asks` (a minor's record: the parent asks), `no_record`, `no_photo_consent`, `already_open` (one open per kind), `too_many_requests` (5 a day), `field_required`, `field_too_long`, `text_required` (correction, complaint, nominee), `text_too_long` |
+| `cancel_data_request(id)` | The person, their own open request | Status `cancelled` | `not_allowed`, `request_not_found`, `not_open` |
+| `record_data_request(who, kind, source, asked_by, field, body)` | Guru | Records a request made at the desk or by email; `who` = a roll number or a login's email | `not_allowed`, `kind_invalid`, `source_invalid`, `asked_by_invalid`, `person_not_found`, `parent_asks` (a child asking for themselves), the text errors |
+| `answer_data_request(id, status, answer, corrected)` | Guru | `done` (action `answered`, or `corrected` for a correction) or `refused`, with an answer the person sees; a request made in the app sends the person a notice | `not_allowed`, `request_not_found`, `not_open`, `status_invalid`, `answer_required`, `text_too_long`, `use_the_action` (done on a withdrawal or erasure) |
+| `act_on_data_request(id, action, confirm, note)` | Guru | `withdraw_photo` (current photo consents revoked), `withdraw_consent` (`withdraw_consent(student, 'DR-…: note')`), `erase` (`erase_student(student, note, 'DR-…')`, else `erase_login(profile, note, 'DR-…')`); `confirm` = the roll number (any case), or the login's email without a record. After an erasure the request's text is blanked at once and its audit copies redacted. Returns the run function's answer plus `ref` | `not_allowed`, `request_not_found`, `not_open`, `action_invalid`, `action_not_for_kind`, `reason_required`, `reason_too_long`, `person_gone`, `confirm_mismatch`, `no_record`, `no_photo_consent`, and those of `withdraw_consent`, `erase_student`, `erase_login` |
+| `data_requests_daily()` | pg_cron (`mridanga-data-requests`) | Reminds the Gurus once of a request due within 3 days; blanks `field`, `body`, `answer` (and the audit copies) a year after closing; deletes a request two years after closing; open requests stay | — |
+
+Internal: `data_request_line`, `data_request_ref`, `queue_data_request_notice`, `clean_request_text`.
+
+Tests: section "0059 data rights" in `supabase/tests/smoke-test.mjs` (56 checks); app: `app/tests/data-rights.test.mjs`.
+
 ## Linking a login to a student
 
 A student record can exist without a login (many students never install the app). When a person
@@ -1766,6 +1801,8 @@ switched-off login is refused like a stranger.
 | `link_staff_record(profile, student)` | Guru (SQL editor: also the Guru's own) | Links an active coordinator's or Guru's login to one student record without a login as their own record; the role stays (0053, #316). Security definer. See "Own record (0053)" |
 | `withdraw_consent(student, note)` | Guru (or the owner in the SQL editor) | Records a withdrawal of consent and freezes the record. See "Withdrawal and erasure (0025)" |
 | `erase_student(student, reason, request_ref)` | Guru (or the owner in the SQL editor) | Erases the student, the login and the audit copies; leaves a tombstone. See "Withdrawal and erasure (0025)" |
+| `my_data_summary()`, `file_data_request(kind, field, body)`, `cancel_data_request(id)` | The person (student, coordinator, Guru) | My data and rights: the summary of one's own data, a request about oneself, taking it back. See "Data requests (0059)" |
+| `record_data_request(...)`, `answer_data_request(...)`, `act_on_data_request(id, action, confirm, note)` | Guru | Data requests: records a desk or email request, answers, or runs the withdrawal or erasure. See "Data requests (0059)" |
 | `import_students(rows)` | Guru | Saves up to 500 adult students, each row on its own; returns the roll number or the error per row. See "Importing students" |
 | `save_settings(values)` | Guru | Saves several settings at once, all or nothing. See "Settings" |
 | `mark_notifications_read(ids)` | Guru, coordinator, student | Marks the person's own due notices read (the given ids, or all with `null`); returns how many. Security definer. See "Notifications inbox" |
@@ -1832,6 +1869,7 @@ and the helpers `my_role`, `is_guru`, `is_staff`,
 | `mridanga-cron-history-purge` | 02:15 UTC = 07:45 IST | Deletes pg_cron's run details older than 7 days (0040) |
 | `mridanga-parent-notices` | Every minute | `send_parent_notices()` — calls the Edge Function `notify-parents` when a parent email waits; nothing while switched off (0043); since 0051 also when a consent email to a child's parent waits, switched off or not |
 | `mridanga-minor-signups` | 20:45 UTC = 02:15 IST | `expire_minor_signups()` — erases (`erase_login`) a child's sign-up whose parent did not consent within 30 days, or that the desk did not accept within 180 days (0051) |
+| `mridanga-data-requests` | 21:00 UTC = 02:30 IST | `data_requests_daily()` — reminds the Gurus of a data request due within 3 days; blanks a closed request's text after a year, deletes it after two (0059) |
 
 ## Who can see what
 
@@ -1843,6 +1881,7 @@ and the helpers `my_role`, `is_guru`, `is_staff`,
 | Guardians | — | Read through `get_guardians` (logged); add when registering (0034) | Read (through `get_guardians` in the app, logged) / write (a minor keeps one) |
 | Consents | — | Read through `get_consents` (logged); add (verified by themselves, now) | Read (in the app through `get_consents`, logged); add; revoke or delete (a minor keeps a current one, unless withdrawn) |
 | Erasure tombstones (`erasures`) | — | — | Read |
+| Data requests (`data_requests`, 0059) | Own, made by themselves (read); file and take back through the functions | Own, made by themselves (read); file through the functions | Read all; record, answer, act through the functions |
 | Call logs | — | Read through `get_call_notes` (logged); write through `log_call` | Read (in the app through `get_call_notes`, logged); write through `log_call` |
 | Follow-up tasks, status history | — | Read / write | Read / write |
 | Materials | Approved ones up to own level (needs a student record) | All; suggest (C18); take back or remove own suggestion | All; add, edit, delete; add or decline suggestions |

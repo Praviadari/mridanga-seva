@@ -267,7 +267,9 @@
       "toReview_one": "{{count}} recording to review",
       "toReview_other": "{{count}} recordings to review",
       "suggestions_one": "{{count}} suggestion to review",
-      "suggestions_other": "{{count}} suggestions to review"
+      "suggestions_other": "{{count}} suggestions to review",
+      "dataRequests_one": "{{count}} data request to answer",
+      "dataRequests_other": "{{count}} data requests to answer"
     }
   },
   "menu": {
@@ -4046,5 +4048,298 @@
     "donePhotoNo": "You did not agree to photos: none will be kept.",
     "doneDesk": "At the first class, please send your ID with your child, or come yourself (for example Aadhaar): a coordinator checks your name and that you are 18 or over before registering your child. Only the kind of ID is noted, never its number.",
     "doneWithdraw": "You can withdraw consent at any time, at the class desk or by writing to the class."
+  },
+  "dataRights": {
+    "title": "My data and rights",
+    "open": "See my data and rights",
+    "profileHint": "What the class keeps about you, a copy to download, and how to ask for a correction, erasure or withdrawal.",
+    "intro": "Here is what Mridanga Seva keeps about you and who handles it for us. You can download a copy, and ask us to correct or erase your data, withdraw a consent, name someone to act for you, or make a complaint. We answer every request within 30 days.",
+    "notSetUp": "Data requests are not switched on yet. Please write to privacy@mridangaseva.com or speak to a coordinator at the desk.",
+    "summaryTitle": "A summary of my data",
+    "generatedAt": "As on {{time}}",
+    "downloadJson": "Download a copy (JSON)",
+    "print": "Print or save as PDF",
+    "printOnWeb": "To print it, open the app in a web browser (mridanga-seva.pages.dev) and use \"Print or save as PDF\".",
+    "exportFailed": "The copy could not be made. Please try again.",
+    "showSummary": "Show everything we keep",
+    "processorsHint": "These services handle data for the class, only on our instructions. Nothing is sold or used for advertising.",
+    "pageHeading": "My data at Mridanga Seva",
+    "pageIntro": "This is what the class keeps about you. Keep this copy safe: it holds your personal details.",
+    "minorTitle": "Your parent or guardian asks for you",
+    "minorBody": "Because you are under 18, your parent or guardian makes requests about your data: at the class desk (they show their ID), or by email to {{email}} from the address the class has for them. You can still read your data here.",
+    "guruTitle": "Requests from others",
+    "guruHint": "You answer the class's data requests on Data requests. For a request about your own data, write to the privacy contact.",
+    "askTitle": "Ask us",
+    "askHint": "Choose what you want. We answer within {{days}} days and you see the answer here.",
+    "kindLabel": "What do you want?",
+    "kinds": {
+      "access": "A copy of my data",
+      "correction": "Correct something",
+      "erasure": "Erase my data",
+      "withdraw_photo": "Withdraw my photo consent",
+      "withdraw_data": "Withdraw my consent",
+      "grievance": "Make a complaint",
+      "nominate": "Name someone to act for me"
+    },
+    "what": {
+      "access": "A copy of what we keep, and with whom it was shared, beyond this summary.",
+      "correction": "Tell us which detail is wrong and what it should be. We may ask you to show a document at the desk.",
+      "erasure": "Everything the class keeps about you is erased: your record, visits, progress, practice, recordings and your sign-in. Only your roll number, the date and the reason stay, as proof that we did it. This cannot be undone.",
+      "withdraw_photo": "No photo of you will be kept on the class record or taken for it. Everything else stays as it is.",
+      "withdraw_data": "Your record is frozen: no more check-ins, progress, practice or messages, and your sign-in stops working. What was done before stays lawful. To come back you consent again at the desk. If you want your data erased too, ask for that as well.",
+      "grievance": "Tell us what went wrong. The privacy contact answers within 30 days. If you are not satisfied, you can complain to the Data Protection Board of India.",
+      "nominate": "Name a person who may use these rights for you if you die or cannot act yourself (DPDP Act section 14): their name, how they are related to you and their phone number."
+    },
+    "fieldLabel": "Which detail?",
+    "fieldHint": "For example: date of birth, name, phone",
+    "bodyLabel": {
+      "correction": "What is wrong, and what should it be?",
+      "grievance": "Your complaint",
+      "nominate": "Who, how related, and their phone",
+      "other": "Anything we should know (optional)"
+    },
+    "send": "Send the request",
+    "sent": "Sent as {{ref}}. We answer by {{date}}.",
+    "myRequests": "My requests",
+    "statuses": {
+      "open": "Waiting",
+      "done": "Done",
+      "refused": "Refused",
+      "cancelled": "Taken back"
+    },
+    "answerBy": "Answer by {{date}}",
+    "answerLine": "Answer: {{answer}}",
+    "takeBack": "Take back this request",
+    "takeBackYes": "Yes, take it back",
+    "keep": "Keep it",
+    "contactTitle": "Who to contact",
+    "contactLine": "Privacy contact and grievance officer: {{name}}, {{email}}, phone {{phone}}.",
+    "replyLine": "We answer every request within {{days}} days.",
+    "boardLine": "If you are not satisfied with our answer, you can complain to the Data Protection Board of India.",
+    "noticeLink": "Read the privacy notice",
+    "summary": {
+      "login": "Your sign-in account",
+      "record": "Your student record",
+      "about": "About you",
+      "guardians": "Parents and guardians",
+      "consents": "Consents",
+      "activity": "What the app has recorded",
+      "processors": "Services that handle it for us",
+      "requests": "Your requests"
+    },
+    "fields": {
+      "name": "Name",
+      "email": "Email",
+      "phone": "Phone",
+      "role": "Role",
+      "language": "App language",
+      "since": "Since",
+      "rollNo": "Roll number",
+      "dob": "Date of birth",
+      "area": "Area",
+      "pincode": "PIN code",
+      "level": "Level",
+      "status": "Status",
+      "centre": "Centre",
+      "mentor": "Mentor",
+      "joined": "Joined",
+      "withdrawn": "Consent withdrawn",
+      "dikshaName": "Dīkṣā name",
+      "emergency": "Emergency contact",
+      "heardVia": "How you heard of the class",
+      "occupation": "Education or occupation",
+      "service": "Service interests",
+      "learn": "Instruments you want to learn",
+      "guardian": "Parent or guardian",
+      "visits": "Visits",
+      "practice": "Practice",
+      "ticks": "Syllabus items learnt",
+      "levelChanges": "Level changes",
+      "calls": "Follow-up calls",
+      "assessments": "Assessments",
+      "events": "Events attended",
+      "loans": "Instruments lent",
+      "devices": "Phones for notifications",
+      "notices": "Notices in your inbox",
+      "replies": "Your replies",
+      "eventAnswers": "Event answers",
+      "pollVotes": "Poll votes",
+      "ishtagoshti": "Ishtagoshti subscription"
+    },
+    "roles": {
+      "student": "Student",
+      "coordinator": "Coordinator",
+      "guru": "Guru"
+    },
+    "consentScope": {
+      "data": "Data",
+      "photo": "Photo",
+      "face": "Face scan"
+    },
+    "consentMethod": {
+      "written": "signed form at the desk",
+      "email_code": "parent's email code"
+    },
+    "consentGiven": "given {{date}} ({{how}})",
+    "consentId": "ID seen: {{kind}}",
+    "consentNotice": "notice {{version}}",
+    "consentRevoked": "withdrawn {{date}}",
+    "visitsLine": "{{count}}, first {{first}}, last {{last}}",
+    "practiceLine": "{{count}} entries, {{minutes}} minutes",
+    "callsLine": "{{count}}, last {{last}}",
+    "yes": "Yes",
+    "no": "No",
+    "processors": {
+      "supabase": {
+        "name": "Supabase",
+        "what": "Database, sign-in and stored files (Sydney, Australia)"
+      },
+      "expo": {
+        "name": "Expo (650 Industries)",
+        "what": "App updates; passes notifications to phones (USA)"
+      },
+      "firebase": {
+        "name": "Google Firebase Cloud Messaging",
+        "what": "Delivers notifications to Android phones (worldwide)"
+      },
+      "brevo": {
+        "name": "Brevo",
+        "what": "Sign-up, password and parent-consent emails (European Union)"
+      },
+      "cloudflare": {
+        "name": "Cloudflare",
+        "what": "Hosts the website and the web app (worldwide)"
+      },
+      "zoho": {
+        "name": "Zoho Mail",
+        "what": "The team's email, including privacy@mridangaseva.com"
+      },
+      "youtube": {
+        "name": "YouTube (Google)",
+        "what": "Plays lesson videos in the app (worldwide)"
+      }
+    },
+    "errors": {
+      "not_allowed": "Only a student or a staff member with their own sign-in can do this here.",
+      "kind_invalid": "Choose what you want.",
+      "field_required": "Say which detail is wrong.",
+      "field_too_long": "At most {{max}} characters.",
+      "text_required": "Please write a few words.",
+      "text_too_long": "At most {{max}} characters.",
+      "parent_asks": "For a student under 18 the parent or guardian asks, at the desk or by email.",
+      "no_record": "There is no student record to withdraw consent from.",
+      "no_photo_consent": "There is no photo consent to withdraw.",
+      "already_open": "You already have a request of this kind waiting. We answer it first.",
+      "too_many_requests": "At most 5 requests a day. Please try tomorrow.",
+      "request_not_found": "This request is not there any more.",
+      "not_open": "This request is already closed.",
+      "source_invalid": "Choose desk or email.",
+      "asked_by_invalid": "Choose who asked.",
+      "person_not_found": "No student with this roll number, or no sign-in with this email.",
+      "status_invalid": "Choose done or refused.",
+      "answer_required": "Write the answer for the person.",
+      "use_the_action": "Carry the withdrawal or erasure out with the button above, or refuse it with a reason.",
+      "action_invalid": "This action is not known.",
+      "action_not_for_kind": "This action does not fit the request.",
+      "confirm_mismatch": "What you typed is not the roll number (or email) of this person.",
+      "reason_required": "Write a note: it is the answer and the reason kept on record.",
+      "reason_too_long": "At most 500 characters.",
+      "person_gone": "The person is no longer in the database. Close the request with an answer.",
+      "open_loan": "An instrument is still lent to this student. Take it back first.",
+      "not_pending": "This is a staff sign-in: the owner removes it in the SQL editor (OPERATIONS \"Staff who leave\").",
+      "not_yourself": "You cannot erase your own sign-in.",
+      "has_student_record": "This sign-in is on a student record: erase the record instead."
+    }
+  },
+  "dataRequests": {
+    "title": "Data requests",
+    "open": "Open Data requests",
+    "intro": "Requests about a person's data: corrections, erasures, withdrawals, complaints, nominees. Answer each within 30 days. Withdrawals and erasures are carried out here after you type the roll number.",
+    "openTitle": "Waiting ({{count}})",
+    "noneOpen": "No request is waiting.",
+    "closedTitle": "Closed in the last 90 days",
+    "personGone": "Person erased",
+    "overdue_one": "{{count}} day late",
+    "overdue_other": "{{count}} days late",
+    "dueIn_one": "Answer by {{date}} ({{count}} day left)",
+    "dueIn_other": "Answer by {{date}} ({{count}} days left)",
+    "from": {
+      "app": "In the app",
+      "desk": "At the desk",
+      "email": "By email"
+    },
+    "askedBy": {
+      "self": "The person",
+      "parent": "Parent",
+      "guardian": "Guardian"
+    },
+    "recordTitle": "Record a request",
+    "recordHint": "One made at the desk or by email. For a student under 18 only a parent or guardian may ask.",
+    "whoLabel": "Roll number or sign-in email",
+    "whoHint": "For example MS-2026-0030, or the email of a sign-up without a record",
+    "whoRequired": "Type a roll number or an email.",
+    "sourceLabel": "How it came",
+    "askedByLabel": "Who asked",
+    "parentIdHint": "At the desk, see the parent's or guardian's ID first (Rule 10). By email, it must come from the address the class has for them. Note what you checked below.",
+    "bodyLabel": "What was asked, and what you checked",
+    "record": "Record the request",
+    "recorded": "Recorded as {{ref}}.",
+    "notFound": "This request is not there any more (a closed request is deleted after two years).",
+    "minorNote": "This record is a child's: only a parent or guardian may ask. Check who asked before you act.",
+    "fieldLine": "Detail: {{field}}",
+    "noText": "No words given.",
+    "textGone": "The text was blanked (erasure, or a year after closing).",
+    "fields": {
+      "status": "Status",
+      "person": "Person",
+      "from": "How it came",
+      "askedBy": "Asked by",
+      "made": "Made",
+      "answerBy": "Answer by",
+      "closed": "Closed"
+    },
+    "act": {
+      "withdraw_photo": {
+        "title": "Withdraw the photo consent",
+        "what": "The current photo consents of this record are withdrawn. The record and the data consent stay.",
+        "button": "Withdraw the photo consent"
+      },
+      "withdraw_consent": {
+        "title": "Withdraw the consent",
+        "what": "The record is frozen (no check-ins, ticks, practice or messages), every consent is withdrawn, an open visit and calls are closed, and the sign-in is switched off. Tell the person the answer by phone or email: they can no longer open the app.",
+        "button": "Withdraw consent and freeze the record"
+      },
+      "erase": {
+        "title": "Erase",
+        "what": "The record, its history and the sign-in are deleted, and the audit log copies blanked. Only the roll number, the date, your note and this request's reference stay. This cannot be undone. Take back any lent instrument first.",
+        "button": "Erase everything"
+      }
+    },
+    "confirmLabel": "Type {{expected}} to confirm",
+    "confirmHintRoll": "The person's roll number, exactly.",
+    "confirmHintEmail": "The sign-in email, exactly.",
+    "noteLabel": "Note to the person and for the record",
+    "noteHint": "For example: Asked in the app; identity checked at the desk.",
+    "answerTitle": "Answer",
+    "refuseTitle": "Or refuse",
+    "answerHint": "The person sees this answer in the app (a request made in the app also gets a notice).",
+    "answerLabel": "Your answer",
+    "corrected": "I corrected the record",
+    "markDone": "Mark done and send the answer",
+    "refuse": "Refuse with this answer",
+    "answered": "Answered.",
+    "refused": "Refused, with your answer.",
+    "done": "Done.",
+    "result": {
+      "consents_one": "{{count}} consent withdrawn.",
+      "consents_other": "{{count}} consents withdrawn.",
+      "loginOff": "The sign-in is switched off.",
+      "loginDeleted": "The sign-in is deleted.",
+      "loginLeft": "Delete the sign-in in Authentication → Users (OPERATIONS \"Erasure request\").",
+      "audit_one": "{{count}} audit copy blanked.",
+      "audit_other": "{{count}} audit copies blanked.",
+      "files_one": "{{count}} file is deleted by the daily clean-up.",
+      "files_other": "{{count}} files are deleted by the daily clean-up."
+    }
   }
 }
