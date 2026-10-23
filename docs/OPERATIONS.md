@@ -1491,6 +1491,32 @@ then run 0043 and 0044 (after 0012-0042 in order), deploy `notify-parents` with 
 a team member's child (or a test record) and only then tick "Email parents…" (leave the check-in and
 night boxes unticked).
 
+**Before switching on at LIVE (audit fix 20, [DECISIONS.md #538](DECISIONS.md)).** The check-out emails stay off on
+LIVE until every line below is true. Praveen or the Guru switches; tell the lead, who writes the date here.
+
+1. **The paper form carries line E** ([CONSENT_DRAFT.md](phase3/CONSENT_DRAFT.md) "E", #247, check-out wording) in
+   English, Telugu and Hindi, with the form's version printed, and the desk uses that form for every new child.
+2. **Children registered before it:** list them and stop the emails per parent until the parent signs the new line
+   (Student's page → under the parent → "Stop emails to this parent"; "Send emails to this parent again" once signed):
+   ```sql
+   select s.roll_no, min(c.given_at)::date as consent_given
+     from students s join consents c on c.student_id = s.id and c.scope = 'data' and c.revoked_at is null
+    where s.withdrawn_at is null and s.dob > current_date - interval '18 years'
+    group by s.roll_no order by 2;
+   ```
+   Every child whose consent is older than the day the new form came into use is on that list.
+3. **The privacy notice** (website, all three languages) says what parents receive and lists Brevo for these emails
+   ([#539](DECISIONS.md) names the lines); the version on the form matches it.
+4. **Sender:** `BREVO_API_KEY` and `NOTICE_FROM` set on LIVE (done 22-10-2026); `NOTICE_FROM` a verified sender (the
+   class domain authenticated in Brevo once there is one); `NOTICE_REPLY_TO` = the class desk, so "stop" or a
+   question by reply reaches a person. G10 "Email parents" contact filled (the desk's phone or email).
+5. **`notify-parents` on LIVE** is deployed from the current main (Edge Functions → notify-parents → version date).
+6. **One test:** a team member's own address on a test record under 18 (or their own child's, with the form signed):
+   tick "Email parents…" on G10, check that record out, the email arrives within a minute and says the right
+   name, centre and time; try "Unsubscribe" (Gmail shows it only for an authenticated domain) or "Stop emails to this
+   parent", then switch back. Delete the test record if it was one.
+7. Only then tick "Email parents…" with "When the student is checked out in the app"; leave the check-in and night
+   boxes unticked (#246).
 **Switching it off:** untick on G10 (nothing more is queued; waiting rows end as `switched_off`). In
 an emergency, `select cron.unschedule('mridanga-parent-notices');` stops the sending at once; to switch
 on again `select cron.schedule('mridanga-parent-notices', '* * * * *', 'select send_parent_notices()');`
@@ -1499,6 +1525,85 @@ on again `select cron.schedule('mridanga-parent-notices', '* * * * *', 'select s
 **A parent asks to stop:** C8 → under the parent → "Stop emails to this parent" (or they use the
 email's Unsubscribe). Rows are kept 30 days and hold no text; the parent's email is read from the
 guardian row at sending time.
+
+## Weekly email to parents
+
+Once a week, from **Sunday 20:30 India time**, a short email to the parent of a student under 18 **who said yes to
+it** ([DECISIONS.md #530-#539](DECISIONS.md)): that week's visits (days, check-in and check-out times), practice
+minutes and days against the goal, newly learnt syllabus items, a level change and the next event; in the parent's
+language (the "Email language" set under the parent on the student's page, else the child's app language). Never a
+location, a photo or anything about another child. **Off until the Guru switches it on**, and then only for parents
+whose written yes (paper form line D, #531) is recorded on the student's page. It reuses the function, secrets and
+Brevo account of "Parent notices by email" (dry run without `BREVO_API_KEY` / `NOTICE_FROM`).
+
+It goes: job `mridanga-parent-digests` (every 5 minutes) → queues the week from Sunday 20:30 to Monday 20:30 →
+`notify-parents` (`claim_parent_digests`, at most 10 a run, only 07:00-21:30) → Brevo → `finish_parent_digests`.
+Ceilings: 100 digests a day, and 240 parent emails a day for the whole app (consent codes, check-out emails and
+digests together), so Brevo's free 300 keep room for sign-up and password emails. A digest not sent in 48 hours is
+dropped (`expired`).
+
+**For the desk (Student's page, under each parent of a child):**
+- "Parent signed the weekly-email line (D)" — only when the parent has signed line D on the paper form (the button
+  asks once more). Recorded as the parent's consent, with who and when.
+- "Stop the weekly email (parent asked)" — at once; the parent can also use Unsubscribe in the email (that stops it
+  for all their children at that address). Check-out emails are separate.
+- "Send the weekly email again" — the latest week once more (a parent lost it), once a day per parent.
+- "Preview the weekly email" — the screen shows exactly what this child's parent gets for this week so far, built
+  by the server (needs `notify-parents` from the 0058 commit).
+
+**The Guru:** G10 Settings → "Emails to parents" → "Weekly email to parents" → "Switch the weekly email on" (asks
+once more). The same screen shows who would get it and why not, this week's and today's numbers, and the last check.
+Switching off stops every email not sent yet.
+
+**On TEST** (`fhuqykssenuhczdqbafu`), in this order (the lead runs the SQL; Praveen deploys):
+
+1. SQL editor: run `0058_parent_digest.sql`. Check:
+   ```sql
+   select (select value from settings where key = 'parent_digest_enabled') as enabled,
+          to_regclass('public.parent_digests') is not null as queue,
+          (select schedule from cron.job where jobname = 'mridanga-parent-digests') as job,
+          pg_get_constraintdef((select oid from pg_constraint where conname = 'consents_scope_check')) like '%digest%' as scope,
+          (select count(*) from parent_digests) as rows,
+          (select count(*) from cron.job where jobname like 'mridanga%') as jobs;
+   ```
+   Expected: `false | true | */5 * * * * | true | 0 |` one more job than before (13 on a database at 0058 without
+   face scan; TEST with 0070/0071 shows one more).
+2. Deploy the function (CLI logged in on Praveen's PC; the TEST ref only):
+   ```bash
+   npx supabase@2.118.0 functions deploy notify-parents --project-ref fhuqykssenuhczdqbafu --no-verify-jwt --use-api
+   ```
+   `functions list` shows `notify-parents` ACTIVE with a new version.
+3. Dry run, as the Guru on the TEST web app: a test student under 18 with a parent's email (your own second address)
+   and a data consent → Student's page → "Parent signed the weekly-email line (D)" → the line says the weekly email is
+   switched off; "Preview the weekly email" shows the email (in the parent's language). Then the screen "Weekly email
+   to parents" → switch on. To send now instead of waiting for Sunday 20:30, queue last week by hand:
+   ```sql
+   select queue_parent_digests(parent_digest_week());
+   select id, week_start, outcome, tries from parent_digests order by id desc limit 5;
+   select digest_job_at, digest_job_result, digest_run_at, digest_run from parent_notice_status;
+   ```
+   Within 5 minutes (between 07:00 and 21:30 IST): without the Brevo secrets `outcome` = `skipped` and
+   **Edge Functions → notify-parents → Logs** shows `would send digest <id> <language>`; with them `sent` and the
+   email arrives. Try "Send the weekly email again" (a second tap within 24 hours says it was sent again already) and
+   "Stop the weekly email". Switch it off again when done.
+
+**On LIVE:** 0058 (after 0054), deploy `notify-parents` from the same commit (LIVE ref), the OTA with the screens;
+then, before the Guru switches it on: the paper form has line D in en/te/hi, the privacy notice lists the weekly
+email (#539), the check-out email list above (items 3-6) is true for the sender, and one test digest went to a
+team member's test record. Nothing is sent while it is off, so 0058 and the deploy can go first.
+
+**Watching it:**
+```sql
+select coalesce(outcome, 'waiting') as outcome, count(*) from parent_digests
+ where week_start = parent_digest_week() group by 1 order by 1;
+select app_parent_mails_today() as parent_emails_today, parent_digest_room() as digests_left_today;
+```
+`outcome` other than `sent` / `skipped`: `expired` (not sent within 48 hours: the ceilings were full, or Brevo was
+down), `gave_up` (5 tries), `brevo_400` (bad address or sender), `stopped` (the parent's yes was withdrawn),
+`not_eligible` (withdrawn, left, paused, now 18, no data consent), `switched_off`.
+
+**In an emergency:** switch off on the screen, or `select cron.unschedule('mridanga-parent-digests');` (back on:
+`select cron.schedule('mridanga-parent-digests', '*/5 * * * *', 'select send_parent_digests()');`).
 ## Files no announcement uses
 
 Photos and PDFs are removed from Storage by the app when an announcement or one of its files is

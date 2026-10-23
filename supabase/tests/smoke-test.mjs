@@ -4303,7 +4303,7 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
     ['coordinator', ['students', 'follow_up_tasks', 'student_progress', 'visits', 'groups', 'group_members']]]) {
     for (const rel of rels) {
       const { col } = baseTables.find((t) => t.rel === rel);
-      // 0058: parent_digest_enabled is written only through set_parent_digest (#536), so a direct update of it is refused.
+      // 0058: parent_digest_enabled is written only through set_parent_digest (#534), so a direct update of it is refused.
       const only = rel === 'settings' ? " where key <> 'parent_digest_enabled'" : '';
       const r = await tryAs('authenticated', tn[who], `update public.${rel} set ${col} = ${col}${only} returning 1`);
       if (!(r.rows > 0)) positive.push(`${who} ${rel}: ${r.error ?? '0 rows'}`);
