@@ -12,14 +12,18 @@
 //   listed to whoever signs in next) and every
 //   recording expo-audio wrote to the cache (assessment answers, voice notes: Audio/ on Android,
 //   ExpoAudio/ on iOS);
-// - the daily practice reminder and its scheduled notifications (lib/practice-reminder.ts, #402).
+// - the daily practice reminder and its scheduled notifications (lib/practice-reminder.ts, #402);
+// - "may practise while waiting" and the Beginner lessons list of a waiting login (data/waiting.ts, #510);
+// - on the web, everything the service worker keeps for offline use (lib/offline-shell.web.ts, #513).
 
 import { Directory, Paths } from 'expo-file-system';
 import { Image } from 'expo-image';
 import { Platform } from 'react-native';
 
 import { clearSavedCard } from '@/data/my-student';
+import { forgetWaitingPractice } from '@/data/waiting-store';
 import { forgetMyRecordings } from '@/lib/my-recordings';
+import { forgetOfflineShell } from '@/lib/offline-shell';
 import { forgetPracticeReminders } from '@/lib/practice-reminder';
 import { dismissNotifications } from '@/lib/push';
 
@@ -32,10 +36,12 @@ export const TRACE_FOLDERS = ['ImageManipulator', 'DocumentPicker', 'ImagePicker
 /** Clears the traces listed at the top of this file. Never throws; each part is best effort. */
 export async function clearDeviceTraces(): Promise<void> {
   clearSavedCard();
+  forgetWaitingPractice();
   await forgetMyRecordings();
   await Promise.all([
     dismissNotifications(),
     forgetPracticeReminders(),
+    forgetOfflineShell(),
     Image.clearMemoryCache().catch(() => false),
     Image.clearDiskCache().catch(() => false),
   ]);

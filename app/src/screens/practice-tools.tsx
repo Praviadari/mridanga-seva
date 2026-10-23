@@ -102,8 +102,11 @@ type Mode = 'metronome' | 'taal';
 
 /** Props for PracticeTools. */
 export type PracticeToolsProps = {
-  /** student: S5 of a student; staff: the tools only; me: Me > Practice, a staff member's own record (0053, #319). */
-  area: 'student' | 'staff' | 'me';
+  /**
+   * student: S5 of a student; staff: the tools only; me: Me > Practice, a staff member's own record (0053, #319);
+   * waiting: the tools only, for a login waiting for the desk (0057, #510).
+   */
+  area: 'student' | 'staff' | 'me' | 'waiting';
 };
 
 /** The practice tools screen. */

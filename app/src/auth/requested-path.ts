@@ -126,6 +126,13 @@ export function belongsTo(path: string, area: Area): boolean {
       return path === '/staff' || path.startsWith('/staff/');
     case 'subscriber':
       return path.startsWith('/subscriber/');
+    // The website's "Register" link and a shared "Forgot password" link open those screens, not sign-in (audit 22-10-2026
+    // fix 9, docs/DECISIONS.md #514).
+    case 'signedOut':
+      return path === '/sign-up' || path === '/forgot-password';
+    // A login waiting for the desk: the practice screens it may use (#510).
+    case 'pending':
+      return path === '/waiting' || path.startsWith('/waiting/');
     default:
       return false;
   }

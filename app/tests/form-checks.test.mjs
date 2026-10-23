@@ -128,7 +128,8 @@ test('date of birth as the typed text Register a student keeps', () => {
 test('every person-name box uses the name rules', () => {
   const read = (path) => readFileSync(new URL(`../src/${path}`, import.meta.url), 'utf8');
   assert.match(read('app/sign-up.tsx'), /nameError\(name\)/);
-  assert.match(read('app/sign-up.tsx'), /nameError\(diksha, \{ required: false \}\)/);
+  // The Diksha name moved from the sign-up to About you (#514), checked there by data/about.ts below.
+  assert.doesNotMatch(read('app/sign-up.tsx'), /setDiksha|dikshaName/);
   assert.match(read('data/about.ts'), /nameError\(form\.dikshaName/);
   assert.match(read('data/about.ts'), /nameError\(form\.emergencyName/);
   assert.match(read('data/my-profile.ts'), /checkPersonName\(name/);

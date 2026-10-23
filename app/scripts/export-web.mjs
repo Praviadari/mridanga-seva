@@ -27,6 +27,9 @@
 // 7. Writes dist/version.txt (site, commit, time, project), the same build id the app shows.
 // 8. Warns if dist/404.html exists: Cloudflare Pages then stops sending every address to
 //    index.html, which this single-page app needs (docs/DECISIONS.md #15).
+// 9. Writes dist/sw.js from scripts/service-worker.js (docs/DECISIONS.md #513): this build's id and the list of the
+//    site's own files it keeps for offline use (the page as '/', scripts, fonts, icons; never version.txt, _headers,
+//    source maps or the QR reader's WebAssembly), and checks the result parses.
 //
 // Uses only Node's built-in modules (and reads two installed packages). Exits with code 1 if
 // dist/ must not be uploaded.
@@ -39,6 +42,7 @@ import { dirname, extname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { holdsSecretKey, listFiles, SETTING_NAMES, supabaseSettingsFrom } from './bundle-checks.mjs';
+import { serviceWorkerSource, shellFiles } from './lib/offline-shell.mjs';
 
 const DIST = 'dist';
 const FROM = '/assets/node_modules/';
@@ -216,6 +220,17 @@ writeFileSync(
 if (existsSync(join(DIST, '404.html'))) {
   console.warn('export-web: dist/404.html exists; Cloudflare Pages will not fall back to index.html.');
 }
+
+// ---------------------------------------------------------------- 9. the service worker
+const { shell, bytes } = shellFiles(DIST);
+const worker = serviceWorkerSource(readFileSync(join('scripts', 'service-worker.js'), 'utf8'), build, shell);
+try {
+  new Function(worker); // parses only; nothing runs
+} catch (error) {
+  fail(`dist/sw.js would not parse: ${error.message}`);
+}
+writeFileSync(join(DIST, 'sw.js'), worker);
+console.log(`export-web: sw.js keeps ${shell.length} files (${Math.round(bytes / 1024)} KB) for offline use.`);
 console.log(`export-web: ${rewritten} asset paths moved to ${TO}; QR reader zxing-wasm ${zxingVersion} copied.`);
 if (changed) console.warn('export-web: the folder has uncommitted changes; commit first for a site people use.');
 console.log(

@@ -51,3 +51,9 @@
 /zxing/*
   Cache-Control: public, max-age=31536000, immutable
   Content-Type: application/wasm
+
+# The service worker (scripts/service-worker.js, docs/DECISIONS.md #513): always asked fresh, so a new build's worker
+# is found at the next start. It runs under the policy above (script-src and worker-src 'self'; it fetches only this
+# site's own files, connect-src 'self').
+/sw.js
+  Cache-Control: no-cache

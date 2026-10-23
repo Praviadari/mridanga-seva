@@ -50,7 +50,7 @@ function savedMode(): PageMode | null {
 }
 
 /** Props for MantraReader. */
-export type MantraReaderProps = { area: 'student' | 'staff' };
+export type MantraReaderProps = { area: 'student' | 'staff' | 'waiting' };
 
 /** The mantra reader. */
 export function MantraReader({ area }: MantraReaderProps) {
@@ -180,7 +180,7 @@ export function MantraReader({ area }: MantraReaderProps) {
               <Button variant="secondary" icon="add" label={t('mantras.addAnother')} onPress={() => router.push({ pathname: '/staff/mantras/[id]', params: { id: 'new' } })} />
             </View>
           ) : null}
-          <Button icon="practice" label={t('mantras.toPractice')} onPress={() => goBackOr(area === 'staff' ? '/staff/practice' : '/student/practice')} />
+          <Button icon="practice" label={t('mantras.toPractice')} onPress={() => goBackOr(area === 'staff' ? '/staff/practice' : area === 'waiting' ? '/waiting/practice' : '/student/practice')} />
         </>
       )}
     </Screen>
