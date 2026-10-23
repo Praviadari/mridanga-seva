@@ -266,15 +266,20 @@ export function MilestonesView({ items, own }: MilestonesViewProps) {
           ))}
         </View>
       )}
+      {/* The bar's own label is spoken only: the name of the next milestone is written above it. */}
       {upcoming.map((m) => (
-        <ProgressBar
-          key={m.id}
-          done={m.kind === 'hours' ? m.have : Math.min(m.have, m.target)}
-          total={m.kind === 'hours' ? m.target * 60 : m.target}
-          label={t('practiceExtras.milestoneNext', { name: milestoneName(t, m) })}
-          valueText={milestoneSoFar(t, m)}
-          showComplete={false}
-        />
+        <View key={m.id} style={styles.next}>
+          <AppText variant="small" aria-hidden>
+            {t('practiceExtras.milestoneNext', { name: milestoneName(t, m) })}
+          </AppText>
+          <ProgressBar
+            done={m.kind === 'hours' ? m.have : Math.min(m.have, m.target)}
+            total={m.kind === 'hours' ? m.target * 60 : m.target}
+            label={t('practiceExtras.milestoneNext', { name: milestoneName(t, m) })}
+            valueText={milestoneSoFar(t, m)}
+            showComplete={false}
+          />
+        </View>
       ))}
     </View>
   );
@@ -314,6 +319,9 @@ function milestoneSoFar(t: TFunction, m: Milestone): string {
 const styles = StyleSheet.create({
   group: {
     gap: spacing.sm,
+  },
+  next: {
+    gap: spacing.xs,
   },
   medals: {
     flexDirection: 'row',

@@ -130,11 +130,12 @@ export default function PracticeWeekScreen() {
               leading="initials"
               title={row.fullName}
               chips={{ levelId: row.levelId, status: row.status === 'active' ? undefined : (row.status as StudentStatus) }}
-              highlight={row.minutes === 0 ? 'attention' : met ? 'confirmed' : undefined}
+              // Only a met goal is marked: with most of a class at 0 early in the week, marking those would mark every row.
+              highlight={met ? 'confirmed' : undefined}
               details={[
                 row.minutes === 0
                   ? t('practiceExtras.weekNone')
-                  : t('practiceExtras.weekPractised', { time: practiceTime(t, row.minutes), days: row.days, goal: row.goal.days }),
+                  : t('practiceExtras.weekPractised', { time: practiceTime(t, row.minutes), count: row.days, goal: row.goal.days }),
                 ...(met ? [t('practiceExtras.weekGoalMet')] : []),
                 row.lastOn ? t('practiceExtras.weekLastOn', { date: formatDate(row.lastOn) }) : t('practiceExtras.weekNever'),
                 ...(feelings > 0 ? [t('practiceExtras.weekFeelings', { good: row.feelings.good, okay: row.feelings.okay, hard: row.feelings.hard })] : []),
