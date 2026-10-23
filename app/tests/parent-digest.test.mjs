@@ -106,7 +106,7 @@ test('every string in en, te and hi; the consent scope has a name', () => {
 
 test('the screens: the student page has the lines and the preview; G10 links the screen; only the Guru switches', () => {
   const profile = src('app/staff/students/[id].tsx');
-  assert.match(profile, /<GuardianDigestLine digest=\{digests\?\.get\(g\.id\)\} onChanged=\{reloadDigests\} \/>/);
+  assert.match(profile, /<GuardianDigestLine digest=\{digests\?\.get\(g\.id\)\} onChanged=\{reloadDigestsAndConsents\} \/>/);
   assert.match(profile, /pathname: '\/staff\/parent-digest', params: \{ student: student\.id \}/);
   assert.match(src('app/staff/settings.tsx'), /router\.push\('\/staff\/parent-digest'\)/);
   const screen = src('app/staff/parent-digest.tsx');

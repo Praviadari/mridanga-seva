@@ -6869,6 +6869,9 @@ in this package).
 
 ## 531. Opt-in: the parent's own written yes, recorded as a consent with scope `digest` — 23 Oct 2026
 
+**Status: approved by the lead on 23 Oct 2026 (decision under Praveen's delegation of 23 Oct): opt-in per guardian, consent
+scope `digest` recorded at the desk from the parent's written yes (form line D); nobody gets one until then.**
+
 **Context.** The check-out email is opt-out under the class data consent, with the line on the paper form (#227,
 #230, #247). The weekly email carries more (practice, progress, events): a purpose of its own. The DPDP Act asks
 consent to be specific to a purpose (s.6(1)); the Rules are read strictly, without a lawyer (#399).

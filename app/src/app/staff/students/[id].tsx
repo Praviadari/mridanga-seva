@@ -79,6 +79,10 @@ function StudentProfileScreenContent() {
     else if (!profile || !staff) setLoaded(null);
     else setLoaded({ profile, staff, staffNames: new Map(staff.map((s) => [s.id, s.fullName])) });
   }, [id, setLoaded]);
+  // A recorded or withdrawn yes is a consent: the consent lines below show it at once.
+  const reloadDigestsAndConsents = useCallback(async () => {
+    await Promise.all([reloadDigests(), load()]);
+  }, [reloadDigests, load]);
 
   // Reload when coming back from the call screen, so the new call shows at once.
   useFocusEffect(
@@ -219,7 +223,7 @@ function StudentProfileScreenContent() {
                 {[relationName(t, g.relation), g.phone, g.email].filter(Boolean).map((part) => ` · ${part}`).join('')}
               </AppText>
               <GuardianNoticeLine notice={notices?.get(g.id)} onChanged={reloadNotices} />
-              <GuardianDigestLine digest={digests?.get(g.id)} onChanged={reloadDigests} />
+              <GuardianDigestLine digest={digests?.get(g.id)} onChanged={reloadDigestsAndConsents} />
             </Fragment>
           ))}
           {notices === null ? <Notice tone="error">{t('parentNotices.loadFailed')}</Notice> : null}
