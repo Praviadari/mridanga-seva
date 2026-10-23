@@ -50,7 +50,8 @@ export const MAX_SELF_SCAN_TRIES = 3;
 export const LOCATION_TIMEOUT_MS = 8000;
 /**
  * The Google Cloud project number Play Integrity tokens are made for (OPERATIONS "Face scan: integrity
- * check" step 1; not a secret: it is inside every APK). Empty until Praveen makes the project (after the test
- * day): the self-scan then says "Ask a coordinator" (not_configured) and nothing else changes.
+ * check" step 1; not a secret: it is inside every APK). Project `mridanga-seva` (the class's Firebase project, Play
+ * Integrity API enabled), read from its settings page 23-10-2026. Empty = the self-scan says "Ask a coordinator"
+ * (not_configured) and nothing else changes.
  */
-export const PLAY_INTEGRITY_CLOUD_PROJECT = '';
+export const PLAY_INTEGRITY_CLOUD_PROJECT = '805380801184';

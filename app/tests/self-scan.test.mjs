@@ -140,7 +140,9 @@ test('settings: one location read of at most 8 s, 3 pictures, 3 tries; no Cloud 
   assert.equal(S.LOCATION_TIMEOUT_MS, 8000);
   assert.equal(S.VERIFY_FRAMES, 3);
   assert.equal(S.MAX_SELF_SCAN_TRIES, 3);
-  assert.equal(S.PLAY_INTEGRITY_CLOUD_PROJECT, '');
+  // The Cloud project number (OPERATIONS "Face scan: integrity check" step 1): digits only, as integrity.ts requires.
+  assert.equal(S.PLAY_INTEGRITY_CLOUD_PROJECT, '805380801184');
+  assert.match(S.PLAY_INTEGRITY_CLOUD_PROJECT, /^\d{6,20}$/);
 });
 
 // ---------------------------------------------------------------- guards against drift (app ↔ 0071 ↔ verify-integrity)

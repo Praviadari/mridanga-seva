@@ -1516,7 +1516,9 @@ decode the token with a **service account**, checks package, signing certificate
 `MEETS_DEVICE_INTEGRITY`, and gives the phone a one-time pass for the self-scan (120 s). Google charges
 nothing up to 10,000 decodes a day per Cloud project.
 
-**1. Google Cloud project (Praveen, about 15 minutes, ₹0).** Use the class's Google account with 2-step
+**1. Google Cloud project (Praveen, about 15 minutes, ₹0).** **Status 23-10-2026:** the project is the class's existing Firebase project
+`mridanga-seva` (number **805380801184**, in `face-settings.ts`); the Play Integrity API is enabled. Left: steps 3-7
+(the `integrity-decoder-test` service account, its key as the TEST secret, the certificate and package secrets). Use the class's Google account with 2-step
 verification on (audit: every owner account has 2FA and a second owner), not a personal one.
 1. console.cloud.google.com → project picker → **New project** → name `mridanga-seva` → Create. Note the
    **project number** (Dashboard → Project info): the app sends it with every integrity request (P3-5 puts
