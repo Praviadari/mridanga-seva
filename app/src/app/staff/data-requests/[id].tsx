@@ -131,7 +131,7 @@ function DataRequestDetail() {
       {request === 'not_found' ? <Notice tone="info">{t('dataRequests.notFound')}</Notice> : null}
       {r ? (
         <>
-          <Section icon="audit" title={`${r.ref} · ${t(`dataRights.kinds.${r.kind}`)}`}>
+          <Section icon="audit" title={`${r.ref} · ${t(`dataRequests.kinds.${r.kind}`)}`}>
             <DetailGrid
               details={[
                 { label: t('dataRequests.fields.status'), value: t(`dataRights.statuses.${r.status}`) },

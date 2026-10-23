@@ -6,6 +6,7 @@
 import type { TFunction } from 'i18next';
 
 import type { MyDataSummary } from '@/data/data-rights';
+import { labelOf, type OptionList, type OptionSets } from '@/data/options';
 import type { StudentStatus } from '@/data/student-overview';
 import { idTypeName, levelName, relationName, statusName } from '@/i18n/labels';
 
@@ -15,6 +16,8 @@ export type SummaryRow = { label: string; value: string };
 export type SummarySection = { key: string; title: string; rows: SummaryRow[] };
 /** How dates are written (src/lib/dates.ts in the app; fixed in the tests). */
 export type DateFormat = { date: (isoDate: string) => string; dateTime: (timestamp: string) => string };
+/** The option lists (my_about) and the reader's language, so About you shows labels, not codes; codes without them. */
+export type OptionLabels = { sets: OptionSets; language: string };
 
 /** The services that handle data for the class, as in the privacy notice's "Services that handle data for us". */
 export const PROCESSORS = ['supabase', 'expo', 'firebase', 'brevo', 'cloudflare', 'zoho', 'youtube'] as const;
@@ -22,9 +25,12 @@ export const PROCESSORS = ['supabase', 'expo', 'firebase', 'brevo', 'cloudflare'
 const shown = (value: unknown): string => (value === null || value === undefined || value === '' ? '—' : String(value));
 
 /** The summary's sections, in the order the screen and the page show them. Empty sections are left out. */
-export function summarySections(t: TFunction, s: MyDataSummary, fmt: DateFormat): SummarySection[] {
+export function summarySections(t: TFunction, s: MyDataSummary, fmt: DateFormat, labels?: OptionLabels): SummarySection[] {
   const day = (v: string | null | undefined) => (v ? fmt.date(v.slice(0, 10)) : '—');
   const moment = (v: string | null | undefined) => (v ? fmt.dateTime(v) : '—');
+  const label = (list: OptionList, code: unknown) =>
+    typeof code === 'string' && code ? (labels ? labelOf(labels.sets[list], code, labels.language) : code) : '';
+  const language = (code: string) => (['en', 'te', 'hi'].includes(code) ? t(`dataRights.languages.${code as 'en' | 'te' | 'hi'}`) : code);
   const sections: SummarySection[] = [];
 
   sections.push({
@@ -35,7 +41,7 @@ export function summarySections(t: TFunction, s: MyDataSummary, fmt: DateFormat)
       { label: t('dataRights.fields.email'), value: shown(s.login.email) },
       { label: t('dataRights.fields.phone'), value: shown(s.login.phone) },
       { label: t('dataRights.fields.role'), value: t(`dataRights.roles.${s.login.role === 'guru' || s.login.role === 'coordinator' ? s.login.role : 'student'}`) },
-      { label: t('dataRights.fields.language'), value: shown(s.login.language) },
+      { label: t('dataRights.fields.language'), value: language(s.login.language) },
       { label: t('dataRights.fields.since'), value: day(s.login.created_at) },
     ],
   });
@@ -65,20 +71,22 @@ export function summarySections(t: TFunction, s: MyDataSummary, fmt: DateFormat)
 
   if (s.about) {
     const a = s.about;
-    const list = (v: unknown) => (Array.isArray(v) && v.length ? v.join(', ') : '—');
-    sections.push({
-      key: 'about',
-      title: t('dataRights.summary.about'),
-      rows: [
-        { label: t('dataRights.fields.dob'), value: day(a.dob as string | null) },
-        { label: t('dataRights.fields.dikshaName'), value: shown(a.diksha_name) },
-        { label: t('dataRights.fields.emergency'), value: [a.emergency_relation, a.emergency_name, a.emergency_phone].filter(Boolean).join(', ') || '—' },
-        { label: t('dataRights.fields.heardVia'), value: shown(a.heard_other ?? a.heard_via) },
-        { label: t('dataRights.fields.occupation'), value: shown(a.occupation_other ?? a.occupation) },
-        { label: t('dataRights.fields.service'), value: list(a.service_areas) },
-        { label: t('dataRights.fields.learn'), value: list(a.learn_interests) },
-      ],
-    });
+    const list = (name: OptionList, v: unknown, other?: unknown) =>
+      [...(Array.isArray(v) ? v.map((c) => label(name, c)) : []), typeof other === 'string' ? other : ''].filter(Boolean).join(', ');
+    // Only what was given: a date of birth kept on the record, or an answer skipped, is not listed again.
+    const rows = [
+      { label: t('dataRights.fields.dob'), value: a.dob ? day(a.dob as string) : '' },
+      { label: t('dataRights.fields.dikshaName'), value: typeof a.diksha_name === 'string' ? a.diksha_name : '' },
+      {
+        label: t('dataRights.fields.emergency'),
+        value: [label('relation', a.emergency_relation), a.emergency_name, a.emergency_phone].filter(Boolean).join(', '),
+      },
+      { label: t('dataRights.fields.heardVia'), value: list('source', a.heard_via ? [a.heard_via] : [], a.heard_other) },
+      { label: t('dataRights.fields.occupation'), value: list('occupation', a.occupation ? [a.occupation] : [], a.occupation_other) },
+      { label: t('dataRights.fields.service'), value: list('service_area', a.service_areas, a.service_other) },
+      { label: t('dataRights.fields.learn'), value: list('instrument', a.learn_interests) },
+    ].filter((r) => r.value);
+    if (rows.length) sections.push({ key: 'about', title: t('dataRights.summary.about'), rows });
   }
 
   if (s.guardians?.length) {
@@ -92,11 +100,25 @@ export function summarySections(t: TFunction, s: MyDataSummary, fmt: DateFormat)
     });
   }
 
-  if (s.consents?.length) {
+  // An adult's own consent is the privacy notice accepted at sign-up or at the desk (About you's notice_version, 0048);
+  // a child's are the parent's consents.
+  const noticeRow: SummaryRow[] =
+    typeof s.about?.notice_version === 'string'
+      ? [
+          {
+            label: t('dataRights.noticeAccepted'),
+            value: t('dataRights.noticeAcceptedLine', {
+              version: s.about.notice_version,
+              date: day(typeof s.about.notice_accepted_at === 'string' ? s.about.notice_accepted_at : null),
+            }),
+          },
+        ]
+      : [];
+  if (s.consents?.length || noticeRow.length) {
     sections.push({
       key: 'consents',
       title: t('dataRights.summary.consents'),
-      rows: s.consents.map((c) => ({
+      rows: [...noticeRow, ...(s.consents ?? []).map((c) => ({
         label: t(`dataRights.consentScope.${c.scope}`),
         value: [
           t('dataRights.consentGiven', { date: day(c.given_at), how: t(`dataRights.consentMethod.${c.method}`) }),
@@ -106,7 +128,7 @@ export function summarySections(t: TFunction, s: MyDataSummary, fmt: DateFormat)
         ]
           .filter(Boolean)
           .join(' · '),
-      })),
+      }))],
     });
   }
 
@@ -117,7 +139,7 @@ export function summarySections(t: TFunction, s: MyDataSummary, fmt: DateFormat)
       value: s.visits.count ? t('dataRights.visitsLine', { count: s.visits.count, first: day(s.visits.first), last: day(s.visits.last) }) : '0',
     });
   }
-  if (s.practice) activity.push({ label: t('dataRights.fields.practice'), value: t('dataRights.practiceLine', { count: s.practice.count, minutes: s.practice.minutes }) });
+  if (s.practice) activity.push({ label: t('dataRights.fields.practice'), value: s.practice.count ? t('dataRights.practiceLine', { count: s.practice.count, minutes: s.practice.minutes }) : '0' });
   if (s.syllabus_ticks !== undefined) activity.push({ label: t('dataRights.fields.ticks'), value: String(s.syllabus_ticks) });
   if (s.level_history) activity.push({ label: t('dataRights.fields.levelChanges'), value: String(s.level_history.length) });
   if (s.follow_up_calls) {

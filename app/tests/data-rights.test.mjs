@@ -132,6 +132,26 @@ test('#550: the summary shows the record, consents with dates, activity and ever
   assert.deepEqual(staff.map((s) => s.key), ['login', 'activity', 'processors']);
 });
 
+test('#550 (TEST walk 23-10): About you shows labels, the language its name, an adult\'s notice as their consent', () => {
+  const sets = { gender: [], instrument: [{ code: 'mridanga', en: 'Mṛdaṅga', te: 'మృదంగం', hi: null }], source: [], occupation: [],
+    service_area: [{ code: 'kirtan', en: 'Kirtan', te: null, hi: null }], relation: [{ code: 'mother', en: 'Mother', te: 'అమ్మ', hi: null }] };
+  const adult = { ...summary, about: { ...summary.about, learn_interests: ['mridanga'], notice_version: '0.2-draft', notice_accepted_at: '2026-10-01T05:00:00Z' } };
+  const sections = page.summarySections(t, adult, fmt, { sets, language: 'te' });
+  const about = sections.find((s) => s.key === 'about').rows;
+  assert.equal(about.find((r) => r.label === 'dataRights.fields.learn').value, 'మృదంగం');
+  assert.equal(about.find((r) => r.label === 'dataRights.fields.service').value, 'Kirtan'); // no te label: English
+  assert.match(about.find((r) => r.label === 'dataRights.fields.emergency').value, /^అమ్మ, Asha/);
+  assert.ok(!about.some((r) => r.label === 'dataRights.fields.dikshaName')); // not given: not listed
+  assert.equal(sections.find((s) => s.key === 'login').rows.find((r) => r.label === 'dataRights.fields.language').value, 'dataRights.languages.te');
+  const consents = sections.find((s) => s.key === 'consents').rows;
+  assert.equal(consents[0].label, 'dataRights.noticeAccepted');
+  assert.match(consents[0].value, /0\.2-draft/);
+  // Practice reads as a plural family; my requests are filtered to my own (the Guru's rules read all).
+  assert.ok(en.has('dataRights.practiceLine_one') && en.has('dataRights.practiceLine_other'));
+  assert.match(src('data/data-rights.ts'), /\.eq\('made_by', myId\)\s*\.eq\('profile_id', myId\)/);
+  assert.match(src('app/staff/data-requests/index.tsx'), /dataRequests\.kinds\./);
+});
+
 test('#550: the printable page escapes every value and holds no script; the JSON is the summary itself', () => {
   const html = page.myDataPageHtml('My data', ['As on now'], page.summarySections(t, summary, fmt), ['Contact <x>']);
   assert.ok(html.includes('Dara &lt;b&gt;Fiftynine&lt;/b&gt;'));

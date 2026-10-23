@@ -4185,7 +4185,6 @@
     "consentNotice": "नोटिस {{version}}",
     "consentRevoked": "{{date}} को वापस ली",
     "visitsLine": "{{count}}, पहली {{first}}, अंतिम {{last}}",
-    "practiceLine": "{{count}} प्रविष्टियाँ, {{minutes}} मिनट",
     "callsLine": "{{count}}, अंतिम {{last}}",
     "yes": "हाँ",
     "no": "नहीं",
@@ -4249,7 +4248,16 @@
       "not_pending": "यह स्टाफ़ का साइन-इन है: मालिक इसे SQL एडिटर में हटाते हैं (OPERATIONS \"Staff who leave\")।",
       "not_yourself": "आप अपना ही साइन-इन नहीं मिटा सकते।",
       "has_student_record": "यह साइन-इन एक विद्यार्थी रिकॉर्ड पर है: रिकॉर्ड ही मिटाएँ।"
-    }
+    },
+    "languages": {
+      "en": "English",
+      "te": "తెలుగు",
+      "hi": "हिन्दी"
+    },
+    "noticeAccepted": "प्राइवेसी नोटिस (आपकी अपनी सहमति)",
+    "noticeAcceptedLine": "{{date}} को स्वीकार किया, संस्करण {{version}}",
+    "practiceLine_one": "{{count}} प्रविष्टि, {{minutes}} मिनट",
+    "practiceLine_other": "{{count}} प्रविष्टियाँ, {{minutes}} मिनट"
   },
   "dataRequests": {
     "title": "डेटा अनुरोध",
@@ -4340,6 +4348,15 @@
       "audit_other": "{{count}} ऑडिट प्रतियाँ खाली की गईं।",
       "files_one": "{{count}} फ़ाइल दैनिक सफ़ाई में मिटेगी।",
       "files_other": "{{count}} फ़ाइलें दैनिक सफ़ाई में मिटेंगी।"
+    },
+    "kinds": {
+      "access": "डेटा की प्रति",
+      "correction": "सुधार",
+      "erasure": "मिटाना",
+      "withdraw_photo": "फ़ोटो सहमति वापसी",
+      "withdraw_data": "सहमति वापसी",
+      "grievance": "शिकायत",
+      "nominate": "नामित व्यक्ति"
     }
   }
 }

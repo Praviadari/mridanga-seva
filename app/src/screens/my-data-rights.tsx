@@ -46,19 +46,22 @@ import {
   type RequestFormErrors,
   type RequestKind,
 } from '@/data/data-rights';
+import type { OptionSets } from '@/data/options';
+import { fetchMyAbout } from '@/data/about';
 import { CAN_PRINT, printPage, saveJsonFile } from '@/lib/data-export';
 import { formatDate, formatDateTime } from '@/lib/dates';
 import { myDataPageHtml, PRINT_CSS, summarySections } from '@/lib/my-data-page';
 import { spacing } from '@/theme/use-theme';
 
-type Loaded = { summary: MyDataSummary; requests: DataRequest[] };
+type Loaded = { summary: MyDataSummary; requests: DataRequest[]; options: OptionSets | null };
 const EMPTY_FORM: RequestForm = { kind: null, field: '', body: '' };
 
 /** My data and rights. */
 export function MyDataRightsScreen() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { profile } = useAuth();
   const isGuru = profile?.role === 'guru';
+  const myId = profile?.id ?? '';
   // undefined = loading, null = could not load.
   const [loaded, setLoaded] = useState<Loaded | 'not_set_up' | null | undefined>(undefined);
   const [showAll, setShowAll] = useState(false);
@@ -70,10 +73,11 @@ export function MyDataRightsScreen() {
   const [asking, setAsking] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const [summary, requests] = await Promise.all([fetchMyDataSummary(), fetchMyRequests()]);
+    // my_about's option lists turn About you's codes into labels; without them (staff) the codes show.
+    const [summary, requests, about] = await Promise.all([fetchMyDataSummary(), fetchMyRequests(myId), fetchMyAbout()]);
     if (summary === 'not_set_up' || requests === 'not_set_up') setLoaded('not_set_up');
-    else setLoaded(summary && requests ? { summary, requests } : null);
-  }, []);
+    else setLoaded(summary && requests ? { summary, requests, options: about && about !== 'missing' ? about.options : null } : null);
+  }, [myId]);
 
   useFocusEffect(
     useCallback(() => {
@@ -82,9 +86,13 @@ export function MyDataRightsScreen() {
   );
 
   const summary = loaded && loaded !== 'not_set_up' ? loaded.summary : null;
+  const options = loaded && loaded !== 'not_set_up' ? loaded.options : null;
   const sections = useMemo(
-    () => (summary ? summarySections(t, summary, { date: formatDate, dateTime: formatDateTime }) : []),
-    [summary, t],
+    () =>
+      summary
+        ? summarySections(t, summary, { date: formatDate, dateTime: formatDateTime }, options ? { sets: options, language: i18n.language } : undefined)
+        : [],
+    [summary, options, t, i18n.language],
   );
 
   // The kinds this person may ask for: a photo withdrawal only with a photo consent, a data withdrawal only with a record.

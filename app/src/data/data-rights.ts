@@ -130,9 +130,17 @@ export function daysLeft(answerBy: string, now = new Date()): number {
   return Math.ceil((new Date(answerBy).getTime() - now.getTime()) / 86_400_000);
 }
 
-/** The person's own requests, newest first. null = could not load; 'not_set_up' before 0059 has run. */
-export async function fetchMyRequests(): Promise<DataRequest[] | null | 'not_set_up'> {
-  const { data, error } = await supabase.from('data_requests').select(OWN_COLUMNS).order('created_at', { ascending: false });
+/**
+ * The person's own requests (made by them, about them), newest first. Filtered here too: the Guru's row-level
+ * security reads every request. null = could not load; 'not_set_up' before 0059 has run.
+ */
+export async function fetchMyRequests(myId: string): Promise<DataRequest[] | null | 'not_set_up'> {
+  const { data, error } = await supabase
+    .from('data_requests')
+    .select(OWN_COLUMNS)
+    .eq('made_by', myId)
+    .eq('profile_id', myId)
+    .order('created_at', { ascending: false });
   if (error) return isMissing(error.code) ? 'not_set_up' : null;
   return (data as Row[]).map(toRequest);
 }

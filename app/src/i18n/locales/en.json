@@ -4185,7 +4185,6 @@
     "consentNotice": "notice {{version}}",
     "consentRevoked": "withdrawn {{date}}",
     "visitsLine": "{{count}}, first {{first}}, last {{last}}",
-    "practiceLine": "{{count}} entries, {{minutes}} minutes",
     "callsLine": "{{count}}, last {{last}}",
     "yes": "Yes",
     "no": "No",
@@ -4249,7 +4248,16 @@
       "not_pending": "This is a staff sign-in: the owner removes it in the SQL editor (OPERATIONS \"Staff who leave\").",
       "not_yourself": "You cannot erase your own sign-in.",
       "has_student_record": "This sign-in is on a student record: erase the record instead."
-    }
+    },
+    "languages": {
+      "en": "English",
+      "te": "తెలుగు (Telugu)",
+      "hi": "हिन्दी (Hindi)"
+    },
+    "noticeAccepted": "Privacy notice (your own consent)",
+    "noticeAcceptedLine": "accepted {{date}}, version {{version}}",
+    "practiceLine_one": "{{count}} entry, {{minutes}} minutes",
+    "practiceLine_other": "{{count}} entries, {{minutes}} minutes"
   },
   "dataRequests": {
     "title": "Data requests",
@@ -4340,6 +4348,15 @@
       "audit_other": "{{count}} audit copies blanked.",
       "files_one": "{{count}} file is deleted by the daily clean-up.",
       "files_other": "{{count}} files are deleted by the daily clean-up."
+    },
+    "kinds": {
+      "access": "Copy of data",
+      "correction": "Correction",
+      "erasure": "Erasure",
+      "withdraw_photo": "Photo consent withdrawn",
+      "withdraw_data": "Consent withdrawn",
+      "grievance": "Complaint",
+      "nominate": "Nominee"
     }
   }
 }

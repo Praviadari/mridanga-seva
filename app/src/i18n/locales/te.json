@@ -4185,7 +4185,6 @@
     "consentNotice": "నోటీసు {{version}}",
     "consentRevoked": "{{date}} న ఉపసంహరించారు",
     "visitsLine": "{{count}}, మొదట {{first}}, చివర {{last}}",
-    "practiceLine": "{{count}} నమోదులు, {{minutes}} నిమిషాలు",
     "callsLine": "{{count}}, చివర {{last}}",
     "yes": "అవును",
     "no": "లేదు",
@@ -4249,7 +4248,16 @@
       "not_pending": "ఇది సిబ్బంది సైన్-ఇన్: యజమాని SQL ఎడిటర్‌లో తొలగిస్తారు (OPERATIONS \"Staff who leave\").",
       "not_yourself": "మీ స్వంత సైన్-ఇన్‌ను తొలగించలేరు.",
       "has_student_record": "ఈ సైన్-ఇన్ ఒక విద్యార్థి రికార్డుపై ఉంది: రికార్డునే తొలగించండి."
-    }
+    },
+    "languages": {
+      "en": "English",
+      "te": "తెలుగు",
+      "hi": "हिन्दी"
+    },
+    "noticeAccepted": "ప్రైవసీ నోటీసు (మీ స్వంత సమ్మతి)",
+    "noticeAcceptedLine": "{{date}} న అంగీకరించారు, వెర్షన్ {{version}}",
+    "practiceLine_one": "{{count}} నమోదు, {{minutes}} నిమిషాలు",
+    "practiceLine_other": "{{count}} నమోదులు, {{minutes}} నిమిషాలు"
   },
   "dataRequests": {
     "title": "డేటా అభ్యర్థనలు",
@@ -4340,6 +4348,15 @@
       "audit_other": "{{count}} ఆడిట్ కాపీలు ఖాళీ చేయబడ్డాయి.",
       "files_one": "{{count}} ఫైల్ రోజువారీ క్లీన్-అప్‌లో తొలగించబడుతుంది.",
       "files_other": "{{count}} ఫైళ్లు రోజువారీ క్లీన్-అప్‌లో తొలగించబడతాయి."
+    },
+    "kinds": {
+      "access": "డేటా కాపీ",
+      "correction": "సవరణ",
+      "erasure": "తొలగింపు",
+      "withdraw_photo": "ఫోటో సమ్మతి ఉపసంహరణ",
+      "withdraw_data": "సమ్మతి ఉపసంహరణ",
+      "grievance": "ఫిర్యాదు",
+      "nominate": "నామినీ"
     }
   }
 }

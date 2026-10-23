@@ -95,7 +95,7 @@ export default function DataRequestsScreen() {
     return (
       <ListRow
         key={r.id}
-        title={`${r.ref} · ${t(`dataRights.kinds.${r.kind}`)}`}
+        title={`${r.ref} · ${t(`dataRequests.kinds.${r.kind}`)}`}
         details={[who, when, t(`dataRequests.from.${r.source}`) + (r.askedBy === 'self' ? '' : ` · ${t(`dataRequests.askedBy.${r.askedBy}`)}`)]}
         highlight={r.status === 'open' && left <= 3 ? 'attention' : undefined}
         onPress={() => router.push({ pathname: '/staff/data-requests/[id]', params: { id: r.id } })}
@@ -134,7 +134,7 @@ export default function DataRequestsScreen() {
             <ChoiceGroup
               label={t('dataRights.kindLabel')}
               chips
-              choices={ALL_KINDS.map((k) => ({ value: k, label: t(`dataRights.kinds.${k}`) }))}
+              choices={ALL_KINDS.map((k) => ({ value: k, label: t(`dataRequests.kinds.${k}`) }))}
               value={form.kind}
               onChange={(kind) => setForm((f) => ({ ...f, kind }))}
               error={errors.kind ? t(errors.kind) : undefined}
