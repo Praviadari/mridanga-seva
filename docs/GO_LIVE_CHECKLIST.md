@@ -103,7 +103,8 @@ with m(migration, present) as (values
   ('0051', to_regclass('public.minor_signups') is not null),
   ('0052', to_regclass('public.practice_plans') is not null),
   ('0053', exists (select 1 from pg_proc where proname = 'link_staff_record' and pronamespace = 'public'::regnamespace)),
-  ('0054', exists (select 1 from pg_proc where proname = 'undo_import' and pronamespace = 'public'::regnamespace))
+  ('0054', exists (select 1 from pg_proc where proname = 'undo_import' and pronamespace = 'public'::regnamespace)),
+  ('0058', to_regclass('public.parent_digests') is not null)
 )
 select migration, case when present then 'yes' else 'no' end as present from m
 union all
@@ -173,6 +174,7 @@ a second paste. So pasting a file twice by mistake is harmless; still, never do 
 | M0052 | `0052_practice_more.sql` | Praveen · dashboard | No rows; probe `0052`, `MISSING` `none` | More home practice ([#400-#405](DECISIONS.md)): adds the table `practice_plans` (per level: the weekly goal, 4 x 15 until changed, and up to three things to practise; staff write, a student reads their own level's), `practice_goals` with `set_my_practice_goal` (a student's own goal), `practice_mantras` (the mantra before practice, Guru and Ishtagoshti editors write; nothing seeded) and the read-only function `practice_days` (a student's minutes per day with their goal, row-level security of the asker). No existing row or function changes; safe to run twice. **TEST first** (`fhuqyk…`), then LIVE, **before** the OTA and web upload that use it (without it the app shows no plan and no week card, and the plan editor cannot load). After 0051. **Done on LIVE 22 Oct 2026** (Praveen, main 7c846ed file): "Success. No rows returned"; `practice_plans` and `practice_mantras` present |
 | M0053 | `0053_staff_own_record.sql` | Praveen · dashboard | No rows; probe `0053`, `MISSING` `none` | Coordinators are students too (placeholder 0061 on branch `staff-own-record`, renumbered 22-10-2026) ([#316-#321](DECISIONS.md)): `link_staff_record` (the Guru links a coordinator's login to their own student record; the role stays); `my_student_id` covers staff, so practice and face enrolment work on an own record; **nobody records about their own record** (check-in or out by name, QR or Mark attendance, ticks, level, promotion, assessment reviews, calls: error `own_record`; an event list leaves the own row as it is); nobody is their own mentor (`own_mentor`); a record with a staff login is not withdrawn or erased while linked (`staff_login_linked`). Changes no stored row. TEST first (NOTES.md "13-10-2026 — Coordinators are students too" TEST-run pack). After 0052. **Done on LIVE 22 Oct 2026** (Praveen, main 47f3c5f file): `link_staff_record` present; 1 staff login with its own record (coordinator 5cd712ff…); jobs 12 |
 | M0054 | `0054_after_launch_forms.sql` (placeholder 0062 on branch `after-launch-forms`, renumbered 22-10-2026) | Praveen · dashboard | No rows; probe `0054`, `MISSING` `none`. **Changes stored rows:** run OPERATIONS "Phones that are not E.164" step 1 before and step 2 after; the counts must match | After-launch forms ([#322, #324-#326, #328, #329](DECISIONS.md)): creates saved once per request id (`request_id` on 10 tables; twins of `record_fund_entry`, `log_call`, `log_practice`); an approved material's file only the Guru deletes; `change_event_attendance`; the Guru's `delete_student_record` and `undo_import` (`students.import_id`); **phones kept as E.164**: stored national numbers on students, guardians, profiles and Ishtagoshti subscribers are rewritten once (`+91`; a number it cannot read stays as it is, OPERATIONS `Phones that are not E.164`); at most 3 parent codes a day to one address. **After the launch**, with the app update that uses it. **Done on LIVE 22 Oct 2026** (Praveen): step 1 before = logins 11 and students 8, all already E.164 (no guardian or Ishtagoshti phones), so the rewrite changed 0 rows; after: `request_id` on 11 tables, `undo_import` present, students not E.164 0 |
+| M0058 | `0058_parent_digest.sql` | Praveen · dashboard | No rows; probe `0058`, `MISSING` `none`; verification row 3 `13 of 13` | **The weekly email to parents** ([#530-#539](DECISIONS.md)): new table `parent_digests` (empty), new setting `parent_digest_enabled` = **false**, consent scope `digest` (the parent's own written yes, opt-in), four new columns on `parent_notice_status`, new job `mridanga-parent-digests` (every 5 minutes; while off it only answers `off`), the staff functions (`set_parent_digest` the Guru, `guardian_digest_status`, `set_guardian_digest`, `resend_parent_digest`, `preview_parent_digest`, `parent_digest_overview`) and the Edge Function's `claim_parent_digests` / `finish_parent_digests` / `stop_parent_digests`. **No existing function is replaced** (`guard_setting` and `send_parent_notices` stay as they are); the `consents.scope` check gains `digest`. Changes no stored row. **Order:** TEST first; `notify-parents` deployed from the same commit (C7) before the Guru switches it on (OPERATIONS "Weekly email to parents"); then the OTA with the screen. After 0054 (it does not need 0055-0057). Safe to run twice |
 
 **A file newer than 0054 on main:** the replay's first check fails until this table lists it. Add it
 here, with its own steps, then run it last.
@@ -312,7 +314,8 @@ with m(migration, present) as (values
   ('0051', to_regclass('public.minor_signups') is not null),
   ('0052', to_regclass('public.practice_plans') is not null),
   ('0053', exists (select 1 from pg_proc where proname = 'link_staff_record' and pronamespace = 'public'::regnamespace)),
-  ('0054', exists (select 1 from pg_proc where proname = 'undo_import' and pronamespace = 'public'::regnamespace))
+  ('0054', exists (select 1 from pg_proc where proname = 'undo_import' and pronamespace = 'public'::regnamespace)),
+  ('0058', to_regclass('public.parent_digests') is not null)
 ),
 last_in_order as (select coalesce(max(a.migration), 'before 0010') as v from m a
   where a.present and not exists (select 1 from m b where b.migration <= a.migration and not b.present)),
@@ -320,13 +323,14 @@ missing as (select coalesce(string_agg(a.migration, ' ' order by a.migration), '
   where not a.present and exists (select 1 from m b where b.present and b.migration > a.migration)),
 jobs(name) as (values ('mridanga-status-refresh'), ('mridanga-close-visits'), ('mridanga-push'), ('mridanga-inbox-cleanup'),
   ('mridanga-assessments'), ('mridanga-events-polls'), ('mridanga-duty'), ('mridanga-access-log-purge'),
-  ('mridanga-cron-history-purge'), ('mridanga-orphan-files'), ('mridanga-parent-notices'), ('mridanga-minor-signups')),
+  ('mridanga-cron-history-purge'), ('mridanga-orphan-files'), ('mridanga-parent-notices'), ('mridanga-minor-signups'),
+  ('mridanga-parent-digests')),
 checks(sort, check_name, ok, found, expected) as (
-  select 1, 'last migration', (select v from last_in_order) = '0054', (select v from last_in_order), '0054'
+  select 1, 'last migration', (select v from last_in_order) = '0058', (select v from last_in_order), '0058'
   union all select 2, 'migrations missing', (select v from missing) = 'none', (select v from missing), 'none'
   union all select 3, 'scheduled jobs',
-    (select count(*) from jobs j join cron.job c on c.jobname = j.name and c.active) = 12,
-    (select count(*) from jobs j join cron.job c on c.jobname = j.name and c.active)::text || ' of 12', '12 of 12 (active)'
+    (select count(*) from jobs j join cron.job c on c.jobname = j.name and c.active) = 13,
+    (select count(*) from jobs j join cron.job c on c.jobname = j.name and c.active)::text || ' of 13', '13 of 13 (active)'
   union all select 4, 'other mridanga jobs', not exists (select 1 from cron.job where jobname like 'mridanga%' and jobname not in (select name from jobs)),
     coalesce((select string_agg(jobname, ', ') from cron.job where jobname like 'mridanga%' and jobname not in (select name from jobs)), 'none'),
     'none'
