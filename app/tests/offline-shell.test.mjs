@@ -164,11 +164,22 @@ test('sign-out ("forget"): every cache goes and nothing more is answered or kept
   assert.equal(sw.fetched.length, before, '"keep" fetches only what is missing');
 });
 
-test('export-web: the file list is the site\'s own files, the page as /, never the build id, headers, maps or the QR reader', () => {
+test('"keep" also keeps the language script the page loaded, and nothing outside the build\'s files', async () => {
+  const sw = loadWorker({ network: online });
+  await sw.fire('install');
+  const te = '/_expo/static/js/web/te-0123abcd.js';
+  await sw.fire('message', { data: { type: 'keep', loaded: [te, '/version.txt', '/rest/v1/students', '/zxing/3.1.3/zxing_reader.wasm'] } });
+  const kept = [...sw.stores.get(sw.cacheName).keys()];
+  assert.ok(kept.includes(te));
+  assert.equal(kept.length, SHELL.length + 1, kept.join(' '));
+});
+
+test('export-web: the file list is the site\'s own files, the page as /, never the build id, headers, maps, the QR reader or the other languages', () => {
   const dist = mkdtempSync(join(tmpdir(), 'offline-shell-'));
   try {
     for (const file of ['index.html', '_headers', 'version.txt', 'sw.js', 'metadata.json', 'manifest.json',
-      '_expo/static/js/web/entry-abc.js', '_expo/static/js/web/entry-abc.js.map', 'assets/vendor/x.png', 'zxing/2.1.2/zxing_reader.wasm']) {
+      '_expo/static/js/web/entry-abc.js', '_expo/static/js/web/entry-abc.js.map', '_expo/static/js/web/te-0f1e.js',
+      '_expo/static/js/web/hi-9a8b.js', 'assets/vendor/x.png', 'zxing/2.1.2/zxing_reader.wasm']) {
       mkdirSync(join(dist, file, '..'), { recursive: true });
       writeFileSync(join(dist, file), 'x');
     }
@@ -202,6 +213,7 @@ test('the app registers the worker only in an exported build after sign-in, and 
   assert.match(web, /process\.env\.NODE_ENV === 'production'/, 'never the development server');
   assert.match(web, /window\.isSecureContext/);
   assert.match(web, /register\(WORKER, \{ scope: '\/', updateViaCache: 'none' \}\)/);
+  assert.match(web, /postMessage\(\{ type: 'keep', loaded: loadedFiles\(\) \}\)/);
   assert.match(web, /postMessage\(\{ type: 'forget' \}\)[\s\S]*registration\.unregister\(\)[\s\S]*caches\.delete\(key\)/);
   const native = read('src/lib/offline-shell.ts');
   assert.match(native, /export function keepOfflineShell\(\): void \{\}/, 'nothing on phones');

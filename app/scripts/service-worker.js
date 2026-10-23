@@ -12,12 +12,14 @@
 // - The page (any address: the single-page app has one index.html): the network first; without an answer in 4 s, or
 //   offline, the copy kept at the last good load. Kept only when it is a 200 HTML page of this site.
 // - The build's files (hashed names under /_expo/static/ and /assets/, the icons and manifest): kept at install,
-//   then served from the device; one missing is fetched and kept.
+//   then served from the device; one missing is fetched and kept. The Telugu and Hindi scripts are not in the list:
+//   the page names the one it loaded ('keep'), and a language switched to later is kept when it loads.
 // - version.txt, the QR reader's WebAssembly (/zxing/, staff and scanning need the network anyway) and this file
 //   itself: never kept.
 // - A new build has a new file list and cache name: it installs beside the old one, takes over at once and deletes
 //   the old cache.
-// - Messages from the page: 'keep' adds any file of the list still missing (after a sign-in); 'forget' stops keeping
+// - Messages from the page: 'keep' adds any file of the list still missing, and the build's files the page loaded
+//   (after a sign-in); 'forget' stops keeping
 //   anything and deletes every cache of this site (sign-out; the page also unregisters the worker).
 
 const BUILD = '__BUILD__';
@@ -42,15 +44,21 @@ function keepable(response) {
   return !!response && response.status === 200 && response.type === 'basic' && !response.redirected;
 }
 
-/** Adds the files of the list that are not kept yet. One failure leaves the others. */
-async function keepMissing() {
+/**
+ * Adds the files of the list that are not kept yet, and `loaded`: the build's files the page has loaded (its language's
+ * script, which the list leaves out so nobody downloads the other two languages). The browser's own HTTP cache answers
+ * the hashed files already loaded, so nothing is downloaded twice; the page itself is asked again. One failure leaves
+ * the others.
+ */
+async function keepMissing(loaded = []) {
   if (forgotten) return;
   const cache = await caches.open(CACHE);
+  const paths = [...new Set([...SHELL, ...loaded.filter((path) => typeof path === 'string' && isShellFile(path))])];
   await Promise.all(
-    SHELL.map(async (path) => {
+    paths.map(async (path) => {
       if (await cache.match(path)) return;
       try {
-        const response = await fetch(new Request(path, { cache: 'reload' }));
+        const response = await fetch(new Request(path, path === PAGE_KEY ? { cache: 'no-cache' } : {}));
         if (keepable(response) && !forgotten) await cache.put(path, response);
       } catch {
         // Offline or a file gone: the next 'keep' tries again.
@@ -117,7 +125,7 @@ self.addEventListener('message', (event) => {
   if (type === 'forget') event.waitUntil(forgetAll());
   else if (type === 'keep') {
     forgotten = false;
-    event.waitUntil(keepMissing());
+    event.waitUntil(keepMissing(Array.isArray(event.data.loaded) ? event.data.loaded : []));
   }
 });
 

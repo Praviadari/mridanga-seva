@@ -480,6 +480,8 @@ to `app/dist/`. Always use this command, not a bare `npx expo export`, because
   **Sign out** on the web version, e.g. "Web version test · 244e9f8 · 07-10-2026 15:00"
   ([#144](DECISIONS.md)). "+changes" after the commit means the folder had uncommitted changes:
   commit first for a site people use.
+- writes `dist/sw.js`, the service worker that keeps the app's own files for offline use, with this build's id and
+  file list ([#513](DECISIONS.md)); it prints how many files and KB it keeps.
 
 **After every upload, check the headers** (a minute, on the site's address):
 
@@ -493,7 +495,11 @@ to `app/dist/`. Always use this command, not a bare `npx expo export`, because
    `entry-<hash>.js` (else the browser or Cloudflare still serves an older upload).
 3. Open the site, sign in, press F12 → Console: no red "Content Security Policy" lines. Open
    Attendance → scan (the camera starts and reads a QR code) and, if there is one, a lesson video.
-4. Add a row to the upload log below.
+4. Offline (#513): `curl.exe -sI https://mridanga-seva-test.pages.dev/sw.js` shows `cache-control: no-cache`. On an
+   iPhone, sign in, open My QR, close the app, switch on Airplane mode and open it from the home screen: My QR, Practice
+   tools and the mantra open. Sign out (online) clears it: the next start without a network shows the browser's own
+   offline page.
+5. Add a row to the upload log below.
 
 **Upload log** (newest first; site, commit, build time from version.txt, who):
 

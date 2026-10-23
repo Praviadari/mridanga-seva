@@ -22,6 +22,19 @@ function possible(): boolean {
   );
 }
 
+/** This site's files the page has loaded (paths): among them its language's script, which the worker keeps too. */
+function loadedFiles(): string[] {
+  try {
+    return performance
+      .getEntriesByType('resource')
+      .map((entry) => new URL(entry.name))
+      .filter((url) => url.origin === window.location.origin)
+      .map((url) => url.pathname);
+  } catch {
+    return [];
+  }
+}
+
 /** Registers the service worker after a sign-in and asks it to keep any file it is still missing. Never throws. */
 export function keepOfflineShell(): void {
   if (!possible()) return;
@@ -29,7 +42,7 @@ export function keepOfflineShell(): void {
     .register(WORKER, { scope: '/', updateViaCache: 'none' })
     .then(async () => {
       const ready = await navigator.serviceWorker.ready;
-      ready.active?.postMessage({ type: 'keep' });
+      ready.active?.postMessage({ type: 'keep', loaded: loadedFiles() });
     })
     .catch(() => undefined); // no worker (blocked, private window): the app works online as before
 }

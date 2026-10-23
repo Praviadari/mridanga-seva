@@ -6844,3 +6844,79 @@ export is not guarded: the live web goes up with the same commit as the producti
 
 **Why.** Praveen wants students and staff to see in the app what each version changed. Notes in the bundle can never
 disagree with the code they describe, and the publish guard makes writing them part of every release.
+
+## 510. A login waiting for the desk may already practise — 23 Oct 2026
+
+**Status: branch `onboarding-offline` (world-class audit 22-10-2026 fix 8, work package E); migration
+0057_practice_while_waiting.sql. JS only (OTA + web), fingerprint 23dc7e4a unchanged.**
+
+**Context.** A signed-up person is `pending` until a coordinator accepts them at the temple, and until then could open
+only the waiting page, About you and Ishtagoshti: no metronome, taal player, lesson or mantra, so the app gave nothing
+before the first class (audit 2.1, onboarding 4/10).
+
+**Decision.** The waiting page shows **"While you wait"** with three rows: **Practice tools** (metronome and taal player:
+`PracticeTools area="waiting"`, the tools only, no timer, log, plan, goal or reminder, which belong to a student's
+record), **Mantra before practice** (the reader of #405) and **Beginner lessons** (the approved lesson videos of the first
+level by `levels.sort`, opening the V3 player). Routes `src/app/waiting/` under the `pending` guard. The database
+decides: `practice_while_waiting()` returns the first level's id for a login that may, else null, and three new read
+policies `waiting_read` (taals and mantras switched on, Beginner videos: YouTube or the team's own file, no PDFs or
+photos, so Storage is untouched) sit beside the existing ones; nothing is written and no existing policy changes. The
+app asks the function first and shows nothing before 0057 (PGRST202).
+
+**Why.** Duolingo-style value before the desk: a newcomer can learn the first bols and taal at home and comes to the
+first class already practising, and the class content is not personal data.
+
+## 511. Practice while waiting gives class content only — 23 Oct 2026
+
+**Status: as #510.** The waiting login reads the taals and mantras switched on and the Beginner videos, and nothing
+else: the smoke test sweeps every table and view as that login (own profile and the open group names aside, as for any
+pending login) and every write. It logs no practice (`log_practice` still refuses), so no minutes, timer or history
+exist for it; once the desk accepts it, it is a student and the student rules apply (`my_role()` = student, the function
+then answers null). The "may practise" answer and the Beginner lessons list are kept on the device for offline use, per
+login, and forgotten at sign-out with the other traces (#186).
+
+## 512. Who may practise while waiting: an adult by the sign-up's date of birth, or a child after the parent's consent — 23 Oct 2026
+
+**Status: as #510.** Under the DPDP Rules read strictly (#399) nothing beyond the sign-up is processed about a child
+before verifiable parental consent. So `practice_while_waiting()` counts only a pending login (active, no student record,
+not a door tablet) that is **not** a public Ishtagoshti subscriber (their own area) **and** either has a sign-up date of
+birth 18 or more years ago **or** has a parent's consent recorded by email (0051 `minor_signups.consented_at`). A child
+waiting for the parent, and a login with no date of birth (age unknown: an old sign-up, or a minor's date dropped
+before 0051), get nothing and see no "While you wait". Reading class content records nothing about the person; the rule
+is strict anyway, so the app never has to judge an age it does not know.
+
+## 513. The web version keeps itself offline with a service worker that never touches anyone's data — 23 Oct 2026
+
+**Status: as #510 (audit fix 7, work package D; closes LA-12 / Q-5).** Web only; the phone app keeps itself already.
+
+**Decision.** `scripts/service-worker.js` is a template; `npm run export:web` writes `dist/sw.js` with the build id and
+the list of the site's own files (the page as `/`, scripts, fonts, icons, manifest; never `version.txt`, `_headers`,
+source maps, Expo's metadata or the QR reader's WebAssembly) and checks it parses. The worker keeps those files at
+install (one cache per build; a new build replaces the old cache when it takes over), serves the build's files from the
+device, and the page network-first with the kept copy after 4 s or offline. **It never answers a request to another
+host** (Supabase, YouTube): not even passed through, so a slow or missing network behaves exactly as without a worker
+(the trap of the test-only stall workers of October). What a member sees offline (My QR, practice tools, the mantra,
+the Beginner list) is what the app already keeps in localStorage (#21, #37, #405, #511). `src/lib/offline-shell.web.ts`
+registers it only in an exported build (NODE_ENV production) on a secure origin, after a sign-in (`keep` adds missing
+files); at every sign-out (lib/device-traces.ts) and whenever the app starts signed out it posts `forget`, unregisters
+it and deletes every cache it made. `_headers`: `/sw.js` is `Cache-Control: no-cache`; the CSP is unchanged (it already
+allowed `worker-src 'self'`).
+
+**Why.** Most members use iPhones (#1) and could not open My QR without a signal. Keeping only the public app files,
+the same for everyone, means nothing personal is ever in the cache, and the clean-up at sign-out leaves nothing on a
+shared phone.
+
+**Consequences.** The first visit still needs the network. A video lesson needs the network (YouTube). Tested in a
+sandbox (`app/tests/offline-shell.test.mjs`) and in the browser on a local copy of the TEST export.
+
+## 514. A shorter sign-up; the rest in About you; /sign-up opens itself — 23 Oct 2026
+
+**Status: as #510 (audit fix 9).** The sign-up asked up to 12 fields. It now asks the **name as on the ID, email,
+password (one box with the eye; no "type it again"), date of birth, the privacy-notice tick**, and the centre only when
+the class has more than one (one centre is chosen by itself). **Under 18 the parent's name, relation, email and mobile
+stay** (0051). The **Diksha name, mobile number, gender and instruments** moved to About you, which opens once after the
+first sign-in and already asks them (#164); the desk's Accept needs only the name, date of birth, tick and confirmed
+email (0046-0048), and `handle_new_user` already treats the moved fields as optional, so no migration. A child is told
+the rest is recorded at the desk after the parent's consent. **Deep links:** `/sign-up` and `/forgot-password` opened
+the sign-in page because `requested-path.belongsTo` knew no signed-out screens; they now open themselves, so the
+website's "Register" can link straight to Create an account. A waiting login's `/waiting/...` links work too.

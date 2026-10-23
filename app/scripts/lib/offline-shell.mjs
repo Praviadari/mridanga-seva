@@ -14,13 +14,21 @@ export function neverKept(path) {
   return ['/sw.js', '/version.txt', '/_headers', '/metadata.json'].includes(path) || path.startsWith('/zxing/') || path.endsWith('.map');
 }
 
-/** The site's own files the worker keeps, as addresses ('/' for index.html), and their size in bytes. */
+/**
+ * A Telugu or Hindi script, loaded only by the app in that language (src/i18n/locale-loaders.web.ts, #331): kept when
+ * the page loads it, not at install, so nobody downloads the other two languages.
+ */
+export function languageChunk(path) {
+  return /^\/_expo\/static\/js\/web\/(te|hi)-[0-9a-f]+\.js$/.test(path);
+}
+
+/** The site's own files the worker keeps at install, as addresses ('/' for index.html), and their size in bytes. */
 export function shellFiles(dist) {
   const shell = [];
   let bytes = 0;
   for (const file of listFiles(dist)) {
     const path = '/' + relative(dist, file).split(sep).join('/');
-    if (neverKept(path)) continue;
+    if (neverKept(path) || languageChunk(path)) continue;
     shell.push(path === '/index.html' ? '/' : path);
     bytes += statSync(file).size;
   }
