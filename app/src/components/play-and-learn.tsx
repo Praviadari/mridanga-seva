@@ -20,7 +20,7 @@ import { Section } from './section';
 /** The four tools: their route name, icon, colour and words. */
 const TOOLS: { route: 'tap-pad' | 'which-bol' | 'echo-me' | 'learn-more'; icon: IconName; tone: ModuleTone; key: string }[] = [
   { route: 'tap-pad', icon: 'tap', tone: 'orange', key: 'tapPad' },
-  { route: 'which-bol', icon: 'audio', tone: 'blue', key: 'whichBol' },
+  { route: 'which-bol', icon: 'listen', tone: 'blue', key: 'whichBol' },
   { route: 'echo-me', icon: 'reply', tone: 'purple', key: 'echo' },
   { route: 'learn-more', icon: 'library', tone: 'green', key: 'learnMore' },
 ];

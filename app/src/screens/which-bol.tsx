@@ -80,7 +80,12 @@ export function WhichBol() {
   const pool = useMemo(() => (taals ? quizBols(taals, level) : []), [taals, level]);
   const phrases = useMemo(() => (taals && length > 1 ? quizPhrases(taals, level, length) : []), [taals, level, length]);
   const bestKey = `${level}:${length}`;
-  const best = quizBest(profileId, bestKey);
+  // The best in a row kept on the phone for this level and length, in state (a plain read would be kept from the first
+  // render by the React Compiler); read again when either changes.
+  const bestOf = `${profileId}|${bestKey}`;
+  const [bestState, setBestState] = useState(() => ({ of: bestOf, n: quizBest(profileId, bestKey) }));
+  if (bestState.of !== bestOf) setBestState({ of: bestOf, n: quizBest(profileId, bestKey) });
+  const best = bestState.n;
 
   const hear = async (phrase: QuizPhrase) => {
     const ok = await player.playOnce(phrasePattern(phrase), phrase.bols.length > 1 ? PHRASE_BPM : BOL_BPM);
@@ -107,7 +112,9 @@ export function WhichBol() {
     if (isRight(question, card)) {
       const n = inARow + 1;
       setInARow(n);
-      setNewBest(saveQuizBest(profileId, bestKey, n));
+      const better = saveQuizBest(profileId, bestKey, n);
+      setNewBest(better);
+      if (better) setBestState({ of: bestOf, n });
     } else {
       setInARow(0);
     }
@@ -152,14 +159,14 @@ export function WhichBol() {
         </Notice>
       ) : null}
 
-      <Section icon="audio" title={t('whichBol.listen')}>
+      <Section icon="listen" title={t('whichBol.listen')}>
         {taals === undefined ? <LoadingCards /> : null}
         {taals && pool.length < 3 ? <AppText tone="muted">{t('whichBol.tooFew')}</AppText> : null}
         {!question ? (
           <Button size="large" icon="play" label={t('whichBol.start')} disabled={!taals || pool.length < 3} onPress={next} />
         ) : (
           <>
-            <Button size="large" icon="audio" label={t('whichBol.hearAgain')} onPress={() => void hear(question.answer)} />
+            <Button size="large" icon="listen" label={t('whichBol.hearAgain')} onPress={() => void hear(question.answer)} />
             <AppText variant="label">{answered ? t('whichBol.compare') : t('whichBol.pick')}</AppText>
             <View style={styles.cards}>
               {question.cards.map((card) => {

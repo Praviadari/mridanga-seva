@@ -58,8 +58,11 @@ export function useTapGame({ player, playing, starts, hits, beats, bpm, counts, 
   const [feedback, setFeedback] = useState<Record<PadHand, PadFeedback>>({ left: null, right: null });
   const [scores, setScores] = useState<CycleScore[]>([]);
   const [newBest, setNewBest] = useState(false);
-  // Read from the phone each time: a new best saved below re-renders the screen (newBest changes).
-  const best = bestKey ? tapBest(profileId, bestKey) : null;
+  // The best kept on the phone for this taal: read again when the taal (or the login) changes, set when a cycle beats it.
+  // Kept in state: the React Compiler would keep a plain read of the phone's storage from the first render.
+  const bestOf = `${profileId}|${bestKey ?? ''}`;
+  const [best, setBest] = useState<{ of: string; value: TapBest | null }>(() => ({ of: bestOf, value: bestKey ? tapBest(profileId, bestKey) : null }));
+  if (best.of !== bestOf) setBest({ of: bestOf, value: bestKey ? tapBest(profileId, bestKey) : null });
 
   // A new start begins afresh: no taps, no stars yet (set while rendering, as React advises for a changed prop).
   const [shownStart, setShownStart] = useState(starts);
@@ -87,7 +90,10 @@ export function useTapGame({ player, playing, starts, hits, beats, bpm, counts, 
       setScores((list) => [...list, ...done].slice(-SHOWN_CYCLES));
       const last = done[done.length - 1];
       if (bestKey) {
-        setNewBest(saveTapBest(profileId, bestKey, { stars: last.stars, bpm: Math.round(bpm) }));
+        const next = { stars: last.stars, bpm: Math.round(bpm) };
+        const better = saveTapBest(profileId, bestKey, next);
+        setNewBest(better);
+        if (better) setBest({ of: `${profileId}|${bestKey}`, value: next });
       }
     }, 50);
     return () => clearInterval(id);
@@ -109,5 +115,5 @@ export function useTapGame({ player, playing, starts, hits, beats, bpm, counts, 
     [player, bpm],
   );
 
-  return { tap, feedback, scores, best, newBest };
+  return { tap, feedback, scores, best: best.value, newBest };
 }

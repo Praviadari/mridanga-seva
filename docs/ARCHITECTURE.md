@@ -456,7 +456,8 @@ log, `late`, `minLead`) for such checks.
 (`screens/tap-pad.tsx`, `which-bol.tsx`, `echo-me.tsx`, `learn-more.tsx`; routes in `student/` and `staff/`).
 
 - **Tap pad** (#470): the practice player loops the taal (or only the beat); two pads (`components/play-parts.tsx`)
-  take `onPressIn`. A tap reads `player.position()` at once; `lib/tap-grading.ts` turns positions into absolute
+  take `onPressIn` on phones and `onPointerDown` in the browser (React Native Web's Pressable gave no press-in on a
+  touch-emulating browser, 23-10-2026; a pointer per finger also lets both pads be hit at once). A tap reads `player.position()` at once; `lib/tap-grading.ts` turns positions into absolute
   beats (`BeatClock`: the phone's loop restarts at 0, the browser counts cycles), takes off the phone's delay found
   once with "Tune to this phone" (12 clicks, the middle of the tap errors), and matches the tap to the nearest
   untapped stroke of that hand (`taalHits` from `lib/bols.ts`): on time ≤ 70 ms, early/late ≤ 160 ms (less when the

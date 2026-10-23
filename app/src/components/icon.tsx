@@ -83,6 +83,8 @@ const SHAPES = {
   assessment: 'clipboard-outline',
   play: 'play-circle-outline',
   audio: 'mic-outline',
+  // Which bol? (#471): listen and name what was heard.
+  listen: 'ear-outline',
   videoFile: 'videocam-outline',
   link: 'link-outline',
   score: 'star-outline',

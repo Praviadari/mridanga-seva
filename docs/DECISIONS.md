@@ -6864,8 +6864,8 @@ on the phone for the person signed in and wiped at sign-out. One tempo while pla
 apps do; no leaderboard and nothing shown to others (children use it).
 
 **Consequences.** JS only (expo-audio, expo-keep-awake, react-native-svg are in the APK; fingerprint 23dc7e4a). Phone
-latency differs; tuning is per phone. Multi-touch on two pads relies on React Native handing the second touch to the
-other pad (onPressIn); worth a check on a real phone.
+latency differs; tuning is per phone. On phones the pads use onPressIn (React Native hands a second finger to the
+other pad: check on a real phone); in the browser onPointerDown, one pointer per finger.
 
 ## 471. "Which bol?": an ear quiz by level — 22 Oct 2026
 

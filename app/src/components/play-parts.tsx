@@ -9,7 +9,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import type { Taal } from '@/data/practice';
 import type { Stroke } from '@/lib/bols';
@@ -53,6 +53,18 @@ function Pad({ hand, onTap, stroke, fresh, feedback }: { hand: PadHand; onTap: (
   const { t } = useTranslation();
   const { colors } = useTheme();
   const lit = stroke !== null && fresh;
+  // A short flash on each tap (the browser's pointer input has no pressed state of its own).
+  const [flash, setFlash] = useState(false);
+  const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (flashTimer.current) clearTimeout(flashTimer.current);
+  }, []);
+  const tap = () => {
+    onTap(hand);
+    setFlash(true);
+    if (flashTimer.current) clearTimeout(flashTimer.current);
+    flashTimer.current = setTimeout(() => setFlash(false), 120);
+  };
   // The baya is the big bass head: its face is drawn larger, its black centre off to one side.
   const face = hand === 'left' ? 0.86 : 0.7;
   return (
@@ -61,16 +73,21 @@ function Pad({ hand, onTap, stroke, fresh, feedback }: { hand: PadHand; onTap: (
         accessibilityRole="button"
         accessibilityLabel={t(hand === 'left' ? 'play.padLeft' : 'play.padRight')}
         accessibilityHint={t('play.padHint')}
-        onPressIn={() => onTap(hand)}
-        style={({ pressed }) => [
-          styles.pad,
-          {
-            backgroundColor: colors.surfaceSunken,
-            borderColor: pressed ? HAND_LIT : lit ? colors.accent : colors.cardBorder,
-            borderWidth: pressed || lit ? 4 : 2,
-            transform: [{ scale: pressed ? 0.97 : 1 }],
-          },
-        ]}
+        // The moment the finger lands: a pointer down in the browser (each finger its own, so both pads at once), the
+        // responder's press-in on phones.
+        {...(Platform.OS === 'web' ? { onPointerDown: tap } : { onPressIn: tap })}
+        style={({ pressed: held }) => {
+          const pressed = held || flash;
+          return [
+            styles.pad,
+            {
+              backgroundColor: colors.surfaceSunken,
+              borderColor: pressed ? HAND_LIT : lit ? colors.accent : colors.cardBorder,
+              borderWidth: pressed || lit ? 4 : 2,
+              transform: [{ scale: pressed ? 0.97 : 1 }],
+            },
+          ];
+        }}
       >
         <View aria-hidden style={[styles.face, { width: `${face * 100}%`, borderColor: FACE.rim, backgroundColor: FACE.head }]}>
           <View
@@ -300,6 +317,7 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   pad: {
+    flexGrow: 1,
     minHeight: 200,
     borderRadius: cardRadius,
     alignItems: 'center',
