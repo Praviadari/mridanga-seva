@@ -2,7 +2,7 @@
 // the name on the roll card, the roll number, the level and My QR for a student; the name, role and email for staff.
 // Then the language switch (the same picker as on the home screens) and light or dark screens (#361); then the
 // sign-in account (email, and the account's name, folded behind "Change my name"; staff also their phone); then About
-// you, held instruments and Sign out, "ⓘ What's new" (#406) and the app version line (since the simple home, #240). The name on the roll is
+// you, My data and rights (#550), held instruments and Sign out, "ⓘ What's new" (#406) and the app version line (since the simple home, #240). The name on the roll is
 // the coordinators' record and changes only through them; a student's phone is asked in About you (0036), not here.
 // Shown by two routes: student/profile.tsx (from the ring on S1) and staff/profile.tsx (from "My profile" in the menu).
 // Staff see the referral code they give to people they bring.
@@ -213,6 +213,11 @@ export function MyProfileScreen() {
           <Button variant="secondary" icon="about" label={t('about.cardEdit')} onPress={() => router.push('/student/about-you')} />
         </Section>
       ) : null}
+
+      {/* What the class holds about me, and my requests (#550). */}
+      <Section icon="audit" title={t('dataRights.title')} description={t('dataRights.profileHint')}>
+        <Button variant="secondary" icon="audit" label={t('dataRights.open')} onPress={() => router.push(isStudent ? '/student/my-data' : '/staff/my-data')} />
+      </Section>
 
       {referralCode ? (
         <Section icon="link" title={t('about.myCodeTitle')} description={t('about.myCodeHint')}>

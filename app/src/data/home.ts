@@ -11,6 +11,7 @@
 
 import { supabase } from '@/lib/supabase';
 
+import { countOpenRequests } from './data-rights';
 import { fetchPromotionHome } from './promotion';
 import { fetchWeekStarts, type WeekStarts } from './settings';
 
@@ -261,6 +262,8 @@ export type StaffDashboard = {
   fundToApprove: number;
   /** Material suggestions waiting (the Guru). */
   suggestions: number;
+  /** Data requests waiting for an answer (the Guru, #550; counted apart from staff_dashboard). */
+  dataRequests: number;
 };
 
 type StaffDashboardRow = {
@@ -280,9 +283,15 @@ type StaffDashboardRow = {
  * Loads the staff home's numbers in one request (staff_dashboard, migration 0050). On a project where 0050
  * has not run yet (PostgREST PGRST202, "no such function") it falls back to the older functions, so an
  * update reaching phones before the migration still shows the circles' counts; the new rows stay 0.
- * Returns null when nothing could be loaded (usually no internet).
+ * Returns null when nothing could be loaded (usually no internet). The Guru's open data requests (0059) are
+ * counted alongside, 0 before that migration.
  */
 export async function fetchStaffDashboard(guru: boolean): Promise<StaffDashboard | null> {
+  const [board, dataRequests] = await Promise.all([fetchBoard(guru), guru ? countOpenRequests() : Promise.resolve(0)]);
+  return board ? { ...board, dataRequests } : null;
+}
+
+async function fetchBoard(guru: boolean): Promise<Omit<StaffDashboard, 'dataRequests'> | null> {
   const { data, error } = await supabase.rpc('staff_dashboard');
   if (!error && data) {
     const row = data as StaffDashboardRow;

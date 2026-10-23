@@ -94,6 +94,18 @@ check('team-tools notifications open suggestions, the duty roster or the item; n
   teamOutbox.map((m) => m.data.url).join(',') === '/staff/suggestions,/staff/duty,/staff/inventory/3',
   JSON.stringify(teamOutbox.map((m) => m.data.url)));
 
+// 0059 (#550): a data request for the Guru, an answer for the person; near misses are dropped.
+const rightsOutbox = toOutboxMessages([
+  { outbox_id: 31, title: 'DR-0001', body: 'New data request DR-0001: answer by 22-11-2026.', url: '/staff/data-requests', token: 'T21' },
+  { outbox_id: 32, title: 'DR-0001', body: 'Your data request DR-0001 has been answered.', url: '/student/my-data', token: 'T22' },
+  { outbox_id: 33, title: 'DR-0002', body: 'Your data request DR-0002 has been answered.', url: '/staff/my-data', token: 'T23' },
+  { outbox_id: 34, title: 'Odd', body: 'x', url: '/student/data-requests', token: 'T24' },
+  { outbox_id: 35, title: 'Odd', body: 'x', url: '/staff/data-requests/1', token: 'T25' },
+]);
+check('data-request notices open Data requests (staff) or My data and rights; near misses are dropped',
+  rightsOutbox.map((m) => m.data.url).join(',') === '/staff/data-requests,/student/my-data,/staff/my-data',
+  JSON.stringify(rightsOutbox.map((m) => m.data.url)));
+
 const fundOutbox = toOutboxMessages([
   { outbox_id: 19, title: 'Rs 2500 · Prasadam', body: 'An entry by Ravi needs your approval.', url: '/staff/fund/7', token: 'T13' },
   { outbox_id: 20, title: 'Odd', body: 'x', url: '/student/fund/7', token: 'T14' },

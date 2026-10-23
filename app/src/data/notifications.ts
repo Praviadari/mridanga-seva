@@ -87,6 +87,8 @@ export function isNoticeScreen(url: string): boolean {
     || /^\/staff\/(suggestions|duty|(inventory|fund)\/\d+)$/.test(url)
     // A student's page (C8): "new mentee" and "mentor needed" (0036, inbox only, no push).
     || /^\/staff\/students\/[0-9a-f-]{36}$/.test(url)
+    // Data requests (0059, #550): a new or due one for the Guru; an answer for the person.
+    || /^\/(staff\/data-requests|(student|staff)\/my-data)$/.test(url)
     // The daily practice reminder (made on the phone itself, never a server notice; #402).
     || url === '/student/practice';
 }

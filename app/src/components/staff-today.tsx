@@ -73,7 +73,7 @@ type TodayItem = { key: string; icon: IconName; count: number | undefined; label
 
 /** Everything that waits for this person, the sum of Waiting for you's rows. */
 export function waitingTotal(board: StaffDashboard): number {
-  return board.signupsWaiting + board.callsDue + board.promotions + board.fundToApprove + board.toReview + board.suggestions;
+  return board.signupsWaiting + board.callsDue + board.promotions + board.fundToApprove + board.toReview + board.suggestions + board.dataRequests;
 }
 
 /** One number of the Today line: a button to its list, or (no `href`) a number to read. */
@@ -128,6 +128,13 @@ function TodayChip({ item }: { item: TodayItem }) {
 export function WaitingForYou({ guru, board, heading = true }: { guru: boolean; board: StaffDashboard; heading?: boolean }) {
   const { t } = useTranslation();
   const all: { key: string; count: number; title: string; open: () => void }[] = [
+    // A person's data request first: the law gives 30 days (#551).
+    {
+      key: 'dataRequests',
+      count: board.dataRequests,
+      title: t('home.waiting.dataRequests', { count: board.dataRequests }),
+      open: () => router.push('/staff/data-requests'),
+    },
     {
       key: 'signups',
       count: board.signupsWaiting,

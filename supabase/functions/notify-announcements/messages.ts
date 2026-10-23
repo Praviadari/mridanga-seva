@@ -129,13 +129,16 @@ const OUTBOX_SCREEN =
 /** Team tools (0023, staff only): material suggestions, an item marked damaged, the duty roster; a fund entry (0026). */
 const TEAM_SCREEN = /^\/staff\/(suggestions|duty|(inventory|fund)\/\d+)$/;
 
+/** Data requests (0059, #550): a new or due request for the Guru; an answer for the person (My data and rights). */
+const RIGHTS_SCREEN = /^\/(staff\/data-requests|(student|staff)\/my-data)$/;
+
 /**
  * One message per queued notification (an assessment released, a reminder, a review, a recording
  * sent; a promotion asked about, ready, decided). A row asking for any other screen is dropped.
  */
 export function toOutboxMessages(rows: OutboxRow[]): PushMessage[] {
   return rows.flatMap((row): PushMessage[] =>
-    OUTBOX_SCREEN.test(row.url) || TEAM_SCREEN.test(row.url)
+    OUTBOX_SCREEN.test(row.url) || TEAM_SCREEN.test(row.url) || RIGHTS_SCREEN.test(row.url)
       ? [{
           to: row.token,
           title: row.title,

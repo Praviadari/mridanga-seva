@@ -104,7 +104,8 @@ with m(migration, present) as (values
   ('0052', to_regclass('public.practice_plans') is not null),
   ('0053', exists (select 1 from pg_proc where proname = 'link_staff_record' and pronamespace = 'public'::regnamespace)),
   ('0054', exists (select 1 from pg_proc where proname = 'undo_import' and pronamespace = 'public'::regnamespace)),
-  ('0056', exists (select 1 from pg_proc where proname = 'staff_practice_week' and pronamespace = 'public'::regnamespace))
+  ('0056', exists (select 1 from pg_proc where proname = 'staff_practice_week' and pronamespace = 'public'::regnamespace)),
+  ('0059', to_regclass('public.data_requests') is not null)
 )
 select migration, case when present then 'yes' else 'no' end as present from m
 union all
@@ -175,8 +176,9 @@ a second paste. So pasting a file twice by mistake is harmless; still, never do 
 | M0053 | `0053_staff_own_record.sql` | Praveen · dashboard | No rows; probe `0053`, `MISSING` `none` | Coordinators are students too (placeholder 0061 on branch `staff-own-record`, renumbered 22-10-2026) ([#316-#321](DECISIONS.md)): `link_staff_record` (the Guru links a coordinator's login to their own student record; the role stays); `my_student_id` covers staff, so practice and face enrolment work on an own record; **nobody records about their own record** (check-in or out by name, QR or Mark attendance, ticks, level, promotion, assessment reviews, calls: error `own_record`; an event list leaves the own row as it is); nobody is their own mentor (`own_mentor`); a record with a staff login is not withdrawn or erased while linked (`staff_login_linked`). Changes no stored row. TEST first (NOTES.md "13-10-2026 — Coordinators are students too" TEST-run pack). After 0052. **Done on LIVE 22 Oct 2026** (Praveen, main 47f3c5f file): `link_staff_record` present; 1 staff login with its own record (coordinator 5cd712ff…); jobs 12 |
 | M0054 | `0054_after_launch_forms.sql` (placeholder 0062 on branch `after-launch-forms`, renumbered 22-10-2026) | Praveen · dashboard | No rows; probe `0054`, `MISSING` `none`. **Changes stored rows:** run OPERATIONS "Phones that are not E.164" step 1 before and step 2 after; the counts must match | After-launch forms ([#322, #324-#326, #328, #329](DECISIONS.md)): creates saved once per request id (`request_id` on 10 tables; twins of `record_fund_entry`, `log_call`, `log_practice`); an approved material's file only the Guru deletes; `change_event_attendance`; the Guru's `delete_student_record` and `undo_import` (`students.import_id`); **phones kept as E.164**: stored national numbers on students, guardians, profiles and Ishtagoshti subscribers are rewritten once (`+91`; a number it cannot read stays as it is, OPERATIONS `Phones that are not E.164`); at most 3 parent codes a day to one address. **After the launch**, with the app update that uses it. **Done on LIVE 22 Oct 2026** (Praveen): step 1 before = logins 11 and students 8, all already E.164 (no guardian or Ishtagoshti phones), so the rewrite changed 0 rows; after: `request_id` on 11 tables, `undo_import` present, students not E.164 0 |
 | M0056 | `0056_practice_extras.sql` | Praveen · dashboard | No rows; probe `0056`, `MISSING` `none` | Practice extras ([#493-#495](DECISIONS.md)): two new columns on `practice_logs`, `feeling` (1 hard, 2 okay, 3 good) and `practised` (taal / lesson / free), empty on every existing entry, written only by the new `set_practice_feeling` (the student, an own entry of the last 14 days: "How did it go?" after a session); the read-only functions `practice_history` (every practice day ever with the goal, for the milestones; row-level security of the asker, as `practice_days`) and `staff_practice_week` (staff only: each student still in the class with that week's practice, least first). **New data about a child (a self-rating):** the privacy notice's Learning row names it before the update that asks it. No existing row or function changes; safe to run twice. **TEST first** (`fhuqyk…`), then LIVE, **before** the OTA and web upload that use it (without it the app shows no milestones, does not ask how it went, and the staff list cannot load). After 0054 (and 0055 when it is there). Verify: `select (select count(*) from information_schema.columns where table_name = 'practice_logs' and column_name in ('feeling', 'practised')) as cols, (select count(*) from pg_proc where proname in ('set_practice_feeling', 'practice_history', 'staff_practice_week') and pronamespace = 'public'::regnamespace) as fns, (select count(*) from practice_logs where feeling is not null or practised is not null) as said` = `2 | 3 | 0` right after the run |
+| M0059 | `0059_data_rights.sql` (branch `data-rights`) | Praveen · dashboard | No rows; probe `0059`, `MISSING` `none`; verification row 3 `13 of 13` | **A person's data rights in the app** ([#550-#556](DECISIONS.md), audit 22-10-2026 fix 17): new table `data_requests` (one row per request: correction, erasure, photo or data withdrawal, complaint, nominee, access; type, status, made / answer-by / closed times; a person reads only their own, the Guru all; written only by the functions, audited), the person's `my_data_summary` (logged in the access log), `file_data_request`, `cancel_data_request`, the Guru's `record_data_request`, `answer_data_request` and `act_on_data_request` (runs the photo withdrawal, `withdraw_consent`, `erase_student` or `erase_login` after the roll number or email is typed), and job `mridanga-data-requests` (daily 02:30 IST: reminder 3 days before the 30-day answer-by date; text blanked a year after closing, row deleted after two). No existing function or row changes; safe to run twice. **TEST first** (`fhuqyk…`), then LIVE, **before** the OTA with "My data and rights" (without it the screen says the requests are not set up and the To do shows no data requests). Phone pushes about requests need the Edge Function `notify-announcements` deployed from the same commit (its list of screens a push may open); until then those notices reach the inbox only (the push is refused `bad_url`, nothing breaks) |
 
-**A file newer than 0056 on main:** the replay's first check fails until this table lists it. Add it
+**A file newer than 0059 on main:** the replay's first check fails until this table lists it. Add it
 here, with its own steps, then run it last.
 
 **0049 (launch clean-up)** is on TEST but not on main on 15 Oct 2026. It joins this table when branch
@@ -315,7 +317,8 @@ with m(migration, present) as (values
   ('0052', to_regclass('public.practice_plans') is not null),
   ('0053', exists (select 1 from pg_proc where proname = 'link_staff_record' and pronamespace = 'public'::regnamespace)),
   ('0054', exists (select 1 from pg_proc where proname = 'undo_import' and pronamespace = 'public'::regnamespace)),
-  ('0056', exists (select 1 from pg_proc where proname = 'staff_practice_week' and pronamespace = 'public'::regnamespace))
+  ('0056', exists (select 1 from pg_proc where proname = 'staff_practice_week' and pronamespace = 'public'::regnamespace)),
+  ('0059', to_regclass('public.data_requests') is not null)
 ),
 last_in_order as (select coalesce(max(a.migration), 'before 0010') as v from m a
   where a.present and not exists (select 1 from m b where b.migration <= a.migration and not b.present)),
@@ -323,13 +326,14 @@ missing as (select coalesce(string_agg(a.migration, ' ' order by a.migration), '
   where not a.present and exists (select 1 from m b where b.present and b.migration > a.migration)),
 jobs(name) as (values ('mridanga-status-refresh'), ('mridanga-close-visits'), ('mridanga-push'), ('mridanga-inbox-cleanup'),
   ('mridanga-assessments'), ('mridanga-events-polls'), ('mridanga-duty'), ('mridanga-access-log-purge'),
-  ('mridanga-cron-history-purge'), ('mridanga-orphan-files'), ('mridanga-parent-notices'), ('mridanga-minor-signups')),
+  ('mridanga-cron-history-purge'), ('mridanga-orphan-files'), ('mridanga-parent-notices'), ('mridanga-minor-signups'),
+  ('mridanga-data-requests')),
 checks(sort, check_name, ok, found, expected) as (
-  select 1, 'last migration', (select v from last_in_order) = '0056', (select v from last_in_order), '0056'
+  select 1, 'last migration', (select v from last_in_order) = '0059', (select v from last_in_order), '0059'
   union all select 2, 'migrations missing', (select v from missing) = 'none', (select v from missing), 'none'
   union all select 3, 'scheduled jobs',
-    (select count(*) from jobs j join cron.job c on c.jobname = j.name and c.active) = 12,
-    (select count(*) from jobs j join cron.job c on c.jobname = j.name and c.active)::text || ' of 12', '12 of 12 (active)'
+    (select count(*) from jobs j join cron.job c on c.jobname = j.name and c.active) = 13,
+    (select count(*) from jobs j join cron.job c on c.jobname = j.name and c.active)::text || ' of 13', '13 of 13 (active)'
   union all select 4, 'other mridanga jobs', not exists (select 1 from cron.job where jobname like 'mridanga%' and jobname not in (select name from jobs)),
     coalesce((select string_agg(jobname, ', ') from cron.job where jobname like 'mridanga%' and jobname not in (select name from jobs)), 'none'),
     'none'
