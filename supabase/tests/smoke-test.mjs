@@ -127,7 +127,7 @@ process.on('uncaughtException', (error) => {
 // D14-10: every check is counted, and the run fails when fewer (or more) checks ran than expected,
 // so a block skipped by a renamed migration or a commented-out section cannot pass unseen.
 // Adding or removing checks? Run the suite and set this to the new total it prints.
-const EXPECTED_CHECKS = 1934; // 0054 after-launch forms: +49; 0053 staff own record: +55; 0052 more practice: +56; 0051 child's sign-up at home: +80; 0050 staff dashboard: +15; 0049 launch clean-up: +30; 0048 withdrawn records and leaks: +50; 0047 form rules: +109; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
+const EXPECTED_CHECKS = 1990; // 0059 data rights: +56; 0054 after-launch forms: +49; 0053 staff own record: +55; 0052 more practice: +56; 0051 child's sign-up at home: +80; 0050 staff dashboard: +15; 0049 launch clean-up: +30; 0048 withdrawn records and leaks: +50; 0047 form rules: +109; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
 let failures = 0;
 let passes = 0;
 
@@ -4172,6 +4172,10 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
     'record_fund_entry(uuid,text,smallint,date,bigint,text,text,text,text,text)', 'log_call(uuid,uuid,call_outcome,text,text,date)',
     'log_practice(uuid,integer,text,date,timestamp with time zone,bigint,text)', 'change_event_attendance(bigint,uuid[],uuid[])',
     'delete_student_record(uuid,text)', 'undo_import(uuid)', 'phone_e164(text)',
+    // 0059: a person's data and requests (own only inside); the Guru records, answers and acts (is_guru inside)
+    'my_data_summary()', 'file_data_request(text,text,text)', 'cancel_data_request(uuid)',
+    'record_data_request(text,text,text,text,text,text)', 'answer_data_request(uuid,text,text,boolean)',
+    'act_on_data_request(uuid,text,text,text)',
   ];
   const runnableBy = async (role) => (await asOwner(`select p.oid::regprocedure::text as f from pg_proc p
     where p.pronamespace = 'public'::regnamespace
@@ -6789,6 +6793,190 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   const c62 = await counts62();
   try { await db.exec(file62); } catch (e) { again62 = String(e.message); }
   check('0054: a second run changes nothing', again62 === '' && JSON.stringify(await counts62()) === JSON.stringify(c62), `${again62} ${JSON.stringify(c62)}`);
+}
+
+// ---------------------------------------------------------------- 0059 data rights (DECISIONS #550-#556)
+// My data and rights: the summary of what the class holds, requests a person files (not a child: the parent asks),
+// what each person may read, the Guru's answers and actions (withdrawal and erasure with a typed roll number),
+// the desk's record of a parent's request, and the daily job (reminder, text blanked after a year, row gone after two).
+{
+  const file59 = readFileSync(new URL('migrations/0059_data_rights.sql', supabaseDir), 'utf8');
+  const summary = async (who) => (await asApp('authenticated', who, 'select my_data_summary() as r'))[0].r;
+  const file = async (who, kind, field = null, body = null) =>
+    (await asApp('authenticated', who, 'select file_data_request($1, $2, $3) as r', [kind, field, body]))[0].r;
+  const answer = (who, id, status, text, corrected = false) =>
+    asApp('authenticated', who, 'select answer_data_request($1, $2, $3, $4)', [id, status, text, corrected]);
+  const act = async (who, id, action, confirm, note = 'Asked in the app') =>
+    (await asApp('authenticated', who, 'select act_on_data_request($1, $2, $3, $4) as r', [id, action, confirm, note]))[0].r;
+  const record = async (who, person, kind, asked = 'parent', body = 'Asked at the desk.') =>
+    (await asApp('authenticated', who, 'select record_data_request($1, $2, $3, $4, null, $5) as r', [person, kind, 'desk', asked, body]))[0].r;
+  const row = async (id) => (await asOwner(`select * from data_requests where id = '${id}'`))[0];
+  const seenBy = async (who) => (await asApp('authenticated', who, 'select id from data_requests')).map((r) => r.id);
+
+  const daraLogin = await signUp('dara.59@example.com', true);
+  const dara = await register(coordinator, { p_full_name: 'Dara Fiftynine', p_dob: '1992-03-04', p_email: 'dara.59@example.com' });
+  const ekaLogin = await signUp('eka.59@example.com', true);
+  const eka = await register(coordinator, { p_full_name: 'Eka Fiftynine', p_dob: '1993-05-06', p_email: 'eka.59@example.com' });
+  check('0059: (state) the two adults\' logins are on their records', (await linkOf('dara.59@example.com')) === daraLogin
+    && (await linkOf('eka.59@example.com')) === ekaLogin && (await roleOf(daraLogin)) === 'student');
+  await asOwner(`insert into consents (student_id, scope, method, signed_form) values ('${dara.id}', 'photo', 'written', true)`);
+  const kid = await register(coordinator, { p_full_name: 'Kiran Fiftynine', p_dob: childDob, p_guardian_name: 'Kiran Parent',
+    p_guardian_phone: '9000059059', p_guardian_relation: 'mother', p_id_type_checked: 'aadhaar', p_photo_consent: true, p_written_consent: true });
+  const kidLogin = await signUp('kiran.59@example.com', true);
+  await asApp('authenticated', guru, 'select link_student_login($1, $2)', [kidLogin, kid.id]);
+
+  // The summary (a): the caller's own data, consents with dates, no QR token; logged; students and staff only.
+  const s59 = await summary(daraLogin);
+  check('0059 #550: the summary holds the person\'s record, login, consents with dates, and not the QR token',
+    s59.record?.roll_no === dara.roll_no && s59.login?.email === 'dara.59@example.com' && s59.minor === false
+    && s59.consents.length === 1 && s59.consents[0].scope === 'photo' && s59.consents[0].given_at && !('qr_token' in s59.record)
+    && s59.visits.count === 0 && Array.isArray(s59.requests), JSON.stringify(s59).slice(0, 300));
+  check('0059 #550: ... each read is in the access log', (await asOwner(`select count(*)::int as n from access_log
+    where function_name = 'my_data_summary' and actor_id = '${daraLogin}' and student_id = '${dara.id}'`))[0].n === 1);
+  check('0059 #550: a staff member gets their own login (no record)', (await summary(coordinator)).login?.id === coordinator
+    && (await summary(coordinator)).record === null);
+  await refusesWith('0059 #550: a waiting login gets no summary (it writes to the team for now)', 'not_allowed', () => summary(stranger));
+  await refusesWith('0059 #550: nor anon', 'permission denied for function my_data_summary', () =>
+    asApp('anon', null, 'select my_data_summary()'));
+  check('0059 #552: a child\'s summary says the record is a minor\'s', (await summary(kidLogin)).minor === true);
+
+  // Filing (b-e): a child does not, the parent asks (Rule 10); text rules; one open per kind.
+  await refusesWith('0059 #552: a child cannot file a request: the parent asks', 'parent_asks', () => file(kidLogin, 'erasure'));
+  await refusesWith('0059: a correction names the field', 'field_required', () => file(daraLogin, 'correction', ' ', 'Wrong date'));
+  await refusesWith('0059: ... and says what is wrong', 'text_required', () => file(daraLogin, 'correction', 'Date of birth', ''));
+  await refusesWith('0059: an unknown kind is refused', 'kind_invalid', () => file(daraLogin, 'access'));
+  await refusesWith('0059: a waiting login files nothing', 'not_allowed', () => file(stranger, 'erasure'));
+  const fix = await file(daraLogin, 'correction', 'Date of birth', 'It is 1992-03-05.');
+  const due = (new Date(fix.answer_by) - Date.now()) / 86400000;
+  check('0059 #551: a request gets a DR- reference and an answer-by date 30 days on', /^DR-\d{4,}$/.test(fix.ref) && due > 29.9 && due < 30.1,
+    JSON.stringify(fix));
+  await refusesWith('0059: one open request of a kind at a time', 'already_open', () => file(daraLogin, 'correction', 'Name', 'Spelling'));
+  const told = await asOwner(`select profile_id, title, body, url from push_outbox where title = '${fix.ref}'`);
+  check('0059: the Gurus get a notice that opens Data requests and names nobody', told.length > 0
+    && told.every((n) => n.url === '/staff/data-requests' && !/dara|fiftynine/i.test(n.body))
+    && told.some((n) => n.profile_id === guru), JSON.stringify(told));
+
+  // RLS: a person reads only their own requests; a coordinator none; the Guru all. Nobody writes the table.
+  const ekaAsk = await file(ekaLogin, 'grievance', null, 'The class started late three times.');
+  check('0059 RLS: a person reads only their own requests', JSON.stringify(await seenBy(daraLogin)) === JSON.stringify([fix.id])
+    && JSON.stringify(await seenBy(ekaLogin)) === JSON.stringify([ekaAsk.id]));
+  const guruSees = await seenBy(guru);
+  check('0059 RLS: a coordinator reads no request; the Guru reads them all', (await seenBy(coordinator)).length === 0
+    && [fix.id, ekaAsk.id].every((id) => guruSees.includes(id)), JSON.stringify(guruSees));
+  await refusesWith('0059 RLS: a person cannot write the table', 'permission denied for table data_requests', () =>
+    asApp('authenticated', daraLogin, `update data_requests set status = 'done' where id = $1`, [fix.id]));
+  await refusesWith('0059 RLS: nor the Guru (only through the functions)', 'permission denied for table data_requests', () =>
+    asApp('authenticated', guru, `insert into data_requests (kind) values ('erasure')`));
+  await refusesWith('0059: a person cannot take back another\'s request', 'request_not_found', () =>
+    asApp('authenticated', daraLogin, 'select cancel_data_request($1)', [ekaAsk.id]));
+  await refusesWith('0059 #554: a coordinator cannot answer', 'not_allowed', () => answer(coordinator, fix.id, 'done', 'Fixed.'));
+  await refusesWith('0059 #554: ... nor act on one', 'not_allowed', () => act(coordinator, fix.id, 'erase', dara.roll_no));
+  await refusesWith('0059 #554: ... nor record one from the desk', 'not_allowed', () => record(coordinator, kid.roll_no, 'erasure'));
+  await refusesWith('0059 #554: ... nor the person themselves', 'not_allowed', () => answer(daraLogin, fix.id, 'done', 'Fixed.'));
+
+  // The Guru answers (correction) and acts (photo withdrawal).
+  await refusesWith('0059: an answer needs words', 'answer_required', () => answer(guru, fix.id, 'done', '  '));
+  await answer(guru, fix.id, 'done', 'Corrected on the record.', true);
+  const fixed = await row(fix.id);
+  check('0059 #554: the Guru answers a correction: done, corrected, closed by the Guru', fixed.status === 'done' && fixed.action === 'corrected'
+    && fixed.closed_by === guru && fixed.answer === 'Corrected on the record.' && fixed.closed_at !== null, JSON.stringify(fixed));
+  check('0059: ... and the person is told (My data opens)', (await asOwner(`select url from push_outbox
+    where profile_id = '${daraLogin}' and title = '${fix.ref}'`)).map((r) => r.url).join() === '/student/my-data');
+  await refusesWith('0059: a closed request is not answered again', 'not_open', () => answer(guru, fix.id, 'refused', 'No.'));
+  check('0059: the person sees the answer', (await asApp('authenticated', daraLogin, 'select status, answer from data_requests'))[0]?.answer
+    === 'Corrected on the record.');
+  const photo = await file(daraLogin, 'withdraw_photo', null, null);
+  await refusesWith('0059 #554: a withdrawal is carried out, not just marked done', 'use_the_action', () => answer(guru, photo.id, 'done', 'OK'));
+  await refusesWith('0059 #554: the typed roll number must match', 'confirm_mismatch', () => act(guru, photo.id, 'withdraw_photo', eka.roll_no));
+  await refusesWith('0059 #554: an action must fit the request', 'action_not_for_kind', () => act(guru, photo.id, 'erase', dara.roll_no));
+  await refusesWith('0059 #554: a note is needed', 'reason_required', () => act(guru, photo.id, 'withdraw_photo', dara.roll_no, ' '));
+  const photoDone = await act(guru, photo.id, 'withdraw_photo', ` ${dara.roll_no.toLowerCase()} `);
+  check('0059 #554: the photo consent is withdrawn; the data consent and the record stay', photoDone.consents_revoked === 1
+    && photoDone.ref === photo.ref && (await row(photo.id)).action === 'withdraw_photo'
+    && (await asOwner(`select withdrawn_at from students where id = '${dara.id}'`))[0].withdrawn_at === null
+    && (await asOwner(`select count(*)::int as n from consents where student_id = '${dara.id}' and scope = 'photo' and revoked_at is null`))[0].n === 0);
+  await refusesWith('0059: nothing to withdraw: no photo consent left', 'no_photo_consent', () => file(daraLogin, 'withdraw_photo'));
+
+  // Take back, and the daily limit of 5.
+  const back = await file(daraLogin, 'grievance', null, 'Never mind.');
+  await asApp('authenticated', daraLogin, 'select cancel_data_request($1)', [back.id]);
+  check('0059: the person takes back an open request', (await row(back.id)).status === 'cancelled');
+  await refusesWith('0059: ... once', 'not_open', () => asApp('authenticated', daraLogin, 'select cancel_data_request($1)', [back.id]));
+  await file(daraLogin, 'nominate', null, 'My brother, Ravi, +91 90000 00059.');
+  await file(daraLogin, 'withdraw_data');
+  await refusesWith('0059: at most 5 requests a day', 'too_many_requests', () => file(daraLogin, 'erasure'));
+
+  // Erasure (c): the Guru erases with the roll number; the tombstone carries the reference; the request stays bare.
+  const gone = await file(ekaLogin, 'erasure', null, 'Please delete everything about me.');
+  const erased59 = await act(guru, gone.id, 'erase', eka.roll_no, 'Asked in the app');
+  const bare = await row(gone.id);
+  check('0059 #555: the Guru erases a student from the request (erase_student)', erased59.roll_no === eka.roll_no && erased59.login_deleted === true
+    && (await asOwner(`select count(*)::int as n from students where id = '${eka.id}'`))[0].n === 0, JSON.stringify(erased59));
+  check('0059 #555: ... the tombstone carries the request\'s reference', (await asApp('authenticated', guru,
+    'select request_ref from erasures where roll_no = $1', [eka.roll_no]))[0]?.request_ref === gone.ref);
+  check('0059 #555: ... the request stays as the proof: done, without the person, its text or an audit copy', bare.status === 'done'
+    && bare.action === 'erase_student' && bare.profile_id === null && bare.student_id === null && bare.made_by === null && bare.body === null
+    && bare.text_purged_at !== null && (await asOwner(`select count(*)::int as n from audit_log where row_id in ('${gone.id}', '${ekaAsk.id}')
+      and (old_row is not null or new_row is not null)`))[0].n === 0, JSON.stringify(bare));
+  check('0059 #555: ... the person\'s other request (a complaint) stays open without them', (await row(ekaAsk.id)).status === 'open'
+    && (await row(ekaAsk.id)).profile_id === null);
+  await refusesWith('0059: a request whose person is gone cannot be acted on', 'person_gone', async () => {
+    const [{ id }] = await asOwner(`insert into data_requests (kind, source) values ('erasure', 'email') returning id`);
+    return act(guru, id, 'erase', 'x');
+  });
+  await answer(guru, ekaAsk.id, 'refused', 'The person was erased at their request.');
+
+  // The desk (Rule 10): the Guru records a parent's request for a child; the child does not see it.
+  await refusesWith('0059 #552: at the desk a child does not ask for themselves', 'parent_asks', () => record(guru, kid.roll_no, 'erasure', 'self'));
+  await refusesWith('0059: an unknown roll number', 'person_not_found', () => record(guru, 'MS-1999-9999', 'erasure'));
+  const kidWithdraw = await record(guru, kid.roll_no.toLowerCase(), 'withdraw_data', 'parent', 'The mother asked at the desk; her ID was seen.');
+  const kidRow = await row(kidWithdraw.id);
+  check('0059 #552: the Guru records a parent\'s request at the desk, about the child\'s record and login', kidRow.source === 'desk'
+    && kidRow.asked_by === 'parent' && kidRow.student_id === kid.id && kidRow.profile_id === kidLogin && kidRow.made_by === guru);
+  check('0059 RLS: the child does not see what the parent asked', (await seenBy(kidLogin)).length === 0);
+  const kidOut = await act(guru, kidWithdraw.id, 'withdraw_consent', kid.roll_no, 'Mother withdrew consent at the desk');
+  check('0059 #554: withdraw_consent from the request: the record is frozen, the login switched off', kidOut.consents_revoked >= 2
+    && kidOut.login_switched_off === true && (await asOwner(`select withdrawn_note from students where id = '${kid.id}'`))[0].withdrawn_note
+      === `${kidWithdraw.ref}: Mother withdrew consent at the desk`);
+
+  // A waiting login (no record), asked by email: erase_login, confirmed with its email.
+  const waiting59 = await signUp('wait.59@example.com', true);
+  const waitAsk = await asApp('authenticated', guru, `select record_data_request($1, 'erasure', 'email', 'self', null, null) as r`, ['Wait.59@Example.com']);
+  await refusesWith('0059: a login without a record is confirmed with its email', 'confirm_mismatch', () => act(guru, waitAsk[0].r.id, 'erase', 'MS-2026-0001'));
+  const waitGone = await act(guru, waitAsk[0].r.id, 'erase', 'wait.59@example.com', 'Asked by email');
+  check('0059 #555: ... and erased with erase_login', waitGone.login_deleted === true && (await row(waitAsk[0].r.id)).action === 'erase_login'
+    && (await asOwner(`select count(*)::int as n from profiles where id = '${waiting59}'`))[0].n === 0);
+
+  // The daily job: one reminder before the date; text blanked a year after closing; the row gone after two.
+  const remind = await file(kidLogin, 'erasure').catch(() => null); // the child's login is off now: refused
+  check('0059: (state) a switched-off login files nothing', remind === null);
+  const late = await record(guru, dara.roll_no, 'access', 'self', 'Asked for a printed copy.');
+  await asOwner(`update data_requests set answer_by = now() + interval '2 days' where id = '${late.id}'`);
+  const pushes = async () => (await asOwner(`select count(*)::int as n from push_outbox where title = '${late.ref}'`))[0].n;
+  await asOwner('select data_requests_daily()');
+  const once = await pushes();
+  await asOwner('select data_requests_daily()');
+  check('0059 #551: the Gurus are reminded once, three days before the answer-by date', once > 0 && (await pushes()) === once
+    && (await row(late.id)).reminded_at !== null, `${once} -> ${await pushes()}`);
+  await asOwner(`update data_requests set closed_at = now() - interval '400 days' where id = '${fix.id}'`);
+  await asOwner(`update data_requests set closed_at = now() - interval '800 days' where id = '${back.id}'`);
+  await asOwner('select data_requests_daily()');
+  const old59 = await row(fix.id);
+  check('0059 #553: a year after closing the text goes, with its audit copies; the bare row stays', old59 && old59.body === null && old59.field === null
+    && old59.answer === null && old59.text_purged_at !== null && (await asOwner(`select count(*)::int as n from audit_log
+      where row_id = '${fix.id}' and (old_row is not null or new_row is not null)`))[0].n === 0);
+  check('0059 #553: ... two years after closing the row goes; open requests stay', (await row(back.id)) === undefined
+    && (await row(late.id))?.status === 'open');
+  check('0059 #553: the daily job runs at 02:30 India time', (await asOwner(`select schedule from cron.job
+    where jobname = 'mridanga-data-requests'`))[0]?.schedule === '0 21 * * *');
+
+  const counts59 = async () => (await asOwner(`select (select count(*) from data_requests)::int as r,
+    (select count(*) from cron.job)::int as j, (select count(*) from pg_policies where tablename = 'data_requests')::int as p`))[0];
+  const before59 = await counts59();
+  let again59 = '';
+  try { await db.exec(file59); } catch (e) { again59 = String(e.message); }
+  check('0059: a second run changes nothing', again59 === '' && JSON.stringify(await counts59()) === JSON.stringify(before59),
+    `${again59} ${JSON.stringify(before59)}`);
 }
 
 // ---------------------------------------------------------------- row-level security
