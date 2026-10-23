@@ -127,7 +127,7 @@ process.on('uncaughtException', (error) => {
 // D14-10: every check is counted, and the run fails when fewer (or more) checks ran than expected,
 // so a block skipped by a renamed migration or a commented-out section cannot pass unseen.
 // Adding or removing checks? Run the suite and set this to the new total it prints.
-const EXPECTED_CHECKS = 1990; // 0059 data rights: +56; 0054 after-launch forms: +49; 0053 staff own record: +55; 0052 more practice: +56; 0051 child's sign-up at home: +80; 0050 staff dashboard: +15; 0049 launch clean-up: +30; 0048 withdrawn records and leaks: +50; 0047 form rules: +109; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
+const EXPECTED_CHECKS = 2014; // 0059 data rights: +56; 0057 practice while waiting: +24; 0054 after-launch forms: +49; 0053 staff own record: +55; 0052 more practice: +56; 0051 child's sign-up at home: +80; 0050 staff dashboard: +15; 0049 launch clean-up: +30; 0048 withdrawn records and leaks: +50; 0047 form rules: +109; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
 let failures = 0;
 let passes = 0;
 
@@ -4172,6 +4172,8 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
     'record_fund_entry(uuid,text,smallint,date,bigint,text,text,text,text,text)', 'log_call(uuid,uuid,call_outcome,text,text,date)',
     'log_practice(uuid,integer,text,date,timestamp with time zone,bigint,text)', 'change_event_attendance(bigint,uuid[],uuid[])',
     'delete_student_record(uuid,text)', 'undo_import(uuid)', 'phone_e164(text)',
+    // 0057: may a login waiting for the desk practise (#510; the read policies call it too)
+    'practice_while_waiting()',
     // 0059: a person's data and requests (own only inside); the Guru records, answers and acts (is_guru inside)
     'my_data_summary()', 'file_data_request(text,text,text)', 'cancel_data_request(uuid)',
     'record_data_request(text,text,text,text,text,text)', 'answer_data_request(uuid,text,text,boolean)',
@@ -6793,6 +6795,118 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   const c62 = await counts62();
   try { await db.exec(file62); } catch (e) { again62 = String(e.message); }
   check('0054: a second run changes nothing', again62 === '' && JSON.stringify(await counts62()) === JSON.stringify(c62), `${again62} ${JSON.stringify(c62)}`);
+}
+
+// ---------------------------------------------------------------- 0057 practice while waiting (DECISIONS #510-#512)
+{
+  const file57 = readFileSync(new URL('migrations/0057_practice_while_waiting.sql', supabaseDir), 'utf8');
+  let again57 = '';
+  try { await db.exec(file57); } catch (e) { again57 = String(e.message); }
+  check('0057 can run a second time', again57 === '', again57);
+
+  /** A sign-up as the app sends it, email confirmed, no record with that email (so it stays pending). */
+  const signUp57 = async (email, meta) => (await db.query(
+    `insert into auth.users (email, email_confirmed_at, raw_user_meta_data) values ($1, now(), $2::jsonb) returning id`,
+    [email, JSON.stringify({ full_name: 'Waiting Fiftyseven', language: 'en', notice_version: '0.2-draft', ...meta })])).rows[0].id;
+  const level57 = async (id) => (await asApp('authenticated', id, 'select practice_while_waiting() as l'))[0].l;
+  const count57 = async (id, sql) => (await asApp('authenticated', id, `select count(*)::int as n from (${sql}) x`))[0].n;
+  const reads57 = async (id) => ({
+    taals: await count57(id, 'select 1 from taals'),
+    mantras: await count57(id, 'select 1 from practice_mantras'),
+    lessons: await count57(id, 'select 1 from materials'),
+  });
+
+  const adult57 = await signUp57('waiting.adult.57@example.com', { dob: `${year - 30}-02-02` });
+  const noDob57 = await signUp57('waiting.nodob.57@example.com', {});
+  const kidDob57 = `${year - 13}-04-04`;
+  const parent57 = { parent_name: 'Sita Fiftyseven', parent_relation: 'mother', parent_phone: '+919800057057' };
+  const kidWaiting57 = await signUp57('waiting.kid.57@example.com', { dob: kidDob57, ...parent57, parent_email: 'sita.57@example.com' });
+  const kidConsented57 = await signUp57('consented.kid.57@example.com', { dob: kidDob57, ...parent57, parent_email: 'sita.b.57@example.com' });
+  await asOwner(`update minor_signups set consented_at = now() where profile_id = '${kidConsented57}'`);
+  const subscriber57 = await signUp57('ig.adult.57@example.com', { dob: `${year - 40}-03-03` });
+  await asOwner(`insert into ig_subscribers (profile_id, birth_year, minor, terms_version) values ('${subscriber57}', ${year - 40}, false, 'v1')`);
+  const off57 = await signUp57('waiting.off.57@example.com', { dob: `${year - 25}-05-05` });
+  await asApp('authenticated', guru, 'update profiles set active = false where id = $1', [off57]);
+  check('0057: (control) the waiting people are pending, the child requests are stored',
+    (await roleOf(adult57)) === 'pending' && (await roleOf(noDob57)) === 'pending' && (await roleOf(kidWaiting57)) === 'pending'
+      && (await asOwner(`select count(*)::int as n from minor_signups where profile_id in ('${kidWaiting57}', '${kidConsented57}')`))[0].n === 2);
+
+  const [{ id: first57 }] = await asOwner('select id from levels order by sort, id limit 1');
+  const [{ id: second57 }] = await asOwner('select id from levels order by sort, id offset 1 limit 1');
+  // Class content to read: one mantra switched on and one off, a taal switched off, lesson videos of two levels.
+  await asOwner(`insert into practice_mantras (title, roman, active) values ('Mantra Fiftyseven', 'om', true), ('Old Fiftyseven', 'om', false)`);
+  const [{ id: offTaal57 }] = await asOwner(`select id from taals where active order by id limit 1`);
+  await asOwner(`update taals set active = false where id = ${offTaal57}`);
+  const video57 = (title, level, approved) => asApp('authenticated', guru, `insert into materials (title, kind, url, level_id, approved_by)
+    values ($1, 'youtube', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', $2, ${approved ? `'${guru}'` : 'null'}) returning id`, [title, level]);
+  await video57('Beginner Fiftyseven', first57, true);
+  await video57('Intermediate Fiftyseven', second57, true);
+  await video57('Every level Fiftyseven', null, true);
+  await asOwner(`insert into materials (title, kind, body, level_id, approved_by) values ('Beginner note Fiftyseven', 'note', 'x', ${first57}, '${guru}')`);
+  const want57 = (await asOwner(`select (select count(*) from taals where active)::int as taals,
+    (select count(*) from practice_mantras where active)::int as mantras,
+    (select count(*) from materials where approved_by is not null and kind in ('youtube', 'video') and level_id = ${first57})::int as lessons,
+    (select count(*) from materials where level_id = ${first57} and kind = 'note')::int as notes,
+    (select count(*) from materials where approved_by is not null and level_id = ${second57})::int as level2`))[0];
+  check('0057: (control) there are taals and mantras switched on and off, Beginner and Intermediate videos and a Beginner note',
+    want57.taals > 0 && want57.mantras > 0 && want57.lessons > 0 && want57.notes > 0 && want57.level2 > 0, JSON.stringify(want57));
+
+  // #510: an adult waiting for the desk (age known from the sign-up's date of birth).
+  check('0057 #510: an adult waiting for the desk may practise: practice_while_waiting() names the first level', (await level57(adult57)) === first57,
+    String(await level57(adult57)));
+  const adultReads57 = await reads57(adult57);
+  check('0057 #510: ... reads exactly the taals and mantras switched on and the Beginner lesson videos',
+    JSON.stringify(adultReads57) === JSON.stringify({ taals: want57.taals, mantras: want57.mantras, lessons: want57.lessons }),
+    `${JSON.stringify(adultReads57)} vs ${JSON.stringify(want57)}`);
+  check('0057 #510: ... no taal or mantra switched off, no Intermediate, every-level, unapproved video or note',
+    (await count57(adult57, `select 1 from taals where id = ${offTaal57}`)) === 0
+      && (await count57(adult57, 'select 1 from practice_mantras where not active')) === 0
+      && (await count57(adult57, `select 1 from materials where level_id is distinct from ${first57} or kind not in ('youtube', 'video') or approved_by is null`)) === 0);
+  { // The pending sweep of the grant sweep again, for this adult: nothing personal, nobody else's row.
+    const allowed57 = new Set(['groups', 'taals', 'practice_mantras', 'materials']);
+    const leaks57 = [];
+    for (const { relname } of await asOwner(`select relname from pg_class
+      where relnamespace = 'public'::regnamespace and relkind in ('r', 'v', 'm', 'p') order by relname`)) {
+      if (allowed57.has(relname)) continue;
+      let rows = 0;
+      try { rows = await count57(adult57, `select 1 from public.${relname}`); } catch { rows = 0; }
+      if (rows > (relname === 'profiles' ? 1 : 0)) leaks57.push(`${relname}:${rows}`);
+    }
+    check('0057 #511: ... and reads nothing else: no student, visit, profile but its own, level, syllabus or setting', leaks57.length === 0, leaks57.join(' '));
+  }
+  const writes57 = [];
+  for (const sql of ['update taals set name = name returning 1', 'delete from practice_mantras returning 1',
+    'update materials set title = title returning 1', 'delete from materials returning 1']) {
+    try { writes57.push(...(await asApp('authenticated', adult57, sql)).map(() => sql)); } catch { /* refused: fine */ }
+  }
+  check('0057 #511: ... and changes none of it', writes57.length === 0, writes57.join(' | '));
+  await refusesWith('0057 #511: ... nor logs practice (minutes stay for students)', 'not_allowed', () =>
+    asApp('authenticated', adult57, `select log_practice(10, 'manual', today_ist(), null, null, null)`));
+
+  // #512: who does not count. Under the DPDP Rules nothing about a child before the parent consents (#399).
+  for (const [who, id] of [['a login with no date of birth (age unknown)', noDob57], ['a child waiting for the parent\'s consent', kidWaiting57],
+    ['a public Ishtagoshti subscriber', subscriber57], ['a switched-off login', off57], ['a student', arjun], ['a coordinator', coordinator]]) {
+    check(`0057 #512: ${who}: practice_while_waiting() is null`, (await level57(id)) === null);
+  }
+  for (const [who, id] of [['the login with no date of birth', noDob57], ['the child waiting for the parent', kidWaiting57],
+    ['the Ishtagoshti subscriber', subscriber57], ['the switched-off login', off57]]) {
+    check(`0057 #512: ${who} reads no taal, mantra or lesson`, JSON.stringify(await reads57(id)) === JSON.stringify({ taals: 0, mantras: 0, lessons: 0 }),
+      JSON.stringify(await reads57(id)));
+  }
+  check('0057 #512: a child whose parent consented by email counts, and reads the Beginner videos',
+    (await level57(kidConsented57)) === first57 && (await reads57(kidConsented57)).lessons === want57.lessons);
+  check('0057 #512: (control) a student still reads every taal switched on and their own level\'s lessons',
+    (await count57(arjun, 'select 1 from taals')) === want57.taals && (await count57(arjun, `select 1 from materials where level_id = 1 and kind = 'note'`)) > 0);
+  await refusesWith('0057: anon cannot run practice_while_waiting', 'permission denied for function practice_while_waiting', () =>
+    asApp('anon', null, 'select practice_while_waiting()'));
+  check('0057: the new policies call the helper once per query ((select ...)), as #168 asks', (await asOwner(`select count(*)::int as n from pg_policies
+    where policyname = 'waiting_read' and qual like '%( SELECT practice_while_waiting()%'`))[0].n === 3);
+
+  // Once accepted, the login is a student and the rule steps aside (my_role() is student).
+  await asApp('authenticated', coordinator, `insert into students (full_name, dob, email, level_id) values ('Waiting Fiftyseven', '${year - 30}-02-02', 'waiting.adult.57@example.com', 1)`);
+  check('0057: once the desk registers the adult, the login is a student and practice_while_waiting() is null',
+    (await roleOf(adult57)) === 'student' && (await level57(adult57)) === null);
+  await asOwner(`update taals set active = true where id = ${offTaal57}`);
 }
 
 // ---------------------------------------------------------------- 0059 data rights (DECISIONS #550-#556)

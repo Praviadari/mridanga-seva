@@ -29,7 +29,20 @@ test('belongsTo: each area opens only its own screens', async () => {
   assert.equal(belongsTo('/student/home', 'guru'), false);
   assert.equal(belongsTo('/subscriber/slokas', 'subscriber'), true);
   assert.equal(belongsTo('/staff', 'subscriber'), false);
-  assert.equal(belongsTo('/student', 'pending'), false, 'a login waiting for a role opens nothing');
+  assert.equal(belongsTo('/student', 'pending'), false, 'a login waiting for a role opens no student screen');
+  assert.equal(belongsTo('/waiting/practice', 'pending'), true, '... only the practice screens while waiting (#510)');
+  assert.equal(belongsTo('/waiting/practice', 'student'), false);
+  assert.equal(belongsTo('/waitingroom', 'pending'), false, 'a prefix is not enough');
+});
+
+test('fix 9: /sign-up and /forgot-password open themselves for a signed-out person, nothing else does (#514)', async () => {
+  const { belongsTo, requestedPathFor } = await startApp('web', { pathname: '/sign-up' });
+  assert.equal(requestedPathFor('signedOut'), '/sign-up', 'the website\'s Register link opens Create an account');
+  assert.equal(requestedPathFor('student'), null, 'once signed in it is forgotten (not a student screen)');
+  assert.equal(belongsTo('/forgot-password', 'signedOut'), true);
+  assert.equal(belongsTo('/sign-in', 'signedOut'), false, 'sign-in is the home of the area anyway');
+  assert.equal(belongsTo('/student', 'signedOut'), false);
+  assert.equal(belongsTo('/reset-password', 'signedOut'), false, 'a reset link needs its recovery login');
 });
 
 test('web: the address the app was opened at is remembered for its area only', async () => {

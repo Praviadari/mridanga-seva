@@ -34,7 +34,8 @@ import { Section } from './section';
 
 /** Props for MantraEntry. */
 export type MantraEntryProps = {
-  area: 'student' | 'staff';
+  /** waiting: a login waiting for the desk (0057, #510). */
+  area: 'student' | 'staff' | 'waiting';
   /** The mantras switched on (data/mantras.ts; the copy on the phone while loading or offline). */
   mantras: readonly Mantra[];
   /** The Guru or an Ishtagoshti editor. */
@@ -53,7 +54,7 @@ export function MantraEntry({ area, mantras, canEdit }: MantraEntryProps) {
         leading="sloka"
         title={t('mantras.entry')}
         details={[mantras.map((m) => m.title).join(' · ')]}
-        onPress={() => router.push(area === 'staff' ? '/staff/mantra' : '/student/mantra')}
+        onPress={() => router.push(area === 'staff' ? '/staff/mantra' : area === 'waiting' ? '/waiting/mantra' : '/student/mantra')}
       />
     );
   }

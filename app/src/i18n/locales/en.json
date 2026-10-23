@@ -106,7 +106,9 @@
     "phoneRequired": "Enter your mobile number.",
     "choicesNeeded": "Your centre is needed before the account can be made. Check the internet connection, tap Try again, then Create account.",
     "noticeRead": "I have read the privacy notice.",
-    "noticeRequired": "Read the privacy notice (link above), then tick this box."
+    "noticeRequired": "Read the privacy notice (link above), then tick this box.",
+    "laterNote": "Your mobile number, gender, Diksha name and the instruments you want to learn come later, in About you, after you sign in.",
+    "laterNoteMinor": "Nothing more is asked now: the rest is recorded at the class desk after your parent has given consent."
   },
   "forgotPassword": {
     "title": "Reset your password",
@@ -173,6 +175,26 @@
     "igParentCode": "Type your parent's code",
     "serverError": "The server answered with an error. Tap Check again in a few minutes; if it keeps happening, sign out and tell a coordinator.",
     "missingProfile": "Your account is not set up yet. Tap Check again in a minute; if it stays like this, sign out and sign in again."
+  },
+  "waiting": {
+    "title": "While you wait",
+    "body": "You can start practising now; the desk does not have to accept you first.",
+    "practiceTitle": "Practice tools",
+    "practiceDetail": "Metronome and taal player",
+    "mantraTitle": "Mantra before practice",
+    "mantraDetail": "Read it before you play",
+    "lessonsTitle": "Beginner lessons",
+    "lessonsDetail": "Lesson videos of the first level",
+    "lessonsIntro": "The lesson videos of the first level. Watch one, then practise it with the taal player.",
+    "lessonsSection": "Lesson videos",
+    "lessonsOffline": "No internet: this is the list kept on this device. The videos play once you are online again.",
+    "lessonsFailed": "Could not load the lessons.",
+    "lessonsEmptyTitle": "No Beginner lessons yet",
+    "lessonsEmptyBody": "The Guru adds the lesson videos. Meanwhile the practice tools are ready for you.",
+    "watchLesson": "Watch {{title}}",
+    "closedTitle": "Not open yet",
+    "closedBody": "This opens once the desk has accepted you, or, under 18, once your parent has given consent.",
+    "backToWaiting": "Back to the waiting page"
   },
   "roles": {
     "guru": "Facilitator",

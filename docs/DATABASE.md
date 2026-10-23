@@ -1642,6 +1642,24 @@ level's lesson titles stay unseen); anon reads nothing. The policies wrap `is_st
 
 Tests: section "0052 more practice" in `supabase/tests/smoke-test.mjs`.
 
+## Practice while waiting (0057)
+
+[DECISIONS.md #510-#512](DECISIONS.md). Migration `0057_practice_while_waiting.sql`. Screens: the waiting page's "While
+you wait" and `src/app/waiting/` (practice tools, mantra, Beginner lessons, lesson player). No table, no write.
+
+| Function | Who | Does | Errors |
+|---|---|---|---|
+| `practice_while_waiting()` | Anyone signed in (security definer, about the caller only) | The first level's id (lowest `levels.sort`) when the caller may practise while waiting, else null: role `pending` by `my_role()` (active, no student record), no `ig_subscribers` row, and either an About-you date of birth 18 or more years ago (`person_details`, no student yet) or a parent's consent by email (`minor_signups.consented_at`, 0051) | — |
+
+Three read policies named `waiting_read`, added beside the existing ones (a row is readable when any policy allows it):
+`taals` and `practice_mantras` switched on, and `materials` that are approved `youtube` or `video` lessons of exactly
+that first level (not every-level ones, no PDFs or photos, so Storage is unchanged). Each calls the function once per
+query (`(select ...)`, D9-01). A child waiting for the parent, a login with no date of birth, a subscriber, a switched-off
+login, students and staff get null (students and staff read these through their own policies as before).
+
+Tests: section "0057 practice while waiting" in `supabase/tests/smoke-test.mjs` (with a sweep: the waiting login reads
+nothing else and writes nothing).
+
 ## Own record (0053)
 
 [DECISIONS.md #316-#321](DECISIONS.md). Migration `0053_staff_own_record.sql` (placeholder 0061 on branch `staff-own-record`,
@@ -1884,7 +1902,7 @@ and the helpers `my_role`, `is_guru`, `is_staff`,
 | Data requests (`data_requests`, 0059) | Own, made by themselves (read); file and take back through the functions | Own, made by themselves (read); file through the functions | Read all; record, answer, act through the functions |
 | Call logs | — | Read through `get_call_notes` (logged); write through `log_call` | Read (in the app through `get_call_notes`, logged); write through `log_call` |
 | Follow-up tasks, status history | — | Read / write | Read / write |
-| Materials | Approved ones up to own level (needs a student record) | All; suggest (C18); take back or remove own suggestion | All; add, edit, delete; add or decline suggestions |
+| Materials | Approved ones up to own level (needs a student record). A pending login that may practise while waiting: the approved Beginner lesson videos (0057, #510) | All; suggest (C18); take back or remove own suggestion | All; add, edit, delete; add or decline suggestions |
 | Material files (Storage) | Those on materials they can read | All on materials, and own uploads; upload for a suggestion (10 a day) | All; upload; delete any |
 | Own name and phone | Read / write (not a staff member's name) | Read / write (same) | Read / write (same) |
 | Other logins' profiles (name, role, email, phone, centre, gender) | — | Read, except public Ishtagoshti subscribers (0027:81-82, 0037:298-299) | Read all; write role, `active`, duty hours, gender (G2) |

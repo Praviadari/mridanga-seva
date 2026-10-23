@@ -1,16 +1,17 @@
-// A1 Create an account (step 1 of joining, about a minute; team MoM 05-10-2026, docs/DECISIONS.md
-// #162; team list 07-10-2026): the full name as on the Aadhaar or another government ID (only the
-// name is kept, never an ID number or a copy) and, optional, the Diksha (initiated) name; email and
-// password; date of birth (the phone's calendar, drop-downs on the web; under 18 → the parent's name, relation, email and mobile,
-// and the parent consents by email: migration 0051, docs/DECISIONS.md #399); gender; mobile
-// number (E.164, the centre's country first); the centre (country → city → centre); the instruments
-// the person wants to learn. A new login has no access
-// until the database links it to a student record with the same email, or the Guru gives it a
-// role (docs/DATABASE.md "Linking a login to a student"). Step 2, About you, follows the first
-// sign-in (src/screens/about-you.tsx). The privacy notice is linked above the button with a required
-// "I have read" tick; its version goes with the sign-up as notice_version (docs/DECISIONS.md #150, #268); the under-18 rule shows on the date of birth itself. Names take letters of any script only, each box is
-// checked when it is left and again on Create, and Create takes the person to the first box with a problem
-// (docs/DECISIONS.md #267, #268).
+// A1 Create an account (step 1 of joining, under a minute; team MoM 05-10-2026, docs/DECISIONS.md
+// #162; shortened by the world-class audit 22-10-2026 fix 9, #514): the full name as on the Aadhaar or another
+// government ID (only the name is kept, never an ID number or a copy); email and password (one box, with the eye to
+// show it: no second "confirm" box); date of birth (the phone's calendar, drop-downs on the web; under 18 → the
+// parent's name, relation, email and mobile, and the parent consents by email: migration 0051, docs/DECISIONS.md
+// #399); the centre only when the class has more than one (one centre is chosen by itself); the privacy-notice tick.
+// The Diksha name, mobile number, gender and instruments moved to About you (src/screens/about-you.tsx), which opens
+// once after the first sign-in; the desk's Accept needs only the name, date of birth and tick (0046-0048).
+// A new login has no class access until the desk accepts it (it may practise while waiting: 0057, #510), or the
+// database links it to a student record with the same email (docs/DATABASE.md "Linking a login to a student").
+// The privacy notice is linked above the button with a required "I have read" tick; its version goes with the sign-up
+// as notice_version (docs/DECISIONS.md #150, #268); the under-18 rule shows on the date of birth itself. Names take
+// letters of any script only, each box is checked when it is left and again on Create, and Create takes the person
+// to the first box with a problem (docs/DECISIONS.md #267, #268).
 
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -27,7 +28,7 @@ import { AppText } from '@/components/app-text';
 import { BirthDateField } from '@/components/birth-date-field';
 import { BrandHeader } from '@/components/brand';
 import { Button } from '@/components/button';
-import { InstrumentChecks, PhoneField } from '@/components/about-fields';
+import { PhoneField } from '@/components/about-fields';
 import { Checkbox } from '@/components/checkbox';
 import { ChoiceGroup } from '@/components/choice-group';
 import { useFormFocus } from '@/components/form-focus';
@@ -46,7 +47,6 @@ import {
   type SignUpChoices,
 } from '@/data/about';
 import { checkParentDetails, type ParentField } from '@/data/minor-signup';
-import { optionLabel } from '@/data/options';
 import { RELATIONS, type Relation } from '@/data/students';
 import { birthCheck, birthDateOf, NO_BIRTH_PARTS, type BirthParts } from '@/lib/birth-date';
 import { cleanName, nameError } from '@/lib/person-name';
@@ -54,27 +54,20 @@ import { countryName, isPhoneCountry, toE164, type CountryCode } from '@/lib/pho
 import { PRIVACY_NOTICE_VERSION } from '@/lib/privacy-notice';
 import { spacing } from '@/theme/use-theme';
 
-type Field = 'name' | 'diksha' | 'email' | 'password' | 'confirm' | 'dob' | ParentField | 'gender' | 'centre' | 'phone' | 'notice';
+type Field = 'name' | 'email' | 'password' | 'dob' | ParentField | 'centre' | 'notice';
 /** The fields in the order they are on the page: Create goes to the first one with a problem. */
-const ORDER: readonly Field[] = ['name', 'diksha', 'email', 'password', 'confirm', 'dob', 'parentName', 'parentRelation', 'parentEmail',
-  'parentPhone', 'phone', 'gender', 'centre', 'notice'];
+const ORDER: readonly Field[] = ['name', 'email', 'password', 'dob', 'parentName', 'parentRelation', 'parentEmail',
+  'parentPhone', 'centre', 'notice'];
 
 /** Sign-up form. Shows "check your email" when Supabase needs the email confirmed first. */
 export default function SignUpScreen() {
   const { t, i18n } = useTranslation();
   const [name, setName] = useState('');
-  const [diksha, setDiksha] = useState('');
-  const [phone, setPhone] = useState('');
-  // Picked by the person; until then the country of the chosen centre (India when none yet).
-  const [phoneCountryPicked, setPhoneCountry] = useState<CountryCode | null>(null);
-  const [learn, setLearn] = useState<string[]>([]);
   // The privacy notice ticked as read (audit S4-02): required; its version goes with the sign-up.
   const [noticeRead, setNoticeRead] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [confirm, setConfirm] = useState('');
   const [birth, setBirth] = useState<BirthParts>(NO_BIRTH_PARTS);
-  const [gender, setGender] = useState<string | null>(null);
   // Under 18 (#399): the parent or guardian who gets the consent email.
   const [parentName, setParentName] = useState('');
   const [parentRelation, setParentRelation] = useState<Relation | null>(null);
@@ -120,8 +113,8 @@ export default function SignUpScreen() {
   const lists = choices && choices !== 'missing' ? choices : null;
   const ageCheck = birthCheck(birth);
   const centreCountry = lists?.centres.find((c) => c.id === centreId)?.countryCode ?? country;
-  const phoneCountry: CountryCode = phoneCountryPicked ?? (isPhoneCountry(centreCountry) ? centreCountry : 'IN');
-  const parentPhoneCountry: CountryCode = parentPhoneCountryPicked ?? phoneCountry;
+  // The parent's mobile starts in the centre's country (India when none yet) until another is picked.
+  const parentPhoneCountry: CountryCode = parentPhoneCountryPicked ?? (isPhoneCountry(centreCountry) ? centreCountry : 'IN');
   const minor = ageCheck === 'minor';
   const parentForm = {
     name: parentName,
@@ -136,18 +129,12 @@ export default function SignUpScreen() {
     const errors: Partial<Record<Field, MessageKey>> = {};
     const nameProblem = nameError(name);
     if (nameProblem) errors.name = nameProblem;
-    const dikshaProblem = nameError(diksha, { required: false });
-    if (dikshaProblem) errors.diksha = dikshaProblem;
-    if (!phone.trim()) errors.phone = 'signUp.phoneRequired';
-    else if (!toE164(phone, phoneCountry)) errors.phone = 'about.errors.phoneInvalid';
     if (!isValidEmail(email)) errors.email = 'validation.emailInvalid';
     if (password.length < MIN_PASSWORD_LENGTH) errors.password = 'validation.passwordTooShort';
-    else if (confirm !== password) errors.confirm = 'validation.passwordsDontMatch';
     const age = birthCheck(birthNow);
     if (age === 'missing') errors.dob = 'signUp.dobRequired';
     else if (age === 'invalid') errors.dob = 'signUp.dobInvalid';
     else if (age === 'minor') Object.assign(errors, checkParentDetails(parentForm, email));
-    if (lists && lists.genders.length > 0 && !gender) errors.gender = 'signUp.choose';
     if (lists && lists.centres.length > 0 && !centreId) errors.centre = 'signUp.choose';
     // No centre list (still loading or failed): the account would get no centre (audit P1-05).
     if (choices === null || choices === undefined) errors.centre = 'signUp.choicesNeeded';
@@ -183,13 +170,10 @@ export default function SignUpScreen() {
     }
 
     setBusy(true);
+    // Only what joining needs (#514): the rest is asked in About you after the first sign-in.
     const result = await signUp(cleanName(name), email.trim(), password, {
       dob: birthDateOf(birth),
-      gender,
       centreId,
-      phone: toE164(phone, phoneCountry),
-      dikshaName: cleanName(diksha) || null,
-      learn,
       noticeVersion: PRIVACY_NOTICE_VERSION,
       parent:
         minor && parentRelation && parentForm.phone
@@ -247,22 +231,6 @@ export default function SignUpScreen() {
           autoCapitalize="words"
           autoCorrect={false}
           returnKeyType="next"
-          onSubmitEditing={() => focusField('diksha')}
-          submitBehavior="submit"
-          maxLength={80}
-        />
-        <TextField kind="name"
-          ref={target('diksha')}
-          label={t('about.dikshaName')}
-          hint={t('about.dikshaHint')}
-          value={diksha}
-          onChangeText={setDiksha}
-          onBlur={() => checkOnLeave('diksha', diksha)}
-          error={fieldError('diksha')}
-          autoComplete="off"
-          autoCapitalize="words"
-          autoCorrect={false}
-          returnKeyType="next"
           onSubmitEditing={() => focusField('email')}
           submitBehavior="submit"
           maxLength={80}
@@ -297,24 +265,9 @@ export default function SignUpScreen() {
           autoComplete="new-password"
           textContentType="newPassword"
           onBlur={() => checkOnLeave('password', password)}
+          // One box, with the eye to see what was typed (#514); the date of birth below is a tap on the calendar.
           returnKeyType="next"
-          onSubmitEditing={() => focusField('confirm')}
-          submitBehavior="submit"
-        />
-        <TextField
-          ref={target('confirm')}
-          label={t('signUp.confirmPassword')}
-          value={confirm}
-          onChangeText={setConfirm}
-          onBlur={() => checkOnLeave('confirm', confirm)}
-          error={fieldError('confirm')}
-          secret
-          autoCapitalize="none"
-          autoComplete="new-password"
-          textContentType="newPassword"
-          // The date of birth is a tap on the calendar; Next goes on to the mobile number.
-          returnKeyType="next"
-          onSubmitEditing={() => focusField('phone')}
+          onSubmitEditing={() => focusField('dob')}
           submitBehavior="submit"
         />
         <BirthDateField
@@ -383,19 +336,6 @@ export default function SignUpScreen() {
           </View>
         ) : null}
 
-        <PhoneField
-          ref={target('phone')}
-          label={t('about.phone')}
-          country={phoneCountry}
-          onCountry={setPhoneCountry}
-          number={phone}
-          onNumber={setPhone}
-          onBlur={() => checkOnLeave('phone', phone)}
-          error={fieldError('phone')}
-          own
-        />
-        <AppText variant="small" tone="muted">{t('about.phonePurpose')}</AppText>
-
         {choices === undefined ? <AppText tone="muted">{t('common.loading')}</AppText> : null}
         {choices === null ? (
           <View ref={target('centre')} collapsable={false} style={styles.group}>
@@ -405,21 +345,8 @@ export default function SignUpScreen() {
             <Button variant="secondary" icon="refresh" label={t('common.tryAgain')} onPress={() => setLoadAttempt(loadAttempt + 1)} />
           </View>
         ) : null}
-        {lists && lists.genders.length > 0 ? (
-          <View ref={target('gender')} collapsable={false}>
-            <ChoiceGroup
-              label={t('signUp.gender')}
-              choices={lists.genders.map((g) => ({ value: g.code, label: optionLabel(g, i18n.language) }))}
-              value={gender}
-              onChange={setGender}
-              error={fieldError('gender')}
-            />
-          </View>
-        ) : null}
-        {lists && lists.genders.length > 0 ? (
-          <AppText variant="small" tone="muted">{t('signUp.genderHint')}</AppText>
-        ) : null}
-        {lists && lists.centres.length > 0 ? (
+        {/* One centre is chosen by itself (above); the choice shows only when the class has more (#514). */}
+        {lists && lists.centres.length > 1 ? (
           <View ref={target('centre')} collapsable={false} style={styles.group}>
             {countries.length > 1 ? (
               <SelectField
@@ -463,7 +390,8 @@ export default function SignUpScreen() {
           </View>
         ) : null}
 
-        {lists ? <InstrumentChecks options={lists.instruments} value={learn} onChange={setLearn} /> : null}
+        {/* Where the rest went: About you, after the first sign-in (#514); a child's parent consents first (#399). */}
+        <AppText variant="small" tone="muted">{t(minor ? 'signUp.laterNoteMinor' : 'signUp.laterNote')}</AppText>
 
         {/* The notice next to its tick, above the button (audit S4-02; #150). */}
         <View ref={target('notice')} collapsable={false} style={styles.group}>

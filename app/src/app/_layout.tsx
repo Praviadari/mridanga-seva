@@ -29,6 +29,7 @@ import { KeyboardRoot } from '@/components/keyboard';
 import { SetupNeeded } from '@/components/setup-needed';
 import { useUpdateChecks } from '@/lib/app-update';
 import { documentTitleLayout } from '@/lib/document-title';
+import { forgetOfflineShell, keepOfflineShell } from '@/lib/offline-shell';
 import { registerForPush, usePushTaps } from '@/lib/push';
 import { pushNeedsRetry } from '@/lib/push-state';
 import { useTakingLong } from '@/lib/slow-start';
@@ -110,6 +111,7 @@ function RootNavigator() {
     <>
       <HideSplash when={area !== 'loading' || slow} />
       <PushSetup />
+      <OfflineShell />
       {/* The titles here have no header bar: they name the web page (src/lib/document-title.tsx). */}
       <Stack
         screenLayout={documentTitleLayout}
@@ -137,6 +139,8 @@ function RootNavigator() {
           <Stack.Screen name="join-ishtagoshti" options={{ title: t('pending.igTitle') }} />
           {/* Step 2 of joining, while waiting for the desk (docs/DECISIONS.md #164). */}
           <Stack.Screen name="about-you" options={{ title: t('about.title') }} />
+          {/* Practice while waiting: tools, mantra, Beginner lessons (0057, docs/DECISIONS.md #510). */}
+          <Stack.Screen name="waiting" />
         </Stack.Protected>
 
         {/* The staff home (G1 for the Guru, C1 for a coordinator) and the coordinator screens the
@@ -178,6 +182,21 @@ function PushSetup() {
     });
     return () => subscription.remove();
   }, [signedIn, profileId]);
+  return null;
+}
+
+/**
+ * The web version offline (src/lib/offline-shell.web.ts, docs/DECISIONS.md #513): the service worker is registered once
+ * someone is signed in, and removed with what it kept whenever the app is signed out. Does nothing on phones. Renders
+ * nothing.
+ */
+function OfflineShell() {
+  const { area } = useAuth();
+  const signedIn = area === 'pending' || area === 'guru' || area === 'coordinator' || area === 'student' || area === 'subscriber';
+  useEffect(() => {
+    if (signedIn) keepOfflineShell();
+    else if (area === 'signedOut') void forgetOfflineShell();
+  }, [signedIn, area]);
   return null;
 }
 

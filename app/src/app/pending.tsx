@@ -8,6 +8,9 @@
 // A child who signed up at home (migration 0051, #399) sees one more step, the parent's consent by email, with a card that
 // says where it stands (src/components/parent-consent-card.tsx); About you waits (nothing beyond the sign-up before the
 // parent consents) and is not offered to a child at all: the desk records what is needed.
+// While waiting (0057, #510; audit 22-10-2026 fix 8) an adult, or a child whose parent consented, may already practise:
+// "While you wait" opens the practice tools, the mantra and the Beginner lessons (src/app/waiting/), when the database
+// says so (practice_while_waiting; the answer is kept on the device for offline use).
 
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
@@ -19,12 +22,14 @@ import { AppText } from '@/components/app-text';
 import { BrandHeader } from '@/components/brand';
 import { Button } from '@/components/button';
 import { JoinSteps } from '@/components/join-steps';
+import { ListRow } from '@/components/list-row';
 import { Notice } from '@/components/notice';
 import { ParentConsentCard } from '@/components/parent-consent-card';
 import { Screen } from '@/components/screen';
 import { SignOutButton } from '@/components/sign-out-button';
 import { UpdateNotice } from '@/components/update-notice';
 import { Section } from '@/components/section';
+import { fetchWaitingAccess, savedWaitingAccess, type WaitingAccess } from '@/data/waiting';
 import { useAboutPrompt } from '@/lib/about-prompt';
 import { IG_JOIN_FOR_WAITING } from '@/lib/ishtagoshti-terms';
 
@@ -41,6 +46,20 @@ export default function PendingScreen() {
   // A child's sign-up at home (#399): the parent's consent comes first; About you is not offered.
   const minor = waitingForDesk ? profile?.minor_state : undefined;
   const aboutOpen = useAboutPrompt(profile?.id, '/about-you', waitingForDesk && !minor);
+  // Practice while waiting (#510): the first level's id when the database allows it; the device's copy at once.
+  const profileId = profile?.id ?? '';
+  const [practiceLevel, setPracticeLevel] = useState<WaitingAccess | undefined>(() => savedWaitingAccess(profileId));
+  useEffect(() => {
+    if (!waitingForDesk || !profileId) return;
+    let cancelled = false;
+    void fetchWaitingAccess(profileId).then((level) => {
+      if (!cancelled) setPracticeLevel(level);
+    });
+    return () => {
+      cancelled = true;
+    };
+    // minor_state changes when the parent consents: ask again then.
+  }, [waitingForDesk, profileId, minor]);
 
   async function checkAgain() {
     setChecking(true);
@@ -100,6 +119,16 @@ export default function PendingScreen() {
       {/* A fixed version may be what this person waits for (FLOW-06). */}
       <UpdateNotice />
       {message}
+      {waitingForDesk && typeof practiceLevel === 'number' ? (
+        <Section icon="practice" title={t('waiting.title')} description={t('waiting.body')}>
+          <ListRow leading="practice" title={t('waiting.practiceTitle')} details={[t('waiting.practiceDetail')]}
+            onPress={() => router.push('/waiting/practice')} />
+          <ListRow leading="sloka" title={t('waiting.mantraTitle')} details={[t('waiting.mantraDetail')]}
+            onPress={() => router.push('/waiting/mantra')} />
+          <ListRow leading="lessonVideo" title={t('waiting.lessonsTitle')} details={[t('waiting.lessonsDetail')]}
+            onPress={() => router.push('/waiting/lessons')} />
+        </Section>
+      ) : null}
       {waitingForDesk && !minor && aboutOpen !== null ? (
         <Section icon="about" title={t('about.cardTitle')} description={aboutOpen ? t('about.cardBody') : t('about.cardDone')}>
           <Button

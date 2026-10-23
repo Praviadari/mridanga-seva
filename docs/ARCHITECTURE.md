@@ -62,7 +62,7 @@ flowchart LR
 | `coordinator` | Teachers who run the daily class | Register students, mark attendance, log follow-up calls, tick syllabus, post announcements |
 | `student` | Enrolled learners (a login linked to a student record) | See their own record, attendance, progress, materials and announcements; study Ishtagoshti slokas. A `student` login with no record counts as `pending` ([DECISIONS.md #96](DECISIONS.md)) |
 | `kiosk` | The door tablet (Phase 2) | Only check students in and out |
-| `pending` | Anyone who signed up but has no role yet | Read and edit only their own profile (name, phone, About you) until the Guru gives a role; may join Ishtagoshti for free (below). See DATABASE.md "Who can see what" |
+| `pending` | Anyone who signed up but has no role yet | Read and edit only their own profile (name, phone, About you) until the Guru gives a role; may join Ishtagoshti for free (below). An adult (by the sign-up's date of birth), or a child whose parent consented, may also use the practice tools, the mantra and the Beginner lesson videos while waiting (`src/app/waiting/`, 0057, [DECISIONS.md #510-#512](DECISIONS.md)). See DATABASE.md "Who can see what" |
 
 A new login starts as `pending`. If its email matches a registered student, it is linked to that
 student and becomes `student` automatically, once the email is confirmed. Only the Guru can make
@@ -96,6 +96,8 @@ app/
                        practice-log.tsx (S6) (Phase 2), ishtagoshti/ (I2, I3; the I1 tab is in
                        (tabs)/), about-you.tsx (A4, 0036) and coming-soon.tsx open on top
       about-you.tsx    A4 About you for a login waiting for the desk (beside pending.tsx)
+      waiting/         Practice while waiting (0057, DECISIONS.md #510): practice tools, mantra, Beginner
+                       lessons and the lesson player for a waiting login, opened from pending.tsx
       staff/           The Guru's and coordinators' screens: register, attendance, follow-up ...,
                        levels/ (G4 syllabus editor), materials/ (G5), visits/ (S9 of one student),
                        profile.tsx (A3), the Guru's coordinators/ (G2), database/ (G3 and the
@@ -155,7 +157,9 @@ app/
                        folder or shares it on Android, save-csv.web.ts downloads it) and the reader of
                        a Google Maps link for G9 (map-link.ts); phone numbers in E.164 (phone.ts,
                        libphonenumber-js/min), the date of birth from three drop-downs (birth-date.ts)
-                       and the one-time About-you prompt (about-prompt.ts) (0036)
+                       and the one-time About-you prompt (about-prompt.ts) (0036); the web version's service
+                       worker, registered after sign-in and removed at sign-out (offline-shell.web.ts; the worker
+                       itself is scripts/service-worker.js, written to dist/sw.js by the export, DECISIONS.md #513)
     theme/             Colours, spacing and text sizes, light and dark; the card look, the header
                        bars and the tab bar (use-theme.ts)
 supabase/
