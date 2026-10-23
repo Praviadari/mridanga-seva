@@ -2,10 +2,10 @@
 // window, what "this week" means, when a student counts as Irregular or Inactive and how calls
 // are planned, how long someone is a new joiner; and the promotion criteria that Phase 2 will
 // read (shown as "not used yet"); the default translator credit of Ishtagoshti slokas; the class fund's approval and bill limits;
-// emails to parents (0043; check-out only by default, 0044). Settings planned for later are listed at the end. Saved
+// emails to parents (0043; check-out only by default, 0044), with the way to the weekly email's screen (0058). Settings planned for later are listed at the end. Saved
 // together, all or nothing; every change is in the audit log (G11). Data: src/data/settings.ts.
 
-import { Stack, useFocusEffect } from 'expo-router';
+import { router, Stack, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -240,6 +240,8 @@ export default function SettingsScreen() {
             maxLength={100}
             error={errors.contact ? t(errors.contact) : undefined}
           />
+          {/* The weekly email to parents (0058, #530-#539) has its own screen: switch, numbers, preview. */}
+          <Button variant="secondary" icon="news" label={t('parentDigest.title')} onPress={() => router.push('/staff/parent-digest')} />
         </Section>
       ) : null}
 

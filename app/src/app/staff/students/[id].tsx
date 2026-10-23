@@ -22,6 +22,7 @@ import { useAuth } from '@/auth/auth-provider';
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { DetailGrid } from '@/components/detail-grid';
+import { GuardianDigestLine, useGuardianDigests } from '@/components/guardian-digest';
 import { GuardianNoticeLine, useGuardianNotices } from '@/components/guardian-notices';
 import { GuruStudentTools } from '@/components/guru-student-tools';
 import { HeldItemsPanel } from '@/components/held-items';
@@ -69,6 +70,8 @@ function StudentProfileScreenContent() {
   // Attendance emails to parents (0043): per guardian; nothing before the migration or for an adult.
   const minor = loaded && typeof loaded === 'object' ? loaded.profile.minor : false;
   const { notices, reload: reloadNotices } = useGuardianNotices(id, minor);
+  // The weekly email to parents (0058, #530-#539): per guardian, opt-in; nothing before the migration or for an adult.
+  const { digests, reload: reloadDigests } = useGuardianDigests(id, minor);
 
   const load = useCallback(async () => {
     const [profile, staff] = await Promise.all([fetchStudentProfile(id), fetchStaff()]);
@@ -216,9 +219,19 @@ function StudentProfileScreenContent() {
                 {[relationName(t, g.relation), g.phone, g.email].filter(Boolean).map((part) => ` · ${part}`).join('')}
               </AppText>
               <GuardianNoticeLine notice={notices?.get(g.id)} onChanged={reloadNotices} />
+              <GuardianDigestLine digest={digests?.get(g.id)} onChanged={reloadDigests} />
             </Fragment>
           ))}
           {notices === null ? <Notice tone="error">{t('parentNotices.loadFailed')}</Notice> : null}
+          {digests === null ? <Notice tone="error">{t('parentDigest.loadFailed')}</Notice> : null}
+          {digests ? (
+            <Button
+              variant="secondary"
+              icon="news"
+              label={t('parentDigest.preview')}
+              onPress={() => router.push({ pathname: '/staff/parent-digest', params: { student: student.id } })}
+            />
+          ) : null}
           {profile.consents.map((c) => (
             <AppText key={c.id} tone={c.revokedAt ? 'muted' : 'default'}>
               {t('profile.consentLine', {
