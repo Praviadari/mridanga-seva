@@ -11,6 +11,22 @@ import { parseEnvText } from './lib/env-file.mjs';
 /** The two settings every bundle needs. */
 export const SETTING_NAMES = ['EXPO_PUBLIC_SUPABASE_URL', 'EXPO_PUBLIC_SUPABASE_KEY'];
 
+/** The web version's public VAPID key for web push (migration 0062, docs/DECISIONS.md #605): optional per site. */
+export const WEB_PUSH_SETTING = 'EXPO_PUBLIC_WEB_PUSH_KEY';
+
+/**
+ * EXPO_PUBLIC_WEB_PUSH_KEY from the text of a .env-style file: { key } when it is a P-256 public key (65 bytes as
+ * base64url: 87 characters starting with B), {} when it is not there (web push stays off on that site), { error }
+ * for anything else (most often the private key pasted by mistake: 43 characters).
+ */
+export function webPushKeyFrom(text) {
+  const key = parseEnvText(text)[WEB_PUSH_SETTING];
+  if (!key) return {};
+  return /^B[A-Za-z0-9_-]{86}$/.test(key)
+    ? { key }
+    : { error: `${WEB_PUSH_SETTING} is not a public key (87 characters, starting with B). Never put the private key in a settings file.` };
+}
+
 /**
  * EXPO_PUBLIC_SUPABASE_URL and _KEY from the text of a .env-style file, as { name: value }, read
  * with Expo's rules (docs/DECISIONS.md #154). Settings that are missing or empty are left out.

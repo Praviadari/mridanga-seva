@@ -1314,7 +1314,7 @@ When an announcement is published, the Android app shows a notification on the p
 people it is addressed to; a tap opens it ([DECISIONS.md #33](DECISIONS.md)). It goes: database
 job (every minute) → Edge Function `notify-announcements` → Expo's push service → Firebase Cloud
 Messaging → the phone. Until every step below is done, nothing is sent and the app works as
-before. The web version (iPhones) gets no notifications yet. Push does not work in Expo Go.
+before. Browsers (the web version, iPhones) are part C below (0062). Push does not work in Expo Go.
 
 Two keys are secret and **never go into this repository, the app or a chat**: the Firebase
 service-account key (step 4) and the push secret (step 8). Nobody needs to keep a copy: the
@@ -1451,6 +1451,32 @@ exactly: upgrading it is an edit in `index.ts` and a deploy, never automatic.
     purpose: emptying it makes the next run push the post again to every phone (if it was published
     less than a day ago), and the dashboard's edit leaves no audit row (audit R2G3-04).
 
+**Part C: browsers (web push, 0062, [DECISIONS.md #596-#609](DECISIONS.md)).** The web version (the iPhone
+home-screen app, Android and computer browsers) gets the same pushes once the person turns them on in My profile.
+Per project (TEST done 24-10-2026), in this order (any other order breaks nothing; browsers just wait):
+
+1. Run `0062_web_push.sql` in the project's SQL editor (after 0061). No new job.
+2. Make the project's key pair, from `app/` on the PC, with the file **outside** the repository:
+   `node scripts/web-push-keys.mjs --out ..\..\web-push-live.env` — it writes `WEB_PUSH_PUBLIC_KEY` and
+   `WEB_PUSH_PRIVATE_KEY` there and prints `EXPO_PUBLIC_WEB_PUSH_KEY=<public key>`. Add the line
+   `WEB_PUSH_SUBJECT=mailto:privacy@mridangaseva.com` to the file (a contact the push services may use).
+3. `npx supabase@2.118.0 secrets set --env-file ..\..\web-push-live.env --project-ref <project-ref>`, then **delete
+   the file**. The private key now lives only in the project's secrets; never in git, a chat or a note. A new pair
+   later makes every browser turn notifications on again, so make it once.
+4. Deploy the function from main: `npx supabase@2.118.0 functions deploy notify-announcements --project-ref
+   <project-ref> --no-verify-jwt --use-api`.
+5. Put the printed `EXPO_PUBLIC_WEB_PUSH_KEY=...` line into the site's settings file (`app/.env.live` for LIVE,
+   `app/.env.test` for TEST), then export and upload the web version as usual ("Publishing the web version"):
+   `export-web` refuses a value that is not a public key and checks it reached the bundle; without the line it warns
+   and the site shows no notifications section.
+6. Check: `select last_web_run_at, last_web_run from push_status;` after a browser has turned notifications on and an
+   announcement went out (`sent` counts browsers). A browser shows the notification with the app icon; a tap opens the
+   announcement. `refused` with `endpoint_gone` = a browser that unsubscribed (its row is deleted);
+   `errors.vapid_refused` = the key pair does not match what the browsers subscribed with (steps 2-5 again, then
+   everybody turns on again).
+
+On an iPhone it works only in the home-screen app on iOS 16.4 or later (Safari → Share → Add to Home Screen; open it
+from there, sign in, My profile → Turn on notifications); in Safari itself My profile shows these steps instead.
 **Switching it off:** `select cron.unschedule('mridanga-push');` in the SQL editor stops it. To
 switch on again, `select cron.schedule('mridanga-push', '* * * * *', 'select send_due_push()');`:
 announcements published meanwhile are then sent if they are less than a day old, the older ones

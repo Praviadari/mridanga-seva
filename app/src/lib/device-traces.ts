@@ -18,6 +18,8 @@
 // - the student's own bests in the tap pad, Echo me and Which bol? (lib/play-bests.ts, #470-#472).
 // - check-ins and practice entries still waiting for the signal, and the note about refused ones
 //   (lib/offline-queue.ts, #593): they belong to the login that made them.
+// - on the web, the note of whose this browser's push subscription is (lib/web-push.web.ts, #604); the
+//   subscription itself ends with the service worker.
 
 import { Directory, Paths } from 'expo-file-system';
 import { Image } from 'expo-image';
@@ -31,6 +33,7 @@ import { forgetOfflineShell } from '@/lib/offline-shell';
 import { forgetPlayBests } from '@/lib/play-bests';
 import { forgetPracticeReminders } from '@/lib/practice-reminder';
 import { dismissNotifications } from '@/lib/push';
+import { forgetWebPushNote } from '@/lib/web-push';
 
 /**
  * The cache folders deleted at sign-out: what expo-image-manipulator, expo-document-picker,
@@ -44,6 +47,7 @@ export async function clearDeviceTraces(): Promise<void> {
   forgetWaitingPractice();
   forgetPlayBests();
   forgetOfflineQueue();
+  forgetWebPushNote();
   await forgetMyRecordings();
   await Promise.all([
     dismissNotifications(),

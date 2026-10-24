@@ -5,7 +5,9 @@
 // Without --site it stops: which project a site talks to is never guessed (docs/DECISIONS.md #145).
 //
 // 1. Reads EXPO_PUBLIC_SUPABASE_URL and _KEY from the site's file and checks that the URL names
-//    that site's project (PROJECTS). They go to `expo export --platform web --clear` in the
+//    that site's project (PROJECTS), and the optional EXPO_PUBLIC_WEB_PUSH_KEY (web push, migration 0062,
+//    DECISIONS #605: the site's public VAPID key; refused when it is not one, checked in the export after
+//    step 4; without it the site offers no notifications). They go to `expo export --platform web --clear` in the
 //    environment, with EXPO_NO_DOTENV=1 so Expo itself loads no .env file at all (audit D11-08:
 //    it used to load app/.env, the live values, into every export). --clear stops Metro's cache
 //    from keeping an older value (seen 29-09-2026: the cache kept an empty key and the site said
@@ -44,7 +46,7 @@ import { createRequire } from 'node:module';
 import { dirname, extname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-import { holdsSecretKey, listFiles, SETTING_NAMES, supabaseSettingsFrom } from './bundle-checks.mjs';
+import { holdsSecretKey, listFiles, SETTING_NAMES, supabaseSettingsFrom, WEB_PUSH_SETTING, webPushKeyFrom } from './bundle-checks.mjs';
 import { serviceWorkerSource, shellFiles, staffChunk } from './lib/offline-shell.mjs';
 import { LIST_FILE, listIsCurrent } from './lib/staff-screens.mjs';
 
@@ -119,6 +121,11 @@ if (settings.EXPO_PUBLIC_SUPABASE_URL.replace(/\/+$/, '') !== supabaseOrigin) {
   );
 }
 if (holdsSecretKey(settings.EXPO_PUBLIC_SUPABASE_KEY)) fail(`${site.file} holds a secret key. Put the publishable key there.`);
+// Web push (0062, #605): the site's public VAPID key, optional; without it My profile offers no notifications.
+const webPush = webPushKeyFrom(readFileSync(site.file, 'utf8'));
+if (webPush.error) fail(`${site.file}: ${webPush.error}`);
+if (webPush.key) settings[WEB_PUSH_SETTING] = webPush.key;
+else console.warn(`export-web: no ${WEB_PUSH_SETTING} in ${site.file}: web push stays off on this site (OPERATIONS "Push notifications" part C).`);
 
 const commit = git('rev-parse', '--short=7', 'HEAD') || 'unknown';
 const changed = git('status', '--porcelain', '--untracked-files=no') !== '';
@@ -167,6 +174,9 @@ for (const file of listFiles(DIST)) {
 }
 for (const name of SETTING_NAMES) {
   if (!settingsFound.has(name)) fail(`${name} from ${site.file} is not in the export. Do not upload dist/.`);
+}
+if (webPush.key && !listFiles(DIST).some((file) => extname(file) === '.js' && readFileSync(file, 'utf8').includes(webPush.key))) {
+  fail(`${WEB_PUSH_SETTING} from ${site.file} is not in the export. Do not upload dist/.`);
 }
 
 // ---------------------------------------------------------------- 5. the QR reader

@@ -56,6 +56,7 @@ import { symbolBracket } from './name-symbols.mjs';
 import { readdirSync, readFileSync } from 'node:fs';
 
 import { runPush } from '../functions/notify-announcements/send.ts';
+import { runWebPush } from '../functions/notify-announcements/web-send.ts';
 import { buildConsentEmail, consentPageUrl, runConsentCodes } from '../functions/notify-parents/consent.ts';
 import { runNotices } from '../functions/notify-parents/send.ts';
 import { buildDigestEmail, buildDigestPreview, runDigests } from '../functions/notify-parents/digest.ts';
@@ -142,7 +143,7 @@ process.on('uncaughtException', (error) => {
 // D14-10: every check is counted, and the run fails when fewer (or more) checks ran than expected,
 // so a block skipped by a renamed migration or a commented-out section cannot pass unseen.
 // Adding or removing checks? Run the suite and set this to the new total it prints.
-const EXPECTED_CHECKS = 2224; // 0061 staff sign-in codes and the error log: +53; 0060 privacy notice 1.0: +35; 0059 data rights: +56; 0058 weekly parent email: +64; 0057 practice while waiting: +24; 0056 practice extras: +35; 0055 learn more links: +23; 0054 after-launch forms: +49; 0053 staff own record: +55; 0052 more practice: +56; 0051 child's sign-up at home: +80; 0050 staff dashboard: +15; 0049 launch clean-up: +30; 0048 withdrawn records and leaks: +50; 0047 form rules: +109; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
+const EXPECTED_CHECKS = 2257; // 0062 web push: +33; 0061 staff sign-in codes and the error log: +53; 0060 privacy notice 1.0: +35; 0059 data rights: +56; 0058 weekly parent email: +64; 0057 practice while waiting: +24; 0056 practice extras: +35; 0055 learn more links: +23; 0054 after-launch forms: +49; 0053 staff own record: +55; 0052 more practice: +56; 0051 child's sign-up at home: +80; 0050 staff dashboard: +15; 0049 launch clean-up: +30; 0048 withdrawn records and leaks: +50; 0047 form rules: +109; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
 let failures = 0;
 let passes = 0;
 
@@ -3049,7 +3050,7 @@ check('grant sweep: a pending login reads nothing but its own profile and the op
 const internal = ['link_login_to_student(uuid,text)', 'refresh_student_statuses()', 'close_open_visits()', 'claim_due_push()',
   'release_push_claim(bigint[])', 'send_due_push()', 'privacy_caller_ok()', 'visit_location_result(jsonb,smallint)',
   'claim_push_queue()', 'finish_push(uuid,bigint[],bigint[],jsonb,jsonb)', 'call_notify_function(jsonb)',
-  'log_access(text,uuid,integer)', 'purge_access_log()'];
+  'log_access(text,uuid,integer)', 'purge_access_log()', 'claim_web_push()', 'finish_web_push(uuid,bigint[],bigint[],jsonb,jsonb)'];
 const openInternal = [];
 for (const f of internal) {
   if ((await asOwner(`select has_function_privilege('authenticated', '${f}', 'execute') as ok`))[0].ok) openInternal.push(f);
@@ -4207,6 +4208,8 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
     // and the client error log (any signed-in person; limits inside)
     'private_reads_open()', 'staff_mfa_overview()', 'my_mfa_state()', 'set_staff_mfa_required(boolean)', 'reset_staff_mfa(uuid)',
     'log_client_error(text,text,text,text,text)',
+    // 0062: web push, this browser of the caller only (roles checked inside)
+    'save_web_push(text,text,text)', 'remove_web_push(text)',
   ];
   const runnableBy = async (role) => (await asOwner(`select p.oid::regprocedure::text as f from pg_proc p
     where p.pronamespace = 'public'::regnamespace
@@ -7853,6 +7856,163 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   try { await db.exec(file61); } catch (e) { again61 = String(e.message); }
   check('0061: a second run changes nothing', again61 === '' && JSON.stringify(await counts61()) === JSON.stringify(before61),
     `${again61} ${JSON.stringify(before61)}`);
+}
+
+// ---------------------------------------------------------------- 0062 web push (DECISIONS #596-#609)
+// Browsers in push_tokens (platform web, keys), saved and removed by their own login only; the queue hands phones to
+// claim_push_queue (same columns as before) and browsers to claim_web_push; the browser part's sending (web-send.ts)
+// runs against this SQL with an imitated push service; a gone address is deleted; every existing removal path
+// (sign-out delete, retention) covers browsers; the data-rights count includes them.
+{
+  const file62 = readFileSync(new URL('migrations/0062_web_push.sql', supabaseDir), 'utf8');
+  const P256 = 'B' + 'Ab_-'.repeat(21) + 'xy';
+  const AUTH = 'Ab_-'.repeat(5) + 'xy';
+  const ep = (n) => `https://push.example/sub/${n}`;
+  const save = (who, endpoint, p256dh = P256, auth = AUTH) => asApp('authenticated', who, 'select save_web_push($1, $2, $3)', [endpoint, p256dh, auth]);
+  const browsersOf = async (who) => (await asOwner(`select token, platform, web_p256dh, web_auth from push_tokens
+    where profile_id = '${who}' and platform = 'web' order by token`));
+
+  // Anything still due is queued now, before any browser exists, so the counts below are this block's own.
+  await quietRun(expo());
+  await registerToken(arjun, token(62));
+  await save(arjun, ep(1));
+  const [b1] = await browsersOf(arjun);
+  check('0062 #603: a student saves this browser: address, platform web and both keys', b1?.token === ep(1) && b1.web_p256dh === P256
+    && b1.web_auth === AUTH, JSON.stringify(b1));
+  for (const [what, args, code] of [
+    ['an http address', ['http://push.example/x', P256, AUTH], 'bad_endpoint'],
+    ['an address with a space', ['https://push.example/a b', P256, AUTH], 'bad_endpoint'],
+    ['an address over 1000 characters', [`https://push.example/${'x'.repeat(1000)}`, P256, AUTH], 'bad_endpoint'],
+    ['no address', [null, P256, AUTH], 'bad_endpoint'],
+    ['a p256dh that is not an uncompressed point', [ep(9), 'A' + P256.slice(1), AUTH], 'bad_keys'],
+    ['a short auth secret', [ep(9), P256, 'abc'], 'bad_keys'],
+  ]) await refusesWith(`0062 #603: refused: ${what}`, code, () => save(arjun, ...args));
+  await refusesWith('0062 #603: a waiting sign-up saves no browser (it gets no announcements)', 'not_allowed', () => save(pendingLogin, ep(9)));
+  await refusesWith('0062: anon saves nothing', 'permission denied for function save_web_push', () =>
+    asApp('anon', null, 'select save_web_push($1, $2, $3)', [ep(9), P256, AUTH]));
+  await refusesWith('0062: a phone row cannot carry browser keys', /push_tokens_web_keys/, () => asOwner(`insert into push_tokens
+    (token, profile_id, platform, web_p256dh, web_auth) values ('ExponentPushToken[k62]', '${arjun}', 'android', '${P256}', '${AUTH}')`));
+  await refusesWith('0062: a browser row needs both keys', /push_tokens_web_keys/, () => asOwner(`insert into push_tokens
+    (token, profile_id, platform) values ('${ep(8)}', '${arjun}', 'web')`));
+  check('0062 #603: a person sees only their own browsers', (await asApp('authenticated', meera, `select token from push_tokens where platform = 'web'`)).length === 0
+    && (await asApp('authenticated', arjun, `select token from push_tokens where platform = 'web'`)).length === 1);
+
+  await asOwner(`update push_tokens set updated_at = now() - interval '1 hour' where token = '${ep(1)}'`);
+  for (let n = 2; n <= 7; n++) {
+    await save(arjun, ep(n));
+    await asOwner(`update push_tokens set updated_at = now() - interval '${10 - n} minutes' where token = '${ep(n)}'`);
+  }
+  const kept = (await browsersOf(arjun)).map((r) => r.token);
+  check('0062 #603: at most 5 browsers a person, the oldest dropped; the phones stay', kept.length === 5 && !kept.includes(ep(1)) && !kept.includes(ep(2))
+    && (await asOwner(`select count(*)::int as n from push_tokens where profile_id = '${arjun}' and platform <> 'web'`))[0].n >= 1, kept.join(' '));
+  check('0062 #604: remove_web_push removes only the caller\'s own browser',
+    (await asApp('authenticated', meera, 'select remove_web_push($1) as r', [ep(3)]))[0].r === false
+      && (await asApp('authenticated', arjun, 'select remove_web_push($1) as r', [ep(3)]))[0].r === true
+      && !(await browsersOf(arjun)).some((r) => r.token === ep(3)));
+  await asApp('authenticated', arjun, 'delete from push_tokens where token = $1', [ep(4)]);
+  check('0062 #604: sign-out\'s plain delete of the own row works for a browser too (0011 policy)', !(await browsersOf(arjun)).some((r) => r.token === ep(4)));
+  const [{ r: devices }] = await asApp('authenticated', arjun, `select (my_data_summary() ->> 'devices')::int as r`);
+  const [{ n: allDevices }] = await asOwner(`select count(*)::int as n from push_tokens where profile_id = '${arjun}'`);
+  check('0062 #607: the data-rights summary counts the browsers with the phones', devices === allDevices && (await browsersOf(arjun)).length === 3,
+    `${devices} / ${allDevices}`);
+
+  // Sending: claim_push_queue still hands out phones only, with the columns of 0031.
+  const [{ cols }] = await asOwner(`select pg_get_function_result('claim_push_queue()'::regprocedure) as cols`);
+  check('0062 #599: claim_push_queue keeps the columns of 0031 (a function deployed before 0062 keeps working)',
+    cols === 'TABLE(claim uuid, message_id bigint, announcement_id bigint, title text, body text, token text, role text, url text)', cols);
+  await refusesWith('0062: an app user cannot claim the browser queue', 'permission denied for function claim_web_push', () =>
+    asApp('authenticated', guru, 'select * from claim_web_push()'));
+  await refusesWith('0062: ... nor finish it', 'permission denied for function finish_web_push', () =>
+    asApp('authenticated', guru, `select finish_web_push(gen_random_uuid(), '{}', '{}', '{}', '{}')`));
+  await quietRun(expo()); // drain anything still waiting for phones
+  const webSent = [];
+  /** The push services, imitated: ep(5) is gone (410), ep(6) is busy (503) once. */
+  let busyOnce = true;
+  const services = async (item) => {
+    if (item.subscription.endpoint === ep(5)) return { kind: 'refused', code: 'endpoint_gone' };
+    if (item.subscription.endpoint === ep(6) && busyOnce) {
+      busyOnce = false;
+      return { kind: 'retry', code: 'http_503' };
+    }
+    webSent.push(`${item.payload.url}|${item.subscription.endpoint}|${item.subscription.p256dh === P256 && item.subscription.auth === AUTH}`);
+    return { kind: 'sent' };
+  };
+  const webRpc = async (name, args) => {
+    try {
+      if (name === 'claim_web_push') {
+        const rows = await asApp('service_role', null, 'select * from claim_web_push()');
+        return { data: rows.map((r) => ({ ...r, message_id: Number(r.message_id), announcement_id: r.announcement_id === null ? null : Number(r.announcement_id) })), error: null };
+      }
+      await asApp('service_role', null, 'select finish_web_push($1::uuid, $2::bigint[], $3::bigint[], $4::jsonb, $5::jsonb)',
+        [args.p_claim, args.p_sent, args.p_retry, JSON.stringify(args.p_refused), JSON.stringify(args.p_summary)]);
+      return { data: null, error: null };
+    } catch (failure) {
+      return { data: null, error: { message: String(failure.message ?? failure) } };
+    }
+  };
+  const quietWeb = async () => {
+    const realError = console.error;
+    console.error = () => {};
+    try { return await runWebPush(webRpc, services); } finally { console.error = realError; }
+  };
+  const [{ last_run: phoneRunBefore }] = await asOwner('select last_run from push_status');
+  const w1 = await postAll('Web one');
+  delivered.length = 0;
+  const phones1 = await quietRun(expo());
+  check('0062 #599: the phone part sends to phones only, never to a browser address', phones1.sent >= 1
+    && delivered.every((d) => !d.includes('https://')), JSON.stringify(delivered));
+  check('0062 #599: ... and queued one row per browser of the audience beside the phones', (await asOwner(`select count(*)::int as n from push_queue
+    where announcement_id = ${w1} and web and token like 'https://push.example/%'`))[0].n === 3);
+  const web1 = await quietWeb();
+  const rows1 = await asOwner(`select token, sent_at, failed, tries from push_queue where announcement_id = ${w1} and web order by token`);
+  check('0062 #599: the browser part sends each browser the announcement once, with its keys, to the student\'s screen',
+    webSent.filter((s) => s.startsWith(`/student/announcements/${w1}|`)).length === 1 && webSent.every((s) => s.endsWith('|true'))
+      && rows1.find((r) => r.token === ep(7))?.sent_at !== null && web1.sent === 1, JSON.stringify({ web1, webSent, rows1 }));
+  check('0062 #600: a gone address (410) is refused and deleted at once', rows1.find((r) => r.token === ep(5))?.failed === 'endpoint_gone'
+    && !(await browsersOf(arjun)).some((r) => r.token === ep(5)));
+  check('0062 #599: a busy push service is tried again later', rows1.find((r) => r.token === ep(6))?.sent_at === null
+    && rows1.find((r) => r.token === ep(6))?.failed === null && web1.retry === 1);
+  const [status62] = await asOwner('select last_run, last_web_run, last_web_run_at from push_status');
+  check('0062 #599: push_status keeps the browser run apart from the phone run', status62.last_web_run?.messages === 3
+    && status62.last_web_run_at !== null && JSON.stringify(status62.last_run) !== JSON.stringify(phoneRunBefore) && status62.last_run?.messages === phones1.messages,
+    JSON.stringify(status62));
+  check('0062: nothing more in the next minute', (await quietWeb()).messages === 0);
+  await makeDue();
+  check('0062: the job sees the browser retry as due', (await asOwner('select send_due_push() as r'))[0].r === 'not_set_up');
+  const web2 = await quietWeb();
+  check('0062 #599: ... and sends it once on the retry; the phone part never claims it', web2.sent === 1 && webSent.filter((s) => s.endsWith(`|${ep(6)}|true`)).length === 1
+    && (await quietRun(expo())).messages === 0, JSON.stringify(web2));
+
+  // A notice (push_outbox) reaches the browser too, with its own screen.
+  await asOwner(`insert into push_outbox (profile_id, title, body, url) values ('${arjun}', 'Kirtan', 'New event.', '/student/events/62')`);
+  await quietRun(expo());
+  await quietWeb();
+  check('0062 #596: a queued notice reaches the browser with its screen', webSent.filter((s) => s.startsWith('/student/events/62|')).length === 2,
+    webSent.join(' '));
+  // A browser removed while its row waits is not sent to (token_gone).
+  const w2 = await postAll('Web two');
+  await quietRun(expo());
+  await asApp('authenticated', arjun, 'select remove_web_push($1)', [ep(6)]);
+  await quietWeb();
+  check('0062 #604: a browser turned off meanwhile is not sent to (token_gone)', (await asOwner(`select failed from push_queue
+    where announcement_id = ${w2} and token = '${ep(6)}'`))[0]?.failed === 'token_gone' && !webSent.includes(`/student/announcements/${w2}|${ep(6)}|true`));
+
+  // Retention (0060, #600): a browser the app has not refreshed for 90 days goes with the phones.
+  await asOwner(`update push_tokens set updated_at = now() - interval '91 days' where token = '${ep(7)}'`);
+  await asOwner('select retention_daily()');
+  check('0062 #600: the retention job deletes a browser not refreshed for 90 days', !(await browsersOf(arjun)).some((r) => r.token === ep(7)));
+  await save(meera, ep(2));
+  await save(arjun, ep(2));
+  check('0062 #604: an address saved again by another login moves to it (as a phone token)', (await browsersOf(meera)).length === 0
+    && (await browsersOf(arjun)).some((r) => r.token === ep(2)));
+
+  const counts62 = async () => (await asOwner(`select (select count(*) from push_tokens)::int as t, (select count(*) from push_queue)::int as q,
+    (select count(*) from cron.job)::int as j, (select count(*) from pg_constraint where conrelid = 'push_tokens'::regclass)::int as c`))[0];
+  const before62 = await counts62();
+  let again62 = '';
+  try { await db.exec(file62); } catch (e) { again62 = String(e.message); }
+  check('0062: a second run changes nothing', again62 === '' && JSON.stringify(await counts62()) === JSON.stringify(before62),
+    `${again62} ${JSON.stringify(before62)}`);
 }
 
 // ---------------------------------------------------------------- row-level security

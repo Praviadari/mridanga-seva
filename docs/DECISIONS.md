@@ -7747,6 +7747,156 @@ For the privacy-notice work: "If you check someone in or log practice without a 
 on the phone until it is sent (a check-in until the end of that class day, practice at most 14 days), then deletes it;
 signing out deletes it too."
 
+## 596. Web push for the web version: announcements and notices, as the phone gets them — 24 Oct 2026
+
+**Status: web-push worker under the lead's delegation (audit 22-10-2026 fix 13, work package L); lead approval
+needed.** "Most members use iPhones" (#15) and the iPhone has only the web version: until now it never got a
+notification. Web Push works in the iPhone home-screen app from iOS 16.4 and in Chrome, Edge, Firefox and Safari on
+Android and computers.
+
+**Decision.** A signed-in student or staff member can switch notifications on for a browser in My profile
+(migration 0062, `app/src/lib/web-push.web.ts`, `components/web-push-section.tsx`). That browser then gets **the same
+pushes the Android app gets**: announcements of its audience and the notices of `push_outbox` (assessments, reviews,
+promotions, events, polls, team tools, data requests), with the same text and the same screens, from the same queue
+and the same Edge Function (`notify-announcements`). Nothing new is sent to anybody who does not switch it on.
+
+**Why.** One rule for phones and browsers is easier to explain and to test than a second list; the notices are as
+useful on an iPhone as on Android, and they say no more than the phone's (#602).
+
+## 597. The daily practice reminder stays on the Android app (not by web push now) — 24 Oct 2026
+
+**Status: as #596.** The phone's reminder (#402) is a local notification: the server knows nothing of it. By web push
+it would need the reminder time and days of each person kept on the server, "practised today" read there, and a job
+every quarter hour sending them: new personal data and a seventeenth job for a convenience. **Not now.** Practice tools
+keeps saying reminders work in the Android app. If members ask for it, a later package can add it on the same queue
+(a `practice_reminders` table, a job, a notice line).
+
+## 598. Browsers are kept in push_tokens, not in a table of their own — 24 Oct 2026
+
+**Status: as #596.** A browser's subscription is three values: its push service address (the endpoint, an https URL
+of Google, Apple, Mozilla or Microsoft) and two public keys of the browser (`p256dh`, `auth`).
+
+**Decision.** `push_tokens` takes them as platform `web`: the address is the token, the keys go in `web_p256dh` and
+`web_auth` (a check keeps phone rows without keys and browser rows with both). Saved only by `save_web_push` (an
+active student, coordinator or Guru; https address up to 1000 plain characters; keys of the right length; at most 5
+browsers a person, the oldest dropped), removed by `remove_web_push` (own only); a person reads only their own rows
+(0011's policies).
+
+**Why.** Eleven places already forget a login's phones: sign-out's delete, a login switched off or on a withdrawn
+record (0039, 0048), `erase_student`, `erase_login`, `anonymise_staff` (0049), Expo's DeviceNotRegistered (0031), the
+90-day retention (0060), and the data-rights count of devices (0059). A separate table would need a copy of each, and
+one missed would keep a child's browser address after an erasure. In `push_tokens` every one of them covers browsers
+unchanged (the smoke test checks sign-out, retention and the count).
+
+## 599. The queue hands phones and browsers to separate senders — 24 Oct 2026
+
+**Status: as #596.** `claim_push_queue` (0031) is what the deployed function calls.
+
+**Decision.** 0062 replaces it with **the same columns**: it now queues a row per phone and per browser
+(`push_queue.web`), gives up on stale rows of both, and claims **phone rows only**. The function then calls
+`claim_web_push` (browser rows with their address and keys, at most 200, the same 5-minute lease) and
+`finish_web_push` (sent / retry 2-8-18-32 minutes / refused, as `finish_push`); the browser run's counts go to
+`push_status.last_web_run`. Both are for the service role only.
+
+**Why.** A function deployed before 0062 (LIVE until the deploy) keeps working and never sends a browser address to
+Expo; the order of migration and deploy does not matter (browser rows wait and are given up after a day). The old
+`claim_due_push` / `claim_push_outbox` (0011/0016, kept for functions older than 0031, deployed nowhere now) would
+return browser rows: they stay as they are, and no such function may be deployed again.
+
+## 600. Dead browser addresses go at once, unused ones after 90 days (no new job) — 24 Oct 2026
+
+**Status: as #596.** A push service answers 404 or 410 when the browser ended the subscription (notifications switched
+off in its settings, site data cleared, the home-screen app removed).
+
+**Decision.** `finish_web_push` deletes such an address at once (refused `endpoint_gone`), as Expo's
+DeviceNotRegistered deletes a phone token. A browser that is not used keeps nothing for long: the app saves its
+subscription again at most once a week when it starts, and 0060's `mridanga-retention` job already deletes
+`push_tokens` rows not refreshed for 90 days, browsers included. **No new job: still 16.** 401/403 (the site's VAPID keys
+refused, e.g. a subscription made with an older key pair) are tried again up to 5 times, then given up; such an address
+goes with the 90 days or at the person's next Turn on.
+
+## 601. The encryption is written on Web Crypto and checked against the RFC author's code — 24 Oct 2026
+
+**Status: as #596.** Web Push needs the message encrypted for the browser (RFC 8291, aes128gcm of RFC 8188) and signed
+for the push service (VAPID, RFC 8292). The usual npm package (`web-push`) runs on Node's crypto and request modules.
+
+**Decision.** `supabase/functions/notify-announcements/webpush.ts` does both on the Web Crypto API (ECDH P-256, HKDF,
+AES-128-GCM, ECDSA P-256) that Deno and Node share: no package runs in the function. `supabase/tests` checks it by
+decrypting with **http_ece 1.2.1** (Martin Thomson's reference implementation, an exact devDependency of the tests only)
+and verifying the VAPID signature with Node's own ECDSA; the browser part's sending (`web-send.ts`) runs in the smoke
+test against the real SQL. On TEST it was checked end to end with Mozilla's real push service (NOTES_web_push.md).
+
+## 602. What a web push carries — 24 Oct 2026
+
+**Status: as #596.** The payload is `{title, body, url, tag}`: the announcement's or notice's title, the first 150
+characters of its text (as on the phone), the app screen to open (only the screens the phone may open; anything else
+is dropped as bad_url) and a tag so a repeat replaces instead of piling up. Nothing else: no name or detail of a child
+beyond what the announcement or notice itself says. The push service sees only an encrypted body, the browser's address
+and the site's public key; it keeps an undelivered message for at most a day (TTL 86400).
+
+## 603. Asked only on a tap in My profile, never on load, never in the phone app — 24 Oct 2026
+
+**Status: as #596.** **Decision.** My profile → "Notifications on this browser" is the only place: the browser's
+permission question comes from the Turn on button itself (Safari asks only inside a tap; nothing is awaited before
+it). A start never asks: it only keeps an existing subscription current (#604). Where it cannot work the section
+says why instead of offering a button: on an iPhone or iPad outside the home-screen app it gives the Add to Home Screen
+steps; below iOS 16.4 it says to update; a browser without the Push API says announcements are under the bell. A site
+built without a public key (#605) and the development server show no section. The Android app shows none: the phone
+version of `lib/web-push` answers 'native' and loads nothing; no native module, no app.json change, fingerprint
+**23dc7e4a** unchanged.
+
+## 604. A browser's notifications belong to the login that switched them on there — 24 Oct 2026
+
+**Status: as #596.** On a shared family computer or phone a child and a parent may use the same browser.
+
+**Decision.** The device notes whose the subscription is (login, address, last save). A start with another login, or
+with no note, **ends** the subscription instead of handing it over; the next person switches on for themselves. Turn
+off and sign-out remove the server row while the login still works, then end the subscription; sign-out also
+unregisters the service worker (#513), which ends it in the browser anyway, and drops the note. A forced sign-out
+(the server ended the login) leaves the row until the push service answers 410 or the 90 days pass. **DPDP:** a minor's
+browser is subscribed only by the minor's own login and own tap; the class never subscribes anyone.
+
+## 605. One VAPID key pair per site: public key in the build, private key only in the project's secrets — 24 Oct 2026
+
+**Status: as #596.** **Decision.** `node scripts/web-push-keys.mjs --out <file>` (in app/) makes a pair: the file holds
+the Edge Function secrets `WEB_PUSH_PUBLIC_KEY` and `WEB_PUSH_PRIVATE_KEY`, set with `supabase secrets set
+--env-file` and then deleted; it prints only the public key, which goes into the site's settings file as
+`EXPO_PUBLIC_WEB_PUSH_KEY`. `WEB_PUSH_SUBJECT` (mailto: or https:) is the contact the push services see (default
+mailto:privacy@mridangaseva.com). `export-web` takes the key when it is a public key (refuses a private-key-sized value)
+and checks it reached the bundle; without it the site has no notifications section. The function sends to browsers only
+when both secrets are set and form a pair. TEST has its own pair (24-10-2026); LIVE gets one from Praveen (OPERATIONS
+"Push notifications" part C). A new pair makes every browser switch on again: make it once per project.
+
+## 606. The service worker shows every push and opens only app screens — 24 Oct 2026
+
+**Status: as #596.** `scripts/service-worker.js` gains `push` (always shows a notification, title and text cut to 120
+and 300 characters, the app icon; Safari ends the subscription of a site whose pushes show nothing) and
+`notificationclick` (focuses an open window of the app and posts it the screen, which the page opens only when it
+belongs to the signed-in area, as a phone tap does; else opens a window at it). Only a path like `/student/...` is
+opened, never another address. The offline behaviour (#513, #591) and the staff-only file (#590) are unchanged; the
+site's Content-Security-Policy needs no new host.
+
+## 607. Privacy notice 1.0 gets the browser lines before it is published — 24 Oct 2026
+
+**Status: as #596.** Notice 1.0 (#571) is on main and not yet published on LIVE, so its lines are added to 1.0 itself
+(no new version): the "Messages" row names a browser's notification address and keys when the person turns them on;
+the processors table adds "Browser push services (Google, Apple, Mozilla, Microsoft)", worldwide, encrypted (also in
+the app's My data and rights list, `PROCESSORS`); retention says browser addresses go after 90 days unused and at once
+at Turn off or sign-out. My data and rights counts "Phones and browsers for notifications". en + te/hi (te/hi drafts for
+native review, as #571). If 1.0 is published before this merges, this becomes a 1.1 with the card asking again.
+
+## 608. Order of the LIVE steps — 24 Oct 2026
+
+**Status: as #596.** 0062 after 0061 (it does not need 0060's tables but the retention of #600 is 0060's job), then the
+LIVE secrets, then the function deploy from main, then the LIVE web export with the LIVE public key. Any other order
+breaks nothing: phones keep getting pushes; browsers simply get nothing until all three are in place.
+
+## 609. Left for later — 24 Oct 2026
+
+The practice reminder by web push (#597); a "send me a test" button; showing in My data which browsers (only a count
+now); the old `claim_due_push` / `claim_push_outbox` could be dropped in a later clean-up (#599); Declarative Web Push
+(Safari 18.4, no service worker needed) when older iPhones are rare.
+
 ## 610. Browser tests (Playwright) live in their own e2e/ folder — 24 Oct 2026
 
 **Status: audit 22-10-2026 fix 24 (package M).** The app had no test that runs a screen: most tests read source text.

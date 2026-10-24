@@ -1062,6 +1062,24 @@
     "failedTitle": "Notifications are not working yet",
     "failedBody": "This phone could not be set up for notifications (no internet?). The app tries again each time you open it. Announcements still arrive under the bell."
   },
+  "webPush": {
+    "title": "Notifications on this browser",
+    "hint": "Announcements and notices from the class pop up on this device, even when the app is closed.",
+    "turnOn": "Turn on notifications",
+    "turnOff": "Turn off on this browser",
+    "turnedOn": "Notifications are on for this browser.",
+    "turnedOff": "Notifications are off for this browser.",
+    "onLine": "On for this browser and your sign-in. Signing out turns them off.",
+    "failed": "Notifications could not be turned on. Check the internet and try again.",
+    "blockedTitle": "Notifications are blocked for this site",
+    "blockedBody": "The browser says no to notifications from the app. Allow them in the browser's settings for this site, then come back here.",
+    "iphoneTitle": "On iPhone, add the app to your Home Screen first",
+    "iphoneSteps": "1. In Safari, tap Share (the square with the arrow).\n2. Tap Add to Home Screen, then Add.\n3. Open Mridanga Seva from your Home Screen, sign in, and come back here to turn notifications on.",
+    "iphoneOld": "Notifications need iOS 16.4 or later. Update the iPhone in Settings, General, Software Update.",
+    "unsupported": "This browser cannot show notifications from the app. Announcements always arrive under the bell at the top of the home.",
+    "privacy": "For this, the class keeps this browser's notification address and keys until you turn them off or sign out. The browser's maker (Google, Apple, Mozilla or Microsoft) delivers them, encrypted.",
+    "privacyLink": "Privacy notice"
+  },
   "appUpdate": {
     "readyTitle": "A new version is ready",
     "readyBody": "Restart the app to use it. It takes a few seconds.",
@@ -4375,7 +4393,7 @@
       "assessments": "Assessments",
       "events": "Events attended",
       "loans": "Instruments lent",
-      "devices": "Phones for notifications",
+      "devices": "Phones and browsers for notifications",
       "notices": "Notices in your inbox",
       "replies": "Your replies",
       "eventAnswers": "Event answers",
@@ -4416,6 +4434,10 @@
       "firebase": {
         "name": "Google Firebase Cloud Messaging",
         "what": "Delivers notifications to Android phones (worldwide)"
+      },
+      "webpush": {
+        "name": "Browser push services (Google, Apple, Mozilla, Microsoft)",
+        "what": "Deliver notifications to the web app, encrypted, if you turn them on (worldwide)"
       },
       "brevo": {
         "name": "Brevo",

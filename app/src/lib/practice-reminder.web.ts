@@ -1,6 +1,7 @@
 // The daily practice reminder in the browser: none (docs/DECISIONS.md #402). Metro uses this file instead of
-// ./practice-reminder.ts on the web: a closed web page cannot show a notification at a time without web push, a
-// separate project. Practice tools says reminders work in the Android app.
+// ./practice-reminder.ts on the web: a closed web page cannot show a notification at a time by itself, and web push
+// (0062) carries announcements and notices only: a reminder by push would need the reminder time kept on the server
+// and a job sending it (#597, not now). Practice tools says reminders work in the Android app.
 
 import type { ReminderTime } from './reminder-days';
 
