@@ -7746,3 +7746,69 @@ signal is back." Any other refusal still leaves the timer running, as before.
 For the privacy-notice work: "If you check someone in or log practice without a connection, the app keeps that entry
 on the phone until it is sent (a check-in until the end of that class day, practice at most 14 days), then deletes it;
 signing out deletes it too."
+
+## 610. Browser tests (Playwright) live in their own e2e/ folder — 24 Oct 2026
+
+**Status: audit 22-10-2026 fix 24 (package M).** The app had no test that runs a screen: most tests read source text.
+**Decision.** Playwright tests of the web version in `e2e/`, with their own `package.json` and lock file. Playwright
+is not added to `app/package.json`: the app's fingerprint (23dc7e4a) stays, the app's `npm ci` stays as fast, and
+nothing in the APK or an update changes. They test the real TEST export (`npm run export:web -- --site test` into
+`app/dist`) served by a small Node server, not the dev server, so the bundle, service worker and Content-Security-Policy
+are the ones the test site gets.
+
+## 611. Five flows, on the TEST project, with three dedicated logins — 24 Oct 2026
+
+**Status: as #610.** **Decision.** The flows a class day depends on: sign in (student, coordinator with the sign-in
+code, Guru, a wrong password), register an adult at the welcome desk, check a student in and out by name, log practice
+online and offline, read an announcement and What's new. They run against TEST (dummy data), never a local database:
+the access rules, functions and triggers under test are the real ones. Logins `e2e.student@`, `e2e.coordinator@`,
+`e2e.guru@example.com`, made in the TEST dashboard and set up by `e2e/setup-test-logins.sql` (no passwords in it; it
+refuses unless the three users exist, so it cannot act on LIVE). Passwords and the coordinator's code key live only in
+the gitignored `e2e/.env.e2e`. Every script stops unless `app/.env.test` names the TEST project.
+
+## 612. Selectors are what a screen reader hears; the app gets no test ids — 24 Oct 2026
+
+**Status: as #610.** **Decision.** Roles and English accessible names (`getByRole('button', { name: 'Save student' })`).
+The app's labels were already complete (#314 and the a11y rounds), so no `testID` was needed and no app code changed.
+A test then fails when a person would notice the change (a renamed button), which is the point; a reworded English
+string means updating the test with it.
+
+## 613. Each test cleans up what it writes — 24 Oct 2026
+
+**Status: as #611.** **Decision.** Desk records are named "Endtoend Desk <time in letters>" (names take letters only)
+and deleted by the E2E Guru with `delete_student_record` (0054) after the test, pass or fail; practice entries carry a
+note "E2E <time>" and every such entry is deleted after each practice test; the check-in test ends with Check out and
+starts with one if a stopped run left the student in. What stays by design: visits (history), the used roll number,
+the change-history row of a deleted record. `npm run e2e:check` counts leftovers. Chosen over a database reset: TEST is
+shared with volunteers and other workers.
+
+## 614. Chromium and WebKit, phone-sized, one test at a time — 24 Oct 2026
+
+**Status: as #610.** **Decision.** A Pixel 7 sized Chromium and an iPhone 15 sized WebKit (Safari's engine: the
+iPhones use the web version). One worker: the flows share the E2E logins and TEST rows. Sessions are signed in once per
+browser through the screens (the sign-in flow) and reused from `e2e/.auth/` by the other flows, so a run signs in 6
+times, not 30, and stays under Supabase's sign-in limits. When Playwright's own Chromium cannot be downloaded (the
+office firewall re-signs storage.googleapis.com) the installed Google Chrome is used.
+
+## 615. The local server serves the site's own headers, without upgrade-insecure-requests — 24 Oct 2026
+
+**Status: as #610.** **Decision.** `e2e/scripts/serve-dist.mjs` sends `dist/_headers` with every file, so a page the
+site's CSP would block fails in the tests too. Two exceptions, both meaningless on plain http://127.0.0.1: HSTS, and
+`upgrade-insecure-requests`, which WebKit applies to 127.0.0.1 (Chrome does not) and so asked https://127.0.0.1 for the
+app's script and never started.
+
+## 616. The staff sign-in code step is tested with a real TOTP code — 24 Oct 2026
+
+**Status: as #611 (0061).** **Decision.** `npm run e2e:code` sets up a code for the E2E coordinator the same way
+My sign-in code does (Supabase Auth TOTP, with the coordinator's own password and the publishable key) and keeps the
+set-up key in `.env.e2e`; the tests compute the six digits (RFC 6238, `e2e/scripts/lib/totp.mjs`, checked against the
+RFC's vectors) and wait for the next 30 s window when fewer than 5 s are left. The E2E Guru keeps no code, so both
+sign-in paths run.
+
+## 617. E2E is not in CI yet; source-text tests stop growing — 24 Oct 2026
+
+**Status: as #610.** CI needs no secrets today (#141); the E2E tests need three passwords and a code key.
+**Decision.** Run `npm run e2e` locally before merging app changes; the CI job (repository secrets, `main` and manual
+runs only, never pull requests from forks) is proposed in `e2e/README.md` for Praveen to decide. New behaviour on the
+five flows gets an E2E step, not another regex over a screen's source; `e2e/SOURCE_TEXT_TESTS.md` lists the existing
+source-text tests and which flow covers each. None is deleted without the lead's agreement.
