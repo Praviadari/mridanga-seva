@@ -71,7 +71,14 @@ export async function expectHome(page, role) {
 export async function apiAs(role) {
   const who = login(role);
   const client = createClient(project.url, project.key, { auth: { persistSession: false, autoRefreshToken: false } });
-  const { error } = await client.auth.signInWithPassword({ email: who.email, password: who.password });
+  // Clean-up must not be lost to one dropped connection (seen on the office network): a network error is
+  // tried again twice; a refused password is not.
+  let error = null;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    ({ error } = await client.auth.signInWithPassword({ email: who.email, password: who.password }));
+    if (!error || !/fetch failed|network|timed? ?out/i.test(error.message)) break;
+    await new Promise((r) => setTimeout(r, 2_000 * attempt));
+  }
   if (error) throw new Error(`sign-in of the E2E ${role} for clean-up failed: ${error.message}`);
   if (who.totpSecret) {
     const { data: factors } = await client.auth.mfa.listFactors();
