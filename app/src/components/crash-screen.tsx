@@ -1,8 +1,9 @@
 // Shown instead of a blank page when a screen crashes (D10-17, docs/DECISIONS.md #216): the root
 // layout exports it as Expo Router's ErrorBoundary (src/app/_layout.tsx). It says what happened in
 // the person's language, offers Try again and the way home, and shows the version and the error's
-// first line so a tester can report it. Nothing is sent anywhere: the class has no crash reporter
-// (a reporter would need a privacy review first, minors use the app).
+// first line so a tester can report it. Since 0061 (#585) the class's error log gets the error's NAME, the screen's
+// route pattern and the version, never the message or anything about the person (src/lib/error-report.ts): minors
+// use the app, so nothing more is sent.
 //
 // It replaces the whole app, providers included, so it uses nothing that needs them: translations
 // are set up at start (src/i18n), the theme follows the phone, the router works without a screen.
@@ -19,6 +20,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { checkForUpdateNow, handOverStartupCrash, startupCrashGoesToUpdates } from '@/lib/app-update';
+import { reportError } from '@/lib/error-report';
 import { restartApp } from '@/lib/slow-start';
 
 import { AppText } from './app-text';
@@ -53,6 +55,8 @@ export function CrashScreen({ error, retry }: ErrorBoundaryProps) {
     }
     // A crash before the first screen would otherwise leave the splash up for good.
     SplashScreen.hide();
+    // The class's error log: the error's name, the screen's pattern and the version, nothing personal (0061, #585).
+    reportError('crash', error);
     // A fix may be out already: download it now, so UpdateNotice offers it (no 30-minute wait).
     void checkForUpdateNow();
   }, [handingOver, error]);

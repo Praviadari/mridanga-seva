@@ -7393,6 +7393,107 @@ draft: the D4 blanks are closed in step 2 (notice 1.0).
 **Why now.** #494 asks for a self-rating of minors and #531 for a new purpose: the notice must name both before the
 update that asks for them reaches phones (DPDP Act s.5, notice before or with the request for consent).
 
+## 580. Staff sign in with a code from an authenticator app (TOTP) — 24 Oct 2026
+
+**Status: branch `claude/staff-mfa-72bdd5` (migration 0061); the lead decides under Praveen's delegation of 23 Oct 2026.**
+The world-class audit of 22 Oct 2026 (§2.9, fix 16) found no second factor for staff: a Guru or coordinator password
+alone reads every child's record, parent phone and consent. **Decision.** Gurus and coordinators may set up a
+sign-in code in an authenticator app (Google Authenticator, Microsoft Authenticator, Authy …) on My profile → My
+sign-in code, with **Supabase Auth's own MFA** (TOTP factors in `auth.mfa_factors`, supabase-js `mfa.enroll`,
+`challengeAndVerify`): no native module, so it ships as an OTA at fingerprint 23dc7e4a. Set-up: on a phone a button
+opens the authenticator with the `otpauth://` link; a QR code (drawn by the app's own QR component) for a second
+phone; the key in groups of four to type; one code confirms it. Setting it up again (a new phone) replaces the old
+code once the new one is confirmed (one phone holds the code). Students and waiting logins are not offered codes.
+
+**Why TOTP, not SMS or passkeys.** Free and offline on the phone the staff member already has; Supabase's SMS factor
+needs a paid SMS provider and leaks to SIM swaps; passkeys (WebAuthn) are not offered by Supabase for every
+platform the app runs on (APK, iPhone home-screen web app) yet.
+
+## 581. Once set up, the code is asked at every sign-in; no skip — 24 Oct 2026
+
+**Decision.** A login with a confirmed code whose session has not given it (`aal1`, read from the access token) gets
+its own area, **Sign-in code**, and nothing else: its profile is not fetched, its remembered copy is forgotten (so a
+restart without internet cannot open its screens), Sign out is the only other way. A right code upgrades the session
+to `aal2` (Supabase refreshes keep it). There is no "skip": a lost phone is a reset (#584). A code that is set up but
+never confirmed counts as none.
+
+**Why.** A skip would make the code decoration for whoever holds the password. The cost (a lost phone locks a
+coordinator out until the Guru resets) is small in a class of a few staff who meet weekly.
+
+## 582. The Guru's switch, and why nothing can lock out the only Guru — 24 Oct 2026
+
+**Decision.** Setting `staff_mfa_required` (off), changed only by `set_staff_mfa_required` (the Guru; G10's
+`save_settings` refuses the key; audited). **On** needs the Guru's own session to have given the code and a
+confirmed code for **every active Guru and coordinator** (`staff_without_code` with the count); the Sign-in codes
+screen lists who has one. **Off** needs the code given, or a Guru who has **no** code. So the only Guru can always get
+back: if their phone is lost, another Guru or the project owner removes their code (#584), and the Guru — now without
+a code — switches it off or sets up a new code. A coordinator made after the switch went on has no code: they use the
+app as before, and private details tell them to set one up (#583). Tested in the smoke test ("0061 #582").
+
+## 583. What the code guards while the switch is on — 24 Oct 2026
+
+**Decision.** `private_reads_open()` = switch off, or the token's `aal` is `aal2`. It is checked by the four logged
+reads of 0034 — `get_guardians` (parent details), `get_consents`, `get_call_notes`, `get_audit_log` (error
+`mfa_required`) — by the Guru's direct `guru_read` policies on `guardians`, `consents`, `call_logs` and `access_log`
+(rows simply do not show), and by `waiting_sign_ups`, which leaves out the parent's email and phone of a child's home
+sign-up (name, relation and consent still show for Accept). The app treats `mfa_required` on those reads as **held
+back**, not failed: the student page, the call screen, Change history and Accept show everything else with "Private
+details need your sign-in code" and the way to set it up, and never a false "consent missing".
+
+**Why these.** They are what the access log already treats as the most sensitive reads (#146), plus the audit log the
+audit named; call notes are included with them because they hold what parents said on the phone. Other staff work
+(attendance, ticks, announcements) stays on `aal1`: the switch is about private data, not about every action.
+
+## 584. A lost phone: the Guru resets a staff member's code; the Guru's own by another Guru or the owner — 24 Oct 2026
+
+**Decision.** `reset_staff_mfa(profile)` (the Guru) removes every code of another Guru or coordinator (never one's
+own: `not_yourself`; not a student: `not_staff`), needs the code given while the switch is on, and writes one
+`audit_log` row (table `mfa_factors`, the login's id, how many codes; never a secret). The person sets up a new code
+at their next sign-in. If the database may not delete from `auth.mfa_factors` (`reset_in_dashboard`), the owner does
+it in Supabase → Authentication → Users. The Guru's own recovery is written in OPERATIONS "Staff sign-in codes"
+(another Guru, else the owner in the dashboard or the SQL editor).
+
+## 585. A client error log that holds no person — 24 Oct 2026
+
+**Status: same branch, audit fix 15 (§2.13).** **Decision.** The app reports a crashed screen (the crash screen)
+and errors nobody caught (web `error` / `unhandledrejection`; on phones React Native's global handler and, in release
+builds, Hermes's rejection tracker) to `log_client_error` with five things only: the kind (`crash`, `unhandled`), the
+error's **name** (`TypeError`; a name that is not a plain identifier becomes `Error`; never the message, which can hold
+data), the screen's route **pattern** from Expo Router's segments (`/staff/students/[id]`; letters only, no digits, so
+no id, phone or email fits), the app version (`1.0.0+a1b2c3d4`, `web-test+244e9f8`) and the platform. The database adds
+staff / student / other from the role and keeps one row per UTC hour and combination, counted. No login id is stored
+with an error. Limits: once per error per run and 20 a run in the app; 10 calls a login an hour (a quota table with
+the login and the hour, no policy, gone after two days) and 300 new rows a day in the database; over a limit nothing
+is written and nothing is said. Signed-out errors are not sent (the function is for signed-in people).
+
+**Why not Sentry or similar.** A third-party crash reporter sends stack traces, device data and breadcrumbs abroad
+and needs a privacy-notice line and a processor agreement; minors use the app. This log answers "what broke, where,
+on which version" — what the class needs — without any of that.
+
+## 586. Errors are kept 30 days; the 15th scheduled job — 24 Oct 2026
+
+**Decision.** Job `mridanga-client-errors-purge` (01:55 UTC) deletes errors not seen for 30 days and quota rows
+older than two days. Scheduled jobs are now 15: the GO_LIVE_CHECKLIST verification query, the replay check and the
+M0061 row say so.
+
+## 587. App errors for the Guru — 24 Oct 2026
+
+**Decision.** Set-up → App errors (Guru only; RLS `guru_read`, nobody writes the table from the app): the newest 200
+lines with name, route, kind, staff / student / other, platform, version, times and last seen. The technical words
+are not translated. Something that repeats goes to the maintainer.
+
+## 588. Uptime checks of LIVE: a plan for Praveen, not built here — 24 Oct 2026
+
+**Decision.** OPERATIONS "App errors and uptime" holds the plan: a free external monitor (UptimeRobot or Better Stack,
+or a scheduled GitHub Actions check in the existing repository, no new account) on the LIVE web address and on
+Supabase's health endpoint, alerting Praveen and a second person by email. No account was made and no workflow added
+on this branch: an alert recipient and a provider are Praveen's choice.
+
+## 589. Left for later — 24 Oct 2026
+
+Recovery codes (supabase-js has them only as an experiment, not on the server yet), passkeys, a code for every staff
+action (not only private reads), and errors from signed-out screens. None blocks fixes 15 and 16.
+
 ## 590. The web version loads the staff and Guru screens only for staff — 24 Oct 2026
 
 **Status: branch `claude/bundle-door-queue-cbb4df` (audit 22-10-2026 work package D rest, fix 14; the lead's brief of

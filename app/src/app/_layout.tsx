@@ -15,7 +15,7 @@
 import { useLanguageReady } from '@/i18n'; // sets up translations before any screen renders
 import '@/auth/requested-path'; // notes the address the app was opened with, before any redirect
 
-import { DarkTheme, DefaultTheme, Stack, ThemeProvider, type ErrorBoundaryProps } from 'expo-router';
+import { DarkTheme, DefaultTheme, Stack, ThemeProvider, useSegments, type ErrorBoundaryProps } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
@@ -29,6 +29,7 @@ import { KeyboardRoot } from '@/components/keyboard';
 import { SetupNeeded } from '@/components/setup-needed';
 import { useUpdateChecks } from '@/lib/app-update';
 import { documentTitleLayout } from '@/lib/document-title';
+import { installErrorReporting, noteScreen } from '@/lib/error-report';
 import { useQueueSender } from '@/lib/offline-send';
 import { forgetOfflineShell, keepOfflineShell } from '@/lib/offline-shell';
 import { registerForPush, usePushTaps } from '@/lib/push';
@@ -115,6 +116,7 @@ function RootNavigator() {
       <PushSetup />
       <OfflineShell />
       <QueueSender />
+      <ErrorReporting />
       {/* The titles here have no header bar: they name the web page (src/lib/document-title.tsx). */}
       <Stack
         screenLayout={documentTitleLayout}
@@ -134,6 +136,11 @@ function RootNavigator() {
 
         <Stack.Protected guard={area === 'recovery'}>
           <Stack.Screen name="reset-password" options={{ title: t('resetPassword.title') }} />
+        </Stack.Protected>
+
+        {/* A staff login with a sign-in code, signed in with the password: the code first (0061, docs/DECISIONS.md #581). */}
+        <Stack.Protected guard={area === 'signInCode'}>
+          <Stack.Screen name="sign-in-code" options={{ title: t('signInCode.title') }} />
         </Stack.Protected>
 
         <Stack.Protected guard={area === 'pending'}>
@@ -213,6 +220,19 @@ function QueueSender() {
   const { area, profile } = useAuth();
   const signedIn = area === 'guru' || area === 'coordinator' || area === 'student';
   useQueueSender(signedIn ? profile?.id : undefined);
+  return null;
+}
+
+/**
+ * The class's error log (src/lib/error-report.ts, 0061, docs/DECISIONS.md #585): listens for errors nobody caught,
+ * and keeps the current screen's route pattern and whether someone is signed in, for a report. Renders nothing.
+ */
+function ErrorReporting() {
+  const { area } = useAuth();
+  const segments = useSegments();
+  const signedIn = area === 'pending' || area === 'guru' || area === 'coordinator' || area === 'student' || area === 'subscriber';
+  useEffect(() => installErrorReporting(), []);
+  useEffect(() => noteScreen(segments, signedIn), [segments, signedIn]);
   return null;
 }
 

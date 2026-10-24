@@ -25,6 +25,9 @@ export function AdminLinks() {
     // Account creation (0036, docs/DECISIONS.md #166): G12 option lists, G13 how students found us.
     { key: 'options', icon: 'lists', title: t('options.title'), detail: t('admin.optionsLine'), href: '/staff/options' },
     { key: 'heard', icon: 'newJoiner', title: t('heardReport.title'), detail: t('admin.heardLine'), href: '/staff/heard-about' },
+    // 0061 (docs/DECISIONS.md #582-#587): who has a sign-in code, the switch and the resets; what broke in the app.
+    { key: 'codes', icon: 'settings', title: t('staffCodes.title'), detail: t('admin.codesLine'), href: '/staff/sign-in-codes' },
+    { key: 'errors', icon: 'alert', title: t('appErrors.title'), detail: t('admin.errorsLine'), href: '/staff/app-errors' },
   ];
   return (
     <Section icon="profile" title={t('admin.title')}>

@@ -49,6 +49,7 @@ import { QueuedNotice } from '@/components/queued-notice';
 import { newRequestId } from '@/data/create-once';
 import { assetTokenFromScan } from '@/lib/asset-link';
 import { locationForCheckIn, locationRefused, warmUpLocation, type PhoneLocation } from '@/lib/attendance-location';
+import { onQueueChange, queuedSaves } from '@/lib/offline-queue';
 import { NETWORK, queueCheckIn } from '@/lib/offline-send';
 import { localDate, formatDate, localTime, todayLocal } from '@/lib/dates';
 import { scanFeedback } from '@/lib/haptics';
@@ -118,6 +119,19 @@ export default function MarkAttendanceScreen() {
   // Reload whenever the screen comes back into view, e.g. after "Who is here now".
   // F9 / R4-04 (#327): back after a while (a phone that slept), the screen loads again.
   useReloadOnResume(loadToday);
+  // When waiting check-ins are sent (#593), show the list as the server has it now and drop "saved on this phone".
+  useEffect(() => {
+    const doorWaiting = () => queuedSaves().filter((item) => item.kind !== 'practice').length;
+    let waiting = doorWaiting();
+    return onQueueChange(() => {
+      const now = doorWaiting();
+      if (now < waiting) {
+        void loadToday();
+        if (now === 0) setOutcome((shown) => (shown?.queued ? null : shown));
+      }
+      waiting = now;
+    });
+  }, [loadToday]);
   useFocusEffect(
     useCallback(() => {
       void loadToday();

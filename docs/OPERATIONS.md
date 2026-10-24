@@ -397,6 +397,43 @@ work cannot simply be deleted: the records say who registered, marked or called.
 Errors: `switch_off_first` (step 1), `not_staff` (a student: "Erasure request"; a subscriber leaves
 in the app), `not_yourself`, `reason_required`.
 
+## Staff sign-in codes
+
+Since 0061 ([DECISIONS.md #580-#584](DECISIONS.md)) Gurus and coordinators can sign in with a code from an
+authenticator app (TOTP) after the password. It uses Supabase Auth's own MFA: nothing to deploy, no secret, no
+native build.
+
+**Before the first use, on each project (TEST, then LIVE):** Supabase dashboard → Authentication → **Multi-Factor**
+(Sign In / Providers → MFA in newer dashboards): **TOTP (App Authenticator) = Enabled** (the default). Then in the
+SQL editor `select count(*) from auth.mfa_factors;` must answer a number: if it says *permission denied*, the app's
+Reset cannot work on that project and resets are done in the dashboard (below).
+
+**Switching codes on (the Guru, after everyone has one):**
+1. Each Guru and coordinator: My profile → **My sign-in code** → Set up (install Google Authenticator, Microsoft
+   Authenticator or Authy first; on the phone itself "Add to my authenticator app", else scan the QR code or type the
+   key), then type one code. From then on every sign-in asks for the code.
+2. The Guru: Set-up → **Sign-in codes**: everyone shows "Has a code". Sign out and in again with the code (the switch
+   needs a session that gave it), then **Ask for codes**. The app refuses while anyone has no code.
+3. From then on parents' details, consents, call notes and Change history need a sign-in with the code. Someone made
+   coordinator later uses the app as before and is told to set up a code before those details show.
+
+**A coordinator lost or changed their phone:** the Guru, Set-up → Sign-in codes → **Reset** on that person (asks
+twice; audited). The coordinator signs in with the password and sets up a new code in My profile. If the app says
+the codes cannot be removed on this server: dashboard → Authentication → Users → the person → remove the MFA factor.
+
+**The Guru lost their phone (the Guru's own recovery):**
+1. If there is another Guru: they reset the code on Sign-in codes (a Guru cannot reset their own).
+2. Otherwise the project owner (Praveen; the Supabase account has its own MFA, checklist A6) removes it: dashboard →
+   Authentication → Users → search the Guru's email → the user → **MFA factors → delete** (or, in the SQL editor,
+   `delete from auth.mfa_factors where user_id = (select id from auth.users where email = '<guru email>');`, one row
+   per code). Check the person's identity first, by phone or in person, not by email alone.
+3. The Guru signs in with the password (no code is asked now), sets up a new code on My sign-in code, signs out and in
+   with it. While the switch is on, a Guru **without** a code may switch codes off (Sign-in codes) — the database allows
+   exactly this so the only Guru is never locked out — and on again once every code is back.
+4. A forgotten password is the usual Forgot password; the code is asked after it as before.
+
+**Switching codes off:** Sign-in codes → Stop asking for codes (needs the code, or a Guru without one). Codes stay set
+up; each person may turn theirs off in My sign-in code while codes are not asked for.
 ## A coordinator's own student record
 
 "Coordinators are students too" (Praveen, 13 Oct 2026; [DECISIONS.md #316-#321](DECISIONS.md), migration 0053 after the
@@ -1910,13 +1947,16 @@ Anything near its limit: tell the team before it stops; the paid plans are the f
 
 ## Scheduled jobs: health check
 
-The database runs ten jobs on its own (times in UTC; IST is 5:30 later): `mridanga-status-refresh`
+The database runs fifteen jobs on its own (times in UTC; IST is 5:30 later; the full table is DATABASE.md
+"Scheduled jobs"): `mridanga-status-refresh`
 (00:30, student statuses and follow-up calls), `mridanga-close-visits` (every hour at :30,
 checks out visits an hour after their centre closes), `mridanga-assessments` and `mridanga-events-polls` (03:30), `mridanga-inbox-cleanup`
 (01:00), `mridanga-access-log-purge` (01:45, deletes access-log rows older than 400 days),
 `mridanga-duty` (12:30), `mridanga-orphan-files` (02:00, announcement files no post lists),
-`mridanga-cron-history-purge` (02:15, keeps a week of the run history this check reads) and
-`mridanga-push` (every minute). If one fails, nothing tells
+`mridanga-cron-history-purge` (02:15, keeps a week of the run history this check reads),
+`mridanga-push` (every minute), `mridanga-parent-notices` (every minute, 0043), `mridanga-minor-signups` (20:45, 0051),
+`mridanga-parent-digests` (every 5 minutes, 0058), `mridanga-data-requests` (21:00, 0059) and
+`mridanga-client-errors-purge` (01:55, app errors older than 30 days, 0061). If one fails, nothing tells
 anyone: students stop changing status and no calls are created. **Every Monday, with the backup**,
 run in the live project's SQL editor:
 
@@ -1931,15 +1971,39 @@ select j.jobname, j.schedule, j.active,
 select last_job_at, last_job_result from push_status;
 ```
 
-Healthy: ten rows, all `active`; each daily job's `last_success` within the last day and
+Healthy: fifteen rows, all `active`; each daily job's `last_success` within the last day and
 `mridanga-push` within minutes; `failed_2_days` 0. Otherwise `last_error` says why (for example a
 setting changed in the dashboard to a wrong value); fix the cause and the job recovers on its next
 run. The push job always counts as succeeded, even when push is not set up: its own result is
 `last_job_result` (`not_set_up` = "Push notifications", step 13). A missing row means the job was
 removed: create it again with its `cron.schedule` line from `supabase/migrations/` (search for the
 job's name). A project that has not run every migration has fewer jobs (0001 makes the first two,
-0011 the push job, 0015, 0016, 0022, 0023 and 0034 one each, 0040 two).
+0011 the push job, 0015, 0016, 0022, 0023 and 0034 one each, 0040 two, 0043, 0051, 0058, 0059 and 0061 one each).
 
+## App errors and uptime
+
+**App errors (0061, [DECISIONS.md #585-#587](DECISIONS.md)).** The app sends the class's own error log the error's
+name, the screen's route pattern, the version and the platform when a screen crashes or an error goes uncaught
+(never a message, an id or who it was). The Guru reads it at Set-up → **App errors** (30 days). Look weekly, with the
+backup: an error that repeats on one screen and version is a bug for the maintainer; a burst right after an update
+means check that update (OPERATIONS "Updating the Android app" for going back). Nothing to deploy; the job
+`mridanga-client-errors-purge` keeps it to 30 days.
+
+**Uptime check (plan for Praveen; nothing is set up yet).** Today an outage of the LIVE web app or of Supabase is
+noticed only when someone complains. Two free ways, pick one; either needs Praveen to choose who gets the alerts (him
+and a second person):
+1. **GitHub Actions in the existing repository (no new account).** A scheduled workflow every 30 minutes that
+   fetches the LIVE web address (expects 200 and the app's page) and `https://qeozvvizcojzxcjgnaei.supabase.co/auth/v1/health`
+   with the public anon key as `apikey` header (a repository secret; the key is public in the web app anyway) and
+   fails when either does not answer within 20 s. GitHub emails the repository owner on a failed scheduled run.
+   Limits: GitHub may delay scheduled runs by some minutes and pauses them after 60 days without a commit (re-enable
+   in the Actions tab). Ask the lead to add `.github/workflows/uptime.yml`; it uses no secret beyond the anon key.
+2. **UptimeRobot or Better Stack free plan (a new account Praveen makes).** Two monitors, every 5 minutes: an HTTP(S)
+   keyword monitor on the LIVE web address, and one on Supabase's health address above. Supabase answers that
+   address only with the `apikey` header: if the chosen free plan cannot send a header, monitor the address for
+   reachability only (an answer of 401 still shows Supabase is up) and check the plan's limits when signing up.
+   Alerts by email (and the provider's phone app) to Praveen and the second person.
+Either way, add the alert recipients and where to look to "Accounts the system depends on" and to the handover list.
 ## Incidents
 
 Everything that may have exposed personal data, or put the app in someone else's hands. Start with

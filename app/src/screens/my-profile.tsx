@@ -219,6 +219,13 @@ export function MyProfileScreen() {
         <Button variant="secondary" icon="audit" label={t('dataRights.open')} onPress={() => router.push(isStudent ? '/student/my-data' : '/staff/my-data')} />
       </Section>
 
+      {/* Staff: a sign-in code in an authenticator app (0061, #580). */}
+      {isStaff ? (
+        <Section icon="settings" title={t('myCode.title')} description={t('myCode.profileHint')}>
+          <Button variant="secondary" icon="settings" label={t('myCode.open')} onPress={() => router.push('/staff/my-sign-in-code')} />
+        </Section>
+      ) : null}
+
       {referralCode ? (
         <Section icon="link" title={t('about.myCodeTitle')} description={t('about.myCodeHint')}>
           <AppText variant="title" family="sans" selectable accessibilityLabel={t('about.myCodeSpoken', { code: referralCode.split('').join(' ') })}>

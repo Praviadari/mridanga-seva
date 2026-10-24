@@ -182,6 +182,8 @@ export type CallContext = {
   reasons: string[];
   /** The latest calls, newest first, so the caller knows what was said last time. */
   lastCalls: { calledAt: string; outcome: CallOutcome; comment: string }[];
+  /** True when the parents and the last calls were held back: the Guru asks for sign-in codes (0061, #583). */
+  privateHidden: boolean;
 };
 
 /** How many earlier calls the call screen shows. */
@@ -244,6 +246,7 @@ export async function fetchCallContext(studentId: string): Promise<CallContext |
       outcome: c.outcome,
       comment: c.comment,
     })),
+    privateHidden: guardians.mfaRequired === true || calls.mfaRequired === true,
   };
 }
 
