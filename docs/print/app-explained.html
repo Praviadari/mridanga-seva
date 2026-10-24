@@ -1,0 +1,1284 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Mridanga Seva app explained</title>
+<style>
+  @page { size: A4; margin: 16mm 15mm 16mm; }
+  :root { --night: #1B1E4B; --night2: #262A66; --gold: #E0B25C; --cream: #FBF4E6; --ink: #1d1f33; --muted: #555a7a; --green: #2E7D32; --red: #C62828; --blue: #1f5fa8; }
+  * { box-sizing: border-box; }
+  body { font-family: "Segoe UI", "Nirmala UI", Arial, sans-serif; font-size: 10.5pt; line-height: 1.45; color: var(--ink); margin: 0; }
+  h1 { font-size: 26pt; margin: 0 0 4pt; color: #fff; }
+  h2 { font-size: 16pt; color: var(--night); margin: 0 0 8pt; padding-bottom: 4pt; border-bottom: 3px solid var(--gold); }
+  h3 { font-size: 12pt; color: var(--night); margin: 12pt 0 4pt; page-break-after: avoid; }
+  p { margin: 0 0 6pt; }
+  ul, ol { margin: 0 0 6pt 16pt; padding: 0; }
+  li { margin-bottom: 3pt; }
+  code, .mono { font-family: Consolas, "Cascadia Mono", monospace; font-size: 9pt; background: #f1ecdf; padding: 0 3px; border-radius: 3px; }
+  .section { page-break-before: always; }
+  .cover { background: linear-gradient(160deg, var(--night), var(--night2)); color: #fff; padding: 34mm 16mm 20mm; margin: -16mm -15mm 0; min-height: 120mm; }
+  .cover .kick { color: var(--gold); letter-spacing: 2px; text-transform: uppercase; font-weight: 700; font-size: 11pt; margin-bottom: 8pt; }
+  .cover p { color: #e8e6f5; font-size: 12pt; max-width: 150mm; }
+  .note { background: var(--cream); border-left: 5px solid var(--gold); padding: 7pt 10pt; margin: 8pt 0; page-break-inside: avoid; }
+  .warn { background: #fdecea; border-left: 5px solid var(--red); padding: 7pt 10pt; margin: 8pt 0; page-break-inside: avoid; }
+  .good { background: #eaf5ea; border-left: 5px solid var(--green); padding: 7pt 10pt; margin: 8pt 0; page-break-inside: avoid; }
+  table { width: 100%; border-collapse: collapse; margin: 6pt 0 8pt; font-size: 9pt; line-height: 1.35; }
+  th { background: var(--night); color: #fff; text-align: left; padding: 3pt 5pt; }
+  td { border-bottom: 1px solid #ddd5c2; padding: 3pt 5pt; vertical-align: top; }
+  tr { page-break-inside: avoid; }
+  tr:nth-child(even) td { background: #fbf8f1; }
+  .toc { columns: 2; column-gap: 12mm; }
+  .toc li { margin-bottom: 2pt; }
+  .two { display: flex; gap: 10pt; }
+  .two > div { flex: 1; }
+  .step { display: flex; gap: 8pt; margin-bottom: 5pt; page-break-inside: avoid; }
+  .step b.n { flex: none; width: 18pt; height: 18pt; border-radius: 9pt; background: var(--night); color: #fff; text-align: center; line-height: 18pt; font-size: 9pt; }
+  svg { page-break-inside: avoid; }
+  svg text { font-family: "Segoe UI", Arial, sans-serif; }
+  .small { font-size: 9pt; color: var(--muted); }
+  .tree { font-family: Consolas, monospace; font-size: 8.6pt; background: #f7f3ea; padding: 8pt 10pt; border-radius: 6px; white-space: pre; line-height: 1.36; page-break-inside: avoid; }
+  .tag { display: inline-block; font-size: 8pt; font-weight: 700; padding: 0 5px; border-radius: 3px; color: #fff; background: var(--blue); vertical-align: 1px; }
+  .tag.next { background: #8a5a00; }
+  .tag.off { background: #777; }
+  .keep { page-break-inside: avoid; }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <div class="kick">Mridanga Seva · for code maintainers (seva)</div>
+  <h1>The Mridanga Seva app, explained</h1>
+  <p>What the class app does and who uses it; how it is built and why; how a sign-up, a check-in, a follow-up call,
+  a practice session or a parent's email really travels through the code; how children's data is protected; and how a
+  change goes safely from a laptop to the class's phones.</p>
+  <p style="margin-top:14pt;font-size:10.5pt;color:#c9c6e6">Written for beginners and college students: no app or database
+  background needed, every word explained the first time. Facts taken from the code on branch
+  <span class="mono" style="background:#33377a;color:#fff">main</span> at commit <span class="mono" style="background:#33377a;color:#fff">b2e5fb5</span>, 24-10-2026,
+  four days after the class started using the app (20-10-2026).</p>
+</div>
+
+<h3>Contents</h3>
+<ol class="toc">
+  <li>What the app does, and who uses it</li>
+  <li>The building blocks and why we chose them</li>
+  <li>Five ideas you need first</li>
+  <li>The big picture</li>
+  <li>Journey: signing up and being accepted</li>
+  <li>Journey: a child signs up, the parent consents</li>
+  <li>Journey: QR check-in, check-out, attendance</li>
+  <li>Journey: follow-up calls and student status</li>
+  <li>Journey: learning: progress, lessons, assessments, level-ups</li>
+  <li>Journey: practice at home</li>
+  <li>Journey: news, notifications, events and polls</li>
+  <li>Running the class: fund, instruments, roster, reports</li>
+  <li>Parents by email, and Ishtagoshti for everyone</li>
+  <li>Security: roles, row-level security, keys</li>
+  <li>Privacy and the law (DPDP)</li>
+  <li>The data model: tables, migrations, functions, jobs</li>
+  <li>Code map: which folder does what</li>
+  <li>Screens and their files</li>
+  <li>Testing and CI</li>
+  <li>Release and operations</li>
+  <li>How decisions are recorded</li>
+  <li>How to contribute safely</li>
+  <li>What is not built yet, and Phase 3</li>
+  <li>Glossary</li>
+</ol>
+<div class="note"><b>One sentence summary.</b> One TypeScript code base (Expo / React Native) gives an Android app and a web
+version; both talk to one Supabase project, where a PostgreSQL database holds every record <b>and every rule</b> about who may
+see or change it, so no screen, old app or typed web address can get around the rules.</div>
+<div class="note"><b>How to read this.</b> Screen names are written as the app shows them in English, with where to find
+them, e.g. <i>Welcome desk (Students tab)</i>. The docs and code comments also use short screen codes (C2, G10…) from the
+screen list the team approved on 28-09-2026; section 18 maps the names to the code files. A <span class="tag next">NEXT</span>
+tag marks something that is on <code>main</code> and on TEST but not yet in the class's (LIVE) app on 24-10-2026;
+<span class="tag off">OFF</span> marks a feature that is built but switched off until the Guru switches it on.</div>
+
+<!-- 1 -->
+<div class="section">
+<h2>1. What the app does, and who uses it</h2>
+<p>Mridanga Seva is the app of an ISKCON mridanga (khol) class in Hyderabad. The class is <b>drop-in</b>: students come any
+time between the afternoon and evening, not in fixed batches. So the app thinks in <b>visits</b> (a check-in and a
+check-out), not in roll calls. It replaces an Excel sheet and about ten WhatsApp groups, and it keeps a proper
+record of consent for students under 18.</p>
+<h3>Who uses it</h3>
+<table>
+  <tr><th>Who</th><th>Role in the database</th><th>What they do in the app</th></tr>
+  <tr><td><b>Students</b> (many under 18)</td><td><code>student</code></td><td>Show <i>My QR card</i> at the door; see their attendance, progress and lessons; practise at home with the
+  metronome and taal player; read News; answer events and polls; send assessment recordings; study slokas.</td></tr>
+  <tr><td><b>Coordinators</b> (teachers who run the daily class)</td><td><code>coordinator</code></td><td>Register students at the <i>Welcome desk</i>; check students in and out; tick syllabus progress; make
+  follow-up calls; post News; review assessments; lend instruments.</td></tr>
+  <tr><td><b>The Guru</b> (shown as <i>Facilitator</i> on the English screens)</td><td><code>guru</code></td><td>Everything a coordinator does, plus: gives roles, decides level-ups, edits the syllabus,
+  settings, centres; reads the change history and access log; answers data requests.</td></tr>
+  <tr><td><b>Someone who just signed up</b></td><td><code>pending</code></td><td>Sees <i>Waiting for access</i> until the desk accepts them; meanwhile may use <i>While you wait</i>
+  (practice tools, the mantra, Beginner lesson videos).</td></tr>
+  <tr><td><b>Ishtagoshti members</b> (public, free)</td><td><code>pending</code> + a row in <code>ig_subscribers</code></td><td>Read the class's slokas (verses) and keep their own notes. Nothing else of the class.</td></tr>
+  <tr><td><b>Parents</b></td><td>no login</td><td>Get emails: the consent code for a child's home sign-up, and (when switched on) a check-out email
+  and a weekly summary. They consent on a web page, <i>Consent for your child</i>.</td></tr>
+  <tr><td><b>The door tablet</b></td><td><code>kiosk</code> (exists in the database only)</td><td><b>Not built yet.</b> The role and its rights exist; the app shows "The door tablet screens come in
+  a later version". Today a coordinator's phone at the door does the scanning (the "door phone").</td></tr>
+</table>
+<h3>Where it runs</h3>
+<div class="two">
+  <div class="note"><b>Android app</b> (an APK installed from a link, not from the Play Store). Used by most staff and
+  Android students. Gets push notifications. Updates itself over the internet.</div>
+  <div class="note"><b>Web version</b> (<code>mridanga-seva.pages.dev</code>). Same code, in a browser. iPhone users add it to
+  their home screen, because an App Store listing costs US$99 a year. Works partly offline. No push notifications yet.</div>
+</div>
+<p>There is also a separate <b>public website</b>, <code>mridangaseva.com</code> (folder <code>website/</code>): plain HTML in
+English, Telugu and Hindi, with the classes, how to join, the app links and the <b>privacy notice</b>. It shares no code with the app.</p>
+<h3>The main modules</h3>
+<table>
+  <tr><th>Area</th><th>What it covers</th></tr>
+  <tr><td>Registration</td><td>Sign-up, email confirmation, About you, the Welcome desk, consent for minors, printed QR cards</td></tr>
+  <tr><td>Attendance</td><td>QR scan or tap, In class now, Check out all, location flag, history, reports</td></tr>
+  <tr><td>Follow-up</td><td>Automatic Irregular / Inactive status, call tasks for the mentor, Record a call</td></tr>
+  <tr><td>Learning</td><td>Three levels (Beginner, Intermediate, Advanced), syllabus ticks, lessons (YouTube, PDFs), assessments, level-ups</td></tr>
+  <tr><td>Practice</td><td>Metronome, taal player, two-head view of the drum, practice timer and log, games (Tap pad, Which bol?, Echo me)</td></tr>
+  <tr><td>Communication</td><td>News (announcements), groups, private replies, notifications inbox, push, events, polls</td></tr>
+  <tr><td>Running the class</td><td>Class fund, instruments with QR labels, seva roster, material suggestions, settings, centres</td></tr>
+  <tr><td>Ishtagoshti</td><td>Sloka study: themes, sloka of the day, recitations, notes, memorised ticks; free public sign-up</td></tr>
+  <tr><td>Privacy</td><td>Consent register, access log, change history, My data and rights, data requests, erasure, retention</td></tr>
+</table>
+</div>
+
+<!-- 2 -->
+<div class="section">
+<h2>2. The building blocks and why we chose them</h2>
+<p>The full reasoning is in <code>docs/WHY_THIS_STACK.md</code> and <code>docs/DECISIONS.md</code> #1, #5, #6. In short: a
+drop-in class of about 200 people, many of them children, run by volunteers with <b>no budget</b> ("Phase 1 must cost
+nothing"), most members on iPhones, and few maintainers.</p>
+<table>
+  <tr><th>Block</th><th>What it is</th><th>What it does for us</th><th>Why this one</th></tr>
+  <tr><td><b>TypeScript</b></td><td>JavaScript with types</td><td>The language of the whole app</td><td>Widely known; the type check catches many mistakes before a phone does</td></tr>
+  <tr><td><b>React Native + Expo</b> (SDK 57)</td><td>Write a phone app with React; Expo adds tools and ready parts</td><td>One code base → Android app <i>and</i> web version</td><td>No Mac or Android Studio needed; camera, audio, location, notifications ready-made</td></tr>
+  <tr><td><b>Expo Router</b></td><td>Every file in <code>app/src/app/</code> is a screen</td><td>Navigation, web addresses, protected areas per role</td><td>The folder <i>is</i> the map of the app</td></tr>
+  <tr><td><b>Supabase</b></td><td>A hosted PostgreSQL database plus login, file storage, server functions</td><td>All records, all rules, logins, files, scheduled jobs</td><td>Free plan; standard Postgres we can take elsewhere</td></tr>
+  <tr><td><b>PostgreSQL</b></td><td>A relational database (tables of rows)</td><td>Row-level security, triggers, functions, checks at commit</td><td>MySQL has no row-level security; a document database makes attendance reports hard</td></tr>
+  <tr><td><b>Row-level security (RLS)</b></td><td>Per-table rules: who may read or change which rows</td><td>A student sees only their own record, whatever the app asks</td><td>The rule lives in one place and holds for every screen</td></tr>
+  <tr><td><b>Edge Functions</b></td><td>Small TypeScript programs on Supabase's servers</td><td><code>notify-announcements</code> (push), <code>notify-parents</code> (emails)</td><td>The only code that holds the secret key, inside Supabase</td></tr>
+  <tr><td><b>pg_cron</b></td><td>A timetable inside the database</td><td>17 jobs: statuses every morning, push every minute, clean-ups at night</td><td>No separate server to keep alive</td></tr>
+  <tr><td><b>EAS Build / EAS Update</b></td><td>Expo's cloud services</td><td>Builds the Android APK; sends new JavaScript to installed apps</td><td>Free: 15 builds a month; updates for 1,000 people a month</td></tr>
+  <tr><td><b>Cloudflare Pages</b></td><td>Static web hosting</td><td>Serves the web version and the public website</td><td>Free, fast, our own security headers</td></tr>
+  <tr><td><b>Brevo</b></td><td>An email-sending service</td><td>Sign-up and password emails; parent emails</td><td>Free plan: 300 emails a day</td></tr>
+  <tr><td><b>Expo push + Firebase</b></td><td>Push notification delivery</td><td>Notifications to Android phones</td><td>Free</td></tr>
+  <tr><td><b>YouTube</b></td><td>Video hosting</td><td>Lesson videos; the app stores only the links</td><td>Free; keeps big files out of our 1 GB of storage</td></tr>
+  <tr><td><b>GitHub</b></td><td>Code hosting, public, MIT licence</td><td>The code, pull requests, the CI checks</td><td>Anyone can read exactly what the app does</td></tr>
+</table>
+<h3>What these choices cost us, and how we handle it</h3>
+<table>
+  <tr><th>Cost</th><th>How we handle it</th></tr>
+  <tr><td>The free database pauses after 7 days without use</td><td>Daily class use keeps it awake; in holidays it is opened every Monday with the backup</td></tr>
+  <tr><td>The free plan has no downloadable backups</td><td>A weekly encrypted backup by hand, with a restore drill (section 20)</td></tr>
+  <tr><td>500 MB of data, 1 GB of files</td><td>Videos stay on YouTube; recordings are deleted 30 days after review</td></tr>
+  <tr><td>iPhone users get a web app, not an App Store app</td><td>The same code can build an iOS app once the US$99 a year is agreed</td></tr>
+  <tr><td>The rules are written in SQL, which fewer volunteers know</td><td>One numbered file per change, its reason in DECISIONS.md, 2,224 automatic database checks</td></tr>
+</table>
+<div class="small">Versions on main (app/package.json): expo ~57.0.27, react-native 0.86.3, react 19.2.3, expo-router ~57.0.25,
+@supabase/supabase-js ^2.118.0, i18next ^26.4.7, typescript ~6.0.3; eas-cli pinned at exactly 24.12.1.</div>
+</div>
+
+<!-- 3 -->
+<div class="section">
+<h2>3. Five ideas you need first</h2>
+<h3>Idea 1: the app keeps almost nothing of its own</h3>
+<p>The phone or browser draws screens and sends requests over the internet. The <b>records</b> live on the server, in the
+database. So every coordinator sees the same students on any phone. (A few things are kept on the device on purpose: the
+signed-in person's own profile so the app opens at once, My QR card so it works without signal, the practice taals, and
+check-ins or practice saved while offline until they can be sent.)</p>
+<h3>Idea 2: tables and rows</h3>
+<p>A database is a set of very strict registers. Each kind of record is a <b>table</b> (like a sheet in Excel): <code>students</code>,
+<code>visits</code>, <code>call_logs</code>… Each record is a <b>row</b>. A row in <code>visits</code> is one check-in, with its check-out
+time filled in later. Tables point at each other by <b>id</b>: a visit holds the <code>student_id</code> of its student.</p>
+<h3>Idea 3: the rules live in the database (the most important idea)</h3>
+<p>A screen can hide a button, but a screen is not a lock: someone could use an old app version or type a web address. So
+<b>every rule that protects people or records is enforced by the database itself</b> (DECISIONS #5). Three tools do it:</p>
+<table>
+  <tr><th>Tool</th><th>What it is</th><th>Example from our app</th></tr>
+  <tr><td><b>Row-level security</b> (policies)</td><td>Written rules per table: who may read, insert, update, delete which rows</td><td>A student asking for "all students" gets only their own row</td></tr>
+  <tr><td><b>Triggers and constraints</b> ("guards")</td><td>Checks that run whenever a row is saved; they refuse a bad save</td><td>A roll number can never change; Paused and Left only through a logged call</td></tr>
+  <tr><td><b>Database functions</b></td><td>Actions that change several things at once, all or nothing, checking who calls</td><td><code>scan_qr</code> checks a student in, makes them Active and closes their call tasks</td></tr>
+</table>
+<h3>Idea 4: migrations</h3>
+<p>The database is not built by clicking. It is built by <b>migrations</b>: numbered SQL files in <code>supabase/migrations/</code>,
+run in number order (0001, 0002 … 0061). A migration that has run is <b>never edited</b>; a change is a new file. Running the
+same files on an empty database rebuilds the whole schema, which is how the tests work.</p>
+<h3>Idea 5: TEST and LIVE</h3>
+<p>There are two separate Supabase projects with the same schema:</p>
+<table>
+  <tr><th></th><th>TEST (<code>fhuqyk…</code>, Singapore)</th><th>LIVE (<code>qeozvv…</code>, Sydney)</th></tr>
+  <tr><td>Holds</td><td>Made-up students (<code>supabase/seed.sql</code>: 15 fictional students, <code>example.com</code> emails)</td><td>The class's real records, children included</td></tr>
+  <tr><td>Web site</td><td><code>mridanga-seva-test.pages.dev</code></td><td><code>mridanga-seva.pages.dev</code> (later <code>app.mridangaseva.com</code>)</td></tr>
+  <tr><td>Android</td><td>the <i>preview</i> APK and update channel</td><td>the <i>production</i> APK and update channel</td></tr>
+  <tr><td>Who touches it</td><td>Builders, testers, volunteers</td><td>The class. Changes only by Praveen, after TEST, after a backup</td></tr>
+</table>
+<div class="warn"><b>Never LIVE.</b> Real records are never used for testing and made-up students never go into LIVE (on
+29-09-2026 test students were found in LIVE by mistake and removed the same day). Scripts check that a test build talks only to
+TEST and a live build only to LIVE (section 20).</div>
+</div>
+
+<!-- 4 -->
+<div class="section">
+<h2>4. The big picture</h2>
+<svg viewBox="0 0 720 470" width="100%">
+  <defs><marker id="ar" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#1B1E4B"/></marker></defs>
+  <!-- left: devices -->
+  <rect x="10" y="20" width="195" height="290" rx="12" fill="#FBF4E6" stroke="#E0B25C" stroke-width="2"/>
+  <text x="107" y="40" text-anchor="middle" font-size="13" font-weight="700" fill="#1B1E4B">People's devices</text>
+  <rect x="22" y="52" width="171" height="50" rx="6" fill="#fff" stroke="#bbb"/>
+  <text x="107" y="73" text-anchor="middle" font-size="11" font-weight="600">Android app (APK)</text>
+  <text x="107" y="90" text-anchor="middle" font-size="9.5" fill="#555">students, staff, the door phone</text>
+  <rect x="22" y="112" width="171" height="50" rx="6" fill="#fff" stroke="#bbb"/>
+  <text x="107" y="133" text-anchor="middle" font-size="11" font-weight="600">Web version</text>
+  <text x="107" y="150" text-anchor="middle" font-size="9.5" fill="#555">iPhone home screen, laptop</text>
+  <rect x="22" y="172" width="171" height="50" rx="6" fill="#fff" stroke="#bbb"/>
+  <text x="107" y="193" text-anchor="middle" font-size="11" font-weight="600">Parent's email inbox</text>
+  <text x="107" y="210" text-anchor="middle" font-size="9.5" fill="#555">consent code, notices</text>
+  <text x="107" y="248" text-anchor="middle" font-size="9.5" fill="#2E7D32">Same TypeScript code</text>
+  <text x="107" y="262" text-anchor="middle" font-size="9.5" fill="#2E7D32">on Android and web</text>
+  <text x="107" y="284" text-anchor="middle" font-size="9.5" fill="#555">only the public key inside</text>
+  <!-- middle: supabase -->
+  <rect x="245" y="20" width="235" height="290" rx="12" fill="#eef1fb" stroke="#1f5fa8" stroke-width="2"/>
+  <text x="362" y="40" text-anchor="middle" font-size="13" font-weight="700" fill="#1B1E4B">Supabase project</text>
+  <text x="362" y="54" text-anchor="middle" font-size="9.5" fill="#555">LIVE: Sydney · TEST: Singapore</text>
+  <rect x="258" y="62" width="209" height="38" rx="6" fill="#fff" stroke="#bbb"/>
+  <text x="362" y="78" text-anchor="middle" font-size="10.5" font-weight="600">Auth: logins</text>
+  <text x="362" y="92" text-anchor="middle" font-size="9.5" fill="#555">sign-up, email confirm, staff codes</text>
+  <rect x="258" y="106" width="209" height="70" rx="6" fill="#fff" stroke="#2E7D32" stroke-width="2"/>
+  <text x="362" y="124" text-anchor="middle" font-size="10.5" font-weight="700">PostgreSQL database</text>
+  <text x="362" y="139" text-anchor="middle" font-size="9.5">70+ tables · row-level security</text>
+  <text x="362" y="153" text-anchor="middle" font-size="9.5">functions · triggers · views</text>
+  <text x="362" y="168" text-anchor="middle" font-size="9.5" fill="#2E7D32">every rule is checked here</text>
+  <rect x="258" y="182" width="209" height="36" rx="6" fill="#fff" stroke="#bbb"/>
+  <text x="362" y="197" text-anchor="middle" font-size="10.5" font-weight="600">Storage (private buckets)</text>
+  <text x="362" y="211" text-anchor="middle" font-size="9.5" fill="#555">photos, PDFs, recordings, bills</text>
+  <rect x="258" y="224" width="209" height="34" rx="6" fill="#fff" stroke="#bbb"/>
+  <text x="362" y="239" text-anchor="middle" font-size="10.5" font-weight="600">pg_cron: 17 scheduled jobs</text>
+  <text x="362" y="252" text-anchor="middle" font-size="9.5" fill="#555">every minute … every night</text>
+  <rect x="258" y="264" width="209" height="38" rx="6" fill="#fff" stroke="#bbb"/>
+  <text x="362" y="280" text-anchor="middle" font-size="10.5" font-weight="600">Edge Functions</text>
+  <text x="362" y="294" text-anchor="middle" font-size="9.5" fill="#555">notify-announcements · notify-parents</text>
+  <!-- right: outside -->
+  <rect x="520" y="20" width="190" height="290" rx="12" fill="#f3f3f3" stroke="#888" stroke-width="2"/>
+  <text x="615" y="40" text-anchor="middle" font-size="13" font-weight="700" fill="#1B1E4B">Outside services</text>
+  <rect x="532" y="52" width="166" height="50" rx="6" fill="#fff" stroke="#bbb"/>
+  <text x="615" y="73" text-anchor="middle" font-size="11" font-weight="600">Expo push + Firebase</text>
+  <text x="615" y="90" text-anchor="middle" font-size="9.5" fill="#555">notifications to Android</text>
+  <rect x="532" y="112" width="166" height="50" rx="6" fill="#fff" stroke="#bbb"/>
+  <text x="615" y="133" text-anchor="middle" font-size="11" font-weight="600">YouTube</text>
+  <text x="615" y="150" text-anchor="middle" font-size="9.5" fill="#555">lesson videos, played in the app</text>
+  <rect x="532" y="172" width="166" height="50" rx="6" fill="#fff" stroke="#bbb"/>
+  <text x="615" y="193" text-anchor="middle" font-size="11" font-weight="600">Brevo</text>
+  <text x="615" y="210" text-anchor="middle" font-size="9.5" fill="#555">emails: sign-up, reset, parents</text>
+  <!-- runtime arrows -->
+  <g stroke="#1B1E4B" stroke-width="1.8" fill="none" marker-end="url(#ar)">
+    <line x1="194" y1="78" x2="255" y2="128"/>
+    <line x1="194" y1="138" x2="255" y2="146"/>
+    <line x1="468" y1="276" x2="529" y2="82"/>
+    <line x1="468" y1="290" x2="529" y2="204"/>
+    <line x1="468" y1="76" x2="529" y2="190"/>
+    <path d="M690,52 L690,10 L180,10 L180,49"/>
+    <path d="M615,222 L615,322 L35,322 L35,225"/>
+  </g>
+  <g font-size="9" font-weight="700" fill="#fff">
+    <circle cx="224" cy="96" r="8" fill="#E0B25C"/><text x="224" y="99" text-anchor="middle">1</text>
+    <circle cx="483" cy="102" r="8" fill="#E0B25C"/><text x="483" y="105" text-anchor="middle">2</text>
+    <circle cx="480" cy="237" r="8" fill="#E0B25C"/><text x="480" y="240" text-anchor="middle">3</text>
+    <circle cx="420" cy="10" r="8" fill="#E0B25C"/><text x="420" y="13" text-anchor="middle">4</text>
+    <circle cx="514" cy="226" r="8" fill="#E0B25C"/><text x="514" y="229" text-anchor="middle">5</text>
+    <circle cx="340" cy="322" r="8" fill="#E0B25C"/><text x="340" y="325" text-anchor="middle">6</text>
+  </g>
+  <!-- build lane -->
+  <rect x="10" y="340" width="700" height="125" rx="12" fill="#fff" stroke="#E0B25C" stroke-width="2" stroke-dasharray="6 4"/>
+  <text x="360" y="358" text-anchor="middle" font-size="12" font-weight="700" fill="#1B1E4B">Build and publish (by a maintainer, never by the app)</text>
+  <rect x="25" y="368" width="150" height="48" rx="6" fill="#FBF4E6" stroke="#bbb"/>
+  <text x="100" y="388" text-anchor="middle" font-size="11" font-weight="600">Developer PC</text>
+  <text x="100" y="404" text-anchor="middle" font-size="9.5" fill="#555">worktree, TEST settings</text>
+  <rect x="205" y="368" width="150" height="48" rx="6" fill="#fff" stroke="#bbb"/>
+  <text x="280" y="388" text-anchor="middle" font-size="11" font-weight="600">GitHub</text>
+  <text x="280" y="404" text-anchor="middle" font-size="9.5" fill="#555">code + CI checks</text>
+  <rect x="385" y="368" width="150" height="48" rx="6" fill="#fff" stroke="#bbb"/>
+  <text x="460" y="388" text-anchor="middle" font-size="11" font-weight="600">Expo EAS</text>
+  <text x="460" y="404" text-anchor="middle" font-size="9.5" fill="#555">APK builds, app updates</text>
+  <rect x="565" y="368" width="135" height="48" rx="6" fill="#fff" stroke="#bbb"/>
+  <text x="632" y="388" text-anchor="middle" font-size="11" font-weight="600">Cloudflare Pages</text>
+  <text x="632" y="404" text-anchor="middle" font-size="9.5" fill="#555">web version, website</text>
+  <g stroke="#1B1E4B" stroke-width="1.6" fill="none" marker-end="url(#ar)">
+    <line x1="176" y1="392" x2="202" y2="392"/>
+    <path d="M100,417 L100,438 L460,438 L460,420"/>
+    <path d="M85,417 L85,452 L632,452 L632,420"/>
+  </g>
+  <text x="300" y="434" text-anchor="middle" font-size="9" fill="#555">npm run update:preview / update:production</text>
+  <text x="520" y="448" text-anchor="middle" font-size="9" fill="#555">npm run export:web, then upload</text>
+</svg>
+<table>
+  <tr><th>#</th><th>What travels</th></tr>
+  <tr><td>1</td><td>The app's reads and writes, over HTTPS, with the <b>public</b> key and the person's login token. The database checks each one against row-level security and the function's own role check.</td></tr>
+  <tr><td>2</td><td>Supabase Auth sends sign-up confirmation and password-reset emails through Brevo (SMTP).</td></tr>
+  <tr><td>3</td><td>Every minute a pg_cron job calls the Edge Function <code>notify-announcements</code> when something waits to be pushed; it hands the messages to Expo's push service.</td></tr>
+  <tr><td>4</td><td>Expo passes them to Google Firebase, which delivers them to the Android phones. The web version gets none (yet).</td></tr>
+  <tr><td>5</td><td>Parent emails (consent code, check-out notice, weekly summary) go from <code>notify-parents</code> to Brevo's API.</td></tr>
+  <tr><td>6</td><td>Brevo delivers the emails to the parent's (or the new user's) inbox.</td></tr>
+</table>
+<p>Read it like this: phones and browsers talk to Supabase directly. Supabase checks who you are (Auth), keeps the records and
+the rules (database) and the files (Storage), and runs jobs on a timetable (pg_cron). Those jobs call two small programs
+(Edge Functions) that hand notifications to Expo and emails to Brevo. Videos stay on YouTube. In the bottom lane, a
+maintainer's PC sends code to GitHub, app builds and updates through Expo EAS, and the web version to Cloudflare.</p>
+</div>
+
+<!-- 5 -->
+<div class="section">
+<h2>5. Journey: signing up and being accepted</h2>
+<p>Most students create their own login at home. The desk then <b>accepts</b> them with one tap, using what they typed, so the
+form is filled once, by the student (DECISIONS #263).</p>
+<svg viewBox="0 0 720 150" width="100%">
+  <defs><marker id="a5" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#1B1E4B"/></marker></defs>
+  <g font-size="10" text-anchor="middle">
+    <rect x="5" y="20" width="128" height="104" rx="8" fill="#FBF4E6" stroke="#E0B25C"/>
+    <text x="69" y="40" font-weight="700" font-size="11" fill="#1B1E4B">1 Sign up</text>
+    <text x="69" y="58">New student</text><text x="69" y="71">registration: name,</text><text x="69" y="84">email, date of birth,</text><text x="69" y="97">gender, centre,</text><text x="69" y="110">notice ticked</text>
+    <rect x="150" y="20" width="128" height="104" rx="8" fill="#FBF4E6" stroke="#E0B25C"/>
+    <text x="214" y="40" font-weight="700" font-size="11" fill="#1B1E4B">2 Confirm email</text>
+    <text x="214" y="58">Link from Brevo;</text><text x="214" y="71">a profiles row with</text><text x="214" y="84">role "pending" was</text><text x="214" y="97">made by a trigger</text>
+    <rect x="295" y="20" width="128" height="104" rx="8" fill="#FBF4E6" stroke="#E0B25C"/>
+    <text x="359" y="40" font-weight="700" font-size="11" fill="#1B1E4B">3 Waiting</text>
+    <text x="359" y="58">Waiting for access;</text><text x="359" y="71">About you, once;</text><text x="359" y="84">While you wait:</text><text x="359" y="97">practice, mantra,</text><text x="359" y="110">Beginner lessons</text>
+    <rect x="440" y="20" width="128" height="104" rx="8" fill="#eef1fb" stroke="#1f5fa8"/>
+    <text x="504" y="40" font-weight="700" font-size="11" fill="#1B1E4B">4 Welcome desk</text>
+    <text x="504" y="58">Coordinator sees</text><text x="504" y="71">the waiting list,</text><text x="504" y="84">checks the person,</text><text x="504" y="97">taps Accept</text><text x="504" y="110" font-family="Consolas" font-size="9">accept_sign_up</text>
+    <rect x="585" y="20" width="128" height="104" rx="8" fill="#eaf5ea" stroke="#2E7D32"/>
+    <text x="649" y="40" font-weight="700" font-size="11" fill="#1B1E4B">5 Student</text>
+    <text x="649" y="58">Record + roll no.</text><text x="649" y="71">MS-2026-0042,</text><text x="649" y="84">login linked, role</text><text x="649" y="97">"student", mentor</text><text x="649" y="110">given by gender</text>
+  </g>
+  <g stroke="#1B1E4B" stroke-width="1.8" marker-end="url(#a5)">
+    <line x1="134" y1="72" x2="148" y2="72"/><line x1="279" y1="72" x2="293" y2="72"/><line x1="424" y1="72" x2="438" y2="72"/><line x1="569" y1="72" x2="583" y2="72"/>
+  </g>
+  <text x="360" y="143" text-anchor="middle" font-size="9.5" fill="#555">Screens: sign-up.tsx → pending.tsx / about-you.tsx / waiting/ → staff/register.tsx → student/(tabs)</text>
+</svg>
+<div class="step"><b class="n">1</b><div><b>Sign up</b> (<code>app/src/app/sign-up.tsx</code>). Name as on a government ID, email, password, date of birth,
+gender, mobile, centre (country → city → centre) and a required tick "I have read the privacy notice". The lists come from
+<code>sign_up_choices()</code>, the <b>only</b> function someone not signed in may run. Under 18 → the extra parent part (section 6).</div></div>
+<div class="step"><b class="n">2</b><div><b>Confirm the email.</b> Supabase sends a link; the trigger <code>handle_new_user</code> already made a
+<code>profiles</code> row with role <code>pending</code>. Logins are linked only after the email is confirmed; otherwise anyone could
+claim a record by typing its email (DECISIONS #13).</div></div>
+<div class="step"><b class="n">3</b><div><b>Waiting for access</b> (<code>pending.tsx</code>). <i>About you</i> opens once (emergency contact, how they found
+the class…, table <code>person_details</code>). An adult (or a child whose parent consented) may already use <i>While you wait</i>
+(<code>app/src/app/waiting/</code>, function <code>practice_while_waiting()</code>, 0057).</div></div>
+<div class="step"><b class="n">4</b><div><b>Welcome desk (Students tab)</b> (<code>staff/register.tsx</code>). The coordinator sees the confirmed sign-ups of
+their centre (<code>waiting_sign_ups()</code>) and possible duplicates (<code>possible_duplicates</code>), and taps <b>Accept</b>.
+For someone without a phone or login there is still the full form (<code>register_student</code>).</div></div>
+<div class="step"><b class="n">5</b><div><b>Student.</b> <code>accept_sign_up(profile)</code> writes the <code>students</code> row; a trigger gives the roll number
+<code>MS-&lt;year&gt;-&lt;4 digits&gt;</code>, frozen for ever and never reused; About you moves to the record; a mentor of the same
+gender is assigned; the login becomes <code>student</code>, and the person's app opens the student screens.</div></div>
+<div class="note"><b>Why a separate "pending" role?</b> Until the desk has seen the person, a login can read and edit only its
+own profile. The test net in <code>supabase/tests</code> checks, table by table, that a pending login reads nothing else.</div>
+<p class="small">Other paths to the same link: a coordinator saving an email on an existing record links a waiting login with
+that email (trigger <code>students_link_login</code>); the Guru links by hand (<code>link_student_login</code>). A minor's record is
+never linked automatically (0047): only by the parent-consent path or the Guru.</p>
+</div>
+
+<!-- 6 -->
+<div class="section">
+<h2>6. Journey: a child signs up, the parent consents</h2>
+<p>Most students are under 18. India's DPDP Rules (rule 10) ask for <b>verifiable consent of a parent</b> before a child's data is
+processed. Since migration 0051 a child can start at home, and the parent consents by email (DECISIONS #399). Before that,
+"under 18" meant "come to the desk with a parent", and on 20-10-2026 several children tried at home and gave up.</p>
+<svg viewBox="0 0 720 250" width="100%">
+  <defs><marker id="a6" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#1B1E4B"/></marker></defs>
+  <g font-size="12" font-weight="700" fill="#1B1E4B" text-anchor="middle">
+    <text x="80" y="18">Child's phone</text><text x="290" y="18">Database</text><text x="480" y="18">Parent's email</text><text x="640" y="18">Desk</text></g>
+  <g stroke="#bbb" stroke-dasharray="4 4"><line x1="80" y1="26" x2="80" y2="245"/><line x1="290" y1="26" x2="290" y2="245"/><line x1="480" y1="26" x2="480" y2="245"/><line x1="640" y1="26" x2="640" y2="245"/></g>
+  <g stroke="#1B1E4B" stroke-width="1.6" fill="none" marker-end="url(#a6)">
+    <line x1="82" y1="52" x2="286" y2="52"/>
+    <line x1="292" y1="96" x2="476" y2="96"/>
+    <line x1="478" y1="140" x2="294" y2="140"/>
+    <line x1="638" y1="190" x2="294" y2="190"/>
+    <line x1="288" y1="226" x2="84" y2="226"/>
+  </g>
+  <g font-size="10" fill="#222">
+    <text x="92" y="46">1 sign-up + parent's name, relation,</text>
+    <text x="92" y="66" fill="#555">   email, mobile (minor_signups row)</text>
+    <text x="300" y="90">2 Edge Function: email via Brevo</text>
+    <text x="300" y="110" fill="#555">   6-digit code, valid 7 days, 5 tries</text>
+    <text x="312" y="134">3 page "Consent for your child":</text>
+    <text x="312" y="154" fill="#555">   code + yes to data (photo optional)</text>
+    <text x="312" y="184">4 child + parent at desk: ID kind</text>
+    <text x="312" y="204" fill="#555">   seen, Accept (accept_minor_sign_up)</text>
+    <text x="104" y="220">5 student record, guardian, consent</text>
+  </g>
+</svg>
+<div class="step"><b class="n">1</b><div>The sign-up form sees a date of birth under 18 and asks the <b>parent's</b> name, relation (mother, father,
+guardian), email and mobile. The database keeps them in <code>minor_signups</code>, a table no app user can read.</div></div>
+<div class="step"><b class="n">2</b><div>The job <code>mridanga-parent-notices</code> (every minute) calls the Edge Function <code>notify-parents</code>, which
+claims a <b>new 6-digit code</b> (stored only as a hash) and sends the email through Brevo, in the child's app language. Limits:
+5 emails per sign-up, 3 a day per address, 60 a day for the whole app.</div></div>
+<div class="step"><b class="n">3</b><div>The parent opens <i>Consent for your child</i> (<code>app/src/app/parent-consent.tsx</code>, open without a login),
+types the code, declares they are the parent or legal guardian and 18 or over, and says yes to the data (a photo is a separate,
+optional yes). <code>give_parent_consent</code> records it with the privacy-notice version shown.</div></div>
+<div class="step"><b class="n">4</b><div>Only now the child appears on the <i>Welcome desk</i>. They come with the parent; the coordinator looks at the
+<b>parent's ID document</b> and records only its <b>kind</b> (Aadhaar, PAN, …), never its number, then taps Accept.</div></div>
+<div class="step"><b class="n">5</b><div><code>accept_minor_sign_up</code> writes the student (linked to the child's login), the guardian and the consent of
+method <code>email_code</code>, and deletes the request. Without the parent's yes within 30 days, or without the desk within 180 days,
+a nightly job erases the whole sign-up (<code>mridanga-minor-signups</code>).</div></div>
+<h3>The rule that holds everywhere</h3>
+<p>Whatever the path (this one, the desk form, the Excel import, the dashboard), a trigger checked <b>at commit</b> refuses a student
+under 18 on record without a current data consent given through one of <b>their own</b> guardians, and a guardian with a phone
+(<code>minor_rule_gap</code>, errors <code>minor_needs_consent</code>, <code>minor_needs_guardian</code>; DECISIONS #16, #272). The desk
+form's equivalent for a parent who signs on paper: the coordinator ticks that the signed form was received (<code>signed_form</code>).</p>
+</div>
+
+<!-- 7 -->
+<div class="section">
+<h2>7. Journey: QR check-in, check-out, attendance</h2>
+<svg viewBox="0 0 700 250" width="100%">
+  <defs><marker id="a7" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#1B1E4B"/></marker></defs>
+  <g font-size="12" font-weight="700" fill="#1B1E4B" text-anchor="middle">
+    <text x="90" y="18">Student's phone</text><text x="350" y="18">Door phone (coordinator)</text><text x="610" y="18">Database</text></g>
+  <g stroke="#bbb" stroke-dasharray="4 4"><line x1="90" y1="26" x2="90" y2="245"/><line x1="350" y1="26" x2="350" y2="245"/><line x1="610" y1="26" x2="610" y2="245"/></g>
+  <g stroke="#1B1E4B" stroke-width="1.6" fill="none" marker-end="url(#a7)">
+    <line x1="92" y1="56" x2="346" y2="56"/>
+    <line x1="352" y1="106" x2="606" y2="106"/>
+    <line x1="608" y1="200" x2="354" y2="200"/>
+  </g>
+  <g font-size="10.5" fill="#222">
+    <text x="104" y="50">1 My QR card shows "MS1:" + secret token</text>
+    <text x="104" y="74" fill="#555" font-size="10">   (drawn on the phone; works offline)</text>
+    <text x="364" y="100">2 scan_qr(token, position)</text>
+    <text x="364" y="124" fill="#555" font-size="10">   or a tap: mark_visit(student, in/out)</text>
+    <text x="364" y="150" fill="#1f5fa8" font-size="10">3 caller is staff? find student; open visit?</text>
+    <text x="364" y="166" fill="#1f5fa8" font-size="10">   none → check in, status Active, close tasks</text>
+    <text x="364" y="182" fill="#1f5fa8" font-size="10">   one → check out (not within 10 minutes)</text>
+    <text x="364" y="218">4 "Checked in": name, roll no., time</text>
+    <text x="364" y="236" fill="#555" font-size="10">   + location flag; the phone buzzes once</text>
+  </g>
+</svg>
+<div class="step"><b class="n">1</b><div><b>My QR card (My QR tab)</b> shows a QR code holding <code>MS1:</code> and the student's secret <code>qr_token</code>, not
+the roll number, so nobody can make another student's code by guessing (DECISIONS #17). The last one loaded is kept on the
+phone. A student without a phone gets a printed card with the same code (<i>Print QR cards</i>, 0045); a lost card is
+re-issued with <code>reissue_qr_code</code> and the old one stops working.</div></div>
+<div class="step"><b class="n">2</b><div>The coordinator opens <b>Check-in (tab)</b> (<code>staff/mark-attendance.tsx</code>) and scans with the camera
+(<code>expo-camera</code>; on the web, the browser's reader or <code>zxing-wasm</code> on iPhone Safari). Without a camera they
+search the name and tap <i>Check in</i> / <i>Check out</i>.</div></div>
+<div class="step"><b class="n">3</b><div><code>scan_qr</code> → <code>toggle_visit</code>: check in if the student has no open visit, else check out, all in one
+transaction. A second scan within 10 minutes of a check-in answers "already in", so a second phone or a retry does not end
+the visit. <code>mark_visit</code> does exactly what the button says and locks the student's row while it works.</div></div>
+<div class="step"><b class="n">4</b><div>The answer carries the student's name, roll number and time. Any check-in makes the student <b>Active</b> and
+closes their open follow-up tasks.</div></div>
+<h3>The location flag (0024, DECISIONS #70)</h3>
+<p>A check-in also sends the <b>marking phone's</b> position (foreground only, at most 8 s). The database compares it with the
+centre's point and radius (set on <i>Centres</i>) and stores <b>only the result and the distance</b>, never the position:
+<code>inside</code>, <code>outside</code>, <code>refused</code>, <code>no_fix</code>, <code>no_location</code>, <code>no_area</code>. Outside or unknown is
+<b>saved anyway but flagged</b> for the Guru and counted in the reports.</p>
+<h3>Closing time, and days without signal</h3>
+<ul>
+  <li><b>In class now</b> lists open visits; at closing time <b>Check out all</b> (<code>check_out_all</code>) closes them.</li>
+  <li>Every hour the job <code>mridanga-close-visits</code> closes any visit still open an hour after its centre closed, at the
+  closing time (21:00 India time for Abids). Each centre has its own time zone (0033).</li>
+  <li>Staff may correct only a visit's <b>times</b>, and each correction is in the change history (0030).</li>
+  <li><span class="tag next">NEXT</span> <b>No signal at the door</b> (DECISIONS #593): a scan or tap is kept on the door phone
+  (<code>lib/offline-queue.ts</code>) and sent when the signal is back, the same class day only, with a request id so it is saved
+  once. A scanned code is re-sent only as a check-in, because <code>scan_qr</code> toggles.</li>
+</ul>
+<p>The student sees their visits in <i>My attendance</i>; staff see them on the student's page and in <i>Reports</i>
+(<code>class_report</code>, with a CSV download).</p>
+</div>
+
+<!-- 8 -->
+<div class="section">
+<h2>8. Journey: follow-up calls and student status</h2>
+<p>In a drop-in class nobody notices when a student quietly stops coming. So the database watches the days since the last
+visit, and gives the student's <b>mentor</b> (a coordinator) a call to make.</p>
+<svg viewBox="0 0 700 300" width="100%">
+  <defs><marker id="a8" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#1B1E4B"/></marker></defs>
+  <g font-size="11.5" font-weight="700" text-anchor="middle" fill="#1B1E4B">
+    <rect x="15" y="120" width="100" height="40" rx="20" fill="#eef1fb" stroke="#1f5fa8"/><text x="65" y="145">New</text>
+    <rect x="180" y="50" width="110" height="40" rx="20" fill="#eaf5ea" stroke="#2E7D32"/><text x="235" y="75">Active</text>
+    <rect x="380" y="50" width="110" height="40" rx="20" fill="#fff4dc" stroke="#E0B25C"/><text x="435" y="75">Irregular</text>
+    <rect x="580" y="50" width="105" height="40" rx="20" fill="#fdecea" stroke="#C62828"/><text x="632" y="75">Inactive</text>
+    <rect x="380" y="215" width="110" height="40" rx="20" fill="#f3f3f3" stroke="#888"/><text x="435" y="240">Paused</text>
+    <rect x="580" y="215" width="105" height="40" rx="20" fill="#f3f3f3" stroke="#888"/><text x="632" y="240">Left</text>
+    <rect x="170" y="215" width="130" height="40" rx="6" fill="#FBF4E6" stroke="#E0B25C"/><text x="235" y="240">Record a call</text>
+  </g>
+  <g stroke="#1B1E4B" stroke-width="1.6" fill="none" marker-end="url(#a8)">
+    <line x1="100" y1="122" x2="190" y2="90"/>
+    <line x1="290" y1="62" x2="377" y2="62"/>
+    <line x1="380" y1="80" x2="293" y2="80"/>
+    <line x1="490" y1="70" x2="577" y2="70"/>
+    <path d="M632,50 Q632,14 435,14 Q235,14 235,47"/>
+    <line x1="300" y1="235" x2="377" y2="235"/>
+    <path d="M235,256 Q235,290 430,290 Q632,290 632,258"/>
+    <line x1="455" y1="215" x2="455" y2="93"/>
+  </g>
+  <g font-size="9.5" fill="#333" text-anchor="middle">
+    <text x="128" y="96">first visit</text>
+    <text x="334" y="56">14 days</text>
+    <text x="334" y="96">visits again</text>
+    <text x="534" y="64">30 days</text>
+    <text x="435" y="27">visits again</text>
+    <text x="338" y="228">taking a break</text>
+    <text x="430" y="283">stopped coming</text>
+    <text x="508" y="150">pause date</text><text x="508" y="163">passes (+ call)</text>
+  </g>
+  <text x="15" y="190" font-size="9.5" fill="#2E7D32">Any visit → Active again</text>
+  <text x="15" y="204" font-size="9.5" fill="#2E7D32">(a Left student keeps the</text>
+  <text x="15" y="218" font-size="9.5" fill="#2E7D32">same roll number)</text>
+</svg>
+<div class="step"><b class="n">1</b><div><b>Every morning at 06:00 India time</b> the job <code>mridanga-status-refresh</code> runs
+<code>refresh_student_statuses()</code>: no visit for 14 days → <b>Irregular</b> and a <code>call</code> task for the mentor, due in 3
+days; 30 days → <b>Inactive</b>. The numbers are rows in <code>settings</code> (the Guru changes them in <i>Settings</i>), not code.</div></div>
+<div class="step"><b class="n">2</b><div>The coordinator opens <b>Follow-ups (tab)</b> (<code>staff/(tabs)/follow-up.tsx</code>): students grouped as
+<i>needs the Guru</i>, <i>call due</i>, <i>call later</i>, and Irregular or Inactive with no call planned.</div></div>
+<div class="step"><b class="n">3</b><div><b>Record a call</b> (<code>staff/call/</code>) has buttons that open the phone's dialler for the student or, for a
+minor, the parent. Afterwards: the outcome, a reason from the list (studies, work timing, moved, health…), a comment and, for
+"coming back" or "taking a break", a date.</div></div>
+<div class="step"><b class="n">4</b><div><code>log_call</code> saves the call and applies the outcome: <i>taking a break</i> → Paused until the date;
+<i>stopped coming</i> → Left; <i>coming back</i> → a new call for the day after the date; <i>not reachable</i> → a retry, and after
+several failed tries in the same absence the task is <b>escalated</b> to the Guru.</div></div>
+<div class="note"><b>Why only through a call?</b> A trigger refuses setting Paused or Left directly (DECISIONS #4), so nobody is
+dropped from the class without a reason and a comment. Every status change is kept in <code>status_history</code>, every call in
+<code>call_logs</code>. Call notes are private: coordinators read them only through <code>get_call_notes</code>, which writes a row
+in the <b>access log</b> (section 15).</div>
+</div>
+
+<!-- 9 -->
+<div class="section">
+<h2>9. Journey: learning: progress, lessons, assessments, level-ups</h2>
+<h3>Levels and the syllabus</h3>
+<p>There are three levels: <b>Beginner, Intermediate, Advanced</b> (table <code>levels</code>). Each has an ordered list of
+<code>syllabus_items</code>, which the Guru edits in <i>Lessons</i> (<code>staff/levels/</code>); items are retired, never deleted, so no
+tick is lost (DECISIONS #44).</p>
+<h3>Mark progress (ticks)</h3>
+<p>When a student shows an item in class, a coordinator ticks it in <i>Mark progress</i> (<code>staff/syllabus/</code>): a row in
+<code>student_progress</code> with the date and an optional remark. The trigger <code>student_progress_guard</code> writes the
+<b>real</b> ticker's id whatever the app sends, refuses a future date, and freezes the tick except its remark; every tick and
+untick is copied to the change history (DECISIONS #22). The student sees it in <i>My progress</i>.</p>
+<h3>Lessons (materials)</h3>
+<p>Each level or item can have lessons: a YouTube link, a video file link, a PDF or a photo (<code>materials</code>, files in the
+private bucket <code>material-files</code>). A student sees approved lessons up to their own level. <i>Lesson video</i> plays YouTube
+in YouTube's own embedded player (never altered, as YouTube's terms require) with speed, A-B loop and, for the team's own
+videos, mirror and camera-angle zoom. Coordinators can <i>suggest</i> a lesson; the Guru adds or declines it.</p>
+<h3>Assessments</h3>
+<table>
+  <tr><th>Step</th><th>Who, where</th><th>What happens in the database</th></tr>
+  <tr><td>1 Create</td><td>Guru: instructions, level, rubric, files; a draft until sent</td><td><code>assessments</code></td></tr>
+  <tr><td>2 Give</td><td>Coordinator: notes, due date, picks students</td><td><code>release_assessment</code> → one assignment each + a notice</td></tr>
+  <tr><td>3 Send</td><td>Student: records with the phone or in the app, sends a file (≤ 50 MB) or link</td><td><code>submit_assessment</code> checks the file is theirs, bucket <code>assessment-files</code></td></tr>
+  <tr><td>4 Track</td><td>Coordinator: Not seen / Seen / Submitted / Reviewed / Redo / Late; Remind</td><td>view <code>assessment_tracker</code>; daily reminder at 09:00</td></tr>
+  <tr><td>5 Review</td><td>Coordinator: plays it, scores each rubric line, comment or voice note</td><td><code>review_submission</code>; recording deleted 30 days after review</td></tr>
+</table>
+<h3>Level-ups (promotion)</h3>
+<p>The app never promotes anyone by itself (DECISIONS #53).</p>
+<ol>
+  <li><code>promotion_criteria</code> checks a student against the Guru's settings: the level's syllabus ticked, 8+ visits in 8 weeks,
+  an accepted level-up recording.</li>
+  <li>A coordinator recommends the student with a reason and asks other coordinators (<code>nominate_for_promotion</code>).</li>
+  <li>They answer Ready / Almost / Not yet with a comment; at 2 answers it waits for the Guru (<i>Level-up queue</i>).</li>
+  <li>The Guru decides: <b>Promote</b> (<code>students.level_id</code> + a <code>level_history</code> row), <b>Not yet</b> with a date, or
+  <b>More feedback</b>. A trigger refuses any other change of level.</li>
+</ol>
+<p class="small">Screens: <code>staff/assessments/</code>, <code>student/assessments/</code>, <code>staff/promotion/</code>, <code>staff/levels/</code>,
+<code>staff/materials/</code>, <code>screens/lesson-player.tsx</code>. Tables: see section 16.</p>
+</div>
+
+<!-- 10 -->
+<div class="section">
+<h2>10. Journey: practice at home</h2>
+<p><i>Practice tools</i> (<code>screens/practice-tools.tsx</code>, routes <code>student/practice.tsx</code> and <code>staff/practice.tsx</code>)
+turns the phone into a practice partner. Nothing in these tools is sent anywhere except the practice log.</p>
+<table>
+  <tr><th>Tool</th><th>What it does</th><th>Where the code is</th></tr>
+  <tr><td>Metronome and taal player</td><td>Loops a beat or a taal's bols at a tempo; the screen lights the beat</td><td><code>lib/practice-pattern.ts</code>, <code>practice-player.ts</code></td></tr>
+  <tr><td>Two-head view</td><td>A drawing of both drum heads lighting the stroke being played: a student watching the teacher cannot see both heads</td><td><code>components/two-head-view.tsx</code>, <code>lib/bols.ts</code></td></tr>
+  <tr><td>Practice timer and log</td><td>Start / Stop; Stop saves the minutes (<code>log_practice</code>); "How did it go?" hard / okay / good</td><td><code>lib/practice-timer.ts</code>, <i>My practice log</i></td></tr>
+  <tr><td>Practice of the week</td><td>Per level: weekly goal (default 4 days × 15 min), up to 3 things to practise; a student's own goal</td><td><code>practice_plans</code>, <code>practice_goals</code> (0052)</td></tr>
+  <tr><td>Mantra before practice</td><td>A mantra to read first, in Devanagari, Telugu or Roman letters</td><td><code>practice_mantras</code></td></tr>
+  <tr><td>Record myself</td><td>Records with or without the metronome, plays back beside it; takes stay on the phone</td><td><code>lib/recording.ts</code>, <code>lib/my-recordings.ts</code></td></tr>
+  <tr><td>Play and learn</td><td><i>Tap pad</i> (play the taal on two pads, scored ★ to ★★★), <i>Which bol?</i> (ear quiz), <i>Echo me</i> (call and answer), <i>Learn more</i> (links the Guru trusts)</td><td><code>lib/tap-grading.ts</code>, <code>ear-quiz.ts</code>, <code>echo.ts</code>; table <code>practice_links</code></td></tr>
+  <tr><td>Milestones</td><td>Streaks and totals worked out on the phone from <code>practice_history()</code></td><td><code>lib/milestones.ts</code> (0056)</td></tr>
+</table>
+<h3>How the sound keeps time</h3>
+<div class="two">
+  <div class="note"><b>In the browser</b> (<code>practice-audio.web.ts</code>): Web Audio. A timer every 25 ms looks 150 ms ahead and
+  schedules each sound on the <b>audio clock</b>, not on the timer. Measured on 3-10-2026: 183 clicks in 136 s, worst error
+  0.16 ms, none late, even in a background tab.</div>
+  <div class="note"><b>On the phone</b> (<code>practice-audio.ts</code>, <code>expo-audio</code>): one cycle is mixed into a WAV file and
+  played on loop, so the audio hardware keeps the time. A tempo change writes a new file and seeks to the same beat.</div>
+</div>
+<h3>Who sees the practice</h3>
+<p>The student sees their own week and milestones; staff see each student's week in <i>Practice this week</i>
+(<code>staff_practice_week()</code>, least practice first, so the mentor knows whom to encourage). The "How did it go?" rating is
+new data about a child, so the privacy notice names it.</p>
+<p><span class="tag next">NEXT</span> Without signal, Stop counts the minutes there and then and keeps the entry on the phone; it is
+sent once the signal is back (DECISIONS #593, #594).</p>
+</div>
+
+<!-- 11 -->
+<div class="section">
+<h2>11. Journey: news, notifications, events and polls</h2>
+<h3>News (announcements)</h3>
+<p>A coordinator or the Guru opens <b>News (tab)</b> → New: title, message, up to 3 photos or PDFs, who it is for (all students,
+one level, my mentees, staff only, or a <i>group</i>), pin or not, now or at a later time. The app shrinks photos, uploads them to the
+private bucket <code>announcement-files</code> and saves the row in <code>announcements</code>; triggers check it and record the author.
+A file opens only for people allowed to read its announcement, through a signed link that expires (DECISIONS #32).</p>
+<ul>
+  <li><b>Seen by N of M</b>: opening a post writes a read receipt; the views <code>announcement_seen</code> and
+  <code>announcement_audience</code> count them, with the names of those who have not seen it.</li>
+  <li><b>Private replies</b>: a reply is read only by its writer, the author and the Guru (DECISIONS #29).</li>
+  <li><b>Groups</b> replace the WhatsApp groups; a group is switched off, never deleted.</li>
+</ul>
+<h3>How a notification reaches a phone</h3>
+<svg viewBox="0 0 720 120" width="100%">
+  <defs><marker id="a11" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#1B1E4B"/></marker></defs>
+  <g font-size="10" text-anchor="middle">
+    <rect x="4" y="15" width="104" height="72" rx="8" fill="#FBF4E6" stroke="#E0B25C"/>
+    <text x="56" y="36" font-weight="700" fill="#1B1E4B">Post or notice</text><text x="56" y="52">News published,</text><text x="56" y="65">assessment, event,</text><text x="56" y="78">roster, fund…</text>
+    <rect x="124" y="15" width="104" height="72" rx="8" fill="#eef1fb" stroke="#1f5fa8"/>
+    <text x="176" y="36" font-weight="700" fill="#1B1E4B">Inbox row</text><text x="176" y="52">trigger writes one</text><text x="176" y="65">notifications row</text><text x="176" y="78">per person</text>
+    <rect x="244" y="15" width="104" height="72" rx="8" fill="#eef1fb" stroke="#1f5fa8"/>
+    <text x="296" y="36" font-weight="700" fill="#1B1E4B">push_queue</text><text x="296" y="52">one row per phone;</text><text x="296" y="65">a bad token stops</text><text x="296" y="78">no one else</text>
+    <rect x="364" y="15" width="104" height="72" rx="8" fill="#eef1fb" stroke="#1f5fa8"/>
+    <text x="416" y="36" font-weight="700" fill="#1B1E4B">Every minute</text><text x="416" y="52">pg_cron job</text><text x="416" y="65">mridanga-push</text><text x="416" y="78">calls the function</text>
+    <rect x="484" y="15" width="104" height="72" rx="8" fill="#f3f3f3" stroke="#888"/>
+    <text x="536" y="36" font-weight="700" fill="#1B1E4B">Edge Function</text><text x="536" y="52">notify-</text><text x="536" y="65">announcements:</text><text x="536" y="78">100 per request</text>
+    <rect x="604" y="15" width="112" height="72" rx="8" fill="#eaf5ea" stroke="#2E7D32"/>
+    <text x="660" y="36" font-weight="700" fill="#1B1E4B">Android phone</text><text x="660" y="52">via Expo push</text><text x="660" y="65">and Firebase;</text><text x="660" y="78">a tap opens it</text>
+  </g>
+  <g stroke="#1B1E4B" stroke-width="1.8" marker-end="url(#a11)">
+    <line x1="109" y1="51" x2="122" y2="51"/><line x1="229" y1="51" x2="242" y2="51"/><line x1="349" y1="51" x2="362" y2="51"/><line x1="469" y1="51" x2="482" y2="51"/><line x1="589" y1="51" x2="602" y2="51"/>
+  </g>
+  <text x="360" y="108" text-anchor="middle" font-size="9.5" fill="#555">finish_push records each row as sent, to retry later, or refused; a retry never sends twice (0031)</text>
+</svg>
+<p>The <b>inbox</b> (the bell on the home header, <i>Notifications</i>) is filled for everyone, with or without push, so the web version's
+users see new things when they open the app. The phone registers its Expo push token with <code>register_push_token</code> (at most 5 phones
+a person). Phones unused for 90 days lose their token <span class="tag next">NEXT</span> (retention job, 0060).</p>
+<h3>Events and polls</h3>
+<p><i>Events</i>: a programme with date, place and audience; people answer whether they are coming (<code>rsvp_event</code>); staff
+mark performers and who came; "Add to calendar" makes a calendar file. <i>Polls</i>: one question, people vote through
+<code>vote_poll</code>; nobody, not even the Guru, can read the votes table directly, and in an <b>anonymous</b> poll the functions never
+show anyone what a person chose (DECISIONS #61). A daily job at 09:00 sends the day-before and closing-day reminders.</p>
+</div>
+
+<!-- 12 -->
+<div class="section">
+<h2>12. Running the class: fund, instruments, roster, reports</h2>
+<h3>Class fund (<i>Class fund</i>, 0026)</h3>
+<ul>
+  <li>An income and expense <b>ledger</b> in <code>fund_entries</code>, amounts in whole <b>paise</b> (integers, never decimals), shown
+  as ₹1,25,000.50. Bills go to the private bucket <code>fund-bills</code>.</li>
+  <li><b>Maker-checker</b>: larger expenses wait for approval, and <b>nobody approves their own entry</b>. Treasurers are coordinators
+  the Guru marks.</li>
+  <li><b>Append-only</b>: a trigger refuses deletes and edits for every role, the dashboard included. A mistake is a <i>reversal</i>
+  row with a negative amount.</li>
+  <li>The app writes the ledger <b>only through functions</b> (<code>record_fund_entry</code>, <code>decide_fund_entry</code>…), so the rules
+  hold on every path. Students and parents see no money.</li>
+</ul>
+<h3>Instruments (<i>Instruments</i>, 0023 + 0035)</h3>
+<ul>
+  <li>Every seva asset has a code (e.g. KHOL-007) and an unguessable <code>asset_token</code>. <i>Print labels</i> prints an A4 sheet of 18
+  QR labels from the browser; the label is a web link, so any phone camera opens it, and the app shows it to staff only.</li>
+  <li>Lending and taking back are functions (one open loan per item; no damaged item out); every condition seen is a row in
+  <code>inventory_checks</code>. <i>Count instruments</i> runs a stocktake.</li>
+</ul>
+<h3>Seva roster and suggestions</h3>
+<p><i>Seva roster</i>: the Guru plans duty shifts with their people in one call (<code>save_duty_shift</code>); a job at 18:00 reminds
+everyone on tomorrow's duty. <i>Suggestions</i>: a coordinator suggests a lesson; it stays hidden from students until the Guru adds it.</p>
+<h3>Reports, settings and set-up (Guru)</h3>
+<table>
+  <tr><th>Screen</th><th>What it is for</th></tr>
+  <tr><td><i>Reports</i> / <i>My reports</i></td><td>Visits per week and month, new joiners, calls made and due, students by status, location flags; CSV download. A coordinator sees their own mentees</td></tr>
+  <tr><td><i>Settings</i></td><td>Follow-up day limits, what "this week" means, the open window, promotion criteria, the parent-email switches</td></tr>
+  <tr><td><i>Centres</i></td><td>Each class location: address, map point, radius, opening hours, time zone (Abids today)</td></tr>
+  <tr><td><i>Coordinators</i></td><td>Give roles, switch a login off, duty hours, mentees, treasurer and Ishtagoshti-editor flags</td></tr>
+  <tr><td><i>All students</i> and <i>Import students</i></td><td>The whole list; import up to 500 adults from Excel or CSV, each row on its own; undo an import</td></tr>
+  <tr><td><i>Form choices</i>, <i>How students found us</i></td><td>The option lists of the sign-up and About you; where students heard of the class</td></tr>
+  <tr><td><i>Change history</i></td><td>The audit log: who changed a student, call, tick, lesson, setting… and when</td></tr>
+  <tr><td><i>Data requests</i>, <i>Sign-in codes</i>, <i>App errors</i></td><td>Privacy requests (section 15); staff sign-in codes <span class="tag next">NEXT</span>; what broke in the app, without names <span class="tag next">NEXT</span></td></tr>
+</table>
+<p class="small">The staff home (<code>screens/guru-home.tsx</code>, <code>coordinator-home.tsx</code>) shows today's numbers and what waits for
+the person in one request (<code>staff_dashboard()</code>, 0050), and a ring of module circles around the drum (<code>components/module-ring.tsx</code>).</p>
+</div>
+
+<!-- 13 -->
+<div class="section">
+<h2>13. Parents by email, and Ishtagoshti for everyone</h2>
+<h3>Check-out email to a parent <span class="tag off">OFF</span> (0043, 0044)</h3>
+<p>When a student under 18 is checked out in the app, the parent can get a short email. Nothing is sent until the Guru switches it on
+in <i>Settings</i> (<code>parent_notices_enabled</code> is false by default; the check-in email and the "no check-out recorded" night email
+are separate switches, also off).</p>
+<ol>
+  <li>A trigger on <code>visits</code> (<code>visits_parent_notices</code>) puts a row in the queue <code>parent_notices</code> for every path:
+  QR, tap, Check out all.</li>
+  <li>The job <code>mridanga-parent-notices</code> (every minute) calls <code>notify-parents</code>, which claims rows, sends through Brevo,
+  and records each result; retries after 2, 8, 18, 32 minutes; at most 200 a day.</li>
+  <li>The email has a one-click <b>unsubscribe</b> link, signed so nobody can forge it; a stop on one address stops it for every child.</li>
+</ol>
+<p>The queue holds no location, distance, photo or text, is closed to every app role, and is deleted after 30 days.</p>
+<h3>Weekly email to parents <span class="tag off">OFF</span> (0058)</h3>
+<p>Opt-in per parent: the desk records the parent's written yes as a consent of scope <code>digest</code>. When the Guru switches it on, the
+job <code>mridanga-parent-digests</code> queues the week on Sunday evening and sends between 07:00 and 21:30: visits, practice minutes
+against the goal, ticked items, a level change, the next event. Never a location, a photo or another child. Staff can preview it on the
+student's page (<code>preview_parent_digest</code>).</p>
+<h3>Ishtagoshti: sloka study (0021, 0027)</h3>
+<ul>
+  <li>The <b>Slokas</b> tab: themes, the <i>sloka of the day</i> (the same for everyone on an India date), each sloka in Devanagari,
+  transliteration and a translation and purport in English, Telugu or Hindi; recitations; private notes; memorised ticks.</li>
+  <li><b>Copyright</b>: only the temple's own translations; the editor ticks "the temple's own, not BBT" and the database refuses to publish
+  without it. Editors are coordinators the Guru marks (<code>profiles.ig_editor</code>).</li>
+  <li><b>Free public sign-up</b>: anyone can <i>Join Ishtagoshti</i> and read the slokas, and nothing of the class. It is not a new role:
+  a pending login with a row in <code>ig_subscribers</code>; the function <code>ig_reader()</code> opens the slokas to it. Under 18, it reads
+  only after the parent typed the code emailed to them. The test net runs as such a member over every table, bucket and function.</li>
+</ul>
+<div class="note">Both email features and the Ishtagoshti parent code go out through Brevo. The Brevo key lives in the
+Supabase Vault and the Edge Function's secrets, never in the app or the repository.</div>
+</div>
+
+<!-- 14 -->
+<div class="section">
+<h2>14. Security: roles, row-level security, keys</h2>
+<h3>Three layers, only one of them is the lock</h3>
+<svg viewBox="0 0 700 150" width="100%">
+  <g font-size="11" text-anchor="middle">
+    <rect x="10" y="20" width="210" height="110" rx="10" fill="#f3f3f3" stroke="#888"/>
+    <text x="115" y="44" font-weight="700" fill="#1B1E4B">1 Areas in the app</text>
+    <text x="115" y="64">Expo Router opens only</text><text x="115" y="80">the screens of the person's</text><text x="115" y="96">area (Stack.Protected)</text>
+    <text x="115" y="118" fill="#555" font-size="10">clear to use; not security</text>
+    <rect x="245" y="20" width="210" height="110" rx="10" fill="#eaf5ea" stroke="#2E7D32" stroke-width="2"/>
+    <text x="350" y="44" font-weight="700" fill="#1B1E4B">2 Row-level security</text>
+    <text x="350" y="64">on every table: policies</text><text x="350" y="80">decide which rows a</text><text x="350" y="96">person reads or changes</text>
+    <text x="350" y="118" fill="#2E7D32" font-size="10">the lock</text>
+    <rect x="480" y="20" width="210" height="110" rx="10" fill="#eaf5ea" stroke="#2E7D32" stroke-width="2"/>
+    <text x="585" y="44" font-weight="700" fill="#1B1E4B">3 Functions and guards</text>
+    <text x="585" y="64">each function checks the</text><text x="585" y="80">caller's role; triggers</text><text x="585" y="96">refuse rule-breaking saves</text>
+    <text x="585" y="118" fill="#2E7D32" font-size="10">the lock</text>
+  </g>
+</svg>
+<h3>Roles and areas</h3>
+<p><code>src/auth/auth-provider.tsx</code> works out the person's <b>area</b> from the login and its <code>profiles</code> row:
+<code>signedOut</code>, <code>recovery</code> (set a new password), <code>signInCode</code>, <code>pending</code>, <code>guru</code>,
+<code>coordinator</code>, <code>student</code>, <code>subscriber</code>, or <code>loading</code>. <code>src/app/_layout.tsx</code> opens only that area's
+screens; the <code>staff/</code> folder is shared by the Guru and coordinators. When the database refuses a call as not allowed, the app reads
+the profile again, so a login switched off while the app is open moves to "Account switched off" at once.</p>
+<h3>Rules every maintainer must know</h3>
+<ul>
+  <li><b>RLS is on for every table</b>; the test net fails if a new table has it off. Policies call their role helpers as
+  <code>(select is_staff())</code> so Postgres asks once per query, not once per row.</li>
+  <li><b>Views read as the person asking</b> (<code>security_invoker = true</code>), so RLS still applies under them.</li>
+  <li><b>Every function is revoked from everyone and granted only to the roles that need it</b>; role checks are NULL-safe, so a switched-off
+  login is refused like a stranger. Someone not signed in (<code>anon</code>) may run exactly one function, <code>sign_up_choices()</code>.</li>
+  <li><b>Nobody gives themselves a role.</b> Only the Guru gives roles; the Guru role itself is set only in the Supabase dashboard.</li>
+  <li><b>A child's record has no side doors</b>: the login link, QR token and consent fields are frozen for app users; consents are
+  insert-only and checked at commit.</li>
+</ul>
+<h3>Keys: what is public and what is secret</h3>
+<div class="two">
+  <div class="good"><b>Public (in every copy of the app)</b>: the project's URL and its <b>publishable</b> key. Fine to ship: the key only
+  opens the front door; RLS decides everything after it.</div>
+  <div class="warn"><b>Secret (never in the app, the repo or a chat)</b>: the <code>service_role</code> key, which skips every rule. Only the two
+  Edge Functions use it, inside Supabase. The app <b>refuses to start</b> if it finds it in <code>.env</code> (<code>src/lib/supabase.ts</code>), and
+  the publish scripts scan the bundle for it.</div>
+</div>
+<h3>Staff sign-in codes <span class="tag next">NEXT</span> (0061, DECISIONS #580-#589)</h3>
+<p>A Guru or coordinator can add a 6-digit code from an authenticator app (Supabase Auth's TOTP). Once every staff member has one, the Guru may
+switch <code>staff_mfa_required</code> on: then parents' details, consents, call notes and the logs are read only by a session that gave the code.
+The switch refuses to lock out the only Guru. A lost phone: the Guru resets the code in <i>Sign-in codes</i>.</p>
+<p class="small">Also: the web version sends strict security headers (a Content-Security-Policy naming only its own Supabase address, HSTS,
+nosniff), written by the export script from <code>app/public/_headers</code>. Every sign-out clears the QR card, notifications, cached photos and
+picked files from the device (<code>src/lib/device-traces.ts</code>).</p>
+</div>
+
+<!-- 15 -->
+<div class="section">
+<h2>15. Privacy and the law (DPDP)</h2>
+<p>India's <b>Digital Personal Data Protection Act 2023</b> and its <b>Rules 2025</b> apply. In plain words: tell people what you keep and why
+(a privacy notice), get valid consent (for a child, a parent's <b>verifiable</b> consent), keep only what you need, let people see, correct and
+erase their data, delete it when it is no longer needed, protect it, and report a breach. The app is built around that.</p>
+<table>
+  <tr><th>Principle</th><th>How the app does it</th><th>Where</th></tr>
+  <tr><td>Keep the minimum</td><td>Area and pincode, not the full address; only the <b>kind</b> of ID seen, never its number; the location <b>result</b>, never the position</td><td>DECISIONS #8, #70</td></tr>
+  <tr><td>Consent before data</td><td>A consent register (<code>consents</code>): scope <code>data</code>, <code>photo</code>, <code>digest</code>; method written or email code; who verified, when, which notice version. Insert-only, checked at commit</td><td>0003, 0025, 0051</td></tr>
+  <tr><td>The privacy notice</td><td>On the website (<code>/privacy/</code>), linked at sign-up with a required tick. Version 1.0 <span class="tag next">NEXT</span>: the homes ask each adult to accept it once per version; a child is asked to show it to the parent (<code>notice_acceptances</code>)</td><td>0060, <code>lib/privacy-notice.ts</code></td></tr>
+  <tr><td>Who read private details</td><td>Reads of parents' contacts, consents and call notes go through logging functions into the <b>access log</b>, which only the Guru reads; kept 400 days</td><td>0034</td></tr>
+  <tr><td>Who changed what</td><td>The <b>change history</b> (<code>audit_log</code>) records changes to students, logins, calls, ticks, lessons, settings…</td><td><i>Change history</i></td></tr>
+  <tr><td>See and ask</td><td><i>My data and rights</i> (My profile): shows what the class holds, downloads it, and files a request: correction, erasure, withdrawal, complaint, nominee. Answered within <b>30 days</b>. A child's parent asks at the desk</td><td>0059, <i>Data requests</i></td></tr>
+  <tr><td>Withdraw consent</td><td><code>withdraw_consent</code> (Guru): the record is frozen, the login switched off, consents revoked, nothing new recorded</td><td>0025</td></tr>
+  <tr><td>Erase</td><td><code>erase_student</code> / <code>erase_login</code>: the record, the login, files and audit copies go; a <b>tombstone</b> (roll number, date, reason, reference) stays in <code>erasures</code> as proof</td><td>0025, 0049</td></tr>
+  <tr><td>Do not keep for ever</td><td><span class="tag next">NEXT</span> Nightly job <code>mridanga-retention</code>: erase 30 days after a withdrawal, two years after leaving, a never-registered sign-up after 180 days; change log after two years</td><td>0060</td></tr>
+  <tr><td>Children apart</td><td>Under 18: parent consent (section 6), a child cannot file a request in the app, parent emails only for minors and only when switched on</td><td>0047, 0051</td></tr>
+  <tr><td>Data outside India</td><td>LIVE is in Sydney (Australia), TEST in Singapore; allowed while India restricts no country; named in the notice with every processor</td><td>OPERATIONS.md "processors"</td></tr>
+</table>
+<div class="warn"><b>For maintainers:</b> no real personal data in code, tests, seeds or screenshots (many students are minors: use the
+fictional seed students); never add a column that stores an ID number, a precise location or a face; never log names with errors (the error
+log keeps only the error name, the screen pattern, the version and the platform). A new kind of data about a child means a line in the
+privacy notice first. Backups hold children's data: always encrypted, never in the repo, a chat, WhatsApp or email.</div>
+<p class="small">Runbooks for each request, withdrawal, erasure and a data breach: <code>docs/OPERATIONS.md</code> ("Data requests",
+"Consent withdrawal", "Erasure request", "Retention", "Incidents → Personal data breach"). Privacy questions: privacy@mridangaseva.com.</p>
+</div>
+
+<!-- 16 -->
+<div class="section">
+<h2>16. The data model: tables, migrations, functions, jobs</h2>
+<h3>The core tables and how they connect</h3>
+<svg viewBox="0 0 700 270" width="100%">
+  <g font-size="10.5" text-anchor="middle">
+    <rect x="270" y="10" width="160" height="40" rx="6" fill="#eef1fb" stroke="#1f5fa8"/><text x="350" y="27" font-weight="700">profiles</text><text x="350" y="42" font-size="9.5" fill="#555">one per login: role, name</text>
+    <rect x="270" y="110" width="160" height="50" rx="6" fill="#eaf5ea" stroke="#2E7D32" stroke-width="2"/><text x="350" y="130" font-weight="700">students</text><text x="350" y="146" font-size="9.5" fill="#555">roll no., level, status, mentor</text>
+    <rect x="10" y="60" width="150" height="40" rx="6" fill="#fff" stroke="#bbb"/><text x="85" y="77" font-weight="700">guardians</text><text x="85" y="92" font-size="9.5" fill="#555">parents of a minor</text>
+    <rect x="10" y="120" width="150" height="40" rx="6" fill="#fff" stroke="#bbb"/><text x="85" y="137" font-weight="700">consents</text><text x="85" y="152" font-size="9.5" fill="#555">data, photo, digest</text>
+    <rect x="10" y="180" width="150" height="40" rx="6" fill="#fff" stroke="#bbb"/><text x="85" y="197" font-weight="700">visits</text><text x="85" y="212" font-size="9.5" fill="#555">check-in, check-out</text>
+    <rect x="540" y="60" width="150" height="40" rx="6" fill="#fff" stroke="#bbb"/><text x="615" y="77" font-weight="700">call_logs</text><text x="615" y="92" font-size="9.5" fill="#555">every call</text>
+    <rect x="540" y="120" width="150" height="40" rx="6" fill="#fff" stroke="#bbb"/><text x="615" y="137" font-weight="700">follow_up_tasks</text><text x="615" y="152" font-size="9.5" fill="#555">calls to make</text>
+    <rect x="540" y="180" width="150" height="40" rx="6" fill="#fff" stroke="#bbb"/><text x="615" y="197" font-weight="700">practice_logs</text><text x="615" y="212" font-size="9.5" fill="#555">minutes practised</text>
+    <rect x="200" y="215" width="150" height="40" rx="6" fill="#fff" stroke="#bbb"/><text x="275" y="232" font-weight="700">student_progress</text><text x="275" y="247" font-size="9.5" fill="#555">syllabus ticks</text>
+    <rect x="375" y="215" width="140" height="40" rx="6" fill="#fff" stroke="#bbb"/><text x="445" y="232" font-weight="700">syllabus_items</text><text x="445" y="247" font-size="9.5" fill="#555">per level, ordered</text>
+  </g>
+  <g stroke="#1B1E4B" stroke-width="1.4" fill="none">
+    <line x1="350" y1="50" x2="350" y2="110"/>
+    <line x1="270" y1="125" x2="160" y2="80"/>
+    <line x1="270" y1="135" x2="160" y2="140"/>
+    <line x1="270" y1="148" x2="160" y2="200"/>
+    <line x1="430" y1="125" x2="540" y2="80"/>
+    <line x1="430" y1="135" x2="540" y2="140"/>
+    <line x1="430" y1="148" x2="540" y2="200"/>
+    <line x1="320" y1="160" x2="290" y2="215"/>
+    <line x1="350" y1="235" x2="375" y2="235"/>
+  </g>
+  <g font-size="9" fill="#1f5fa8">
+    <text x="358" y="75">0 or 1 login per record</text>
+    <text x="358" y="88">(students.profile_id)</text>
+  </g>
+  <text x="352" y="192" font-size="8.5" fill="#555">each line: one student → many rows</text>
+</svg>
+<p>A student record can exist <b>without</b> a login (many students never install the app). Everything about a student points at
+<code>students.id</code>; the record's link to a login is <code>students.profile_id</code>. The view <code>student_overview</code> adds the last
+visit, days since, and "here now" for the lists.</p>
+<h3>Tables by area (over 70 in all)</h3>
+<table>
+  <tr><th>Area</th><th>Tables</th></tr>
+  <tr><td>People and settings</td><td><code>profiles</code>, <code>person_details</code>, <code>choice_options</code>, <code>settings</code>, <code>centres</code></td></tr>
+  <tr><td>Students</td><td><code>students</code>, <code>guardians</code>, <code>consents</code>, <code>roll_counters</code>, <code>minor_signups</code></td></tr>
+  <tr><td>Attendance and follow-up</td><td><code>visits</code>, <code>call_logs</code>, <code>follow_up_tasks</code>, <code>status_history</code></td></tr>
+  <tr><td>Learning</td><td><code>levels</code>, <code>syllabus_items</code>, <code>student_progress</code>, <code>level_history</code>, <code>materials</code>, <code>assessments</code> (+ releases, assignments, submissions), <code>promotion_nominations</code>, <code>promotion_feedback</code></td></tr>
+  <tr><td>Practice</td><td><code>taals</code>, <code>practice_logs</code>, <code>practice_plans</code>, <code>practice_goals</code>, <code>practice_mantras</code>, <code>practice_links</code></td></tr>
+  <tr><td>Communication</td><td><code>announcements</code> (+ reads, replies), <code>groups</code>, <code>group_members</code>, <code>notifications</code>, <code>push_tokens</code>, <code>push_queue</code>, <code>push_outbox</code>, <code>events</code> (+ rsvps, performers, attendance), <code>polls</code>, <code>poll_votes</code></td></tr>
+  <tr><td>Running the class</td><td><code>fund_entries</code>, <code>fund_categories</code>, <code>inventory_items</code> (+ loans, checks, stocktakes), <code>duty_shifts</code>, <code>duty_assignments</code></td></tr>
+  <tr><td>Ishtagoshti</td><td><code>ig_slokas</code>, <code>ig_themes</code>, <code>ig_theme_slokas</code>, <code>ig_daily_pins</code>, <code>ig_notes</code>, <code>ig_memorised</code>, <code>ig_subscribers</code>, <code>ig_parent_codes</code></td></tr>
+  <tr><td>Parents</td><td><code>parent_notices</code>, <code>parent_digests</code>, <code>parent_mail_log</code></td></tr>
+  <tr><td>Privacy and logs</td><td><code>audit_log</code>, <code>access_log</code>, <code>erasures</code>, <code>data_requests</code>, <code>notice_acceptances</code>, <code>client_errors</code></td></tr>
+</table>
+<p class="small">Every table and non-obvious column carries a <code>COMMENT ON</code> description, readable in the Supabase dashboard (Table Editor → table).
+The full description of every table, function and rule is <code>docs/DATABASE.md</code>.</p>
+</div>
+
+<!-- 16b -->
+<div class="section">
+<h3 style="margin-top:0">The migrations, 0001 to 0061</h3>
+<p>59 files (numbers 0012 and 0041 were never used). Grouped by what they brought:</p>
+<table>
+  <tr><th>Files</th><th>What they brought</th></tr>
+  <tr><td>0001-0011</td><td>Phase 1 (Sept-Oct 2026): tables, RLS, login linking, registration with consent, attendance, follow-up, syllabus ticks, announcements, home screens, files, push</td></tr>
+  <tr><td>0013-0015</td><td>Syllabus editor and lessons, the Guru's admin screens, inbox, reports, centres</td></tr>
+  <tr><td>0016-0023, 0026, 0027</td><td>Phase 2, built early: assessments, promotion, practice, media, Ishtagoshti, events and polls, team tools, fund, public Ishtagoshti</td></tr>
+  <tr><td>0024</td><td>Location check at check-in</td></tr>
+  <tr><td>0025, 0028, 0030, 0037, 0039</td><td>Security and audit rounds: NULL-safe role checks, frozen fields, the consent register, withdrawal and erasure, anon locked out, per-query role helpers</td></tr>
+  <tr><td>0029, 0031-0033, 0040, 0042</td><td>Comments, push queue per phone, sign-in fixes, time zones and currency, operations clean-ups</td></tr>
+  <tr><td>0034, 0035, 0036</td><td>Access log; instrument QR labels and stocktake; account creation and About you</td></tr>
+  <tr><td>0038, 0043-0049</td><td>Correctness fixes; parent check-out emails; printed QR cards; Accept at the desk; form rules in SQL; withdrawn records; launch clean-up</td></tr>
+  <tr><td>0050-0054</td><td>Around the launch (20-10-2026): staff dashboard, a child's sign-up at home, practice of the week, coordinators' own records, after-launch forms</td></tr>
+  <tr><td>0055-0059</td><td>Learn more links, practice extras, practice while waiting, weekly parent email, data rights. <b>LIVE has run up to 0059</b> (24-10-2026)</td></tr>
+  <tr><td>0060, 0061 <span class="tag next">NEXT</span></td><td>Privacy notice 1.0 and retention; staff sign-in codes and the error log. On main and TEST, waiting for the next LIVE release</td></tr>
+</table>
+<p class="small">Phase 2 files were renumbered when they merged into main, so the TEST project ran a few under their branch numbers; LIVE runs every file
+in number order. <code>docs/GO_LIVE_CHECKLIST.md</code> part B lists each LIVE run with its probe.</p>
+<h3>Functions the app calls (the most used)</h3>
+<table>
+  <tr><th>Function</th><th>Who</th><th>Does</th></tr>
+  <tr><td><code>scan_qr</code>, <code>mark_visit</code>, <code>check_out_all</code></td><td>staff</td><td>Attendance (section 7)</td></tr>
+  <tr><td><code>register_student</code>, <code>accept_sign_up</code>, <code>accept_minor_sign_up</code></td><td>staff</td><td>Registration (sections 5, 6)</td></tr>
+  <tr><td><code>log_call</code></td><td>staff</td><td>Records a call and applies its outcome</td></tr>
+  <tr><td><code>get_guardians</code>, <code>get_consents</code>, <code>get_call_notes</code>, <code>get_audit_log</code></td><td>staff / Guru</td><td>Private reads, each logged in the access log</td></tr>
+  <tr><td><code>student_home</code>, <code>staff_dashboard</code>, <code>class_report</code></td><td>by role</td><td>Home-screen numbers, reports</td></tr>
+  <tr><td><code>log_practice</code>, <code>practice_days</code>, <code>set_my_practice_goal</code></td><td>student</td><td>Practice log and weekly goal</td></tr>
+  <tr><td><code>my_data_summary</code>, <code>file_data_request</code></td><td>the person</td><td>My data and rights</td></tr>
+  <tr><td><code>withdraw_consent</code>, <code>erase_student</code>, <code>erase_login</code></td><td>Guru</td><td>Withdrawal and erasure</td></tr>
+</table>
+<p class="small">Errors are short <code>snake_case</code> codes (<code>not_allowed</code>, <code>minor_needs_consent</code>…) that the app turns into messages in
+the person's language; the smoke test fails if a function of ours raises a sentence with a space in it.</p>
+<div class="keep"><h3>Scheduled jobs (pg_cron; India time)</h3>
+<table>
+  <tr><th>Job</th><th>When</th><th>Does</th></tr>
+  <tr><td><code>mridanga-push</code>, <code>mridanga-parent-notices</code></td><td>every minute</td><td>Call the Edge Functions when a push or a parent email waits</td></tr>
+  <tr><td><code>mridanga-parent-digests</code></td><td>every 5 minutes</td><td>The weekly parent email, while switched on</td></tr>
+  <tr><td><code>mridanga-close-visits</code></td><td>every hour</td><td>Close visits left open after closing time</td></tr>
+  <tr><td><code>mridanga-status-refresh</code></td><td>06:00</td><td>Irregular / Inactive, call tasks, ended pauses</td></tr>
+  <tr><td><code>mridanga-assessments</code>, <code>mridanga-events-polls</code></td><td>09:00</td><td>Reminders; deletes old recordings</td></tr>
+  <tr><td><code>mridanga-duty</code></td><td>18:00</td><td>Reminds tomorrow's roster</td></tr>
+  <tr><td>clean-ups: inbox, access log, orphan files, cron history, app errors</td><td>06:30-07:45</td><td>Delete what has passed its keep time</td></tr>
+  <tr><td><code>mridanga-minor-signups</code>, <code>mridanga-data-requests</code>, <code>mridanga-retention</code> <span class="tag next">NEXT</span></td><td>02:15-02:45</td><td>Expire unanswered child sign-ups; remind data requests; retention</td></tr>
+</table></div>
+<p class="small">pg_cron's own times are in UTC (06:00 India time = 00:30 UTC); <code>docs/DATABASE.md</code> "Scheduled jobs" lists both, and the
+SQL in <code>docs/OPERATIONS.md</code> "Scheduled jobs: health check" shows each job's last runs.</p>
+<h3>Storage buckets (all private)</h3>
+<table>
+  <tr><th>Bucket</th><th>Holds</th><th>Largest file</th><th>Rule in</th></tr>
+  <tr><td><code>announcement-files</code></td><td>Photos and PDFs on News posts; opens only for those who may read the post</td><td>5 MB</td><td>0010</td></tr>
+  <tr><td><code>material-files</code></td><td>Lesson PDFs and photos</td><td>10 MB</td><td>0013</td></tr>
+  <tr><td><code>assessment-files</code></td><td>Assessment files and students' recordings; deleted 30 days after review</td><td>50 MB</td><td>0016, 0049</td></tr>
+  <tr><td><code>ishtagoshti-audio</code></td><td>Sloka recitations</td><td>10 MB</td><td>0021</td></tr>
+  <tr><td><code>fund-bills</code></td><td>Bills on fund entries; a bill on an entry cannot be deleted</td><td>10 MB</td><td>0026</td></tr>
+</table>
+<p>A file is never opened by a public address. The app asks for a <b>signed link</b> that works for a short time, and Storage checks the same
+kind of row-level rules as the tables (for example <code>announcement_file_readable</code>) before it gives one.</p>
+<h3>Views</h3>
+<p>A <b>view</b> is a saved query that looks like a table. Ours (<code>student_overview</code>, <code>announcement_audience</code>,
+<code>announcement_seen</code>, <code>announcement_reply_list</code>, <code>group_summary</code>, <code>assessment_tracker</code>,
+<code>promotion_queue</code>…) are made <code>with (security_invoker = true)</code>, so they read the tables as the person asking and row-level
+security still applies. Without it, a view runs as its owner and would show every student to anyone signed in (DECISIONS #20).</p>
+</div>
+
+<!-- 17 -->
+<div class="section">
+<h2>17. Code map: which folder does what</h2>
+<div class="tree">mridanga-seva/
+  app/                        the Expo app (Android + web)
+    app.json                  name, icons, permissions, plugins (part of the fingerprint: changing it = new APK)
+    eas.json                  build profiles preview (TEST) and production (LIVE) = update channels
+    .env.example              the two settings: Supabase URL + publishable key (.env files are never in git)
+    public/_headers           web security headers (template)
+    scripts/                  export-web.mjs, publish-update.mjs, eas-build-guard.mjs, bundle-checks.mjs,
+                              typed-routes.mjs, staff-screens.mjs, service-worker.js, lib/supabase-projects.mjs
+    tests/                    45 node:test files + stubs/ (pure helpers, release scripts, translations)
+    src/
+      app/                    SCREENS. Every file is a route (Expo Router); _layout.tsx arranges them
+        _layout.tsx           opens only the signed-in person's area (Stack.Protected)
+        other .tsx files      screens before a role: sign-in, sign-up, forgot- and reset-password,
+                              sign-in-code, pending, about-you, parent-consent, join-ishtagoshti
+        student/ (tabs)/      Home, My QR, News, Slokas; + progress, visits, practice, assessments/ …
+        staff/   (tabs)/      Home, Check-in, Students, Follow-ups, News; + register, call/, fund/, …
+        subscriber/           the public Ishtagoshti member's screens
+        waiting/              While you wait: practice, mantra, Beginner lessons
+        i/                    /i/&lt;token&gt;: an instrument label opened by any camera
+      screens/                big screens shared by areas (staff homes, practice tools, lesson player,
+                              Ishtagoshti, events, polls, My profile, My data and rights …)
+      components/             building blocks: buttons, fields, cards, QR scanner, module ring, two-head view …
+      data/                   READING AND SAVING RECORDS, one file per area (students.ts, attendance.ts,
+                              fund.ts …) with the form checks. Screens call these, never Supabase directly
+      auth/                   who is signed in, their role and area (auth-provider.tsx), sign-in calls, mfa.ts
+      lib/                    helpers: supabase.ts (the client), dates, money, phone numbers, QR reader,
+                              push, app updates, offline queue, practice audio and games, CSV, error report
+      i18n/                   index.ts + locales/en.json, te.json, hi.json (every word the app shows)
+      theme/                  colours, spacing, text sizes, light and dark
+      content/                whats-new.json (the What's new notes)
+      web-routes/             the web version's screen list; staff screens load as one extra file
+supabase/
+  migrations/                 0001_phase1.sql … 0061_staff_mfa.sql, run in number order
+  functions/                  Edge Functions: notify-announcements/ (push), notify-parents/ (emails)
+  tests/                      smoke-test.mjs (2,224 checks), push-messages, parent-notices, live-replay
+  seed.sql                    15 fictional students for TEST. Never on LIVE
+website/                      the public website mridangaseva.com (content/en|te|hi, src/build.mjs)
+design/                       design tokens (colours) shared by app and website
+docs/                         see below
+.github/                      workflows/ci.yml (CI), dependabot.yml</div>
+<h3>The documents (<code>docs/</code>)</h3>
+<table>
+  <tr><th>File</th><th>Read it for</th></tr>
+  <tr><td><code>ARCHITECTURE.md</code></td><td>How the pieces fit; each flow step by step</td></tr>
+  <tr><td><code>DATABASE.md</code></td><td>Every migration, table, function, job and "who can see what"</td></tr>
+  <tr><td><code>DECISIONS.md</code></td><td>595 numbered decisions with their reasons (section 21)</td></tr>
+  <tr><td><code>OPERATIONS.md</code></td><td>Runbooks: builds, updates, web upload, push, emails, backups, incidents, handing over</td></tr>
+  <tr><td><code>GO_LIVE_CHECKLIST.md</code></td><td>The ordered steps that took LIVE to the launch, and each later LIVE migration</td></tr>
+  <tr><td><code>SCREENS.md</code></td><td>Every screen with its code and status</td></tr>
+  <tr><td><code>TRANSLATIONS.md</code>, <code>I18N.md</code>, <code>GLOSSARY.md</code></td><td>Languages; dates, money, time zones; the words</td></tr>
+  <tr><td><code>WHY_THIS_STACK.md</code>, <code>guide/</code></td><td>For people who ask; the user guide for students, coordinators, the Guru, new helpers</td></tr>
+  <tr><td><code>phase3/</code></td><td>Face attendance plans, consent and DPIA drafts (Phase 3)</td></tr>
+</table>
+<p class="small">Start reading code at a screen in <code>src/app/</code>, follow its imports into <code>data/</code> (what it asks the database), then look
+the function up in <code>DATABASE.md</code>. Every source file starts with a comment saying what it is for.</p>
+</div>
+
+<!-- 18 -->
+<div class="section">
+<h2>18. Screens and their files</h2>
+<p>The screen's name as the app shows it (English), where to find it, its code in the docs, and its file under <code>app/src/app/</code>.
+Shared screens live in <code>app/src/screens/</code> and the route file only passes the area.</p>
+<table>
+  <tr><th>Screen (where)</th><th>Code</th><th>File</th></tr>
+  <tr><td>Sign in · New student registration · Reset your password</td><td>A1</td><td><code>sign-in.tsx</code>, <code>sign-up.tsx</code>, <code>forgot-password.tsx</code>, <code>reset-password.tsx</code></td></tr>
+  <tr><td>Waiting for access · While you wait · About you</td><td>A2w, A4</td><td><code>pending.tsx</code>, <code>waiting/</code>, <code>about-you.tsx</code></td></tr>
+  <tr><td>Consent for your child (parent, no login)</td><td>–</td><td><code>parent-consent.tsx</code></td></tr>
+  <tr><td>Home (student)</td><td>S1</td><td><code>student/(tabs)/index.tsx</code></td></tr>
+  <tr><td>My QR card (My QR tab)</td><td>S3</td><td><code>student/(tabs)/my-qr.tsx</code></td></tr>
+  <tr><td>My progress · My attendance</td><td>S4, S9</td><td><code>student/progress.tsx</code>, <code>student/visits.tsx</code></td></tr>
+  <tr><td>Practice tools · My practice log</td><td>S5, S6</td><td><code>student/practice.tsx</code>, <code>practice-log.tsx</code></td></tr>
+  <tr><td>My profile · My data and rights · Notifications</td><td>A3, A3d, A2</td><td><code>student/profile.tsx</code>, <code>my-data.tsx</code>, <code>notifications.tsx</code> (same in <code>staff/</code>)</td></tr>
+  <tr><td>Home (Facilitator / coordinator)</td><td>G1, C1</td><td><code>staff/(tabs)/index.tsx</code> → <code>screens/guru-home.tsx</code>, <code>coordinator-home.tsx</code></td></tr>
+  <tr><td>Welcome desk (Students tab)</td><td>C2, C3</td><td><code>staff/register.tsx</code></td></tr>
+  <tr><td>Check-in (tab) · In class now</td><td>C5, C6</td><td><code>staff/(tabs)/attendance.tsx</code>, <code>mark-attendance.tsx</code>, <code>here-now.tsx</code></td></tr>
+  <tr><td>Students (tab) · a student's page</td><td>C7, C8</td><td><code>staff/(tabs)/students.tsx</code>, <code>staff/students/</code></td></tr>
+  <tr><td>Mark progress (from a student's page)</td><td>C9</td><td><code>staff/syllabus/</code></td></tr>
+  <tr><td>Follow-ups (tab) · Record a call</td><td>C10, C11</td><td><code>staff/(tabs)/follow-up.tsx</code>, <code>staff/call/</code></td></tr>
+  <tr><td>News (tab) · Groups</td><td>C15, S10</td><td><code>staff/(tabs)/announcements.tsx</code>, <code>staff/announcements/</code>, <code>staff/groups/</code></td></tr>
+  <tr><td>Reports / My reports</td><td>G8, C21</td><td><code>staff/reports.tsx</code></td></tr>
+  <tr><td>Assessments · Level-ups</td><td>G6, C12-C14, S7, C22, C23, G7</td><td><code>staff/assessments/</code>, <code>student/assessments/</code>, <code>staff/promotion/</code></td></tr>
+  <tr><td>Lessons (syllabus editor) · Rhythms (taals)</td><td>G4, G5</td><td><code>staff/levels/</code>, <code>staff/materials/</code>, <code>staff/taals/</code></td></tr>
+  <tr><td>Events · Polls</td><td>C16, C17, S11, S12</td><td><code>staff/events/</code>, <code>staff/polls/</code> (and in <code>student/</code>)</td></tr>
+  <tr><td>Class fund · Instruments · Seva roster · Suggestions</td><td>F1-F7, C19, C20, C18</td><td><code>staff/fund/</code>, <code>staff/inventory/</code>, <code>staff/duty/</code>, <code>suggestions.tsx</code></td></tr>
+  <tr><td>Print QR cards</td><td>C24</td><td><code>staff/qr-cards.tsx</code></td></tr>
+  <tr><td>Slokas (tab) · Ishtagoshti members</td><td>I1-I3, I11, I12, I15</td><td><code>(tabs)/ishtagoshti.tsx</code>, <code>staff/ishtagoshti/</code>, <code>screens/ishtagoshti-*.tsx</code></td></tr>
+  <tr><td>Set-up: Settings · Centres · Coordinators · All students · Change history</td><td>G10, G9, G2, G3, G11</td><td><code>staff/settings.tsx</code>, <code>centres/</code>, <code>coordinators/</code>, <code>database/</code>, <code>audit-log.tsx</code></td></tr>
+  <tr><td>Data requests · Sign-in codes · App errors</td><td>G14, G15, G16</td><td><code>staff/data-requests/</code>, <code>sign-in-codes.tsx</code>, <code>app-errors.tsx</code></td></tr>
+  <tr><td>Weekly email to parents · What's new</td><td>–</td><td><code>staff/parent-digest.tsx</code>, <code>whats-new.tsx</code></td></tr>
+</table>
+<div class="note"><b>Tabs.</b> Student: Home, My QR, News, Slokas. Staff: Home, Check-in, Students, Follow-ups, News (bottom bar on a phone;
+a sidebar from 900 px wide, which also holds Slokas). Other screens open on top of the tabs with a back button; every Back calls
+<code>goBackOr(parent)</code>, so a screen opened from a notification never leaves a blank page.</div>
+</div>
+
+<!-- 19 -->
+<div class="section">
+<h2>19. Testing and CI</h2>
+<h3>Run these before every commit</h3>
+<table>
+  <tr><th>Where</th><th>Command</th><th>What it checks</th></tr>
+  <tr><td><code>app/</code></td><td><code>npx expo lint</code></td><td>Common coding errors and unsafe patterns</td></tr>
+  <tr><td><code>app/</code></td><td><code>node scripts/typed-routes.mjs</code> then <code>npx tsc --noEmit</code></td><td>Types; every <code>router.push</code> path against the real screens; a word missing in Telugu or Hindi</td></tr>
+  <tr><td><code>app/</code></td><td><code>npm test</code></td><td>45 test files under Node's test runner: dates, phone numbers, names, translations (same keys and placeholders in en / te / hi), offline queue, release scripts, repo guards …</td></tr>
+  <tr><td><code>supabase/tests/</code></td><td><code>npm ci</code> then <code>npm test</code></td><td>The smoke test, the push and parent-email tests, and the LIVE replay (below)</td></tr>
+  <tr><td><code>website/</code></td><td><code>npm test</code></td><td>The website builds; links, languages, headers</td></tr>
+</table>
+<h3>The smoke test: a whole database on your laptop</h3>
+<p><code>supabase/tests/smoke-test.mjs</code> starts <b>PGlite</b> (PostgreSQL compiled to WebAssembly, in memory: no server, no Supabase
+account), imitates Supabase's <code>auth</code> schema, roles and Storage, runs <b>every migration</b> and <code>seed.sql</code>, then tries what
+each kind of person might do and checks the database allows or refuses it, with the <b>exact</b> error code. It ends with
+<code>All 2224/2224 checks passed</code>, and fails if the count differs from <code>EXPECTED_CHECKS</code>, so a skipped block cannot pass unseen.</p>
+<p>After the per-migration sections comes the <b>test net</b>: it walks the whole schema: every table has RLS; every function the app may run is on an
+allow-list (<code>SIGNED_IN_MAY_RUN</code>); a student-isolation loop over every column that names a student; write sweeps per role; triggers and jobs.</p>
+<div class="two">
+  <div class="note"><b>The LIVE replay</b> (<code>live-replay.mjs</code>): builds a database at LIVE's old state with rows of every kind, applies the later
+  migrations in order, runs each file <b>twice</b> (the second run must change nothing), and compares the result with a fresh build. A new migration
+  fails it until the go-live checklist lists it.</div>
+  <div class="note"><b>What PGlite cannot prove</b>: real pg_cron timing, pg_net calls, Storage size limits, two sessions at once, Supabase's own
+  MFA. These are listed at the top of the smoke test and checked by hand on TEST.</div>
+</div>
+<h3>CI: GitHub Actions (<code>.github/workflows/ci.yml</code>)</h3>
+<p>On every pull request and every push to <code>main</code>, three jobs run with Node 24: <b>App</b> (npm ci, lint, typed routes, tsc, npm test),
+<b>Database</b> (the whole <code>supabase/tests</code> npm test) and <b>Website</b>. They need no secrets and only read the code. Actions are pinned by
+commit SHA; Dependabot proposes updates weekly (npm) and monthly (actions). A red run: open the failed step, read the first <code>FAIL</code> line, fix
+on the branch, push again.</p>
+<div class="warn"><b>CI is not everything.</b> It does not run the app on a phone, deploy, publish or touch TEST/LIVE. Screens have no automatic
+tests yet: check a changed screen in a browser as each role (phone width 375 px and laptop 1280 px) on TEST, and describe how in the pull
+request. "It builds" is not "it runs".</div>
+<h3>Adding a test</h3>
+<ul>
+  <li>A pure helper in <code>app/src/</code> → a <code>node --test</code> file in <code>app/tests/</code> (a native package gets a stub in <code>tests/stubs/</code>).</li>
+  <li>A migration → a new section in the smoke test: the roles that must be refused (<code>refusesWith(name, 'exact error', fn)</code>) and the
+  role it is for; then set <code>EXPECTED_CHECKS</code> to the new total.</li>
+  <li>A new function the app calls → add it to <code>SIGNED_IN_MAY_RUN</code>. A new table → RLS on; its <code>student_id</code> / <code>profile_id</code>
+  columns are checked by the isolation loop on their own.</li>
+</ul>
+</div>
+
+<!-- 20 -->
+<div class="section">
+<h2>20. Release and operations</h2>
+<h3>An APK has two layers</h3>
+<div class="two">
+  <div class="note"><b>Build (a new APK)</b> = the whole app, native code included. Made on Expo's servers (EAS Build), free queue up to an hour or more,
+  15 a month. Needed when anything native changes: a package with native code, an Expo SDK upgrade, <code>app.json</code>, <code>eas.json</code>, the icon.
+  Everyone installs it once.</div>
+  <div class="note"><b>Update (OTA, "over the air")</b> = only our JavaScript: screens, words, colours, logic. Published in minutes; the app downloads it at
+  start and offers <b>Restart now</b>. Reaches only APKs with the same <b>fingerprint</b>.</div>
+</div>
+<p>The <b>fingerprint</b> is a hash Expo computes from everything native. The class's production APK (build <code>90c6d1cd</code>, 16-10-2026) has
+fingerprint <code>23dc7e4a</code>. Check yours with <code>npx expo-updates runtimeversion:resolve --platform android</code> in <code>app/</code>:
+unchanged → an update is enough. That is why native changes are grouped for one planned APK, and why face scan, with its native libraries, waits on
+its own branch.</p>
+<h3>Database first, then the app (DECISIONS #121)</h3>
+<svg viewBox="0 0 720 150" width="100%">
+  <defs><marker id="a20" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#1B1E4B"/></marker></defs>
+  <g font-size="10" text-anchor="middle">
+    <rect x="4" y="12" width="128" height="58" rx="8" fill="#FBF4E6" stroke="#E0B25C"/><text x="68" y="32" font-weight="700" fill="#1B1E4B">1 Branch + checks</text><text x="68" y="48">lint, tsc, npm test,</text><text x="68" y="61">smoke test, CI green</text>
+    <rect x="148" y="12" width="128" height="58" rx="8" fill="#FBF4E6" stroke="#E0B25C"/><text x="212" y="32" font-weight="700" fill="#1B1E4B">2 Merge to main</text><text x="212" y="48">only on Praveen's</text><text x="212" y="61">word</text>
+    <rect x="292" y="12" width="138" height="58" rx="8" fill="#eef1fb" stroke="#1f5fa8"/><text x="361" y="32" font-weight="700" fill="#1B1E4B">3 TEST</text><text x="361" y="48">migration; update:preview;</text><text x="361" y="61">export:web --site test</text>
+    <rect x="446" y="12" width="128" height="58" rx="8" fill="#eef1fb" stroke="#1f5fa8"/><text x="510" y="32" font-weight="700" fill="#1B1E4B">4 Try it on TEST</text><text x="510" y="48">browser + phone,</text><text x="510" y="61">each role</text>
+    <rect x="590" y="12" width="126" height="58" rx="8" fill="#fdecea" stroke="#C62828"/><text x="653" y="32" font-weight="700" fill="#1B1E4B">5 Backup LIVE</text><text x="653" y="48">pg_dump, 7z,</text><text x="653" y="61">encrypted</text>
+    <rect x="148" y="88" width="128" height="58" rx="8" fill="#fdecea" stroke="#C62828"/><text x="212" y="108" font-weight="700" fill="#1B1E4B">6 LIVE migration</text><text x="212" y="124">one file per run,</text><text x="212" y="137">probe after each</text>
+    <rect x="292" y="88" width="138" height="58" rx="8" fill="#fdecea" stroke="#C62828"/><text x="361" y="108" font-weight="700" fill="#1B1E4B">7 Drift query</text><text x="361" y="124">TEST and LIVE hashes</text><text x="361" y="137">must match</text>
+    <rect x="446" y="88" width="270" height="58" rx="8" fill="#eaf5ea" stroke="#2E7D32"/><text x="581" y="108" font-weight="700" fill="#1B1E4B">8 Then the app</text><text x="581" y="124">What's new entry; update:production;</text><text x="581" y="137">export:web --site live + upload; header check</text>
+  </g>
+  <g stroke="#1B1E4B" stroke-width="1.8" marker-end="url(#a20)" fill="none">
+    <line x1="133" y1="41" x2="146" y2="41"/><line x1="277" y1="41" x2="290" y2="41"/><line x1="431" y1="41" x2="444" y2="41"/><line x1="575" y1="41" x2="588" y2="41"/>
+    <path d="M653,71 L653,80 L212,80 L212,86"/>
+    <line x1="277" y1="117" x2="290" y2="117"/><line x1="431" y1="117" x2="444" y2="117"/>
+  </g>
+</svg>
+<p>Why this order: an app update reaches phones within minutes, so if it calls something LIVE's database does not have yet, the class's app breaks.
+And <b>migrations stay additive for one release</b>: never drop or rename what the app in use calls, so a bad update can always be rolled back
+(<code>npx eas-cli update:rollback</code>) without touching the database.</p>
+<h3>The guards in the scripts</h3>
+<table>
+  <tr><th>Script</th><th>What it refuses</th></tr>
+  <tr><td><code>npm run update:preview</code> / <code>update:production</code> (<code>scripts/publish-update.mjs</code>)</td><td>A network that breaks uploads; for production, anything but a clean <code>main</code> equal to <code>origin/main</code> with a dated What's new entry; no APK with this fingerprint; settings of the wrong project; a bundle holding a secret. Then you must type <code>yes</code>. <code>--check-only</code> runs every check and publishes nothing</td></tr>
+  <tr><td><code>npm run export:web -- --site test|live</code> (<code>scripts/export-web.mjs</code>)</td><td>No <code>--site</code> (it never guesses); a URL that is not that site's project; a secret in the export. Writes <code>_headers</code>, <code>version.txt</code>, the offline service worker</td></tr>
+  <tr><td><code>scripts/eas-build-guard.mjs</code> (runs on EAS before every build)</td><td>A <code>preview</code> build not pointed at TEST, or a <code>production</code> build not pointed at LIVE</td></tr>
+</table>
+<h3>Running it</h3>
+<ul>
+  <li><b>Backups</b>: every Monday and before every LIVE migration: three <code>pg_dump</code> files (schema, data, logins), encrypted with 7-Zip,
+  last 8 kept, a line in <code>backup-log.csv</code>, a written restore drill. The free plan has no downloadable backups.</li>
+  <li><b>APKs</b>: kept in the team's Drive folder with their SHA-256 (EAS links expire after about 14 days); the package name
+  <code>org.mridangaseva.app</code> and the signing keystore must never change.</li>
+  <li><b>Office network</b>: its firewall breaks uploads to Expo; builds and updates go from a phone hotspot.</li>
+  <li><b>Monthly</b>: usage against the free limits; scheduled-jobs health check; Dependabot pull requests; <code>npm audit</code> triage.</li>
+</ul>
+<p class="small">Every step with its exact commands: <code>docs/OPERATIONS.md</code> ("Building the Android app", "Updating the Android app", "Publishing the
+web version", "Releasing a change: database first", "Backups") and <code>docs/GO_LIVE_CHECKLIST.md</code>.</p>
+</div>
+
+<!-- 21 -->
+<div class="section">
+<h2>21. How decisions are recorded</h2>
+<p>Every important choice is a numbered entry in <code>docs/DECISIONS.md</code>: <b>Context</b> (the situation), <b>Decision</b>, <b>Why</b>,
+<b>Consequences</b> (what it means for the code and for maintainers). Entry #1 is "React Native (Expo) and Supabase" of 28-09-2026; on
+24-10-2026 the newest is #595. Newest at the bottom.</p>
+<div class="two">
+  <div class="good"><b>The rules of the log</b>
+    <ul>
+      <li><b>Never rewrite</b> an entry. If a decision changes, mark the old one <i>Replaced by #N</i> and add a new one.</li>
+      <li>Part changed: a line <i>Replaced in part by #N</i> under the old entry. A date or typo: an <i>Erratum</i> line.</li>
+      <li>Code points at its reason: <code>// Paused/Left only via a call log, docs/DECISIONS.md #4</code>.</li>
+    </ul></div>
+  <div class="note"><b>Entries worth reading first</b>
+    <ul>
+      <li>#1 Expo and Supabase · #2 attendance is a visit, not a roll call</li>
+      <li>#3 roll numbers frozen · #4 Paused/Left only by a call</li>
+      <li>#5 rules live in the database · #13 link only after email confirmation</li>
+      <li>#16 a minor only with consent · #17 the QR holds a secret token</li>
+      <li>#121 database first · #399 a child's sign-up at home</li>
+    </ul></div>
+</div>
+<h3>How the app is built</h3>
+<p>The app is built as seva by a volunteer maintainer (Praveen) working with <b>Claude</b>, an AI coding assistant. The maintainer and the class team
+decide <i>what</i> is built and approve every step; separate working sessions write code and documents on their own branches. Nothing reaches the class
+without the checks of section 19 and the maintainer's word: <b>"push to main"</b>, <b>"publish"</b>. You will see this in the git history: small
+branches, merge commits, and a decision entry and documentation with each change.</p>
+<div class="note"><b>A change is not finished until its documentation is</b> (<code>docs/README.md</code>). Behaviour changed → <code>DATABASE.md</code> or
+<code>ARCHITECTURE.md</code>; a new rule or trade-off → a DECISIONS entry; a new screen → <code>SCREENS.md</code>; a new term → <code>GLOSSARY.md</code>;
+something users see → a line in <code>app/src/content/whats-new.json</code> before the next production update.</div>
+<h3>Where the screen list came from</h3>
+<p>Before any code, on 28-09-2026, every screen the app might need was listed for the team (about 80, each with a code like A1 = login, C5 = mark
+attendance, G4 = syllabus editor) with <b>Approve / Change / Drop</b>. The team's answers shaped the app: three roles, no batches, three levels, email
+login, English first with Telugu and Hindi, parental consent, and Phase 1 must cost nothing. The codes live on in the docs and code comments.</p>
+</div>
+
+<!-- 22 -->
+<div class="section">
+<h2>22. How to contribute safely</h2>
+<div class="warn"><b>The three rules that protect the children's data</b>
+<ol style="margin-top:4pt">
+  <li><b>Never LIVE.</b> Never run anything against the LIVE project (<code>qeozvv…</code>). The main checkout's <code>app/.env</code> on the maintainer's PC
+  points at LIVE: work in your own clone or a worktree whose settings point at TEST (<code>fhuqyk…</code>). A deploy command is never a test: on a PC
+  where the Supabase CLI is logged in, it really deploys.</li>
+  <li><b>Never real data.</b> Only the fictional seed students in code, tests, seeds and screenshots.</li>
+  <li><b>Never secrets.</b> No <code>.env</code> file, <code>service_role</code> key, password or keystore in git or a chat. <code>.gitignore</code> refuses the usual ones.</li>
+</ol></div>
+<h3>Your first change, step by step</h3>
+<div class="step"><b class="n">1</b><div><b>Agree first.</b> Open or pick an issue on GitHub (Praviadari/mridanga-seva); for anything larger than a small fix, agree the approach
+before coding.</div></div>
+<div class="step"><b class="n">2</b><div><b>Set up.</b> Node 24 (<code>.nvmrc</code>). Clone, <code>cd app</code>, <code>npm ci</code>; copy <code>.env.example</code> to
+<code>.env.development</code> with the TEST URL and publishable key; <code>npx expo start</code> and press <code>w</code> for the web version. In
+<code>supabase/tests</code>: <code>npm ci</code>, <code>npm test</code>.</div></div>
+<div class="step"><b class="n">3</b><div><b>Branch</b> from <code>main</code> (e.g. <code>fix/attendance-checkout</code>). Never commit to <code>main</code> directly.</div></div>
+<div class="step"><b class="n">4</b><div><b>Change, following the house rules</b>: words only in <code>en.json</code> + <code>te.json</code> + <code>hi.json</code> (never in a screen); screens
+call <code>data/</code>, never Supabase directly; a database change is a <b>new</b> migration with RLS, comments, revoked-then-granted functions and smoke
+checks; Expo packages with <code>npx expo install</code>; a header comment on every file; "prefer boring code".</div></div>
+<div class="step"><b class="n">5</b><div><b>Check</b>: the commands of section 19, all green; the screen tried on TEST as each role it concerns, at phone and laptop width.</div></div>
+<div class="step"><b class="n">6</b><div><b>Native or not?</b> If you added a package or touched <code>app.json</code> / <code>eas.json</code>, compare the fingerprint. A change of
+fingerprint means a new APK: say so in the pull request, it is merged only when a build is planned.</div></div>
+<div class="step"><b class="n">7</b><div><b>Document</b>: DECISIONS entry, DATABASE / ARCHITECTURE / SCREENS lines, What's new if users see it.</div></div>
+<div class="step"><b class="n">8</b><div><b>Pull request</b>: one change, a clear description, screenshots for a screen, how you checked it. CI must be green. Merging, pushing to main,
+running a LIVE migration and publishing stay with Praveen.</div></div>
+<h3>Common traps (from real mistakes)</h3>
+<table>
+  <tr><th>Trap</th><th>What to do</th></tr>
+  <tr><td>A function raises a sentence instead of a code</td><td>Raise a short <code>snake_case</code> code; explain in <code>detail</code>; translate it in the app</td></tr>
+  <tr><td>New function callable by everyone</td><td>Supabase grants new functions to PUBLIC: revoke from <code>public, anon, authenticated</code>, grant only what is needed</td></tr>
+  <tr><td>Editing a migration that already ran</td><td>Never. Add the next number. Two branches may both use a placeholder number; the lead renumbers at merge</td></tr>
+  <tr><td>Calling a new database function from an update before LIVE has it</td><td>Database first (section 20); or make the app fall back when the function is missing</td></tr>
+  <tr><td>A route path typo passes tsc on a fresh clone</td><td>Run <code>node scripts/typed-routes.mjs</code> before <code>npx tsc --noEmit</code></td></tr>
+  <tr><td>Uploads to Expo fail half-way</td><td>The office network: use a phone hotspot. Never switch certificate checks off</td></tr>
+  <tr><td>"It works in development"</td><td>Test the real APK or the exported web version too; never hide an error from the user</td></tr>
+</table>
+</div>
+
+<!-- 23 -->
+<div class="section">
+<h2>23. What is not built yet, and Phase 3</h2>
+<h3>State on 24-10-2026</h3>
+<table>
+  <tr><th>Item</th><th>State</th></tr>
+  <tr><td>Privacy notice 1.0 card, retention job (0060); staff sign-in codes and the error log (0061); offline door and practice queue; a lighter web version</td><td><span class="tag next">NEXT</span> on main and TEST; in the next LIVE release (What's new entry waiting, date not set)</td></tr>
+  <tr><td>Check-out emails and the weekly email to parents</td><td><span class="tag off">OFF</span> built and on LIVE; waiting for the Guru's switch</td></tr>
+  <tr><td>The door tablet (role <code>kiosk</code>)</td><td>Not built; a coordinator's phone scans at the door</td></tr>
+  <tr><td>Push notifications on the web version (iPhones)</td><td>Not on main; being worked on separately</td></tr>
+  <tr><td>Play Store and App Store</td><td>Not chosen yet; Android installs from a link</td></tr>
+  <tr><td>The domain <code>app.mridangaseva.com</code> for the web app</td><td>Waits for the domain move (go-live checklist part E)</td></tr>
+  <tr><td>Telugu and Hindi texts</td><td>Careful drafts, to be checked by native speakers (review sheet in <code>docs/translation-review/</code>)</td></tr>
+  <tr><td>Real khol sounds for the practice tools</td><td>Prepared, waiting for the Guru's recordings (<code>docs/KHOL_RECORDINGS.md</code>)</td></tr>
+  <tr><td>Service accounts (Expo, Firebase, Cloudflare, Supabase)</td><td>On the maintainer's personal account until a team account exists (OPERATIONS "Handing over")</td></tr>
+</table>
+<h3>Phase 3: face attendance, on its own branch</h3>
+<p>Face attendance (a student checks in by looking at their own phone, only with a separate written consent) is <b>not on main</b>. It lives on the
+branch <code>face-scan</code> and runs only in a separate "Mridanga Seva TEST" app against the TEST project, because its native face libraries change the
+app's fingerprint: merging it early would stop updates reaching the class's phones. Its own explainer, made the same way as this one, is
+<code>docs/phase3/print/face-scan-explained.pdf</code> on that branch. The plans and legal drafts are in <code>docs/phase3/</code> on main.</p>
+<div class="good"><b>Where to start as a new maintainer.</b> Read <code>docs/guide/08-new-helper.md</code>, then <code>ARCHITECTURE.md</code>,
+<code>DECISIONS.md</code> (#1-#30 first) and <code>DATABASE.md</code>. Run the app on TEST as a student and as a coordinator. Then pick a small
+issue, and follow section 22.</div>
+</div>
+
+<!-- 24 -->
+<div class="section">
+<h2>24. Glossary</h2>
+<table>
+  <tr><td><b>APK</b></td><td>The Android app file people install from a link.</td></tr>
+  <tr><td><b>Area</b></td><td>The set of screens a person may open: signed out, pending, student, staff (Guru and coordinator), subscriber…</td></tr>
+  <tr><td><b>Audit log / Change history</b></td><td>The database's record of who changed what, and when.</td></tr>
+  <tr><td><b>Access log</b></td><td>The record of who <i>read</i> a child's private details (parents, consents, call notes).</td></tr>
+  <tr><td><b>Bol</b></td><td>A spoken syllable for a drum stroke (dha, ta, ghe…); a taal is a cycle of bols.</td></tr>
+  <tr><td><b>Bucket</b></td><td>A folder in Supabase Storage with its own rules (ours are private).</td></tr>
+  <tr><td><b>CI</b></td><td>Continuous integration: GitHub runs the checks on every pull request and push to main.</td></tr>
+  <tr><td><b>Consent</b></td><td>A row in <code>consents</code>: what was agreed (data, photo, weekly email), by whom, how, when, which notice version.</td></tr>
+  <tr><td><b>DPDP</b></td><td>India's Digital Personal Data Protection Act 2023 and its Rules 2025.</td></tr>
+  <tr><td><b>Edge Function</b></td><td>A small server program on Supabase: <code>notify-announcements</code>, <code>notify-parents</code>.</td></tr>
+  <tr><td><b>EAS Build / Update</b></td><td>Expo's cloud services that build the APK and send JavaScript updates.</td></tr>
+  <tr><td><b>Erasure / tombstone</b></td><td>Deleting a person's data for good; the tombstone keeps only the roll number, date, reason and reference as proof.</td></tr>
+  <tr><td><b>Expo / React Native</b></td><td>Tools to write one TypeScript app for Android, iPhone and the web.</td></tr>
+  <tr><td><b>Expo Router</b></td><td>Every file in <code>app/src/app/</code> is a screen and a web address.</td></tr>
+  <tr><td><b>Fingerprint</b></td><td>A hash of the app's native parts; an update reaches only APKs with the same one.</td></tr>
+  <tr><td><b>Facilitator</b></td><td>The Guru, as the English screens call the role <code>guru</code>.</td></tr>
+  <tr><td><b>Guard / trigger</b></td><td>A check the database runs when a row is saved; it can refuse the save.</td></tr>
+  <tr><td><b>i18n</b></td><td>"Internationalisation": every word in <code>en.json</code>, <code>te.json</code>, <code>hi.json</code>, fetched with <code>t('key')</code>.</td></tr>
+  <tr><td><b>Ishtagoshti</b></td><td>Sloka (verse) study; also open free to the public.</td></tr>
+  <tr><td><b>LIVE / TEST</b></td><td>The class's real Supabase project / the one with made-up data for building and testing.</td></tr>
+  <tr><td><b>Mentor</b></td><td>The coordinator who follows a student up with calls.</td></tr>
+  <tr><td><b>Migration</b></td><td>A numbered SQL file that changes the database; never edited once run.</td></tr>
+  <tr><td><b>OTA update</b></td><td>New JavaScript sent "over the air" to installed apps, without a new APK.</td></tr>
+  <tr><td><b>Pending</b></td><td>A login waiting for the desk; it reads only its own profile.</td></tr>
+  <tr><td><b>pg_cron</b></td><td>The timetable inside PostgreSQL that runs our 17 jobs.</td></tr>
+  <tr><td><b>PGlite</b></td><td>PostgreSQL that runs in memory inside Node; our tests use it.</td></tr>
+  <tr><td><b>Publishable / service_role key</b></td><td>The public key every app holds / the secret key that skips every rule (Edge Functions only).</td></tr>
+  <tr><td><b>Roll number</b></td><td><code>MS-2026-0042</code>: given by the database, frozen, never reused.</td></tr>
+  <tr><td><b>RLS (row-level security)</b></td><td>Per-table rules in PostgreSQL deciding which rows each person may read or change.</td></tr>
+  <tr><td><b>Security definer / invoker</b></td><td>A function that runs with its owner's rights (and checks the caller itself) / with the caller's rights.</td></tr>
+  <tr><td><b>Seed</b></td><td><code>supabase/seed.sql</code>: the fictional students of the TEST project.</td></tr>
+  <tr><td><b>Smoke test / test net</b></td><td>The 2,224 database checks run on PGlite; the net is the part that sweeps the whole schema.</td></tr>
+  <tr><td><b>Supabase</b></td><td>The hosted service around our PostgreSQL database: login, storage, functions, jobs.</td></tr>
+  <tr><td><b>Taal</b></td><td>A rhythmic cycle of beats; the practice player loops it.</td></tr>
+  <tr><td><b>Visit</b></td><td>One check-in and its check-out: a row in <code>visits</code>.</td></tr>
+  <tr><td><b>Worktree</b></td><td>A second working folder of the same git repository, on its own branch.</td></tr>
+</table>
+<p class="small">The full glossary, with the mridanga terms: <code>docs/GLOSSARY.md</code>. Code: github.com/Praviadari/mridanga-seva (MIT licence).
+This document: <code>docs/print/app-explained.html</code> (PDF made with Edge), facts as of main <code>b2e5fb5</code>, 24-10-2026.</p>
+</div>
+
+</body>
+</html>
