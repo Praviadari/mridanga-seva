@@ -535,7 +535,12 @@ to `app/dist/`. Always use this command, not a bare `npx expo export`, because
   ([#144](DECISIONS.md)). "+changes" after the commit means the folder had uncommitted changes:
   commit first for a site people use.
 - writes `dist/sw.js`, the service worker that keeps the app's own files for offline use, with this build's id and
-  file list ([#513](DECISIONS.md)); it prints how many files and KB it keeps.
+  file list ([#513](DECISIONS.md)); it prints how many files and KB it keeps (the staff screens and the Telugu and
+  Hindi files are kept only on a device that loads them, [#591](DECISIONS.md)).
+- refuses to start when `src/web-routes/staff-screens.ts` no longer matches `src/app/staff` (run
+  `npm run staff-screens` and commit), and checks the staff screens came out as one `staff-area-<hash>.js`; it prints
+  the size of the first download and of the staff file ([#590](DECISIONS.md)). After adding or changing an icon in
+  `src/components/icon.tsx`, run `npm run icons` (needs Python with fontTools) and commit the font ([#592](DECISIONS.md)).
 
 **After every upload, check the headers** (a minute, on the site's address):
 
@@ -553,6 +558,13 @@ to `app/dist/`. Always use this command, not a bare `npx expo export`, because
    iPhone, sign in, open My QR, close the app, switch on Airplane mode and open it from the home screen: My QR, Practice
    tools and the mantra open. Sign out (online) clears it: the next start without a network shows the browser's own
    offline page.
+   Waiting saves (#593), on the same iPhone in Airplane mode: in Practice tools start the timer, wait a minute, tap
+   Stop: it says the minutes are kept on this phone and "1 practice entry is waiting" shows; switch Airplane mode off
+   and bring the app to the front: within half a minute the count goes and the entry is in My practice log, once. A
+   coordinator's phone (Android app or web): Mark attendance with the signal off, scan a student's My QR: "No
+   connection: saved on this phone" and "1 check-in is waiting"; signal back: the student is in Who is here now, once.
+   A staff login on the web opens the staff home after a short "Loading…" the first time (the staff screens come as
+   their own file, #590).
 5. Add a row to the upload log below.
 
 **Upload log** (newest first; site, commit, build time from version.txt, who):

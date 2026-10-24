@@ -159,7 +159,13 @@ app/
                        libphonenumber-js/min), the date of birth from three drop-downs (birth-date.ts)
                        and the one-time About-you prompt (about-prompt.ts) (0036); the web version's service
                        worker, registered after sign-in and removed at sign-out (offline-shell.web.ts; the worker
-                       itself is scripts/service-worker.js, written to dist/sw.js by the export, DECISIONS.md #513)
+                       itself is scripts/service-worker.js, written to dist/sw.js by the export, DECISIONS.md #513);
+                       saves that wait for the signal, door check-ins and practice (offline-queue.ts keeps them,
+                       offline-send.ts sends them with their request ids; #593)
+    web-routes/        The web version's screen list (route-context.ts): the staff screens are stand-ins that load
+                       one file, staff-area.ts, when a staff login opens them (lazy-staff.tsx); the list of staff
+                       screens is written by `npm run staff-screens` (DECISIONS.md #590). The web starts from
+                       src/entry.web.tsx, the phones from src/entry.ts (Expo Router's own start)
     theme/             Colours, spacing and text sizes, light and dark; the card look, the header
                        bars and the tab bar (use-theme.ts)
 supabase/
@@ -315,6 +321,11 @@ read or write the person is not allowed, whatever the app shows.
    (`check_out_all`). Staff may correct only a visit's times, and each correction is audited (0030).
 6. An hourly job closes any visit still open an hour after its centre closed, at the centre's
    closing time (21:00 IST for Abids; every centre in its own time zone since 0033, docs/I18N.md).
+7. **Without a connection** (the hall's signal drops) a scan or a tap is kept on the marking phone and sent when the
+   signal is back, the same class day only (src/lib/offline-send.ts, [DECISIONS.md #593](DECISIONS.md)). A tap is
+   sent with its meaning (`mark_visit`); a scanned code is sent as a check-in only when the student is not in today,
+   because `scan_qr` toggles and a resend would check them out. The time saved is when it arrives. Mark attendance
+   shows how many wait, with Send now.
 
 The camera also works in the web version (on `https` only). Browsers without built-in QR reading,
 such as Safari on iPhone, use zxing-wasm, a WebAssembly reader the site serves itself from
@@ -445,7 +456,9 @@ their beats, `lib/bols.ts` saying which head, zone, fingers and sound a bol is).
   beat or bol changes. The beat dots, the beat grid and V1 (`components/two-head-view.tsx`, SVG)
   light from it.
 - **Timer and log**: `lib/practice-timer.ts` keeps the start time on the device (survives leaving
-  the screen and reloads); Stop calls `log_practice` (DATABASE.md "Practice tools").
+  the screen and reloads); Stop calls `log_practice` (DATABASE.md "Practice tools"). Without a connection Stop counts
+  the minutes there and then, stops the timer and keeps the entry on the device with its request id; the practice
+  log's Save does the same. They are sent once the signal is back (lib/offline-send.ts, [DECISIONS.md #593](DECISIONS.md)).
 - **Offline**: taals are saved on the device after each load, with the seeded placeholders built in
   as a last resort; sounds need no network.
 - **Practice extras** ([DECISIONS.md #490-#495](DECISIONS.md)) are built into the pattern, so the engines stay as they
