@@ -1,7 +1,8 @@
 // Supabase Edge Function notify-announcements: sends push notifications to the phones of the
 // people a newly published announcement, or a queued notice (assessment, promotion, event, poll,
-// fund, roster), is addressed to. Called every minute, only when something is waiting, by the
-// database job send_due_push() through pg_net.
+// fund, roster), is addressed to, and (migration 0062) to the browsers they switched notifications
+// on in: the web version, the iPhone home-screen app. Called every minute, only when something is
+// waiting, by the database job send_due_push() through pg_net. Browsers: ./web-send.ts, ./webpush.ts.
 //
 // Steps (since migration 0031, docs/DECISIONS.md #112-#115): check the shared secret →
 // claim_push_queue() queues what fell due, one row per phone, and claims the waiting rows → one
@@ -22,6 +23,8 @@ import { createClient } from 'npm:@supabase/supabase-js@2.117.2';
 
 import { batches, pickServiceKey } from './messages.ts';
 import { EXPO_PROJECT, expoPost, runPush, type Rpc } from './send.ts';
+import { runWebPush, webPost } from './web-send.ts';
+import { type Vapid, vapidFrom } from './webpush.ts';
 
 /** Answers the caller with a small JSON object. */
 function reply(status: number, body: Record<string, unknown>): Response {
@@ -43,6 +46,31 @@ function serviceKey(): string | undefined {
     console.log('service key from', picked.source);
   }
   return picked?.key;
+}
+
+/** True once this copy of the function has logged that web push is not set up or its keys are wrong. */
+let webKeysLogged = false;
+
+/**
+ * The site's VAPID key pair for browsers (0062, docs/DECISIONS.md #605): function secrets WEB_PUSH_PUBLIC_KEY,
+ * WEB_PUSH_PRIVATE_KEY and WEB_PUSH_SUBJECT (docs/OPERATIONS.md "Push notifications" part C). Null when they are not
+ * set or not a key pair; logged once per start, never the keys.
+ */
+async function webPushKeys(): Promise<Vapid | null> {
+  const publicKey = Deno.env.get('WEB_PUSH_PUBLIC_KEY');
+  const privateKey = Deno.env.get('WEB_PUSH_PRIVATE_KEY');
+  if (!publicKey || !privateKey) {
+    if (!webKeysLogged) console.log('web push not set up');
+    webKeysLogged = true;
+    return null;
+  }
+  try {
+    return await vapidFrom(publicKey, privateKey, Deno.env.get('WEB_PUSH_SUBJECT') || 'mailto:privacy@mridangaseva.com');
+  } catch (error) {
+    if (!webKeysLogged) console.error('web push keys refused:', (error as Error).message);
+    webKeysLogged = true;
+    return null;
+  }
 }
 
 /** Compares two texts in the same time whatever they hold, so the secret cannot be guessed by timing. */
@@ -130,6 +158,10 @@ Deno.serve(async (request) => {
     return { data, error: error ? { message: error.message } : null };
   };
   const result = await runPush(rpc, expoPost(fetch, headers), Deno.env.get('EXPO_PROJECT') || EXPO_PROJECT);
-  if ('error' in result) return reply(500, { error: result.error, removedFiles: cleaned });
-  return reply(200, { ...result, removedFiles: cleaned });
+  // Browsers (0062): after the phones, whose claim also queues the browser rows. Not set up = nothing claimed; the
+  // rows wait and are given up after a day.
+  const vapid = await webPushKeys();
+  const web = vapid ? await runWebPush(rpc, webPost(fetch, vapid)) : 'not_set_up';
+  if ('error' in result) return reply(500, { error: result.error, web, removedFiles: cleaned });
+  return reply(200, { ...result, web, removedFiles: cleaned });
 });

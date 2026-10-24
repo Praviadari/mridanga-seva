@@ -1,5 +1,5 @@
 // Push notifications for announcements, Android app only (docs/DECISIONS.md #33). The web
-// version uses ./push.web.ts, which does nothing; iPhone web push comes later.
+// version uses ./push.web.ts: web push, switched on by a tap in My profile (./web-push.web.ts, 0062, #603).
 //
 // After sign-in the app asks once for permission, gets this phone's Expo push token and saves it
 // with register_push_token (migration 0011). When an announcement is published, the Edge Function

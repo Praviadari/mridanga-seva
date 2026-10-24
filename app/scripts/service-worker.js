@@ -22,6 +22,13 @@
 // - Messages from the page: 'keep' adds any file of the list still missing, and the build's files the page loaded
 //   (after a sign-in); 'forget' stops keeping
 //   anything and deletes every cache of this site (sign-out; the page also unregisters the worker).
+//
+// Web push (migration 0062, docs/DECISIONS.md #606): when the person switched notifications on in My profile
+// (src/lib/web-push.web.ts), notify-announcements sends each announcement or notice to this browser, encrypted; the
+// browser decrypts it and hands it here as a 'push' event: {title, body, url, tag}. Every push shows a notification
+// (an iPhone ends the subscription of a site whose pushes show nothing). A tap focuses an open window of the app and
+// posts it the screen ({type: 'open', url}: the page opens it when it belongs to the signed-in area, src/lib/push.web.ts),
+// or opens a window at that screen. Only an app path is ever opened. Nothing here touches the offline caches.
 
 const BUILD = '__BUILD__';
 const SHELL = __SHELL__;
@@ -141,4 +148,51 @@ self.addEventListener('fetch', (event) => {
     return;
   }
   if (isShellFile(url.pathname)) event.respondWith(file(request));
+});
+
+/** The screen a notification may open: an app path (src/lib/web-push-rules.ts openablePath), else the start page. */
+function openablePath(url) {
+  return typeof url === 'string' && /^\/(?!\/)[A-Za-z0-9/_-]*$/.test(url) ? url : '/';
+}
+
+/** A text of the push, cut to `max` characters, or ''. */
+function text(value, max) {
+  return typeof value === 'string' ? value.slice(0, max) : '';
+}
+
+self.addEventListener('push', (event) => {
+  let data = {};
+  try {
+    data = (event.data && event.data.json()) || {};
+  } catch {
+    data = {};
+  }
+  const title = text(data.title, 120).trim() || 'Mridanga Seva';
+  const tag = text(data.tag, 60);
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body: text(data.body, 300),
+      icon: '/icon-192.png',
+      badge: '/icon-192.png',
+      data: { url: openablePath(data.url) },
+      ...(tag ? { tag } : {}),
+    }),
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const path = openablePath(event.notification.data && event.notification.data.url);
+  event.waitUntil(
+    (async () => {
+      const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      const open = windows.find((client) => new URL(client.url).origin === self.location.origin);
+      if (open) {
+        await open.focus();
+        open.postMessage({ type: 'open', url: path });
+        return;
+      }
+      await self.clients.openWindow(path);
+    })(),
+  );
 });

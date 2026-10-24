@@ -1,7 +1,7 @@
 <!-- Privacy notice 1.0, written for India's Digital Personal Data Protection Act 2023 (DPDP) with the
      DPDP Rules 2025, and the EU/UK GDPR, read strictly where a reading is open (no lawyer: Praveen, #399).
      Decisions: D4-07 retention #572-#573, D4-09 #574, D4-12 #575, reply period and team emails #576,
-     the notice asked again #577, translations #571. The one TEAM item left is a fact only the team
+     the notice asked again #577, translations #571, browser notifications #607. The one TEAM item left is a fact only the team
      can read (the Zoho data centre). Data list from docs/DATABASE.md; location check from DECISIONS #70;
      processors from docs/OPERATIONS.md. -->
 <h1>Privacy notice</h1>
@@ -36,7 +36,7 @@
     <tr><th scope="row">Parents and guardians of students under 18</th><td>Name, relation to the student, phone number, email address, and the consent record: date, how it was given (a signed form at the desk, or the code emailed to the parent), who checked it, and which kind of ID document was looked at. The ID number itself is never stored. If the parent asked for the weekly email: that yes, as a separate consent record. A record of each email sent to a parent: when, which kind, and whether it went out, never its text. While a child's sign-up waits for the parent: the parent's name, relation, email address and mobile number as the child gave them.</td></tr>
     <tr><th scope="row">Learning</th><td>Visits (check-in and check-out times), syllabus items learnt, assessments and answers you send, level changes, practice minutes, and how a practice session went (hard / okay / good) and what was practised, if the student chooses to say it.</td></tr>
     <tr><th scope="row">Follow-up</th><td>When a student stops coming, a coordinator may call; the date, the reason given and a short note are kept.</td></tr>
-    <tr><th scope="row">Messages</th><td>Announcements you have read, your replies, and the notification token of your phone so it can receive notices.</td></tr>
+    <tr><th scope="row">Messages</th><td>Announcements you have read, your replies, and the notification token of your phone so it can receive notices. If you turn notifications on in a web browser (My profile, only by your own tap), the address and two keys that browser gives for its notifications instead.</td></tr>
     <tr><th scope="row">Volunteers</th><td>Name, email, role, duty hours, and a log of the changes they make to student records.</td></tr>
     <tr><th scope="row">Your requests</th><td>What you ask in My data and rights or by email (to see, correct or erase your data, withdraw a consent, name someone to act for you, or complain): the kind of request, its dates, your words and our answer.</td></tr>
   </tbody>
@@ -92,6 +92,7 @@
     <tr><td>Supabase</td><td>Database, logins and stored files of the app</td><td>Sydney, Australia</td></tr>
     <tr><td>Expo (650 Industries)</td><td>App updates; passes notifications to phones</td><td>USA</td></tr>
     <tr><td>Google Firebase Cloud Messaging</td><td>Delivers notifications to Android phones</td><td>Worldwide</td></tr>
+<tr><td>Browser push services (Google, Apple, Mozilla, Microsoft)</td><td>Deliver notifications to the web app, only if you turn them on in that browser; the text is encrypted so that only your browser can read it</td><td>Worldwide</td></tr>
     <tr><td>Brevo</td><td>Sends sign-up and password-reset emails, and the emails to parents: the consent email with a code, the check-out email and the weekly email</td><td>European Union</td></tr>
     <tr><td>Cloudflare</td><td>Hosts this website and the web version of the app</td><td>Worldwide network</td></tr>
     <tr><td>Zoho Mail</td><td>The team's email, including {{email:info}} and {{email:privacy}}</td><td>[[TEAM: confirm the Zoho data centre]]</td></tr>
@@ -109,7 +110,7 @@
   <li>A child's sign-up whose parent did not consent: erased, with the parent's details, after 30 days; one the parent consented to but the desk never registered, after 180 days.</li>
   <li>After an erasure, only the roll number, the date and the reason are kept, so that numbers are never reused and we can show the erasure was done.</li>
   <li>Logs of who opened parents' details, consents and call notes: 400 days. Logs of changes: two years. (The DPDP Rules ask for at least one year.)</li>
-  <li>Notification tokens of phones that have not opened the app for 90 days: deleted.</li>
+  <li>Notification tokens of phones, and notification addresses of browsers, that have not opened the app for 90 days: deleted. A browser's address is also deleted at once when you turn its notifications off or sign out there.</li>
   <li>In-app notices: one year. Records of emails to parents (no text): 30 days.</li>
   <li>Data requests: the text one year after we answered, the request itself (type and dates) two years; after an erasure only its type, dates and reference.</li>
   <li>Signed consent forms on paper: kept at the class while the record exists, destroyed when it is erased.</li>

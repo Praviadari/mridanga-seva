@@ -2,8 +2,8 @@
 // src/lib/push.ts sets it after each try to register; components/push-notice.tsx shows it on the homes and
 // My profile. Before #305 a refused permission or a failed registration was silent, and the phone missed every
 // announcement push with nothing on screen to say so. Kept apart from push.ts, which loads native modules, so
-// the rules can be tested in plain Node. The web version never sets it (no push there yet), so it stays
-// 'unknown' and nothing is shown.
+// the rules can be tested in plain Node. The web version never sets it (its web push has its own section in My profile, #603), so it
+// stays 'unknown' and nothing is shown.
 
 import { useSyncExternalStore } from 'react';
 

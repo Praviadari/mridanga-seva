@@ -17,7 +17,8 @@
 #   https: (media only)       a lesson video FILE is the team's own copy at any https address
 #                             (materials kind 'video'); media cannot run code.
 # Not loaded at all: the zxing QR reader comes from this site (/zxing/, lib/qr-reader.web.ts),
-# fonts and icons are bundled, push and over-the-air updates do not run on the web, and maps,
+# fonts and icons are bundled, over-the-air updates do not run on the web, web push (0062, DECISIONS #606) needs no
+# host here (the browser talks to its own push service; the service worker only shows what arrives), and maps,
 # calendars, YouTube "Open" and file links open in a new tab (navigation, not loads).
 # 'wasm-unsafe-eval' lets the QR reader compile its WebAssembly; it allows no JavaScript eval.
 # style-src needs 'unsafe-inline': react-native-web writes its styles into <style> elements and

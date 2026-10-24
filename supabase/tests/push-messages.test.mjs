@@ -19,6 +19,8 @@ import {
   unregisteredTokens,
 } from '../functions/notify-announcements/messages.ts';
 import { expoPost, runPush, sendAll, toItems } from '../functions/notify-announcements/send.ts';
+import { resultOf, runWebPush, toWebItems, webPost } from '../functions/notify-announcements/web-send.ts';
+import { encryptFor, fromBase64Url, toBase64Url, vapidFrom, vapidHeader } from '../functions/notify-announcements/webpush.ts';
 
 let failures = 0;
 
@@ -230,5 +232,137 @@ check('D2-16 a JSON string is not taken letter by letter (falls back)', keyOf('"
 check('D2-16 an array, raw text or empty object falls back', keyOf('["sb_secret_a"]', 'legacy')?.key === 'legacy'
   && keyOf('sb_secret_a', 'legacy')?.key === 'legacy' && keyOf('{}', 'legacy')?.key === 'legacy');
 check('D2-16 nothing usable at all = null (not_configured)', keyOf('{"default":""}', undefined) === null && keyOf(undefined, undefined) === null);
+
+// ---------------------------------------------------------------- web push (0062, #599-#602)
+// The encryption is checked by decrypting with http_ece, the reference implementation of RFC 8188/8291 by their
+// author (not this repository's code), as a browser would; the VAPID token with Node's own ECDSA verify.
+{
+  const ece = (await import('http_ece')).default;
+  const { createECDH, createPublicKey, randomBytes, verify } = await import('node:crypto');
+  const browser = createECDH('prime256v1');
+  browser.generateKeys();
+  const authSecret = randomBytes(16);
+  const subscription = {
+    endpoint: 'https://fcm.googleapis.com/fcm/send/abc:def',
+    p256dh: browser.getPublicKey().toString('base64url'),
+    auth: authSecret.toString('base64url'),
+  };
+  const text = JSON.stringify({ title: 'కీర్తన', body: 'Sunday 17:00 🙏', url: '/student/announcements/7', tag: 'announcement-7' });
+  const sealed = await encryptFor(subscription, new TextEncoder().encode(text));
+  const opened = ece.decrypt(Buffer.from(sealed), { version: 'aes128gcm', privateKey: browser, authSecret: subscription.auth });
+  check('web push: http_ece (the RFC author\'s code) decrypts the message as the browser would', opened.toString('utf8') === text, opened.toString('utf8'));
+  check('web push: the header carries the record size 4096 and a 65-byte sender key', new DataView(sealed.buffer).getUint32(16) === 4096
+    && sealed[20] === 65 && sealed[21] === 4);
+  const again = await encryptFor(subscription, new TextEncoder().encode(text));
+  check('web push: each message has a new salt and key (two copies differ)', toBase64Url(again.slice(0, 86)) !== toBase64Url(sealed.slice(0, 86)));
+  let wrongKey = '';
+  try {
+    const other = createECDH('prime256v1');
+    other.generateKeys();
+    ece.decrypt(Buffer.from(sealed), { version: 'aes128gcm', privateKey: other, authSecret: subscription.auth });
+  } catch (e) {
+    wrongKey = String(e.message);
+  }
+  check('web push: another browser\'s key cannot decrypt it', wrongKey !== '');
+  let refusedKeys = 0;
+  for (const bad of [{ ...subscription, p256dh: 'AAAA' }, { ...subscription, auth: 'AAAA' }]) {
+    try {
+      await encryptFor(bad, new Uint8Array(1));
+    } catch {
+      refusedKeys++;
+    }
+  }
+  check('web push: keys of the wrong length are refused before any sending', refusedKeys === 2);
+  check('web push: base64url both ways', toBase64Url(fromBase64Url('_-8A')) === '_-8A' && fromBase64Url('AQ==').length === 1);
+
+  // VAPID: a pair as app/scripts/web-push-keys.mjs makes it.
+  const pair = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify']);
+  const publicKey = Buffer.from(await crypto.subtle.exportKey('raw', pair.publicKey)).toString('base64url');
+  const { d } = await crypto.subtle.exportKey('jwk', pair.privateKey);
+  const vapid = await vapidFrom(publicKey, d, 'mailto:privacy@mridangaseva.com');
+  const header = await vapidHeader(vapid, subscription.endpoint, 1_800_000_000);
+  const [, token, k] = /^vapid t=([^,]+), k=(.+)$/.exec(header) ?? [];
+  const [h, c, s] = (token ?? '').split('.');
+  const claims = JSON.parse(Buffer.from(c ?? '', 'base64url').toString());
+  check('web push: the VAPID header names the push service\'s origin, 12 hours, the subject and the public key',
+    k === publicKey && claims.aud === 'https://fcm.googleapis.com' && claims.exp === 1_800_000_000 + 43200
+      && claims.sub === 'mailto:privacy@mridangaseva.com' && JSON.parse(Buffer.from(h, 'base64url').toString()).alg === 'ES256', header);
+  const jwk = { kty: 'EC', crv: 'P-256', x: Buffer.from(fromBase64Url(publicKey).slice(1, 33)).toString('base64url'),
+    y: Buffer.from(fromBase64Url(publicKey).slice(33)).toString('base64url') };
+  check('web push: the token\'s ES256 signature verifies with the public key (Node\'s own ECDSA)',
+    verify('sha256', Buffer.from(`${h}.${c}`), { key: createPublicKey({ key: jwk, format: 'jwk' }), dsaEncoding: 'ieee-p1363' }, Buffer.from(s, 'base64url')));
+  let refusedVapid = 0;
+  for (const [pub, priv, sub] of [[publicKey.slice(2), d, 'mailto:a@b.c'], [publicKey, 'AAAA', 'mailto:a@b.c'], [publicKey, d, 'a@b.c']]) {
+    try {
+      await vapidFrom(pub, priv, sub);
+    } catch {
+      refusedVapid++;
+    }
+  }
+  check('web push: a short public key, a short private key or a subject without mailto:/https: is refused', refusedVapid === 3);
+
+  // The answers of push services.
+  const kinds = [201, 202, 404, 410, 413, 401, 403, 429, 503, 400].map((status) => resultOf(status));
+  check('web push: 2xx sent; 404/410 gone (address deleted); 413 too big; 401/403 VAPID refused and 429/5xx tried again; other 4xx refused',
+    JSON.stringify(kinds) === JSON.stringify([{ kind: 'sent' }, { kind: 'sent' }, { kind: 'refused', code: 'endpoint_gone' },
+      { kind: 'refused', code: 'endpoint_gone' }, { kind: 'refused', code: 'MessageTooBig' }, { kind: 'retry', code: 'vapid_refused' },
+      { kind: 'retry', code: 'vapid_refused' }, { kind: 'retry', code: 'http_429' }, { kind: 'retry', code: 'http_503' },
+      { kind: 'refused', code: 'http_400' }]), JSON.stringify(kinds));
+
+  // The payloads: the same screens as the phone's, nothing more.
+  const webRow = (over) => ({ claim: 'w', message_id: 1, announcement_id: null, title: 'T', body: 'B', endpoint: subscription.endpoint,
+    p256dh: subscription.p256dh, auth_secret: subscription.auth, role: null, url: null, ...over });
+  const { items: webItems, dropped: webDropped } = toWebItems([
+    webRow({ message_id: 1, announcement_id: 7, role: 'student', body: 'x'.repeat(300) }),
+    webRow({ message_id: 2, announcement_id: 8, role: 'coordinator' }),
+    webRow({ message_id: 3, url: '/student/assessments/12' }),
+    webRow({ message_id: 4, url: 'https://evil.example/' }),
+    webRow({ message_id: 5, url: '/staff/students/9' }),
+  ]);
+  check('web push: an announcement opens the student\'s or the staff screen, text cut like the phone\'s',
+    webItems[0].payload.url === '/student/announcements/7' && webItems[0].payload.body.length === BODY_LENGTH
+      && webItems[1].payload.url === '/staff/announcements/8' && webItems[0].payload.tag === 'announcement-7');
+  check('web push: a notice opens only a screen the phone may open; others are dropped (bad_url)',
+    webItems.length === 3 && webItems[2].payload.url === '/student/assessments/12' && webDropped.join(',') === '4,5', webDropped.join(','));
+  check('web push: the payload has only title, text, screen and tag', Object.keys(webItems[0].payload).sort().join(',') === 'body,tag,title,url');
+
+  // webPost: what goes to the push service.
+  const requests = [];
+  const fakeFetch = async (url, init) => {
+    requests.push({ url, init });
+    return new Response(null, { status: url.endsWith('gone') ? 410 : 201 });
+  };
+  const posted = await webPost(fakeFetch, vapid)({ id: 1, subscription, payload: webItems[0].payload });
+  const sentHeaders = requests[0]?.init.headers ?? {};
+  check('web push: one POST to the browser\'s address with aes128gcm, a TTL of a day and the VAPID header',
+    posted.kind === 'sent' && requests[0].url === subscription.endpoint && requests[0].init.method === 'POST'
+      && sentHeaders['Content-Encoding'] === 'aes128gcm' && sentHeaders.TTL === '86400' && sentHeaders.Authorization.startsWith('vapid t='),
+    JSON.stringify(sentHeaders));
+  const sentBody = ece.decrypt(Buffer.from(requests[0].init.body), { version: 'aes128gcm', privateKey: browser, authSecret: subscription.auth });
+  check('web push: ... whose body the browser decrypts to the payload', JSON.parse(sentBody.toString()).url === '/student/announcements/7');
+  const failed = await webPost(async () => { throw new TypeError('fetch failed'); }, vapid)({ id: 1, subscription, payload: webItems[0].payload });
+  check('web push: no answer = tried again later', failed.kind === 'retry' && failed.code === 'no_answer');
+
+  // runWebPush: claim, send, finish, with an imitated database.
+  const webFinishes = [];
+  const webLogged = [];
+  const realWebError = console.error;
+  console.error = (...a) => webLogged.push(a.join(' '));
+  const webRpc = async (name, args) => name === 'claim_web_push'
+    ? { data: [webRow({ message_id: 11, announcement_id: 7, role: 'student', title: 'Secret title' }),
+        webRow({ message_id: 12, announcement_id: 7, role: 'student', endpoint: 'https://push.example/gone', title: 'Secret title' }),
+        webRow({ message_id: 13, url: '/nowhere' })], error: null }
+    : (webFinishes.push(args), { data: null, error: null });
+  const webSummary = await runWebPush(webRpc, webPost(fakeFetch, vapid));
+  console.error = realWebError;
+  check('web push: runWebPush finishes the claim with each row\'s outcome', webFinishes.length === 1 && webFinishes[0].p_claim === 'w'
+    && webFinishes[0].p_sent.join(',') === '11' && webFinishes[0].p_refused['12'] === 'endpoint_gone' && webFinishes[0].p_refused['13'] === 'bad_url'
+    && webSummary.sent === 1 && webSummary.refused === 2, JSON.stringify(webFinishes));
+  check('web push: ... and its log holds no address and no title', webLogged.length > 0
+    && webLogged.every((line) => !line.includes('push.example') && !line.includes('fcm.') && !line.includes('Secret')), webLogged.join(' | '));
+  const nothing = await runWebPush(async () => ({ data: [], error: null }), webPost(fakeFetch, vapid));
+  check('web push: nothing waiting = no finish call', nothing.messages === 0);
+}
+
 console.log(failures ? `\n${failures} check(s) FAILED` : '\nAll checks passed');
 process.exit(failures ? 1 : 0);

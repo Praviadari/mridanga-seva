@@ -20,7 +20,7 @@ export type DateFormat = { date: (isoDate: string) => string; dateTime: (timesta
 export type OptionLabels = { sets: OptionSets; language: string };
 
 /** The services that handle data for the class, as in the privacy notice's "Services that handle data for us". */
-export const PROCESSORS = ['supabase', 'expo', 'firebase', 'brevo', 'cloudflare', 'zoho', 'youtube'] as const;
+export const PROCESSORS = ['supabase', 'expo', 'firebase', 'webpush', 'brevo', 'cloudflare', 'zoho', 'youtube'] as const;
 
 const shown = (value: unknown): string => (value === null || value === undefined || value === '' ? '—' : String(value));
 

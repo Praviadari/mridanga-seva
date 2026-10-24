@@ -132,13 +132,18 @@ const TEAM_SCREEN = /^\/staff\/(suggestions|duty|(inventory|fund)\/\d+)$/;
 /** Data requests (0059, #550): a new or due request for the Guru; an answer for the person (My data and rights). */
 const RIGHTS_SCREEN = /^\/(staff\/data-requests|(student|staff)\/my-data)$/;
 
+/** True for a screen a queued notification may open (phones here, browsers in web-send.ts). */
+export function noticeScreenAllowed(url: string): boolean {
+  return OUTBOX_SCREEN.test(url) || TEAM_SCREEN.test(url) || RIGHTS_SCREEN.test(url);
+}
+
 /**
  * One message per queued notification (an assessment released, a reminder, a review, a recording
  * sent; a promotion asked about, ready, decided). A row asking for any other screen is dropped.
  */
 export function toOutboxMessages(rows: OutboxRow[]): PushMessage[] {
   return rows.flatMap((row): PushMessage[] =>
-    OUTBOX_SCREEN.test(row.url) || TEAM_SCREEN.test(row.url) || RIGHTS_SCREEN.test(row.url)
+    noticeScreenAllowed(row.url)
       ? [{
           to: row.token,
           title: row.title,

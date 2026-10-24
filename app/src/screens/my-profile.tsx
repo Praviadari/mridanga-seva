@@ -29,6 +29,7 @@ import { SignOutButton } from '@/components/sign-out-button';
 import { Section } from '@/components/section';
 import { TextField } from '@/components/text-field';
 import { VersionLine } from '@/components/update-notice';
+import { WebPushSection } from '@/components/web-push-section';
 import { WhatsNewLink } from '@/components/whats-new-link';
 import { fetchMyReferralCode } from '@/data/about';
 import { checkMyDetails, fetchMyPhone, NAME_MAX, saveMyDetails, type MyDetailsErrors } from '@/data/my-profile';
@@ -236,6 +237,9 @@ export function MyProfileScreen() {
 
       {/* Phase 2 slice 8 (C19): instruments I hold now. */}
       {myId ? <HeldItemsPanel by={isStudent ? 'mine' : { profileId: myId }} openable={!isStudent} /> : null}
+
+      {/* Web version: notifications on this browser, switched on only by a tap here (0062, #603). */}
+      <WebPushSection />
 
       {/* Notifications refused or not set up on this phone (#305); nothing while they work. */}
       <PushNotice place="profile" />
