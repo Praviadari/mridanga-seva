@@ -142,7 +142,7 @@ process.on('uncaughtException', (error) => {
 // D14-10: every check is counted, and the run fails when fewer (or more) checks ran than expected,
 // so a block skipped by a renamed migration or a commented-out section cannot pass unseen.
 // Adding or removing checks? Run the suite and set this to the new total it prints.
-const EXPECTED_CHECKS = 2189; // 0061 staff sign-in codes and the error log: +53; 0059 data rights: +56; 0058 weekly parent email: +64; 0057 practice while waiting: +24; 0056 practice extras: +35; 0055 learn more links: +23; 0054 after-launch forms: +49; 0053 staff own record: +55; 0052 more practice: +56; 0051 child's sign-up at home: +80; 0050 staff dashboard: +15; 0049 launch clean-up: +30; 0048 withdrawn records and leaks: +50; 0047 form rules: +109; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
+const EXPECTED_CHECKS = 2224; // 0061 staff sign-in codes and the error log: +53; 0060 privacy notice 1.0: +35; 0059 data rights: +56; 0058 weekly parent email: +64; 0057 practice while waiting: +24; 0056 practice extras: +35; 0055 learn more links: +23; 0054 after-launch forms: +49; 0053 staff own record: +55; 0052 more practice: +56; 0051 child's sign-up at home: +80; 0050 staff dashboard: +15; 0049 launch clean-up: +30; 0048 withdrawn records and leaks: +50; 0047 form rules: +109; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
 let failures = 0;
 let passes = 0;
 
@@ -4201,6 +4201,8 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
     'my_data_summary()', 'file_data_request(text,text,text)', 'cancel_data_request(uuid)',
     'record_data_request(text,text,text,text,text,text)', 'answer_data_request(uuid,text,text,boolean)',
     'act_on_data_request(uuid,text,text,text)',
+    // 0060: the privacy-notice card (the caller's own answer; roles checked inside)
+    'privacy_notice_ask(text)', 'accept_privacy_notice(text)',
     // 0061: sign-in codes (private_reads_open runs inside the policies as the reader; the rest check the role inside)
     // and the client error log (any signed-in person; limits inside)
     'private_reads_open()', 'staff_mfa_overview()', 'my_mfa_state()', 'set_staff_mfa_required(boolean)', 'reset_staff_mfa(uuid)',
@@ -7536,6 +7538,145 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   try { await db.exec(file59); } catch (e) { again59 = String(e.message); }
   check('0059: a second run changes nothing', again59 === '' && JSON.stringify(await counts59()) === JSON.stringify(before59),
     `${again59} ${JSON.stringify(before59)}`);
+}
+
+// ---------------------------------------------------------------- 0060 privacy notice 1.0 (DECISIONS #571-#579)
+// The notice card asked again per version (adult: accept; registered as a child and 18 now: own consent; child: show
+// the parent), who reads the answers, the retention job (withdrawn 30 days, left two years, never-registered sign-up
+// 180 days, phones 90 days, change log two years) and the Ishtagoshti parent email's real text in en/te/hi.
+{
+  // The 0054 block ran 0054 again (the "[TEST - ...]" email): 0060 replaces it again.
+  const file60 = readFileSync(new URL('migrations/0060_privacy_notice_1_0.sql', supabaseDir), 'utf8');
+  await db.exec(file60.replace('create extension if not exists pg_cron;', ''));
+  const ask = async (who, v = '1.0') => (await asApp('authenticated', who, 'select privacy_notice_ask($1) as r', [v]))[0].r;
+  const accept = async (who, v = '1.0') => (await asApp('authenticated', who, 'select accept_privacy_notice($1) as r', [v]))[0].r;
+  const seen60 = async (who) => (await asApp('authenticated', who, 'select profile_id, version, kind from notice_acceptances order by id'));
+
+  // #577: staff and an adult student read and agree; the card goes once agreed, and comes back for a new version.
+  check('0060 #577: a coordinator is asked to read and agree', (await ask(coordinator)) === 'accept');
+  check('0060 #577: ... agreeing records it and the card goes', (await accept(coordinator)) === 'accepted' && (await ask(coordinator)) === null);
+  check('0060 #577: ... a new version asks again', (await ask(coordinator, '1.1')) === 'accept');
+  check('0060 #577: ... agreeing twice records nothing more', (await accept(coordinator)) === null
+    && (await seen60(coordinator)).length === 1);
+  const alaLogin = await signUp('ala.60@example.com', true);
+  const ala = await register(coordinator, { p_full_name: 'Ala Sixty', p_dob: '1991-02-03', p_email: 'ala.60@example.com' });
+  check('0060: (state) the adult\'s login is on the record', (await linkOf('ala.60@example.com')) === alaLogin && (await roleOf(alaLogin)) === 'student');
+  check('0060 #577: an adult student is asked to read and agree', (await ask(alaLogin)) === 'accept');
+  check('0060 #577: ... and agrees', (await accept(alaLogin)) === 'accepted' && (await ask(alaLogin)) === null);
+
+  // A child shows the notice to the parent; once 18, the same record is asked for the student's own consent.
+  const bala = await register(coordinator, { p_full_name: 'Bala Sixty', p_dob: childDob, p_guardian_name: 'Bala Parent',
+    p_guardian_phone: '9000060060', p_guardian_relation: 'father', p_id_type_checked: 'aadhaar', p_written_consent: true });
+  const balaLogin = await signUp('bala.60@example.com', true);
+  await asApp('authenticated', guru, 'select link_student_login($1, $2)', [balaLogin, bala.id]);
+  check('0060 #577: a child is asked to show the notice to the parent', (await ask(balaLogin)) === 'show');
+  check('0060 #577: ... "Done" records shown, not a consent', (await accept(balaLogin)) === 'shown' && (await ask(balaLogin)) === null
+    && (await seen60(balaLogin))[0]?.kind === 'shown');
+  await asOwner(`update students set dob = today_ist() - interval '18 years' where id = '${bala.id}'`);
+  check('0060 #577: 18 today, registered with the parent\'s consent: asked for their own consent', (await ask(balaLogin)) === 'adult_now');
+  check('0060 #577: ... given, it is an acceptance', (await accept(balaLogin)) === 'accepted' && (await ask(balaLogin)) === null);
+  check('0060 #577: ... and a later version is a plain accept', (await ask(balaLogin, '1.1')) === 'accept');
+
+  // Who is asked at all, and the version's form.
+  const waiting60 = await signUp('wait.60@example.com', true);
+  check('0060 #577: a waiting login is not asked (it ticked the notice at sign-up)', (await ask(waiting60)) === null);
+  await refusesWith('0060: ... and records nothing', 'not_allowed', () => accept(waiting60));
+  await refusesWith('0060: a version must look like one', 'notice_version_invalid', () => accept(coordinator, 'not a version!'));
+  check('0060: ... the question just says nothing', (await ask(coordinator, '')) === null);
+  await refusesWith('0060: anon cannot ask', 'permission denied for function privacy_notice_ask', () =>
+    asApp('anon', null, `select privacy_notice_ask('1.0')`));
+
+  // RLS: own rows; the Guru all; nobody writes the table.
+  const own60 = await seen60(alaLogin);
+  check('0060 RLS: a person reads only their own answers', own60.length === 1 && own60[0].profile_id === alaLogin);
+  check('0060 RLS: ... a coordinator too; the Guru reads them all', (await seen60(coordinator)).every((r) => r.profile_id === coordinator)
+    && (await seen60(guru)).length >= 4);
+  await refusesWith('0060 RLS: nobody writes the table directly', 'permission denied for table notice_acceptances', () =>
+    asApp('authenticated', alaLogin, `insert into notice_acceptances (profile_id, version, kind) values ($1, '9.9', 'accepted')`, [alaLogin]));
+  await refusesWith('0060: the retention job is internal', 'permission denied for function retention_daily', () =>
+    asApp('authenticated', guru, 'select retention_daily()'));
+
+  // #573: a withdrawn record goes 30 days after the withdrawal; a newer one stays.
+  const reg60 = (name) => register(coordinator, { p_full_name: name, p_dob: '1988-08-08' });
+  const [cara, dina, ela, fala] = [await reg60('Cara Sixty'), await reg60('Dina Sixty'), await reg60('Ela Sixty'), await reg60('Fala Sixty')];
+  await asApp('authenticated', guru, 'select withdraw_consent($1, $2)', [cara.id, 'asked in person']);
+  await asApp('authenticated', guru, 'select withdraw_consent($1, $2)', [dina.id, 'asked in person']);
+  await asOwner(`update students set withdrawn_at = now() - interval '31 days' where id = '${cara.id}'`);
+  await asOwner(`update students set withdrawn_at = now() - interval '10 days' where id = '${dina.id}'`);
+  // #572: left two years ago goes; left a year ago stays.
+  await db.exec(`select set_config('app.via_call_log', 'on', false); update students set status = 'left' where id in ('${ela.id}', '${fala.id}');
+    select set_config('app.via_call_log', '', false)`); // as log_call does
+  await asOwner(`update status_history set changed_at = now() - interval '731 days' where student_id = '${ela.id}' and to_status = 'left'`);
+  await asOwner(`update status_history set changed_at = now() - interval '365 days' where student_id = '${fala.id}' and to_status = 'left'`);
+  // #572: a sign-up never registered goes after 180 days, not an Ishtagoshti reader's, not a younger one.
+  const oldWait = await signUp('oldwait.60@example.com', true);
+  const newWait = await signUp('newwait.60@example.com', true);
+  const igOld = await signUp('igold.60@example.com', true);
+  await igJoin(igOld, { year: thisYear - 30 });
+  await asOwner(`update profiles set created_at = now() - interval '181 days' where id in ('${oldWait}', '${igOld}')`);
+  await asOwner(`update profiles set created_at = now() - interval '179 days' where id = '${newWait}'`);
+  // Phones unused for 90 days; the change log over two years.
+  await asOwner(`insert into push_tokens (token, profile_id, platform, updated_at) values
+    ('ExponentPushToken[old60]', '${alaLogin}', 'android', now() - interval '91 days'),
+    ('ExponentPushToken[new60]', '${alaLogin}', 'android', now() - interval '10 days')`);
+  await asOwner(`insert into audit_log (table_name, row_id, action, changed_at) values
+    ('zz60', 'old', 'UPDATE', now() - interval '731 days'), ('zz60', 'new', 'UPDATE', now() - interval '700 days')`);
+
+  const ran60 = (await asOwner('select retention_daily() as r'))[0].r;
+  const exists60 = async (id) => (await asOwner(`select count(*)::int as n from students where id = '${id}'`))[0].n === 1;
+  const login60 = async (id) => (await asOwner(`select count(*)::int as n from profiles where id = '${id}'`))[0].n === 1;
+  check('0060 #573: a record withdrawn over 30 days ago is erased, with a tombstone', !(await exists60(cara.id))
+    && (await asOwner(`select request_ref from erasures where roll_no = '${cara.roll_no}'`))[0]?.request_ref === 'retention', JSON.stringify(ran60));
+  check('0060 #573: ... one withdrawn 10 days ago stays (the parent may consent again)', await exists60(dina.id));
+  check('0060 #572: a student who left over two years ago is erased; one who left a year ago stays', !(await exists60(ela.id))
+    && (await exists60(fala.id)));
+  check('0060 #572: a sign-up never registered is erased after 180 days', !(await login60(oldWait))
+    && (await asOwner(`select count(*)::int as n from erasures where login_profile = '${oldWait}' and request_ref = 'retention'`))[0].n === 1);
+  check('0060 #572: ... not a younger one, nor an Ishtagoshti reader', (await login60(newWait)) && (await login60(igOld)));
+  check('0060 #572: phones unused for 90 days are forgotten, others kept', (await asOwner(`select token from push_tokens
+    where token in ('ExponentPushToken[old60]', 'ExponentPushToken[new60]')`)).map((r) => r.token).join() === 'ExponentPushToken[new60]');
+  check('0060 #572: change-log rows over two years go, younger ones stay', (await asOwner(`select row_id from audit_log
+    where table_name = 'zz60'`)).map((r) => r.row_id).join() === 'new');
+  check('0060 #572: the job reports what it did', ran60.withdrawn >= 1 && ran60.left >= 1 && ran60.waiting >= 1 && ran60.tokens >= 1
+    && ran60.audit_rows >= 1 && ran60.skipped === 0, JSON.stringify(ran60));
+  check('0060: the retention job runs at 02:45 India time', (await asOwner(`select schedule from cron.job
+    where jobname = 'mridanga-retention'`))[0]?.schedule === '15 21 * * *');
+
+  // #578 (audit fix 21): the Ishtagoshti parent email in the child's language, without the placeholder.
+  const mailFor = async (lang, n) => {
+    const child = await signUp(`ig${lang}.60@example.com`, true);
+    await asOwner(`update profiles set language = '${lang}', full_name = 'Child ${lang}' where id = '${child}'`);
+    await igJoin(child, { year: thisYear - 13, parent: `Parent ${n}`, parentEmail: `parent.${lang}.60@example.com` });
+    await asApp('authenticated', child, 'select ig_send_parent_code()');
+    return (await asOwner(`select body from net.sent where body -> 'to' -> 0 ->> 'email' = 'parent.${lang}.60@example.com'`))[0]?.body;
+  };
+  await db.exec(`create schema net;
+    create table net.sent (url text, headers jsonb, body jsonb);
+    create function net.http_post(url text, body jsonb default '{}', params jsonb default '{}', headers jsonb default '{}',
+      timeout_milliseconds int default 5000) returns bigint language sql as
+      $$ insert into net.sent values (url, headers, body); select 1::bigint $$;
+    create schema vault;
+    create table vault.decrypted_secrets (name text, decrypted_secret text);
+    insert into vault.decrypted_secrets values ('mridanga_brevo_key', 'test-key'), ('mridanga_mail_from', 'noreply@example.com');`);
+  const [en60, te60, hi60] = [await mailFor('en', 'One'), await mailFor('te', 'Two'), await mailFor('hi', 'Three')];
+  await db.exec('drop schema net cascade; drop schema vault cascade;');
+  const texts60 = [en60, te60, hi60].map((b) => b?.textContent ?? '');
+  check('0060 #578: no parent email carries the placeholder any more', texts60.every((t) => t.length > 0 && !t.includes('TEST')));
+  check('0060 #578: English: what is kept, the parent\'s declaration, withdrawal, the notice, the code', /parent or legal guardian and 18 or over/.test(texts60[0])
+    && texts60[0].includes('privacy@mridangaseva.com') && texts60[0].includes('https://mridangaseva-site.pages.dev/privacy/')
+    && /code to type into the app: \d{6}/.test(texts60[0]) && en60.subject === 'Mridanga Seva: your child asks to join Ishtagoshti');
+  check('0060 #578: Telugu for a Telugu child, with the Telugu notice', /[ఀ-౿]/.test(te60.subject) && texts60[1].includes('/te/privacy/')
+    && texts60[1].includes('18') && /\d{6}/.test(texts60[1]) && !/[ऀ-ॿ]/.test(texts60[1]));
+  check('0060 #578: Hindi for a Hindi child, with the Hindi notice', /[ऀ-ॿ]/.test(hi60.subject) && texts60[2].includes('/hi/privacy/')
+    && /\d{6}/.test(texts60[2]) && !/[ఀ-౿]/.test(texts60[2]));
+
+  const counts60 = async () => (await asOwner(`select (select count(*) from notice_acceptances)::int as a,
+    (select count(*) from cron.job)::int as j, (select count(*) from pg_policies where tablename = 'notice_acceptances')::int as p`))[0];
+  const before60 = await counts60();
+  let again60 = '';
+  try { await db.exec(file60.replace('create extension if not exists pg_cron;', '')); } catch (e) { again60 = String(e.message); }
+  check('0060: a second run changes nothing', again60 === '' && JSON.stringify(await counts60()) === JSON.stringify(before60),
+    `${again60} ${JSON.stringify(before60)}`);
 }
 
 // ---------------------------------------------------------------- 0061 staff sign-in codes and the error log (DECISIONS #580-#589)

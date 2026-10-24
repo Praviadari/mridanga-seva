@@ -29,6 +29,7 @@ import { ModuleRing, type Module } from '@/components/module-ring';
 import { Notice } from '@/components/notice';
 import { ProgressBar } from '@/components/progress-bar';
 import { Screen } from '@/components/screen';
+import { PrivacyNoticeCard } from '@/components/privacy-notice-card';
 import { PushNotice } from '@/components/push-notice';
 import { UpdateNotice } from '@/components/update-notice';
 import { WelcomeCard } from '@/components/welcome-card';
@@ -148,6 +149,7 @@ export default function StudentHomeScreen() {
     <Screen wide compact header={<HomeHeader name={name} />} onRefresh={load}>
       <UpdateNotice />
       <PushNotice place="home" />
+      <PrivacyNoticeCard />
 
       {home === null || unreadCount === null ? (
         <>

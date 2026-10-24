@@ -1,10 +1,12 @@
-<!-- Privacy notice, written for India's Digital Personal Data Protection Act 2023 (DPDP) with the
-     DPDP Rules 2025, and the EU/UK GDPR. Draft: needs team decisions D4-07 (retention), D4-09 (who sees
-     contacts), D4-12 (processors abroad), D4-08 (age check at sign-up) and a legal review before go-live.
-     Data list from docs/DATABASE.md; location check from DECISIONS #70; processors from docs/OPERATIONS.md. -->
+<!-- Privacy notice 1.0, written for India's Digital Personal Data Protection Act 2023 (DPDP) with the
+     DPDP Rules 2025, and the EU/UK GDPR, read strictly where a reading is open (no lawyer: Praveen, #399).
+     Decisions: D4-07 retention #572-#573, D4-09 #574, D4-12 #575, reply period and team emails #576,
+     the notice asked again #577, translations #571. The one TEAM item left is a fact only the team
+     can read (the Zoho data centre). Data list from docs/DATABASE.md; location check from DECISIONS #70;
+     processors from docs/OPERATIONS.md. -->
 <h1>Privacy notice</h1>
 <p class="lead">This notice explains what personal data Mridanga Seva keeps about students, parents, guardians and volunteers, why, who else handles it, and what you can ask of us.</p>
-<p class="muted">Version {{noticeVersion}}, dated {{noticeDate}}. It covers this website and the Mridanga Seva app. [[TEAM: legal review before the class opens]]</p>
+<p class="muted">Version {{noticeVersion}}, dated {{noticeDate}}. It covers this website and the Mridanga Seva app. It follows India's Digital Personal Data Protection Act 2023 and the DPDP Rules 2025; where a rule can be read in more than one way, we follow the stricter reading.</p>
 
 <h2 id="summary">In short</h2>
 <ul>
@@ -41,6 +43,7 @@
 </table>
 <p><strong>Location:</strong> when a coordinator checks a student in, the app checks once whether the coordinator's phone is at the class. Only the result (at the class, away, or not known) and the distance are kept, never the position itself, and nothing is tracked in the background.</p>
 <p><strong>While you wait for the desk:</strong> after signing up, and before a coordinator registers you, you may already use the practice tools, the mantra and the Beginner lessons in the app: an adult by the date of birth given at sign-up, a child only after the parent's consent. Using them records nothing about you.</p>
+<p><strong>On your phone:</strong> if you check someone in or log practice without a connection, the app keeps that entry on the phone until it is sent (a check-in until the end of that class day, practice at most 14 days), then deletes it; signing out deletes it too.</p>
 
 <h2 id="purposes">Why we use it, and on what basis</h2>
 <ul>
@@ -62,12 +65,12 @@
 <p>Until the parent consents, the sign-up is used only to ask for that consent: the child cannot fill in "About you", is not registered, and coordinators do not see the sign-up. If the parent does not consent within 30 days, the child's sign-up and the parent's details are erased; the child can sign up again or come to the desk with a parent. A photo of a child is kept only if the parent agreed to it separately; that box is never ticked for them.</p>
 <p>We do not track or monitor the behaviour of children and never direct advertising at them.</p>
 <p>For a student under 18 the parent or guardian makes the requests listed under <a href="#rights">Your rights</a>: at the class desk, where we see their ID first, or by email from the address the class has for them. The child can read their own data in the app.</p>
-<p>At 18, a student is asked to give their own consent. [[TEAM: confirm]]</p>
+<p>At 18, a student who joined as a child is asked in the app to give their own consent. Until they do, the parent's consent remains the basis, and the student can withdraw it themselves.</p>
 
 <h2 id="access">Who can see it</h2>
 <ul>
   <li>A student sees their own record, progress and visits.</li>
-  <li>Coordinators see the students' details they need to teach and follow up. [[TEAM: decision D4-09, whether all coordinators or only a student's mentor and the facilitator see parents' phone numbers and consent records]]</li>
+  <li>Coordinators see the students' details they need to teach and follow up, including parents' phone numbers and consent records, because any coordinator on duty may need to call a parent. Each time a coordinator opens a student's parents, consents or call notes, the app writes it down, and the facilitator checks that log every month.</li>
   <li>The facilitator sees everything in the class and the log of changes.</li>
   <li>Data requests are read only by the facilitator (Guru); reading your own summary is logged.</li>
 </ul>
@@ -95,24 +98,28 @@
     <tr><td>YouTube (Google)</td><td>Plays lesson videos inside the app; YouTube may set its own cookies when a video plays</td><td>Worldwide</td></tr>
   </tbody>
 </table>
-<p id="abroad">The app's database is in Australia, and some of the other services may handle data outside India too. Indian law allows this except to countries the Government of India restricts; for people in the European Union or the United Kingdom, such transfers rely on the services' standard contractual clauses or an adequacy decision. [[TEAM: decision D4-12, the final list of services and transfers]]</p>
+<p id="abroad">This table is the complete list: no other service receives personal data from the app or the website, apart from the encrypted weekly backups, which are kept in the team's private cloud storage and cannot be read without the team's password. The app's database is in Australia, and some of the other services handle data outside India too. Indian law allows this except to a country the Government of India restricts by notification; before we use a service we check that list, and we stop using a service in a country that is put on it. For people in the European Union or the United Kingdom, these transfers rely on the services' standard contractual clauses or an adequacy decision. A new service is added here, with a new version of this notice, before it receives any data.</p>
 
 <h2 id="retention">How long we keep data</h2>
-<p>[[TEAM: decision D4-07; the periods below are a proposal, not yet agreed]]</p>
+<p>We keep personal data only as long as the class needs it. The app erases it on its own, every night, at the end of each period below.</p>
 <ul>
-  <li>Students who have left: erased two years after leaving; only the roll number and the dates are kept so that numbers are never reused.</li>
-  <li>App logins that were never linked to a student: deleted after 30 days.</li>
-  <li>A child's sign-up whose parent did not consent: erased, with the parent's details, after 30 days.</li>
-  <li>Logs of changes and of access to sensitive data: at least one year, as the DPDP Rules require, at most two years.</li>
-  <li>Notification tokens of phones no longer used: deleted after 90 days.</li>
-  <li>Records of emails to parents (no text): 30 days.</li>
+  <li>Students who have left: erased two years after leaving.</li>
+  <li>A record whose consent was withdrawn: erased 30 days after the withdrawal, unless consent is given again in that time.</li>
+  <li>A sign-up the desk never registered: erased 180 days after sign-up. An Ishtagoshti reader's login stays while they read; leaving Ishtagoshti deletes their details at once.</li>
+  <li>A child's sign-up whose parent did not consent: erased, with the parent's details, after 30 days; one the parent consented to but the desk never registered, after 180 days.</li>
+  <li>After an erasure, only the roll number, the date and the reason are kept, so that numbers are never reused and we can show the erasure was done.</li>
+  <li>Logs of who opened parents' details, consents and call notes: 400 days. Logs of changes: two years. (The DPDP Rules ask for at least one year.)</li>
+  <li>Notification tokens of phones that have not opened the app for 90 days: deleted.</li>
+  <li>In-app notices: one year. Records of emails to parents (no text): 30 days.</li>
   <li>Data requests: the text one year after we answered, the request itself (type and dates) two years; after an erasure only its type, dates and reference.</li>
-  <li>Emails to the team: [[TEAM: how long]].</li>
+  <li>Signed consent forms on paper: kept at the class while the record exists, destroyed when it is erased.</li>
+  <li>Emails to the team: one year after the matter is closed; an email that is a data request is kept as data requests are.</li>
+  <li>Encrypted backups: the last 8 weekly copies, so erased data leaves every backup within 8 weeks.</li>
 </ul>
-<p>When you withdraw consent or ask for erasure, we stop using your data and erase it, keeping only what the law requires us to keep.</p>
+<p>When you ask for erasure, we erase your data, keeping only the tombstone above. When you withdraw consent, we stop using your data at once and erase it 30 days later.</p>
 
 <h2 id="security">How we protect it</h2>
-<p>Data travels encrypted (HTTPS). Database rules decide, row by row, who may read or change what. Changes to student records are logged. Backups are encrypted. If a breach happens, we tell the people affected and the Data Protection Board of India without delay, as the law requires.</p>
+<p>Data travels encrypted (HTTPS). Database rules decide, row by row, who may read or change what. Changes to student records are logged. Backups are encrypted. When the app breaks, we keep, for 30 days, the kind of error, the screen and the app version, never who it happened to. If a breach happens, we tell the people affected and the Data Protection Board of India without delay, as the law requires.</p>
 
 <h2 id="rights">Your rights</h2>
 <p>You, or a parent or guardian for a child, can ask us to:</p>
@@ -126,10 +133,11 @@
 <p>If the GDPR applies to you, you also have the rights to restrict or object to processing and to receive your data in a portable format.</p>
 <p>In the app: My profile → My data and rights shows what we keep about you and lets you download it; there you can also ask for a correction or an erasure, withdraw a consent, name someone to act for you, or make a complaint, and see our answer.</p>
 <p>Or write to {{email:privacy}}, or speak to a coordinator at the desk. We may ask you to confirm who you are. We answer every request, complaints included, within 30 days.</p>
-<p>Withdrawing your consent freezes your record and switches your sign-in off; withdrawing the photo consent only stops photos.</p>
+<p>Withdrawing your consent freezes your record and switches your sign-in off, and 30 days later the record is erased unless you consent again; withdrawing the photo consent only stops photos.</p>
 
 <h2 id="complaints">Complaints</h2>
 <p>Use My data and rights → Make a complaint, or write to the privacy contact. Please come to us first, so we can put things right. If you are not satisfied with our answer, you can complain to the Data Protection Board of India. If you live in the European Union or the United Kingdom, you can also complain to your local data protection authority.</p>
 
 <h2 id="changes">Changes to this notice</h2>
-<p>When this notice changes in a way that matters, we change its version and date above and tell app users in an announcement. Translations are provided for convenience; [[TEAM: whether the English text prevails if a translation differs]]</p>
+<p>When this notice changes in a way that matters, we change its version and date above, and the app asks you to read it again: an adult agrees with a tick, and a student under 18 is asked to show it to their parent or guardian. A new purpose is never started on an old consent: it waits for a consent of its own.</p>
+<p>This notice is in English, Telugu and Hindi, and you may read it in any of them. If a translation and the English text differ, the meaning that protects you more applies; please tell us, and we correct the translation.</p>

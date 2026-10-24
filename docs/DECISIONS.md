@@ -7393,6 +7393,162 @@ draft: the D4 blanks are closed in step 2 (notice 1.0).
 **Why now.** #494 asks for a self-rating of minors and #531 for a new purpose: the notice must name both before the
 update that asks for them reaches phones (DPDP Act s.5, notice before or with the request for consent).
 
+## 571. Privacy notice 1.0: the strict reading of the Act and Rules stands in for a legal review; translations — 24 Oct 2026
+
+**Status: branch `claude/privacy-1-0-633d76` (audit 22-10-2026 fix 5, work package C); lead approval needed.**
+
+**Decision.** The notice is **version 1.0** (website `privacyNotice` and `PRIVACY_NOTICE_VERSION` together, dated
+2026-10-24; re-date it to the publish day if it ships later). The "[[TEAM: legal review before the class opens]]" line
+is replaced by what is true (Praveen, 21 Oct 2026, #399: no lawyer; the Act and the Rules are followed, the stricter
+reading where one is open): "It follows India's Digital Personal Data Protection Act 2023 and the DPDP Rules 2025;
+where a rule can be read in more than one way, we follow the stricter reading." The page is **final**: a new page
+option `final: true` (website/src/site.mjs, build.mjs) drops the Draft note and the noindex on the privacy page only,
+because the rest of the site keeps `draft: true` (its own [[TEAM]] blanks: classes 7, contact 3, home 2, join 1 per
+language, and the domain is not attached yet).
+
+**Translations.** "This notice is in English, Telugu and Hindi, and you may read it in any of them. If a translation and
+the English text differ, the meaning that protects you more applies; please tell us, and we correct the translation."
+Not "English prevails": DPDP Act s.5(3) gives the person the notice in their language, and a parent who consented on
+the Telugu text must be able to rely on it. te/hi stay drafts for the native review (docs/TRANSLATIONS.md).
+
+**Why.** Real people, children included, consent to this text every day (audit §2.10); a notice with "proposal, not
+agreed" blanks is not a notice. One blank stays, a fact only the team can read: the Zoho data centre (#575).
+
+## 572. Retention (D4-07): the periods, kept by the database every night — 24 Oct 2026
+
+**Status: as #571; migration 0060 (`retention_daily`, job `mridanga-retention`, 02:45 IST); lead approval needed.**
+
+**Decision.** DPDP Act s.8(7): erase when the purpose is no longer served (or consent is withdrawn), unless the law
+asks to keep it; Rule 8(3): logs at least a year. The periods (the audit's proposal, made true, and enforced, not
+promised):
+- a student who **left**: erased two years after the last change to Left (`erase_student`, reference `retention`);
+- a **sign-up the desk never registered**: erased 180 days after sign-up (`erase_login`), not an Ishtagoshti reader
+  (their own area, kept while they read; leaving deletes the details, 0027) and not a child's sign-up (0051's job: 30
+  days without consent, 180 after). The draft's "logins never linked: 30 days" was wrong: staff and Ishtagoshti logins
+  are never linked to a student, and the waiting list already shows sign-ups for 180 days (#399);
+- a record whose consent was **withdrawn**: 30 days after (#573);
+- **phones** that have not opened the app for 90 days: push tokens deleted (the app registers again when it starts);
+- **change log** (`audit_log`): two years; **access log**: 400 days (0034, unchanged); **in-app notices**: a year
+  (0015); parent email records 30 days (0043/0058); data requests as #553;
+- by hand (OPERATIONS "Retention"): **paper consent forms** destroyed when the record is erased; **emails to the
+  team** a year after the matter is closed (a data request: as #553); **backups** the last 8 weekly copies.
+After an erasure only the tombstone stays (roll number, date, reason, reference), so numbers are never reused and the
+erasure can be shown. An erasure the job cannot do (an instrument still lent out: `open_loan`) is skipped and tried the
+next night. Nothing on LIVE is old enough on 24-10-2026 (class since 20-10-2026; app since 28-09-2026).
+
+**Why automatic.** A promise that depends on a volunteer remembering is not kept; the stricter reading of s.8(7) is
+that the fiduciary erases, not that the person must ask.
+
+## 573. A withdrawn record is erased 30 days after the withdrawal — 24 Oct 2026
+
+**Status: as #572; changes #75 ("freeze, erase later"); lead approval needed.**
+
+**Decision.** `withdraw_consent` still freezes at once (sign-in off, consents revoked, nothing new recorded). The
+retention job then erases the record **30 days** after `withdrawn_at`, unless consent was given again (OPERATIONS
+"Consent withdrawal": `withdrawn_at` cleared). The Guru may erase sooner (Erasure request). The app's words follow:
+My data and rights → Withdraw my consent, and the Student profile's "Consent withdrawn" note (en/te/hi).
+
+**Why 30 days.** s.6(6) and s.8(7)(a): processing stops and the data is erased within a reasonable time after
+withdrawal. Freezing indefinitely (#75) kept a child's data with no consent behind it. 30 days leave room for a
+mistaken or hurried withdrawal (a parent changes their mind; a desk error) and match the 30-day answer of #551.
+
+## 574. Who sees parents' details (D4-09): every coordinator, every read logged and checked monthly — 24 Oct 2026
+
+**Status: as #571; no code change; lead approval needed.**
+
+**Decision.** Kept as built (0034, #146-#151): coordinators and the Guru read a student's parents, consents and call
+notes through `get_guardians` / `get_consents` / `get_call_notes`, each read written to `access_log`, which the Guru
+reviews monthly (OPERATIONS "Reviewing the access log"). The notice says so in plain words: any coordinator on duty may
+need to call a parent; each opening is written down and the facilitator checks the log every month.
+
+**Why not mentor-plus-Guru (#151 option 1).** A child's follow-up call (C11) and an emergency at the class go to
+whoever is on duty, not only the mentor, and many students have no mentor yet. DPDP Rules 2025 Rule 6 asks for
+appropriate access control and logs of access; per-read logging, monthly review and, from 0061, staff sign-in codes
+(#580-#584) meet it without stopping the desk. 0060 does not touch these functions (0061 redefines them).
+
+## 575. Services and transfers abroad (D4-12): the table is the complete list; the Zoho fact stays with the team — 24 Oct 2026
+
+**Status: as #571; lead approval needed.**
+
+**Decision.** The notice's processor table (Supabase Sydney, Expo USA, Firebase Cloud Messaging, Brevo EU, Cloudflare,
+Zoho Mail, YouTube) is declared **complete**, plus one line for the encrypted weekly backups in the team's private
+cloud storage (unreadable without the password; added to OPERATIONS's register with the provider as a team blank).
+DPDP Act s.16: transfer is allowed except to a country the Government restricts by notification; the notice says we
+check that list before using a service and stop using one in a listed country, and that a new service is listed, with a
+new notice version, before it receives data. EU/UK: standard contractual clauses or adequacy, as before.
+**Left for the team (a fact, not a decision):** the Zoho Mail data centre (`[[TEAM: confirm the Zoho data centre]]`,
+one per language): Zoho Mail admin → Organization shows it.
+
+**Found on the way (for Praveen, urgent):** on 24-10-2026 public DNS for mridangaseva.com has only Zoho's name servers
+and **no MX record** (checked with 1.1.1.1 and 8.8.8.8), so mail to privacy@ / info@ cannot arrive, yet the notice, the
+app's data-rights screen and the Ishtagoshti parent email name privacy@ as the contact (Rule 9 / s.8(10)). The phone
+number in the notice works meanwhile. The mail records (Zoho MX, SPF, DKIM) must go in before the website upload.
+
+**Not in this list yet:** the face scan's Google Play Integrity check (branch face-scan, not on main). Its merge needs
+a notice line and a new notice version (biometric data, #248), per this rule.
+
+## 576. The reply period is 30 days; emails to the team are kept a year — 24 Oct 2026
+
+**Status: as #571.** "We answer every request, complaints included, within 30 days" (#551, #556 line 2) replaced the
+reply-period blank in 0.3-draft (#570). Emails to the team: deleted a year after the matter is closed; an email that is
+a data request is kept as data requests are (#553). Why a year: long enough for a follow-up question or a complaint to
+the Board about our answer, and as long as a request's text (#553); shorter would lose the context of an open matter.
+
+## 577. The app asks again when the notice changes; at 18, the student's own consent — 24 Oct 2026
+
+**Status: as #571; migration 0060 (`notice_acceptances`, `privacy_notice_ask`, `accept_privacy_notice`); JS only (OTA),
+fingerprint 23dc7e4a unchanged; lead approval needed.**
+
+**Context.** The audit's fix 5 asks to "bump the version so the app asks again", but nothing in the app asked: the
+version was only recorded on new consents. And the notice promised "At 18, a student is asked to give their own
+consent" with a [[TEAM: confirm]]: nothing did that either.
+
+**Decision.** On the homes (S1, C1, G1) a card under the band, once per notice version, until answered; nothing is
+blocked meanwhile:
+- **an adult** (a student 18 or over by the record's date of birth, or staff): "Our privacy notice has changed", the
+  notice link, a tick "I have read the privacy notice and agree" and Agree → `accepted` for that version;
+- **a student registered as a child who is 18 now** (current data consent is a parent's, never agreed themselves):
+  "You are 18 now: your own consent", the same tick; the text says how to withdraw instead → `accepted`. Until then
+  the parent's consent stays the basis and the student may withdraw it themselves (the notice says so);
+- **a student under 18** (or no date of birth): "please show it to your parent or guardian" and Done → `shown`. The
+  parent's consent remains the basis; the purposes it covers did not change (a new purpose waits for its own
+  consent, as the weekly email did, #531).
+A waiting login, an Ishtagoshti subscriber and a door tablet are not asked (they ticked the notice of their sign-up;
+they have no home with the card). Before 0060 the card stays hidden (the call fails). `my_data_summary` does not list
+these rows yet (a follow-up for the next 0059 change).
+
+**Why.** s.5 and Rule 3: the notice comes with the request for consent; a material change is given to the person,
+not only posted. An announcement (the old line) is easy to miss; a card with a tick is the same act as at sign-up.
+
+## 578. The Ishtagoshti parent email gets its real text; minors' Ishtagoshti stays off — 24 Oct 2026
+
+**Status: as #571; migration 0060 (`ig_send_parent_code` replaced); audit fix 21; lead approval needed.**
+
+**Decision.** The parent email (0027/0054, "[TEST - …]") now says, in the child's app language (en, te, hi; te/hi
+drafts): who asked and the year of birth; what is kept (the child's name, email, year of birth, optional phone; the
+parent's name, email and relation; notes and memorised slokas), for what (reading the slokas), who sees it (only the
+facilitator; nothing to other members, no advertising); that **giving the code declares the parent is the child's
+parent or legal guardian and 18 or over, and consents**; how to withdraw (Leave Ishtagoshti in the app, or
+privacy@); the notice's address in that language; the code and its 24 hours. Limits unchanged.
+
+**Not switched on.** Ishtagoshti for a minor stays closed: `IG_JOIN_FOR_WAITING` is false, the app's join texts are
+still placeholders ("TEST —", `IG_TERMS_VERSION` placeholder-2026-10), and LIVE's Vault has no `mridanga_brevo_key`.
+Read strictly, Rule 10(1) wants reliable details of the parent's identity and age; an emailed code and a declaration
+alone are the "email only" route #399 rejected for the class (there the parent's ID is seen at the desk). **For the
+lead:** before minors' Ishtagoshti opens, either require the same ID sighting at the desk (#399) or keep Ishtagoshti
+18+ only. Until then this text only replaces the placeholder that OPERATIONS would otherwise send.
+
+## 579. Lines from the parallel work packages, and what the notice still waits for — 24 Oct 2026
+
+**Status: as #571.** In notice 1.0 (en/te/hi) ahead of their merges, at the lead's request:
+- **#585 / #586 (staff-mfa, 0061): app errors.** Security: "When the app breaks, we keep, for 30 days, the kind of
+  error, the screen and the app version, never who it happened to." Staff sign-in codes need no line.
+- **#593 / #595 (bundle-door-queue): entries kept offline.** What the app keeps → "On your phone": "If you check
+  someone in or log practice without a connection, the app keeps that entry on the phone until it is sent (a check-in
+  until the end of that class day, practice at most 14 days), then deletes it; signing out deletes it too."
+If either work package changes what it keeps before it merges, its line changes with it. The face scan (#575) and
+minors' Ishtagoshti (#578) each need their own notice change and version before they ship.
+
 ## 580. Staff sign in with a code from an authenticator app (TOTP) — 24 Oct 2026
 
 **Status: branch `claude/staff-mfa-72bdd5` (migration 0061); the lead decides under Praveen's delegation of 23 Oct 2026.**

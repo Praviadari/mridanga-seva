@@ -166,8 +166,10 @@ function layout({ lang, page, body, cssHref }) {
     .join('');
   const langLabel = lang.code === 'en' ? s.ui.language : `${s.ui.language} · Language`;
 
-  const robots = draft || isNotFound ? '<meta name="robots" content="noindex">\n' : '';
-  const draftNote = draft ? `<p class="draft">${s.ui.draftNote}</p>` : '';
+  // A page marked final (site.mjs) is settled text: no Draft note and indexable, even in a draft build.
+  const pageDraft = draft && !page.final;
+  const robots = pageDraft || isNotFound ? '<meta name="robots" content="noindex">\n' : '';
+  const draftNote = pageDraft ? `<p class="draft">${s.ui.draftNote}</p>` : '';
 
   return `<!doctype html>
 <html lang="${lang.meta.bcp47}" dir="${lang.meta.dir}">
