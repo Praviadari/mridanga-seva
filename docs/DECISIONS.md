@@ -7365,3 +7365,30 @@ For the privacy-notice 1.0 work (website/content/*/privacy.html is not edited on
 6. **Who can see it**: "Data requests are read only by the facilitator (Guru); reading your own summary is logged."
 7. **Complaints**: "Use My data and rights → Make a complaint, or write to the privacy contact."
 Bump the notice version when these go in (#150): the app's `PRIVACY_NOTICE_VERSION` and `site.config.mjs` together.
+
+## 570. Privacy notice 0.3-draft: the lines for 0056-0059 go in before the release that asks for the data — 24 Oct 2026
+
+**Status: branch `claude/privacy-1-0-633d76` (audit 22-10-2026 work package C, step 1); lead approval needed. Website
+en/te/hi + `PRIVACY_NOTICE_VERSION`; JS only, fingerprint 23dc7e4a unchanged.**
+
+**Decision.** The notice gets, in en/te/hi (te/hi drafts for the native review), before the LIVE release of 0055-0059:
+- **Learning** row (#494): "how a practice session went (hard / okay / good) and what was practised, if the student
+  chooses to say it" (te/hi use the app's own face labels).
+- **Parents** (#539): the parents' row names the weekly-email yes (a consent record of its own) and the record of each
+  email sent (when, kind, outcome; never the text); a purpose "Telling parents about their child" (check-out email,
+  opt-out under the class consent; weekly email, opt-in, separate consent); a new section **What parents receive**
+  (`#parents`: consent email, check-out email, weekly email, what each holds and never holds, how to stop it); the
+  Brevo row covers these emails; retention "records of emails to parents (no text): 30 days"; a line in In short.
+- **Data rights** (#556 lines 1-7 as worded there): In short, Your rights (in-app line; "We answer every request,
+  complaints included, within 30 days" replaces the reply-period blank, #551), Children, withdrawal, retention of
+  requests, who reads requests, complaints; plus a row **Your requests** in "What the app keeps".
+- **Practice while waiting** (#510-#512): one paragraph "While you wait for the desk": practice tools, mantra and
+  Beginner lessons before registration, an adult by the sign-up's date of birth, a child only after the parent's
+  consent; using them records nothing. (The web service worker of #513 keeps only the site's own files: no line.)
+
+The version goes **0.2-draft → 0.3-draft** (dated 2026-10-24) in `site.config.mjs` and `PRIVACY_NOTICE_VERSION`
+together: the meaning changed, so consents recorded from this release name the text they were given under. It stays a
+draft: the D4 blanks are closed in step 2 (notice 1.0).
+
+**Why now.** #494 asks for a self-rating of minors and #531 for a new purpose: the notice must name both before the
+update that asks for them reaches phones (DPDP Act s.5, notice before or with the request for consent).

@@ -56,7 +56,7 @@ const summary = {
 test('#551: a request is answered within 30 days, here, in 0059 and on the website', () => {
   assert.equal(rights.ANSWER_DAYS, 30);
   assert.match(migration, /answer_by\s+timestamptz not null default now\(\) \+ interval '30 days'/);
-  assert.match(repo('website/content/en/privacy.html'), /We reply within 30 days/);
+  assert.match(repo('website/content/en/privacy.html'), /We answer every request, complaints included, within 30 days/);
 });
 
 test('the privacy contact in the app is the notice\'s (email from site.config, phone from the notice)', () => {
