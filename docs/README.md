@@ -11,10 +11,13 @@ maintainer can understand it without asking anyone.
 | [DATABASE.md](DATABASE.md) | What each table holds, the student status rules, the database functions and scheduled jobs, how to test a migration |
 | [SCREENS.md](SCREENS.md) | Which screens exist, which are still to build, and in what order |
 | [TRANSLATIONS.md](TRANSLATIONS.md) | How the English, Telugu and Hindi text works, and how to add or translate it |
+| [translation-review/](translation-review/te-hi-review.xlsx) | The sheet native speakers use to review the Telugu and Hindi drafts |
+| [I18N.md](I18N.md) | Every India-only or single-language assumption, what was fixed, and what waits for other countries |
+| [KHOL_RECORDINGS.md](KHOL_RECORDINGS.md) | What the Guru records so the practice tools play the class's own khol |
 | [DECISIONS.md](DECISIONS.md) | Why things are the way they are — every important decision, with its reason |
 | [GLOSSARY.md](GLOSSARY.md) | What a word means: mridanga terms (bol, taal, dayan) and app terms (visit, mentor, irregular) |
-| [OPERATIONS.md](OPERATIONS.md) | How to set up, run, back up and hand over the live system |
-| [GO_LIVE_CHECKLIST.md](GO_LIVE_CHECKLIST.md) | The ordered steps that take the live project from migration 0011 to the pilot (audit brief 8) |
+| [OPERATIONS.md](OPERATIONS.md) | How to set up, run, back up and hand over the live system; publishing an update and the upload log |
+| [GO_LIVE_CHECKLIST.md](GO_LIVE_CHECKLIST.md) | The ordered migration steps for the live project, with the check queries; each release adds its migrations here |
 | [phase3/WORK_PLAN.md](phase3/WORK_PLAN.md) | Phase 3 face self-scan: 9 work packages, order, how a volunteer picks one up (plan, DPIA, consent and Guru decisions in the same folder) |
 
 ## Rules for keeping these documents useful

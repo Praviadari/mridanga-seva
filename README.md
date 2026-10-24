@@ -1,7 +1,7 @@
 # Mridanga Seva
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-![Status: Phase 1 in development](https://img.shields.io/badge/status-Phase%201%20in%20development-orange.svg)
+![Status: live with a pilot class](https://img.shields.io/badge/status-live%20(pilot%20class)-brightgreen.svg)
 ![Platforms: Android · Web (iPhone via the web)](https://img.shields.io/badge/platforms-Android%20%C2%B7%20Web%20(iPhone%20via%20the%20web)-blue.svg)
 
 > Open-source class management app for mridanga (khol) kirtan classes: drop-in attendance, levels,
@@ -10,7 +10,9 @@
 
 **Topics:** `mridanga` · `khol` · `kirtan` · `class-management` · `education` · `react-native` · `expo` · `supabase`
 
-**Status:** Phase 1 in development. A pilot with one class is planned for November 2026.
+**Status:** live since 17 October 2026 with one pilot class (Abids, Hyderabad): Android app, web version and
+website ([mridangaseva.com](https://mridangaseva.com)). Phases 1 and 2 are in use; updates reach phones over the air.
+Phase 3 (face self-scan) is being tested on a separate test project.
 
 ## Why
 
@@ -39,17 +41,26 @@ Mridanga Seva puts class records, learning material and communication in one pla
 
 **Phase 2 — learning and community**
 - Assessments with coordinator review and a Guru-approved promotion workflow
-- Practice tools: metronome, taal player and an animated view of both drum heads
+- Practice tools: metronome, taal player (layakari, silent bars, speed trainer) and an animated view of both drum heads;
+  Play and learn (tap pad, Which bol?, Echo me), practice of the week, goals and milestones
 - Events, polls, inventory with QR asset labels; door-tablet check-in is planned (the `kiosk` role exists, no screen yet)
 - Ishtagoshti: thematic study of Sanskrit slokas, free and open to anyone
 - Transparent fund management for donations and sponsorships
 
-**Phase 3** — face-recognition attendance (only with consent).
+**Since go-live** — My data and rights (copy, correction, erasure), sign-up at home for under-18s with a parent's
+email consent, an opt-in weekly email for parents, a web version that works offline once opened, and a short
+sign-up. **In the next update:** privacy notice 1.0 (everyone is asked once), sign-in codes from an authenticator app
+for staff, and door check-ins and practice entries made without internet kept and sent later. Every update lists its
+changes under My profile → What's new.
+
+**Phase 3** — face self-scan attendance, only with consent (plan and DPIA in [docs/phase3/](docs/phase3/WORK_PLAN.md)).
 
 ## Tech stack
 
 - **App:** React Native with [Expo](https://expo.dev) (Expo Router, TypeScript) — an Android APK and a web version from one code base; there is no iOS app (`app.json` has no `ios` block), iPhone users add the web version to the home screen
-- **Backend:** [Supabase](https://supabase.com) — Postgres with row-level security, auth (email + password), storage
+- **Backend:** [Supabase](https://supabase.com) — Postgres with row-level security, auth (email + password; an
+  authenticator-app code for staff), storage, scheduled jobs (pg_cron) and Edge Functions
+- **Hosting:** web version and website on Cloudflare Pages; app updates through Expo EAS Update
 - **Languages:** English, Telugu and Hindi
 
 ## Repository layout
@@ -57,9 +68,10 @@ Mridanga Seva puts class records, learning material and communication in one pla
 ```
 app/                   Expo app (screens live in app/src/app/)
 supabase/migrations/   Database schema, row-level security, functions and scheduled jobs
-supabase/functions/    Edge Functions (notify-announcements sends the push notifications)
+supabase/functions/    Edge Functions (notify-announcements sends the push notifications, notify-parents the parent emails)
 supabase/seed.sql      Dummy data for a test project
-supabase/tests/        Database smoke test and push message test that run on your own computer
+supabase/tests/        Database smoke test, migration replay and message tests that run on your own computer
+website/               The public website (English, Telugu, Hindi), built to static pages
 docs/                  How it works and why — start with docs/README.md
 ```
 
@@ -74,7 +86,8 @@ docs/                  How it works and why — start with docs/README.md
 | [docs/DATABASE.md](docs/DATABASE.md) | Tables, student status rules, database functions, scheduled jobs |
 | [docs/DECISIONS.md](docs/DECISIONS.md) | Why things are built this way |
 | [docs/GLOSSARY.md](docs/GLOSSARY.md) | Mridanga and app terms |
-| [docs/OPERATIONS.md](docs/OPERATIONS.md) | Setting up, backing up and handing over the live system |
+| [docs/SCREENS.md](docs/SCREENS.md) | Every screen, per role |
+| [docs/OPERATIONS.md](docs/OPERATIONS.md) | Setting up, backing up, publishing updates and handing over the live system |
 
 ## Getting started
 
