@@ -18,6 +18,7 @@ import { GuruOnly } from '@/components/guru-only';
 import { Icon } from '@/components/icon';
 import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
+import { PrivateHiddenNotice } from '@/components/private-hidden-notice';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import {
@@ -35,6 +36,7 @@ import {
   type AuditNames,
 } from '@/data/audit-log';
 import { fetchStaff, type StaffMember } from '@/data/student-overview';
+import { fetchMyCodeState } from '@/data/staff-mfa';
 import { formatDateTime } from '@/lib/dates';
 import { cardLook, spacing, useTheme } from '@/theme/use-theme';
 
@@ -53,14 +55,18 @@ export default function AuditLogScreen() {
   const [filters, setFilters] = useState<AuditFilters>(NO_AUDIT_FILTERS);
   const [open, setOpen] = useState<Set<number>>(new Set());
   const [loadingMore, setLoadingMore] = useState(false);
+  // True when the Guru asks for sign-in codes and this session did not give one (0061, #583): both logs are held back.
+  const [hidden, setHidden] = useState(false);
 
   const load = useCallback(async (f: AuditFilters, v: LogView) => {
-    const [entries, reads, names, staff] = await Promise.all([
+    const [entries, reads, names, staff, codes] = await Promise.all([
       v === 'changes' ? fetchAuditPage(f, null) : [],
       v === 'reads' ? fetchAccessPage(f, null) : [],
       fetchAuditNames(),
       fetchStaff(),
+      fetchMyCodeState(),
     ]);
+    setHidden(typeof codes === 'object' && codes !== null && codes.required && !codes.aal2);
     const page = v === 'changes' ? entries : reads;
     setLoaded(
       entries && reads && names && staff ? { entries, reads, names, staff, more: (page?.length ?? 0) === AUDIT_PAGE } : null,
@@ -114,6 +120,7 @@ export default function AuditLogScreen() {
   return (
     <Screen underHeader wide onRefresh={() => load(filters, view)}>
       <Stack.Screen options={{ title: t('auditLog.title') }} />
+      {hidden ? <PrivateHiddenNotice /> : null}
       <ChoiceGroup<LogView>
         chips
         label={t('auditLog.show')}

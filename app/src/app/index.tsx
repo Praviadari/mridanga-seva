@@ -15,6 +15,7 @@ import { useTakingLong } from '@/lib/slow-start';
 const HOME: Record<Exclude<Area, 'loading'>, Href> = {
   signedOut: '/sign-in',
   recovery: '/reset-password',
+  signInCode: '/sign-in-code',
   pending: '/pending',
   // One staff home for both roles: it shows G1 or C1 (app/staff/(tabs)/index.tsx).
   guru: '/staff',

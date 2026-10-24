@@ -77,4 +77,6 @@ const SERVER_MESSAGES: Partial<Record<string, MessageKey>> = {
   visit_time_future: 'common.serverErrors.visitFuture',
   setting_required: 'common.serverErrors.settingRequired',
   too_many_rows: 'common.serverErrors.tooManyRows',
+  // 0061 (#583): the Guru asks for sign-in codes and this session did not give one.
+  mfa_required: 'common.serverErrors.mfaRequired',
 };

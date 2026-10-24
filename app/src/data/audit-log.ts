@@ -91,7 +91,8 @@ export async function fetchAuditPage(filters: AuditFilters, beforeId: number | n
     }),
     tableRead,
   );
-  if (error) return null;
+  // 0061 (#583): held back until this session gives the sign-in code; the screen says so (its own check).
+  if (error) return error.message === 'mfa_required' ? [] : null;
   return (
     data as {
       id: number;

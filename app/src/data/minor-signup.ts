@@ -192,8 +192,9 @@ export type WaitingParent = {
   state: 'awaiting_parent' | 'consented';
   name: string;
   relation: Relation;
-  email: string;
-  phone: string;
+  /** Null while the Guru asks for sign-in codes and this session did not give one (0061, #583). */
+  email: string | null;
+  phone: string | null;
   consented_at: string | null;
   photo_consent: boolean | null;
 };

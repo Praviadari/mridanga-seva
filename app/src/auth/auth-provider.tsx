@@ -20,6 +20,9 @@
 // A login signed out without internet is ended on the server at the next online moment: at start, back on
 // screen, when the browser goes online, and when a sign-in or token refresh shows the server can be reached
 // (src/auth/pending-sign-out.ts, docs/DECISIONS.md #238).
+// A login with a sign-in code (staff, migration 0061) whose session has not given it yet gets the 'signInCode' area
+// and nothing else: its profile is not fetched and its remembered copy is forgotten, so neither a restart nor no
+// internet opens its screens before the code (src/auth/mfa.ts, docs/DECISIONS.md #581).
 
 import type { Session } from '@supabase/supabase-js';
 import { createContext, use, useEffect, useRef, useState, type PropsWithChildren } from 'react';
@@ -42,6 +45,7 @@ import {
 
 // Loaded at start for its effect: it reads an email link's error from the address (D6-12).
 import './email-link';
+import { sessionNeedsCode } from './mfa';
 import { finishPendingSignOuts } from './pending-sign-out';
 import { forgetSavedProfile, readSavedProfile, saveProfile } from './saved-profile';
 import { noteSignedOut } from './session-end';
@@ -163,9 +167,15 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }, []);
 
   const userId = session?.user.id ?? null;
+  const needsCode = sessionNeedsCode(session);
+
+  // Until the code is given, no remembered profile may open this person's screens on the next start.
+  useEffect(() => {
+    if (needsCode) forgetSavedProfile();
+  }, [needsCode]);
 
   useEffect(() => {
-    if (!userId) return;
+    if (!userId || needsCode) return;
     // A form kept for another login after its forced sign-out never reaches this one (D6-20).
     dropOtherOwnersDrafts(userId);
     let cancelled = false;
@@ -178,7 +188,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     return () => {
       cancelled = true;
     };
-  }, [userId, recheck]);
+  }, [userId, recheck, needsCode]);
 
   // Ignore a profile that belongs to an earlier login. While the fetch for this login runs, the
   // remembered copy stands in for it, but only when it is this same person's.
@@ -203,7 +213,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   let area: Area;
   if (!sessionLoaded) area = saved ? areaForProfile(saved) : 'loading';
   else if (waitingOffline) area = offlineProfile ? areaForProfile(offlineProfile) : 'pending';
-  else area = areaFor(session, recovering, current);
+  else area = areaFor(session, recovering, needsCode, current);
 
   const value: AuthState = {
     area,
@@ -244,10 +254,12 @@ export function useAuth(): AuthState {
 function areaFor(
   session: Session | null,
   recovering: boolean,
+  needsCode: boolean,
   result: ProfileResult | null,
 ): Area {
   if (!session) return 'signedOut';
   if (recovering) return 'recovery';
+  if (needsCode) return 'signInCode';
   if (!result) return 'loading';
   // No profile (fetch failed, or not created yet) waits on the pending screen, which explains
   // why and offers to check again.
