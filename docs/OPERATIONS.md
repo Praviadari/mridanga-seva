@@ -559,6 +559,7 @@ to `app/dist/`. Always use this command, not a bare `npx expo export`, because
 
 | Date | Site | Commit | Built (UTC) | By |
 |---|---|---|---|---|
+| 24-10-2026 | test (parents-digest 0058, creative-tools 0055, practice-extras 0056 merged; Play and learn hidden on the waiting area) | 000efbb (main; entry-e1744889…; deployment 77714cdd) | 2026-10-24T06:38:14Z | Claude (wrangler, Praveen's login) |
 | 24-10-2026 | test (onboarding-offline merged: web offline service worker, practice while waiting 0057, short sign-up; iPhone offline check still owed) | 176328c (main; entry-ba48a54e…; deployment f7331847) | 2026-10-24T05:45:24Z | Claude (wrangler, Praveen's login) |
 | 23-10-2026 | test (data rights in the app, 0059, #550-#556; TEST also has 0055-0058 from branches) | 94a1ddd (main; entry-67dd9793…; deployment 43b93255) | 2026-10-23T12:56:47Z | Claude (wrangler, Praveen's login) |
 | 22-10-2026 | **live** (Practice + mantra, under-18 home sign-up, coordinators' own record, forms and a11y; same day production update group 8b737a14 / Android 01a16413 from 76dbce1, same JS; website aceb30cd with the privacy controller and contact) | 76dbce1 (main; entry-b877cf5a…; deployment 5387ad0a; headers checked: HSTS, nosniff, CSP) | 2026-10-22T14:37:44Z | Claude (wrangler, Praveen's login, his "publish"; he typed yes for the update) |
