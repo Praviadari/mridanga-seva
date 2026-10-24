@@ -1848,6 +1848,28 @@ Tests: section "0059 data rights" in `supabase/tests/smoke-test.mjs` (56 checks)
 Tests: section "0061 staff sign-in codes and the error log" in `supabase/tests/smoke-test.mjs` (the only Guru never
 locked out, the reads behind the code, resets, the log's limits and purge). `auth.jwt()` and `auth.mfa_factors` are
 imitated at the top of the smoke test; Supabase's own MFA (enrolment, codes, aal) is checked on TEST by hand.
+
+## Web push (0062)
+
+Browsers that a signed-in student or staff member switched notifications on in (My profile, web version only) get
+the announcements and notices the Android app gets. [DECISIONS.md #596-#609](DECISIONS.md) (audit 22-10-2026 fix 13).
+Sent by the Edge Function `notify-announcements` with Web Push (RFC 8291 encryption, VAPID; `webpush.ts`,
+`web-send.ts`), after the phones.
+
+| Object | What |
+|---|---|
+| `push_tokens` (0011) | Now phones **and browsers**: platform `web` = a browser; `token` = its push service address (endpoint, https, at most 1000 characters); `web_p256dh`, `web_auth` = its public key and auth secret (base64url; both set for a browser, neither for a phone: check `push_tokens_web_keys`). Every existing removal of a login's phones removes its browsers too (sign-out, switch-off, withdrawn record, erase functions, 90-day retention of 0060); `my_data_summary().devices` counts both |
+| `save_web_push(p_endpoint, p_p256dh, p_auth)` | An active student, coordinator or Guru saves or refreshes this browser (an address saved for another login moves to the caller, as for phones). At most 5 browsers a person. Errors `not_allowed`, `bad_endpoint`, `bad_keys` |
+| `remove_web_push(p_endpoint)` | The caller's own browser only; true when a row went |
+| `push_queue.web` | True for a browser row. `claim_push_queue` (replaced, **same columns as 0031**) queues phone and browser rows and claims phone rows only |
+| `claim_web_push()` | Service role: gives up on stale browser rows (token_gone, expired, gave_up), claims up to 200 waiting ones with `endpoint`, `p256dh`, `auth_secret`, a 5-minute lease |
+| `finish_web_push(claim, sent, retry, refused, summary)` | Service role: as `finish_push`, browser rows only; refused `endpoint_gone` (push service 404/410) deletes the address |
+| `push_status.last_web_run`, `last_web_run_at` | The browser part's last run: `{messages, sent, retry, refused, errors}` (no addresses) |
+
+No new job (16). Tests: section "0062 web push" in `supabase/tests/smoke-test.mjs` (saving and its refusals, own rows
+only, the 5-browser limit, the queue split, a gone address, a retry, a notice, retention, a second run) and the "web
+push" checks in `push-messages.test.mjs` (the encryption decrypted by http_ece, the VAPID signature, the push services'
+answers). Checked end to end on TEST with Mozilla's push service (24-10-2026).
 ## Linking a login to a student
 
 A student record can exist without a login (many students never install the app). When a person
