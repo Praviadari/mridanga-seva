@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Face test day card</title>
+<style>
+  :root { --night: #1B1E4B; --gold: #E0B25C; --cream: #F6E7CC; --red: #C62828; --green: #2E7D32; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--cream); color: var(--night); font-family: "Segoe UI", Arial, sans-serif; width: 1080px; }
+  header { background: var(--night); color: #fff; padding: 36px 52px 30px; }
+  header p { color: var(--gold); margin: 0 0 6px; font-size: 24px; letter-spacing: 2px; text-transform: uppercase; font-weight: 700; }
+  h1 { margin: 0; font-size: 46px; }
+  main { padding: 22px 52px 30px; font-size: 25px; line-height: 1.4; }
+  h2 { font-size: 29px; margin: 26px 0 8px; display: flex; gap: 12px; align-items: center; }
+  h2::before { content: ""; width: 12px; height: 28px; background: var(--gold); border-radius: 3px; }
+  ol, ul { margin: 0; padding-left: 34px; }
+  li { margin-bottom: 6px; }
+  .box { background: #fff; border: 3px solid var(--gold); border-radius: 18px; padding: 16px 24px; margin-top: 18px; }
+  .stop { background: #fdecea; border: 3px solid var(--red); border-radius: 18px; padding: 16px 24px; margin-top: 22px; }
+  .stop strong { color: var(--red); }
+  .ok { color: var(--green); font-weight: 700; }
+  code { font-family: Consolas, monospace; font-size: 21px; word-break: break-all; }
+  table { border-collapse: collapse; width: 100%; font-size: 23px; }
+  td { border-top: 1px solid #d9c9a8; padding: 6px 8px; vertical-align: top; }
+  td:first-child { font-weight: 700; width: 36%; }
+  footer { padding: 0 52px 34px; font-size: 20px; color: #4a4e7a; }
+  @media print { body { width: auto; } main { font-size: 13pt; } h1 { font-size: 22pt; } h2 { font-size: 15pt; } table, code { font-size: 11pt; } header p { font-size: 11pt; } footer { font-size: 10pt; } }
+</style>
+</head>
+<body>
+<header>
+  <p>Sunday 25-10-2026 · Abids · TEST app only</p>
+  <h1>Face check-in test: day card</h1>
+</header>
+<main>
+  <div class="box"><strong>Already set for you:</strong> face scan is ON on the TEST server; the TEST Abids centre is at the real
+  Abids place, 150 m, check-in open 14:00–20:30 (class 14:30–20:00). Nothing here touches the class's real app or data.</div>
+
+  <h2>Bring</h2>
+  <ul>
+    <li>Printed English consent forms (one per volunteer), results sheets (one each), a pen</li>
+    <li>Your phone with a <strong>TEST coordinator</strong> login, and a second coordinator (nobody confirms their own face)</li>
+  </ul>
+
+  <h2>Test app link (send only to volunteers)</h2>
+  <p><code>https://expo.dev/artifacts/eas/w_HNvQbsx_Tgcl_Az2WNCgMdSsd5Bjov4T8xMzZzTcs.apk</code><br>
+  Android asks to allow installing from the browser: allow. Open the app, close it, open it again (it updates itself).</p>
+
+  <h2>Each volunteer (about 10 minutes)</h2>
+  <ol>
+    <li>Adults 18+ only. They read and sign the consent form; write their tester code T1, T2 … on it.</li>
+    <li>They install the TEST app and sign up in it (or use an existing TEST login).</li>
+    <li>Coordinator: <strong>Register a student</strong> (Students tab) → accept them; date of birth must show 18+.</li>
+    <li>Coordinator: Students → the volunteer → <strong>Face scan at the desk</strong> → tick the signed form → record consent.</li>
+    <li>Volunteer: My profile → <strong>Face scan</strong> → Turn on → blink / turn → 5 pictures → a 6-digit code.</li>
+    <li>Coordinator types the code in Face scan at the desk → their phone says face scan is on.</li>
+    <li>Volunteer: home → <strong>Check in</strong> → <span class="ok">"Checked in at …"</span>.</li>
+  </ol>
+  <p>A coordinator testing themself: their TEST coordinator login linked to an own TEST student record
+  (Coordinators → them → Own student record), then <strong>Me → Face scan</strong>; a colleague records and confirms.</p>
+
+  <h2>Checks (write each on the results sheet)</h2>
+  <table>
+    <tr><td>Wrong person</td><td>Another volunteer, ALONE in front of the phone → must be <strong>refused</strong> (no match).</td></tr>
+    <tr><td>Photo / video</td><td>Printed photo or a photo on another phone → must be <strong>refused</strong>.</td></tr>
+    <tr><td>Too soon</td><td>Check out within 10 minutes → refused (the desk does it).</td></tr>
+    <tr><td>Away</td><td>After 10 minutes, 250 m or more away → check out <strong>saved, marked away</strong>.</td></tr>
+    <tr><td>Normal / glasses / dim light</td><td>The person themself: note how many tries it took.</td></tr>
+    <tr><td>QR</td><td>QR check-in at the desk still works as always.</td></tr>
+  </table>
+
+  <h2>What a refusal means</h2>
+  <table>
+    <tr><td>Not at class / outside</td><td>GPS says outside 150 m: go inside, wait a moment, try again.</td></tr>
+    <tr><td>No Check in circle</td><td>Before 14:00 or after 20:30, or face scan not set up on this phone yet.</td></tr>
+    <tr><td>Phone check failed</td><td>Play Integrity said no: note the phone model, use QR.</td></tr>
+    <tr><td>No match</td><td>Face not matched: up to 3 tries, then QR.</td></tr>
+    <tr><td>More than one face</td><td>Only one person in front of the camera.</td></tr>
+    <tr><td>Camera problem / stuck</td><td>Cancel, close the app fully, open it again.</td></tr>
+  </table>
+
+  <div class="stop"><strong>STOP at once</strong> if a wrong person or a photo is ever ACCEPTED: no more face tests today, note the
+  phone, time and tester codes, and tell Claude on Monday. A volunteer who wants to stop: My profile → Face scan → Turn off.</div>
+
+  <h2>Collect</h2>
+  <ul>
+    <li>Results sheets; a screenshot of any odd message (with the time); each phone's model and Android version</li>
+    <li>Leave face scan ON; on Monday Claude switches it off, resets the centre and runs the deletion (by Sunday 01-11-2026)</li>
+  </ul>
+</main>
+<footer>docs/phase3/ADULT_TEST.md §2 · DECISIONS #433 · TEST server only (fhuqyk…)</footer>
+</body>
+</html>
