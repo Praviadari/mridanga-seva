@@ -2,7 +2,8 @@
 // (docs/DECISIONS.md #311): the camera permission (asked with the class's own words first), the blink/turn
 // challenge in a random order (src/face/liveness.ts), then ENROL_FRAMES good pictures, each turned into an
 // embedding and a real-face score (src/face/pipeline.ts). Hands the numbers to the screen; keeps nothing.
-// A failed challenge offers "Try again" with a new random order. Native only (face-scanner.web.tsx).
+// A failed challenge offers "Try again" with a new random order. The camera carries the oval guide (face-guide.tsx,
+// #437: face found, pictures taken, a sweeping light). Native only (face-scanner.web.tsx).
 
 import { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -15,6 +16,8 @@ import { Notice } from '@/components/notice';
 
 import { type EnrolSample } from './enrolment';
 import { FaceCamera, type Captured, type FaceCameraHandle, type FrameReport } from './face-camera';
+import { FaceGuide } from './face-guide';
+import { guideProgress, guideTone } from './face-guide-state';
 import { ENROL_FRAME_GAP_MS } from './face-settings';
 import {
   challengeKey,
@@ -103,6 +106,8 @@ function ScanAttempt({ frames, onDone, onCancel, onFailed, onRetry }: AttemptPro
   const [phase, setPhase] = useState<'challenge' | 'pictures' | 'failed' | 'working'>('challenge');
   const [problem, setProblem] = useState<string | null>(null);
   const [done, setDone] = useState(0);
+  // Faces in the last frame, for the guide's colour (updated with the prompt, not on every frame).
+  const [faces, setFaces] = useState(0);
   const samples = useRef<EnrolSample[]>([]);
   const capturing = useRef(false);
   const finished = useRef(false);
@@ -181,6 +186,7 @@ function ScanAttempt({ frames, onDone, onCancel, onFailed, onRetry }: AttemptPro
       if (Date.now() - lastUi.current > 120 || st.kind !== before.kind) {
         lastUi.current = Date.now();
         setPrompt(challengeKey(st, steps));
+        setFaces(r.faces);
       }
       if (st.kind === 'failed') {
         finished.current = true;
@@ -197,13 +203,16 @@ function ScanAttempt({ frames, onDone, onCancel, onFailed, onRetry }: AttemptPro
 
   return (
     <View style={styles.wrap}>
-      <FaceCamera
-        ref={cam}
-        active={phase === 'challenge' || phase === 'pictures'}
-        onFrame={onFrame}
-        onCaptured={(c) => void onCaptured(c)}
-        onError={() => setProblem(t('face.scan.cameraProblem'))}
-      />
+      <View style={styles.camera}>
+        <FaceCamera
+          ref={cam}
+          active={phase === 'challenge' || phase === 'pictures'}
+          onFrame={onFrame}
+          onCaptured={(c) => void onCaptured(c)}
+          onError={() => setProblem(t('face.scan.cameraProblem'))}
+        />
+        <FaceGuide tone={guideTone(phase, faces)} progress={guideProgress(phase, done, frames)} pictures={done} />
+      </View>
       <AppText variant="subtitle" style={styles.prompt} accessibilityLiveRegion="polite">
         {phase === 'working'
           ? t('face.scan.working')
@@ -220,5 +229,6 @@ function ScanAttempt({ frames, onDone, onCancel, onFailed, onRetry }: AttemptPro
 
 const styles = StyleSheet.create({
   wrap: { gap: 12 },
+  camera: { borderRadius: 12, overflow: 'hidden' },
   prompt: { textAlign: 'center' },
 });

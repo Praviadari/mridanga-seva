@@ -9,6 +9,7 @@ import './stubs/register.mjs';
 
 const m = await import('../src/face/face-math.ts');
 const L = await import('../src/face/liveness.ts');
+const G = await import('../src/face/face-guide-state.ts');
 
 const near = (a, b, eps = 1e-6) => assert.ok(Math.abs(a - b) <= eps, `${a} ≉ ${b}`);
 
@@ -174,4 +175,27 @@ test('every challenge state has a prompt in English, Telugu and Hindi', async ()
       assert.equal(typeof text, 'string', `${lang} ${key}`);
     }
   }
+});
+test("#437 the camera guide: white until a face, gold with one face, green for the pictures, red when stopped", () => {
+  assert.equal(G.guideTone("challenge", 0), "search");
+  assert.equal(G.guideTone("challenge", 2), "search");
+  assert.equal(G.guideTone("challenge", 1), "found");
+  assert.equal(G.guideTone("pictures", 1), "capture");
+  assert.equal(G.guideTone("working", 0), "done");
+  assert.equal(G.guideTone("failed", 1), "failed");
+});
+
+test("#437 the ring fills with the pictures and the light sweeps only while scanning and motion is allowed", () => {
+  assert.equal(G.guideProgress("challenge", 0, 5), 0);
+  assert.equal(G.guideProgress("pictures", 2, 5), 0.4);
+  assert.equal(G.guideProgress("pictures", 9, 5), 1);
+  assert.equal(G.guideProgress("working", 0, 5), 1);
+  assert.equal(G.guideSweeps("found", false), true);
+  assert.equal(G.guideSweeps("found", true), false);
+  assert.equal(G.guideSweeps("done", false), false);
+  assert.equal(G.guideSweeps("failed", false), false);
+  // A circle: 2 pi r; the oval sits inside its box.
+  near(G.ellipsePerimeter(10, 10), 2 * Math.PI * 10, 1e-9);
+  const o = G.guideOval(300, 400);
+  assert.ok(o.cx - o.rx >= 0 && o.cx + o.rx <= 300 && o.cy - o.ry >= 0 && o.cy + o.ry <= 400, JSON.stringify(o));
 });

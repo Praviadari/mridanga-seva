@@ -7402,3 +7402,17 @@ path and shows "The camera had a problem…" with Try again, instead of waiting 
 
 **Why.** Loading straight from the APK's resources would need native code in fast-tflite (a new fingerprint); the
 expo-asset copy is JS only and is what Expo itself does for bundled files.
+
+## 437. A face guide over the live camera: oval, colour, sweeping light, filling ring — 24 Oct 2026
+
+**Status: branch `face-scan` (placeholder number). JS only (React Native Animated + react-native-svg): no new
+package, fingerprint unchanged, so it reaches the test app as an update.**
+
+**Decision.** Praveen, after the first real enrolment (24-10-2026): the camera showed no sign of working, unlike other
+face-check apps. The face scanner (enrolment at the desk and the daily self-scan) now draws `src/face/face-guide.tsx` over
+the camera: the view outside a face-shaped oval is dimmed; the oval's border is white until one face is seen, gold
+while the blink/turn prompts run, green while the pictures are taken and when done, red if the scan stopped; a ring
+fills clockwise from the top with each picture and flashes white once per picture; a soft light sweeps up and down
+inside the oval while the camera works. With the phone's "Remove animations" (reduced motion) there is no sweep and no
+flash. The rules are pure (`src/face/face-guide-state.ts`, tested); the guide is drawing only: touches pass through
+and screen readers skip it, since the prompt under the camera already says what to do.
