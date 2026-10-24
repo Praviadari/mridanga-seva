@@ -237,7 +237,7 @@
       "myLevel": "నా స్థాయి: {{level}}",
       "unread": "మీకు కొత్తవి: {{count}}",
       "allAnnouncements": "అన్ని ప్రకటనలు",
-      "levelStrip": "నా స్థాయి: {{level}} · {{total}}లో {{done}}",
+      "levelStrip": "{{level}} స్థాయిలో {{total}}లో {{done}}",
       "levelStripNone": "నా స్థాయి: {{level}}"
     },
     "staff": {
@@ -1103,6 +1103,24 @@
     "notYet": "ఇంకా లేదు",
     "levelLessons": "{{level}} స్థాయి పాఠాలు",
     "retired": "ఇక బోధించబడదు"
+  },
+  "levelPath": {
+    "label": "{{level}}లో నా దారి",
+    "next": "తర్వాత: {{title}}",
+    "nextTitle": "తర్వాత నేర్చుకోవలసినవి",
+    "complete": "{{level}} స్థాయిలోని అన్ని అంశాలు టిక్ అయ్యాయి.",
+    "nextLevel": "{{level}} తర్వాత {{next}} వస్తుంది. పై స్థాయికి వెళ్లడం గురువుగారి నిర్ణయం.",
+    "topLevel": "{{level}} చివరి స్థాయి."
+  },
+  "celebrate": {
+    "title": "హరే కృష్ణ! ఒక అడుగు ముందుకు",
+    "level": "మీరు ఇప్పుడు {{level}} స్థాయిలో ఉన్నారు.",
+    "milestone": "సాధన మైలురాయి: {{name}}",
+    "tick": "తరగతిలో టిక్ అయింది: {{title}}",
+    "more_one": "ఇంకా {{count}} అడుగు",
+    "more_other": "ఇంకా {{count}} అడుగులు",
+    "blessing": "ప్రేమతో మీ సాధనను అర్పిస్తూ ఉండండి, ఒక్కో అడుగు.",
+    "continue": "కొనసాగించండి"
   },
   "syllabusEditor": {
     "module": "పాఠాలు",

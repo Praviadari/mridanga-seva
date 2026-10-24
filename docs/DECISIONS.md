@@ -7746,3 +7746,49 @@ signal is back." Any other refusal still leaves the timer running, as before.
 For the privacy-notice work: "If you check someone in or log practice without a connection, the app keeps that entry
 on the phone until it is sent (a check-in until the end of that class day, practice at most 14 days), then deletes it;
 signing out deletes it too."
+
+## 620. The level path: "7 of 20 in Beginner" and what comes next — 24 Oct 2026
+
+**Status: built (level-path worker, audit 22-10-2026 fix 12).** The student home's strip under the ring now reads
+"7 of 20 in Beginner" (was "My level: Beginner · 7 of 20") with the next item to learn under the bar ("Next: …"), or
+"Every item of Beginner is ticked." My progress (S4; also Me > My progress for staff) shows the same count with the bar,
+"Next to learn" with the first two items not yet ticked in teaching order, and the level after ("After Beginner comes
+Intermediate. Moving up is the facilitator's decision.", or "Advanced is the last level."). Counted as before: items
+in use of the current level; a retired item does not count and never comes next (#44). Pure logic in
+`app/src/lib/level-path.ts`, tested in `app/tests/level-path.test.mjs`.
+
+**No migration.** A student already reads every syllabus item, their own ticks, their own level history and their own
+practice history (0001, 0056), so the home reads those (`app/src/data/level-path.ts`) instead of a new function
+(0063 stays free). The bar keeps student_home's numbers; the path is read after the home's numbers, so the ring never
+waits, and at most every 2 minutes on coming back to the home (pull to refresh reads at once), so the home does not add
+five requests on every return (P5-06).
+
+## 621. Small celebrations, once per event — 24 Oct 2026
+
+**Status: built, as #620.** A calm card on the student home, in place of the circles like the welcome (#342), when an
+item was ticked in class, a practice milestone was reached (#493) or the Guru moved the student up a level
+(level_history from a lower level to a higher one; the first placement and a move down are not celebrated): "Hare
+Krishna! A step forward", up to three lines (level first, then milestones, then ticks, newest first) and "and 2 more
+steps", a line of blessing ("Keep offering your practice with love, one step at a time.") and Continue. No points, no
+confetti, nothing compared between children.
+
+Once per event: the keys of the events already known (`tick:<item>`, `milestone:<id>`, `level:<history row>`) are kept
+on the phone per login (`celebrated:<profile id>`, lib/local-storage.ts) and count as shown the moment the card comes,
+so leaving the home does not bring it back; an item unticked and ticked again is not celebrated twice. The first time
+on a phone only events of the last 7 days are new, so an update does not celebrate a whole year. Nothing is checked
+when the level history or practice history could not be read (their old events would look new next time), nor while
+the welcome is due. A new phone or a cleared browser may show a recent event again: harmless.
+
+## 622. Celebrations respect reduced motion and screen readers — 24 Oct 2026
+
+**Status: built, as #620.** The card fades in and rises 8 px over 0.7 s, once (no loop, no spring); with Android's
+"Remove animations", iOS "Reduce motion" or the browser's prefers-reduced-motion it simply appears
+(`AccessibilityInfo.isReduceMotionEnabled`, as Notice does, #332/#363). TalkBack and VoiceOver hear the whole text
+once (`announce`), the browser's reader through `role="status"`. No buzz: an unexpected vibration on opening the home
+is not calm.
+
+## 623. No privacy-notice change for #620-#622 — 24 Oct 2026
+
+The path and the celebrations show the student data they already see on My progress and in the practice milestones;
+the only thing new kept on the phone is the list of event keys already shown (item ids, milestone names, level-history
+row ids), never sent anywhere and deleted with the app's data. DECISIONS #624-#629 stay free.
