@@ -7287,6 +7287,12 @@ name stop a tester mixing them up at the door.
 
 ## 431. The test app has no push notifications and no updates — 22 Oct 2026
 
+**Update 24 Oct 2026 (Praveen: "updates are the best thing to do, builds have limits"):** the test app DOES take updates on
+its own channel `facetest`, published with eas-cli directly (publish-update.mjs still refuses `APP_VARIANT`): from `app`,
+`$env:APP_VARIANT='facetest'`, then `npx eas-cli update --channel facetest --environment preview --platform android -m "…"`,
+then `Remove-Item Env:APP_VARIANT`. The runtime printed must be the facetest APK's (fde0a96f for build 560780b7). First one:
+group 635d2322 (the #436 fix). No push notifications still holds.
+
 **Status: branch `face-scan` (placeholder number).**
 
 **Decision.** `APP_VARIANT=facetest` leaves out `google-services.json` (it names only `org.mridangaseva.app`, and

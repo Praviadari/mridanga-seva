@@ -1771,6 +1771,15 @@ npx eas-cli build -p android --profile facetest
 3. Face scan stays off until the test day: `face_enabled` true on TEST only for the test ("Face scan: integrity
    check", Switching).
 
+**JS fixes for testers (an update, no new build; #431 update 24-10-2026):** only while the change is JS-only (the
+facetest fingerprint unchanged). Office cable unplugged, from `app`:
+```powershell
+$env:APP_VARIANT = 'facetest'
+npx eas-cli update --channel facetest --environment preview --platform android --message "what changed"
+Remove-Item Env:APP_VARIANT
+```
+Check the printed `Runtime version` is the installed facetest APK's. Testers close and open the app twice.
+
 **Never:** `APP_VARIANT` on a `preview` or `production` build or update (the guard and `update:*` refuse it); the
 `facetest` profile with the `production` environment; the `facetest` profile on `main` before the production APK that
 carries face scan (#432: `eas.json` is part of the fingerprint; on main it would block every production update).
