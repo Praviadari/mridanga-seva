@@ -128,7 +128,7 @@ process.on('uncaughtException', (error) => {
 // D14-10: every check is counted, and the run fails when fewer (or more) checks ran than expected,
 // so a block skipped by a renamed migration or a commented-out section cannot pass unseen.
 // Adding or removing checks? Run the suite and set this to the new total it prints.
-const EXPECTED_CHECKS = 2078; // 0059 data rights: +56; 0058 weekly parent email: +64; 0057 practice while waiting: +24; 0054 after-launch forms: +49; 0053 staff own record: +55; 0052 more practice: +56; 0051 child's sign-up at home: +80; 0050 staff dashboard: +15; 0049 launch clean-up: +30; 0048 withdrawn records and leaks: +50; 0047 form rules: +109; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
+const EXPECTED_CHECKS = 2101; // 0059 data rights: +56; 0058 weekly parent email: +64; 0057 practice while waiting: +24; 0055 learn more links: +23; 0054 after-launch forms: +49; 0053 staff own record: +55; 0052 more practice: +56; 0051 child's sign-up at home: +80; 0050 staff dashboard: +15; 0049 launch clean-up: +30; 0048 withdrawn records and leaks: +50; 0047 form rules: +109; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
 let failures = 0;
 let passes = 0;
 
@@ -6801,6 +6801,52 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   const c62 = await counts62();
   try { await db.exec(file62); } catch (e) { again62 = String(e.message); }
   check('0054: a second run changes nothing', again62 === '' && JSON.stringify(await counts62()) === JSON.stringify(c62), `${again62} ${JSON.stringify(c62)}`);
+}
+
+// ---------------------------------------------------------------- 0055 Learn more links (DECISIONS #474)
+// The Guru keeps a short list of https links under Practice; class roles read the ones switched on.
+{
+  const file55 = readFileSync(new URL('migrations/0055_practice_links.sql', supabaseDir), 'utf8');
+  check('0055: no link is seeded (the Guru chooses them)', (await asOwner('select count(*)::int as n from practice_links'))[0].n === 0);
+  const addLink = (userId, cols) => asApp('authenticated', userId,
+    `insert into practice_links (title, url, note, sort, active) values ($1, $2, $3, $4, $5)
+     returning id, title, url, note, updated_by`,
+    [cols.title ?? 'Khol course', cols.url ?? 'https://www.kksongs.org/khol', cols.note ?? null, cols.sort ?? 0, cols.active ?? true]).then((r) => r[0]);
+  const link55 = await addLink(guru, { title: '  Khol   course ', url: ' https://www.kksongs.org/khol/ ', note: '  Bols  and thekas \n' });
+  check('0055: the Guru adds a link; title, link and note trimmed', link55.title === 'Khol course' && link55.url === 'https://www.kksongs.org/khol/'
+    && link55.note === 'Bols and thekas' && link55.updated_by === guru, JSON.stringify(link55));
+  check('0055: a student reads it', (await asApp('authenticated', arjun, 'select id from practice_links')).length === 1);
+  check('0055: a coordinator reads it', (await asApp('authenticated', coordinator, 'select id from practice_links')).length === 1);
+  const waiting55 = await signUp('waiting.55@example.com', true);
+  check('0055: a waiting sign-up (no class role) reads none', (await asApp('authenticated', waiting55, 'select id from practice_links')).length === 0);
+  await refusesWith('0055: anon reads no link', 'permission denied for table practice_links', () => asApp('anon', null, 'select id from practice_links'));
+  const off55 = await addLink(guru, { title: 'Hidden link', url: 'https://example.org/a?b=1#c', active: false });
+  check('0055: a switched-off link: the Guru sees it, a student does not',
+    (await asApp('authenticated', guru, `select id from practice_links where id = ${off55.id}`)).length === 1
+    && (await asApp('authenticated', arjun, `select id from practice_links where id = ${off55.id}`)).length === 0);
+  await refusesWith('0055: a coordinator cannot add a link', 'new row violates row-level security policy for table "practice_links"',
+    () => addLink(coordinator, {}));
+  await refusesWith('0055: nor a student', 'new row violates row-level security policy for table "practice_links"', () => addLink(arjun, {}));
+  await asApp('authenticated', coordinator, `update practice_links set title = 'Changed' where id = $1`, [link55.id]);
+  await asApp('authenticated', arjun, `delete from practice_links where id = $1`, [link55.id]);
+  check('0055: ... nor change or delete one (nothing changes)', (await asOwner(`select title from practice_links where id = ${link55.id}`))[0]?.title === 'Khol course');
+  for (const [name, url] of [['plain http', 'http://example.org'], ['no site name', 'https://localhost/x'], ['a space', 'https://example.org/a b'],
+    ['another scheme', 'javascript:alert(1)'], ['too long', `https://example.org/${'x'.repeat(490)}`], ['empty', '']]) {
+    await refusesWith(`0055: a link must be https to a site (${name})`, 'link_url_invalid', () => addLink(guru, { url }));
+  }
+  await refusesWith('0055: a title of 1-80 characters', 'link_title_invalid', () => addLink(guru, { title: 'x'.repeat(81) }));
+  await refusesWith('0055: ... not blank', 'link_title_invalid', () => addLink(guru, { title: '   ' }));
+  await refusesWith('0055: a note of at most 200 characters', 'link_note_too_long', () => addLink(guru, { note: 'x'.repeat(201) }));
+  await asApp('authenticated', guru, `update practice_links set sort = 2, active = true where id = $1`, [off55.id]);
+  check('0055: the Guru switches a link on and orders it', (await asApp('authenticated', arjun, 'select id from practice_links order by sort, id')).map((r) => r.id).join(',')
+    === `${link55.id},${off55.id}`);
+  check('0055: link changes are in the audit log',
+    (await asOwner(`select count(*)::int as n from audit_log where table_name = 'practice_links'`))[0].n === 3);
+  await asApp('authenticated', guru, `delete from practice_links where id = $1`, [off55.id]);
+  check('0055: the Guru deletes a link', (await asOwner('select count(*)::int as n from practice_links'))[0].n === 1);
+  let again55 = '';
+  try { await db.exec(file55); } catch (e) { again55 = String(e.message); }
+  check('0055 can run again, and the links stay', again55 === '' && (await asOwner('select count(*)::int as n from practice_links'))[0].n === 1, again55);
 }
 
 // ---------------------------------------------------------------- 0057 practice while waiting (DECISIONS #510-#512)

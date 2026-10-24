@@ -101,8 +101,25 @@ export function renderSound(id: SoundId, rate: number): Float32Array {
 
 const cache = new Map<string, Float32Array>();
 
-/** renderSound, kept after the first time. */
+/** The Guru's recorded strokes when chosen (lib/khol-samples.ts, #473): a stroke's samples, or null = synthesised. */
+let recorded: ((id: SoundId, rate: number) => Float32Array | null) | null = null;
+let version = 0;
+
+/** Plays recorded strokes in place of the synthesised ones (null = synthesised again). */
+export function setRecordedSounds(source: typeof recorded): void {
+  recorded = source;
+  version++;
+}
+
+/** Changes when the sounds change, so an engine that keeps prepared sounds prepares them again. */
+export function soundsVersion(): number {
+  return version;
+}
+
+/** renderSound (or the recorded stroke), kept after the first time. */
 export function soundSamples(id: SoundId, rate: number): Float32Array {
+  const real = recorded?.(id, rate);
+  if (real && real.length > 0) return real;
   const key = `${id}@${rate}`;
   let samples = cache.get(key);
   if (!samples) {

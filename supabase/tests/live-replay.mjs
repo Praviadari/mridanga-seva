@@ -52,7 +52,9 @@ const GO_LIVE = ['0013', '0014', '0015', '0016', '0017', '0018', '0019', '0020',
   '0053',
   // After-launch forms and flows (#322-#329; placeholder 0062 on branch after-launch-forms).
   '0054',
-  // Practice while waiting for the desk (#510-#512; branch onboarding-offline; 0055 and 0056 are on other branches).
+  // Learn more links under Practice (#474).
+  '0055',
+  // Practice while waiting for the desk (#510-#512; branch onboarding-offline).
   '0057',
   // The weekly email to parents (#530-#539).
   '0058',

@@ -54,6 +54,7 @@ in number order:
 | `0052_practice_more.sql` | More home practice ([DECISIONS.md #400-#401](DECISIONS.md)): `practice_plans` (per level: weekly goal, up to three things to practise, a note; staff write, a student reads their own level's) a student's own weekly goal (`practice_goals`, `set_my_practice_goal`), mantras read before practice (`practice_mantras`, #405) and `practice_days()` (minutes per day with the goal: own, the level's, or 4 x 15). See "Practice of the week and the weekly goal (0052)" |
 | `0053_staff_own_record.sql` | Coordinators are students too (placeholder 0061 on branch `staff-own-record`, renumbered 22-10-2026; [DECISIONS.md #316-#321](DECISIONS.md)): `link_staff_record` (the Guru links a coordinator's login to its own student record), `my_student_id()` for staff, `refuse_own_record` (nobody records about their own record), `guard_own_student` (own mentor, own level), `guard_staff_record` (no withdrawal or erasure while a staff login is on the record); replaces `check_out_all` and `assign_mentor`. See "Own record (0053)" |
 | `0054_after_launch_forms.sql` | After-launch forms and flows (placeholder 0062 on branch `after-launch-forms`, renumbered 22-10-2026; [DECISIONS.md #322-#329](DECISIONS.md)): `request_id` (unique) on 10 tables and the request-id twins of `record_fund_entry`, `log_call`, `log_practice` (a create saved once); `material_file_deletable` (an approved material's file: the Guru only); `change_event_attendance`; the Guru's `delete_student_record` and `undo_import` (`students.import_id`, `import_students` stamps it); phones kept as E.164 (`phone_e164`, trigger `keep_phone_e164` on students, guardians, profiles, Ishtagoshti subscribers; stored numbers rewritten once, OPERATIONS "Phones that are not E.164"); `ig_send_parent_code` at most 3 codes a day per parent address, `name_for_email` |
+| `0055_practice_links.sql` | "Learn more" under Practice ([DECISIONS.md #474](DECISIONS.md)): `practice_links` (title, https link, note, order, on/off; class roles read the ones switched on, only the Guru reads all and writes). See "Learn more links (0055)" |
 | `0059_data_rights.sql` | A person's data rights in the app (audit 22-10-2026 fix 17; [DECISIONS.md #550-#556](DECISIONS.md)): `data_requests` (a person reads their own, the Guru all; written only by the functions), `my_data_summary`, `file_data_request`, `cancel_data_request`, the Guru's `record_data_request`, `answer_data_request`, `act_on_data_request`; job `mridanga-data-requests`. See "Data requests (0059)" |
 
 The Phase 2 files were renumbered when they merged into main (#55). TEST ran some under their
@@ -1639,6 +1640,18 @@ plan at the top, this week against the goal), S4 My progress and C8 (the week ca
 Who sees what: staff read every level's plan; a student reads only the row of their own record's level (a higher
 level's lesson titles stay unseen); anon reads nothing. The policies wrap `is_staff()` and `my_student_id()` in
 `(select ...)` (D9-01). If 0052 has not run, the app shows no plan and no week card.
+
+## Learn more links (0055)
+
+[DECISIONS.md #474](DECISIONS.md). Migration `0055_practice_links.sql`. Screen: Practice tools → Play and learn → Learn
+more (student/learn-more, staff/learn-more; the Guru edits on the same screen).
+
+| Table | One row per | Written by |
+|---|---|---|
+| `practice_links` | Free material elsewhere the Guru trusts: `title` 1-80 (spaces folded), `url` (https, a site name with a dot, an optional port, no spaces, ≤ 500), `note` ≤ 200 (blank = null), `sort`, `active`, `created_at`, `updated_at`, `updated_by`. Nothing seeded | The Guru only (row-level security: insert, update, delete `is_guru()`); class roles read the ones switched on, the Guru all; anon nothing. Checked by the trigger `practice_links_guard` (`guard_practice_link`: `link_title_invalid`, `link_url_invalid`, `link_note_too_long`), audited (`audit_row`) |
+
+The app keeps the last list on the phone (offline) and opens a link in the browser. No personal data. If 0055 has not
+run, Learn more shows the copy on the phone (empty at first) and the Guru cannot save.
 
 Tests: section "0052 more practice" in `supabase/tests/smoke-test.mjs`.
 

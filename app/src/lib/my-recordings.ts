@@ -14,7 +14,9 @@ export const MAX_RECORDINGS = 30;
 /** What was playing while recording, to play it again beside the recording. */
 export type RecordingSetting =
   | { mode: 'metronome'; bpm: number; beatsPerBar: number }
-  | { mode: 'taal'; taalId: number; taalName: string; taalBpm: number; speed: number };
+  | { mode: 'taal'; taalId: number; taalName: string; taalBpm: number; speed: number }
+  // Echo me (#472): the calls of one vibhag (null = all in turn) with the answers' clicks or not; speed is always 1.
+  | { mode: 'echo'; taalId: number; taalName: string; taalBpm: number; speed: 1; vibhag: number | null; clicks: boolean };
 
 /** One kept recording. */
 export type MyRecording = {

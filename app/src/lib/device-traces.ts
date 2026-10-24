@@ -15,6 +15,7 @@
 // - the daily practice reminder and its scheduled notifications (lib/practice-reminder.ts, #402);
 // - "may practise while waiting" and the Beginner lessons list of a waiting login (data/waiting.ts, #510);
 // - on the web, everything the service worker keeps for offline use (lib/offline-shell.web.ts, #513).
+// - the student's own bests in the tap pad, Echo me and Which bol? (lib/play-bests.ts, #470-#472).
 
 import { Directory, Paths } from 'expo-file-system';
 import { Image } from 'expo-image';
@@ -24,6 +25,7 @@ import { clearSavedCard } from '@/data/my-student';
 import { forgetWaitingPractice } from '@/data/waiting-store';
 import { forgetMyRecordings } from '@/lib/my-recordings';
 import { forgetOfflineShell } from '@/lib/offline-shell';
+import { forgetPlayBests } from '@/lib/play-bests';
 import { forgetPracticeReminders } from '@/lib/practice-reminder';
 import { dismissNotifications } from '@/lib/push';
 
@@ -37,6 +39,7 @@ export const TRACE_FOLDERS = ['ImageManipulator', 'DocumentPicker', 'ImagePicker
 export async function clearDeviceTraces(): Promise<void> {
   clearSavedCard();
   forgetWaitingPractice();
+  forgetPlayBests();
   await forgetMyRecordings();
   await Promise.all([
     dismissNotifications(),

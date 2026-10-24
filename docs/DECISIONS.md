@@ -6845,6 +6845,91 @@ export is not guarded: the live web goes up with the same commit as the producti
 **Why.** Praveen wants students and staff to see in the app what each version changed. Notes in the bundle can never
 disagree with the code they describe, and the publish guard makes writing them part of every release.
 
+## 470. Tap pad: a play-along graded on the sound's own clock — 22 Oct 2026
+
+**Status: branch `creative-tools`; no migration.** Praveen 22-10-2026: start the next phase of advanced features; the
+research note NOTES_creative_tools_research.md ranked a tap-pad play-along among the first.
+
+**Decision.** Practice tools → Play and learn → **Tap pad**: two big pads (baya left, dayan right, each a drum face with
+the hand drawing of #404). The taal loops after one vibhag of count-in; the student taps each stroke on its pad (dhā:
+both). Each tap is graded against the player's position at that moment, never a JavaScript clock: **on time within 70
+ms, a little early or late within 160 ms** (narrower when two strokes of the same hand are closer), else an "extra tap".
+Each cycle gets **0-3 stars** (on time 1, close ½, an extra tap −¼; 85 / 60 / 30 %), so mashing both pads earns
+nothing. **"Tune to this phone"** measures the phone's sound delay once (12 clicks; the middle value of the taps, taken
+only when the taps are even) and takes it off every tap. Options: the taal plays, or **only the beat** and the taps
+sound the strokes; the guide lights the pad and shows the bol. The **best cycle per taal** (stars, then tempo) is kept
+on the phone for the person signed in and wiped at sign-out. One tempo while playing.
+
+**Why.** Practice away from the drum (bus, waiting room) with a game feel, training timing and which hand, as rhythm
+apps do; no leaderboard and nothing shown to others (children use it).
+
+**Consequences.** JS only (expo-audio, expo-keep-awake, react-native-svg are in the APK; fingerprint 23dc7e4a). Phone
+latency differs; tuning is per phone. On phones the pads use onPressIn (React Native hands a second finger to the
+other pad: check on a real phone); in the browser onPointerDown, one pointer per finger.
+
+## 471. "Which bol?": an ear quiz by level — 22 Oct 2026
+
+**Status: branch `creative-tools`; no migration.**
+
+**Decision.** The app sounds a bol, or a phrase of 2-4 bols, and the student picks it from **three cards** with the
+hands that play it. The bols are those of the chosen level's taals, lower levels' and every level's (a student starts at
+their own level), each sound once (ke = ka, tin = tī share a card, written as the Guru's taal writes it); a few first
+bols fill up to three. Phrases follow a taal round its cycle; the wrong cards change one bol, so the ear must follow the
+whole phrase. After the answer each card can be heard to compare. A gentle **"in a row"** count and its best per level
+and length on the phone; no time limit, no ranking.
+
+**Why.** Ear training was missing; it builds on Hear it (#404) and the hand drawings.
+
+**Consequences.** Bols the app does not know are left out. When the Guru records real strokes (#473) the quiz uses them.
+
+## 472. Echo me: call and response — 22 Oct 2026
+
+**Status: branch `creative-tools`; no migration.**
+
+**Decision.** The app plays one **vibhag** of a taal (the call), then leaves **as long silent** (the answer) with soft
+clicks on its beats (can be switched off), then the next vibhag, or one vibhag again and again. The screen says
+**Listen** / **Your turn** with the vibhag's bols (hidden while answering if wished). The student answers on the drum or
+on the **tap pads**; pad answers are graded as in #470 (only the answer's strokes; extra taps count only while
+answering) with stars per round and a best per taal. **Record myself** on this screen keeps Echo me's takes apart
+(`RecordingSetting` mode `echo`, speed always 1; Practice tools lists the others), and "Play with the sound" plays the
+calls beside the recorded answers. Takes stay on the phone (#283).
+
+**Why.** It is how the class is taught: the Guru plays, the student plays it back.
+
+## 473. Real khol sounds: the setting and the loader, no recordings yet — 22 Oct 2026
+
+**Status: branch `creative-tools`; no migration.**
+
+**Decision.** `lib/khol-samples.ts` lists recorded strokes (`KHOL_SAMPLE_FILES`, **empty**) and, when the student
+chooses "Real khol", reads each WAV from the app's assets, cuts the quiet before the stroke, evens the loudness, limits
+it to 1.5 s and gives it to every practice sound in place of the synthesised one; a stroke without a file stays
+synthesised. Until files exist Play and learn says real strokes come once the Guru has recorded them, and offers no
+choice. **docs/KHOL_RECORDINGS.md** says exactly what the Guru records: 9 single strokes (tā, nā, tī, ra, te, ka, gha,
+ga, gin), 5 takes each in a quiet room, WAV 16-bit mono, and how the team adds them.
+
+**Why.** Children copy what they hear; the class's own drum is the best model. Recordings need the Guru, so the app is
+ready first.
+
+**Consequences.** Adding the files is an over-the-air update (assets; expo-asset in the APK). Recordings are of the
+instrument only. A CC BY sample would need a credit in About; NC or unknown licences are not used.
+
+## 474. Learn more: a short list of links the Guru keeps — 22 Oct 2026
+
+**Status: branch `creative-tools`; migration 0055_practice_links.sql.**
+
+**Context.** Lesson materials have no "link" kind and are tied to levels and syllabus items; an app version that does
+not know a new kind would show it wrongly.
+
+**Decision.** A small table **practice_links** (title 1-80, an https link to a site, a note ≤ 200, order, on/off):
+class roles read the ones switched on, **only the Guru** reads all and writes (row-level security), checked by
+`guard_practice_link` and audited. Practice → Play and learn → **Learn more** lists them with the **site's name** under
+each title, so a child or parent sees where it goes, and opens them in the browser; the Guru adds, edits, orders,
+switches off and deletes on the same screen. The list is kept on the phone for offline. Nothing is copied into the app;
+nothing is seeded (the Guru chooses, e.g. the kksongs khol course).
+
+**Consequences.** 0055 must run on TEST and then LIVE before the update that shows Learn more (without it the list is
+empty and saving fails; the other tools work).
+
 ## 510. A login waiting for the desk may already practise — 23 Oct 2026
 
 **Status: branch `onboarding-offline` (world-class audit 22-10-2026 fix 8, work package E); migration
