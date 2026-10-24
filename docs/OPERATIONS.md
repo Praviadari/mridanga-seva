@@ -42,8 +42,9 @@ s.16), so a processor abroad is allowed, but it must be recorded and named in th
 | Google Firebase Cloud Messaging | Delivers push notifications to Android phones | Same as Expo's push service: token, title, text | Google's regions | [[TEAM]] |
 | Brevo (**planned**: live sign-up mail, audit brief 8; parent codes once its key is set) | Sends sign-up confirmations, password resets, Ishtagoshti parent codes and the consent email to a child's parent (0051) | Email address, the person's name in the mail, the mail's text (a consent email: the child's name, date of birth and centre) | EU (France) | [[TEAM]] |
 | Cloudflare (Pages) | Serves the web version of the app and the public website | Visitors' IP addresses and request details in its logs; the app's data goes from the browser straight to Supabase, not through Cloudflare | Worldwide edge | [[TEAM]] |
-| Zoho Mail | The team's mail: privacy@ and info@ | Whatever parents write to us: requests, complaints, their contact details | **[[TEAM]]:** the account's data centre (zoho.in = India, zoho.com = USA) | [[TEAM]] |
+| Zoho Mail | The team's mail: privacy@ and info@ | Whatever parents write to us: requests, complaints, their contact details | **[[TEAM]]:** the account's data centre (zoho.in = India, zoho.com = USA; Zoho Mail admin → Organization). On 24-10-2026 public DNS had **no MX record** for mridangaseva.com, so mail to privacy@ cannot arrive: the privacy notice and the app name it ([DECISIONS.md #575](DECISIONS.md)) | [[TEAM]] |
 | YouTube (Google) | Lesson videos shown in the app | The viewer's IP address and device, and YouTube's own cookies on the web; the app sends it no names | Google's regions | YouTube's terms |
+| Team cloud folder `Mridanga Seva backups` | Keeps the weekly backups (see "Backups") | Encrypted 7z archives only: unreadable without the archive password, which is never stored with them | **[[TEAM]]:** the provider and its region | — |
 | GitHub | Source code (public) | None: no personal data is kept in the repository | USA | — |
 
 jsDelivr is no longer one: since brief 13 the web QR reader is served from our own site ([DECISIONS.md #143](DECISIONS.md)).
@@ -187,6 +188,8 @@ Suggested practice, until the team agrees its own (with the temple's legal advis
 - A parent (or an adult student) may withdraw consent at any time: see "Consent withdrawal" below.
   A request to delete the data: "Erasure request".
 - The wording of the form itself is still to be agreed.
+- Keep a form while its record exists and destroy it when the record is erased (by request, or by the
+  retention job: see "Retention"; [DECISIONS.md #572](DECISIONS.md)). The privacy notice says so.
 
 ## Data requests (0059, in the app)
 
@@ -243,8 +246,9 @@ steps below are for the owner in the SQL editor when the app cannot be used.
 
 Only the Guru records a withdrawal ([DECISIONS.md #75](DECISIONS.md)). It **freezes** the record:
 the student's login is switched off, their phones get no more notifications, all consents are
-revoked, and nothing new (attendance, calls, ticks, edits) can be recorded. The history stays
-until the Guru erases the record or the parent consents again.
+revoked, and nothing new (attendance, calls, ticks, edits) can be recorded. **Since 0060 the record is erased
+by itself 30 days after the withdrawal** (job `mridanga-retention`, [DECISIONS.md #573](DECISIONS.md)), unless the parent
+consents again within those 30 days (below). The Guru may erase it sooner ("Erasure request").
 
 1. Write down, privately: the date, who asked (parent / student), how (in person, phone, email),
    and the student's roll number. Keep the parent's written request with the consent forms if
@@ -289,8 +293,7 @@ request first.
    - `notices_deleted`: the staff inbox notices about the child that went with her (since 0049).
    - `login_deleted: false`: the login could not be deleted from the SQL editor. Supabase →
      Authentication → Users → find the email the parent gave → Delete user.
-5. Destroy the paper consent form as agreed with the parent, or keep it only as long as the team's
-   retention rule says (to be agreed).
+5. Destroy the paper consent form (the privacy notice says it is destroyed when the record is erased, #572).
 6. The tombstone (roll number, date, who, reason, reference) stays in `erasures`:
    `select * from erasures order by erased_at desc;` This is the proof that the request was met.
 
@@ -312,6 +315,30 @@ user for this: it leaves the name, phone and email in the audit log.
 Errors: `not_pending` (a student or staff login), `has_student_record` (use `erase_student`),
 `profile_not_found`, `reason_required`.
 
+## Retention (0060)
+
+The privacy notice (1.0, "How long we keep data") promises periods the database keeps by itself
+([DECISIONS.md #572, #573](DECISIONS.md)). Job `mridanga-retention`, every night at 02:45 IST, runs `retention_daily()`:
+
+| What | When it goes | How |
+|---|---|---|
+| A record whose consent was withdrawn | 30 days after the withdrawal (unless consent is given again first) | `erase_student`, reference `retention` |
+| A student who left | Two years after the last change to Left | `erase_student`, reference `retention` |
+| A sign-up the desk never registered | 180 days after sign-up; never an Ishtagoshti reader, never a child's sign-up (0051's own job) | `erase_login`, reference `retention` |
+| Phones that have not opened the app | 90 days | push tokens deleted (the app registers again when it starts) |
+| Change log (`audit_log`) | Two years | rows deleted (the DPDP Rules ask for at least one year) |
+
+An erasure that is refused (an instrument still lent out: `open_loan`) is skipped and tried again the next night:
+take the instrument back. The files of an erased student go with the orphan-files job, as for the Guru's erasure.
+Each erasure leaves its tombstone in `erasures` (reason "Retention: …").
+
+What the job does not do, by hand: **paper consent forms** are destroyed when their record is erased (check the
+tombstones once a month with the backup); **emails to the team** (Zoho) are deleted a year after the matter is
+closed, except a data request (kept as data requests are); the **backups** keep the last 8 weekly copies ("Backups").
+
+**Check (SQL editor, read-only):**
+`select reason, count(*), max(erased_at) from erasures where request_ref = 'retention' group by 1;`
+and the job's last runs: `select status, return_message, start_time from cron.job_run_details d join cron.job j on j.jobid = d.jobid where j.jobname = 'mridanga-retention' order by start_time desc limit 5;`
 ## A record entered by mistake, an import undone (0054)
 
 Not an erasure ([DECISIONS.md #326](DECISIONS.md)): a second copy of a student typed at the desk, or the

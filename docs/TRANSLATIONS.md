@@ -318,3 +318,10 @@ The privacy texts of 0034 (`signUp.privacyNotice`, `signUp.under18`, `register.p
   text change. New drafts in this round: `common.back`, `common.required`, `common.serverErrors.*` (the database's
   refusals), `practice.tempoFaster` / `tempoSlower`; changed: the five te/hi sentences that named the "My QR" tab in
   English now use the tab's own name (“నా QR” / “मेरा QR”).
+- **Privacy notice 1.0** (branch `privacy-1-0`, migration 0060, [DECISIONS.md #570-#579](DECISIONS.md), 24 Oct 2026): new
+  block `noticeCard` (the card on the homes: read and agree, own consent at 18, show it to the parent), rewritten
+  `profile.withdrawnBody` and `dataRights.what.withdraw_data` (a withdrawn record is erased after 30 days), the
+  website's `privacy.html` in te/hi (notice 1.0) and the Ishtagoshti parent email in 0060 (te/hi in the SQL). Legal
+  meaning first: "consent" సమ్మతి / सहमति, "withdraw" ఉపసంహరించు / वापस लेना, "erase" తొలగించు / मिटाना, "parent or
+  legal guardian" తల్లిదండ్రులు లేదా చట్టపరమైన సంరక్షకులు / माता-पिता या वैध अभिभावक. Checked for mixed Telugu-Devanagari
+  words on 24 Oct 2026.

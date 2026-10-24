@@ -11,7 +11,8 @@ export const outDir = join(root, 'dist');
 
 /**
  * Pages in menu order. `file` is the content file in each language folder. `menu: false` keeps a
- * page out of the main menu; it is still in the footer, the sitemap and every language.
+ * page out of the main menu; it is still in the footer, the sitemap and every language. `final: true`
+ * marks settled text (the privacy notice 1.0, DECISIONS #571): no Draft note and indexable while the rest is a draft.
  */
 export const pages = [
   { id: 'home', slug: '', file: 'home.html' },
@@ -19,7 +20,7 @@ export const pages = [
   { id: 'join', slug: 'join', file: 'join.html' },
   { id: 'app', slug: 'get-the-app', file: 'app.html' },
   { id: 'tech', slug: 'how-the-app-is-built', file: 'tech.html', menu: false },
-  { id: 'privacy', slug: 'privacy', file: 'privacy.html' },
+  { id: 'privacy', slug: 'privacy', file: 'privacy.html', final: true },
   { id: 'contact', slug: 'contact', file: 'contact.html' },
 ];
 export const notFound = { id: 'notFound', slug: null, file: '404.html' };

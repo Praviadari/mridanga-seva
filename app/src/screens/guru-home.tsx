@@ -26,6 +26,7 @@ import { Section } from '@/components/section';
 import { StaffModules } from '@/components/staff-shortcuts';
 import { StaffToday } from '@/components/staff-today';
 import { StatGrid, StatTile } from '@/components/stat-tile';
+import { PrivacyNoticeCard } from '@/components/privacy-notice-card';
 import { PushNotice } from '@/components/push-notice';
 import { UpdateNotice } from '@/components/update-notice';
 import { fetchStaffDashboard, type GuruDashboard, type StaffDashboard } from '@/data/home';
@@ -68,6 +69,7 @@ export function GuruHome() {
     <Screen wide compact header={<HomeHeader menu name={name} role={t('roles.guru')} />} onRefresh={load}>
       <UpdateNotice />
       <PushNotice place="home" />
+      <PrivacyNoticeCard />
       {board === null ? (
         <>
           <Notice tone="error" title={t('home.loadFailed')}>

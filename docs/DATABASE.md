@@ -59,6 +59,7 @@ in number order:
 | `0057_practice_while_waiting.sql` | Practice while waiting for the desk ([DECISIONS.md #510-#512](DECISIONS.md)): one read-only function `practice_while_waiting()` (adult by the sign-up's date of birth, or a child after the parent's yes) that the practice read policies also call; no table, no write |
 | `0058_parent_digest.sql` | The weekly email to parents, opt-in ([DECISIONS.md #530-#539](DECISIONS.md)): table `parent_digests`, the Guru's switch `parent_digest_enabled` (off), consent scope `digest`, staff and preview functions, job `mridanga-parent-digests` |
 | `0059_data_rights.sql` | A person's data rights in the app (audit 22-10-2026 fix 17; [DECISIONS.md #550-#556](DECISIONS.md)): `data_requests` (a person reads their own, the Guru all; written only by the functions), `my_data_summary`, `file_data_request`, `cancel_data_request`, the Guru's `record_data_request`, `answer_data_request`, `act_on_data_request`; job `mridanga-data-requests`. See "Data requests (0059)" |
+| `0060_privacy_notice_1_0.sql` | Privacy notice 1.0 (audit 22-10-2026 fixes 5 and 21; [DECISIONS.md #571-#579](DECISIONS.md)): `notice_acceptances` with `privacy_notice_ask` / `accept_privacy_notice` (the notice card on the homes, per version), job `mridanga-retention` (retention enforced), and `ig_send_parent_code` with the real parent email in en/te/hi. See "Privacy notice and retention (0060)" |
 
 The Phase 2 files were renumbered when they merged into main (#55). TEST ran some under their
 branch numbers (0012, 0014_promotion, 0016_practice, 0017_media, 0021_events_polls), so it skips
@@ -1799,6 +1800,25 @@ delete right): only the functions below, as the owner.
 
 Internal: `data_request_line`, `data_request_ref`, `queue_data_request_notice`, `clean_request_text`.
 
+## Privacy notice and retention (0060)
+
+[DECISIONS.md #571-#579](DECISIONS.md). Migration `0060_privacy_notice_1_0.sql`; operations: OPERATIONS.md "Retention".
+
+**`notice_acceptances`** (one row per login, notice version and kind; not audited): `profile_id` (on delete cascade:
+an erasure takes it), `version` (the website's `privacyNotice.version`, as the app sends it: `PRIVACY_NOTICE_VERSION`),
+`kind` (`accepted`: an adult read and agreed; `shown`: a student under 18 was asked to show it to the parent, whose
+consent stays the basis), `at`. Unique per login, version and kind. A person reads their own rows, the Guru all;
+nobody writes the table: only `accept_privacy_notice`, as the owner.
+
+| Function | Who | Does | Errors |
+|---|---|---|---|
+| `privacy_notice_ask(version)` | Signed in (security definer; own answer only) | The card for this version: `accept` (staff, or a student 18 or over by the record's date of birth), `adult_now` (a student 18 or over whose current data consent is a parent's and who never agreed themselves), `show` (a student under 18 or with no date of birth), or null (answered; a waiting login, subscriber or door tablet; a withdrawn or left record; a malformed version) | — |
+| `accept_privacy_notice(version)` | Guru, coordinator, student | Records `accepted` (or `shown` for a child) for the version; returns the kind, or null when there was nothing to ask. At most 50 rows a login | `not_allowed`, `notice_version_invalid`, `too_many` |
+| `retention_daily()` | pg_cron (`mridanga-retention`) | See the jobs table; returns `{withdrawn, left, waiting, skipped, tokens, audit_rows}`. Erasures go through `erase_student` / `erase_login` with reason "Retention: …" and reference `retention`, so tombstones and audit redaction are as for the Guru's | — |
+
+`ig_send_parent_code()` (0054's, replaced): the parent email's text and subject in the child's app language
+(`profiles.language`: en, te, hi), with what is kept, who sees it, the parent's declaration (parent or legal guardian,
+18 or over), withdrawal, the notice's address on the website (`WEBSITE_ORIGIN`, with `/te` or `/hi`) and the code.
 Tests: section "0059 data rights" in `supabase/tests/smoke-test.mjs` (56 checks); app: `app/tests/data-rights.test.mjs`.
 
 ## Linking a login to a student
@@ -1965,6 +1985,7 @@ and the helpers `my_role`, `is_guru`, `is_staff`,
 | `mridanga-minor-signups` | 20:45 UTC = 02:15 IST | `expire_minor_signups()` — erases (`erase_login`) a child's sign-up whose parent did not consent within 30 days, or that the desk did not accept within 180 days (0051) |
 | `mridanga-parent-digests` | Every 5 minutes | `send_parent_digests()` — while the weekly email is on: queues the week's parent emails from Sunday 20:30 to Monday 20:30 IST, and calls `notify-parents` when one waits within 07:00-21:30 IST and the day's ceilings (0058) |
 | `mridanga-data-requests` | 21:00 UTC = 02:30 IST | `data_requests_daily()` — reminds the Gurus of a data request due within 3 days; blanks a closed request's text after a year, deletes it after two (0059) |
+| `mridanga-retention` | 21:15 UTC = 02:45 IST | `retention_daily()` — erases a record 30 days after its consent was withdrawn and a student two years after leaving (`erase_student`), a sign-up never registered after 180 days (`erase_login`; not an Ishtagoshti reader or a child's sign-up); forgets phones unused 90 days; deletes change-log rows over two years; an erasure refused (an open loan) is skipped and tried the next night (0060) |
 
 ## Who can see what
 

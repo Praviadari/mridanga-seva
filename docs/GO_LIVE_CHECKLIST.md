@@ -108,7 +108,8 @@ with m(migration, present) as (values
   ('0056', exists (select 1 from pg_proc where proname = 'staff_practice_week' and pronamespace = 'public'::regnamespace)),
   ('0057', exists (select 1 from pg_proc where proname = 'practice_while_waiting' and pronamespace = 'public'::regnamespace)),
   ('0058', to_regclass('public.parent_digests') is not null),
-  ('0059', to_regclass('public.data_requests') is not null)
+  ('0059', to_regclass('public.data_requests') is not null),
+  ('0060', to_regclass('public.notice_acceptances') is not null)
 )
 select migration, case when present then 'yes' else 'no' end as present from m
 union all
@@ -120,7 +121,7 @@ select 'MISSING', coalesce((select string_agg(a.migration, ' ' order by a.migrat
 order by 1;
 ```
 
-## B. Migrations 0013-0059, one file per run
+## B. Migrations 0013-0060, one file per run
 
 For each row: GitHub main → `supabase/migrations/<file>` → **Copy raw file** → LIVE → SQL Editor →
 New query → paste → check the project → **Run** → then paste the probe again (or keep it in a second
@@ -182,9 +183,10 @@ a second paste. So pasting a file twice by mistake is harmless; still, never do 
 | M0056 | `0056_practice_extras.sql` | Praveen · dashboard | No rows; probe `0056`, `MISSING` `none` | Practice extras ([#493-#495](DECISIONS.md)): two new columns on `practice_logs`, `feeling` (1 hard, 2 okay, 3 good) and `practised` (taal / lesson / free), empty on every existing entry, written only by the new `set_practice_feeling` (the student, an own entry of the last 14 days: "How did it go?" after a session); the read-only functions `practice_history` (every practice day ever with the goal, for the milestones; row-level security of the asker, as `practice_days`) and `staff_practice_week` (staff only: each student still in the class with that week's practice, least first). **New data about a child (a self-rating):** the privacy notice's Learning row names it before the update that asks it. No existing row or function changes; safe to run twice. **TEST first** (`fhuqyk…`), then LIVE, **before** the OTA and web upload that use it (without it the app shows no milestones, does not ask how it went, and the staff list cannot load). After 0054 (and 0055 when it is there). Verify: `select (select count(*) from information_schema.columns where table_name = 'practice_logs' and column_name in ('feeling', 'practised')) as cols, (select count(*) from pg_proc where proname in ('set_practice_feeling', 'practice_history', 'staff_practice_week') and pronamespace = 'public'::regnamespace) as fns, (select count(*) from practice_logs where feeling is not null or practised is not null) as said` = `2 | 3 | 0` right after the run |
 | M0057 | `0057_practice_while_waiting.sql` | Praveen · dashboard | No rows; probe `0057`, `MISSING` `none` | **Practice while waiting for the desk** ([#510-#512](DECISIONS.md), audit 22-10-2026 fix 8): one read-only function `practice_while_waiting()` and three new read policies `waiting_read` (on `taals`, `practice_mantras`, `materials`), beside the existing ones. A pending login that is an adult by its sign-up's date of birth, or a child whose parent consented by email, reads the taals and mantras switched on and the approved Beginner lesson videos; nothing personal, nothing written, no existing row, function or policy changed. Safe to run twice. **TEST first** (`fhuqyk…`), then LIVE, **before** the OTA and web upload that show the waiting page's practice section (without it the section stays hidden: the app asks the function first). Verify: `select count(*) from pg_policies where policyname = 'waiting_read'` = 3 |
 | M0058 | `0058_parent_digest.sql` | Praveen · dashboard | No rows; probe `0058`, `MISSING` `none`; verification row 3 `13 of 14` (`14 of 14` after 0059) | **The weekly email to parents** ([#530-#539](DECISIONS.md)): new table `parent_digests` (empty), new setting `parent_digest_enabled` = **false**, consent scope `digest` (the parent's own written yes, opt-in), four new columns on `parent_notice_status`, new job `mridanga-parent-digests` (every 5 minutes; while off it only answers `off`), the staff functions (`set_parent_digest` the Guru, `guardian_digest_status`, `set_guardian_digest`, `resend_parent_digest`, `preview_parent_digest`, `parent_digest_overview`) and the Edge Function's `claim_parent_digests` / `finish_parent_digests` / `stop_parent_digests`. **No existing function is replaced** (`guard_setting` and `send_parent_notices` stay as they are); the `consents.scope` check gains `digest`. Changes no stored row. **Order:** TEST first; `notify-parents` deployed from the same commit (C7) before the Guru switches it on (OPERATIONS "Weekly email to parents"); then the OTA with the screen. After 0054 (it does not need 0055-0057). Safe to run twice |
-| M0059 | `0059_data_rights.sql` (branch `data-rights`) | Praveen · dashboard | No rows; probe `0059`, `MISSING` `none`; verification row 3 `14 of 14` | **A person's data rights in the app** ([#550-#556](DECISIONS.md), audit 22-10-2026 fix 17): new table `data_requests` (one row per request: correction, erasure, photo or data withdrawal, complaint, nominee, access; type, status, made / answer-by / closed times; a person reads only their own, the Guru all; written only by the functions, audited), the person's `my_data_summary` (logged in the access log), `file_data_request`, `cancel_data_request`, the Guru's `record_data_request`, `answer_data_request` and `act_on_data_request` (runs the photo withdrawal, `withdraw_consent`, `erase_student` or `erase_login` after the roll number or email is typed), and job `mridanga-data-requests` (daily 02:30 IST: reminder 3 days before the 30-day answer-by date; text blanked a year after closing, row deleted after two). No existing function or row changes; safe to run twice. **TEST first** (`fhuqyk…`), then LIVE, **before** the OTA with "My data and rights" (without it the screen says the requests are not set up and the To do shows no data requests). Phone pushes about requests need the Edge Function `notify-announcements` deployed from the same commit (its list of screens a push may open); until then those notices reach the inbox only (the push is refused `bad_url`, nothing breaks) |
+| M0059 | `0059_data_rights.sql` (branch `data-rights`) | Praveen · dashboard | No rows; probe `0059`, `MISSING` `none`; verification row 3 `14 of 15` (`15 of 15` after 0060) | **A person's data rights in the app** ([#550-#556](DECISIONS.md), audit 22-10-2026 fix 17): new table `data_requests` (one row per request: correction, erasure, photo or data withdrawal, complaint, nominee, access; type, status, made / answer-by / closed times; a person reads only their own, the Guru all; written only by the functions, audited), the person's `my_data_summary` (logged in the access log), `file_data_request`, `cancel_data_request`, the Guru's `record_data_request`, `answer_data_request` and `act_on_data_request` (runs the photo withdrawal, `withdraw_consent`, `erase_student` or `erase_login` after the roll number or email is typed), and job `mridanga-data-requests` (daily 02:30 IST: reminder 3 days before the 30-day answer-by date; text blanked a year after closing, row deleted after two). No existing function or row changes; safe to run twice. **TEST first** (`fhuqyk…`), then LIVE, **before** the OTA with "My data and rights" (without it the screen says the requests are not set up and the To do shows no data requests). Phone pushes about requests need the Edge Function `notify-announcements` deployed from the same commit (its list of screens a push may open); until then those notices reach the inbox only (the push is refused `bad_url`, nothing breaks) |
+| M0060 | `0060_privacy_notice_1_0.sql` (branch `privacy-1-0`) | Praveen · dashboard | No rows; probe `0060`, `MISSING` `none`; verification row 3 `15 of 15` | **Privacy notice 1.0** ([#571-#579](DECISIONS.md), audit 22-10-2026 fixes 5 and 21): new table `notice_acceptances` (per login and notice version: an adult agreed, or a child was asked to show it to the parent; own rows and the Guru read; written only by the functions), `privacy_notice_ask` / `accept_privacy_notice` for the notice card on the homes, job **`mridanga-retention`** (daily 02:45 IST: erases a record 30 days after its consent was withdrawn, a student two years after leaving, a sign-up never registered after 180 days, through `erase_student` / `erase_login` with tombstones; forgets phones unused 90 days; deletes change-log rows over two years; nothing on LIVE is old enough on 24-10-2026), and `ig_send_parent_code` replaced with the real parent email in en/te/hi (the only function replaced). No existing table, policy or row changes; safe to run twice. **TEST first**, then LIVE, **before** the OTA with the notice card and notice version 1.0 (without it the card stays hidden). The website upload with notice 1.0 goes with that OTA |
 
-**A file newer than 0059 on main:** the replay's first check fails until this table lists it. Add it
+**A file newer than 0060 on main:** the replay's first check fails until this table lists it. Add it
 here, with its own steps, then run it last.
 
 **0049 (launch clean-up)** is on TEST but not on main on 15 Oct 2026. It joins this table when branch
@@ -327,7 +329,8 @@ with m(migration, present) as (values
   ('0056', exists (select 1 from pg_proc where proname = 'staff_practice_week' and pronamespace = 'public'::regnamespace)),
   ('0057', exists (select 1 from pg_proc where proname = 'practice_while_waiting' and pronamespace = 'public'::regnamespace)),
   ('0058', to_regclass('public.parent_digests') is not null),
-  ('0059', to_regclass('public.data_requests') is not null)
+  ('0059', to_regclass('public.data_requests') is not null),
+  ('0060', to_regclass('public.notice_acceptances') is not null)
 ),
 last_in_order as (select coalesce(max(a.migration), 'before 0010') as v from m a
   where a.present and not exists (select 1 from m b where b.migration <= a.migration and not b.present)),
@@ -336,13 +339,13 @@ missing as (select coalesce(string_agg(a.migration, ' ' order by a.migration), '
 jobs(name) as (values ('mridanga-status-refresh'), ('mridanga-close-visits'), ('mridanga-push'), ('mridanga-inbox-cleanup'),
   ('mridanga-assessments'), ('mridanga-events-polls'), ('mridanga-duty'), ('mridanga-access-log-purge'),
   ('mridanga-cron-history-purge'), ('mridanga-orphan-files'), ('mridanga-parent-notices'), ('mridanga-minor-signups'),
-  ('mridanga-parent-digests'), ('mridanga-data-requests')),
+  ('mridanga-parent-digests'), ('mridanga-data-requests'), ('mridanga-retention')),
 checks(sort, check_name, ok, found, expected) as (
-  select 1, 'last migration', (select v from last_in_order) = '0059', (select v from last_in_order), '0059'
+  select 1, 'last migration', (select v from last_in_order) = '0060', (select v from last_in_order), '0060'
   union all select 2, 'migrations missing', (select v from missing) = 'none', (select v from missing), 'none'
   union all select 3, 'scheduled jobs',
-    (select count(*) from jobs j join cron.job c on c.jobname = j.name and c.active) = 14,
-    (select count(*) from jobs j join cron.job c on c.jobname = j.name and c.active)::text || ' of 14', '14 of 14 (active)'
+    (select count(*) from jobs j join cron.job c on c.jobname = j.name and c.active) = 15,
+    (select count(*) from jobs j join cron.job c on c.jobname = j.name and c.active)::text || ' of 15', '15 of 15 (active)'
   union all select 4, 'other mridanga jobs', not exists (select 1 from cron.job where jobname like 'mridanga%' and jobname not in (select name from jobs)),
     coalesce((select string_agg(jobname, ', ') from cron.job where jobname like 'mridanga%' and jobname not in (select name from jobs)), 'none'),
     'none'

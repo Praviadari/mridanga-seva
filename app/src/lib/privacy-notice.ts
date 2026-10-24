@@ -11,9 +11,10 @@ export const WEBSITE_ORIGIN = 'https://mridangaseva-site.pages.dev';
 
 /**
  * The notice's version: the same value as privacyNotice.version in website/site.config.mjs (the
- * database smoke test checks that they match). Raise both when the notice's meaning changes.
+ * database smoke test checks that they match). Raise both when the notice's meaning changes: the homes then ask
+ * everyone to read it again (components/privacy-notice-card.tsx, docs/DECISIONS.md #577).
  */
-export const PRIVACY_NOTICE_VERSION = '0.3-draft';
+export const PRIVACY_NOTICE_VERSION = '1.0';
 
 /** Languages the website has the notice in; others get the English page. */
 const SITE_LANGUAGES = ['en', 'te', 'hi'] as const;
