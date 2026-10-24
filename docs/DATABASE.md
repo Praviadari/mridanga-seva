@@ -59,6 +59,7 @@ in number order:
 | `0057_practice_while_waiting.sql` | Practice while waiting for the desk ([DECISIONS.md #510-#512](DECISIONS.md)): one read-only function `practice_while_waiting()` (adult by the sign-up's date of birth, or a child after the parent's yes) that the practice read policies also call; no table, no write |
 | `0058_parent_digest.sql` | The weekly email to parents, opt-in ([DECISIONS.md #530-#539](DECISIONS.md)): table `parent_digests`, the Guru's switch `parent_digest_enabled` (off), consent scope `digest`, staff and preview functions, job `mridanga-parent-digests` |
 | `0059_data_rights.sql` | A person's data rights in the app (audit 22-10-2026 fix 17; [DECISIONS.md #550-#556](DECISIONS.md)): `data_requests` (a person reads their own, the Guru all; written only by the functions), `my_data_summary`, `file_data_request`, `cancel_data_request`, the Guru's `record_data_request`, `answer_data_request`, `act_on_data_request`; job `mridanga-data-requests`. See "Data requests (0059)" |
+| `0061_staff_mfa.sql` | Staff sign-in codes and the client error log (audit 22-10-2026 fixes 15 and 16; [DECISIONS.md #580-#589](DECISIONS.md)): setting `staff_mfa_required` (off; the Guru's `set_staff_mfa_required`), `private_reads_open`, the logged reads, the Guru's `guru_read` policies and `waiting_sign_ups` behind the code while it is on, `staff_mfa_overview`, `my_mfa_state`, `reset_staff_mfa`; `client_errors`, `client_error_quota`, `log_client_error`, job `mridanga-client-errors-purge`. See "Staff sign-in codes and the error log (0061)" |
 
 The Phase 2 files were renumbered when they merged into main (#55). TEST ran some under their
 branch numbers (0012, 0014_promotion, 0016_practice, 0017_media, 0021_events_polls), so it skips
@@ -91,6 +92,7 @@ consent), sample visits, groups and an announcement. Never run it on the live pr
 | Ishtagoshti (Phase 2) | `ig_slokas`, `ig_themes`, `ig_theme_slokas`, `ig_daily_pins`, `ig_notes`, `ig_memorised` | Sloka study (I1-I3, I11, I12): the temple's own translations, themes, the sloka of the day, private notes, memorised ticks. Recitations in the Storage bucket `ishtagoshti-audio`. See "Ishtagoshti (Phase 2)" |
 | Access log | `access_log` | Who read a student's guardians, consents or call notes, or a page of the audit log, and when (0034; G11 "Reads of private details") |
 | People details (0036) | `person_details`, `choice_options` | What a person tells in About you or the desk records (emergency contact, how they found the class, occupation, service areas); the option lists the Guru edits (G12). See "Account creation and About you (0036)" |
+| App errors (0061) | `client_errors`, `client_error_quota` | What broke in the app, without any person: error name, route pattern, version, platform, staff/student/other, times per hour (the Guru reads, App errors); the per-login rate limit (nobody reads). See "Staff sign-in codes and the error log (0061)" |
 | Audit | `audit_log` | Who changed a student, profile, call log, level, syllabus item or tick, material, announcement, setting, centre, sloka or Ishtagoshti theme, corrected or deleted a visit (0030), or deleted a reply, and when (read on G11) |
 
 ## Student status
@@ -1801,6 +1803,31 @@ Internal: `data_request_line`, `data_request_ref`, `queue_data_request_notice`, 
 
 Tests: section "0059 data rights" in `supabase/tests/smoke-test.mjs` (56 checks); app: `app/tests/data-rights.test.mjs`.
 
+## Staff sign-in codes and the error log (0061)
+
+[DECISIONS.md #580-#589](DECISIONS.md) (audit 22-10-2026 fixes 15 and 16). The codes themselves are Supabase Auth's
+(`auth.mfa_factors`, set up and checked by supabase-js); the database reads the session's `aal` claim
+(`auth.jwt() ->> 'aal'`: `aal2` once the code was given) and the factors' `status`.
+
+| Object | What |
+|---|---|
+| setting `staff_mfa_required` | false. Changed only by `set_staff_mfa_required` (G10's `save_settings` answers `setting_unknown`); every change in `audit_log` |
+| `private_reads_open()` | True when the switch is off or the caller's session gave the code. Used by the functions and policies below; signed-in people may run it (it runs inside their policies) |
+| `get_guardians`, `get_consents`, `get_call_notes`, `get_audit_log` | 0034's, plus `mfa_required` after the role check while the switch is on and the code was not given |
+| `guru_read` on `guardians`, `consents`, `call_logs`, `access_log` | `(select is_guru()) and (select private_reads_open())`: without the code the Guru's direct reads show no rows |
+| `waiting_sign_ups()` | 0051's, with the parent's `email` and `phone` null while the code is needed and not given |
+| `staff_mfa_overview()` | The Guru: `{required, my_aal2, staff: [{id, full_name, role, has_code, since}]}` for every active Guru and coordinator; no email, no factor id (`has_code` null when `auth.mfa_factors` cannot be read) |
+| `my_mfa_state()` | Staff: `{required, has_code, aal2}` |
+| `set_staff_mfa_required(p_on)` | The Guru. On: the caller's session is `aal2` (`mfa_required`) and every active staff member has a verified code (`staff_without_code`, detail = how many). Off: `aal2`, or the Guru has no verified code (else `mfa_required`). Returns the overview |
+| `reset_staff_mfa(p_profile)` | The Guru: deletes every factor of another active or inactive Guru or coordinator; `not_yourself`, `profile_not_found`, `not_staff`, `mfa_required` (switch on, code not given), `reset_in_dashboard` (no right on `auth.mfa_factors`). One `audit_log` row: table `mfa_factors`, row id = the login, `old_row` = `{codes: n}`. Returns n |
+| `client_errors` | `hour` (UTC, the grouping), `kind` (`crash`, `unhandled`), `error_name` (`^[A-Za-z][A-Za-z0-9_]{0,59}$`), `screen` (a route pattern: letters, `-`, `_`, brackets, parentheses, `+`; no digits), `app_version`, `platform` (`android`, `ios`, `web`), `area` (`staff`, `student`, `other`), `times`, `first_at`, `last_at`; unique per hour and combination. No login column. RLS: the Guru reads; no client writes |
+| `client_error_quota` | `profile_id`, `hour`, `calls`: the rate limit. No policy, no client right |
+| `log_client_error(kind, error, screen, version, platform)` | Signed-in people. Checks the five values (`error_report_invalid`); over 10 calls a login an hour, or 300 new rows a day, nothing is written and nothing is said; else adds one to the hour's row or makes it (`client_error_limits()` holds the numbers) |
+| `purge_client_errors()`, job `mridanga-client-errors-purge` | 01:55 UTC: errors not seen for 30 days, quota rows older than two days |
+
+Tests: section "0061 staff sign-in codes and the error log" in `supabase/tests/smoke-test.mjs` (the only Guru never
+locked out, the reads behind the code, resets, the log's limits and purge). `auth.jwt()` and `auth.mfa_factors` are
+imitated at the top of the smoke test; Supabase's own MFA (enrolment, codes, aal) is checked on TEST by hand.
 ## Linking a login to a student
 
 A student record can exist without a login (many students never install the app). When a person
@@ -1965,6 +1992,7 @@ and the helpers `my_role`, `is_guru`, `is_staff`,
 | `mridanga-minor-signups` | 20:45 UTC = 02:15 IST | `expire_minor_signups()` — erases (`erase_login`) a child's sign-up whose parent did not consent within 30 days, or that the desk did not accept within 180 days (0051) |
 | `mridanga-parent-digests` | Every 5 minutes | `send_parent_digests()` — while the weekly email is on: queues the week's parent emails from Sunday 20:30 to Monday 20:30 IST, and calls `notify-parents` when one waits within 07:00-21:30 IST and the day's ceilings (0058) |
 | `mridanga-data-requests` | 21:00 UTC = 02:30 IST | `data_requests_daily()` — reminds the Gurus of a data request due within 3 days; blanks a closed request's text after a year, deletes it after two (0059) |
+| `mridanga-client-errors-purge` | 01:55 UTC = 07:25 IST | `purge_client_errors()` — deletes app errors not seen for 30 days and rate-limit rows older than two days (0061) |
 
 ## Who can see what
 

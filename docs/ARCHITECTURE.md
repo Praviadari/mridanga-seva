@@ -42,9 +42,10 @@ flowchart LR
 | Piece | What it does | Where |
 |---|---|---|
 | App | Screens for Guru, Coordinator and Student. Built with Expo (React Native + TypeScript); one code base gives Android, iOS and web | `app/` — screens in `app/src/app/` |
-| Auth | Sign-up and login with email + password | Supabase Auth |
+| Auth | Sign-up and login with email + password; for staff a sign-in code from an authenticator app (TOTP, Supabase Auth MFA, 0061) | Supabase Auth |
 | Database | All records, and the rules about them (who may see what, how a student's status changes) | `supabase/migrations/` |
 | Storage | Photos and PDFs on announcements, in the private bucket `announcement-files`; later student photos (only with consent). Phase 2: assessment files and students' recordings in `assessment-files` (50 MB a file, deleted 30 days after review) | Supabase Storage, rules in `supabase/migrations/0010_announcement_files.sql` and `0016_assessments.sql` |
+| Error log | What broke in the app (crashed screens, errors nobody caught) without any person: error name, route pattern, version, platform; the Guru reads it on App errors ([DECISIONS.md #585-#587](DECISIONS.md)) | `client_errors`, `log_client_error` (0061), `app/src/lib/error-report.ts` |
 | Scheduled jobs | Move quiet students to *Irregular*, create follow-up calls, close check-ins left open (daily); send push notifications for new announcements (every minute) | `pg_cron`, defined in the migrations |
 | Push notifications | Tell Android phones about a new announcement; in Phase 2 also about assessments (given, reminded, reviewed, a recording sent), queued in `push_outbox` | Edge Function `supabase/functions/notify-announcements/` → Expo's push service → Firebase Cloud Messaging (OPERATIONS.md "Push notifications"). Since 0031 every push is a row per phone in `push_queue`, sent, retried or given up on its own ([DECISIONS.md #112-#115](DECISIONS.md)) |
 | Email | Sends sign-up confirmation and password-reset emails; since 0043 emails to a minor's parent at check-out (check-in and night emails off since 0044; all off until the Guru switches them on) | Brevo free plan, plugged into Supabase as SMTP; the parent notices go trigger on `visits` → `parent_notices` → Edge Function `supabase/functions/notify-parents/` → Brevo's API (OPERATIONS.md "Parent notices by email", [DECISIONS.md #224-#231](DECISIONS.md)) |
@@ -102,7 +103,8 @@ app/
                        levels/ (G4 syllabus editor), materials/ (G5), visits/ (S9 of one student),
                        profile.tsx (A3), the Guru's coordinators/ (G2), database/ (G3 and the
                        import), settings.tsx (G10), audit-log.tsx (G11), notifications.tsx (A2),
-                       reports.tsx (C21 and G8) and centres/ (G9), and coming-soon.tsx
+                       reports.tsx (C21 and G8) and centres/ (G9), my-sign-in-code.tsx (A3s), the Guru's
+                       sign-in-codes.tsx (G15) and app-errors.tsx (G16) (0061), and coming-soon.tsx
                        for the modules not built yet; (tabs)/
                        holds Home (G1 or C1 by role) and the four used most. Phase 2:
                        assessments/ holds G6, C12-C14, promotion/ holds C22, C23, G7,
@@ -111,7 +113,8 @@ app/
                        suggestions.tsx (C18), inventory/ (C19: labels, scan, label/[token], stocktake/), duty/ (C20 roster);
                        account creation (0036): students/details/[id].tsx (C8's details form), options.tsx (G12),
                        heard-about.tsx (G13)
-    auth/              Who is signed in, their role, and the sign-in / sign-up calls
+    auth/              Who is signed in, their role, and the sign-in / sign-up calls; mfa.ts: when a session must
+                       still give its sign-in code (0061)
     screens/           The two staff homes, G1 and C1 (shown by staff/(tabs)/index.tsx), and the
                        pages both areas show: Coming soon, Attendance history (S9), My profile (A3),
                        Notifications (A2), About you (A4, about-you.tsx); Phase 2: Practice tools (S5), the lesson player (V3), and
@@ -159,7 +162,8 @@ app/
                        libphonenumber-js/min), the date of birth from three drop-downs (birth-date.ts)
                        and the one-time About-you prompt (about-prompt.ts) (0036); the web version's service
                        worker, registered after sign-in and removed at sign-out (offline-shell.web.ts; the worker
-                       itself is scripts/service-worker.js, written to dist/sw.js by the export, DECISIONS.md #513)
+                       itself is scripts/service-worker.js, written to dist/sw.js by the export, DECISIONS.md #513);
+                       the error log's reporter (error-report.ts, its pure rules in error-report-rules.ts, 0061)
     theme/             Colours, spacing and text sizes, light and dark; the card look, the header
                        bars and the tab bar (use-theme.ts)
 supabase/
@@ -201,13 +205,20 @@ change of colour or wording is made in one place.
    ([DECISIONS.md #42](DECISIONS.md)). Every sign-out, also one the server caused, clears the QR card,
    the notification list, cached photos and picked-file copies (`src/lib/device-traces.ts`,
    [DECISIONS.md #186](DECISIONS.md)).
+6. **Sign-in code (staff, 0061, [DECISIONS.md #580-#584](DECISIONS.md)):** a Guru or coordinator may set up a code
+   in an authenticator app (My profile → My sign-in code; Supabase Auth's TOTP MFA through supabase-js, no native
+   module). From then on, after the password the session is `aal1` and the app shows only **Sign-in code**
+   (`src/app/sign-in-code.tsx`, area `signInCode`, decided by `src/auth/mfa.ts` from the token's `aal` claim and the
+   login's verified factors) until the 6 digits are right; the session is then `aal2`. Nothing else opens before it:
+   the profile is not fetched and the remembered copy is forgotten. A lost phone: the Guru resets the code (G15);
+   the Guru's own: another Guru or the project owner (OPERATIONS.md "Staff sign-in codes").
 
 Links in emails go to the address set as **Site URL** in Supabase, or to the web address the
 request came from (see OPERATIONS.md).
 
 ## Navigation by role
 
-The app is split into **areas**: `signedOut` (sign-in screens), `recovery` (set a new password),
+The app is split into **areas**: `signedOut` (sign-in screens), `recovery` (set a new password), `signInCode` (a staff login with a sign-in code whose session has not given it yet, 0061),
 `pending` (waiting for a role; also the Ishtagoshti join screen I14), `guru`, `coordinator`, `student` and
 `subscriber` (a public Ishtagoshti member: `subscriber/`, tabs Slokas and Account), plus `loading` while the
 saved login and the profile are being fetched.
@@ -289,7 +300,13 @@ read or write the person is not allowed, whatever the app shows.
 - **Withdrawal and erasure are database functions** (`withdraw_consent`, `erase_student`, Guru
   only): a withdrawal freezes the record and switches the login off; an erasure removes the record,
   the login and the copies in `audit_log`, keeping a tombstone ([#75, #76](DECISIONS.md), OPERATIONS.md).
-- **Personal data is kept to a minimum.** Only the area and pincode, not the full address. Only the
+- **Private details behind the sign-in code (0061, [DECISIONS.md #582, #583](DECISIONS.md)).** Once every staff
+  member has a code, the Guru may switch `staff_mfa_required` on (G15): then parents' details, consents, call notes,
+  the audit log and the access log are read only by a session that gave the code (`aal2` in its token,
+  `private_reads_open()` in the reading functions and the Guru's policies), and a child's waiting sign-up shows the
+  parent's email and phone only then. The switch refuses to go on until the Guru's own session gave the code, and a
+  Guru without a code may switch it off, so the only Guru is never locked out. The app shows held-back details as
+  "Private details need your sign-in code" (`src/lib/logged-read.ts`), not as an error.- **Personal data is kept to a minimum.** Only the area and pincode, not the full address. Only the
   *type* of ID a coordinator checked for consent, never the ID number. See [DECISIONS.md #8](DECISIONS.md).
 
 ## How attendance flows (Phase 1)
