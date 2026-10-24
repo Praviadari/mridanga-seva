@@ -30,6 +30,8 @@ headers (`scripts/serve-dist.mjs`), and runs every flow in both browsers, one te
 - `npm run e2e -- --build` exports again (after changing app code without committing).
 - `npm run e2e -- --project chromium` or `E2E_BROWSERS=chromium npm run e2e` for one browser; `--headed` to watch.
 - `npm run e2e:check` signs each login in and counts what a failed clean-up left on TEST (should be 0, 0, 0).
+- Run it on a quiet PC: with the database tests running at the same time (24-10-2026) WebKit waited 90 s for a
+  button to stop moving and the TEST server answered too late twice; alone, two runs in a row passed 20/20.
 - A failure leaves a screenshot, the page's accessibility tree and a trace in `test-results/`
   (`npx playwright show-trace test-results/<test>/trace.zip`); `playwright-report/` holds the HTML report.
 
