@@ -1,6 +1,6 @@
 {
   "name": "app",
-  "main": "expo-router/entry",
+  "main": "./src/entry",
   "version": "1.0.0",
   "dependencies": {
     "@expo/vector-icons": "^15.0.2",
@@ -72,6 +72,8 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "export:web": "node ./scripts/export-web.mjs",
+    "staff-screens": "node ./scripts/staff-screens.mjs",
+    "icons": "node ./scripts/make-icon-font.mjs",
     "update:preview": "node ./scripts/publish-update.mjs preview",
     "update:production": "node ./scripts/publish-update.mjs production",
     "lint": "expo lint",

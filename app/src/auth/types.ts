@@ -42,6 +42,8 @@ export type IgState = 'none' | 'awaiting_parent' | 'active' | 'blocked';
  * - `loading`: still finding out (saved login, profile); the splash screen shows
  * - `signedOut`: sign in, create an account, forgot password
  * - `recovery`: opened a password-reset link (web only), must set a new password
+ * - `signInCode`: signed in with the password, and the login has a sign-in code this session has not given yet
+ *   (staff, migration 0061, docs/DECISIONS.md #581)
  * - `pending`: signed in but no usable role yet (new sign-up, switched off, door tablet, an
  *   Ishtagoshti subscriber waiting for the parent's code or blocked)
  * - `subscriber`: a public login that joined Ishtagoshti (I14): sloka study only
@@ -51,6 +53,7 @@ export type Area =
   | 'loading'
   | 'signedOut'
   | 'recovery'
+  | 'signInCode'
   | 'pending'
   | 'guru'
   | 'coordinator'

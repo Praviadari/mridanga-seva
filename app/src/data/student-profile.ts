@@ -99,6 +99,11 @@ export type StudentProfile = {
   levelHistory: LevelChange[];
   guardians: Guardian[];
   consents: Consent[];
+  /**
+   * True when the call notes, parents and consents were held back: the Guru asks for sign-in codes and this session
+   * did not give one (0061, docs/DECISIONS.md #583). Those lists are then empty, which says nothing about the child.
+   */
+  privateHidden: boolean;
 };
 
 /**
@@ -281,6 +286,7 @@ export async function fetchStudentProfile(studentId: string): Promise<StudentPro
       givenAt: c.given_at,
       revokedAt: c.revoked_at,
     })),
+    privateHidden: [calls, guardians, consents].some((read) => read.mfaRequired === true),
   };
 }
 

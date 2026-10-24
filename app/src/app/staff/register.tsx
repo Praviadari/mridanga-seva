@@ -608,7 +608,10 @@ export default function RegisterStudentScreen() {
                           w.email ? t('register.acceptEmail', { value: w.email }) : '',
                           ...(w.parent ? [
                             t('register.minorAccept.parent', { name: w.parent.name, relation: t(`relations.${w.parent.relation}`) }),
-                            t('register.minorAccept.parentContact', { phone: formatPhone(w.parent.phone), email: w.parent.email }),
+                            // Held back while the Guru asks for sign-in codes and this session gave none (0061, #583).
+                            w.parent.phone !== null && w.parent.email !== null
+                              ? t('register.minorAccept.parentContact', { phone: formatPhone(w.parent.phone), email: w.parent.email })
+                              : t('myCode.contactHidden'),
                             w.parent.consented_at ? t('register.minorAccept.consentedOn', { when: formatDateTime(w.parent.consented_at) }) : '',
                             t(w.parent.photo_consent ? 'register.minorAccept.photoYes' : 'register.minorAccept.photoNo'),
                           ] : []),

@@ -42,8 +42,9 @@ s.16), so a processor abroad is allowed, but it must be recorded and named in th
 | Google Firebase Cloud Messaging | Delivers push notifications to Android phones | Same as Expo's push service: token, title, text | Google's regions | [[TEAM]] |
 | Brevo (**planned**: live sign-up mail, audit brief 8; parent codes once its key is set) | Sends sign-up confirmations, password resets, Ishtagoshti parent codes and the consent email to a child's parent (0051) | Email address, the person's name in the mail, the mail's text (a consent email: the child's name, date of birth and centre) | EU (France) | [[TEAM]] |
 | Cloudflare (Pages) | Serves the web version of the app and the public website | Visitors' IP addresses and request details in its logs; the app's data goes from the browser straight to Supabase, not through Cloudflare | Worldwide edge | [[TEAM]] |
-| Zoho Mail | The team's mail: privacy@ and info@ | Whatever parents write to us: requests, complaints, their contact details | **[[TEAM]]:** the account's data centre (zoho.in = India, zoho.com = USA) | [[TEAM]] |
+| Zoho Mail | The team's mail: privacy@ and info@ | Whatever parents write to us: requests, complaints, their contact details | **[[TEAM]]:** the account's data centre (zoho.in = India, zoho.com = USA; Zoho Mail admin → Organization). On 24-10-2026 public DNS had **no MX record** for mridangaseva.com, so mail to privacy@ cannot arrive: the privacy notice and the app name it ([DECISIONS.md #575](DECISIONS.md)) | [[TEAM]] |
 | YouTube (Google) | Lesson videos shown in the app | The viewer's IP address and device, and YouTube's own cookies on the web; the app sends it no names | Google's regions | YouTube's terms |
+| Team cloud folder `Mridanga Seva backups` | Keeps the weekly backups (see "Backups") | Encrypted 7z archives only: unreadable without the archive password, which is never stored with them | **[[TEAM]]:** the provider and its region | — |
 | GitHub | Source code (public) | None: no personal data is kept in the repository | USA | — |
 
 jsDelivr is no longer one: since brief 13 the web QR reader is served from our own site ([DECISIONS.md #143](DECISIONS.md)).
@@ -187,6 +188,8 @@ Suggested practice, until the team agrees its own (with the temple's legal advis
 - A parent (or an adult student) may withdraw consent at any time: see "Consent withdrawal" below.
   A request to delete the data: "Erasure request".
 - The wording of the form itself is still to be agreed.
+- Keep a form while its record exists and destroy it when the record is erased (by request, or by the
+  retention job: see "Retention"; [DECISIONS.md #572](DECISIONS.md)). The privacy notice says so.
 
 ## Data requests (0059, in the app)
 
@@ -243,8 +246,9 @@ steps below are for the owner in the SQL editor when the app cannot be used.
 
 Only the Guru records a withdrawal ([DECISIONS.md #75](DECISIONS.md)). It **freezes** the record:
 the student's login is switched off, their phones get no more notifications, all consents are
-revoked, and nothing new (attendance, calls, ticks, edits) can be recorded. The history stays
-until the Guru erases the record or the parent consents again.
+revoked, and nothing new (attendance, calls, ticks, edits) can be recorded. **Since 0060 the record is erased
+by itself 30 days after the withdrawal** (job `mridanga-retention`, [DECISIONS.md #573](DECISIONS.md)), unless the parent
+consents again within those 30 days (below). The Guru may erase it sooner ("Erasure request").
 
 1. Write down, privately: the date, who asked (parent / student), how (in person, phone, email),
    and the student's roll number. Keep the parent's written request with the consent forms if
@@ -289,8 +293,7 @@ request first.
    - `notices_deleted`: the staff inbox notices about the child that went with her (since 0049).
    - `login_deleted: false`: the login could not be deleted from the SQL editor. Supabase →
      Authentication → Users → find the email the parent gave → Delete user.
-5. Destroy the paper consent form as agreed with the parent, or keep it only as long as the team's
-   retention rule says (to be agreed).
+5. Destroy the paper consent form (the privacy notice says it is destroyed when the record is erased, #572).
 6. The tombstone (roll number, date, who, reason, reference) stays in `erasures`:
    `select * from erasures order by erased_at desc;` This is the proof that the request was met.
 
@@ -312,6 +315,30 @@ user for this: it leaves the name, phone and email in the audit log.
 Errors: `not_pending` (a student or staff login), `has_student_record` (use `erase_student`),
 `profile_not_found`, `reason_required`.
 
+## Retention (0060)
+
+The privacy notice (1.0, "How long we keep data") promises periods the database keeps by itself
+([DECISIONS.md #572, #573](DECISIONS.md)). Job `mridanga-retention`, every night at 02:45 IST, runs `retention_daily()`:
+
+| What | When it goes | How |
+|---|---|---|
+| A record whose consent was withdrawn | 30 days after the withdrawal (unless consent is given again first) | `erase_student`, reference `retention` |
+| A student who left | Two years after the last change to Left | `erase_student`, reference `retention` |
+| A sign-up the desk never registered | 180 days after sign-up; never an Ishtagoshti reader, never a child's sign-up (0051's own job) | `erase_login`, reference `retention` |
+| Phones that have not opened the app | 90 days | push tokens deleted (the app registers again when it starts) |
+| Change log (`audit_log`) | Two years | rows deleted (the DPDP Rules ask for at least one year) |
+
+An erasure that is refused (an instrument still lent out: `open_loan`) is skipped and tried again the next night:
+take the instrument back. The files of an erased student go with the orphan-files job, as for the Guru's erasure.
+Each erasure leaves its tombstone in `erasures` (reason "Retention: …").
+
+What the job does not do, by hand: **paper consent forms** are destroyed when their record is erased (check the
+tombstones once a month with the backup); **emails to the team** (Zoho) are deleted a year after the matter is
+closed, except a data request (kept as data requests are); the **backups** keep the last 8 weekly copies ("Backups").
+
+**Check (SQL editor, read-only):**
+`select reason, count(*), max(erased_at) from erasures where request_ref = 'retention' group by 1;`
+and the job's last runs: `select status, return_message, start_time from cron.job_run_details d join cron.job j on j.jobid = d.jobid where j.jobname = 'mridanga-retention' order by start_time desc limit 5;`
 ## A record entered by mistake, an import undone (0054)
 
 Not an erasure ([DECISIONS.md #326](DECISIONS.md)): a second copy of a student typed at the desk, or the
@@ -397,6 +424,43 @@ work cannot simply be deleted: the records say who registered, marked or called.
 Errors: `switch_off_first` (step 1), `not_staff` (a student: "Erasure request"; a subscriber leaves
 in the app), `not_yourself`, `reason_required`.
 
+## Staff sign-in codes
+
+Since 0061 ([DECISIONS.md #580-#584](DECISIONS.md)) Gurus and coordinators can sign in with a code from an
+authenticator app (TOTP) after the password. It uses Supabase Auth's own MFA: nothing to deploy, no secret, no
+native build.
+
+**Before the first use, on each project (TEST, then LIVE):** Supabase dashboard → Authentication → **Multi-Factor**
+(Sign In / Providers → MFA in newer dashboards): **TOTP (App Authenticator) = Enabled** (the default). Then in the
+SQL editor `select count(*) from auth.mfa_factors;` must answer a number: if it says *permission denied*, the app's
+Reset cannot work on that project and resets are done in the dashboard (below).
+
+**Switching codes on (the Guru, after everyone has one):**
+1. Each Guru and coordinator: My profile → **My sign-in code** → Set up (install Google Authenticator, Microsoft
+   Authenticator or Authy first; on the phone itself "Add to my authenticator app", else scan the QR code or type the
+   key), then type one code. From then on every sign-in asks for the code.
+2. The Guru: Set-up → **Sign-in codes**: everyone shows "Has a code". Sign out and in again with the code (the switch
+   needs a session that gave it), then **Ask for codes**. The app refuses while anyone has no code.
+3. From then on parents' details, consents, call notes and Change history need a sign-in with the code. Someone made
+   coordinator later uses the app as before and is told to set up a code before those details show.
+
+**A coordinator lost or changed their phone:** the Guru, Set-up → Sign-in codes → **Reset** on that person (asks
+twice; audited). The coordinator signs in with the password and sets up a new code in My profile. If the app says
+the codes cannot be removed on this server: dashboard → Authentication → Users → the person → remove the MFA factor.
+
+**The Guru lost their phone (the Guru's own recovery):**
+1. If there is another Guru: they reset the code on Sign-in codes (a Guru cannot reset their own).
+2. Otherwise the project owner (Praveen; the Supabase account has its own MFA, checklist A6) removes it: dashboard →
+   Authentication → Users → search the Guru's email → the user → **MFA factors → delete** (or, in the SQL editor,
+   `delete from auth.mfa_factors where user_id = (select id from auth.users where email = '<guru email>');`, one row
+   per code). Check the person's identity first, by phone or in person, not by email alone.
+3. The Guru signs in with the password (no code is asked now), sets up a new code on My sign-in code, signs out and in
+   with it. While the switch is on, a Guru **without** a code may switch codes off (Sign-in codes) — the database allows
+   exactly this so the only Guru is never locked out — and on again once every code is back.
+4. A forgotten password is the usual Forgot password; the code is asked after it as before.
+
+**Switching codes off:** Sign-in codes → Stop asking for codes (needs the code, or a Guru without one). Codes stay set
+up; each person may turn theirs off in My sign-in code while codes are not asked for.
 ## A coordinator's own student record
 
 "Coordinators are students too" (Praveen, 13 Oct 2026; [DECISIONS.md #316-#321](DECISIONS.md), migration 0053 after the
@@ -535,7 +599,12 @@ to `app/dist/`. Always use this command, not a bare `npx expo export`, because
   ([#144](DECISIONS.md)). "+changes" after the commit means the folder had uncommitted changes:
   commit first for a site people use.
 - writes `dist/sw.js`, the service worker that keeps the app's own files for offline use, with this build's id and
-  file list ([#513](DECISIONS.md)); it prints how many files and KB it keeps.
+  file list ([#513](DECISIONS.md)); it prints how many files and KB it keeps (the staff screens and the Telugu and
+  Hindi files are kept only on a device that loads them, [#591](DECISIONS.md)).
+- refuses to start when `src/web-routes/staff-screens.ts` no longer matches `src/app/staff` (run
+  `npm run staff-screens` and commit), and checks the staff screens came out as one `staff-area-<hash>.js`; it prints
+  the size of the first download and of the staff file ([#590](DECISIONS.md)). After adding or changing an icon in
+  `src/components/icon.tsx`, run `npm run icons` (needs Python with fontTools) and commit the font ([#592](DECISIONS.md)).
 
 **After every upload, check the headers** (a minute, on the site's address):
 
@@ -553,6 +622,13 @@ to `app/dist/`. Always use this command, not a bare `npx expo export`, because
    iPhone, sign in, open My QR, close the app, switch on Airplane mode and open it from the home screen: My QR, Practice
    tools and the mantra open. Sign out (online) clears it: the next start without a network shows the browser's own
    offline page.
+   Waiting saves (#593), on the same iPhone in Airplane mode: in Practice tools start the timer, wait a minute, tap
+   Stop: it says the minutes are kept on this phone and "1 practice entry is waiting" shows; switch Airplane mode off
+   and bring the app to the front: within half a minute the count goes and the entry is in My practice log, once. A
+   coordinator's phone (Android app or web): Mark attendance with the signal off, scan a student's My QR: "No
+   connection: saved on this phone" and "1 check-in is waiting"; signal back: the student is in Who is here now, once.
+   A staff login on the web opens the staff home after a short "Loading…" the first time (the staff screens come as
+   their own file, #590).
 5. Add a row to the upload log below.
 
 **Upload log** (newest first; site, commit, build time from version.txt, who):
@@ -1899,13 +1975,16 @@ Anything near its limit: tell the team before it stops; the paid plans are the f
 
 ## Scheduled jobs: health check
 
-The database runs ten jobs on its own (times in UTC; IST is 5:30 later): `mridanga-status-refresh`
+The database runs sixteen jobs on its own (times in UTC; IST is 5:30 later; the full table is DATABASE.md
+"Scheduled jobs"): `mridanga-status-refresh`
 (00:30, student statuses and follow-up calls), `mridanga-close-visits` (every hour at :30,
 checks out visits an hour after their centre closes), `mridanga-assessments` and `mridanga-events-polls` (03:30), `mridanga-inbox-cleanup`
 (01:00), `mridanga-access-log-purge` (01:45, deletes access-log rows older than 400 days),
 `mridanga-duty` (12:30), `mridanga-orphan-files` (02:00, announcement files no post lists),
-`mridanga-cron-history-purge` (02:15, keeps a week of the run history this check reads) and
-`mridanga-push` (every minute). If one fails, nothing tells
+`mridanga-cron-history-purge` (02:15, keeps a week of the run history this check reads),
+`mridanga-push` (every minute), `mridanga-parent-notices` (every minute, 0043), `mridanga-minor-signups` (20:45, 0051),
+`mridanga-parent-digests` (every 5 minutes, 0058), `mridanga-data-requests` (21:00, 0059) and
+`mridanga-client-errors-purge` (01:55, app errors older than 30 days, 0061). If one fails, nothing tells
 anyone: students stop changing status and no calls are created. **Every Monday, with the backup**,
 run in the live project's SQL editor:
 
@@ -1920,15 +1999,39 @@ select j.jobname, j.schedule, j.active,
 select last_job_at, last_job_result from push_status;
 ```
 
-Healthy: ten rows, all `active`; each daily job's `last_success` within the last day and
+Healthy: sixteen rows, all `active`; each daily job's `last_success` within the last day and
 `mridanga-push` within minutes; `failed_2_days` 0. Otherwise `last_error` says why (for example a
 setting changed in the dashboard to a wrong value); fix the cause and the job recovers on its next
 run. The push job always counts as succeeded, even when push is not set up: its own result is
 `last_job_result` (`not_set_up` = "Push notifications", step 13). A missing row means the job was
 removed: create it again with its `cron.schedule` line from `supabase/migrations/` (search for the
 job's name). A project that has not run every migration has fewer jobs (0001 makes the first two,
-0011 the push job, 0015, 0016, 0022, 0023 and 0034 one each, 0040 two).
+0011 the push job, 0015, 0016, 0022, 0023 and 0034 one each, 0040 two, 0043, 0051, 0058, 0059 and 0061 one each).
 
+## App errors and uptime
+
+**App errors (0061, [DECISIONS.md #585-#587](DECISIONS.md)).** The app sends the class's own error log the error's
+name, the screen's route pattern, the version and the platform when a screen crashes or an error goes uncaught
+(never a message, an id or who it was). The Guru reads it at Set-up → **App errors** (30 days). Look weekly, with the
+backup: an error that repeats on one screen and version is a bug for the maintainer; a burst right after an update
+means check that update (OPERATIONS "Updating the Android app" for going back). Nothing to deploy; the job
+`mridanga-client-errors-purge` keeps it to 30 days.
+
+**Uptime check (plan for Praveen; nothing is set up yet).** Today an outage of the LIVE web app or of Supabase is
+noticed only when someone complains. Two free ways, pick one; either needs Praveen to choose who gets the alerts (him
+and a second person):
+1. **GitHub Actions in the existing repository (no new account).** A scheduled workflow every 30 minutes that
+   fetches the LIVE web address (expects 200 and the app's page) and `https://qeozvvizcojzxcjgnaei.supabase.co/auth/v1/health`
+   with the public anon key as `apikey` header (a repository secret; the key is public in the web app anyway) and
+   fails when either does not answer within 20 s. GitHub emails the repository owner on a failed scheduled run.
+   Limits: GitHub may delay scheduled runs by some minutes and pauses them after 60 days without a commit (re-enable
+   in the Actions tab). Ask the lead to add `.github/workflows/uptime.yml`; it uses no secret beyond the anon key.
+2. **UptimeRobot or Better Stack free plan (a new account Praveen makes).** Two monitors, every 5 minutes: an HTTP(S)
+   keyword monitor on the LIVE web address, and one on Supabase's health address above. Supabase answers that
+   address only with the `apikey` header: if the chosen free plan cannot send a header, monitor the address for
+   reachability only (an answer of 401 still shows Supabase is up) and check the plan's limits when signing up.
+   Alerts by email (and the provider's phone app) to Praveen and the second person.
+Either way, add the alert recipients and where to look to "Accounts the system depends on" and to the handover list.
 ## Incidents
 
 Everything that may have exposed personal data, or put the app in someone else's hands. Start with

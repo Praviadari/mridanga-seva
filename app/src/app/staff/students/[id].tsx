@@ -30,6 +30,7 @@ import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
 import { PersonHeader } from '@/components/person-header';
 import { PracticePanel } from '@/components/practice-parts';
+import { PrivateHiddenNotice } from '@/components/private-hidden-notice';
 import { PromotionPanel } from '@/components/promotion-parts';
 import { QrCardPanel } from '@/components/qr-card-panel';
 import { RouteIdGuard } from '@/components/route-id-guard';
@@ -213,7 +214,8 @@ function StudentProfileScreenContent() {
 
       {showGuardians ? (
         <Section icon="guardian" title={t('register.guardianSection')} description={t('profile.guardianStaffOnly')}>
-          {profile.minor && !hasDataConsent(profile.consents) ? (
+          {profile.privateHidden ? <PrivateHiddenNotice /> : null}
+          {profile.minor && !profile.privateHidden && !hasDataConsent(profile.consents) ? (
             <Notice tone="error">{t('profile.consentMissing')}</Notice>
           ) : null}
           {profile.guardians.map((g) => (
@@ -267,7 +269,8 @@ function StudentProfileScreenContent() {
               .join(' · ')}
           </Notice>
         ))}
-        {profile.calls.length === 0 ? <AppText tone="muted">{t('profile.noCalls')}</AppText> : null}
+        {profile.privateHidden ? <PrivateHiddenNotice /> : null}
+        {profile.calls.length === 0 && !profile.privateHidden ? <AppText tone="muted">{t('profile.noCalls')}</AppText> : null}
         {profile.calls.map((call) => (
           <AppText key={call.id}>
             <AppText variant="label">

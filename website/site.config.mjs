@@ -18,8 +18,11 @@ export default {
   /** Shown as "updated" in the footer and as lastmod in sitemap.xml (ISO 8601). */
   updated: '2026-10-24',
 
-  /** The privacy notice's version and date. Raise both when its meaning changes. */
-  privacyNotice: { version: '0.3-draft', date: '2026-10-24' },
+  /**
+   * The privacy notice's version and date. Raise both when its meaning changes: the app asks everyone again
+   * (DECISIONS #577). 1.0 is final (#571): its page shows no Draft note even while `draft` is true (site.mjs).
+   */
+  privacyNotice: { version: '1.0', date: '2026-10-24' },
 
   /**
    * The day the class opens to all: Tue 20 Oct 2026 (Dussehra), Praveen's decision of 12-10-2026 (NOTES_lead.md).

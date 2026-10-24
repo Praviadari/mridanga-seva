@@ -16,6 +16,7 @@ import { FormErrorSummary } from '@/components/form-error-summary';
 import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
 import { PersonHeader } from '@/components/person-header';
+import { PrivateHiddenNotice } from '@/components/private-hidden-notice';
 import { RouteIdGuard } from '@/components/route-id-guard';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
@@ -187,6 +188,8 @@ function CallLogScreenContent() {
         />
       ))}
       {dialFailed ? <Notice tone="info">{t('callLog.dialFailed', { phone: dialFailed })}</Notice> : null}
+      {/* The parents' numbers and the last calls need the sign-in code while the Guru asks for it (0061, #583). */}
+      {context.privateHidden ? <PrivateHiddenNotice /> : null}
 
       {context.lastCalls.length > 0 ? (
         <Section icon="calls" title={t('callLog.lastCalls')}>

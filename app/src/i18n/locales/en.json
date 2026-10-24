@@ -5,6 +5,27 @@
     "motto": "Saṅkalpa · Sādhana · Seva",
     "slowStart": "This is taking long. Check your internet connection, then try again."
   },
+  "offlineQueue": {
+    "doorWaiting_one": "{{count}} check-in is waiting for the signal",
+    "doorWaiting_other": "{{count}} check-ins are waiting for the signal",
+    "doorBody": "They are kept on this phone and sent by themselves when the internet is back. The time saved is when they arrive. Keep the app open or come back to it; do not sign out before they are sent.",
+    "doorQueuedTitle": "No connection: saved on this phone",
+    "doorQueuedBody": "This check-in is sent when the signal is back. A scanned code is sent as a check-in; nothing changes if the student is already in.",
+    "practiceWaiting_one": "{{count}} practice entry is waiting for the signal",
+    "practiceWaiting_other": "{{count}} practice entries are waiting for the signal",
+    "practiceBody": "They are kept on this phone and sent by themselves when the internet is back. Do not sign out before they are sent.",
+    "practiceQueued": "No connection: {{time}} kept on this phone. It is saved to your log when the signal is back.",
+    "sendNow": "Send now",
+    "notSavedTitle": "Some saves from this phone did not go through",
+    "refused_one": "{{count}} was refused by the server (for example a day already full, or a student whose record is closed).",
+    "refused_other": "{{count}} were refused by the server (for example a day already full, or a student whose record is closed).",
+    "tooOld_one": "{{count}} waited too long to be saved (a check-in of an earlier day, or practice older than 14 days). Enter it by hand if it matters.",
+    "tooOld_other": "{{count}} waited too long to be saved (check-ins of an earlier day, or practice older than 14 days). Enter them by hand if they matter.",
+    "close": "Close"
+  },
+  "webArea": {
+    "loadFailed": "This page could not be opened: it needs the internet the first time it opens on this device. Check your connection and try again."
+  },
   "common": {
     "email": "Email",
     "password": "Password",
@@ -34,7 +55,8 @@
       "alreadySaved": "This was saved already.",
       "visitFuture": "A visit cannot be in the future.",
       "settingRequired": "This setting cannot be left empty.",
-      "tooManyRows": "Too many rows at once. Split the sheet and try again."
+      "tooManyRows": "Too many rows at once. Split the sheet and try again.",
+      "mfaRequired": "This needs your sign-in code: the Guru asks for one before private details show. Set it up in My profile → Sign-in code."
     },
     "studentWithdrawn": "Consent for this student was withdrawn. Nothing new can be recorded for them; ask the Guru.",
     "networkError": "Could not reach the server, or it did not answer. Check your internet connection and try again; if it keeps happening, tell a coordinator.",
@@ -704,7 +726,7 @@
     "approvedBy": "approved by {{name}}",
     "tickSyllabus": "Tick syllabus items",
     "withdrawnTitle": "Consent withdrawn on {{date}}",
-    "withdrawnBody": "Nothing new is recorded for this student (visits, calls, practice, loans); the record stays as it is. Erasing it is a separate step for the app team.",
+    "withdrawnBody": "Nothing new is recorded for this student (visits, calls, practice, loans). The record is erased 30 days after the withdrawal, unless the parent or student consents again before then; the Guru can erase it sooner.",
     "ownTitle": "This is your own student record",
     "ownBody": "A colleague checks you in and out, ticks your syllabus, logs calls and nominates you; the Guru decides your level. Your QR card and progress are under Me on your home.",
     "staffLogin": "Yes: {{name}}'s own record"
@@ -1279,7 +1301,9 @@
     "centresLine": "Places, address, GPS point and attendance area",
     "myReportsLine": "Your mentees: visits, statuses, calls, progress",
     "optionsLine": "Gender, sources, occupations, service areas, relations",
-    "heardLine": "Sources and referring coordinators"
+    "heardLine": "Sources and referring coordinators",
+    "codesLine": "Who has a sign-in code; the switch; resets",
+    "errorsLine": "What broke in the app, without names"
   },
   "weekMeaning": {
     "guruRolling": "\"This week\" means the last 7 days, from {{date}}.",
@@ -4278,7 +4302,7 @@
       "correction": "Tell us which detail is wrong and what it should be. We may ask you to show a document at the desk.",
       "erasure": "Everything the class keeps about you is erased: your record, visits, progress, practice, recordings and your sign-in. Only your roll number, the date and the reason stay, as proof that we did it. This cannot be undone.",
       "withdraw_photo": "No photo of you will be kept on the class record or taken for it. Everything else stays as it is.",
-      "withdraw_data": "Your record is frozen: no more check-ins, progress, practice or messages, and your sign-in stops working. What was done before stays lawful. To come back you consent again at the desk. If you want your data erased too, ask for that as well.",
+      "withdraw_data": "Your record is frozen: no more check-ins, progress, practice or messages, and your sign-in stops working. What was done before stays lawful. 30 days later the record is erased, unless you consent again at the desk before then. To have it erased sooner, ask for an erasure.",
       "grievance": "Tell us what went wrong. The privacy contact answers within 30 days. If you are not satisfied, you can complain to the Data Protection Board of India.",
       "nominate": "Name a person who may use these rights for you if you die or cannot act yourself (DPDP Act section 14): their name, how they are related to you and their phone number."
     },
@@ -4450,6 +4474,19 @@
     "noticeAcceptedLine": "accepted {{date}}, version {{version}}",
     "practiceLine_one": "{{count}} entry, {{minutes}} minutes",
     "practiceLine_other": "{{count}} entries, {{minutes}} minutes"
+  },
+  "noticeCard": {
+    "title": "Our privacy notice has changed",
+    "acceptBody": "Version {{version}} of the privacy notice says what the app keeps about you, why, who handles it, how long it is kept, and how to see, correct or delete it. Please read it and say whether you agree.",
+    "adultTitle": "You are 18 now: your own consent",
+    "adultBody": "When you joined as a child, your parent or guardian gave the consent for you. Now the choice is yours: please read the privacy notice (version {{version}}) and agree. If you do not agree, you can withdraw in My data and rights or at the class desk.",
+    "showBody": "Version {{version}} of the privacy notice is new. Your parent or guardian gave the consent for you, so please show it to them. If they have a question, they can speak to the class desk.",
+    "read": "Read the privacy notice",
+    "agree": "I have read the privacy notice and agree",
+    "tickFirst": "Tick the box first, or speak to the class desk.",
+    "confirm": "Agree",
+    "done": "Done, I showed it",
+    "saveFailed": "Could not save. Check the connection and try again."
   },
   "dataRequests": {
     "title": "Data requests",
@@ -4679,5 +4716,103 @@
       "link_note_too_long": "The note has at most 200 characters.",
       "not_allowed": "Only the Guru changes these links."
     }
+  },
+  "signInCode": {
+    "title": "Sign-in code",
+    "intro": "Open your authenticator app and type the 6-digit code it shows for Mridanga Seva.",
+    "codeLabel": "6-digit code",
+    "codeHint": "A new code every 30 seconds",
+    "signedInAs": "Signing in as {{email}}. Not you? Choose Sign out.",
+    "submit": "Continue",
+    "sixDigits": "Type the 6 digits the app shows.",
+    "wrong": "That code is not right, or it changed meanwhile. Type the code the app shows now.",
+    "tooMany": "Too many tries. Wait a few minutes, then try again.",
+    "notEnabled": "Sign-in codes are not switched on for this app. Tell the Guru.",
+    "wasReset": "Your sign-in code was reset. Sign out, sign in again and set up a new one in My profile.",
+    "lostTitle": "Lost or changed your phone?",
+    "lostBody": "A coordinator asks the Guru to reset the code (Set-up → Sign-in codes), then signs in with the password and sets up a new one. The Guru asks another Guru, or the person who looks after the app."
+  },
+  "myCode": {
+    "title": "Sign-in code",
+    "profileHint": "A code from an authenticator app at every sign-in, so a stolen password is not enough.",
+    "open": "My sign-in code",
+    "intro": "A sign-in code keeps children's and parents' details safe: after your password the app asks for the 6 digits your authenticator app shows (Google Authenticator, Microsoft Authenticator, Authy or similar). Install one from the app store first.",
+    "guruAsks": "The Guru asks every staff member for a sign-in code: parents' details, consents, call notes and the change history need it.",
+    "isOnNow": "Your sign-in code is on. Every sign-in will ask for it.",
+    "isOffNow": "Your sign-in code is off.",
+    "missing": "Sign-in codes are not set up on the server yet.",
+    "setupTitle": "Set up your code",
+    "setupHint": "Two steps: add Mridanga Seva to your authenticator app, then type one code from it.",
+    "stepOne": "1. In your authenticator app on your phone, add an account and scan this QR code, or type the key below.",
+    "stepOnePhone": "1. Tap the button to add Mridanga Seva to your authenticator app on this phone. Or scan the QR code with the app on another phone, or type the key below.",
+    "openApp": "Add to my authenticator app",
+    "noApp": "No authenticator app opened. Install one, or type the key below into it.",
+    "qrLabel": "QR code to add Mridanga Seva to an authenticator app",
+    "keyHint": "The key (keep it to yourself):",
+    "stepTwo": "2. Type the 6-digit code the app now shows for Mridanga Seva.",
+    "confirm": "Turn on my sign-in code",
+    "cancel": "Cancel",
+    "onTitle": "Your sign-in code is on",
+    "onHint": "New phone? Set it up again: the old code stops once the new one works.",
+    "offTitle": "No sign-in code yet",
+    "offHint": "Takes two minutes. You need your phone at every sign-in afterwards.",
+    "newPhone": "Set up on a new phone",
+    "setUp": "Set up my sign-in code",
+    "turnOff": "Turn off my sign-in code",
+    "confirmOff": "Tap again to turn it off",
+    "cannotTurnOff": "While the Guru asks for codes, yours stays on. For a new phone, set it up again.",
+    "hiddenTitle": "Private details need your sign-in code",
+    "hiddenBody": "The Guru asks for a sign-in code before parents' details, consents, call notes and the change history show. Set up yours (or sign in again with it); everything else works as before.",
+    "contactHidden": "Parent's phone and email: shown after your sign-in code"
+  },
+  "staffCodes": {
+    "title": "Sign-in codes",
+    "intro": "Who has set up a sign-in code. Once everyone has, switch codes on: parents' details, consents, call notes and the change history then need a sign-in that gave the code.",
+    "switchTitle": "Ask for codes",
+    "switchHint": "Can be switched on only when every Guru and coordinator below has a code, and you signed in with yours.",
+    "isOn": "On: private details need the code",
+    "isOff": "Off: the password is enough",
+    "waitingFor_one": "Still without a code: {{count}} person.",
+    "waitingFor_other": "Still without a code: {{count}} people.",
+    "thisSession": "This sign-in did not give your code. Set up yours, then sign out and in again.",
+    "switchOn": "Ask for codes",
+    "switchOff": "Stop asking for codes",
+    "confirmOn": "Tap again to ask for codes",
+    "confirmOff": "Tap again to stop asking",
+    "nowOn": "Codes are asked for now.",
+    "nowOff": "Codes are no longer asked for.",
+    "mine": "My sign-in code",
+    "listTitle": "Staff",
+    "listHint": "Reset a code when someone lost or changed their phone; they set up a new one at their next sign-in.",
+    "hasCode": "Has a code since {{date}}",
+    "noCode": "No code yet",
+    "unknown": "Cannot be read here",
+    "reset": "Reset",
+    "resetFor": "Reset the sign-in code of {{name}}",
+    "confirmReset": "Tap Reset again to remove the sign-in code of {{name}}",
+    "confirmResetShort": "Tap again",
+    "resetDone": "The sign-in code of {{name}} was removed. They set up a new one in My profile.",
+    "giveYourCode": "Sign in with your own sign-in code first (sign out and in again).",
+    "notEveryone": "Not everyone has a sign-in code yet. Ask those marked \"No code yet\" to set one up in My profile.",
+    "resetInDashboard": "The app may not remove codes on this server. The person who looks after the app removes it in Supabase (Authentication → Users)."
+  },
+  "appErrors": {
+    "title": "App errors",
+    "intro": "What broke in the app on phones and on the web, newest first, kept 30 days. The log never says who it happened to: only the error, the screen, the app version and staff or student. Tell the person who looks after the app about anything that repeats.",
+    "missing": "The error log is not set up on the server yet.",
+    "none": "No errors in the last 30 days.",
+    "listTitle_one": "{{count}} error",
+    "listTitle_other": "{{count}} errors",
+    "newestOnly": "The newest {{n}} lines.",
+    "line": "{{kind}} · {{who}} · {{platform}} · {{version}}",
+    "crash": "Screen crashed",
+    "unhandled": "Error in the background",
+    "area": {
+      "staff": "staff",
+      "student": "student",
+      "other": "other"
+    },
+    "when_one": "Once, last {{last}}",
+    "when_other": "{{count}} times, last {{last}}"
   }
 }

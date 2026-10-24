@@ -7392,3 +7392,357 @@ draft: the D4 blanks are closed in step 2 (notice 1.0).
 
 **Why now.** #494 asks for a self-rating of minors and #531 for a new purpose: the notice must name both before the
 update that asks for them reaches phones (DPDP Act s.5, notice before or with the request for consent).
+
+## 571. Privacy notice 1.0: the strict reading of the Act and Rules stands in for a legal review; translations — 24 Oct 2026
+
+**Status: branch `claude/privacy-1-0-633d76` (audit 22-10-2026 fix 5, work package C); lead approval needed.**
+
+**Decision.** The notice is **version 1.0** (website `privacyNotice` and `PRIVACY_NOTICE_VERSION` together, dated
+2026-10-24; re-date it to the publish day if it ships later). The "[[TEAM: legal review before the class opens]]" line
+is replaced by what is true (Praveen, 21 Oct 2026, #399: no lawyer; the Act and the Rules are followed, the stricter
+reading where one is open): "It follows India's Digital Personal Data Protection Act 2023 and the DPDP Rules 2025;
+where a rule can be read in more than one way, we follow the stricter reading." The page is **final**: a new page
+option `final: true` (website/src/site.mjs, build.mjs) drops the Draft note and the noindex on the privacy page only,
+because the rest of the site keeps `draft: true` (its own [[TEAM]] blanks: classes 7, contact 3, home 2, join 1 per
+language, and the domain is not attached yet).
+
+**Translations.** "This notice is in English, Telugu and Hindi, and you may read it in any of them. If a translation and
+the English text differ, the meaning that protects you more applies; please tell us, and we correct the translation."
+Not "English prevails": DPDP Act s.5(3) gives the person the notice in their language, and a parent who consented on
+the Telugu text must be able to rely on it. te/hi stay drafts for the native review (docs/TRANSLATIONS.md).
+
+**Why.** Real people, children included, consent to this text every day (audit §2.10); a notice with "proposal, not
+agreed" blanks is not a notice. One blank stays, a fact only the team can read: the Zoho data centre (#575).
+
+## 572. Retention (D4-07): the periods, kept by the database every night — 24 Oct 2026
+
+**Status: as #571; migration 0060 (`retention_daily`, job `mridanga-retention`, 02:45 IST); lead approval needed.**
+
+**Decision.** DPDP Act s.8(7): erase when the purpose is no longer served (or consent is withdrawn), unless the law
+asks to keep it; Rule 8(3): logs at least a year. The periods (the audit's proposal, made true, and enforced, not
+promised):
+- a student who **left**: erased two years after the last change to Left (`erase_student`, reference `retention`);
+- a **sign-up the desk never registered**: erased 180 days after sign-up (`erase_login`), not an Ishtagoshti reader
+  (their own area, kept while they read; leaving deletes the details, 0027) and not a child's sign-up (0051's job: 30
+  days without consent, 180 after). The draft's "logins never linked: 30 days" was wrong: staff and Ishtagoshti logins
+  are never linked to a student, and the waiting list already shows sign-ups for 180 days (#399);
+- a record whose consent was **withdrawn**: 30 days after (#573);
+- **phones** that have not opened the app for 90 days: push tokens deleted (the app registers again when it starts);
+- **change log** (`audit_log`): two years; **access log**: 400 days (0034, unchanged); **in-app notices**: a year
+  (0015); parent email records 30 days (0043/0058); data requests as #553;
+- by hand (OPERATIONS "Retention"): **paper consent forms** destroyed when the record is erased; **emails to the
+  team** a year after the matter is closed (a data request: as #553); **backups** the last 8 weekly copies.
+After an erasure only the tombstone stays (roll number, date, reason, reference), so numbers are never reused and the
+erasure can be shown. An erasure the job cannot do (an instrument still lent out: `open_loan`) is skipped and tried the
+next night. Nothing on LIVE is old enough on 24-10-2026 (class since 20-10-2026; app since 28-09-2026).
+
+**Why automatic.** A promise that depends on a volunteer remembering is not kept; the stricter reading of s.8(7) is
+that the fiduciary erases, not that the person must ask.
+
+## 573. A withdrawn record is erased 30 days after the withdrawal — 24 Oct 2026
+
+**Status: as #572; changes #75 ("freeze, erase later"); lead approval needed.**
+
+**Decision.** `withdraw_consent` still freezes at once (sign-in off, consents revoked, nothing new recorded). The
+retention job then erases the record **30 days** after `withdrawn_at`, unless consent was given again (OPERATIONS
+"Consent withdrawal": `withdrawn_at` cleared). The Guru may erase sooner (Erasure request). The app's words follow:
+My data and rights → Withdraw my consent, and the Student profile's "Consent withdrawn" note (en/te/hi).
+
+**Why 30 days.** s.6(6) and s.8(7)(a): processing stops and the data is erased within a reasonable time after
+withdrawal. Freezing indefinitely (#75) kept a child's data with no consent behind it. 30 days leave room for a
+mistaken or hurried withdrawal (a parent changes their mind; a desk error) and match the 30-day answer of #551.
+
+## 574. Who sees parents' details (D4-09): every coordinator, every read logged and checked monthly — 24 Oct 2026
+
+**Status: as #571; no code change; lead approval needed.**
+
+**Decision.** Kept as built (0034, #146-#151): coordinators and the Guru read a student's parents, consents and call
+notes through `get_guardians` / `get_consents` / `get_call_notes`, each read written to `access_log`, which the Guru
+reviews monthly (OPERATIONS "Reviewing the access log"). The notice says so in plain words: any coordinator on duty may
+need to call a parent; each opening is written down and the facilitator checks the log every month.
+
+**Why not mentor-plus-Guru (#151 option 1).** A child's follow-up call (C11) and an emergency at the class go to
+whoever is on duty, not only the mentor, and many students have no mentor yet. DPDP Rules 2025 Rule 6 asks for
+appropriate access control and logs of access; per-read logging, monthly review and, from 0061, staff sign-in codes
+(#580-#584) meet it without stopping the desk. 0060 does not touch these functions (0061 redefines them).
+
+## 575. Services and transfers abroad (D4-12): the table is the complete list; the Zoho fact stays with the team — 24 Oct 2026
+
+**Status: as #571; lead approval needed.**
+
+**Decision.** The notice's processor table (Supabase Sydney, Expo USA, Firebase Cloud Messaging, Brevo EU, Cloudflare,
+Zoho Mail, YouTube) is declared **complete**, plus one line for the encrypted weekly backups in the team's private
+cloud storage (unreadable without the password; added to OPERATIONS's register with the provider as a team blank).
+DPDP Act s.16: transfer is allowed except to a country the Government restricts by notification; the notice says we
+check that list before using a service and stop using one in a listed country, and that a new service is listed, with a
+new notice version, before it receives data. EU/UK: standard contractual clauses or adequacy, as before.
+**Left for the team (a fact, not a decision):** the Zoho Mail data centre (`[[TEAM: confirm the Zoho data centre]]`,
+one per language): Zoho Mail admin → Organization shows it.
+
+**Found on the way (for Praveen, urgent):** on 24-10-2026 public DNS for mridangaseva.com has only Zoho's name servers
+and **no MX record** (checked with 1.1.1.1 and 8.8.8.8), so mail to privacy@ / info@ cannot arrive, yet the notice, the
+app's data-rights screen and the Ishtagoshti parent email name privacy@ as the contact (Rule 9 / s.8(10)). The phone
+number in the notice works meanwhile. The mail records (Zoho MX, SPF, DKIM) must go in before the website upload.
+
+**Not in this list yet:** the face scan's Google Play Integrity check (branch face-scan, not on main). Its merge needs
+a notice line and a new notice version (biometric data, #248), per this rule.
+
+## 576. The reply period is 30 days; emails to the team are kept a year — 24 Oct 2026
+
+**Status: as #571.** "We answer every request, complaints included, within 30 days" (#551, #556 line 2) replaced the
+reply-period blank in 0.3-draft (#570). Emails to the team: deleted a year after the matter is closed; an email that is
+a data request is kept as data requests are (#553). Why a year: long enough for a follow-up question or a complaint to
+the Board about our answer, and as long as a request's text (#553); shorter would lose the context of an open matter.
+
+## 577. The app asks again when the notice changes; at 18, the student's own consent — 24 Oct 2026
+
+**Status: as #571; migration 0060 (`notice_acceptances`, `privacy_notice_ask`, `accept_privacy_notice`); JS only (OTA),
+fingerprint 23dc7e4a unchanged; lead approval needed.**
+
+**Context.** The audit's fix 5 asks to "bump the version so the app asks again", but nothing in the app asked: the
+version was only recorded on new consents. And the notice promised "At 18, a student is asked to give their own
+consent" with a [[TEAM: confirm]]: nothing did that either.
+
+**Decision.** On the homes (S1, C1, G1) a card under the band, once per notice version, until answered; nothing is
+blocked meanwhile:
+- **an adult** (a student 18 or over by the record's date of birth, or staff): "Our privacy notice has changed", the
+  notice link, a tick "I have read the privacy notice and agree" and Agree → `accepted` for that version;
+- **a student registered as a child who is 18 now** (current data consent is a parent's, never agreed themselves):
+  "You are 18 now: your own consent", the same tick; the text says how to withdraw instead → `accepted`. Until then
+  the parent's consent stays the basis and the student may withdraw it themselves (the notice says so);
+- **a student under 18** (or no date of birth): "please show it to your parent or guardian" and Done → `shown`. The
+  parent's consent remains the basis; the purposes it covers did not change (a new purpose waits for its own
+  consent, as the weekly email did, #531).
+A waiting login, an Ishtagoshti subscriber and a door tablet are not asked (they ticked the notice of their sign-up;
+they have no home with the card). Before 0060 the card stays hidden (the call fails). `my_data_summary` does not list
+these rows yet (a follow-up for the next 0059 change).
+
+**Why.** s.5 and Rule 3: the notice comes with the request for consent; a material change is given to the person,
+not only posted. An announcement (the old line) is easy to miss; a card with a tick is the same act as at sign-up.
+
+## 578. The Ishtagoshti parent email gets its real text; minors' Ishtagoshti stays off — 24 Oct 2026
+
+**Status: as #571; migration 0060 (`ig_send_parent_code` replaced); audit fix 21; lead approval needed.**
+
+**Decision.** The parent email (0027/0054, "[TEST - …]") now says, in the child's app language (en, te, hi; te/hi
+drafts): who asked and the year of birth; what is kept (the child's name, email, year of birth, optional phone; the
+parent's name, email and relation; notes and memorised slokas), for what (reading the slokas), who sees it (only the
+facilitator; nothing to other members, no advertising); that **giving the code declares the parent is the child's
+parent or legal guardian and 18 or over, and consents**; how to withdraw (Leave Ishtagoshti in the app, or
+privacy@); the notice's address in that language; the code and its 24 hours. Limits unchanged.
+
+**Not switched on.** Ishtagoshti for a minor stays closed: `IG_JOIN_FOR_WAITING` is false, the app's join texts are
+still placeholders ("TEST —", `IG_TERMS_VERSION` placeholder-2026-10), and LIVE's Vault has no `mridanga_brevo_key`.
+Read strictly, Rule 10(1) wants reliable details of the parent's identity and age; an emailed code and a declaration
+alone are the "email only" route #399 rejected for the class (there the parent's ID is seen at the desk). **For the
+lead:** before minors' Ishtagoshti opens, either require the same ID sighting at the desk (#399) or keep Ishtagoshti
+18+ only. Until then this text only replaces the placeholder that OPERATIONS would otherwise send.
+
+## 579. Lines from the parallel work packages, and what the notice still waits for — 24 Oct 2026
+
+**Status: as #571.** In notice 1.0 (en/te/hi) ahead of their merges, at the lead's request:
+- **#585 / #586 (staff-mfa, 0061): app errors.** Security: "When the app breaks, we keep, for 30 days, the kind of
+  error, the screen and the app version, never who it happened to." Staff sign-in codes need no line.
+- **#593 / #595 (bundle-door-queue): entries kept offline.** What the app keeps → "On your phone": "If you check
+  someone in or log practice without a connection, the app keeps that entry on the phone until it is sent (a check-in
+  until the end of that class day, practice at most 14 days), then deletes it; signing out deletes it too."
+If either work package changes what it keeps before it merges, its line changes with it. The face scan (#575) and
+minors' Ishtagoshti (#578) each need their own notice change and version before they ship.
+
+## 580. Staff sign in with a code from an authenticator app (TOTP) — 24 Oct 2026
+
+**Status: branch `claude/staff-mfa-72bdd5` (migration 0061); the lead decides under Praveen's delegation of 23 Oct 2026.**
+The world-class audit of 22 Oct 2026 (§2.9, fix 16) found no second factor for staff: a Guru or coordinator password
+alone reads every child's record, parent phone and consent. **Decision.** Gurus and coordinators may set up a
+sign-in code in an authenticator app (Google Authenticator, Microsoft Authenticator, Authy …) on My profile → My
+sign-in code, with **Supabase Auth's own MFA** (TOTP factors in `auth.mfa_factors`, supabase-js `mfa.enroll`,
+`challengeAndVerify`): no native module, so it ships as an OTA at fingerprint 23dc7e4a. Set-up: on a phone a button
+opens the authenticator with the `otpauth://` link; a QR code (drawn by the app's own QR component) for a second
+phone; the key in groups of four to type; one code confirms it. Setting it up again (a new phone) replaces the old
+code once the new one is confirmed (one phone holds the code). Students and waiting logins are not offered codes.
+
+**Why TOTP, not SMS or passkeys.** Free and offline on the phone the staff member already has; Supabase's SMS factor
+needs a paid SMS provider and leaks to SIM swaps; passkeys (WebAuthn) are not offered by Supabase for every
+platform the app runs on (APK, iPhone home-screen web app) yet.
+
+## 581. Once set up, the code is asked at every sign-in; no skip — 24 Oct 2026
+
+**Decision.** A login with a confirmed code whose session has not given it (`aal1`, read from the access token) gets
+its own area, **Sign-in code**, and nothing else: its profile is not fetched, its remembered copy is forgotten (so a
+restart without internet cannot open its screens), Sign out is the only other way. A right code upgrades the session
+to `aal2` (Supabase refreshes keep it). There is no "skip": a lost phone is a reset (#584). A code that is set up but
+never confirmed counts as none.
+
+**Why.** A skip would make the code decoration for whoever holds the password. The cost (a lost phone locks a
+coordinator out until the Guru resets) is small in a class of a few staff who meet weekly.
+
+## 582. The Guru's switch, and why nothing can lock out the only Guru — 24 Oct 2026
+
+**Decision.** Setting `staff_mfa_required` (off), changed only by `set_staff_mfa_required` (the Guru; G10's
+`save_settings` refuses the key; audited). **On** needs the Guru's own session to have given the code and a
+confirmed code for **every active Guru and coordinator** (`staff_without_code` with the count); the Sign-in codes
+screen lists who has one. **Off** needs the code given, or a Guru who has **no** code. So the only Guru can always get
+back: if their phone is lost, another Guru or the project owner removes their code (#584), and the Guru — now without
+a code — switches it off or sets up a new code. A coordinator made after the switch went on has no code: they use the
+app as before, and private details tell them to set one up (#583). Tested in the smoke test ("0061 #582").
+
+## 583. What the code guards while the switch is on — 24 Oct 2026
+
+**Decision.** `private_reads_open()` = switch off, or the token's `aal` is `aal2`. It is checked by the four logged
+reads of 0034 — `get_guardians` (parent details), `get_consents`, `get_call_notes`, `get_audit_log` (error
+`mfa_required`) — by the Guru's direct `guru_read` policies on `guardians`, `consents`, `call_logs` and `access_log`
+(rows simply do not show), and by `waiting_sign_ups`, which leaves out the parent's email and phone of a child's home
+sign-up (name, relation and consent still show for Accept). The app treats `mfa_required` on those reads as **held
+back**, not failed: the student page, the call screen, Change history and Accept show everything else with "Private
+details need your sign-in code" and the way to set it up, and never a false "consent missing".
+
+**Why these.** They are what the access log already treats as the most sensitive reads (#146), plus the audit log the
+audit named; call notes are included with them because they hold what parents said on the phone. Other staff work
+(attendance, ticks, announcements) stays on `aal1`: the switch is about private data, not about every action.
+
+## 584. A lost phone: the Guru resets a staff member's code; the Guru's own by another Guru or the owner — 24 Oct 2026
+
+**Decision.** `reset_staff_mfa(profile)` (the Guru) removes every code of another Guru or coordinator (never one's
+own: `not_yourself`; not a student: `not_staff`), needs the code given while the switch is on, and writes one
+`audit_log` row (table `mfa_factors`, the login's id, how many codes; never a secret). The person sets up a new code
+at their next sign-in. If the database may not delete from `auth.mfa_factors` (`reset_in_dashboard`), the owner does
+it in Supabase → Authentication → Users. The Guru's own recovery is written in OPERATIONS "Staff sign-in codes"
+(another Guru, else the owner in the dashboard or the SQL editor).
+
+## 585. A client error log that holds no person — 24 Oct 2026
+
+**Status: same branch, audit fix 15 (§2.13).** **Decision.** The app reports a crashed screen (the crash screen)
+and errors nobody caught (web `error` / `unhandledrejection`; on phones React Native's global handler and, in release
+builds, Hermes's rejection tracker) to `log_client_error` with five things only: the kind (`crash`, `unhandled`), the
+error's **name** (`TypeError`; a name that is not a plain identifier becomes `Error`; never the message, which can hold
+data), the screen's route **pattern** from Expo Router's segments (`/staff/students/[id]`; letters only, no digits, so
+no id, phone or email fits), the app version (`1.0.0+a1b2c3d4`, `web-test+244e9f8`) and the platform. The database adds
+staff / student / other from the role and keeps one row per UTC hour and combination, counted. No login id is stored
+with an error. Limits: once per error per run and 20 a run in the app; 10 calls a login an hour (a quota table with
+the login and the hour, no policy, gone after two days) and 300 new rows a day in the database; over a limit nothing
+is written and nothing is said. Signed-out errors are not sent (the function is for signed-in people).
+
+**Why not Sentry or similar.** A third-party crash reporter sends stack traces, device data and breadcrumbs abroad
+and needs a privacy-notice line and a processor agreement; minors use the app. This log answers "what broke, where,
+on which version" — what the class needs — without any of that.
+
+## 586. Errors are kept 30 days; the 15th scheduled job — 24 Oct 2026
+
+**Decision.** Job `mridanga-client-errors-purge` (01:55 UTC) deletes errors not seen for 30 days and quota rows
+older than two days. Scheduled jobs are now 15: the GO_LIVE_CHECKLIST verification query, the replay check and the
+M0061 row say so.
+
+## 587. App errors for the Guru — 24 Oct 2026
+
+**Decision.** Set-up → App errors (Guru only; RLS `guru_read`, nobody writes the table from the app): the newest 200
+lines with name, route, kind, staff / student / other, platform, version, times and last seen. The technical words
+are not translated. Something that repeats goes to the maintainer.
+
+## 588. Uptime checks of LIVE: a plan for Praveen, not built here — 24 Oct 2026
+
+**Decision.** OPERATIONS "App errors and uptime" holds the plan: a free external monitor (UptimeRobot or Better Stack,
+or a scheduled GitHub Actions check in the existing repository, no new account) on the LIVE web address and on
+Supabase's health endpoint, alerting Praveen and a second person by email. No account was made and no workflow added
+on this branch: an alert recipient and a provider are Praveen's choice.
+
+## 589. Left for later — 24 Oct 2026
+
+Recovery codes (supabase-js has them only as an experiment, not on the server yet), passkeys, a code for every staff
+action (not only private reads), and errors from signed-out screens. None blocks fixes 15 and 16.
+
+## 590. The web version loads the staff and Guru screens only for staff — 24 Oct 2026
+
+**Status: branch `claude/bundle-door-queue-cbb4df` (audit 22-10-2026 work package D rest, fix 14; the lead's brief of
+24 Oct 2026 under Praveen's delegation). JS only, fingerprint 23dc7e4a; no migration.**
+
+**Context.** The web version was one JavaScript file of 3,842 KB (1,119 KB gzip): every iPhone member downloaded and
+read the register, fund, inventory, reports and every other staff screen to see their QR card.
+
+**Decision.** The web starts from its own file, `src/entry.web.tsx` (package.json `main` is `./src/entry`; the phones'
+`src/entry.ts` is Expo Router's own start, unchanged). It hands Expo Router its own screen list
+(`src/web-routes/route-context.ts`): every file of `src/app` as before, except the 106 staff screens, which are
+stand-ins. A stand-in holds nothing of its screen; when opened it loads `src/web-routes/staff-area.ts` (one `import()`,
+so the export makes it one file, `staff-area-<hash>.js`, with everything only staff use) and then shows the real screen.
+The two staff layouts stay in the first download, so the tabs, the side menu and the Back anchor work as before. A staff
+login starts the download at once (root layout, `preloadStaffArea`), so the staff home rarely waits; while it does,
+"Loading…"; a load that fails says the page needs the internet the first time, with Try again. Expo Router must know
+every route at start, so the staff screens' names are listed in `src/web-routes/staff-screens.ts`, written by
+`npm run staff-screens`; `export-web` and the tests refuse a list that no longer matches the folder (a new staff screen
+would otherwise not open on the web), and `export-web` checks there is exactly one staff file and no `__common` file.
+
+**Measured** (TEST export, 24 Oct 2026; before 6199ece, after 84f832d): first-download script 3,842 → 3,008 KB
+(gzip 1,119 → 854 KB, brotli 841 → 659 KB); staff file 824 KB (gzip 261 KB), loaded by staff only. On a 1.6 Mbit/s,
+150 ms link (local copy, throttled server, browser pane): the sign-in screen showed at 7.9 s before, 6.4 s after;
+its icons at 9.3 s before, 6.7 s after.
+
+**Not taken.** Expo Router's own async routes (one file per route) were measured: 165 files, and everything two
+routes share goes into a `__common` file every visit loads (entry 1,087 + common 2,003 = 3,090 KB), and it needs an
+app.json change (fingerprint). One staff file keeps shared staff code out of the first download.
+
+**Consequences.** What is left in the first download is the React Native web base, Expo Router, Supabase, the English
+texts (~360 KB), libphonenumber (201 KB, every sign-up and About-you form) and the student screens. A staff screen added
+later: run `npm run staff-screens` and commit.
+
+## 591. The offline copy keeps only what this device uses — 24 Oct 2026
+
+**Status: as #590.** The service worker (#513) kept every file of the build at install. It now leaves out, like the
+Telugu and Hindi scripts before, the staff file (#590) and the Telugu and Hindi heading fonts (340 KB; the app loads
+only the current language's, #367). Each is kept when the page loads it: the page sends what it loaded with `keep`
+after a sign-in and again when the staff file has loaded, and the worker keeps any build file it serves. An English
+student's phone keeps 29 files, 3,373 KB (before: 31 files, 4,867 KB).
+
+## 592. The app's icon font holds only the app's icons — 24 Oct 2026
+
+**Status: as #590.** Every visit downloaded the whole Ionicons font (381 KB, 205 KB gzip, 1,300+ shapes) for the
+95 the app uses. `npm run icons` (scripts/make-icon-font.mjs, Python fontTools) cuts the shapes named in
+`src/components/icon.tsx` SHAPES and the filled twin of each outline (the open tab, #338) from @expo/vector-icons'
+Ionicons.ttf (MIT; the licence stays in the font's name table) into `assets/fonts/app-icons.ttf` (181 shapes, 52 KB,
+30 KB gzip) and writes their characters to `src/components/icon-glyphs.ts`; `icon.tsx` draws with
+`createIconSet(GLYPHS, 'mridanga-icons', …)`. Same font on the phones (it reaches them with an update, as Ionicons did).
+A test fails while the font does not hold every name in SHAPES.
+
+## 593. Door check-ins and practice wait on the device when there is no connection — 24 Oct 2026
+
+**Status: as #590 (audit fix 18).** Writes were online only: a check-in in a hall without signal failed, and the
+practice timer stopped offline kept running and counting.
+
+**Decision.** When a save finds no connection (the app's "Could not reach the server", which includes no answer in
+time), it is kept on the device (`src/lib/offline-queue.ts`, localStorage) and sent when the connection is back
+(`src/lib/offline-send.ts`): at start, when the app comes to the front, when the browser says it is online, every
+30 s while something waits, and from **Send now**. Oldest first; the first "no connection" ends the round.
+- **Practice** (Practice tools' Stop, My practice log's Save): sent with the entry's own request id (#322), so an entry
+  the server saved before its answer was lost is saved once (log_practice's twin returns the first row). "How did it
+  go?" is kept with it and saved after it. A timer entry older than the database's 6 hours for timer starts is sent as
+  typed practice for the day it was stopped, the same minutes.
+- **A tapped name** on Mark attendance: `mark_visit` with its meaning, in or out; "already in" changes nothing (#18).
+- **A scanned code**: `scan_qr` toggles, so a resend could check the student out. It is sent only when the student is
+  not checked in today (one read of today's open visits per round, the tokens in the answer, never in an address);
+  when they are, nothing is sent. So a queued scan always means a check-in; the screen says so.
+- The time the database records for a queued check-in is when it arrives (no migration; the screen says so).
+- Only what the save needs: the request id, the login it belongs to, the entry or the student's id / QR token and the
+  phone's position at the check-in; no names. It is sent only while that login is signed in, and leaves the device as
+  soon as the server answered. A check-in of an earlier class day and practice older than the 14 days the log takes are
+  not sent; they and the refused ones are counted once in a notice ("Some saves from this phone did not go through").
+  Sign-out deletes all of it (lib/device-traces.ts).
+- Mark attendance, Practice tools and My practice log show how many wait ("2 check-ins are waiting for the signal"),
+  in en/te/hi (te/hi drafts for native review).
+
+**Why.** A check-in must not be lost because the hall's signal dropped, nor counted twice or flipped to a check-out by a
+resend; practice minutes must be the ones at Stop.
+
+**Consequences.** Tested with a stand-in database (`app/tests/offline-queue.test.mjs`). Not covered: check-ins from
+Who is here now, a student's page and Check in now (they still say "no connection"); signing out with saves waiting
+loses them (the notice asks not to). A real check-in time for queued scans would need a database change (later).
+
+## 594. The practice timer counts the minutes at Stop — 24 Oct 2026
+
+**Status: as #593.** Stop with no connection used to leave the timer running ("kept running, so nothing is lost"), so
+the minutes saved later were the time until the next successful Stop. Now Stop counts the minutes there and then,
+stops the timer and keeps that entry (#593): "No connection: 25 min kept on this phone. It is saved to your log when the
+signal is back." Any other refusal still leaves the timer running, as before.
+
+## 595. A line the privacy notice may need for #593 — 24 Oct 2026
+
+For the privacy-notice work: "If you check someone in or log practice without a connection, the app keeps that entry
+on the phone until it is sent (a check-in until the end of that class day, practice at most 14 days), then deletes it;
+signing out deletes it too."

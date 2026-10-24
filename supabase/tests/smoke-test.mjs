@@ -83,6 +83,20 @@ const supabaseImitation = `
   create function auth.uid() returns uuid language sql stable as
     $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
   grant execute on function auth.uid() to anon, authenticated;
+  -- The token's claims (0061 reads aal: 'aal2' once the sign-in code was given); empty when none were set.
+  create function auth.jwt() returns jsonb language sql stable as
+    $$ select coalesce(nullif(current_setting('request.jwt.claims', true), ''), '{}')::jsonb $$;
+  grant execute on function auth.jwt() to anon, authenticated;
+  -- Supabase Auth's MFA factors (0061 reads and resets them); status is an enum there, text here.
+  create table auth.mfa_factors (
+    id uuid primary key default gen_random_uuid(),
+    user_id uuid not null references auth.users (id) on delete cascade,
+    friendly_name text,
+    factor_type text not null default 'totp',
+    status text not null default 'unverified',
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now()
+  );
   create schema cron;
   -- pg_cron's job table, so the test net can check every scheduled command (D14-12); a job is
   -- never run here. Scheduling a name again replaces its job, as in pg_cron.
@@ -128,7 +142,7 @@ process.on('uncaughtException', (error) => {
 // D14-10: every check is counted, and the run fails when fewer (or more) checks ran than expected,
 // so a block skipped by a renamed migration or a commented-out section cannot pass unseen.
 // Adding or removing checks? Run the suite and set this to the new total it prints.
-const EXPECTED_CHECKS = 2136; // 0059 data rights: +56; 0058 weekly parent email: +64; 0057 practice while waiting: +24; 0056 practice extras: +35; 0055 learn more links: +23; 0054 after-launch forms: +49; 0053 staff own record: +55; 0052 more practice: +56; 0051 child's sign-up at home: +80; 0050 staff dashboard: +15; 0049 launch clean-up: +30; 0048 withdrawn records and leaks: +50; 0047 form rules: +109; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
+const EXPECTED_CHECKS = 2224; // 0061 staff sign-in codes and the error log: +53; 0060 privacy notice 1.0: +35; 0059 data rights: +56; 0058 weekly parent email: +64; 0057 practice while waiting: +24; 0056 practice extras: +35; 0055 learn more links: +23; 0054 after-launch forms: +49; 0053 staff own record: +55; 0052 more practice: +56; 0051 child's sign-up at home: +80; 0050 staff dashboard: +15; 0049 launch clean-up: +30; 0048 withdrawn records and leaks: +50; 0047 form rules: +109; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
 let failures = 0;
 let passes = 0;
 
@@ -3267,7 +3281,8 @@ const mayAnswer = new Set(['my_role', 'today_ist', 'my_time_zone', 'centre_tz', 
   'scan_qr', // {action: unknown} for a null code
   'my_about', 'sign_up_choices', // 0036: the caller's own About you; the public sign-up lists (#163)
   'person_name_symbols', 'default_home_centre', // 0047: the name rule's list of refused signs (#271); a new record's default centre id (#274)
-  'give_parent_consent']); // 0051: the consent page answers a status (declaration_required for empty input), no data (#399)
+  'give_parent_consent', // 0051: the consent page answers a status (declaration_required for empty input), no data (#399)
+  'private_reads_open']); // 0061: whether private details may be read in this session (the switch is off, or the code given)
 const answered = [];
 for (const fn of fns) {
   if (skip.has(fn.name)) continue;
@@ -4186,6 +4201,12 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
     'my_data_summary()', 'file_data_request(text,text,text)', 'cancel_data_request(uuid)',
     'record_data_request(text,text,text,text,text,text)', 'answer_data_request(uuid,text,text,boolean)',
     'act_on_data_request(uuid,text,text,text)',
+    // 0060: the privacy-notice card (the caller's own answer; roles checked inside)
+    'privacy_notice_ask(text)', 'accept_privacy_notice(text)',
+    // 0061: sign-in codes (private_reads_open runs inside the policies as the reader; the rest check the role inside)
+    // and the client error log (any signed-in person; limits inside)
+    'private_reads_open()', 'staff_mfa_overview()', 'my_mfa_state()', 'set_staff_mfa_required(boolean)', 'reset_staff_mfa(uuid)',
+    'log_client_error(text,text,text,text,text)',
   ];
   const runnableBy = async (role) => (await asOwner(`select p.oid::regprocedure::text as f from pg_proc p
     where p.pronamespace = 'public'::regnamespace
@@ -4313,8 +4334,9 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
     ['coordinator', ['students', 'follow_up_tasks', 'student_progress', 'visits', 'groups', 'group_members']]]) {
     for (const rel of rels) {
       const { col } = baseTables.find((t) => t.rel === rel);
-      // 0058: parent_digest_enabled is written only through set_parent_digest (#534), so a direct update of it is refused.
-      const only = rel === 'settings' ? " where key <> 'parent_digest_enabled'" : '';
+      // 0058: parent_digest_enabled is written only through set_parent_digest (#534), staff_mfa_required only through
+      // set_staff_mfa_required (0061, #582), so a direct update of either is refused.
+      const only = rel === 'settings' ? " where key not in ('parent_digest_enabled', 'staff_mfa_required')" : '';
       const r = await tryAs('authenticated', tn[who], `update public.${rel} set ${col} = ${col}${only} returning 1`);
       if (!(r.rows > 0)) positive.push(`${who} ${rel}: ${r.error ?? '0 rows'}`);
     }
@@ -7516,6 +7538,321 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   try { await db.exec(file59); } catch (e) { again59 = String(e.message); }
   check('0059: a second run changes nothing', again59 === '' && JSON.stringify(await counts59()) === JSON.stringify(before59),
     `${again59} ${JSON.stringify(before59)}`);
+}
+
+// ---------------------------------------------------------------- 0060 privacy notice 1.0 (DECISIONS #571-#579)
+// The notice card asked again per version (adult: accept; registered as a child and 18 now: own consent; child: show
+// the parent), who reads the answers, the retention job (withdrawn 30 days, left two years, never-registered sign-up
+// 180 days, phones 90 days, change log two years) and the Ishtagoshti parent email's real text in en/te/hi.
+{
+  // The 0054 block ran 0054 again (the "[TEST - ...]" email): 0060 replaces it again.
+  const file60 = readFileSync(new URL('migrations/0060_privacy_notice_1_0.sql', supabaseDir), 'utf8');
+  await db.exec(file60.replace('create extension if not exists pg_cron;', ''));
+  const ask = async (who, v = '1.0') => (await asApp('authenticated', who, 'select privacy_notice_ask($1) as r', [v]))[0].r;
+  const accept = async (who, v = '1.0') => (await asApp('authenticated', who, 'select accept_privacy_notice($1) as r', [v]))[0].r;
+  const seen60 = async (who) => (await asApp('authenticated', who, 'select profile_id, version, kind from notice_acceptances order by id'));
+
+  // #577: staff and an adult student read and agree; the card goes once agreed, and comes back for a new version.
+  check('0060 #577: a coordinator is asked to read and agree', (await ask(coordinator)) === 'accept');
+  check('0060 #577: ... agreeing records it and the card goes', (await accept(coordinator)) === 'accepted' && (await ask(coordinator)) === null);
+  check('0060 #577: ... a new version asks again', (await ask(coordinator, '1.1')) === 'accept');
+  check('0060 #577: ... agreeing twice records nothing more', (await accept(coordinator)) === null
+    && (await seen60(coordinator)).length === 1);
+  const alaLogin = await signUp('ala.60@example.com', true);
+  const ala = await register(coordinator, { p_full_name: 'Ala Sixty', p_dob: '1991-02-03', p_email: 'ala.60@example.com' });
+  check('0060: (state) the adult\'s login is on the record', (await linkOf('ala.60@example.com')) === alaLogin && (await roleOf(alaLogin)) === 'student');
+  check('0060 #577: an adult student is asked to read and agree', (await ask(alaLogin)) === 'accept');
+  check('0060 #577: ... and agrees', (await accept(alaLogin)) === 'accepted' && (await ask(alaLogin)) === null);
+
+  // A child shows the notice to the parent; once 18, the same record is asked for the student's own consent.
+  const bala = await register(coordinator, { p_full_name: 'Bala Sixty', p_dob: childDob, p_guardian_name: 'Bala Parent',
+    p_guardian_phone: '9000060060', p_guardian_relation: 'father', p_id_type_checked: 'aadhaar', p_written_consent: true });
+  const balaLogin = await signUp('bala.60@example.com', true);
+  await asApp('authenticated', guru, 'select link_student_login($1, $2)', [balaLogin, bala.id]);
+  check('0060 #577: a child is asked to show the notice to the parent', (await ask(balaLogin)) === 'show');
+  check('0060 #577: ... "Done" records shown, not a consent', (await accept(balaLogin)) === 'shown' && (await ask(balaLogin)) === null
+    && (await seen60(balaLogin))[0]?.kind === 'shown');
+  await asOwner(`update students set dob = today_ist() - interval '18 years' where id = '${bala.id}'`);
+  check('0060 #577: 18 today, registered with the parent\'s consent: asked for their own consent', (await ask(balaLogin)) === 'adult_now');
+  check('0060 #577: ... given, it is an acceptance', (await accept(balaLogin)) === 'accepted' && (await ask(balaLogin)) === null);
+  check('0060 #577: ... and a later version is a plain accept', (await ask(balaLogin, '1.1')) === 'accept');
+
+  // Who is asked at all, and the version's form.
+  const waiting60 = await signUp('wait.60@example.com', true);
+  check('0060 #577: a waiting login is not asked (it ticked the notice at sign-up)', (await ask(waiting60)) === null);
+  await refusesWith('0060: ... and records nothing', 'not_allowed', () => accept(waiting60));
+  await refusesWith('0060: a version must look like one', 'notice_version_invalid', () => accept(coordinator, 'not a version!'));
+  check('0060: ... the question just says nothing', (await ask(coordinator, '')) === null);
+  await refusesWith('0060: anon cannot ask', 'permission denied for function privacy_notice_ask', () =>
+    asApp('anon', null, `select privacy_notice_ask('1.0')`));
+
+  // RLS: own rows; the Guru all; nobody writes the table.
+  const own60 = await seen60(alaLogin);
+  check('0060 RLS: a person reads only their own answers', own60.length === 1 && own60[0].profile_id === alaLogin);
+  check('0060 RLS: ... a coordinator too; the Guru reads them all', (await seen60(coordinator)).every((r) => r.profile_id === coordinator)
+    && (await seen60(guru)).length >= 4);
+  await refusesWith('0060 RLS: nobody writes the table directly', 'permission denied for table notice_acceptances', () =>
+    asApp('authenticated', alaLogin, `insert into notice_acceptances (profile_id, version, kind) values ($1, '9.9', 'accepted')`, [alaLogin]));
+  await refusesWith('0060: the retention job is internal', 'permission denied for function retention_daily', () =>
+    asApp('authenticated', guru, 'select retention_daily()'));
+
+  // #573: a withdrawn record goes 30 days after the withdrawal; a newer one stays.
+  const reg60 = (name) => register(coordinator, { p_full_name: name, p_dob: '1988-08-08' });
+  const [cara, dina, ela, fala] = [await reg60('Cara Sixty'), await reg60('Dina Sixty'), await reg60('Ela Sixty'), await reg60('Fala Sixty')];
+  await asApp('authenticated', guru, 'select withdraw_consent($1, $2)', [cara.id, 'asked in person']);
+  await asApp('authenticated', guru, 'select withdraw_consent($1, $2)', [dina.id, 'asked in person']);
+  await asOwner(`update students set withdrawn_at = now() - interval '31 days' where id = '${cara.id}'`);
+  await asOwner(`update students set withdrawn_at = now() - interval '10 days' where id = '${dina.id}'`);
+  // #572: left two years ago goes; left a year ago stays.
+  await db.exec(`select set_config('app.via_call_log', 'on', false); update students set status = 'left' where id in ('${ela.id}', '${fala.id}');
+    select set_config('app.via_call_log', '', false)`); // as log_call does
+  await asOwner(`update status_history set changed_at = now() - interval '731 days' where student_id = '${ela.id}' and to_status = 'left'`);
+  await asOwner(`update status_history set changed_at = now() - interval '365 days' where student_id = '${fala.id}' and to_status = 'left'`);
+  // #572: a sign-up never registered goes after 180 days, not an Ishtagoshti reader's, not a younger one.
+  const oldWait = await signUp('oldwait.60@example.com', true);
+  const newWait = await signUp('newwait.60@example.com', true);
+  const igOld = await signUp('igold.60@example.com', true);
+  await igJoin(igOld, { year: thisYear - 30 });
+  await asOwner(`update profiles set created_at = now() - interval '181 days' where id in ('${oldWait}', '${igOld}')`);
+  await asOwner(`update profiles set created_at = now() - interval '179 days' where id = '${newWait}'`);
+  // Phones unused for 90 days; the change log over two years.
+  await asOwner(`insert into push_tokens (token, profile_id, platform, updated_at) values
+    ('ExponentPushToken[old60]', '${alaLogin}', 'android', now() - interval '91 days'),
+    ('ExponentPushToken[new60]', '${alaLogin}', 'android', now() - interval '10 days')`);
+  await asOwner(`insert into audit_log (table_name, row_id, action, changed_at) values
+    ('zz60', 'old', 'UPDATE', now() - interval '731 days'), ('zz60', 'new', 'UPDATE', now() - interval '700 days')`);
+
+  const ran60 = (await asOwner('select retention_daily() as r'))[0].r;
+  const exists60 = async (id) => (await asOwner(`select count(*)::int as n from students where id = '${id}'`))[0].n === 1;
+  const login60 = async (id) => (await asOwner(`select count(*)::int as n from profiles where id = '${id}'`))[0].n === 1;
+  check('0060 #573: a record withdrawn over 30 days ago is erased, with a tombstone', !(await exists60(cara.id))
+    && (await asOwner(`select request_ref from erasures where roll_no = '${cara.roll_no}'`))[0]?.request_ref === 'retention', JSON.stringify(ran60));
+  check('0060 #573: ... one withdrawn 10 days ago stays (the parent may consent again)', await exists60(dina.id));
+  check('0060 #572: a student who left over two years ago is erased; one who left a year ago stays', !(await exists60(ela.id))
+    && (await exists60(fala.id)));
+  check('0060 #572: a sign-up never registered is erased after 180 days', !(await login60(oldWait))
+    && (await asOwner(`select count(*)::int as n from erasures where login_profile = '${oldWait}' and request_ref = 'retention'`))[0].n === 1);
+  check('0060 #572: ... not a younger one, nor an Ishtagoshti reader', (await login60(newWait)) && (await login60(igOld)));
+  check('0060 #572: phones unused for 90 days are forgotten, others kept', (await asOwner(`select token from push_tokens
+    where token in ('ExponentPushToken[old60]', 'ExponentPushToken[new60]')`)).map((r) => r.token).join() === 'ExponentPushToken[new60]');
+  check('0060 #572: change-log rows over two years go, younger ones stay', (await asOwner(`select row_id from audit_log
+    where table_name = 'zz60'`)).map((r) => r.row_id).join() === 'new');
+  check('0060 #572: the job reports what it did', ran60.withdrawn >= 1 && ran60.left >= 1 && ran60.waiting >= 1 && ran60.tokens >= 1
+    && ran60.audit_rows >= 1 && ran60.skipped === 0, JSON.stringify(ran60));
+  check('0060: the retention job runs at 02:45 India time', (await asOwner(`select schedule from cron.job
+    where jobname = 'mridanga-retention'`))[0]?.schedule === '15 21 * * *');
+
+  // #578 (audit fix 21): the Ishtagoshti parent email in the child's language, without the placeholder.
+  const mailFor = async (lang, n) => {
+    const child = await signUp(`ig${lang}.60@example.com`, true);
+    await asOwner(`update profiles set language = '${lang}', full_name = 'Child ${lang}' where id = '${child}'`);
+    await igJoin(child, { year: thisYear - 13, parent: `Parent ${n}`, parentEmail: `parent.${lang}.60@example.com` });
+    await asApp('authenticated', child, 'select ig_send_parent_code()');
+    return (await asOwner(`select body from net.sent where body -> 'to' -> 0 ->> 'email' = 'parent.${lang}.60@example.com'`))[0]?.body;
+  };
+  await db.exec(`create schema net;
+    create table net.sent (url text, headers jsonb, body jsonb);
+    create function net.http_post(url text, body jsonb default '{}', params jsonb default '{}', headers jsonb default '{}',
+      timeout_milliseconds int default 5000) returns bigint language sql as
+      $$ insert into net.sent values (url, headers, body); select 1::bigint $$;
+    create schema vault;
+    create table vault.decrypted_secrets (name text, decrypted_secret text);
+    insert into vault.decrypted_secrets values ('mridanga_brevo_key', 'test-key'), ('mridanga_mail_from', 'noreply@example.com');`);
+  const [en60, te60, hi60] = [await mailFor('en', 'One'), await mailFor('te', 'Two'), await mailFor('hi', 'Three')];
+  await db.exec('drop schema net cascade; drop schema vault cascade;');
+  const texts60 = [en60, te60, hi60].map((b) => b?.textContent ?? '');
+  check('0060 #578: no parent email carries the placeholder any more', texts60.every((t) => t.length > 0 && !t.includes('TEST')));
+  check('0060 #578: English: what is kept, the parent\'s declaration, withdrawal, the notice, the code', /parent or legal guardian and 18 or over/.test(texts60[0])
+    && texts60[0].includes('privacy@mridangaseva.com') && texts60[0].includes('https://mridangaseva-site.pages.dev/privacy/')
+    && /code to type into the app: \d{6}/.test(texts60[0]) && en60.subject === 'Mridanga Seva: your child asks to join Ishtagoshti');
+  check('0060 #578: Telugu for a Telugu child, with the Telugu notice', /[ఀ-౿]/.test(te60.subject) && texts60[1].includes('/te/privacy/')
+    && texts60[1].includes('18') && /\d{6}/.test(texts60[1]) && !/[ऀ-ॿ]/.test(texts60[1]));
+  check('0060 #578: Hindi for a Hindi child, with the Hindi notice', /[ऀ-ॿ]/.test(hi60.subject) && texts60[2].includes('/hi/privacy/')
+    && /\d{6}/.test(texts60[2]) && !/[ఀ-౿]/.test(texts60[2]));
+
+  const counts60 = async () => (await asOwner(`select (select count(*) from notice_acceptances)::int as a,
+    (select count(*) from cron.job)::int as j, (select count(*) from pg_policies where tablename = 'notice_acceptances')::int as p`))[0];
+  const before60 = await counts60();
+  let again60 = '';
+  try { await db.exec(file60.replace('create extension if not exists pg_cron;', '')); } catch (e) { again60 = String(e.message); }
+  check('0060: a second run changes nothing', again60 === '' && JSON.stringify(await counts60()) === JSON.stringify(before60),
+    `${again60} ${JSON.stringify(before60)}`);
+}
+
+// ---------------------------------------------------------------- 0061 staff sign-in codes and the error log (DECISIONS #580-#589)
+// The Guru's switch (on only with the Guru's own code given and a code for every active staff member; off with
+// the code, or by a Guru who has none), the private reads behind the code while it is on, the overview and the
+// resets (never one's own), the only Guru never locked out, and the error log: no personal data, limits, the
+// Guru reads, the purge.
+{
+  const file61 = readFileSync(new URL('migrations/0061_staff_mfa.sql', supabaseDir), 'utf8');
+  // The 0051 block above ran 0051 a second time, which put its own waiting_sign_ups back: 0061's again first.
+  await db.exec(file61);
+  /** Runs SQL signed in as `userId` with a token whose aal claim is `aal`, as Supabase sets request.jwt.claims. */
+  async function asAal(userId, aal, sql, params) {
+    await db.query(`select set_config('request.jwt.claims', $1, false)`, [JSON.stringify({ sub: userId, aal })]);
+    try {
+      return await asApp('authenticated', userId, sql, params);
+    } finally {
+      await db.query(`select set_config('request.jwt.claims', '', false)`);
+    }
+  }
+  const giveCode = (id, status = 'verified') => asOwner(`insert into auth.mfa_factors (user_id, status) values ('${id}', '${status}')`);
+  const codesOf = async (id) => (await asOwner(`select count(*)::int as n from auth.mfa_factors where user_id = '${id}'`))[0].n;
+  const overview = async (who, aal) => (await asAal(who, aal, 'select staff_mfa_overview() as r'))[0].r;
+  const switchTo = async (who, aal, on) => (await asAal(who, aal, 'select set_staff_mfa_required($1) as r', [on]))[0].r;
+  const flag = async () => (await asOwner(`select value from settings where key = 'staff_mfa_required'`))[0]?.value;
+  const resetAs = async (who, aal, target) => (await asAal(who, aal, 'select reset_staff_mfa($1) as r', [target]))[0].r;
+
+  check('0061 #582: the switch is there, and off', (await flag()) === false);
+  const kid61 = await register(coordinator, { p_full_name: 'Mala Sixtyone', p_dob: childDob, p_guardian_name: 'Mala Parent',
+    p_guardian_phone: '9000061061', p_guardian_email: 'parent.61@example.com', p_guardian_relation: 'mother',
+    p_id_type_checked: 'aadhaar', p_written_consent: true });
+  const guru2 = await signUp('guru2.61@example.com', true);
+  await asOwner(`update profiles set role = 'guru' where id = '${guru2}'`);
+  const guardiansAs = (who, aal) => asAal(who, aal, 'select * from get_guardians($1)', [kid61.id]);
+
+  // Off: nothing changes for anyone.
+  check('0061 #583: while off, a coordinator without a code reads the parents as before', (await guardiansAs(coordinator, 'aal1')).length === 1);
+  check('0061 #583: ... and the Guru reads guardians directly', (await asAal(guru, 'aal1',
+    'select id from guardians where student_id = $1', [kid61.id])).length === 1);
+
+  // Switching on: the Guru's own code first, then every active staff member's.
+  await refusesWith('0061 #582: switching on needs the Guru\'s session to have given the code', 'mfa_required', () => switchTo(guru, 'aal1', true));
+  await refusesWith('0061 #582: a coordinator cannot switch', 'not_allowed', () => switchTo(coordinator, 'aal2', true));
+  await refusesWith('0061 #582: a session that says aal2 is not enough: the Guru needs a code', 'staff_without_code', () => switchTo(guru, 'aal2', true));
+  await giveCode(guru);
+  await refusesWith('0061 #582: on is refused while a staff member has no code', 'staff_without_code', () => switchTo(guru, 'aal2', true));
+  const staffCount = (await asOwner(`select count(*)::int as n from profiles where role in ('guru', 'coordinator') and active`))[0].n;
+  const ov = await overview(guru, 'aal2');
+  const line = (id) => ov.staff.find((s) => s.id === id);
+  check('0061 #584: the Guru sees every active staff member, who has a code and since when, and no email', ov.staff.length === staffCount
+    && line(guru)?.has_code === true && line(guru)?.since !== null && line(coordinator)?.has_code === false
+    && !JSON.stringify(ov).includes('@') && ov.my_aal2 === true && ov.required === false, JSON.stringify(ov).slice(0, 300));
+  await refusesWith('0061: a coordinator does not see the overview', 'not_allowed', () => overview(coordinator, 'aal2'));
+  await asOwner(`insert into auth.mfa_factors (user_id, status) select id, 'verified' from profiles
+    where role in ('guru', 'coordinator') and active and id not in ('${guru}', '${coordinator}')`);
+  await giveCode(coordinator, 'unverified');
+  await refusesWith('0061 #582: a code set up but never confirmed does not count', 'staff_without_code', () => switchTo(guru, 'aal2', true));
+  await giveCode(coordinator);
+  const on = await switchTo(guru, 'aal2', true);
+  check('0061 #582: on once everyone has a code', on.required === true && (await flag()) === true);
+  check('0061 #582: ... in the audit log, by the Guru', (await asOwner(`select changed_by from audit_log where table_name = 'settings'
+    and row_id = 'staff_mfa_required' order by id desc limit 1`))[0]?.changed_by === guru);
+  await refusesWith('0061 #582: G10 (save_settings) cannot change it', 'setting_unknown', () =>
+    asAal(guru, 'aal2', `select save_settings('{"staff_mfa_required": false}'::jsonb)`));
+  const mine = (await asAal(coordinator, 'aal2', 'select my_mfa_state() as r'))[0].r;
+  check('0061: a staff member reads their own state', mine.required === true && mine.has_code === true && mine.aal2 === true, JSON.stringify(mine));
+  await refusesWith('0061: a student has no state to read', 'not_allowed', () => asAal(arjun, 'aal2', 'select my_mfa_state()'));
+
+  // On: the private reads need the code.
+  await refusesWith('0061 #583: on: the parents need the code', 'mfa_required', () => guardiansAs(coordinator, 'aal1'));
+  await refusesWith('0061 #583: ... the consents', 'mfa_required', () => asAal(coordinator, 'aal1', 'select * from get_consents($1)', [kid61.id]));
+  await refusesWith('0061 #583: ... the call notes', 'mfa_required', () => asAal(coordinator, 'aal1', 'select * from get_call_notes($1)', [kid61.id]));
+  await refusesWith('0061 #583: ... the audit log', 'mfa_required', () => asAal(guru, 'aal1', 'select * from get_audit_log()'));
+  await refusesWith('0061 #583: ... a student is still refused as before', 'not_allowed', () => asAal(arjun, 'aal2', 'select * from get_guardians($1)', [kid61.id]));
+  check('0061 #583: with the code given they read as before', (await guardiansAs(coordinator, 'aal2')).length === 1
+    && (await asAal(coordinator, 'aal2', 'select * from get_consents($1)', [kid61.id])).length >= 1
+    && (await asAal(guru, 'aal2', 'select id from get_audit_log(p_limit => 1)')).length === 1);
+  const direct = async (aal) => {
+    const out = [];
+    for (const table of ['guardians', 'consents', 'call_logs', 'access_log']) out.push((await asAal(guru, aal, `select count(*)::int as n from ${table}`))[0].n);
+    return out;
+  };
+  const [d1, d2] = [await direct('aal1'), await direct('aal2')];
+  check('0061 #583: the Guru\'s direct reads (guardians, consents, call notes, access log) show nothing without the code',
+    d1.every((n) => n === 0) && d2[0] > 0 && d2[1] > 0 && d2[3] > 0, `${d1} / ${d2}`);
+  const child61 = await signUp('child.61@example.com', true);
+  await asOwner(`insert into minor_signups (profile_id, parent_name, parent_relation, parent_email, parent_phone, consented_at)
+    values ('${child61}', 'Rama Parent', 'father', 'rama.61@example.com', '+919000061062', now())`);
+  const parentOf = async (aal) => (await asAal(guru, aal, 'select waiting_sign_ups() as r'))[0].r.find((w) => w.id === child61)?.parent;
+  const [p1, p2] = [await parentOf('aal1'), await parentOf('aal2')];
+  check('0061 #583: a child\'s waiting sign-up keeps the parent\'s name and consent, not their email or phone, without the code',
+    p1?.name === 'Rama Parent' && p1.state === 'consented' && p1.email === null && p1.phone === null
+    && p2?.email === 'rama.61@example.com' && p2.phone === '+919000061062', JSON.stringify([p1, p2]));
+
+  // Resets (#584).
+  await refusesWith('0061 #584: nobody resets their own code here', 'not_yourself', () => resetAs(guru, 'aal2', guru));
+  await refusesWith('0061 #584: a coordinator resets nobody\'s', 'not_allowed', () => resetAs(coordinator, 'aal2', guru2));
+  await refusesWith('0061 #584: only staff codes are reset here', 'not_staff', () => resetAs(guru, 'aal2', child61));
+  await refusesWith('0061 #584: an unknown login', 'profile_not_found', () => resetAs(guru, 'aal2', '00000000-0000-4000-8000-000000000061'));
+  await refusesWith('0061 #584: while on, the Guru resets only with the code given', 'mfa_required', () => resetAs(guru, 'aal1', coordinator));
+  const removed = await resetAs(guru, 'aal2', coordinator);
+  const [audit61] = await asOwner(`select changed_by, old_row, new_row from audit_log where table_name = 'mfa_factors'
+    and row_id = '${coordinator}' order by id desc limit 1`);
+  check('0061 #584: the Guru resets a coordinator\'s codes (both); audited with the count only', removed === 2 && (await codesOf(coordinator)) === 0
+    && audit61?.changed_by === guru && audit61.old_row?.codes === 2 && audit61.new_row === null, JSON.stringify(audit61));
+  await refusesWith('0061 #583: the coordinator, now without a code, keeps the app but not the private reads', 'mfa_required', () => guardiansAs(coordinator, 'aal1'));
+  check('0061: ... and is told the switch is on and they have no code', JSON.stringify((await asAal(coordinator, 'aal1', 'select my_mfa_state() as r'))[0].r)
+    === JSON.stringify({ aal2: false, has_code: false, required: true }));
+
+  // Nothing locks out the only Guru (#582): a Guru with a code switches off only with it; once the code is gone
+  // (another Guru resets it, or the owner removes it in the dashboard), the Guru switches off without one.
+  await refusesWith('0061 #582: a Guru with a code switches off only with it given', 'mfa_required', () => switchTo(guru, 'aal1', false));
+  check('0061 #584: another Guru resets the Guru\'s code', (await resetAs(guru2, 'aal2', guru)) === 1 && (await codesOf(guru)) === 0);
+  await asOwner(`update profiles set active = false where id = '${guru2}'`); // the only Guru left
+  const off = await switchTo(guru, 'aal1', false);
+  check('0061 #582: the only Guru, code gone, switches codes off without one: never locked out', off.required === false && (await flag()) === false);
+  check('0061 #582: ... and reads the private details again', (await asAal(guru, 'aal1', 'select id from get_audit_log(p_limit => 1)')).length === 1
+    && (await guardiansAs(coordinator, 'aal1')).length === 1);
+  await asOwner(`update profiles set active = true where id = '${guru2}'`);
+  await asOwner(`delete from auth.mfa_factors`);
+
+  // The error log (#585-#587): what broke, never who.
+  const report = (who, args) => asApp('authenticated', who, 'select log_client_error($1, $2, $3, $4, $5)', args);
+  const crash = ['crash', 'TypeError', '/student/(tabs)/my-qr', '1.0.0+a1b2c3d4', 'android'];
+  await report(arjun, crash);
+  await report(arjun, crash);
+  const rows61 = await asOwner(`select * from client_errors where error_name = 'TypeError'`);
+  check('0061 #585: the same error in the same hour is one row, counted, as a student\'s', rows61.length === 1 && rows61[0].times === 2
+    && rows61[0].area === 'student' && rows61[0].screen === '/student/(tabs)/my-qr', JSON.stringify(rows61));
+  check('0061 #585: the table has no column for a login, a name, an email or a message', (await asOwner(`select string_agg(column_name, ',' order by column_name) as c
+    from information_schema.columns where table_schema = 'public' and table_name = 'client_errors'`))[0].c
+    === 'app_version,area,error_name,first_at,hour,id,kind,last_at,platform,screen,times');
+  for (const [what, args] of [
+    ['an error message instead of its name', ['crash', 'Cannot read property x', '/staff', '1.0.0', 'web']],
+    ['an id in the screen', ['crash', 'TypeError', '/staff/students/1234', '1.0.0', 'web']],
+    ['an email in the screen', ['crash', 'TypeError', '/staff/a@b.com', '1.0.0', 'web']],
+    ['a version with spaces', ['crash', 'TypeError', '/staff', '1.0 beta', 'web']],
+    ['an unknown platform', ['crash', 'TypeError', '/staff', '1.0.0', 'windows']],
+    ['an unknown kind', ['warning', 'TypeError', '/staff', '1.0.0', 'web']],
+  ]) await refusesWith(`0061 #585: refused: ${what}`, 'error_report_invalid', () => report(coordinator, args));
+  await refusesWith('0061: anon reports nothing', 'permission denied for function log_client_error', () =>
+    asApp('anon', null, 'select log_client_error($1, $2, $3, $4, $5)', crash));
+  for (let i = 0; i < 12; i++) await report(coordinator, ['unhandled', `LoopError${i}`, '/staff', '1.0.0', 'web']);
+  check('0061 #585: at most 10 reports a login an hour are kept (a crash loop cannot fill the table)', (await asOwner(`select count(*)::int as n
+    from client_errors where error_name like 'LoopError%' and area = 'staff'`))[0].n === 10);
+  await asOwner(`insert into client_errors (hour, kind, error_name, screen, app_version, platform, area)
+    select date_trunc('hour', now()), 'crash', 'Filler' || i, '/staff', '1.0.0', 'web', 'other' from generate_series(1, 300) i`);
+  await report(guru, ['crash', 'BeyondCap', '/staff', '1.0.0', 'web']);
+  check('0061 #585: at most 300 new rows a day', (await asOwner(`select count(*)::int as n from client_errors where error_name = 'BeyondCap'`))[0].n === 0);
+  await report(arjun, crash);
+  check('0061 #585: ... a known row is still counted', (await asOwner(`select times from client_errors where error_name = 'TypeError'`))[0].times === 3);
+  await asOwner(`delete from client_errors where error_name like 'Filler%'`);
+  check('0061 #587: the Guru reads the log; a coordinator and a student read nothing', (await asApp('authenticated', guru, 'select id from client_errors')).length > 0
+    && (await asApp('authenticated', coordinator, 'select id from client_errors')).length === 0
+    && (await asApp('authenticated', arjun, 'select id from client_errors')).length === 0);
+  await refusesWith('0061 #587: nobody writes the log directly, not even the Guru', 'permission denied for table client_errors', () =>
+    asApp('authenticated', guru, `delete from client_errors where id > 0`));
+  await refusesWith('0061 #585: the rate-limit table is read by nobody in the app', 'permission denied for table client_error_quota', () =>
+    asApp('authenticated', guru, 'select * from client_error_quota'));
+  await asOwner(`update client_errors set last_at = now() - interval '31 days' where error_name = 'TypeError'`);
+  await asOwner(`update client_error_quota set hour = now() - interval '3 days' where profile_id = '${arjun}'`);
+  const purged = (await asOwner('select purge_client_errors() as n'))[0].n;
+  check('0061 #586: the purge deletes errors not seen for 30 days and old rate-limit rows, nothing newer', purged === 2
+    && (await asOwner(`select count(*)::int as n from client_errors where error_name = 'TypeError'`))[0].n === 0
+    && (await asOwner(`select count(*)::int as n from client_errors where error_name like 'LoopError%'`))[0].n === 10, String(purged));
+  check('0061 #586: the purge runs every night at 01:55 UTC', (await asOwner(`select schedule from cron.job
+    where jobname = 'mridanga-client-errors-purge'`))[0]?.schedule === '55 1 * * *');
+
+  const counts61 = async () => (await asOwner(`select (select count(*) from client_errors)::int as e, (select count(*) from cron.job)::int as j,
+    (select count(*) from pg_policies where tablename in ('client_errors', 'guardians', 'consents', 'call_logs', 'access_log'))::int as p,
+    (select value::text from settings where key = 'staff_mfa_required') as s`))[0];
+  const before61 = await counts61();
+  let again61 = '';
+  try { await db.exec(file61); } catch (e) { again61 = String(e.message); }
+  check('0061: a second run changes nothing', again61 === '' && JSON.stringify(await counts61()) === JSON.stringify(before61),
+    `${again61} ${JSON.stringify(before61)}`);
 }
 
 // ---------------------------------------------------------------- row-level security

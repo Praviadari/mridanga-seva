@@ -29,20 +29,24 @@
 //    index.html, which this single-page app needs (docs/DECISIONS.md #15).
 // 9. Writes dist/sw.js from scripts/service-worker.js (docs/DECISIONS.md #513): this build's id and the list of the
 //    site's own files it keeps for offline use (the page as '/', scripts, fonts, icons; never version.txt, _headers,
-//    source maps or the QR reader's WebAssembly), and checks the result parses.
+//    source maps, the QR reader's WebAssembly, the other languages or the staff screens), and checks the result parses.
+// Before 1, it refuses a stale list of staff screens (src/web-routes/staff-screens.ts, #590): a staff screen missing
+// from it would not open on the web. After 9 it checks the staff screens came out as one file of their own, and says
+// how big the first download is.
 //
 // Uses only Node's built-in modules (and reads two installed packages). Exits with code 1 if
 // dist/ must not be uploaded.
 
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, extname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { holdsSecretKey, listFiles, SETTING_NAMES, supabaseSettingsFrom } from './bundle-checks.mjs';
-import { serviceWorkerSource, shellFiles } from './lib/offline-shell.mjs';
+import { serviceWorkerSource, shellFiles, staffChunk } from './lib/offline-shell.mjs';
+import { LIST_FILE, listIsCurrent } from './lib/staff-screens.mjs';
 
 const DIST = 'dist';
 const FROM = '/assets/node_modules/';
@@ -103,6 +107,7 @@ function git(...args) {
 
 // ---------------------------------------------------------------- 1. settings and export
 const siteName = siteFromArgs(process.argv.slice(2));
+if (!listIsCurrent()) fail(`${LIST_FILE} does not match src/app/staff: run npm run staff-screens, commit, then export again.`);
 const site = SITES[siteName];
 const otherProject = Object.values(SITES).find((s) => s !== site).project;
 const settings = readSettings(site.file);
@@ -231,6 +236,14 @@ try {
 }
 writeFileSync(join(DIST, 'sw.js'), worker);
 console.log(`export-web: sw.js keeps ${shell.length} files (${Math.round(bytes / 1024)} KB) for offline use.`);
+
+// ---------------------------------------------------------------- the first download (#590)
+const scripts = readdirSync(entryDir);
+const staffFiles = scripts.filter((name) => staffChunk(`/_expo/static/js/web/${name}`));
+if (staffFiles.length !== 1) fail(`expected one staff-area file in ${entryDir}, found ${staffFiles.length}: the staff screens must load later.`);
+if (scripts.some((name) => name.startsWith('__common'))) fail('the export made a __common file that every visit loads; see DECISIONS #590.');
+const kb = (name) => Math.round(statSync(join(entryDir, name)).size / 1024);
+console.log(`export-web: first download ${entry} ${kb(entry)} KB; staff screens ${staffFiles[0]} ${kb(staffFiles[0])} KB, loaded by staff only.`);
 console.log(`export-web: ${rewritten} asset paths moved to ${TO}; QR reader zxing-wasm ${zxingVersion} copied.`);
 if (changed) console.warn('export-web: the folder has uncommitted changes; commit first for a site people use.');
 console.log(

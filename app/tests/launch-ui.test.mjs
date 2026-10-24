@@ -273,7 +273,8 @@ test('Check-in opens with one big Scan button; its answer sits under it; a name 
   assert.ok(scan > 0 && scan < screen.indexOf("t('attendance.summary'"), 'Scan comes before the counts');
   assert.ok(!screen.includes("title={t('attendance.scanSection')}"), 'no repeated "Scan to check in" heading');
   assert.ok(screen.indexOf('{resultUnderRow ? null : outcomeNotice}') < screen.indexOf("t('attendance.summary'"));
-  assert.match(screen, /setOutcome\(marked\);\n\s+\/\/[^\n]*\n\s+scanFeedback\(/);
+  // A tap kept for later without a connection (#593) shows that instead of the answer, and buzzes all the same.
+  assert.match(screen, /setOutcome\(queued \? \{ queued: true \} : marked\);\n\s+\/\/[^\n]*\n\s+scanFeedback\(queued \|\| /);
 });
 
 test('success moments: the tick pops and the phone buzzes once; buttons and circles sink when pressed', () => {
