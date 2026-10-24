@@ -67,12 +67,19 @@
   .ribbon { position: absolute; left: 0; right: 0; bottom: 4mm; text-align: center; }
   .ribbon span { background: rgba(27,30,75,.88); color: #fff; font-size: 6.5pt; padding: 0.8mm 2mm; border-radius: 2mm; }
 
-  /* steps */
-  .steps { display: grid; grid-template-columns: 1fr 1fr; column-gap: 7mm; row-gap: 1.6mm; margin: 4.5mm 1mm 0; }
-  .step { display: flex; gap: 2.4mm; align-items: flex-start; font-size: 10pt; line-height: 1.35; }
-  .step .n { flex: none; width: 6mm; height: 6mm; border-radius: 50%; background: var(--red); color: #fff; font-weight: 700;
-             font-size: 9pt; line-height: 6mm; text-align: center; margin-top: 0.2mm; }
-  .step .n.dot { background: var(--night); }
+  /* a workflow: its screens in order, an arrow between them, the step under each */
+  .flow { margin: 3mm 0 0; }
+  .flow .frow { display: flex; justify-content: center; align-items: flex-start; }
+  .flow .frow + .frow { margin-top: 2mm; }
+  .flow .shot, .flow .phone { width: var(--pw); }
+  .flow .cap { text-align: left; color: var(--ink); font-size: 8.6pt; line-height: 1.32; min-height: 0; margin-top: 1.6mm; }
+  .arr { flex: none; width: 6.5mm; display: flex; align-items: center; justify-content: center; align-self: flex-start;
+         height: calc(var(--pw) * 2.164 + 6mm); }
+  .arr span { width: 5mm; height: 5mm; border-radius: 50%; background: var(--gold); color: var(--night); font-weight: 700;
+              font-size: 9pt; line-height: 4.8mm; text-align: center; }
+  .b { display: inline-block; width: 4.3mm; height: 4.3mm; border-radius: 50%; background: var(--red); color: #fff; font-weight: 700;
+       font-size: 7pt; line-height: 4.3mm; text-align: center; margin: 0 0.6mm 0 0; vertical-align: 0.2mm; }
+  .flow .mk { width: 5.2mm; height: 5.2mm; font-size: 8pt; line-height: 4.4mm; }
   .tip { margin: 3.4mm 1mm 0; background: var(--cream); border-left: 1.4mm solid var(--gold); padding: 2.2mm 3.4mm; border-radius: 0 2mm 2mm 0; font-size: 9.6pt; }
   .trouble { margin: 3mm 1mm 0; background: #fdf0ee; border-left: 1.4mm solid var(--red); padding: 2.2mm 3.4mm; border-radius: 0 2mm 2mm 0; font-size: 9.4pt; }
   .trouble h3, .tip h3 { margin: 0 0 0.8mm; font-size: 10pt; color: #8e1b2b; }
@@ -145,7 +152,7 @@ const TEXT = {
     howTitle: "How to read this guide",
     how: [
       ["One page, one job", "Each page shows one thing you want to do, for example \"Log your practice\". Read the title, then follow the numbers."],
-      ["Red numbers", "A red circle on a picture marks where to tap or look. The same number in the list below tells you what to do there."],
+      ["Red numbers", "A red circle on a picture marks where to tap or look. The same number under the picture tells you what to do there. The arrows show the order of the screens."],
       ["Words in bold", "**Bold words** are written exactly as the app shows them, so you can find the button."],
       ["If something goes wrong", "The red box at the foot of each page says what to do when there is no internet, a password is forgotten, and so on."],
       ["Tap and Back", "Tap = touch once with your finger. The arrow ← at the top left goes back one screen."],
@@ -179,23 +186,15 @@ const TEXT = {
       who: "Anyone who wants to join the class. A child under 18 fills it in with a parent nearby.",
       intro: "Do this once, at home or at the class, before your first visit. You need your own email address.",
       shots: [
-        { img: "signup-top", cap: "**New student registration**", marks: [[1, 33, 438], [2, 33, 573], [3, 33, 688], [4, 33, 826]] },
-        { img: "signup-bottom", cap: "The end of the form", marks: [[5, 118, 587], [6, 20, 642], [7, 40, 715]] },
-        { img: "signup-child", cap: "Under 18: the parent's part", marks: [[8, 33, 470], [9, 33, 671], [10, 33, 762]] }
+        { img: "sign-in", marks: [[1, 122, 326]], cap: "[1] On the first screen tap **New student registration**." },
+        { img: "signup-top", marks: [[2, 33, 438], [3, 33, 573], [4, 33, 688]],
+          cap: "[2] Your full name as on your Aadhaar or other ID. [3] Your own email. [4] A password of 8 or more characters." },
+        { img: "signup-bottom", marks: [[5, 33, 422], [6, 20, 642], [7, 40, 715]],
+          cap: "[5] Your date of birth. [6] Read the **Privacy notice**, tick the box. [7] Tap **Create account**." },
+        { img: "signup-child", marks: [[8, 33, 671], [9, 33, 762]],
+          cap: "Under 18: [8] the parent's name, [9] relation, email and mobile. The parent consents by email." }
       ],
-      steps: [
-        [1, "On the first screen tap **New student registration**. Type your full name exactly as on your Aadhaar or other government ID."],
-        [2, "Type your email. Use one you can open: a link is sent there."],
-        [3, "Make a password of at least 8 characters. **Show** lets you check it. Keep it safe."],
-        [4, "Choose your **Date of birth**: day, month and year."],
-        [5, "Tap **Privacy notice** and read it."],
-        [6, "Tick **I have read the privacy notice.**"],
-        [7, "Tap **Create account**. Then open the email from the app and tap its link to confirm."],
-        [8, "Under 18? The form says so and asks for a parent or guardian."],
-        [9, "Type the parent's or guardian's full name."],
-        [10, "Tap **Mother**, **Father** or **Other guardian**, then type the parent's own email and mobile number. The parent gets one email with a code and gives consent on a short page."]
-      ],
-      tip: "Your mobile number, gender, Dīkṣā name and instruments are asked later, in **About you** (page {about}).",
+      tip: "After **Create account**, open the email from the app and tap its link to confirm. Mobile number, gender, Dīkṣā name and instruments are asked later, in **About you** (page {about}).",
       trouble: [
         "No email came: look in Spam or Promotions and wait a few minutes. \"The email could not be sent just now\": try later in the day, or come to the class: the desk registers you there.",
         "\"An account with this email already exists\": tap **Already have an account? Sign in**.",
@@ -206,19 +205,14 @@ const TEXT = {
       who: "A new student, after confirming the email.",
       intro: "You can practise at once. The class desk then checks your ID and registers you, and your Home opens.",
       shots: [
-        { img: "sign-in", cap: "**Sign in**", marks: [[1, 50, 262], [2, 33, 551], [3, 33, 641], [4, 40, 707]] },
-        { img: "about-you", cap: "**About you** opens by itself once", marks: [[5, 33, 180]] },
-        { drawn: "waiting", cap: "**Almost there** (drawing: picture to follow)", marks: [[6, 14, 268], [7, 14, 470], [8, 14, 650]] }
-      ],
-      steps: [
-        [1, "Choose your language: **English**, **తెలుగు** or **हिन्दी**."],
-        [2, "Type the email you signed up with."],
-        [3, "Type your password."],
-        [4, "Tap **Sign in**."],
-        [5, "**About you** opens once: answer the four short steps and tap **Save and continue**, or tap **Skip for now**."],
-        [6, "You see **Almost there** and three steps: **Account made**, **Come to the class desk with an ID**, **Your QR card for the door**."],
-        [7, "**While you wait** you can open **Practice tools**, **Mantra before practice** and **Beginner lessons**."],
-        [8, "At the class, a coordinator checks your name against your ID and registers you. Tap **Check again**: your Home opens by itself."]
+        { img: "sign-in", marks: [[1, 50, 262], [2, 33, 551], [3, 33, 641], [4, 40, 707]],
+          cap: "[1] Choose your language. [2] Email, [3] password. [4] Tap **Sign in**." },
+        { img: "about-you", marks: [[5, 33, 180]],
+          cap: "[5] **About you** opens once: **Save and continue**, or **Skip for now**." },
+        { drawn: "waiting", marks: [[6, 14, 268], [7, 14, 470]],
+          cap: "[6] **Almost there**: come to the class desk with an ID. [7] **While you wait**: practise now. (Drawing.)" },
+        { img: "home", marks: [],
+          cap: "Registered at the desk: tap **Check again** and your **Home** opens." }
       ],
       tip: "Under 18: the desk accepts you once your parent has given consent. Come to your first class with your parent's ID, or with your parent.",
       trouble: [
@@ -231,15 +225,12 @@ const TEXT = {
       who: "Every student, once for each new version of the notice.",
       intro: "The privacy notice says what the app keeps about you, why, who handles it, how long it is kept, and how to see, correct or delete it.",
       shots: [
-        { img: "home-privacy", cap: "The card on **Home**", marks: [[1, 100, 376]] },
-        { img: "privacy-ticked", cap: "Ticked, ready to agree", marks: [[2, 12, 423], [3, 35, 487]] },
-        { img: "home", cap: "Done: the card has gone", marks: [] }
-      ],
-      steps: [
-        [1, "When **Our privacy notice has changed** shows on Home, tap **Read the privacy notice** and read it."],
-        [2, "Come back to the app and tick **I have read the privacy notice and agree**."],
-        [3, "Tap **Agree**. The card goes away. That is all."],
-        [null, "Nothing is blocked while the card shows: you may use the app and agree later."]
+        { img: "home-privacy", marks: [[1, 100, 376]],
+          cap: "[1] When **Our privacy notice has changed** shows on Home, tap **Read the privacy notice** and read it." },
+        { img: "privacy-ticked", marks: [[2, 12, 423], [3, 35, 487]],
+          cap: "[2] Tick **I have read the privacy notice and agree**. [3] Tap **Agree**." },
+        { img: "home", marks: [],
+          cap: "Done: the card goes away. Nothing was blocked meanwhile." }
       ],
       tip: "Registered as a child (under 18)? The card asks you to show the notice to your parent; then tap **Done**. A student who has turned 18 now gives their own consent in the same way.",
       trouble: [
@@ -251,17 +242,12 @@ const TEXT = {
       who: "Every registered student, on every visit.",
       intro: "There is no roll call. You show your code when you come and when you leave; the app keeps your visits.",
       shots: [
-        { img: "home", cap: "**Home**", marks: [[1, 122, 800], [4, 282, 226]] },
-        { img: "myqr", cap: "**My QR card** (code hidden here)", marks: [[2, 68, 200], [3, 40, 100]] },
-        { img: "visits", cap: "**My attendance**", marks: [[5, 33, 108], [6, 30, 463]] }
-      ],
-      steps: [
-        [1, "Tap the **My QR** tab at the bottom (or the **My QR** circle on Home)."],
-        [2, "At the door, show the code to the coordinator. They scan it with their phone."],
-        [3, "The card turns green: **Checked in at** and the time, with a tick. When you leave, show it again: that checks you out."],
-        [4, "To see your visits, tap **Attendance** on Home."],
-        [5, "At the top: **Visits this week** and **Weeks in a row**."],
-        [6, "Below: every visit by month, with the time in and out."]
+        { img: "home", marks: [[1, 122, 800]],
+          cap: "[1] Tap the **My QR** tab at the bottom (or the **My QR** circle)." },
+        { img: "myqr", marks: [[2, 68, 200], [3, 40, 100]],
+          cap: "[2] Show the code at the door when you come and when you leave. [3] Scanned: green **Checked in at** and the time." },
+        { img: "visits", marks: [[4, 33, 108]],
+          cap: "[4] Home → **Attendance**: visits this week, weeks in a row, every visit by month." }
       ],
       tip: "My QR works without internet: the code is kept on your phone. No phone? The desk can give you a printed QR card.",
       trouble: [
@@ -274,19 +260,14 @@ const TEXT = {
       who: "Every registered student.",
       intro: "The class has three levels: Beginner, Intermediate and Advanced. Each level has items you learn and show in class.",
       shots: [
-        { img: "home", cap: "**Home**", marks: [[1, 312, 346], [2, 16, 632]] },
-        { img: "progress-1", cap: "**My progress**", marks: [[3, 33, 122], [4, 33, 242]] },
-        { img: "progress-3", cap: "The items of your level", marks: [[5, 33, 265]] }
+        { img: "home", marks: [[1, 312, 346]],
+          cap: "[1] On Home tap **My progress** (or the **My level** line under the circles)." },
+        { img: "progress-1", marks: [[2, 33, 122], [3, 33, 242]],
+          cap: "[2] Your level; **More** explains it. [3] Items done, for example **0 of 5 done**." },
+        { img: "progress-3", marks: [[4, 33, 265]],
+          cap: "[4] The items in teaching order: ticked with the date when you show one in class, **Not yet** until then." }
       ],
-      steps: [
-        [1, "On Home tap **My progress**."],
-        [2, "Or tap the line **My level** under the circles."],
-        [3, "At the top: your level, and **More** explains it."],
-        [4, "The bar shows how many items you have done, for example **0 of 5 done**."],
-        [5, "The items in teaching order. When you show one in class, your coordinator ticks it: it gets a tick and the date. **Not yet** = not ticked yet."],
-        [null, "Lessons (videos, PDFs, photos) show under the level and under each item. **Watch** opens the lesson player: play, −5 / +5 seconds, speed 0.5x to 1x, and **Start here (A)** / **End here (B)** to repeat a part."]
-      ],
-      tip: "Moving up a level is the Guru's decision, after an assessment and the coordinators' feedback. The app never moves you up by itself.",
+      tip: "Lessons show under the level and under each item. **Watch** opens the lesson player: −5 / +5 seconds, speed 0.5x to 1x, and **Start here (A)** / **End here (B)** to repeat a part. Moving up a level is the Guru's decision.",
       trouble: [
         "An item you showed in class is not ticked: ask your coordinator.",
         "A lesson video does not play: check the internet. On some school or office Wi-Fi YouTube is blocked; try mobile data."
@@ -296,20 +277,16 @@ const TEXT = {
       who: "Every student, and new students while they wait for the desk.",
       intro: "The practice tools keep time for you. They work without internet once opened.",
       shots: [
-        { img: "practice-top", cap: "**Practice tools**", marks: [[1, 16, 508], [2, 128, 681], [3, 40, 767]] },
-        { img: "taal-1", cap: "**Taal player**", marks: [[4, 33, 323], [5, 40, 710]] },
-        { img: "taal-grid", cap: "Beats, heads and hands", marks: [[6, 33, 160], [7, 30, 690]] }
+        { img: "home", marks: [[1, 106, 446]], cap: "[1] On Home tap **Practice**." },
+        { img: "practice-top", marks: [[2, 16, 508], [3, 128, 681], [4, 40, 767]],
+          cap: "[2] **Metronome** or **Taal player**. [3] Set the speed (−5 … +5, **Tap tempo**). [4] **Start** / stop." },
+        { img: "taal-1", marks: [[5, 33, 323]],
+          cap: "[5] Taal player: pick a taal, for example **Kirtan 8 beats**, then **Start**." },
+        { img: "taal-speed", marks: [[6, 33, 150], [7, 33, 240]],
+          cap: "[6] **Speed** 50 % or 75 % plays slower. [7] **Layakari** plays 2, 3 or 4 times as fast." },
+        { img: "taal-grid", marks: [[8, 33, 160], [9, 30, 690]],
+          cap: "[8] Each bol and its hand: **L** baya, **R** dayan. [9] The heads light up where to strike." }
       ],
-      steps: [
-        [1, "On Home tap **Practice**. Under **Tool** choose **Metronome** or **Taal player**."],
-        [2, "Set the speed with **−5**, **−1**, **+1**, **+5**, or **Tap tempo** (tap 3 or 4 times in time)."],
-        [3, "Tap **Start**. Tap again to stop. The metronome makes beat 1 louder."],
-        [4, "Taal player: pick a taal, for example **Kirtan 8 beats**."],
-        [5, "Tap **Start**. **Speed** 50 % or 75 % plays slower; **Layakari** plays 2, 3 or 4 times as fast."],
-        [6, "The beat grid shows each bol and the hand: **L** left (baya), **R** right (dayan)."],
-        [7, "**Both heads and hands** lights up where to strike. Tick **Learn stroke by stroke** to go one stroke at a time with **Hear it**."]
-      ],
-      tip: "Also on this screen: **Count-in**, **Stop after** a number of cycles, **Silent cycles** (keep the taal yourself) and **Speed trainer**.",
       trouble: [
         "No sound: turn the volume up and silent mode off. In a browser, tap **Start** once more (browsers need a tap first).",
         "The taal says **Placeholder**: the Guru will replace it with the class's own bols."
@@ -319,21 +296,15 @@ const TEXT = {
       who: "Every student.",
       intro: "Hear how you really sound, and train your ear and timing with short games, even away from the drum.",
       shots: [
-        { img: "record-myself", cap: "**Record myself**", marks: [[1, 12, 220], [2, 40, 358]] },
-        { img: "play-learn", cap: "**Play and learn**", marks: [[3, 40, 190], [4, 210, 190], [5, 40, 330], [6, 210, 330]] },
-        { img: "tap-pad", cap: "**Tap pad**", marks: [[7, 40, 587], [8, 40, 720]] }
+        { img: "home", marks: [[1, 106, 446]], cap: "[1] On Home tap **Practice** and scroll down." },
+        { img: "record-myself", marks: [[2, 12, 220], [3, 40, 358]],
+          cap: "[2] Keep **Play the sound while I record** ticked. [3] **Record**, play, stop, then **Play**." },
+        { img: "play-learn", marks: [[4, 40, 190], [5, 210, 190], [6, 40, 330], [7, 210, 330]],
+          cap: "[4] **Tap pad** [5] **Which bol?** [6] **Echo me** [7] **Learn more**: free lessons the Guru trusts." },
+        { img: "tap-pad", marks: [[8, 40, 587], [9, 40, 720]],
+          cap: "[8] Pick the taal and speed, **Start**. [9] Tap left for baya, right for dayan." }
       ],
-      steps: [
-        [1, "On **Practice tools**, keep **Play the sound while I record** ticked to record with the beat."],
-        [2, "Tap **Record**, play your drum, then stop. Listen with **Play**, or **Play with the sound**."],
-        [3, "**Tap pad**: play along on two pads."],
-        [4, "**Which bol?**: listen and pick the bol."],
-        [5, "**Echo me**: listen, then play it back."],
-        [6, "**Learn more**: free lessons the Guru trusts."],
-        [7, "In a game, pick the taal and speed, then tap **Start**."],
-        [8, "Tap the left pad for baya strokes and the right pad for dayan strokes, both together for dhā. Stars show how well you kept time."]
-      ],
-      tip: "Your recordings stay on this phone only (in a browser, only until you close the page). To send one to your teacher, use **Send for an assessment** (page {assess}).",
+      tip: "Recordings stay on this phone only (in a browser, until you close the page). To send one to your teacher, use **Send for an assessment** (page {assess}).",
       trouble: [
         "**Record** does nothing: allow the microphone for the app in the phone's settings (or the browser's), then try again.",
         "Use headphones: then the recording catches only your drum."
@@ -343,18 +314,13 @@ const TEXT = {
       who: "Every registered student.",
       intro: "Your teachers see how much you practise each week. The timer can log it for you, or you type it in.",
       shots: [
-        { img: "practice-top", cap: "Timer on **Practice tools**", marks: [[1, 22, 113], [2, 40, 767]] },
-        { img: "log-week", cap: "**My practice log**", marks: [[3, 33, 180]] },
-        { img: "log-add", cap: "**Add practice**", marks: [[4, 22, 153], [5, 33, 355], [6, 33, 603], [7, 40, 767]] }
-      ],
-      steps: [
-        [1, "The timer starts with **Start** (**Timer starts with Start**), or tap **Start now**."],
-        [2, "Tap **Stop and save** when you finish. One minute or more is logged by itself, and the app asks **How did it go?**"],
-        [3, "Practised without the app? Open **My practice log** (at the foot of Practice tools, or on My progress). At the top: your minutes by week."],
-        [4, "Under **Add practice** choose the day: **Today**, **Yesterday** or a date of the last week."],
-        [5, "Type the **Minutes** (1 to 240). A note is optional."],
-        [6, "Tap **Hard**, **Okay** or **Good**; and, if you like, what you practised."],
-        [7, "Tap **Save**."]
+        { img: "practice-top", marks: [[1, 22, 113]],
+          cap: "[1] The timer starts with **Start**. **Stop and save**: 1 minute or more is logged, with **How did it go?**" },
+        { img: "this-week", marks: [[2, 140, 797]],
+          cap: "[2] Practised without the app? At the foot of Practice tools tap **My practice log**." },
+        { img: "log-week", marks: [[3, 33, 180]], cap: "[3] Your minutes, week by week." },
+        { img: "log-add", marks: [[4, 22, 153], [5, 33, 355], [6, 33, 603], [7, 40, 767]],
+          cap: "[4] The day, [5] the minutes, [6] how it went, [7] **Save**." }
       ],
       tip: "No internet? Save anyway. The app says **No connection: … kept on this phone. It is saved to your log when the signal is back.** Do not sign out before it is sent.",
       trouble: [
@@ -366,18 +332,14 @@ const TEXT = {
       who: "Every registered student.",
       intro: "Your teachers set a weekly plan for your level. You can set your own goal, and small milestones mark your progress.",
       shots: [
-        { img: "practice-top", cap: "**Practice of the week**", marks: [[1, 33, 165], [2, 262, 330]] },
-        { img: "my-goal", cap: "**My goal**", marks: [[3, 50, 389], [4, 50, 480], [5, 55, 600]] },
-        { img: "progress-2", cap: "**Milestones** on My progress", marks: [[6, 50, 170], [7, 33, 287]] }
-      ],
-      steps: [
-        [1, "At the top of Practice tools: **Practice of the week**, from your teachers, for your level, with their note and the weekly goal."],
-        [2, "Tap **Start** beside a taal to play it at the tempo they chose (or **Watch** for a lesson video)."],
-        [3, "Your own goal: at the foot of Practice tools open **My goal** and choose the days a week."],
-        [4, "Choose the minutes a day."],
-        [5, "Tap **Save my goal**. The **This week** circles fill as you practise."],
-        [6, "On My progress, **Milestones** such as **First practice**, with the date. Only you and your teachers see them."],
-        [7, "**Next:** shows the next milestone and how far you are."]
+        { img: "practice-top", marks: [[1, 33, 165], [2, 262, 330]],
+          cap: "[1] **Practice of the week** from your teachers. [2] **Start** plays it at their tempo." },
+        { img: "this-week", marks: [[3, 33, 375]],
+          cap: "[3] **This week**: a circle fills on each day you reach the goal." },
+        { img: "my-goal", marks: [[4, 50, 389], [5, 50, 480], [6, 55, 600]],
+          cap: "[4] **My goal**: days a week, [5] minutes a day, [6] **Save my goal**." },
+        { img: "progress-2", marks: [[7, 50, 170]],
+          cap: "[7] **Milestones** on My progress, with the date. Only you and your teachers see them." }
       ],
       tip: "In the Android app, **Daily reminder** gives you a notification each day at the time you choose.",
       trouble: [
@@ -389,19 +351,14 @@ const TEXT = {
       who: "Students who have been given an assessment by a coordinator.",
       intro: "An assessment is a short task, for example \"Play Ekatala four times\". You record it and send it; a coordinator marks it.",
       shots: [
-        { img: "assess-list", cap: "**Assessments**", marks: [[1, 33, 118]] },
-        { img: "assess-mark", cap: "**Your mark** comes first", marks: [[2, 33, 150], [3, 33, 465], [4, 60, 686]] },
-        { img: "assess-recordings", cap: "**My recordings**", marks: [[5, 33, 455], [6, 60, 810]] }
+        { img: "home", marks: [[1, 233, 446]], cap: "[1] On Home tap **Assessments**." },
+        { img: "assess-list", marks: [[2, 33, 118]], cap: "[2] The ones to do come first, by due date. Tap one." },
+        { img: "assess-mark", marks: [[3, 33, 150], [4, 33, 465]],
+          cap: "[3] **Your mark**, who marked it and the comment. [4] The task and how marks are given." },
+        { img: "assess-recordings", marks: [[5, 33, 455]],
+          cap: "[5] **My recordings**: what you sent, each with its review." }
       ],
-      steps: [
-        [1, "On Home tap **Assessments**. The ones to do come first, by due date."],
-        [2, "Tap one. Once it is reviewed, **Your mark** is at the top: for example **14 of 15**, **Accepted** or **Please record it again**, who marked it, the comment and the marks per line."],
-        [3, "Below: the task, the due date, the instructions, your coordinator's note and how marks are given."],
-        [4, "A link or file from your teacher: tap **Open** or **Play**."],
-        [5, "To send: under **Send your recording** tap **Record here** (up to 20 minutes), or **Add audio or video** (a file up to 50 MB), or paste a link. Add a note if you like and tap **Send**."],
-        [6, "**My recordings** lists what you sent, each with its review. If a redo was asked: **Record it again and send it**."]
-      ],
-      tip: "**Send your recording** shows only while the assessment waits for you; the pictures show one already reviewed. After sending you see **Sent. Your coordinator will review it.**",
+      tip: "To send: under **Send your recording** tap **Record here** (up to 20 minutes), **Add audio or video** (up to 50 MB) or paste a link, then **Send**. It shows only while the assessment waits for you; the pictures show one already reviewed. A redo asked? **Record it again and send it**.",
       trouble: [
         "\"The file could not be saved\": you can send at most 10 files a day, and only while an assessment waits for you.",
         "\"The file is larger than 50 MB\": record a shorter one, or send a link (for example an unlisted YouTube video).",
@@ -412,17 +369,13 @@ const TEXT = {
       who: "Every student.",
       intro: "Teachers post news for the whole class, a level or a group. Notifications collect everything you were sent.",
       shots: [
-        { img: "news-list", cap: "**News**", marks: [[1, 222, 800], [2, 33, 100]] },
-        { img: "news-detail", cap: "An announcement", marks: [[3, 33, 450], [4, 40, 626]] },
-        { img: "notifications", cap: "**Notifications** (the bell)", marks: [[5, 30, 226], [6, 33, 285]] }
-      ],
-      steps: [
-        [1, "Tap the **News** tab. Pinned news comes first; **New** shows until you open it."],
-        [2, "Tap a card to read it. Photos and PDFs open from there."],
-        [3, "A question about it? Type it under **Your reply** (up to 1000 characters)."],
-        [4, "Tap **Send reply**. Only the person who posted it and the facilitator see your reply."],
-        [5, "The bell at the top of Home shows a number. Tap it for **Notifications**, newest first. **Mark all read** clears the number."],
-        [6, "Tap a notification to open its screen: the news, your assessment, your data request."]
+        { img: "news-list", marks: [[1, 222, 800], [2, 33, 100]],
+          cap: "[1] The **News** tab. [2] Tap a card to read it; **New** until opened." },
+        { img: "news-detail", marks: [[3, 33, 450], [4, 40, 626]],
+          cap: "[3] A question? **Your reply**, [4] **Send reply**: only the author and the facilitator see it." },
+        { img: "home", marks: [[5, 372, 32]], cap: "[5] The bell on Home shows how many are new." },
+        { img: "notifications", marks: [[6, 30, 226]],
+          cap: "[6] **Notifications**, newest first. **Mark all read**; tap one to open it." }
       ],
       tip: "News for a group you are in (for example the performers of an event) arrives here too. There is no separate groups screen for students.",
       trouble: [
@@ -434,40 +387,30 @@ const TEXT = {
       who: "Every student.",
       intro: "Festivals, yatras and programmes where the class plays, and quick questions from your teachers.",
       shots: [
-        { img: "events-list", cap: "**Events & polls**", marks: [[1, 22, 112], [2, 40, 500]] },
-        { img: "event-detail", cap: "An event", marks: [[3, 33, 330], [4, 33, 468]] },
-        { img: "poll-detail", cap: "A poll", marks: [[5, 16, 478], [6, 33, 540]] }
-      ],
-      steps: [
-        [1, "On Home tap **Events & polls**. The **Events** tab: coming up first, then the last 60 days. The **Polls** tab shows how many wait for your vote."],
-        [2, "Tap an event: when, where and who it is for."],
-        [3, "Chosen to perform? **Your part** says on what."],
-        [4, "Under **Will you come?** tap **Going**, **Maybe** or **Not going** (until it starts). **Add to calendar** puts it in your phone's calendar."],
-        [5, "Polls: tap one and choose an answer. It is saved at once, and you can change it until the poll closes."],
-        [6, "The results show as bars when the poll allows."]
+        { img: "home", marks: [[1, 56, 226]], cap: "[1] On Home tap **Events & polls**." },
+        { img: "events-list", marks: [[2, 40, 500]], cap: "[2] **Events**: coming up first, then past ones. Tap one." },
+        { img: "event-detail", marks: [[3, 33, 330], [4, 33, 468]],
+          cap: "[3] **Your part** if you perform. [4] **Will you come?**: **Going**, **Maybe**, **Not going**." },
+        { img: "polls-list", marks: [[5, 167, 112]], cap: "[5] The **Polls** tab. Tap a poll." },
+        { img: "poll-detail", marks: [[6, 33, 540]],
+          cap: "[6] Choose an answer; change it until the poll closes. Results as bars." }
       ],
       trouble: [
         "You cannot answer: the event has started or the poll has closed.",
-        "\"No events coming up\": nothing is planned yet. New events also arrive in Notifications."
+        "\"No events coming up\": nothing is planned yet. **Add to calendar** on an event puts it in your phone's calendar."
       ] },
 
     { id: "slokas", kick: "Ishtagoshti", title: "Study the slokas (Ishtagoshti)",
       who: "Every student (and the free public members of Ishtagoshti).",
       intro: "Study of the scriptures, theme by theme: the sloka of the day, recitations, meanings and your own notes.",
       shots: [
-        { img: "slokas-home", cap: "**Slokas**", marks: [[1, 300, 790], [2, 135, 182], [3, 40, 368], [4, 300, 368]] },
-        { img: "sloka-top", cap: "A sloka", marks: [[5, 40, 346], [6, 33, 636]] },
-        { img: "sloka-notes", cap: "Memorising and notes", marks: [[7, 12, 420], [8, 40, 779]] }
-      ],
-      steps: [
-        [1, "Tap the **Slokas** tab."],
-        [2, "**Sloka of the day** opens today's sloka."],
-        [3, "**All slokas**: the whole list, with a search."],
-        [4, "**Themes**: slokas grouped by theme, with questions to think about."],
-        [5, "Tap **Play the recitation** to hear it. Word meanings follow."],
-        [6, "The translation and purport: choose the language under **Read in**."],
-        [7, "Tick **I have memorised this sloka**. The Slokas home counts them."],
-        [8, "**My notes**: only you can see them. Tap **Save note**."]
+        { img: "home", marks: [[1, 341, 800]], cap: "[1] Tap the **Slokas** tab." },
+        { img: "slokas-home", marks: [[2, 135, 182], [3, 40, 368], [4, 300, 368]],
+          cap: "[2] **Sloka of the day**, [3] **All slokas** with a search, [4] **Themes**." },
+        { img: "sloka-top", marks: [[5, 40, 346], [6, 33, 636]],
+          cap: "[5] **Play the recitation**. [6] Translation: choose the language under **Read in**." },
+        { img: "sloka-notes", marks: [[7, 12, 420], [8, 40, 779]],
+          cap: "[7] **I have memorised this sloka**. [8] **My notes**, only for you: **Save note**." }
       ],
       trouble: [
         "The recitation does not play: check the internet and the volume.",
@@ -476,20 +419,15 @@ const TEXT = {
 
     { id: "profile", kick: "You", title: "My profile: language, look and What's new",
       who: "Every student.",
-      intro: "Tap the round person button at the top left of Home to open **My profile**.",
+      intro: "Your card, the app's language and look, your name in the app, and what changed in each version.",
       shots: [
-        { img: "profile-top", cap: "**My profile**", marks: [[1, 40, 233], [2, 55, 441], [3, 40, 647]] },
-        { img: "profile-bottom", cap: "Further down", marks: [[4, 40, 183], [5, 150, 762]] },
-        { img: "whats-new", cap: "**What's new**", marks: [[6, 33, 200], [7, 33, 695]] }
-      ],
-      steps: [
-        [1, "Your card: the name on your roll card, your level, your roll number and **My QR card**."],
-        [2, "**Language**: **English**, **తెలుగు** or **हिन्दी**. The whole app changes at once."],
-        [3, "**Appearance**: **Same as phone**, **Light** or **Dark**."],
-        [4, "**Change my name**: the name the app shows on Home and on your replies."],
-        [5, "**What's new**: what changed in each version of the app."],
-        [6, "**Coming in the next update**: what comes soon."],
-        [7, "**You have this**: what your app already has."]
+        { img: "home", marks: [[1, 22, 34]], cap: "[1] Tap the round person button at the top left of Home." },
+        { img: "profile-top", marks: [[2, 55, 441], [3, 40, 647]],
+          cap: "[2] **Language**: English, తెలుగు, हिन्दी. [3] **Appearance**: Same as phone, Light, Dark." },
+        { img: "profile-bottom", marks: [[4, 40, 183], [5, 150, 762]],
+          cap: "[4] **Change my name** (the name in the app). [5] **What's new**." },
+        { img: "whats-new", marks: [[6, 33, 200]],
+          cap: "[6] What changed, newest first; **You have this** marks what your app has." }
       ],
       trouble: [
         "The name on your roll card is wrong: the coordinators keep it. Ask one of them to correct it.",
@@ -498,22 +436,18 @@ const TEXT = {
 
     { id: "about", kick: "You", title: "About you, and My data and rights",
       who: "Every student. Under 18: you can read; your parent or guardian makes requests.",
-      intro: "Both open from **My profile**: **See or change About you** and **See my data and rights**.",
+      intro: "Both open from **My profile**.",
       shots: [
-        { img: "about-you", cap: "**About you**", marks: [[1, 33, 180], [2, 33, 336]] },
-        { img: "mydata-top", cap: "**My data and rights**", marks: [[3, 40, 301], [4, 40, 357], [5, 33, 455]] },
-        { img: "mydata-bottom", cap: "**Ask us** and **My requests**", marks: [[6, 22, 100], [7, 33, 358]] }
+        { img: "profile-bottom", marks: [[1, 40, 401], [2, 40, 619]],
+          cap: "[1] **See or change About you**. [2] **See my data and rights**." },
+        { img: "about-you", marks: [[3, 33, 180]],
+          cap: "[3] Four short steps, each says why it asks: **Save and continue** or **Skip for now**." },
+        { img: "mydata-top", marks: [[4, 40, 301], [5, 40, 357]],
+          cap: "[4] **Download a copy (JSON)**. [5] **Print or save as PDF**." },
+        { img: "mydata-bottom", marks: [[6, 22, 100], [7, 33, 358]],
+          cap: "[6] **Ask us**: correct, withdraw, erase, a nominee, a complaint. [7] **My requests** and the answers." }
       ],
-      steps: [
-        [1, "**About you** has four short steps; each says why it asks."],
-        [2, "Fill in what you like: Dīkṣā name, instruments, gender, mobile number, emergency contact, how you heard of the class, occupation, service. Tap **Save and continue**, or **Skip for now**."],
-        [3, "**My data and rights**: **Download a copy (JSON)** of everything the class keeps about you."],
-        [4, "**Print or save as PDF** (web version)."],
-        [5, "**Show everything we keep** opens the full list on the screen."],
-        [6, "**Ask us**: **Correct something**, **Withdraw my consent**, **Erase my data**, **Name someone to act for me** or **Make a complaint**."],
-        [7, "**My requests**: each request with its status and the answer. The class answers within 30 days."]
-      ],
-      tip: "Who to contact about privacy is at the foot of My data and rights. If you are not satisfied with the answer, you can complain to the Data Protection Board of India.",
+      tip: "The class answers within 30 days. Who to contact about privacy is at the foot of My data and rights; if you are not satisfied, you can complain to the Data Protection Board of India.",
       trouble: [
         "A child under 18 sees only the summary: the parent or guardian asks at the desk or by email.",
         "Withdrawing consent or erasing stops some things: the app explains what stops before you send."
@@ -523,15 +457,12 @@ const TEXT = {
       who: "Every student.",
       intro: "Sign out on a shared or borrowed phone. A forgotten password is replaced by email.",
       shots: [
-        { img: "profile-bottom", cap: "**Sign out** in My profile", marks: [[1, 40, 700]] },
-        { img: "sign-in", cap: "**Forgot password?**", marks: [[2, 118, 772]] },
-        { img: "forgot", cap: "**Reset your password**", marks: [[3, 33, 502], [4, 40, 566]] }
-      ],
-      steps: [
-        [1, "**My profile** → **Sign out** (at the foot). Before that, make sure no practice is still waiting for the signal."],
-        [2, "Forgot your password? On the sign-in screen tap **Forgot password?**"],
-        [3, "Type your email."],
-        [4, "Tap **Send link**. Open the email and tap the link, type a **New password**, tap **Save password**, then sign in."]
+        { img: "home", marks: [[1, 22, 34]], cap: "[1] Open **My profile** (person button)." },
+        { img: "profile-bottom", marks: [[2, 40, 700]],
+          cap: "[2] **Sign out**, at the foot. First make sure no practice waits for the signal." },
+        { img: "sign-in", marks: [[3, 118, 772]], cap: "[3] Forgot your password? Tap **Forgot password?**" },
+        { img: "forgot", marks: [[4, 33, 502], [5, 40, 566]],
+          cap: "[4] Your email, [5] **Send link**. Open the email and set a **New password**." }
       ],
       tip: "On a shared or borrowed computer, choose **Save and sign out of this browser** when you set the new password.",
       trouble: [
@@ -575,27 +506,35 @@ const IMG = "sop-student/";
 const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 const pageOf = {};
 let pageNo = 0;
-const md = (s) => esc(s).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/\{(\w+)\}/g, (m, id) => pageOf[id] || "?");
+const md = (s) => esc(s).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/\{(\w+)\}/g, (m, id) => pageOf[id] || "?")
+  .replace(/\[(\d+)\]/g, '<span class="b">$1</span>');
 
 /* a mark near the left edge (x <= 45) moves onto the phone's rim, so it points at the row without hiding its words */
 function marksHtml(marks) {
   return (marks || []).map(([n, x, y]) =>
     `<span class="mk" style="left:${((x <= 45 ? -9 : x) / 390 * 100).toFixed(2)}%;top:${(y / 844 * 100).toFixed(2)}%">${n}</span>`).join("");
 }
-function drawnWaiting() {
+function drawnWaiting(k) {
   const w = TEXT.waitingDrawing;
-  return `<div class="drawn"><div class="top"><div class="t">${esc(TEXT.cover.app)}</div><div class="m">${esc(TEXT.cover.motto)}</div></div>
+  return `<div class="drawn"><div style="transform:scale(${k});transform-origin:0 0;width:${100 / k}%;height:${100 / k}%;position:relative"><div class="top"><div class="t">${esc(TEXT.cover.app)}</div><div class="m">${esc(TEXT.cover.motto)}</div></div>
     <div class="card"><h4>${esc(w.title)}</h4><div>${esc(w.body)}</div>
       ${w.steps.map(([k, sym, t]) => `<div class="st"><i class="${k}">${sym}</i><div>${esc(t)}</div></div>`).join("")}
       <div class="btn">${esc(w.check)}</div></div>
     <div class="card"><h4>${esc(w.waitTitle)}</h4><div>${esc(w.waitBody)}</div>
       ${w.rows.map(([a, b]) => `<div class="row"><div><b>${esc(a)}</b><br><span>${esc(b)}</span></div><div>›</div></div>`).join("")}</div>
-    <div class="ribbon"><span>${esc(w.ribbon)}</span></div></div>`;
+    <div class="ribbon"><span>${esc(w.ribbon)}</span></div></div></div>`;
 }
-function phoneHtml(shot, cls) {
-  const inner = shot.drawn ? drawnWaiting() : `<img src="${IMG}${shot.img}.jpg" alt="">`;
+function phoneHtml(shot, cls, pw) {
+  const inner = shot.drawn ? drawnWaiting((pw || 50) / 50) : `<img src="${IMG}${shot.img}.jpg" alt="">`;
   return `<div class="shot"${cls ? ` style="${cls}"` : ""}><div class="phone"><div class="screen">${inner}${marksHtml(shot.marks)}</div></div>` +
          (shot.cap !== undefined ? `<div class="cap">${md(shot.cap)}</div>` : "") + `</div>`;
+}
+/* up to 4 screens in one row; 5 or 6 in rows of 3. Phone width: 3 → 54 mm, 4 → 42 mm, 5-6 → 40 mm */
+function flowHtml(shots) {
+  const n = shots.length, pw = n <= 3 ? 54 : n === 4 ? 42 : 40;
+  const rows = n <= 4 ? [shots] : [shots.slice(0, 3), shots.slice(3)];
+  return `<div class="flow" style="--pw:${pw}mm">` + rows.map((row) =>
+    `<div class="frow">${row.map((s) => phoneHtml(s, "", pw)).join(`<div class="arr"><span>›</span></div>`)}</div>`).join("") + `</div>`;
 }
 function foot() { return `<div class="foot"><span>${esc(TEXT.foot)}</span><span>${esc(TEXT.pageWord)} ${pageNo}</span></div>`; }
 
@@ -637,8 +576,7 @@ TEXT.workflows.forEach((w, i) => {
   out.push(`<section class="page"><div class="band"><div class="kick">${i + 1} · ${esc(w.kick)}</div><h2 class="serif">${esc(w.title)}</h2>
     <div class="who"><b>${esc(TEXT.forWord)}</b> ${esc(w.who)}</div></div>
     <p class="intro">${md(w.intro)}</p>
-    <div class="phones${w.shots.length === 2 ? " two" : ""}">${w.shots.map((s) => phoneHtml(s)).join("")}</div>
-    <div class="steps">${w.steps.map(([n, t]) => `<div class="step"><span class="n${n === null ? " dot" : ""}">${n === null ? "•" : n}</span><div>${md(t)}</div></div>`).join("")}</div>
+    ${flowHtml(w.shots)}
     ${w.tip ? `<div class="tip">${md(w.tip)}</div>` : ""}
     <div class="trouble"><h3>${esc(TEXT.troubleTitle)}</h3><ul>${w.trouble.map((t) => `<li>${md(t)}</li>`).join("")}</ul></div>
     ${foot()}</section>`);
