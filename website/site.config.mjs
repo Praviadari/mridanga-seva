@@ -16,10 +16,10 @@ export default {
   draft: true,
 
   /** Shown as "updated" in the footer and as lastmod in sitemap.xml (ISO 8601). */
-  updated: '2026-10-17',
+  updated: '2026-10-24',
 
   /** The privacy notice's version and date. Raise both when its meaning changes. */
-  privacyNotice: { version: '0.2-draft', date: '2026-10-21' },
+  privacyNotice: { version: '0.3-draft', date: '2026-10-24' },
 
   /**
    * The day the class opens to all: Tue 20 Oct 2026 (Dussehra), Praveen's decision of 12-10-2026 (NOTES_lead.md).
