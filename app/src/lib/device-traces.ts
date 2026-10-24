@@ -16,6 +16,8 @@
 // - "may practise while waiting" and the Beginner lessons list of a waiting login (data/waiting.ts, #510);
 // - on the web, everything the service worker keeps for offline use (lib/offline-shell.web.ts, #513).
 // - the student's own bests in the tap pad, Echo me and Which bol? (lib/play-bests.ts, #470-#472).
+// - check-ins and practice entries still waiting for the signal, and the note about refused ones
+//   (lib/offline-queue.ts, #593): they belong to the login that made them.
 
 import { Directory, Paths } from 'expo-file-system';
 import { Image } from 'expo-image';
@@ -24,6 +26,7 @@ import { Platform } from 'react-native';
 import { clearSavedCard } from '@/data/my-student';
 import { forgetWaitingPractice } from '@/data/waiting-store';
 import { forgetMyRecordings } from '@/lib/my-recordings';
+import { forgetOfflineQueue } from '@/lib/offline-queue';
 import { forgetOfflineShell } from '@/lib/offline-shell';
 import { forgetPlayBests } from '@/lib/play-bests';
 import { forgetPracticeReminders } from '@/lib/practice-reminder';
@@ -40,6 +43,7 @@ export async function clearDeviceTraces(): Promise<void> {
   clearSavedCard();
   forgetWaitingPractice();
   forgetPlayBests();
+  forgetOfflineQueue();
   await forgetMyRecordings();
   await Promise.all([
     dismissNotifications(),

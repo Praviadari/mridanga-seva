@@ -5,6 +5,27 @@
     "motto": "Saṅkalpa · Sādhana · Seva",
     "slowStart": "This is taking long. Check your internet connection, then try again."
   },
+  "offlineQueue": {
+    "doorWaiting_one": "{{count}} check-in is waiting for the signal",
+    "doorWaiting_other": "{{count}} check-ins are waiting for the signal",
+    "doorBody": "They are kept on this phone and sent by themselves when the internet is back. The time saved is when they arrive. Keep the app open or come back to it; do not sign out before they are sent.",
+    "doorQueuedTitle": "No connection: saved on this phone",
+    "doorQueuedBody": "This check-in is sent when the signal is back. A scanned code is sent as a check-in; nothing changes if the student is already in.",
+    "practiceWaiting_one": "{{count}} practice entry is waiting for the signal",
+    "practiceWaiting_other": "{{count}} practice entries are waiting for the signal",
+    "practiceBody": "They are kept on this phone and sent by themselves when the internet is back. Do not sign out before they are sent.",
+    "practiceQueued": "No connection: {{time}} kept on this phone. It is saved to your log when the signal is back.",
+    "sendNow": "Send now",
+    "notSavedTitle": "Some saves from this phone did not go through",
+    "refused_one": "{{count}} was refused by the server (for example a day already full, or a student whose record is closed).",
+    "refused_other": "{{count}} were refused by the server (for example a day already full, or a student whose record is closed).",
+    "tooOld_one": "{{count}} waited too long to be saved (a check-in of an earlier day, or practice older than 14 days). Enter it by hand if it matters.",
+    "tooOld_other": "{{count}} waited too long to be saved (check-ins of an earlier day, or practice older than 14 days). Enter them by hand if they matter.",
+    "close": "Close"
+  },
+  "webArea": {
+    "loadFailed": "This page could not be opened: it needs the internet the first time it opens on this device. Check your connection and try again."
+  },
   "common": {
     "email": "Email",
     "password": "Password",

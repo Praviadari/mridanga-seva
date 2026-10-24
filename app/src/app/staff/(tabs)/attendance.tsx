@@ -12,6 +12,8 @@
 // R5-03, docs/DECISIONS.md #293).
 // A tap on a name changes "here now" at once from the answer and loads the list again behind it; other names
 // can be tapped meanwhile (audit P5-04, #313).
+// Without a connection a scan or a tap waits on this phone and is sent when the signal is back; the screen says how
+// many wait (lib/offline-send.ts, components/queued-notice.tsx, #593).
 
 import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
@@ -42,8 +44,12 @@ import {
   type MarkOutcome,
   type SearchResult,
 } from '@/data/attendance';
+import { useAuth } from '@/auth/auth-provider';
+import { QueuedNotice } from '@/components/queued-notice';
+import { newRequestId } from '@/data/create-once';
 import { assetTokenFromScan } from '@/lib/asset-link';
-import { locationForCheckIn, locationRefused, warmUpLocation } from '@/lib/attendance-location';
+import { locationForCheckIn, locationRefused, warmUpLocation, type PhoneLocation } from '@/lib/attendance-location';
+import { NETWORK, queueCheckIn } from '@/lib/offline-send';
 import { localDate, formatDate, localTime, todayLocal } from '@/lib/dates';
 import { scanFeedback } from '@/lib/haptics';
 import { useLatestLoad } from '@/lib/latest-load';
@@ -67,7 +73,9 @@ export default function MarkAttendanceScreen() {
 
   // undefined = loading, null = could not load.
   const [today, setToday] = useState<AttendanceToday | null | undefined>(undefined);
-  const [outcome, setOutcome] = useState<MarkOutcome | null>(null);
+  const { profile } = useAuth();
+  // queued: no connection, so the check-in waits on this phone (#593).
+  const [outcome, setOutcome] = useState<(MarkOutcome & { queued?: boolean }) | null>(null);
   // The student whose row was tapped last: the result shows under that row, where the eye is.
   // null after a scan, whose result shows at the top.
   const [tappedId, setTappedId] = useState<string | null>(null);
@@ -159,21 +167,27 @@ export default function MarkAttendanceScreen() {
     setDroppedScan(false);
     setChecking(true);
     let scanned: MarkOutcome;
+    let location: PhoneLocation | undefined;
     try {
       // A scan may be a check-in, so the position goes along; the database ignores it for a check-out.
-      scanned = token ? await scanStudentQr(token, await locationForCheckIn()) : { result: { action: 'unknown' } };
+      location = token ? await locationForCheckIn() : undefined;
+      scanned = token ? await scanStudentQr(token, location) : { result: { action: 'unknown' } };
     } catch {
       // Never left on "Checking…": the data functions do not throw, but a scan must always end.
       scanned = { errorKey: 'common.genericError' };
     }
-    // Remember the code only when it worked, so a scan that failed (no internet) can be retried.
-    lastCode.current = token && scanned.result ? { token, at: now } : null;
+    // No connection: the check-in waits on this phone and is sent when the signal is back (#593).
+    const queued = !!token && !!profile && scanned.errorKey === NETWORK;
+    if (queued && token && profile) queueCheckIn(profile.id, newRequestId(), { qrToken: token }, location ?? null);
+    // Remember the code only when it worked or waits, so a scan that failed otherwise can be retried.
+    lastCode.current = token && (scanned.result || queued) ? { token, at: now } : null;
     setTappedId(null);
-    setOutcome(scanned);
+    setOutcome(queued ? { queued: true } : scanned);
     setChecking(false);
     setDroppedScan(false);
     // A buzz for the result, so the door need not watch the screen (D7-20, docs/DECISIONS.md #239).
-    scanFeedback(scanned.result !== undefined && scanned.result.action !== 'unknown');
+    // A check-in kept for later is taken, so it buzzes as one (#593).
+    scanFeedback(queued || (scanned.result !== undefined && scanned.result.action !== 'unknown'));
     working.current = false;
     void loadToday();
     void locationRefused().then(setNoLocation);
@@ -181,11 +195,15 @@ export default function MarkAttendanceScreen() {
 
   async function onTap(student: FoundStudent, action: 'in' | 'out') {
     setMarkingIds((current) => new Set(current).add(student.id));
-    const marked = await markVisit(student.id, action, action === 'in' ? await locationForCheckIn() : undefined);
+    const location = action === 'in' ? await locationForCheckIn() : undefined;
+    const marked = await markVisit(student.id, action, location);
+    // No connection: the tap waits on this phone with its meaning, in or out (#593).
+    const queued = !!profile && marked.errorKey === NETWORK;
+    if (queued && profile) queueCheckIn(profile.id, newRequestId(), { studentId: student.id, action }, location ?? null);
     setTappedId(student.id);
-    setOutcome(marked);
+    setOutcome(queued ? { queued: true } : marked);
     // The same buzz as a scan, so a tap on a name is felt too (#363).
-    scanFeedback(marked.result !== undefined && marked.result.action !== 'unknown');
+    scanFeedback(queued || (marked.result !== undefined && marked.result.action !== 'unknown'));
     // The answer changes the list at once, so the button shows its new meaning without waiting for the
     // reload (mark_visit changes nothing when the student already is in that state, so a stale tap is safe).
     const { result } = marked;
@@ -218,6 +236,11 @@ export default function MarkAttendanceScreen() {
     <>
       {outcome.result ? <VisitResultNotice result={outcome.result} /> : null}
       {outcome.errorKey ? <Notice tone="error">{t(outcome.errorKey)}</Notice> : null}
+      {outcome.queued ? (
+        <Notice tone="info" title={t('offlineQueue.doorQueuedTitle')} announced>
+          {t('offlineQueue.doorQueuedBody')}
+        </Notice>
+      ) : null}
     </>
   ) : null;
   // A tapped student no longer in the results (the search changed): the result goes to the top.
@@ -270,6 +293,7 @@ export default function MarkAttendanceScreen() {
         </>
       ) : null}
       {resultUnderRow ? null : outcomeNotice}
+      <QueuedNotice kind="door" />
       <MoreText text={`${t('attendance.scanIntro')} ${t('attendanceLocation.why')}`} />
 
       {today === null ? (

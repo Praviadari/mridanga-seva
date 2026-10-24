@@ -3,7 +3,8 @@
 // practice (a day of the last 7, 1-240 minutes, a note) and Delete for an entry of the last 14 days.
 // Opened from S5 Practice tools and from S4 My progress. Data: data/practice.ts; the limits are
 // the database's (log_practice in supabase/migrations/0018_practice.sql). Since 0056 (#494) the form also asks
-// "How did it go?" (three faces, what was practised; optional), and each entry shows what was said.
+// "How did it go?" (three faces, what was practised; optional), and each entry shows what was said. A Save without a
+// connection waits on the phone and is sent once the signal is back (lib/offline-send.ts, #593).
 
 import { Stack, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
@@ -36,7 +37,9 @@ import {
 } from '@/data/practice';
 import { formatDate, todayLocal } from '@/lib/dates';
 import { asciiDigits } from '@/lib/digits';
+import { NETWORK, queuePractice } from '@/lib/offline-send';
 import { notePractisedToday } from '@/lib/practice-reminder';
+import { QueuedNotice } from '@/components/queued-notice';
 import { useRequestId } from '@/lib/use-request-id';
 import { RefreshFailed } from '@/components/refresh-failed';
 import { useKeptLoad } from '@/lib/kept-load';
@@ -64,7 +67,7 @@ export default function PracticeLogScreen() {
   const [saving, setSaving] = useState(false);
   // #322: one id per entry being typed; a new one after it is saved.
   const { requestId, renew } = useRequestId();
-  const [message, setMessage] = useState<{ tone: 'success' | 'error'; text: string } | null>(null);
+  const [message, setMessage] = useState<{ tone: 'success' | 'error' | 'info'; text: string } | null>(null);
   const [confirming, setConfirming] = useState<number | null>(null);
 
   const load = useCallback(async () => {
@@ -87,7 +90,20 @@ export default function PracticeLogScreen() {
       return;
     }
     setSaving(true);
-    const saved = await logPractice({ minutes: value, source: 'manual', practisedOn: dayBefore(day), note }, requestId());
+    const entry = { minutes: value, source: 'manual' as const, practisedOn: dayBefore(day), note };
+    const saved = await logPractice(entry, requestId());
+    if ('errorKey' in saved && saved.errorKey === NETWORK && profileId) {
+      // No connection: the entry and how it went wait on the phone with this request id, sent once later (#593).
+      queuePractice(profileId, requestId(), { ...entry, feeling, practised });
+      renew();
+      setSaving(false);
+      setMessage({ tone: 'info', text: t('offlineQueue.practiceQueued', { time: practiceTime(t, value) }) });
+      setMinutes('');
+      setNote('');
+      setFeeling(null);
+      setPractised([]);
+      return;
+    }
     if ('errorKey' in saved) {
       setSaving(false);
       setMessage({ tone: 'error', text: t(saved.errorKey) });
@@ -185,6 +201,7 @@ export default function PracticeLogScreen() {
         <TextField label={t('practiceLog.note')} value={note} onChangeText={setNote} maxLength={200} />
         <FeelingFields feeling={feeling} onFeeling={setFeeling} practised={practised} onPractised={setPractised} />
         {message ? <Notice tone={message.tone}>{message.text}</Notice> : null}
+        <QueuedNotice kind="practice" />
         <Button icon="add" label={t('practiceLog.save')} loading={saving} onPress={() => void save()} />
       </Section>
 

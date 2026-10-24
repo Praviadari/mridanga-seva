@@ -137,6 +137,23 @@ export async function markVisit(studentId: string, action: 'in' | 'out', locatio
 }
 
 /**
+ * The QR tokens of the students checked in today and not out yet, null when they could not be read. For a scan that
+ * waited for the signal (lib/offline-send.ts, docs/DECISIONS.md #593): it is sent as a check-in only when the student
+ * is not in, because scan_qr toggles and a resend would check them out. The tokens come in the answer, never in the
+ * address the request logs keep.
+ */
+export async function checkedInTokens(): Promise<Set<string> | null> {
+  const { data, error } = await supabase
+    .from('visits')
+    .select('student:students (qr_token)')
+    .is('check_out', null)
+    .gte('check_in', startOfTodayLocal());
+  if (error) return null;
+  const rows = data as unknown as { student: { qr_token: string } | null }[];
+  return new Set(rows.flatMap((row) => (row.student ? [row.student.qr_token.toLowerCase()] : [])));
+}
+
+/**
  * Checks out everyone still checked in, for closing time. Returns how many visits were closed,
  * or the message key when it failed.
  */

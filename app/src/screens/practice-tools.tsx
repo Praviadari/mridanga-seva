@@ -61,6 +61,7 @@ import {
 import { PlayAndLearn } from '@/components/play-and-learn';
 import { KartalFields, LayaChoice, SilentFields, type SilentSetting } from '@/components/practice-extras';
 import { FeelingPrompt } from '@/components/practice-feeling';
+import { QueuedNotice } from '@/components/queued-notice';
 import { GoalWeekView, practiceTime } from '@/components/practice-parts';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
@@ -111,6 +112,7 @@ import {
   usePracticeTimer,
 } from '@/lib/practice-timer';
 import { usePlayhead } from '@/lib/use-playhead';
+import { NETWORK, queuePractice } from '@/lib/offline-send';
 import { useRequestId } from '@/lib/use-request-id';
 import { radius, spacing, useTheme } from '@/theme/use-theme';
 
@@ -733,8 +735,18 @@ function PracticeTimerLine({ profileId, onSaved }: { profileId: string; onSaved:
     }
     setBusy(true);
     const logged = Math.min(done, MAX_ENTRY_MINUTES);
-    const saved = await logPractice({ minutes: logged, source: 'timer', startedAt: timer.startedAt, taalId: timer.taalId }, requestId());
+    const entry = { minutes: logged, source: 'timer' as const, startedAt: timer.startedAt, taalId: timer.taalId };
+    const saved = await logPractice(entry, requestId());
     setBusy(false);
+    if ('errorKey' in saved && saved.errorKey === NETWORK) {
+      // No connection: the minutes are counted now, at Stop, and wait on the phone with this entry's request id
+      // (#593); the timer stops, so nothing goes on counting.
+      queuePractice(profileId, requestId(), entry);
+      clearPracticeTimer();
+      renewRequestId();
+      setResult({ tone: 'info', text: t('offlineQueue.practiceQueued', { time: practiceTime(t, logged) }) });
+      return;
+    }
     if ('errorKey' in saved) {
       // Kept running, so nothing is lost; the student can try again or type it in S6.
       setResult({ tone: 'error', text: t(saved.errorKey) });
@@ -780,6 +792,7 @@ function PracticeTimerLine({ profileId, onSaved }: { profileId: string; onSaved:
         />
       ) : null}
       {result ? <Notice tone={result.tone}>{result.text}</Notice> : null}
+      <QueuedNotice kind="practice" />
       {asking && !timer ? <FeelingPrompt key={asking.id} entryId={asking.id} initial={asking.initial} onClose={() => setAsking(null)} /> : null}
     </View>
   );
