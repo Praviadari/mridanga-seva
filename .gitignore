@@ -5,6 +5,8 @@ NOTES*.md
 .env
 .env.*
 !.env.example
+# The E2E tests' key list (e2e/README.md); the real e2e/.env.e2e holds test passwords and stays out.
+!e2e/.env.e2e.example
 # Firebase service-account keys (push notifications) are secret; they go to EAS only
 # (docs/OPERATIONS.md "Push notifications"). google-services.json is NOT one of these: it is
 # committed on purpose (docs/DECISIONS.md #34).
@@ -29,6 +31,10 @@ credentials.json
 node_modules/
 dist/
 web-build/
+# Playwright's results, report and saved sign-ins (e2e/)
+e2e/test-results/
+e2e/playwright-report/
+e2e/.auth/
 
 # Logs
 *.log
