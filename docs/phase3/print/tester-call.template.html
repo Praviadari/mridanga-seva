@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Face check-in test: volunteers</title>
+<style>
+  :root { --night: #1B1E4B; --night2: #262A66; --gold: #E0B25C; --cream: #F6E7CC; --ink: #1B1E4B; --muted: #4a4e7a; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--night); }
+  body { font-family: "Segoe UI", "Nirmala UI", Arial, sans-serif; color: var(--ink); width: 1080px; }
+  .card { margin: 0; background: var(--cream); }
+  header { background: linear-gradient(160deg, var(--night) 0%, var(--night2) 100%); color: #fff; padding: 54px 64px 46px; display: flex; gap: 34px; align-items: center; }
+  header img { width: 150px; height: 150px; border-radius: 34px; flex: none; box-shadow: 0 0 0 4px var(--gold); }
+  .kicker { color: var(--gold); font-size: 26px; letter-spacing: 3px; text-transform: uppercase; font-weight: 700; margin: 0 0 10px; }
+  h1 { font-size: 60px; line-height: 1.08; margin: 0; font-weight: 800; }
+  main { padding: 44px 64px 30px; }
+  .lead { font-size: 31px; line-height: 1.42; margin: 0 0 30px; }
+  h2 { font-size: 30px; margin: 30px 0 12px; color: var(--night); display: flex; align-items: center; gap: 14px; }
+  h2::before { content: ""; width: 14px; height: 30px; background: var(--gold); border-radius: 4px; }
+  ul { margin: 0; padding-left: 34px; font-size: 27px; line-height: 1.45; }
+  li { margin-bottom: 8px; }
+  .safe { background: #fff; border: 3px solid var(--gold); border-radius: 22px; padding: 22px 30px; margin-top: 30px; }
+  .safe h2 { margin-top: 4px; }
+  .join { background: var(--night); color: #fff; border-radius: 22px; padding: 28px 34px; margin-top: 30px; font-size: 29px; line-height: 1.45; }
+  .join strong { color: var(--gold); }
+  footer { padding: 18px 64px 40px; font-size: 21px; color: var(--muted); line-height: 1.45; }
+</style>
+</head>
+<body>
+<div class="card">
+  <header>
+    <img src="{{ICON}}" alt="">
+    <div>
+      <p class="kicker">Mridanga Seva · volunteers wanted</p>
+      <h1>Help us test check-in with your face</h1>
+    </div>
+  </header>
+  <main>
+    <p class="lead">Before we offer face check-in to anyone, we want to try it with a few <strong>adult volunteers</strong>
+    of our class. You check in and out of class by looking at your own phone, instead of showing your QR code.</p>
+
+    <h2>Who can help</h2>
+    <ul>
+      <li>Aged <strong>18 or over</strong> (no children in this test)</li>
+      <li>Have an <strong>Android phone</strong> (iPhones are not part of this test)</li>
+      <li>Can come to class on the test days: <strong>{{DATES}}</strong></li>
+    </ul>
+
+    <h2>What you will do</h2>
+    <ul>
+      <li>Install a separate test app, <strong>"Mridanga Seva TEST"</strong>. Your normal app stays as it is.</li>
+      <li>Read and sign a short consent form at the desk, then set up your face once (about 5 minutes).</li>
+      <li>Check in and out with your face a few times, and help us try to fool it (a photo, someone else's face).</li>
+    </ul>
+
+    <div class="safe">
+      <h2>Your face and your privacy</h2>
+      <ul>
+        <li>No photo is kept. Your <strong>face code stays only on your phone</strong>; it is compared only with you.</li>
+        <li>Your location is read only at the moment you check in or out, never tracked.</li>
+        <li><strong>Everything is deleted within 7 days</strong> after the test. You can stop at any time.</li>
+        <li>Saying no changes nothing: your QR code keeps working as always.</li>
+      </ul>
+    </div>
+
+    <div class="join">To volunteer: <strong>{{HOW}}</strong><br>
+    We will share the test app link and the dates with the volunteers.</div>
+  </main>
+  <footer>Mridanga Seva, Hanuman Tekdi, Abids, Hyderabad · Questions: Regula Sarvesh Chandra,
+  privacy@mridangaseva.com, +91 99893 36301 · This is a trial only: face check-in is not switched on in the class app.</footer>
+</div>
+</body>
+</html>
