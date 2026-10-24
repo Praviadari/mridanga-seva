@@ -19,7 +19,23 @@ export function neverKept(path) {
  * the page loads it, not at install, so nobody downloads the other two languages.
  */
 export function languageChunk(path) {
-  return /^\/_expo\/static\/js\/web\/(te|hi)-[0-9a-f]+\.js$/.test(path);
+  return /^\/_expo\/static\/js\/web\/(te|hi)-[0-9a-f]+\.js$/.test(path) || languageFont(path);
+}
+
+/**
+ * The Telugu and Hindi heading fonts (src/theme/fonts.tsx loads only the current language's, #367): like the language
+ * scripts, kept when the page loads them (#591), so an English phone does not download 340 KB of them for offline use.
+ */
+export function languageFont(path) {
+  return /^\/assets\/assets\/fonts\/NotoSerif(Telugu|Devanagari)-SemiBold\.[0-9a-f]+\.ttf$/.test(path);
+}
+
+/**
+ * The staff screens of the web version (src/web-routes/staff-area.ts, #590): kept when a staff login loads them, not at
+ * install, so a student's phone never downloads them.
+ */
+export function staffChunk(path) {
+  return /^\/_expo\/static\/js\/web\/staff-area-[0-9a-f]+\.js$/.test(path);
 }
 
 /** The site's own files the worker keeps at install, as addresses ('/' for index.html), and their size in bytes. */
@@ -28,7 +44,7 @@ export function shellFiles(dist) {
   let bytes = 0;
   for (const file of listFiles(dist)) {
     const path = '/' + relative(dist, file).split(sep).join('/');
-    if (neverKept(path) || languageChunk(path)) continue;
+    if (neverKept(path) || languageChunk(path) || staffChunk(path)) continue;
     shell.push(path === '/index.html' ? '/' : path);
     bytes += statSync(file).size;
   }

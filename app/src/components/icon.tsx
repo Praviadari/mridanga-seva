@@ -1,16 +1,22 @@
-// The app's icons: Ionicons outline shapes from @expo/vector-icons, a font of icons that is plain
+// The app's icons: Ionicons outline shapes, drawn with @expo/vector-icons from a font of icons that is plain
 // JavaScript plus a font file, so it reaches the installed Android app as an update (no new APK;
-// docs/DECISIONS.md #36). Icons are decoration next to a word: screen readers skip them and read
-// the word. Use only the names listed in `IconName`, so every screen draws a thing the same way.
+// docs/DECISIONS.md #36). The font holds only the shapes listed in SHAPES and their filled twins
+// (assets/fonts/app-icons.ttf, 52 KB instead of Ionicons' 381 KB; `npm run icons` after changing SHAPES, #592).
+// Icons are decoration next to a word: screen readers skip them and read the word. Use only the names
+// listed in `IconName`, so every screen draws a thing the same way.
 
-import Ionicons from '@expo/vector-icons/Ionicons';
+import createIconSet from '@expo/vector-icons/createIconSet';
 import { View, type ColorValue, type StyleProp, type ViewStyle } from 'react-native';
 
 import type { ModuleTone } from '@/theme/colors';
 import { useModuleTone } from '@/theme/module-tone';
 import { useTheme } from '@/theme/use-theme';
 
+import { GLYPHS } from './icon-glyphs';
 import { MridangaMark } from './mridanga-mark';
+
+/** The app's icon font (scripts/make-icon-font.mjs). */
+const Ionicons = createIconSet(GLYPHS, 'mridanga-icons', require('../../assets/fonts/app-icons.ttf'));
 
 /** What each icon stands for in this app, and the Ionicons shape used for it. */
 const SHAPES = {
@@ -174,7 +180,7 @@ export function Icon({ name, size = 22, color, filled }: IconProps) {
 
 /** The filled twin of an icon's outline shape (Ionicons names it without `-outline`). */
 export function filledShape(name: IconName) {
-  return SHAPES[name].replace(/-outline$/, '') as keyof typeof Ionicons.glyphMap;
+  return SHAPES[name].replace(/-outline$/, '') as keyof typeof GLYPHS;
 }
 
 /**

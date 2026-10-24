@@ -7392,3 +7392,100 @@ draft: the D4 blanks are closed in step 2 (notice 1.0).
 
 **Why now.** #494 asks for a self-rating of minors and #531 for a new purpose: the notice must name both before the
 update that asks for them reaches phones (DPDP Act s.5, notice before or with the request for consent).
+
+## 590. The web version loads the staff and Guru screens only for staff — 24 Oct 2026
+
+**Status: branch `claude/bundle-door-queue-cbb4df` (audit 22-10-2026 work package D rest, fix 14; the lead's brief of
+24 Oct 2026 under Praveen's delegation). JS only, fingerprint 23dc7e4a; no migration.**
+
+**Context.** The web version was one JavaScript file of 3,842 KB (1,119 KB gzip): every iPhone member downloaded and
+read the register, fund, inventory, reports and every other staff screen to see their QR card.
+
+**Decision.** The web starts from its own file, `src/entry.web.tsx` (package.json `main` is `./src/entry`; the phones'
+`src/entry.ts` is Expo Router's own start, unchanged). It hands Expo Router its own screen list
+(`src/web-routes/route-context.ts`): every file of `src/app` as before, except the 106 staff screens, which are
+stand-ins. A stand-in holds nothing of its screen; when opened it loads `src/web-routes/staff-area.ts` (one `import()`,
+so the export makes it one file, `staff-area-<hash>.js`, with everything only staff use) and then shows the real screen.
+The two staff layouts stay in the first download, so the tabs, the side menu and the Back anchor work as before. A staff
+login starts the download at once (root layout, `preloadStaffArea`), so the staff home rarely waits; while it does,
+"Loading…"; a load that fails says the page needs the internet the first time, with Try again. Expo Router must know
+every route at start, so the staff screens' names are listed in `src/web-routes/staff-screens.ts`, written by
+`npm run staff-screens`; `export-web` and the tests refuse a list that no longer matches the folder (a new staff screen
+would otherwise not open on the web), and `export-web` checks there is exactly one staff file and no `__common` file.
+
+**Measured** (TEST export, 24 Oct 2026; before 6199ece, after 84f832d): first-download script 3,842 → 3,008 KB
+(gzip 1,119 → 854 KB, brotli 841 → 659 KB); staff file 824 KB (gzip 261 KB), loaded by staff only. On a 1.6 Mbit/s,
+150 ms link (local copy, throttled server, browser pane): the sign-in screen showed at 7.9 s before, 6.4 s after;
+its icons at 9.3 s before, 6.7 s after.
+
+**Not taken.** Expo Router's own async routes (one file per route) were measured: 165 files, and everything two
+routes share goes into a `__common` file every visit loads (entry 1,087 + common 2,003 = 3,090 KB), and it needs an
+app.json change (fingerprint). One staff file keeps shared staff code out of the first download.
+
+**Consequences.** What is left in the first download is the React Native web base, Expo Router, Supabase, the English
+texts (~360 KB), libphonenumber (201 KB, every sign-up and About-you form) and the student screens. A staff screen added
+later: run `npm run staff-screens` and commit.
+
+## 591. The offline copy keeps only what this device uses — 24 Oct 2026
+
+**Status: as #590.** The service worker (#513) kept every file of the build at install. It now leaves out, like the
+Telugu and Hindi scripts before, the staff file (#590) and the Telugu and Hindi heading fonts (340 KB; the app loads
+only the current language's, #367). Each is kept when the page loads it: the page sends what it loaded with `keep`
+after a sign-in and again when the staff file has loaded, and the worker keeps any build file it serves. An English
+student's phone keeps 29 files, 3,373 KB (before: 31 files, 4,867 KB).
+
+## 592. The app's icon font holds only the app's icons — 24 Oct 2026
+
+**Status: as #590.** Every visit downloaded the whole Ionicons font (381 KB, 205 KB gzip, 1,300+ shapes) for the
+95 the app uses. `npm run icons` (scripts/make-icon-font.mjs, Python fontTools) cuts the shapes named in
+`src/components/icon.tsx` SHAPES and the filled twin of each outline (the open tab, #338) from @expo/vector-icons'
+Ionicons.ttf (MIT; the licence stays in the font's name table) into `assets/fonts/app-icons.ttf` (181 shapes, 52 KB,
+30 KB gzip) and writes their characters to `src/components/icon-glyphs.ts`; `icon.tsx` draws with
+`createIconSet(GLYPHS, 'mridanga-icons', …)`. Same font on the phones (it reaches them with an update, as Ionicons did).
+A test fails while the font does not hold every name in SHAPES.
+
+## 593. Door check-ins and practice wait on the device when there is no connection — 24 Oct 2026
+
+**Status: as #590 (audit fix 18).** Writes were online only: a check-in in a hall without signal failed, and the
+practice timer stopped offline kept running and counting.
+
+**Decision.** When a save finds no connection (the app's "Could not reach the server", which includes no answer in
+time), it is kept on the device (`src/lib/offline-queue.ts`, localStorage) and sent when the connection is back
+(`src/lib/offline-send.ts`): at start, when the app comes to the front, when the browser says it is online, every
+30 s while something waits, and from **Send now**. Oldest first; the first "no connection" ends the round.
+- **Practice** (Practice tools' Stop, My practice log's Save): sent with the entry's own request id (#322), so an entry
+  the server saved before its answer was lost is saved once (log_practice's twin returns the first row). "How did it
+  go?" is kept with it and saved after it. A timer entry older than the database's 6 hours for timer starts is sent as
+  typed practice for the day it was stopped, the same minutes.
+- **A tapped name** on Mark attendance: `mark_visit` with its meaning, in or out; "already in" changes nothing (#18).
+- **A scanned code**: `scan_qr` toggles, so a resend could check the student out. It is sent only when the student is
+  not checked in today (one read of today's open visits per round, the tokens in the answer, never in an address);
+  when they are, nothing is sent. So a queued scan always means a check-in; the screen says so.
+- The time the database records for a queued check-in is when it arrives (no migration; the screen says so).
+- Only what the save needs: the request id, the login it belongs to, the entry or the student's id / QR token and the
+  phone's position at the check-in; no names. It is sent only while that login is signed in, and leaves the device as
+  soon as the server answered. A check-in of an earlier class day and practice older than the 14 days the log takes are
+  not sent; they and the refused ones are counted once in a notice ("Some saves from this phone did not go through").
+  Sign-out deletes all of it (lib/device-traces.ts).
+- Mark attendance, Practice tools and My practice log show how many wait ("2 check-ins are waiting for the signal"),
+  in en/te/hi (te/hi drafts for native review).
+
+**Why.** A check-in must not be lost because the hall's signal dropped, nor counted twice or flipped to a check-out by a
+resend; practice minutes must be the ones at Stop.
+
+**Consequences.** Tested with a stand-in database (`app/tests/offline-queue.test.mjs`). Not covered: check-ins from
+Who is here now, a student's page and Check in now (they still say "no connection"); signing out with saves waiting
+loses them (the notice asks not to). A real check-in time for queued scans would need a database change (later).
+
+## 594. The practice timer counts the minutes at Stop — 24 Oct 2026
+
+**Status: as #593.** Stop with no connection used to leave the timer running ("kept running, so nothing is lost"), so
+the minutes saved later were the time until the next successful Stop. Now Stop counts the minutes there and then,
+stops the timer and keeps that entry (#593): "No connection: 25 min kept on this phone. It is saved to your log when the
+signal is back." Any other refusal still leaves the timer running, as before.
+
+## 595. A line the privacy notice may need for #593 — 24 Oct 2026
+
+For the privacy-notice work: "If you check someone in or log practice without a connection, the app keeps that entry
+on the phone until it is sent (a check-in until the end of that class day, practice at most 14 days), then deletes it;
+signing out deletes it too."
