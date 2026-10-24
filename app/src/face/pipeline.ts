@@ -9,6 +9,7 @@
 // picture's, "fast" carries the live-frame landmarks over directly (no file, no second detection). No picture is
 // ever kept (#308).
 
+import { Asset } from 'expo-asset';
 import { File } from 'expo-file-system';
 import type { Image } from 'react-native-nitro-image';
 import { loadTensorflowModel, type TfliteModel } from 'react-native-fast-tflite';
@@ -47,17 +48,30 @@ function layoutOf(model: TfliteModel, size: number): TensorLayout {
 
 let modelsPromise: Promise<Models> | null = null;
 
+/**
+ * A bundled model as a `file://` address fast-tflite can open (#436). In an installed APK a `require(..)` asset is
+ * an Android raw resource whose uri is a bare name ("assets_models_sface_2021dec_int8"), which fast-tflite's loader
+ * (java.net.URL) refuses with "no protocol"; expo-asset copies it to the app's cache once and gives its file:// uri.
+ * In development the asset comes from Metro (http://) and is copied the same way.
+ */
+async function modelFile(module: number): Promise<{ url: string }> {
+  const asset = await Asset.fromModule(module).downloadAsync();
+  const url = asset.localUri ?? asset.uri;
+  if (!/^[a-z]+:\/\//.test(url)) throw new Error(`model has no file address: ${url}`);
+  return { url };
+}
+
 /** Loads the three models once (CPU, no delegate). */
 export function loadModels(): Promise<Models> {
   modelsPromise ??= (async () => {
     const t0 = Date.now();
     const [sface, fasA, fasB] = await Promise.all([
       // eslint-disable-next-line @typescript-eslint/no-require-imports -- Metro asset
-      loadTensorflowModel(require('@/assets/models/sface_2021dec_int8.tflite'), []),
+      modelFile(require('@/assets/models/sface_2021dec_int8.tflite')).then((m) => loadTensorflowModel(m, [])),
       // eslint-disable-next-line @typescript-eslint/no-require-imports -- Metro asset
-      loadTensorflowModel(require('@/assets/models/minifasnet_v2_2_7_int8.tflite'), []),
+      modelFile(require('@/assets/models/minifasnet_v2_2_7_int8.tflite')).then((m) => loadTensorflowModel(m, [])),
       // eslint-disable-next-line @typescript-eslint/no-require-imports -- Metro asset
-      loadTensorflowModel(require('@/assets/models/minifasnet_v1se_4_0_int8.tflite'), []),
+      modelFile(require('@/assets/models/minifasnet_v1se_4_0_int8.tflite')).then((m) => loadTensorflowModel(m, [])),
     ]);
     return { sface, fasA, fasB, layout: { sface: layoutOf(sface, 112), fas: layoutOf(fasA, 80) }, loadMs: Date.now() - t0 };
   })();

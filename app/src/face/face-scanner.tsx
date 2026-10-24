@@ -111,6 +111,7 @@ function ScanAttempt({ frames, onDone, onCancel, onFailed, onRetry }: AttemptPro
   const captureMode = useRef<'frame' | 'photo'>('frame');
   const waitingFrame = useRef(0);
   const captureSeq = useRef(0);
+  const failures = useRef(0);
 
   const onCaptured = useCallback(
     async (c: Captured) => {
@@ -130,11 +131,19 @@ function ScanAttempt({ frames, onDone, onCancel, onFailed, onRetry }: AttemptPro
         }
       } catch {
         capturing.current = false;
+        failures.current += 1;
         // The frame path failed on this phone: still photos from now on (slower, same result).
         if (c.source === 'frame') captureMode.current = 'photo';
+        // Still photos fail too: stop and say so rather than waiting at "picture 0 of 5" for ever (#436).
+        else if (failures.current >= 3 && !finished.current) {
+          finished.current = true;
+          setProblem(t('face.scan.cameraProblem'));
+          setPhase('failed');
+          onFailed?.();
+        }
       }
     },
-    [frames, onDone],
+    [frames, onDone, onFailed, t],
   );
 
   const tryCapture = useCallback(async () => {

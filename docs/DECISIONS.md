@@ -7377,3 +7377,22 @@ tester's phone. tests/face-enrolment.test.mjs refuses any packagingOptions in ap
 
 **Consequences.** app.json changed: a new fingerprint for the branch (with and without the variant) and a new
 facetest build (one more free build). The APK grows by the GPU library (measured by the next Actions run).
+
+## 436. The face models load from a file:// copy; a scan that keeps failing says so — 24 Oct 2026
+
+**Status: branch `face-scan` (placeholder number). JS only: fingerprint unchanged (facetest fde0a96f).**
+
+**What happened.** On the second facetest APK (EAS 560780b7) the enrolment stopped at "Hold still: picture 0 of 5".
+The developer screen (C26) showed the models never loaded: `java.net.MalformedURLException: no protocol:
+assets_models_sface_2021dec_int8`. In an installed APK a `require(..)` asset is an Android raw resource whose uri is a
+bare name; react-native-fast-tflite's Android loader opens every model with `java.net.URL`, which needs a scheme. The
+spike only ever ran with Metro (http:// uris), so this never showed. The enrolment screen swallowed the error and
+kept asking for pictures.
+
+**Decision.** `src/face/pipeline.ts` gives each model to fast-tflite as `{ url }` from expo-asset:
+`Asset.fromModule(require(..)).downloadAsync()` copies the resource to the app's cache once and returns a `file://`
+uri (expo-asset 57 opens bare names as raw resources). The face scanner stops after three failed pictures in the photo
+path and shows "The camera had a problem…" with Try again, instead of waiting for ever.
+
+**Why.** Loading straight from the APK's resources would need native code in fast-tflite (a new fingerprint); the
+expo-asset copy is JS only and is what Expo itself does for bundled files.
