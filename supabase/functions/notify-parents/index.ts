@@ -1,32 +1,46 @@
 // Supabase Edge Function notify-parents: emails a minor's parent when the student is checked in
-// or out (migration 0043, docs/DECISIONS.md #224-#231), and the parent of a child who signed up at home the
-// code for the consent page (migration 0051, #399; ./consent.ts). Called every minute, only when an email
-// waits, by the database job send_parent_notices() through pg_net, with the push secret.
+// or out (migration 0043, docs/DECISIONS.md #224-#231), the parent of a child who signed up at home the
+// code for the consent page (migration 0051, #399; ./consent.ts), and the parents who agreed to it a weekly
+// email about their child's week (migration 0058, #530-#539; ./digest.ts). Called by the database jobs
+// send_parent_notices() (every minute) and send_parent_digests() (every 5 minutes) through pg_net, with the
+// push secret, only when an email waits.
 //
-// Two kinds of call:
-//   - the job (header x-push-secret): the consent emails first (a child waits for them), then the
-//     check-in / check-out notices: claim the waiting rows, send each through Brevo, record each
-//     (./consent.ts, ./send.ts). Without the secrets BREVO_API_KEY and NOTICE_FROM (or with
-//     PARENT_NOTICES_DRY_RUN=1) it is a dry run: it logs "would send <row> <kind> <language>" and
-//     marks the rows skipped, so the queue can be checked on TEST before any email goes.
-//   - a mail app's one-click unsubscribe (RFC 8058): POST ?stop=<guardian id>.<signature>. The
-//     signature is an HMAC of the guardian id with the push secret, so only a link from one of our
-//     emails works; that guardian gets no more notices (stop_parent_notices).
+// Three kinds of call:
+//   - a job (header x-push-secret): the consent emails first (a child waits for them), then the
+//     check-in / check-out notices, then the weekly digests: claim the waiting rows, send each through
+//     Brevo, record each (./consent.ts, ./send.ts, ./digest.ts). Without the secrets BREVO_API_KEY and
+//     NOTICE_FROM (or with PARENT_NOTICES_DRY_RUN=1) it is a dry run: it logs "would send …" and marks the
+//     rows skipped, so the queues can be checked on TEST before any email goes.
+//   - a mail app's one-click unsubscribe (RFC 8058): POST ?stop=<guardian id>.<signature> stops the
+//     check-out emails (stop_parent_notices), ?stop_digest=… the weekly email (stop_parent_digests). The
+//     signature is an HMAC of the guardian id and the kind with the push secret, so only a link from one of
+//     our emails works, and only for its own kind.
+//   - staff's preview of the weekly email (the app, signed in: Authorization: Bearer <the person's token>,
+//     body {"preview": "<student id>", "language"?: "en|te|hi", "week"?: "YYYY-MM-DD"}): preview_parent_digest
+//     runs AS THAT PERSON (it refuses anyone but staff), and the answer is the email built by the same code
+//     that sends it. Nothing is sent. Open to the web app's origin (CORS) for this call only.
 //
 // Runs with the service role, which bypasses row-level security; that key never leaves Supabase.
 // Logs ids and counts only, never an address, a name or a text.
-// Deploy and settings: docs/OPERATIONS.md "Parent notices by email".
+// Deploy and settings: docs/OPERATIONS.md "Parent notices by email" and "Weekly email to parents".
 
 // An exact version (audit D2-10), the same as notify-announcements.
 import { createClient } from 'npm:@supabase/supabase-js@2.117.2';
 
 import { pickServiceKey } from '../notify-announcements/messages.ts';
 import { consentPageUrl, runConsentCodes } from './consent.ts';
-import { brevoMailer, checkStop, runNotices, stopUrl, type Rpc } from './send.ts';
+import { buildDigestPreview, runDigests, type DigestPreviewData } from './digest.ts';
+import { brevoMailer, checkStop, runNotices, STOP_PARAM, stopUrl, type Rpc, type StopKind } from './send.ts';
+
+const CORS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
 
 /** Answers the caller with a small JSON object. */
-function reply(status: number, body: Record<string, unknown>): Response {
-  return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
+function reply(status: number, body: Record<string, unknown>, cors = false): Response {
+  return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json', ...(cors ? CORS : {}) } });
 }
 
 /** Compares two texts in the same time whatever they hold, so the secret cannot be guessed by timing. */
@@ -38,7 +52,32 @@ function sameText(a: string, b: string): boolean {
   return difference === 0;
 }
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Staff's preview of the weekly email, run as the signed-in person (the database checks the role). */
+async function preview(url: string, authorization: string, body: Record<string, unknown>): Promise<Response> {
+  const anon = pickServiceKey(Deno.env.get('SUPABASE_PUBLISHABLE_KEYS'), Deno.env.get('SUPABASE_ANON_KEY'))?.key;
+  if (!anon) return reply(500, { error: 'not_configured' }, true);
+  const student = typeof body.preview === 'string' && UUID.test(body.preview) ? body.preview : null;
+  const language = typeof body.language === 'string' && ['en', 'te', 'hi'].includes(body.language) ? body.language : null;
+  const week = typeof body.week === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(body.week) ? body.week : null;
+  if (!student) return reply(400, { error: 'bad_request' }, true);
+  const asPerson = createClient(url, anon, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: { headers: { Authorization: authorization } },
+  });
+  const { data, error } = await asPerson.rpc('preview_parent_digest', { p_student: student, ...(week ? { p_week: week } : {}) });
+  if (error) {
+    const code = ['not_allowed', 'student_not_found', 'week_invalid'].includes(error.message) ? error.message : 'preview_failed';
+    console.log('digest preview refused', code);
+    return reply(code === 'not_allowed' ? 403 : code === 'preview_failed' ? 401 : 400, { error: code }, true);
+  }
+  console.log('digest preview built');
+  return reply(200, buildDigestPreview(data as DigestPreviewData, language), true);
+}
+
 Deno.serve(async (request) => {
+  if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
   const secret = Deno.env.get('PUSH_SECRET');
   const url = Deno.env.get('SUPABASE_URL');
   const key = pickServiceKey(Deno.env.get('SUPABASE_SECRET_KEYS'), Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'))?.key;
@@ -50,37 +89,52 @@ Deno.serve(async (request) => {
     return { data, error: error ? { message: error.message } : null };
   };
 
-  // One-click unsubscribe from an email.
-  const stop = new URL(request.url).searchParams.get('stop');
-  if (stop !== null) {
-    const guardianId = await checkStop(secret, stop);
+  // One-click unsubscribe from an email: the check-out emails or the weekly email.
+  const params = new URL(request.url).searchParams;
+  for (const kind of ['notice', 'digest'] as StopKind[]) {
+    const value = params.get(STOP_PARAM[kind]);
+    if (value === null) continue;
+    const guardianId = await checkStop(secret, value, kind);
     if (!guardianId) return reply(400, { error: 'bad_link' });
-    const result = await rpc('stop_parent_notices', { p_guardian: guardianId });
+    const fn = kind === 'notice' ? 'stop_parent_notices' : 'stop_parent_digests';
+    const result = await rpc(fn, { p_guardian: guardianId });
     if (result.error) {
-      console.error('stop_parent_notices failed', result.error.message);
+      console.error(`${fn} failed`, result.error.message);
       return reply(500, { error: 'stop_failed' });
     }
-    console.log('parent notices stopped by one-click unsubscribe');
+    console.log(`${kind === 'notice' ? 'parent notices' : 'weekly emails'} stopped by one-click unsubscribe`);
     return reply(200, { stopped: true });
   }
 
-  // Only the database job knows this secret (Vault mridanga_push_secret = function secret PUSH_SECRET).
-  if (!sameText(request.headers.get('x-push-secret') ?? '', secret)) return reply(401, { error: 'not_allowed' });
+  // Only the database jobs know this secret (Vault mridanga_push_secret = function secret PUSH_SECRET).
+  const pushSecret = request.headers.get('x-push-secret');
+  if (pushSecret === null) {
+    // No job: staff's preview, signed in.
+    const authorization = request.headers.get('Authorization') ?? '';
+    const body = await request.json().catch(() => ({}));
+    if (/^Bearer \S+$/.test(authorization) && body && typeof body === 'object' && 'preview' in body) {
+      return preview(url, authorization, body as Record<string, unknown>);
+    }
+    return reply(401, { error: 'not_allowed' }, true);
+  }
+  if (!sameText(pushSecret, secret)) return reply(401, { error: 'not_allowed' });
 
   const apiKey = Deno.env.get('BREVO_API_KEY');
   const from = Deno.env.get('NOTICE_FROM');
   const dryRun = !apiKey || !from || Deno.env.get('PARENT_NOTICES_DRY_RUN') === '1';
   if (dryRun) console.log('dry run:', !apiKey ? 'no BREVO_API_KEY' : !from ? 'no NOTICE_FROM' : 'PARENT_NOTICES_DRY_RUN=1');
-  const mailer = dryRun
-    ? null
-    : brevoMailer(fetch, apiKey, { email: from, name: Deno.env.get('NOTICE_FROM_NAME') || 'Mridanga Seva' },
-        Deno.env.get('NOTICE_REPLY_TO') || null);
+  const sender = { email: from ?? '', name: Deno.env.get('NOTICE_FROM_NAME') || 'Mridanga Seva' };
+  const replyTo = Deno.env.get('NOTICE_REPLY_TO') || null;
+  const mailer = dryRun ? null : brevoMailer(fetch, apiKey, sender, replyTo);
   // The consent page of this project (APP_WEB_URL, else the web app of the project's ref).
   const appUrl = Deno.env.get('APP_WEB_URL');
   const consent = await runConsentCodes(rpc, mailer, (language) => consentPageUrl(url, appUrl, language));
   const functionUrl = `${url.replace(/\/$/, '')}/functions/v1/notify-parents`;
   const result = await runNotices(rpc, mailer, (guardianId) => stopUrl(functionUrl, secret, guardianId));
-  if ('error' in result) return reply(500, { ...result, consent });
-  if ('error' in consent) return reply(500, { error: consent.error, notices: result });
-  return reply(200, { ...result, consent });
+  const digests = await runDigests(rpc, dryRun ? null : brevoMailer(fetch, apiKey, sender, replyTo, 'parent-digest'),
+    (guardianId) => stopUrl(functionUrl, secret, guardianId, 'digest'));
+  if ('error' in result) return reply(500, { ...result, consent, digests });
+  if ('error' in consent) return reply(500, { error: consent.error, notices: result, digests });
+  if ('error' in digests) return reply(500, { error: digests.error, notices: result, consent });
+  return reply(200, { ...result, consent, digests });
 });

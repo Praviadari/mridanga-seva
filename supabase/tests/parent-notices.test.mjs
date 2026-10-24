@@ -1,6 +1,6 @@
 // Checks the Edge Function notify-parents (supabase/functions/notify-parents) with plain Node: the
 // email texts (template.ts), the signed unsubscribe link, Brevo's answers and a whole run against
-// an imitated queue and an imitated Brevo (send.ts). The queue's SQL with send.ts is checked in
+// an imitated queue and an imitated Brevo (send.ts); the weekly email to parents (digest.ts, 0058). The queue's SQL with send.ts is checked in
 // smoke-test.mjs ("0043 parent notices"); Brevo and a real inbox only on TEST:
 // docs/OPERATIONS.md "Parent notices by email".
 //
@@ -8,6 +8,7 @@
 
 import { buildEmail, dayFirst, escapeHtml, languageOf } from '../functions/notify-parents/template.ts';
 import { BREVO_URL, brevoMailer, checkStop, runNotices, stopSignature, stopUrl } from '../functions/notify-parents/send.ts';
+import { buildDigestEmail, buildDigestPreview, DIGEST_CLAIM_LIMIT, runDigests } from '../functions/notify-parents/digest.ts';
 
 let failures = 0;
 
@@ -159,6 +160,95 @@ const noLink = async () => null;
   check('before 0043 runs: claim_failed, nothing else', result.error === 'claim_failed' && db.calls.length === 1);
   const db2 = fakeDb([row()], { finishError: 'boom' });
   check('a failed finish is reported', (await runNotices(db2.rpc, null, noLink, quiet)).error === 'finish_failed');
+}
+
+// ---------------------------------------------------------------- the weekly email (0058, #530-#539)
+const week = (over = {}) => ({
+  week_start: '2026-10-19', week_end: '2026-10-25', centre: 'Abids', level: 1, level_name: 'Beginner',
+  visits: [{ on: '2026-10-20', in: '17:02', out: '18:30' }, { on: '2026-10-23', in: '17:10', out: null }],
+  practice: { minutes: 75, days: 4, days_met: 4, goal_days: 4, goal_minutes: 15 },
+  ticks: ['Dha Ge Na Ti'], ticks_count: 1,
+  level_change: null,
+  next_event: { title: 'Kartik Deepotsav', on: '2026-10-28', at: '18:00', centre: 'Abids' },
+  ...over,
+});
+const digest = (over = {}, content = {}) => ({
+  claim: 'c9', digest_id: 7, guardian_id: GUARDIAN, email: 'parent@example.com', language: 'en',
+  student_name: 'Arjun Rao', contact: '98480 00000', content: week(content), ...over,
+});
+{
+  const mail = buildDigestEmail(digest());
+  check('digest: the subject names the child and the week, days first', mail.subject === 'Arjun Rao\'s week at Mridanga Seva, 19-10-2026 to 25-10-2026', mail.subject);
+  check('digest: opens with Hare Krishna and the week', mail.text.startsWith('Hare Krishna,\n\nHere is Arjun Rao\'s week at the Mridanga Seva class, 19-10-2026 to 25-10-2026.'));
+  check('digest: each visit with its weekday, day and times; an open visit says no check-out was recorded',
+    mail.text.includes('At class: 2 visits.') && mail.text.includes('• Tue 20-10: 17:02 to 18:30')
+    && mail.text.includes('• Fri 23-10: from 17:10 (no check-out recorded)'), mail.text);
+  check('digest: practice against the goal, and praise when it is reached',
+    mail.text.includes('75 minutes on 4 of 7 days. The goal is 4 days of 15 minutes; reached on 4.') && mail.text.includes('Well done!'));
+  check('digest: the newly ticked item and the next event with its centre',
+    mail.text.includes('Newly learnt: Dha Ge Na Ti.') && mail.text.includes('Coming up: Kartik Deepotsav, 28-10-2026 at 18:00, Abids.'));
+  check('digest: says why it comes, never a location, photo or another child; contact; how to stop',
+    mail.text.includes('because you agreed to it') && mail.text.includes('never includes your child\'s location or photo, or anything about another child')
+    && mail.text.includes('Questions: 98480 00000') && mail.text.includes('To stop these weekly emails'));
+  const quietWeek = buildDigestEmail(digest({}, { visits: [], practice: { minutes: 0, days: 0, days_met: 0, goal_days: 4, goal_minutes: 15 },
+    ticks: [], ticks_count: 0, next_event: null }));
+  check('digest: a quiet week is said kindly (missed at class, a word on daily practice), with no empty lines',
+    quietWeek.text.includes('we missed Arjun Rao this week') && quietWeek.text.includes('A few minutes every day')
+    && !quietWeek.text.includes('Newly learnt') && !quietWeek.text.includes('Coming up') && !quietWeek.text.includes('\n\n\n'), quietWeek.text);
+  const short = buildDigestEmail(digest({}, { practice: { minutes: 30, days: 2, days_met: 1, goal_days: 4, goal_minutes: 15 } }));
+  check('digest: no praise before the goal is reached', !short.text.includes('Well done'));
+  const up = buildDigestEmail(digest({}, { level_change: { from: 1, from_name: 'Beginner', to: 2, to_name: 'Intermediate' },
+    ticks: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'], ticks_count: 10 }));
+  check('digest: a level up is congratulated; more ticks than listed are counted',
+    up.text.includes('Arjun Rao has moved up to the Intermediate level. Congratulations!') && up.text.includes('G, H, and 2 more.'), up.text);
+  const te = buildDigestEmail(digest({ language: 'te' }, { level_change: { from: 1, from_name: 'Beginner', to: 2, to_name: 'Intermediate' } }));
+  const hi = buildDigestEmail(digest({ language: 'hi' }));
+  check('digest: Telugu: greeting, weekdays and the level in Telugu', te.text.includes('హరే కృష్ణ') && te.text.includes('మంగళ 20-10')
+    && te.text.includes('మధ్యమ') && te.text.includes('Arjun Rao'), te.subject);
+  check('digest: Hindi: greeting and weekdays in Hindi', hi.text.includes('हरे कृष्ण') && hi.text.includes('मंगल 20-10') && hi.text.includes('17:02'), hi.subject);
+  const odd = buildDigestEmail(digest({ student_name: 'A <b>\r\nBcc: x@y' }, { ticks: ['<i>{name}</i>'], next_event: { title: '{from}', on: '2026-10-28', at: '18:00', centre: null } }));
+  check('digest: a name cannot break the subject, HTML is escaped, a value is never a placeholder',
+    !/[\r\n]/.test(odd.subject) && odd.html.includes('&lt;i&gt;{name}&lt;/i&gt;') && odd.text.includes('Coming up: {from}, 28-10-2026 at 18:00.'), odd.text);
+  const all = [mail, quietWeek, te, hi].map((m) => m.text + m.html).join(' ');
+  check('digest: no email holds a location, distance or photo word', !/(lat|lng|longitude|latitude|distance|metre|photo_path|\.jpg)/i.test(
+    all.replace(/location or photo|స్థానం, ఫోటో|स्थान, फ़ोटो/g, '')));
+}
+{
+  const secret = 'x'.repeat(64);
+  const noticeLink = new URL(await stopUrl('https://abc.supabase.co/functions/v1/notify-parents', secret, GUARDIAN)).searchParams.get('stop');
+  const digestLink = new URL(await stopUrl('https://abc.supabase.co/functions/v1/notify-parents', secret, GUARDIAN, 'digest')).searchParams.get('stop_digest');
+  check('digest unsubscribe: its own parameter and a correctly signed value is accepted', (await checkStop(secret, digestLink, 'digest')) === GUARDIAN);
+  check('digest unsubscribe: a check-out email\'s link cannot stop the weekly email, nor the other way round',
+    (await checkStop(secret, noticeLink, 'digest')) === null && (await checkStop(secret, digestLink, 'notice')) === null && (await checkStop(secret, digestLink)) === null);
+}
+{
+  const brevo = fakeFetch([201]);
+  await brevoMailer(brevo.fn, 'k', { email: 'a@b.c', name: 'n' }, null, 'parent-digest')('p@x.y', buildDigestEmail(digest()), 'https://l');
+  check('digest: tagged parent-digest in Brevo', JSON.stringify(brevo.calls[0].body.tags) === '["parent-digest"]');
+  const calls = [];
+  const rpc = async (name, args) => {
+    calls.push({ name, args });
+    return name === 'claim_parent_digests' ? { data: [digest({ digest_id: 1 }), digest({ digest_id: 2, language: 'te' })], error: null } : { data: null, error: null };
+  };
+  const logs = [];
+  const dry = await runDigests(rpc, null, noLink, (...parts) => logs.push(parts.join(' ')));
+  const finish = calls.find((c) => c.name === 'finish_parent_digests').args;
+  check('digest dry run: every row skipped, logs ids and languages only, 10 a run', dry.skipped === 2 && JSON.stringify(finish.p_skipped) === '[1,2]'
+    && logs.includes('would send digest 2 te') && !logs.join(' ').includes('@') && !logs.join(' ').includes('Arjun')
+    && calls[0].args.p_limit === DIGEST_CLAIM_LIMIT && DIGEST_CLAIM_LIMIT === 10, logs.join(' | '));
+  const sentTo = [];
+  const real = await runDigests(rpc, async (to, email, link) => { sentTo.push([to, link]); return { status: 'sent' }; },
+    async (id) => `https://l/?stop_digest=${id}`, quiet);
+  check('digest real run: each email with its unsubscribe link', real.sent === 2 && sentTo[0][1] === `https://l/?stop_digest=${GUARDIAN}`);
+}
+{
+  const data = { enabled: false, student_name: 'Arjun Rao', app_language: 'hi', contact: '', content: week(),
+    guardians: [{ guardian_id: 'g1', block: null, language: 'te' }, { guardian_id: 'g2', block: 'no_digest_consent', language: null }] };
+  const p = buildDigestPreview(data, null);
+  check('preview: each guardian\'s language (else the child\'s app language) and the email in each',
+    p.guardians[0].language === 'te' && p.guardians[1].language === 'hi' && !!p.emails.te && !!p.emails.hi && !p.emails.en && p.enabled === false);
+  check('preview: exactly the email that is sent', p.emails.te.text === buildDigestEmail({ ...digest({ language: 'te', contact: '' }) }).text);
+  check('preview: one language on request', Object.keys(buildDigestPreview(data, 'en').emails).join() === 'en');
 }
 
 console.log(failures ? `\n${failures} check(s) FAILED` : '\nAll parent-notice checks passed');

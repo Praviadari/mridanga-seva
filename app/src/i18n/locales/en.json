@@ -627,7 +627,8 @@
   "consentScopes": {
     "data": "Consent for the student's details",
     "photo": "Photo consent",
-    "face": "Face consent"
+    "face": "Face consent",
+    "digest": "Weekly email to the parent"
   },
   "consentMethods": {
     "written": "signed paper form",
@@ -1596,6 +1597,97 @@
       "no_consent": "No attendance emails: no current consent",
       "no_email": "No attendance emails: no email address",
       "stopped": "Attendance emails stopped (the parent asked)"
+    }
+  },
+  "parentDigest": {
+    "title": "Weekly email to parents",
+    "intro": "Once a week, on Sunday evening, a short email to the parent of a student under 18 who agreed to it: the week's visits, practice against the goal, what was newly learnt, a level change and the next event. Never a location, a photo or anything about another child. It goes only to parents whose written yes is recorded on the student's page.",
+    "missing": "The weekly email needs the database update 0058 first.",
+    "loadFailed": "Could not load the weekly email.",
+    "switchTitle": "Switch",
+    "switchHint": "Off at first. While on, the emails go on Sunday after 20:30 and the next day, between 07:00 and 21:30. Switching off stops every email not sent yet.",
+    "isOn": "The weekly email is on.",
+    "isOff": "The weekly email is off.",
+    "switchOn": "Switch the weekly email on",
+    "switchOff": "Switch the weekly email off",
+    "confirmOn": "Yes, switch on (parents who agreed get it this Sunday)",
+    "confirmOff": "Yes, switch off",
+    "guruSwitches": "Only the facilitator switches it on or off.",
+    "whoTitle": "Who gets it",
+    "whoHint": "Parent email addresses of students under 18, counted as if it were on.",
+    "gets": "Parents who get it: {{n}}",
+    "reasons": {
+      "no_digest_consent": "Not agreed yet (record the yes on the student's page): {{n}}",
+      "no_consent": "No current consent: {{n}}",
+      "not_active": "Student inactive, paused or left: {{n}}",
+      "withdrawn": "Consent withdrawn: {{n}}",
+      "no_email": "No email address: {{n}}",
+      "adult": "18 or older: {{n}}",
+      "not_eligible": "Not eligible: {{n}}"
+    },
+    "numbersTitle": "This week and today",
+    "weekRows": "Week from {{from}}: {{total}}",
+    "outcomes": {
+      "waiting": "waiting",
+      "sent": "sent",
+      "skipped": "trial run",
+      "expired": "too late",
+      "stopped": "stopped by the parent",
+      "switched_off": "switched off",
+      "not_eligible": "not eligible",
+      "gave_up": "failed"
+    },
+    "today": "Today: {{digests}} of {{digestDay}} weekly emails; {{all}} of {{appDay}} parent emails for the whole app (check-out and consent emails included).",
+    "rules": "They go between {{from}} and {{until}}, at most {{perRun}} at a time; an email not sent within {{hours}} hours is dropped.",
+    "lastJob": "Last check {{when}}: {{result}}",
+    "jobResults": {
+      "off": "off",
+      "nothing_due": "nothing to send",
+      "night": "waiting for the morning",
+      "cap_reached": "today's limit reached",
+      "not_set_up": "sending not set up (push secrets)",
+      "called": "sending"
+    },
+    "previewTitle": "Preview",
+    "previewHint": "Exactly the email this student's parent gets for this week so far, from the server.",
+    "previewFromProfile": "Open the page of a student under 18 and tap \"Preview the weekly email\".",
+    "previewLanguage": "Language",
+    "parentsLanguages": "Parents' language",
+    "noGuardians": "This student has no parent on record.",
+    "guardianLine": "Parent {{number}}: ",
+    "guardianGets": "gets it in {{language}}",
+    "previewWhileOff": "The weekly email is off: nobody gets this until the facilitator switches it on.",
+    "previewFailed": "Could not build the preview. The server's notify-parents may not be updated yet, or there is no network.",
+    "preview": "Preview the weekly email",
+    "on": "Gets the weekly email",
+    "agreedButOff": "Agreed to the weekly email; it is switched off for the class",
+    "agreedOn": "agreed {{date}}",
+    "lastSent": "last weekly email {{date}} {{time}}",
+    "recordYes": "Parent signed the weekly-email line (D)",
+    "confirmYes": "Yes, the parent signed line D: record it",
+    "sendAgain": "Send the weekly email again",
+    "stop": "Stop the weekly email (parent asked)",
+    "done": {
+      "yes": "Recorded: this parent gets the weekly email.",
+      "stop": "Stopped: this parent gets no more weekly emails.",
+      "again": "The latest weekly email goes again within the sending hours."
+    },
+    "blocks": {
+      "switched_off": "Weekly email: switched off for the class (facilitator)",
+      "not_eligible": "No weekly email",
+      "withdrawn": "No weekly email: consent withdrawn",
+      "not_active": "No weekly email: the student is inactive, paused or has left",
+      "adult": "No weekly email: the student is 18 or older",
+      "no_consent": "No weekly email: no current consent",
+      "no_email": "No weekly email: no email address",
+      "no_digest_consent": "No weekly email: the parent has not agreed (form line D)"
+    },
+    "errors": {
+      "noEmail": "This parent has no email address.",
+      "notMinor": "The weekly email is only for parents of students under 18.",
+      "noDataConsent": "Record the parent's consent for the student's details first.",
+      "blocked": "This parent cannot get the weekly email now.",
+      "againTooSoon": "Already sent again in the last 24 hours."
     }
   },
   "auditLog": {

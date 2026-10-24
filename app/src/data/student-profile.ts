@@ -74,7 +74,7 @@ export type Guardian = { id: string; fullName: string; phone: string | null; ema
 /** A consent record (DPDP, docs/DECISIONS.md #8 and #16). */
 export type Consent = {
   id: string;
-  scope: 'data' | 'photo' | 'face';
+  scope: 'data' | 'photo' | 'face' | 'digest';
   method: 'written' | 'email_code';
   /** Code of the ID the coordinator looked at (idTypes.*); the number is never stored. */
   idTypeChecked: string | null;

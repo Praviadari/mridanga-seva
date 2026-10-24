@@ -1703,6 +1703,30 @@ Unlink first. `anonymise_staff` (0040) deletes a leaving staff login; the record
 
 Tests: section "0053 staff own record" in `supabase/tests/smoke-test.mjs` (55 checks).
 
+## Weekly email to parents (0058)
+
+[DECISIONS.md #530-#539](DECISIONS.md). Run after 0054 (does not need 0055-0057). A weekly email to the parent of a
+student under 18 who said yes to it (opt-in), about the child's week; nothing is sent until the Guru switches it on.
+No existing function is replaced.
+
+| What | How |
+|---|---|
+| Setting | `parent_digest_enabled` true/false (**false**), written only by `set_parent_digest` (the Guru; `audit_setting` logs it). `guard_setting` does not know the key, so a direct update from the app is refused (`setting_unknown`) |
+| The parent's yes | `consents.scope` gains **`digest`**: per guardian, method `written`, signed form, `verified_by` the staff member, `notice_version`. One address, one choice (a yes on any row of the student with that email counts). Revoked by the one-click Unsubscribe, "Stop the weekly email" or `withdraw_consent`; deleted with the record |
+| Queue `parent_digests` | One row per child × parent address × week (`week_start`, a Monday, India): `student_id`, `guardian_id`, `again` (staff's Send again) + `requested_by`, `tries`, `next_try_at`, `claimed_by`, `done_at`, `outcome` (`sent`, `skipped` = dry run, `switched_off`, `stopped`, `not_eligible`, `expired` = 48 hours, `gave_up` = 5 tries, or Brevo's refusal). Unique (student, guardian, week) for the weekly rows. **No text**: the content is read when it goes. Deleted after 30 days. Closed to every app role |
+| Who gets one | `parent_digest_block(student, guardian)` is null: switched on; the student not withdrawn, not left / inactive / paused, under 18, with a current `data` consent; the guardian has an email; a `digest` consent for that address |
+| What it says | `parent_digest_content(student, week)`: centre, level, visits (day, in, out at the centre), practice (minutes, days, days at goal, goal), ticked items (≤ 8 titles + count), a level change, the next event for the student (≤ 31 days; title, day, time, centre). Never a location, a place text, a photo or another child |
+| Clock (India) | `parent_digest_week(at)` the Monday of the last week whose Sunday 20:30 has passed; `parent_digest_queue_open(at)` Sunday 20:30 to Monday 20:30; `parent_digest_send_open(at)` 07:00-21:30 |
+| Ceilings | `parent_digest_limits()`: 10 a run, 100 digests a day, 240 parent emails a day app-wide (`app_parent_mails_today`: consent codes + notices + digests), 48 hours, 24 hours between Send again, 30 days kept; `parent_digest_room()` what is left today |
+| Sent by | Job `mridanga-parent-digests` every 5 minutes: `send_parent_digests()` queues the week (`queue_parent_digests(week)`) in the queue window, then answers `off`, `nothing_due`, `night`, `cap_reached`, `not_set_up` or `called` (POST to `notify-parents` with the push secret). The function calls `claim_parent_digests(limit)` and `finish_parent_digests(claim, sent, skipped, retry, refused, summary)`; retries after 2, 8, 18, 32 minutes. `parent_notice_status.digest_job_at / digest_job_result / digest_run_at / digest_run` |
+| Unsubscribe | `List-Unsubscribe` link `?stop_digest=<guardian>.<HMAC of "parent-digest-stop:<guardian>">`; `stop_parent_digests(guardian)` revokes that address's `digest` consents for every child and ends waiting rows |
+| Staff | `guardian_digest_status(student)` (block, consent_at, last_sent_at, last_outcome; no name or email), `set_guardian_digest(guardian, on, notice_version)` (errors `not_allowed`, `guardian_not_found`, `no_email`, `not_a_minor`, `student_withdrawn`, `data_consent_required`, `notice_version_invalid`), `resend_parent_digest(guardian)` (`digest_blocked` with the reason in the detail, `digest_again_too_soon`), `preview_parent_digest(student, week)` (`student_not_found`, `week_invalid`), `parent_digest_overview()`, and the Guru's `set_parent_digest(on)` |
+
+Who may run them: `claim_parent_digests`, `finish_parent_digests`, `stop_parent_digests` the service role (Edge
+Function) only; `send_parent_digests` and `queue_parent_digests` the owner (pg_cron); the staff functions signed-in
+(roles checked inside); the helpers nobody. Tests: section "0058 weekly email to parents" in
+`supabase/tests/smoke-test.mjs` (64 checks) and the digest part of `supabase/tests/parent-notices.test.mjs`.
+
 ## Data requests (0059)
 
 [DECISIONS.md #550-#556](DECISIONS.md). Migration `0059_data_rights.sql`; operations: OPERATIONS.md "Data requests".
@@ -1817,6 +1841,12 @@ switched-off login is refused like a stranger.
 | `reassign_mentees(students, to)` | Guru | Moves the students to another mentor (an active coordinator or the Guru); returns how many. See "Coordinators and roles" |
 | `unlink_student_login(student)` | Guru | Takes the login off a student record; a `student` login goes back to `pending`, a staff login keeps its role (0053). Security definer. See "Linking a login to a student" |
 | `link_staff_record(profile, student)` | Guru (SQL editor: also the Guru's own) | Links an active coordinator's or Guru's login to one student record without a login as their own record; the role stays (0053, #316). Security definer. See "Own record (0053)" |
+| `set_parent_digest(on)` | Guru | Switches the weekly email to parents on or off (audit log); off ends waiting ones; returns the overview (0058). See "Weekly email to parents (0058)" |
+| `parent_digest_overview()` | Guru, coordinator | The weekly email at a glance: on/off, limits, parent addresses that would get it and why not, the latest week by outcome, today's emails against the ceilings, the job's last answer (0058) |
+| `guardian_digest_status(student)` | Guru, coordinator | Per guardian: why no weekly email goes (null = it goes), the day of the yes, the last one sent, the latest outcome; no name or email (0058) |
+| `set_guardian_digest(guardian, on, notice_version)` | Guru, coordinator | Records the parent's written yes to the weekly email (a `digest` consent), or withdraws it (0058) |
+| `resend_parent_digest(guardian)` | Guru, coordinator | Send again: the latest week's weekly email once more to this parent, once in 24 hours (0058) |
+| `preview_parent_digest(student, week)` | Guru, coordinator | What a parent of this student gets for a week (default this week so far), per guardian whether and in which language; `notify-parents` builds the email from it (0058) |
 | `withdraw_consent(student, note)` | Guru (or the owner in the SQL editor) | Records a withdrawal of consent and freezes the record. See "Withdrawal and erasure (0025)" |
 | `erase_student(student, reason, request_ref)` | Guru (or the owner in the SQL editor) | Erases the student, the login and the audit copies; leaves a tombstone. See "Withdrawal and erasure (0025)" |
 | `my_data_summary()`, `file_data_request(kind, field, body)`, `cancel_data_request(id)` | The person (student, coordinator, Guru) | My data and rights: the summary of one's own data, a request about oneself, taking it back. See "Data requests (0059)" |
@@ -1868,6 +1898,9 @@ the security-round triggers `guard_student_frozen`, `note_level_change`, `releas
 `guard_consent`, `recheck_minor_consent`, `refuse_withdrawn` and the check `privacy_caller_ok` (0025),
 `orphan_files_daily` and the owner-only `anonymise_staff` (0040),
 `audit_redact` and `forget_notices_about` (0049; `orphan_assessment_files` for the Edge Function only),
+the weekly-email helpers `parent_digest_limits`, `parent_digest_block`, `parent_digest_week`, `parent_digest_queue_open`,
+`parent_digest_send_open`, `app_parent_mails_today`, `parent_digest_room`, `parent_digest_content`, `queue_parent_digests`,
+`send_parent_digests` (0058; `claim_parent_digests`, `finish_parent_digests`, `stop_parent_digests` for the Edge Function only),
 and the helpers `my_role`, `is_guru`, `is_staff`,
 `setting_int`, `today_ist`.
 
@@ -1887,6 +1920,7 @@ and the helpers `my_role`, `is_guru`, `is_staff`,
 | `mridanga-cron-history-purge` | 02:15 UTC = 07:45 IST | Deletes pg_cron's run details older than 7 days (0040) |
 | `mridanga-parent-notices` | Every minute | `send_parent_notices()` — calls the Edge Function `notify-parents` when a parent email waits; nothing while switched off (0043); since 0051 also when a consent email to a child's parent waits, switched off or not |
 | `mridanga-minor-signups` | 20:45 UTC = 02:15 IST | `expire_minor_signups()` — erases (`erase_login`) a child's sign-up whose parent did not consent within 30 days, or that the desk did not accept within 180 days (0051) |
+| `mridanga-parent-digests` | Every 5 minutes | `send_parent_digests()` — while the weekly email is on: queues the week's parent emails from Sunday 20:30 to Monday 20:30 IST, and calls `notify-parents` when one waits within 07:00-21:30 IST and the day's ceilings (0058) |
 | `mridanga-data-requests` | 21:00 UTC = 02:30 IST | `data_requests_daily()` — reminds the Gurus of a data request due within 3 days; blanks a closed request's text after a year, deletes it after two (0059) |
 
 ## Who can see what

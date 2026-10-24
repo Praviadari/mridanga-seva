@@ -58,6 +58,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { runPush } from '../functions/notify-announcements/send.ts';
 import { buildConsentEmail, consentPageUrl, runConsentCodes } from '../functions/notify-parents/consent.ts';
 import { runNotices } from '../functions/notify-parents/send.ts';
+import { buildDigestEmail, buildDigestPreview, runDigests } from '../functions/notify-parents/digest.ts';
 
 const supabaseDir = new URL('../', import.meta.url);
 const db = new PGlite({ extensions: { pgcrypto } });
@@ -127,7 +128,7 @@ process.on('uncaughtException', (error) => {
 // D14-10: every check is counted, and the run fails when fewer (or more) checks ran than expected,
 // so a block skipped by a renamed migration or a commented-out section cannot pass unseen.
 // Adding or removing checks? Run the suite and set this to the new total it prints.
-const EXPECTED_CHECKS = 2014; // 0059 data rights: +56; 0057 practice while waiting: +24; 0054 after-launch forms: +49; 0053 staff own record: +55; 0052 more practice: +56; 0051 child's sign-up at home: +80; 0050 staff dashboard: +15; 0049 launch clean-up: +30; 0048 withdrawn records and leaks: +50; 0047 form rules: +109; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
+const EXPECTED_CHECKS = 2078; // 0059 data rights: +56; 0058 weekly parent email: +64; 0057 practice while waiting: +24; 0054 after-launch forms: +49; 0053 staff own record: +55; 0052 more practice: +56; 0051 child's sign-up at home: +80; 0050 staff dashboard: +15; 0049 launch clean-up: +30; 0048 withdrawn records and leaks: +50; 0047 form rules: +109; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
 let failures = 0;
 let passes = 0;
 
@@ -4174,6 +4175,9 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
     'delete_student_record(uuid,text)', 'undo_import(uuid)', 'phone_e164(text)',
     // 0057: may a login waiting for the desk practise (#510; the read policies call it too)
     'practice_while_waiting()',
+    // 0058: the weekly parent email (the Guru's switch, staff's lines, Send again, preview, overview; roles checked inside)
+    'set_parent_digest(boolean)', 'guardian_digest_status(uuid)', 'set_guardian_digest(uuid,boolean,text)',
+    'resend_parent_digest(uuid)', 'preview_parent_digest(uuid,date)', 'parent_digest_overview()',
     // 0059: a person's data and requests (own only inside); the Guru records, answers and acts (is_guru inside)
     'my_data_summary()', 'file_data_request(text,text,text)', 'cancel_data_request(uuid)',
     'record_data_request(text,text,text,text,text,text)', 'answer_data_request(uuid,text,text,boolean)',
@@ -4305,7 +4309,9 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
     ['coordinator', ['students', 'follow_up_tasks', 'student_progress', 'visits', 'groups', 'group_members']]]) {
     for (const rel of rels) {
       const { col } = baseTables.find((t) => t.rel === rel);
-      const r = await tryAs('authenticated', tn[who], `update public.${rel} set ${col} = ${col} returning 1`);
+      // 0058: parent_digest_enabled is written only through set_parent_digest (#534), so a direct update of it is refused.
+      const only = rel === 'settings' ? " where key <> 'parent_digest_enabled'" : '';
+      const r = await tryAs('authenticated', tn[who], `update public.${rel} set ${col} = ${col}${only} returning 1`);
       if (!(r.rows > 0)) positive.push(`${who} ${rel}: ${r.error ?? '0 rows'}`);
     }
   }
@@ -6907,6 +6913,255 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   check('0057: once the desk registers the adult, the login is a student and practice_while_waiting() is null',
     (await roleOf(adult57)) === 'student' && (await level57(adult57)) === null);
   await asOwner(`update taals set active = true where id = ${offTaal57}`);
+}
+
+// ---------------------------------------------------------------- 0058 weekly email to parents (DECISIONS #530-#539)
+{
+  const file58 = readFileSync(new URL('migrations/0058_parent_digest.sql', supabaseDir), 'utf8');
+  const reg58 = async (name, years, guardianEmail) => (await asApp('authenticated', coordinator, `select register_student(p_full_name => $1,
+    p_dob => (current_date - ($2 || ' years')::interval)::date, p_guardian_name => 'Parent Fiftyeight', p_guardian_phone => '9876505858',
+    p_guardian_email => $3, p_guardian_relation => 'mother', p_id_type_checked => 'school_id', p_written_consent => true) as r`,
+    [name, String(years), guardianEmail]))[0].r;
+  const one = async (sql) => (await asOwner(sql))[0];
+  const ist = (s) => `'${s}+05:30'::timestamptz`;
+  const clock = async (fn, at) => (await asOwner(`select ${fn}(${ist(at)}) as r`))[0].r;
+  const dateOf = (d) => (d instanceof Date ? d.toISOString().slice(0, 10) : String(d).slice(0, 10));
+
+  // The clock: Sunday 25-10-2026 20:30 IST is when the week of Monday 19-10 may go.
+  check('0058: the week before Sunday 20:30 IST is the one before', dateOf(await clock('parent_digest_week', '2026-10-25 20:29')) === '2026-10-12');
+  check('0058: ... from Sunday 20:30 IST the week just ended', dateOf(await clock('parent_digest_week', '2026-10-25 20:30')) === '2026-10-19'
+    && dateOf(await clock('parent_digest_week', '2026-10-28 12:00')) === '2026-10-19');
+  check('0058: the week is queued from Sunday 20:30 to Monday 20:30 IST only',
+    (await clock('parent_digest_queue_open', '2026-10-25 20:29')) === false && (await clock('parent_digest_queue_open', '2026-10-25 20:30')) === true
+    && (await clock('parent_digest_queue_open', '2026-10-26 20:29')) === true && (await clock('parent_digest_queue_open', '2026-10-26 20:30')) === false);
+  check('0058: digests go between 07:00 and 21:30 IST only (no email at night)',
+    (await clock('parent_digest_send_open', '2026-10-26 06:59')) === false && (await clock('parent_digest_send_open', '2026-10-26 07:00')) === true
+    && (await clock('parent_digest_send_open', '2026-10-26 21:29')) === true && (await clock('parent_digest_send_open', '2026-10-26 21:30')) === false);
+  check('0058: the limits: 10 a run, 100 digests and 240 parent emails a day, 48 hours, 24 hours between Send again',
+    JSON.stringify((await one('select parent_digest_limits() as r')).r) === JSON.stringify({ app_day: 240, per_run: 10, keep_days: 30,
+      send_from: '07:00', digest_day: 100, send_until: '21:30', again_hours: 24, expire_hours: 48 }), JSON.stringify((await one('select parent_digest_limits() as r')).r));
+
+  // Off by default; only the Guru switches it, through its function (audited).
+  check('0058: the weekly email is OFF by default', (await one(`select value from settings where key = 'parent_digest_enabled'`)).value === false);
+  check('0058: switched off, the job answers off', (await one('select send_parent_digests() as r')).r === 'off');
+  await refusesWith('0058: a coordinator cannot switch the weekly email on', 'not_allowed', () =>
+    asApp('authenticated', coordinator, 'select set_parent_digest(true)'));
+  await refusesWith('0058: ... nor the Guru by writing the setting directly (only through set_parent_digest)', 'setting_unknown', () =>
+    asApp('authenticated', guru, `update settings set value = 'true' where key = 'parent_digest_enabled'`));
+  await refusesWith('0058: anon cannot', 'permission denied for function set_parent_digest', () => asApp('anon', null, 'select set_parent_digest(true)'));
+
+  const kid = await reg58('Gopal Digest Fiftyeight', 10, 'parent.58@example.com');
+  const [{ id: g58 }] = await asOwner(`select id from guardians where student_id = '${kid.id}'`);
+  const status58 = async (sid = kid.id) => asApp('authenticated', coordinator,
+    'select guardian_id, block, consent_at, last_sent_at, last_outcome from guardian_digest_status($1)', [sid]);
+  check('0058: switched off, the staff line says so', (await status58())[0].block === 'switched_off');
+
+  const overview = (await asApp('authenticated', guru, 'select set_parent_digest(true) as r'))[0].r;
+  check('0058: the Guru switches it on; the answer is the overview', overview.enabled === true
+    && (await one(`select value from settings where key = 'parent_digest_enabled'`)).value === true, JSON.stringify(overview));
+  check('0058: ... and the switch is in the audit log, with who', (await one(`select count(*)::int as n from audit_log
+    where table_name = 'settings' and row_id = 'parent_digest_enabled' and changed_by = '${guru}'`)).n === 1);
+
+  // Opt-in (#531): no digest without the parent's own yes, even with the data consent.
+  check('0058: a parent with only the class data consent gets none (opt-in)', (await status58())[0].block === 'no_digest_consent');
+  check('0058: ... and the weekly run queues nothing for them', (await one('select queue_parent_digests(parent_digest_week()) as r')).r === 0);
+  await refusesWith('0058: a student cannot record a parent\'s yes', 'not_allowed', () =>
+    asApp('authenticated', arjun, 'select set_guardian_digest($1, true)', [g58]));
+  await refusesWith('0058: a bad notice version is refused', 'notice_version_invalid', () =>
+    asApp('authenticated', coordinator, `select set_guardian_digest($1, true, 'not a version')`, [g58]));
+  await asApp('authenticated', coordinator, `select set_guardian_digest($1, true, '0.2-draft')`, [g58]);
+  const [yes] = await asOwner(`select scope, method, signed_form, verified_by, notice_version, revoked_at from consents
+    where student_id = '${kid.id}' and scope = 'digest'`);
+  check('0058: the desk records the parent\'s written yes: a digest consent, signed form, by the coordinator, with the notice version',
+    yes?.method === 'written' && yes.signed_form === true && yes.verified_by === coordinator && yes.notice_version === '0.2-draft'
+    && yes.revoked_at === null, JSON.stringify(yes));
+  await asApp('authenticated', coordinator, 'select set_guardian_digest($1, true)', [g58]);
+  check('0058: ... recorded once (a second tap adds nothing), and in the audit log',
+    (await one(`select count(*)::int as n from consents where student_id = '${kid.id}' and scope = 'digest'`)).n === 1
+    && (await one(`select count(*)::int as n from audit_log where table_name = 'consents' and new_row ->> 'scope' = 'digest'`)).n === 1);
+  const st58 = (await status58())[0];
+  check('0058: the staff line: it goes, with the day of the yes', st58.block === null && !!st58.consent_at, JSON.stringify(st58));
+
+  const [{ id: adult58 }] = await asOwner(`insert into students (full_name, dob) values ('Adult Digest Fiftyeight', '1990-01-01') returning id`);
+  const [{ id: adultG }] = await asOwner(`insert into guardians (student_id, full_name, phone, email) values ('${adult58}', 'Mum 58', '9876505859', 'mum.58@example.com') returning id`);
+  await refusesWith('0058: no weekly email for an adult student\'s guardian', 'not_a_minor', () =>
+    asApp('authenticated', coordinator, 'select set_guardian_digest($1, true)', [adultG]));
+  const [{ id: noMailG }] = await asOwner(`insert into guardians (student_id, full_name, phone) values ('${kid.id}', 'Grandpa 58', '9876505860') returning id`);
+  await refusesWith('0058: ... nor for a guardian without an email', 'no_email', () =>
+    asApp('authenticated', coordinator, 'select set_guardian_digest($1, true)', [noMailG]));
+
+  // The week's content: what happened, and only that (#532).
+  const week = dateOf((await one('select parent_digest_week() as r')).r);
+  const level1Item = (await one(`select id, title from syllabus_items where level_id = 1 and retired_at is null order by sort limit 1`));
+  const sib = await reg58('Radha Sibling Fiftyeight', 8, 'other.parent.58@example.com');
+  await db.exec(`
+    insert into visits (student_id, check_in, check_out, method) values
+      ('${kid.id}', (('${week}'::date + 1)::timestamp + interval '11 hours 30 minutes') at time zone 'UTC',
+       (('${week}'::date + 1)::timestamp + interval '13 hours') at time zone 'UTC', 'qr'),
+      ('${kid.id}', (('${week}'::date - 2)::timestamp + interval '11 hours 30 minutes') at time zone 'UTC',
+       (('${week}'::date - 2)::timestamp + interval '12 hours') at time zone 'UTC', 'qr'),
+      ('${sib.id}', (('${week}'::date + 2)::timestamp + interval '11 hours 30 minutes') at time zone 'UTC', null, 'manual');
+    insert into practice_logs (student_id, practised_on, minutes, source) values
+      ('${kid.id}', '${week}'::date + 1, 20, 'manual'), ('${kid.id}', '${week}'::date + 2, 10, 'manual'),
+      ('${kid.id}', '${week}'::date + 2, 10, 'manual'), ('${kid.id}', '${week}'::date + 9, 30, 'manual');
+    insert into student_progress (student_id, item_id, done_on) values ('${kid.id}', ${level1Item.id}, '${week}'::date + 3),
+      ('${sib.id}', ${level1Item.id}, '${week}'::date + 3);
+    insert into level_history (student_id, from_level, to_level, changed_on) values ('${kid.id}', 1, 2, '${week}'::date + 4);
+    insert into events (title, starts_at, centre_id, place, audience, created_by) values
+      ('Kartik Deepotsav Fiftyeight', now() + interval '30 minutes', 1, 'Secret garden 58', 'all', '${guru}'),
+      ('Staff meeting Fiftyeight', now() + interval '10 minutes', 1, null, 'staff', '${guru}');`);
+  const content = (await one(`select parent_digest_content('${kid.id}', '${week}') as r`)).r;
+  check('0058: the week\'s visits: day and India times, only that week\'s, only this child\'s',
+    content.visits.length === 1 && content.visits[0].in === '17:00' && content.visits[0].out === '18:30', JSON.stringify(content.visits));
+  check('0058: practice: minutes and days of that week, days at the goal\'s minutes, the goal',
+    content.practice.minutes === 40 && content.practice.days === 2
+    && content.practice.days_met === [20, 20].filter((m) => m >= content.practice.goal_minutes).length
+    && content.practice.goal_days >= 1, JSON.stringify(content.practice));
+  check('0058: the item ticked that week, and the level change', content.ticks_count === 1 && content.ticks[0] === level1Item.title
+    && content.level_change?.to === 2 && content.level_change?.from === 1, JSON.stringify([content.ticks, content.level_change]));
+  check('0058: the next event for the child (not a staff one), with day, time and centre, never its place text',
+    content.next_event?.title === 'Kartik Deepotsav Fiftyeight' && !!content.next_event.centre && !JSON.stringify(content).includes('Secret garden'),
+    JSON.stringify(content.next_event));
+  check('0058: nothing about another child, and no location, distance or photo', !JSON.stringify(content).includes('Radha')
+    && !/(lat|lng|distance|in_area|photo|accuracy)/i.test(Object.keys(content).join(' ') + JSON.stringify(content.visits)), JSON.stringify(content));
+
+  // Queue: once a week per child and address; the guardian row that gave the yes.
+  await asOwner(`insert into guardians (student_id, full_name, phone, email, relation) values ('${kid.id}', 'Father 58', '9876505861', 'PARENT.58@Example.com', 'father')`);
+  check('0058: the week is queued once per child and address, on the row with the yes',
+    (await one(`select queue_parent_digests('${week}') as r`)).r === 1
+    && (await one(`select guardian_id from parent_digests where student_id = '${kid.id}'`)).guardian_id === g58);
+  check('0058: ... a second run adds nothing', (await one(`select queue_parent_digests('${week}') as r`)).r === 0);
+
+  // Sending: the Edge Function's digest.ts against this queue (service role). The hours are opened for the test.
+  await asOwner(`create or replace function parent_digest_send_open(p_at timestamptz default now()) returns boolean
+    language sql stable set search_path = public, pg_temp as $$ select true $$`);
+  const sent58 = [];
+  const digestRpc = async (name, args) => {
+    try {
+      if (name === 'claim_parent_digests') {
+        const rows = await asApp('service_role', null, 'select * from claim_parent_digests($1)', [args.p_limit]);
+        return { data: rows.map((r) => ({ ...r, digest_id: Number(r.digest_id) })), error: null };
+      }
+      await asApp('service_role', null, 'select finish_parent_digests($1::uuid, $2::bigint[], $3::bigint[], $4::bigint[], $5::jsonb, $6::jsonb)',
+        [args.p_claim, args.p_sent, args.p_skipped, args.p_retry, JSON.stringify(args.p_refused), JSON.stringify(args.p_summary)]);
+      return { data: null, error: null };
+    } catch (failure) {
+      return { data: null, error: { message: String(failure.message ?? failure) } };
+    }
+  };
+  const fakeMail58 = async (to, email, link) => { sent58.push({ to, link, ...email }); return { status: 'sent' }; };
+  const run58 = (mailer) => runDigests(digestRpc, mailer, async (id) => `https://x.supabase.co/functions/v1/notify-parents?stop_digest=${id}.sig`, () => {});
+  const rows58 = async (sid = kid.id) => asOwner(`select id::int, again, outcome from parent_digests where student_id = '${sid}' order by id`);
+  check('0058: with a digest waiting the job calls the function (here: not_set_up, no pg_net)',
+    (await one('select send_parent_digests() as r')).r === 'not_set_up');
+
+  const dry = await run58(null);
+  check('0058: dry run (no Brevo key): the row ends skipped, nothing sent', dry.dryRun === true && dry.skipped === 1
+    && (await rows58())[0].outcome === 'skipped' && sent58.length === 0, JSON.stringify(dry));
+  check('0058: the run\'s counts are kept for the overview', (await one('select digest_run from parent_notice_status')).digest_run?.skipped === 1);
+
+  // Send again (staff): the latest week once more, in the parent's language.
+  await asApp('authenticated', coordinator, `select set_guardian_notices($1, true, 'te')`, [g58]);
+  await refusesWith('0058: a student cannot ask for Send again', 'not_allowed', () => asApp('authenticated', arjun, 'select resend_parent_digest($1)', [g58]));
+  await asApp('authenticated', coordinator, 'select resend_parent_digest($1)', [g58]);
+  await refusesWith('0058: ... once a day per parent', 'digest_again_too_soon', () => asApp('authenticated', coordinator, 'select resend_parent_digest($1)', [g58]));
+  await refusesWith('0058: ... and not for a parent without the yes (the reason in the detail)', 'digest_blocked', () =>
+    asApp('authenticated', coordinator, 'select resend_parent_digest($1)', [noMailG]));
+  const real = await run58(fakeMail58);
+  const mail58 = sent58.at(-1);
+  check('0058: a real run sends the email and records it', real.sent === 1 && (await rows58()).at(-1).outcome === 'sent'
+    && (await rows58()).at(-1).again === true, JSON.stringify(real));
+  check('0058: ... to the parent, in their language, with the visit, practice, tick, level and event',
+    mail58?.to === 'parent.58@example.com' && mail58.text.includes('Gopal Digest Fiftyeight') && mail58.text.includes('17:00')
+    && mail58.text.includes('18:30') && mail58.text.includes('40') && mail58.text.includes(level1Item.title)
+    && mail58.text.includes('మధ్యమ') && mail58.text.includes('Kartik Deepotsav Fiftyeight') && mail58.text.includes('హరే కృష్ణ'), mail58?.subject);
+  check('0058: ... with its own one-click unsubscribe link, and nothing of the other child or the place',
+    mail58?.link?.includes('stop_digest=') && !mail58.text.includes('Radha') && !mail58.text.includes('Secret garden'));
+  check('0058: ... the next run sends nothing again', (await run58(fakeMail58)).claimed === 0 && sent58.length === 1);
+  const stSent = (await status58()).find((r) => r.guardian_id === g58);
+  check('0058: the staff line shows the last one sent', !!stSent.last_sent_at && stSent.last_outcome === 'sent', JSON.stringify(stSent));
+
+  // Ceilings (#533): the app's parent emails of the day count; full = nothing claimed, the job says so.
+  await asOwner(`update parent_digests set created_at = now() - interval '25 hours' where again`);
+  await asApp('authenticated', coordinator, 'select resend_parent_digest($1)', [g58]);
+  await asOwner(`insert into parent_mail_log (address_hash) select 'x' from generate_series(1, 240 - app_parent_mails_today())`);
+  check('0058: with 240 parent emails today (consent codes, notices and digests together) no digest goes',
+    (await one('select parent_digest_room() as r')).r === 0 && (await run58(fakeMail58)).claimed === 0
+    && (await one('select send_parent_digests() as r')).r === 'cap_reached');
+  await asOwner(`delete from parent_mail_log where address_hash = 'x'`);
+  check('0058: ... room again once the day\'s count is lower', (await one('select parent_digest_room() as r')).r > 0);
+
+  // Preview (staff): exactly the email, built by the same code from preview_parent_digest.
+  const prev = (await asApp('authenticated', coordinator, `select preview_parent_digest($1, $2) as r`, [kid.id, week]))[0].r;
+  const built = buildDigestPreview(prev, null);
+  check('0058: preview: per guardian whether and in which language, and the email in that language',
+    built.guardians.length === 3 && built.guardians.find((g) => g.guardian_id === g58)?.block === null
+    && built.emails.te?.text === buildDigestEmail({ language: 'te', student_name: prev.student_name, contact: prev.contact, content: prev.content }).text
+    && built.emails.te.text.includes('17:00'), JSON.stringify(built.guardians));
+  check('0058: ... any language on request', buildDigestPreview(prev, 'hi').emails.hi?.text.includes('हरे कृष्ण') === true);
+  await refusesWith('0058: a student cannot preview', 'not_allowed', () => asApp('authenticated', arjun, 'select preview_parent_digest($1)', [kid.id]));
+  await refusesWith('0058: a week must be a Monday', 'week_invalid', () =>
+    asApp('authenticated', coordinator, `select preview_parent_digest($1, $2::date + 1)`, [kid.id, week]));
+  const ov = (await asApp('authenticated', coordinator, 'select parent_digest_overview() as r'))[0].r;
+  check('0058: the overview: on, parents who get it and why others do not, today\'s emails against the ceilings',
+    ov.enabled === true && ov.parents.gets_it >= 1 && ov.parents.no_digest_consent >= 1 && ov.digests_today >= 1
+    && ov.app_mails_today >= ov.digests_today && ov.limits.app_day === 240, JSON.stringify(ov));
+  await refusesWith('0058: a student cannot read the overview', 'not_allowed', () => asApp('authenticated', arjun, 'select parent_digest_overview()'));
+
+  // The parent stops it: one-click (service role) withdraws the yes for every child at this address.
+  await asApp('authenticated', coordinator, 'select set_guardian_digest($1, true)', [(await one(`select id from guardians where student_id = '${sib.id}'`)).id]);
+  await asOwner(`update guardians set email = 'parent.58@example.com' where student_id = '${sib.id}'`);
+  await refusesWith('0058: a signed-in person cannot call the unsubscribe function', 'permission denied for function stop_parent_digests', () =>
+    asApp('authenticated', guru, 'select stop_parent_digests($1)', [g58]));
+  check('0058: one-click unsubscribe: true, and the waiting digest ends as stopped',
+    (await asApp('service_role', null, 'select stop_parent_digests($1) as r', [g58]))[0].r === true && (await rows58()).at(-1).outcome === 'stopped');
+  check('0058: ... the yes is withdrawn (kept, with the time), for the brother or sister too',
+    (await one(`select count(*)::int as n from consents where scope = 'digest' and revoked_at is null
+      and student_id in ('${kid.id}', '${sib.id}')`)).n === 0
+    && (await status58(sib.id))[0].block === 'no_digest_consent' && (await status58())[0].block === 'no_digest_consent');
+  check('0058: ... check-out emails are not touched by it', (await one(`select notices_stopped_at from guardians where id = '${g58}'`)).notices_stopped_at === null);
+  check('0058: an unknown guardian id stops nothing', (await asApp('service_role', null,
+    `select stop_parent_digests('00000000-0000-4000-8000-000000000000') as r`))[0].r === false);
+
+  // Withdrawal and erasure stop it at once: a waiting row is never sent.
+  await asApp('authenticated', coordinator, 'select set_guardian_digest($1, true)', [g58]);
+  await asOwner(`insert into parent_digests (student_id, guardian_id, week_start, again) values ('${kid.id}', '${g58}', '${week}', true)`);
+  await asApp('authenticated', guru, 'select withdraw_consent($1, $2)', [kid.id, 'mother, at the desk']);
+  const afterWithdraw = await run58(fakeMail58);
+  check('0058: withdrawal: the waiting digest is not sent and ends as not_eligible', afterWithdraw.claimed === 0 && sent58.length === 1
+    && (await rows58()).at(-1).outcome === 'not_eligible', JSON.stringify(await rows58()));
+  await asOwner(`insert into parent_digests (student_id, guardian_id, week_start, again) values ('${sib.id}', (select id from guardians where student_id = '${sib.id}'), '${week}', true)`);
+  await asApp('authenticated', guru, `select erase_student($1, 'parent asked', 'REQ-58')`, [sib.id]);
+  check('0058: erasure: the child\'s digests go with the record', (await rows58(sib.id)).length === 0);
+
+  // Switching off ends waiting rows; an expired one is not sent; 30 days kept.
+  const kid2 = await reg58('Madhav Digest Fiftyeight', 12, 'third.parent.58@example.com');
+  const [{ id: g2 }] = await asOwner(`select id from guardians where student_id = '${kid2.id}'`);
+  await asApp('authenticated', coordinator, 'select set_guardian_digest($1, true)', [g2]);
+  await asOwner(`select queue_parent_digests('${week}')`);
+  await asOwner(`update parent_digests set created_at = now() - interval '49 hours' where student_id = '${kid2.id}'`);
+  check('0058: a digest not sent within 48 hours expires', (await run58(fakeMail58)).claimed === 0 && (await rows58(kid2.id))[0].outcome === 'expired');
+  await asApp('authenticated', coordinator, 'select resend_parent_digest($1)', [g2]);
+  await asApp('authenticated', guru, 'select set_parent_digest(false)');
+  check('0058: switched off: the waiting digest ends at once as switched_off', (await rows58(kid2.id)).at(-1).outcome === 'switched_off');
+  check('0058: ... and the job answers off again', (await one('select send_parent_digests() as r')).r === 'off');
+  await asOwner(`update parent_digests set created_at = now() - interval '31 days' where student_id = '${kid2.id}'`);
+  await asApp('service_role', null, 'select * from claim_parent_digests(10)');
+  check('0058: rows are kept 30 days', (await rows58(kid2.id)).length === 0);
+
+  // Closed to the app; jobs; a second run of the file changes nothing (and restores the sending hours).
+  await refusesWith('0058: the queue is closed to staff', 'permission denied for table parent_digests', () =>
+    asApp('authenticated', guru, 'select * from parent_digests'));
+  await refusesWith('0058: signed-in people cannot claim digests', 'permission denied for function claim_parent_digests', () =>
+    asApp('authenticated', guru, 'select * from claim_parent_digests(10)'));
+  check('0058: the job runs every 5 minutes', (await one(`select schedule from cron.job where jobname = 'mridanga-parent-digests'`)).schedule === '*/5 * * * *');
+  const count58 = async () => (await one(`select (select count(*) from parent_digests)::int as d, (select count(*) from consents where scope = 'digest')::int as c,
+    (select count(*) from cron.job)::int as j, (select value from settings where key = 'parent_digest_enabled') as v`));
+  const before58 = await count58();
+  let again58 = '';
+  try { await db.exec(file58); } catch (e) { again58 = String(e.message); }
+  check('0058 can run again and changes no row', again58 === '' && JSON.stringify(await count58()) === JSON.stringify(before58), again58);
+  check('0058: ... the sending hours are the real ones again', (await one(`select parent_digest_send_open('2026-10-26 23:00+05:30'::timestamptz) as r`)).r === false);
 }
 
 // ---------------------------------------------------------------- 0059 data rights (DECISIONS #550-#556)

@@ -6920,6 +6920,138 @@ email (0046-0048), and `handle_new_user` already treats the moved fields as opti
 the rest is recorded at the desk after the parent's consent. **Deep links:** `/sign-up` and `/forgot-password` opened
 the sign-in page because `requested-path.belongsTo` knew no signed-out screens; they now open themselves, so the
 website's "Register" can link straight to Create an account. A waiting login's `/waiting/...` links work too.
+
+## 530. A weekly email to the parent about their child's week at the class — 23 Oct 2026
+
+**Status: branch `parents-digest` (audit 22-10-2026 work package H, fix 19; the lead's brief of 23 Oct 2026 under
+Praveen's delegation). Migration 0058, Edge Function `notify-parents` (deploy), JS-only app (fingerprint 23dc7e4a).
+Off until the Guru switches it on (#534), and then only to parents who said yes (#531).**
+
+**Context.** The world-class audit scored the parent experience 3/10 (§2.14): parents have no login and hear nothing
+except an optional check-out email (#224, #246, off) and the consent code of a home sign-up (#399). ClassDojo-class
+apps give parents a regular picture of the child's progress in their language.
+
+**Decision.** Once a week, from Sunday 20:30 India time, a short email to the parent of each active student under 18
+who agreed to it: that week's visits (days, check-in and check-out times), practice minutes and days against the goal,
+newly ticked syllabus items, a level change, and the next event for the child (#532); in the parent's language
+(en / te / hi: the guardian's `notice_language`, set on the student's page, else the child's app language). Warm,
+devotional and short ("Hare Krishna", a kind line for a quiet week, praise when the goal is met, "Thank you for
+supporting <name>'s seva"). Sent by `notify-parents` through Brevo, with a dry run without `BREVO_API_KEY`, a one-click
+Unsubscribe of its own and staff's "Send again" (#535). Queue `parent_digests`, job `mridanga-parent-digests`.
+
+**Why email, weekly.** No parent login, no new role, no APK; Brevo's free plan; once a week is useful without being
+noise. A parent app or web page stays a separate, larger project (audit gap 3, announcements for parents, is not
+in this package).
+
+## 531. Opt-in: the parent's own written yes, recorded as a consent with scope `digest` — 23 Oct 2026
+
+**Status: approved by the lead on 23 Oct 2026 (decision under Praveen's delegation of 23 Oct): opt-in per guardian, consent
+scope `digest` recorded at the desk from the parent's written yes (form line D); nobody gets one until then.**
+
+**Context.** The check-out email is opt-out under the class data consent, with the line on the paper form (#227,
+#230, #247). The weekly email carries more (practice, progress, events): a purpose of its own. The DPDP Act asks
+consent to be specific to a purpose (s.6(1)); the Rules are read strictly, without a lawyer (#399).
+
+**Decision.** Opt-in. A guardian gets the weekly email only with a `consents` row of scope **`digest`** (new value in
+the scope check) on the student: the parent's written yes (form line D below), recorded at the desk by a coordinator
+or the Guru (`set_guardian_digest`: method `written`, signed form, verified by the caller, now, the notice version
+shown). One address, one choice: a yes on any guardian row of the student with that email counts. The data consent
+alone is not enough, and a minor without a current data consent gets nothing either. A child of a home sign-up
+(#399) is no different: once accepted, the parent's yes is recorded at the desk the same way (the parent's ID was
+seen at Accept). No email is ever sent to ask for the yes (that would use the address for the new purpose first).
+No new personal data: the yes is a consent record.
+
+**Withdrawal** is as easy as giving (s.6(4)): the email's one-click Unsubscribe or "Stop the weekly email" at the
+desk sets `revoked_at` (the record stays as proof); `withdraw_consent` revokes it with every other consent; an
+erasure deletes it with the record.
+
+**Form line D (draft en, for the team and the paper form; te/hi follow the form's other lines):**
+> *Weekly email (optional).* Once a week we can email you a short summary of your child's week at the class: the
+> days and times they came, their practice at home against the goal, what they newly learnt, a level change, and
+> the next class event. It never includes your child's location or photo, or anything about another child. You can
+> stop it at any time with the Unsubscribe link in the email or by telling the class desk.
+> ☐ Yes, please send me the weekly email. Parent's email: ________
+
+## 532. What the weekly email says, and what it never says — 23 Oct 2026
+
+**Decision.** `parent_digest_content(student, week)` returns only: the home centre and level; each visit of the week
+(Monday-Sunday) with its day and check-in / check-out time at the centre ("no check-out recorded" when open); practice
+minutes, days practised and days at the goal's minutes against the goal (the student's own, else the level's, else
+4 x 15, as `practice_days`); the titles of items ticked that week (at most 8, and how many more); a level change that
+week; the next event for the child within 31 days (`audience_students`; title, day, time, centre). **Never** a
+location, distance, area flag or photo (#212), a mark, a remark, a call note, an event's `place` text, or anything
+about another child (each email is about one child; a sibling gets their own). The child's full name as on the record
+(#228); level names in the parent's language. The queue holds ids and outcomes only: the text is built when it goes.
+
+## 533. When it goes, and the daily ceilings shared with every parent email — 23 Oct 2026
+
+**Decision.** India time throughout. The job (every 5 minutes) queues the week from Sunday 20:30 to Monday 20:30
+(a late run catches up; never twice for a week); emails go only between 07:00 and 21:30, at most 10 a run; a digest
+not sent within 48 hours expires. Ceilings: **100 digests a day** and **240 parent emails a day for the whole app** —
+consent codes (0051), check-in / check-out notices (0043) and digests counted together (`app_parent_mails_today`),
+which leaves about 60 of Brevo's free 300 for sign-up confirmations and password resets. The digest yields: it
+claims only what is left under both. Outcomes as for notices: `sent`, `skipped` (dry run), `switched_off`, `stopped`,
+`not_eligible`, `expired`, `gave_up`, or Brevo's refusal; rows kept 30 days. The notices' own cap (200, #229) and the
+consent codes' (60) are unchanged.
+
+## 534. The Guru's switch is a function, not a G10 box — 23 Oct 2026
+
+**Decision.** Setting `parent_digest_enabled` (false), changed only by `set_parent_digest(on)` (the Guru; the change
+is in the audit log through `audit_setting`, with who). The screen "Weekly email to parents" (from G10's "Emails to
+parents") holds the switch, asked twice (#332). Switching off ends every waiting digest at once (`switched_off`).
+
+**Why not a G10 checkbox.** That needs `guard_setting` to know the key, and `guard_setting` is replaced by several
+branches at once (0048, face-scan's 0070): a second copy would silently drop the other's keys. Written by a security
+definer function, the key passes the guard; a direct update of it from the app is refused (`setting_unknown`), so the
+switch has exactly one door.
+
+## 535. Staff: the parent's yes, Stop, Send again, who gets it — 23 Oct 2026
+
+**Decision.** On the student's page, under each guardian of a minor (after the attendance-email line): why no weekly
+email goes, or "Gets the weekly email" with the day of the yes and the last one sent (`guardian_digest_status`);
+"Parent signed the weekly-email line (D)" (asked twice; `set_guardian_digest(on)`), "Stop the weekly email (parent
+asked)", and "Send the weekly email again" (`resend_parent_digest`: the latest week once more, one per parent in
+24 hours, within the sending hours and ceilings). Coordinators and the Guru, like the attendance-email switch (#227).
+The overview (`parent_digest_overview`, staff) counts parent addresses that would get it (as if on) and why the others
+do not, the latest week by outcome, today's emails against both ceilings and the job's last answer.
+
+## 536. The preview is built by the Edge Function that sends — 23 Oct 2026
+
+**Decision.** "Preview the weekly email" (student's page) opens the screen with that student: the app calls
+`notify-parents` with the person's own sign-in and `{preview: <student>}`; the function runs `preview_parent_digest`
+**as that person** (staff only, checked in the database) and returns the email built by `digest.ts`, the code that
+sends it, in each guardian's language (or one chosen), with each guardian's reason for none. Nothing is sent; CORS is
+open on that path only. Until the function from this commit is deployed, the screen says the preview is not
+available yet.
+
+**Why.** "Exactly what a parent would get" can only be promised by the sending code itself; a copy of the template in
+the app would drift.
+
+## 537. Withdrawal, erasure, Unsubscribe and the switch stop it at once — 23 Oct 2026
+
+**Decision.** Every claim re-checks each waiting row (`parent_digest_block`) right before the email is built, so a
+withdrawal (`withdraw_consent`), a revoked data consent, a stopped yes, a student who left, paused or turned 18, or
+the switch going off ends the row (`not_eligible`, `stopped`, `switched_off`) and nothing is sent. Erasure deletes the
+rows with the record (cascade). The digest's Unsubscribe link is signed for its own purpose (`?stop_digest=`, HMAC of
+"parent-digest-stop:<guardian>"): it cannot stop the check-out emails, and their link cannot stop the digest.
+
+## 538. Before the Guru switches on the check-out emails at LIVE (fix 20) — 23 Oct 2026
+
+**Decision.** The check-out emails (#246) stay off on LIVE until every item of OPERATIONS "Parent notices by email" →
+"Before switching on at LIVE" is true: the paper form in use carries line E (#247, check-out wording) in the
+parent's language; parents of current minors who signed an older form without it are stopped per guardian until
+they sign it; the privacy notice says what parents receive and lists Brevo for these emails; the sender, reply-to
+and class contact are set; one test email went to a team member's test record and its Unsubscribe was tried.
+Praveen (or the Guru) switches; the lead records it in OPERATIONS.
+
+## 539. Parent wording, and the lines the privacy notice needs — 23 Oct 2026
+
+**Decision.** The email texts are in `supabase/functions/notify-parents/digest.ts`; English is the reference, Telugu
+and Hindi are drafts for native review (docs/TRANSLATIONS.md), as #228. The privacy notice (notice 1.0, another
+work package; this branch does not change the notice or its version) needs: a purpose "Telling parents about their
+child" (check-out email, opt-out, line E; weekly email, opt-in, line D); a short "What parents receive" section; the
+Brevo row extended to these emails; retention "records of parent emails (no text): 30 days".
+
 ## 550. My data and rights in the app — 23 Oct 2026
 
 **Status: branch `data-rights` (migration 0059); the lead decides under Praveen's delegation of 23 Oct 2026 ("take

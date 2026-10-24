@@ -30,6 +30,8 @@ export function brevoMailer(
   apiKey: string,
   sender: { email: string; name: string },
   replyTo: string | null,
+  // Brevo's tag on the email (its statistics): 'parent-notice' or 'parent-digest'.
+  tag = 'parent-notice',
 ): Mailer {
   return async (to, email, stopUrl) => {
     const headers: Record<string, string> = {};
@@ -51,7 +53,7 @@ export function brevoMailer(
           textContent: email.text,
           htmlContent: email.html,
           ...(stopUrl ? { headers } : {}),
-          tags: ['parent-notice'],
+          tags: [tag],
         }),
       });
     } catch {
@@ -71,25 +73,33 @@ function base64url(bytes: Uint8Array): string {
   return btoa(text).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-/** The signature of a guardian's unsubscribe link: HMAC-SHA256 of "parent-notice-stop:<id>". */
-export async function stopSignature(secret: string, guardianId: string): Promise<string> {
+/**
+ * What an unsubscribe link stops, and its query parameter: the check-out emails (0043) or the weekly
+ * digest (0058). Each is signed for its own purpose, so one link can never stop the other.
+ */
+export type StopKind = 'notice' | 'digest';
+const STOP_PURPOSE: Record<StopKind, string> = { notice: 'parent-notice-stop', digest: 'parent-digest-stop' };
+export const STOP_PARAM: Record<StopKind, string> = { notice: 'stop', digest: 'stop_digest' };
+
+/** The signature of a guardian's unsubscribe link: HMAC-SHA256 of "<purpose>:<id>". */
+export async function stopSignature(secret: string, guardianId: string, kind: StopKind = 'notice'): Promise<string> {
   const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
-  const mac = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(`parent-notice-stop:${guardianId}`));
+  const mac = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(`${STOP_PURPOSE[kind]}:${guardianId}`));
   return base64url(new Uint8Array(mac));
 }
 
 /** The one-click unsubscribe address for a guardian. */
-export async function stopUrl(functionUrl: string, secret: string, guardianId: string): Promise<string> {
-  return `${functionUrl}?stop=${guardianId}.${await stopSignature(secret, guardianId)}`;
+export async function stopUrl(functionUrl: string, secret: string, guardianId: string, kind: StopKind = 'notice'): Promise<string> {
+  return `${functionUrl}?${STOP_PARAM[kind]}=${guardianId}.${await stopSignature(secret, guardianId, kind)}`;
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/** The guardian id of a correctly signed ?stop= value, else null. Compared in constant time. */
-export async function checkStop(secret: string, value: string | null): Promise<string | null> {
+/** The guardian id of a correctly signed stop value of this kind, else null. Compared in constant time. */
+export async function checkStop(secret: string, value: string | null, kind: StopKind = 'notice'): Promise<string | null> {
   const [id, signature] = (value ?? '').split('.');
   if (!id || !signature || !UUID.test(id)) return null;
-  const expected = await stopSignature(secret, id.toLowerCase());
+  const expected = await stopSignature(secret, id.toLowerCase(), kind);
   let difference = expected.length ^ signature.length;
   for (let i = 0; i < Math.max(expected.length, signature.length); i++) {
     difference |= (expected.charCodeAt(i) || 0) ^ (signature.charCodeAt(i) || 0);
