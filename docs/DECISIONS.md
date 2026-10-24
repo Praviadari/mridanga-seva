@@ -5571,7 +5571,7 @@ APK. P3-3 puts that chain into the class app itself, so the Phase 3 APK can be b
 `react-native-fast-tflite` 3.0.1, `@expo/app-integrity` 57.0.2 (unused until the self-scan, P3-5/P3-6, but native, so the
 fingerprint changes only once), `expo-secure-store` ~57.0.4. Models in app/assets/models (SFace int8, MiniFASNet V2 and
 V1SE int8; README with the full SHA-256 of each), Metro `tflite` assets (app/metro.config.js). Trimmed: no SQLCipher
-(expo-sqlite stays plain), LiteRT's GPU delegate library left out (`packagingOptions.exclude`), no
+(expo-sqlite stays plain), LiteRT's GPU delegate library left out (`packagingOptions.exclude`; **undone by #435**: the app closed at start without it), no
 `expo-local-authentication` (the phone's fingerprint is not an attendance factor, audit S4F-10). Both ABIs in one APK
 (arm64-v8a + armeabi-v7a), as the class app ships today. Camera permission text names the face scan (te/hi for iOS in
 app/locales); `allowBackup: false` unchanged; brief 9's `blockedPermissions` kept and three added, which the first Actions build's
@@ -7358,3 +7358,22 @@ by the server; the rule of #318 is about one person marking another's attendance
 **Consequences.** A later migration that replaces `refuse_own_record` keeps the self-scan line (comment in 0071).
 The wipe rule for a staff phone runs when Me opens (not at app start, as for a student), so a staff phone holding a
 code the server has ended keeps it until then; the server refuses it anyway.
+
+## 435. LiteRT's GPU library stays in the APK; CI checks every native library's dependencies — 24 Oct 2026
+
+**Status: branch `face-scan` (placeholder number). Replaces #307's "GPU delegate library left out".**
+
+**What happened.** The first "Mridanga Seva TEST" APK (EAS build 4ef79554, 24-10-2026) closed at once on every start.
+`libNitroTflite.so` (react-native-fast-tflite 3.0.1) links `libtensorflowlite_gpu_jni.so` (its CMakeLists links
+`TFLITE_GPU`; TfliteHelpers.cpp calls `TfLiteGpuDelegateV2Create`), and Nitro loads it when the app starts
+(`NitroTflitePackage` init → `System.loadLibrary("NitroTflite")`). app.json's `packagingOptions.exclude` had taken that
+library out of the APK (P3-3, to save size), so Android could not load `libNitroTflite` and the app stopped. The
+Actions check only compiled the APK; nothing had ever launched it on a phone.
+
+**Decision.** No `packagingOptions.exclude`: the GPU library is in the APK (the app still uses the CPU delegate). The
+APK compile workflow now reads every arm64 `.so` in the APK with `readelf -d` and fails when a NEEDED library is neither
+in the APK nor a public Android system library (the NDK sysroot's list): this kind of fault fails in CI, not on a
+tester's phone. tests/face-enrolment.test.mjs refuses any packagingOptions in app.json.
+
+**Consequences.** app.json changed: a new fingerprint for the branch (with and without the variant) and a new
+facetest build (one more free build). The APK grows by the GPU library (measured by the next Actions run).

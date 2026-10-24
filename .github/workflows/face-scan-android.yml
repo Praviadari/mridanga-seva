@@ -76,7 +76,20 @@ jobs:
           echo "::notice title=APK size (bytes)::$(stat -c %s "$APK")"
           echo "::notice title=arm64 libs (compressed bytes, name)::$(grep -E 'lib/arm64-v8a/' apk-list.txt | awk '{print $3, $8}' | sort -n -r | head -45 | esc)"
           echo "::notice title=models, bundle, dex (size, compressed, name)::$(grep -E '\.tflite|index.android.bundle|classes[0-9]*\.dex' apk-list.txt | awk '{print $1, $3, $8}' | esc)"
-          if grep -q 'libtensorflowlite_gpu_jni.so' apk-list.txt; then echo "::warning title=GPU delegate::libtensorflowlite_gpu_jni.so is still in the APK"; else echo "::notice title=GPU delegate::left out (as planned)"; fi
+          # #435: a native library whose NEEDED library is missing makes the app close at start (the first facetest APK,
+          # 24-10-2026: libNitroTflite needs libtensorflowlite_gpu_jni.so, which app.json had left out). Every NEEDED entry
+          # of every arm64 .so must be in the APK or be a public Android system library (the NDK sysroot's list).
+          rm -rf apk-libs && mkdir apk-libs && unzip -q -o "$APK" 'lib/arm64-v8a/*' -d apk-libs
+          NDK=$(ls -d "$ANDROID_HOME"/ndk/* | sort -V | tail -1)
+          SYS=$(ls "$NDK"/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/*/ | grep '\.so$' | sort -u)
+          MISSING=""
+          for so in apk-libs/lib/arm64-v8a/*.so; do
+            for need in $(readelf -d "$so" | sed -n 's/.*(NEEDED).*\[\(.*\)\]/\1/p'); do
+              if [ ! -f "apk-libs/lib/arm64-v8a/$need" ] && ! echo "$SYS" | grep -qx "$need"; then MISSING="$MISSING $(basename "$so") needs $need;"; fi
+            done
+          done
+          if [ -n "$MISSING" ]; then echo "::error title=Native library missing (the app would close at start)::$MISSING"; exit 1; fi
+          echo "::notice title=Native libraries::every NEEDED library of the arm64 .so files is in the APK or in Android"
           if grep -q 'libsqlcipher\|lib/arm64-v8a/libcrypto.so' apk-list.txt; then echo "::warning title=SQLCipher::an SQLCipher library is in the APK"; else echo "::notice title=SQLCipher::not in the APK (as planned)"; fi
           AAPT=$(ls "$ANDROID_HOME"/build-tools/*/aapt2 | sort -V | tail -1)
           "$AAPT" dump permissions "$APK" > permissions.txt

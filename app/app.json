@@ -90,12 +90,7 @@
             ],
             "enableMinifyInReleaseBuilds": true,
             "enableShrinkResourcesInReleaseBuilds": true,
-            "useLegacyPackaging": true,
-            "packagingOptions": {
-              "exclude": [
-                "**/libtensorflowlite_gpu_jni.so"
-              ]
-            }
+            "useLegacyPackaging": true
           }
         }
       ],

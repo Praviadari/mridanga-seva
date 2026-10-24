@@ -290,11 +290,13 @@ test('face scan shows nothing while the switch is off: every entry checks the se
   assert.match(read('src/data/face.ts'), /\.eq\('key', 'face_enabled'\)/);
 });
 
-test('app.json: camera text names the face scan, GPU library left out, no SQLCipher, no fingerprint module', () => {
+test('app.json: camera text names the face scan, GPU library kept, no SQLCipher, no fingerprint module', () => {
   const { expo } = JSON.parse(read('app.json'));
   const plugin = (name) => expo.plugins.find((p) => (Array.isArray(p) ? p[0] : p) === name);
   assert.match(plugin('expo-camera')[1].cameraPermission, /face scan/);
-  assert.deepEqual(plugin('expo-build-properties')[1].android.packagingOptions.exclude, ['**/libtensorflowlite_gpu_jni.so']);
+  // #435: libNitroTflite (react-native-fast-tflite) links libtensorflowlite_gpu_jni.so and loads at app start; leaving it
+  // out of the APK made the first test APK close at once (24-10-2026). Nothing may be excluded from the APK.
+  assert.equal(plugin('expo-build-properties')[1].android.packagingOptions, undefined);
   assert.deepEqual(plugin('expo-build-properties')[1].android.buildArchs, ['armeabi-v7a', 'arm64-v8a']);
   assert.equal(plugin('expo-sqlite'), 'expo-sqlite');
   // The APK's merged manifest (Actions run 38404377388) had these from androidx.biometric (expo-secure-store) and an

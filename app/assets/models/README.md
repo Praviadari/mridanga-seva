@@ -2,8 +2,8 @@
 
 The three on-device models of the face scan (docs/DECISIONS.md #307; chosen by the P3-0 spike,
 docs/phase3/SPIKE_RESULT.md on branch `p3-spike`, §3-§4). They run on the phone with
-react-native-fast-tflite 3.0.1 (LiteRT 1.4.0, CPU only: the GPU delegate library is left out of the APK by
-app.json `packagingOptions`). Weights are int8 ("dynamic range": int8 weights, float maths); inputs and outputs
+react-native-fast-tflite 3.0.1 (LiteRT 1.4.0, CPU delegate used; the GPU delegate library stays in the APK because
+libNitroTflite links it and loads at app start: leaving it out crashed the app, DECISIONS #435). Weights are int8 ("dynamic range": int8 weights, float maths); inputs and outputs
 stay float32. Nothing here is a face of anyone: these are the generic models, the same for every phone.
 
 | File | Bytes | SHA-256 | From | Licence | Input | Output |
