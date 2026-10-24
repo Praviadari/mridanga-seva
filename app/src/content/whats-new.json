@@ -2,6 +2,42 @@
   "_comment": "What's new (My profile > What's new, docs/DECISIONS.md #406). Newest first. Add an entry before every production update (docs/OPERATIONS.md 'Publishing an update'). date: the day it is published (YYYY-MM-DD); null = not yet published, shown as 'Coming in the next update'. kind: 'installed' for an APK, 'update' for an update. id: the APK's build id or the update id the version line shows (first 8 characters), once known. notes: 3-8 plain lines in en, te and hi, the same number in each; te/hi are drafts for native review.",
   "releases": [
     {
+      "_comment": "Production update from main 27cbdf0 or later (data rights 0059, onboarding-offline 0057, creative tools 0055, practice extras 0056, parents' weekly email 0058). Set id to the Android update id after publishing; re-date if published later than 24-10-2026.",
+      "version": "1.0.0",
+      "kind": "update",
+      "id": null,
+      "date": "2026-10-24",
+      "notes": {
+        "en": [
+          "My data and rights: see what the class keeps about you, and ask for a copy, a correction or erasure.",
+          "The web version keeps working offline once opened, and a new login can practise while waiting for the desk.",
+          "A shorter sign-up: five fields now, the rest later in About you.",
+          "Play and learn: Tap pad to play along, Which bol? for your ear, Echo me, and Learn more links from the Guru.",
+          "Taal player: layakari (dugun, tigun, chaugun), silent bars to keep the time yourself, and a kartal layer.",
+          "After practice, say how it went if you like; milestones mark your practice days.",
+          "Parents can get a weekly email about their child's week, only after they say yes."
+        ],
+        "te": [
+          "నా డేటా, నా హక్కులు: తరగతి మీ గురించి ఏమి ఉంచుతుందో చూడండి; కాపీ, సవరణ లేదా తొలగింపు కోసం అడగండి.",
+          "వెబ్ వెర్షన్ ఒకసారి తెరిచాక ఆఫ్‌లైన్‌లోనూ పనిచేస్తుంది; కొత్త లాగిన్ డెస్క్ కోసం వేచి ఉండగానే అభ్యాసం చేయవచ్చు.",
+          "చిన్న సైన్ అప్: ఇప్పుడు ఐదు వివరాలే, మిగతావి తర్వాత 'మీ గురించి'లో.",
+          "ఆడుతూ నేర్చుకోండి: కలిసి వాయించడానికి ట్యాప్ ప్యాడ్, చెవికి 'ఏ బోల్?', 'నన్ను అనుసరించు', గురువు ఇచ్చే 'మరింత నేర్చుకోండి' లింకులు.",
+          "తాళం ప్లేయర్‌లో: లయకారి (దుగున్, తిగున్, చౌగున్), బీట్‌ను మీరే నిలిపే నిశ్శబ్ద ఆవృత్తాలు, కరతాళాల పొర.",
+          "అభ్యాసం తర్వాత, కావాలంటే ఎలా జరిగిందో చెప్పండి; మైలురాళ్ళు మీ అభ్యాస రోజులను గుర్తిస్తాయి.",
+          "తల్లిదండ్రులు అంగీకరించిన తర్వాత మాత్రమే, పిల్లల వారం గురించి వారానికి ఒక ఈమెయిల్ పొందవచ్చు."
+        ],
+        "hi": [
+          "मेरा डेटा और मेरे अधिकार: कक्षा आपके बारे में क्या रखती है देखें, और प्रति, सुधार या मिटाने के लिए कहें।",
+          "वेब संस्करण एक बार खुलने के बाद ऑफ़लाइन भी चलता है, और नया लॉगिन डेस्क की प्रतीक्षा में भी अभ्यास कर सकता है।",
+          "छोटा साइन अप: अब पाँच जानकारियाँ, बाकी बाद में 'आपके बारे में' में।",
+          "खेलें और सीखें: साथ बजाने के लिए टैप पैड, कान के लिए 'कौन सा बोल?', 'मेरी गूँज', और गुरु के 'और सीखें' लिंक।",
+          "ताल प्लेयर में: लयकारी (दुगुन, तिगुन, चौगुन), ताल स्वयं बनाए रखने के लिए मौन आवर्तन, और करताल की परत।",
+          "अभ्यास के बाद, चाहें तो बताएँ कैसा रहा; पड़ाव आपके अभ्यास के दिनों को चिह्नित करते हैं।",
+          "माता-पिता हाँ कहने के बाद ही, बच्चे के सप्ताह के बारे में साप्ताहिक ईमेल पा सकते हैं।"
+        ]
+      }
+    },
+    {
       "_comment": "Production update group 8b737a14 (commit 76dbce1, 22-10-2026); 01a16413 is its Android update id, which the version line shows.",
       "version": "1.0.0",
       "kind": "update",
