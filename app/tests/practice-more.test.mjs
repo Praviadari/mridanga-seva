@@ -119,7 +119,8 @@ test('hands: left, right or both under each beat of the grid, from the bols (#40
   assert.deepEqual(beatHands('te.re'), ['right', 'right']);
   assert.deepEqual(beatHands('-'), []);
   assert.deepEqual(beatHands('xyz'), ['unknown'], 'a bol the app does not know');
-  assert.match(src('components/beat-grid.tsx'), /<AppText variant="small"[^>]*>\s*\{handsOf\(t, bol\) \|\| ' '\}/);
+  // (at layakari, #491, the hands of each written beat)
+  assert.match(src('components/beat-grid.tsx'), /<AppText variant="small"[^>]*>\s*\{\(groups \? groupHands\(t, groups\[beat\]\) : handsOf\(t, bol\)\) \|\| ' '\}/);
 });
 
 test('daily reminder: the next 14 days, today left out once practised (#402)', () => {
@@ -163,14 +164,15 @@ test('Practice tools: screen on while playing, count-in on Start, plan above the
   assert.ok(tools.indexOf('<PlanSection') < tools.indexOf('label={t(\'practice.tool\')}'), 'the practice of the week comes before the tool choice');
   assert.ok(tools.indexOf('<RecordMyself') < tools.indexOf('<GoalWeekView'), 'this week comes after the tools');
   // Record myself still starts its sound at once from beat 1 (its takes are compared with the sound from its start).
-  assert.match(tools, /startFrom\(metronomePattern\(s\.beatsPerBar\), s\.bpm, null\)/);
+  // (since #490 the bar goes through loopPattern for the silent bars, still with no count-in)
+  assert.match(tools, /return startFrom\(loopPattern\(bar, .*\), s\.bpm, null\);/);
   assert.match(tools, /found\.id, 0, s\.taalBpm\)/);
   // Both engines take the count-in and play one stroke.
   for (const engine of ['lib/practice-audio.ts', 'lib/practice-audio.web.ts']) {
     assert.match(src(engine), /async start\(pattern: Pattern, bpm: number, countIn = 0\)/, engine);
     assert.match(src(engine), /async playOnce\(pattern: Pattern, bpm: number\)/, engine);
   }
-  assert.match(tools, /current=\{step \? step\.beat : head\?\.beat \?\? null\} hands \/>/);
+  assert.match(tools, /current=\{step \? step\.beat : head\?\.beat \?\? null\}\s+hands\s/);
   assert.match(src('components/two-head-view.tsx'), /<HandCard head="baya"[\s\S]*<HandCard head="dayan"/);
   // Stop after N: the stop runs from a timer, not inside the effect (react-hooks/set-state-in-effect).
   assert.match(tools, /cycles < stopAfter\) return;\s*const id = setTimeout/);

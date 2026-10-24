@@ -3,7 +3,7 @@
 // while playing, and say which beat is being heard now so the screen (beat dots, beat grid, the
 // two-head view) can light it in time with the sound.
 
-import type { Pattern } from './practice-pattern';
+import type { Layer, Pattern } from './practice-pattern';
 
 /** Where the sound is: the beat being heard within the cycle (fractional) and the cycle count. */
 export type PlayerPosition = { beat: number; cycle: number };
@@ -18,6 +18,8 @@ export type PracticePlayer = {
   playOnce(pattern: Pattern, bpm: number): Promise<boolean>;
   /** Changes the tempo while playing, keeping the place in the cycle. */
   setTempo(bpm: number): void;
+  /** A layer's volume, 0-1 (the kartal, #492); kept for the next start too. Changes while playing, in place. */
+  setLayerVolume(layer: Layer, volume: number): void;
   stop(): void;
   /** The beat being heard now, or null when stopped (or before the first beat). */
   position(): PlayerPosition | null;

@@ -5,7 +5,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-import { cyclesPassed, type Pattern } from './practice-pattern';
+import { cycleAt, cyclesPassed, cyclesPerLoop, type Pattern } from './practice-pattern';
 import type { PlayerPosition, PracticePlayer } from './practice-player';
 
 /** What is being heard. */
@@ -21,6 +21,8 @@ export type Playhead = {
   count: number;
   /** Cycles completed since beat 1 (after any count-in): the cycle counter and the speed trainer's clock (#403). */
   cycles: number;
+  /** A silent cycle is heard now (#490): the student keeps the taal going alone. */
+  silent: boolean;
 };
 
 /** How long a stroke stays bright, seconds (shorter at fast tempos). */
@@ -39,32 +41,37 @@ export function usePlayhead(player: PracticePlayer, pattern: Pattern | null, bpm
   }, [player, pattern, playing, starts]);
 
   useEffect(() => {
-    if (!playing || !pattern || pattern.events.length === 0) return;
+    if (!playing || !pattern) return;
+    const strokes = pattern.events.filter((e) => !e.layer);
+    if (strokes.length === 0) return;
     let frame = 0;
     let lastKey = '';
     const step = () => {
       const at = player.position();
       if (at) {
+        // The loop may hold several taal cycles (silent cycles, #490): count and show taal cycles.
         counter.current.cycles += cyclesPassed(counter.current.lastAt, at, pattern.beats);
         counter.current.lastAt = at;
-        const cycles = counter.current.cycles;
-        // The last bol that has started: events are sorted by `at`.
+        const where = cycleAt(pattern, at.beat);
+        const cycles = counter.current.cycles * cyclesPerLoop(pattern) + where.cycleInLoop;
+        // The last bol that has started: events are sorted by `at`; a layer (the kartal) is not a bol.
         let index = -1;
-        for (let i = 0; i < pattern.events.length; i++) {
-          if (pattern.events[i].at <= at.beat + 1e-6) index = i;
+        for (let i = 0; i < strokes.length; i++) {
+          if (strokes[i].at <= at.beat + 1e-6) index = i;
           else break;
         }
         // Before the first bol of a cycle: still the last bol of the previous cycle.
         const cycle = index === -1 ? at.cycle - 1 : at.cycle;
-        const event = pattern.events[index === -1 ? pattern.events.length - 1 : index];
+        const event = strokes[index === -1 ? strokes.length - 1 : index];
         const since = ((at.beat - event.at + (index === -1 ? pattern.beats : 0)) * 60) / bpm;
-        const fresh = since < Math.min(FRESH_SECONDS, (0.6 * 60) / bpm);
-        const count = cycle * pattern.events.length + (index === -1 ? pattern.events.length - 1 : index);
-        const beat = Math.min(pattern.beats - 1, Math.floor(at.beat));
-        const key = `${count}:${fresh}:${beat}:${cycles}`;
+        const fresh = !where.silent && since < Math.min(FRESH_SECONDS, (0.6 * 60) / bpm);
+        const count = cycle * strokes.length + (index === -1 ? strokes.length - 1 : index);
+        const cycleBeats = pattern.silent?.cycleBeats ?? pattern.beats;
+        const beat = Math.min(cycleBeats - 1, Math.floor(where.beat));
+        const key = `${count}:${fresh}:${beat}:${cycles}:${where.silent}`;
         if (key !== lastKey) {
           lastKey = key;
-          setHead({ beat, bolBeat: event.beat, part: event.part, fresh, count, cycles });
+          setHead({ beat, bolBeat: event.beat, part: event.part, fresh, count, cycles, silent: where.silent });
         }
       }
     };

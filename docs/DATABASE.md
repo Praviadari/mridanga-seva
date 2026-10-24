@@ -55,6 +55,9 @@ in number order:
 | `0053_staff_own_record.sql` | Coordinators are students too (placeholder 0061 on branch `staff-own-record`, renumbered 22-10-2026; [DECISIONS.md #316-#321](DECISIONS.md)): `link_staff_record` (the Guru links a coordinator's login to its own student record), `my_student_id()` for staff, `refuse_own_record` (nobody records about their own record), `guard_own_student` (own mentor, own level), `guard_staff_record` (no withdrawal or erasure while a staff login is on the record); replaces `check_out_all` and `assign_mentor`. See "Own record (0053)" |
 | `0054_after_launch_forms.sql` | After-launch forms and flows (placeholder 0062 on branch `after-launch-forms`, renumbered 22-10-2026; [DECISIONS.md #322-#329](DECISIONS.md)): `request_id` (unique) on 10 tables and the request-id twins of `record_fund_entry`, `log_call`, `log_practice` (a create saved once); `material_file_deletable` (an approved material's file: the Guru only); `change_event_attendance`; the Guru's `delete_student_record` and `undo_import` (`students.import_id`, `import_students` stamps it); phones kept as E.164 (`phone_e164`, trigger `keep_phone_e164` on students, guardians, profiles, Ishtagoshti subscribers; stored numbers rewritten once, OPERATIONS "Phones that are not E.164"); `ig_send_parent_code` at most 3 codes a day per parent address, `name_for_email` |
 | `0055_practice_links.sql` | "Learn more" under Practice ([DECISIONS.md #474](DECISIONS.md)): `practice_links` (title, https link, note, order, on/off; class roles read the ones switched on, only the Guru reads all and writes). See "Learn more links (0055)" |
+| `0056_practice_extras.sql` | Practice extras ([DECISIONS.md #493-#495](DECISIONS.md)): how a practice session went (`practice_logs.feeling`, `practised`, written by `set_practice_feeling`), `practice_history()` for the milestones and the staff list `staff_practice_week()`. See "Practice extras (0056)" |
+| `0057_practice_while_waiting.sql` | Practice while waiting for the desk ([DECISIONS.md #510-#512](DECISIONS.md)): one read-only function `practice_while_waiting()` (adult by the sign-up's date of birth, or a child after the parent's yes) that the practice read policies also call; no table, no write |
+| `0058_parent_digest.sql` | The weekly email to parents, opt-in ([DECISIONS.md #530-#539](DECISIONS.md)): table `parent_digests`, the Guru's switch `parent_digest_enabled` (off), consent scope `digest`, staff and preview functions, job `mridanga-parent-digests` |
 | `0059_data_rights.sql` | A person's data rights in the app (audit 22-10-2026 fix 17; [DECISIONS.md #550-#556](DECISIONS.md)): `data_requests` (a person reads their own, the Guru all; written only by the functions), `my_data_summary`, `file_data_request`, `cancel_data_request`, the Guru's `record_data_request`, `answer_data_request`, `act_on_data_request`; job `mridanga-data-requests`. See "Data requests (0059)" |
 
 The Phase 2 files were renumbered when they merged into main (#55). TEST ran some under their
@@ -1655,6 +1658,30 @@ run, Learn more shows the copy on the phone (empty at first) and the Guru cannot
 
 Tests: section "0052 more practice" in `supabase/tests/smoke-test.mjs`.
 
+## Practice extras (0056)
+
+[DECISIONS.md #493-#495](DECISIONS.md). Migration `0056_practice_extras.sql`. Screens: S5 Practice tools ("How did it go?"
+under the timer), S6 My practice log (the same on Add practice), S4 My progress and C8 (milestones; how the sessions
+went), staff/practice-week (practice this week per student). Additive: no existing row or function changes.
+
+| Table / column | What it holds | Who writes |
+|---|---|---|
+| `practice_logs.feeling` | How the session went, said by the student after it: 1 hard, 2 okay, 3 good; null = not said (every entry made before 0056) | Only `set_practice_feeling` (check `practice_logs_feeling_check`) |
+| `practice_logs.practised` | What was practised: `taal`, `lesson` and/or `free` (once each, in that order); null = not said | Only `set_practice_feeling` (check `practice_logs_practised_check`) |
+
+| Function | Who | What | Errors |
+|---|---|---|---|
+| `set_practice_feeling(id, feeling, practised)` | Student (security definer, own entry only) | Sets (or with nulls clears) how an own entry of the last 14 days went | `not_allowed`, `too_old`, `feeling_invalid`, `practised_invalid` |
+| `practice_history(student)` | Anyone (security invoker) | JSON `{goal_days, goal_minutes, goal_own, days: [{on, minutes}]}`: `practice_days`' goal and every day with practice ever, oldest first (for the milestones). Row-level security decides, as `practice_days` | — |
+| `staff_practice_week(weeks_ago)` | Staff (security invoker; `not_allowed` for others) | One row per student still in the class (not `left`, not withdrawn, not the caller's own record): `student_id`, `roll_no`, `full_name`, `level_id`, `status`, `mentor_id`, `week_start` (Monday, India, 0-8 weeks ago), `minutes`, `days`, `goal_days`, `goal_minutes` (own, else level's, else 4 x 15), `last_on` (last day with practice ever), `hard` / `okay` / `good` (that week's entries); least minutes first, then fewest days, then longest since practice | `not_allowed` |
+
+Who sees what: `feeling` and `practised` are read like the rest of a practice entry (0018): the student their own, staff
+everyone's. The staff list shows the whole class, as the Students tab. **New data about a child (a self-rating):** the
+privacy notice's "Learning" row names it. If 0056 has not run, the app shows no milestones, does not ask how it went
+(the log still loads, without it) and the staff list says it could not load.
+
+Tests: section "0056 practice extras" in `supabase/tests/smoke-test.mjs`.
+
 ## Practice while waiting (0057)
 
 [DECISIONS.md #510-#512](DECISIONS.md). Migration `0057_practice_while_waiting.sql`. Screens: the waiting page's "While
@@ -1847,6 +1874,9 @@ switched-off login is refused like a stranger.
 | `guru_dashboard()` | Guru | The Guru dashboard's numbers. See "Home screens" |
 | `staff_dashboard()` | Guru, coordinator | The staff homes' Today numbers and what waits for the caller, in one request (0050). See "Staff home: today and waiting (0050)" |
 | `practice_days(student, weeks)` | Anyone (security invoker) | A student's practice minutes per day and their weekly goal (0052). See "Practice of the week and the weekly goal (0052)" |
+| `practice_history(student)` | Anyone (security invoker) | Every practice day ever with the goal, for the milestones (0056). See "Practice extras (0056)" |
+| `set_practice_feeling(id, feeling, practised)` | Student, own entry | How a practice session went (0056, #494). See "Practice extras (0056)" |
+| `staff_practice_week(weeks_ago)` | Staff (security invoker) | Practice of a week per student, least first (0056, #495). See "Practice extras (0056)" |
 | `move_syllabus_item(item, up)` | Guru | Moves a syllabus item one place up or down among the items in use. See "Syllabus editor" |
 | `syllabus_item_counts()` | Guru, coordinator | Ticks and materials per syllabus item. See "Syllabus editor" |
 | `week_start_ist()` | Anyone signed in | First day of "this week" at the caller's centre (Monday, or 6 days ago with `week_starts` = `rolling7`); used by the functions above |

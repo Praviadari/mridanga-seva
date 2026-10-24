@@ -1,6 +1,8 @@
 // Practice tools (Phase 2 slice 3, docs/DECISIONS.md #54): the taals the player loops (S5, V1), the
 // Guru's taal editor, and the practice log (S6) with weekly totals for S4 My progress and C8.
 // Since 0052 (#400-#401): practice per day with the level's weekly goal, and the practice of the week per level.
+// Since 0056 (#493-#495): how a session went (feeling, practised), the whole history for the milestones, and the
+// staff list of practice this week per student.
 // Database: supabase/migrations/0018_practice.sql. Row-level security: everyone signed in reads the
 // taals switched on, staff all of them, only the Guru writes; a student reads their own practice
 // and staff everyone's, and practice is written only through log_practice / delete_practice.
@@ -8,7 +10,9 @@
 // The player must work offline, so the last taals loaded are kept on this device, and the seeded
 // placeholder taals are built in as a last resort (a phone that never reached the server).
 
+import { addDays, todayLocal } from '@/lib/dates';
 import { readLocal, writeLocal } from '@/lib/local-storage';
+import { mondayOf } from '@/lib/streak';
 import { DEFAULT_GOAL, type PracticeDay, type PracticeGoal } from '@/lib/practice-goal';
 import { supabase } from '@/lib/supabase';
 
@@ -176,6 +180,16 @@ export async function deleteTaal(id: number): Promise<MessageKey | null> {
 
 // ---------------------------------------------------------------- practice log
 
+/** How a session went (#494, 0056): 1 hard, 2 okay, 3 good. */
+export type Feeling = 1 | 2 | 3;
+
+/** What was practised in a session (#494): a taal, a lesson, free practice. */
+export type Practised = 'taal' | 'lesson' | 'free';
+
+/** The faces in their order, and the practised chips in theirs (as the database keeps them). */
+export const FEELINGS: readonly Feeling[] = [1, 2, 3];
+export const PRACTISED_KINDS: readonly Practised[] = ['taal', 'lesson', 'free'];
+
 /** One practice entry (table practice_logs). */
 export type PracticeEntry = {
   id: number;
@@ -185,6 +199,9 @@ export type PracticeEntry = {
   source: 'timer' | 'manual';
   taalId: number | null;
   note: string | null;
+  /** How it went and what was practised (0056), null when not said (or before 0056 ran). */
+  feeling: Feeling | null;
+  practised: Practised[] | null;
 };
 
 /** Minutes of one week (from Monday, at the class), newest week first. */
@@ -192,6 +209,7 @@ export type PracticeWeek = { weekStart: string; minutes: number; entries: number
 
 const PRACTICE_CODES = [
   'not_allowed', 'minutes_invalid', 'started_invalid', 'date_invalid', 'taal_not_found', 'note_too_long', 'day_full', 'too_many', 'too_old',
+  'feeling_invalid', 'practised_invalid',
 ] as const;
 
 function practiceErrorKey(message: string | undefined): MessageKey {
@@ -213,11 +231,11 @@ export type PracticeInput = {
 };
 
 /**
- * Logs practice for the signed-in student. null = saved, else the message to show. equestId: the
- * entry's own id (#322), so Stop or Save tapped again after a lost answer logs it once.
+ * Logs practice for the signed-in student: the new entry's id (for "How did it go?", #494), else the message to show.
+ * requestId: the entry's own id (#322), so Stop or Save tapped again after a lost answer logs it once.
  */
-export async function logPractice(input: PracticeInput, requestId: string): Promise<MessageKey | null> {
-  const { error } = await rpcOnce('log_practice', {
+export async function logPractice(input: PracticeInput, requestId: string): Promise<{ id: number | null } | { errorKey: MessageKey }> {
+  const { data, error } = await rpcOnce('log_practice', {
     p_request_id: requestId,
     p_minutes: input.minutes,
     p_source: input.source,
@@ -227,6 +245,15 @@ export async function logPractice(input: PracticeInput, requestId: string): Prom
     p_taal: input.taalId && input.taalId > 0 ? input.taalId : null,
     p_note: input.note ?? null,
   });
+  // bigint may come back as a string.
+  return error ? { errorKey: practiceErrorKey(error.message) } : { id: data === null ? null : Number(data) };
+}
+
+/**
+ * How an own entry of the last 14 days went (#494, 0056): a face and what was practised; nulls clear it. null = saved.
+ */
+export async function setPracticeFeeling(id: number, feeling: Feeling | null, practised: readonly Practised[]): Promise<MessageKey | null> {
+  const { error } = await supabase.rpc('set_practice_feeling', { p_id: id, p_feeling: feeling, p_practised: practised.length > 0 ? practised : null });
   return error ? practiceErrorKey(error.message) : null;
 }
 
@@ -404,19 +431,146 @@ export type PracticeLog = { studentId: string; weeks: PracticeWeek[]; entries: P
 export async function fetchMyPracticeLog(profileId: string): Promise<PracticeLog | 'not_found' | null> {
   const studentId = await fetchMyStudentId(profileId);
   if (studentId === null || studentId === 'not_found') return studentId;
-  const [weeks, rows] = await Promise.all([
-    fetchPracticeWeeks(studentId, 8),
+  const [weeks, rows] = await Promise.all([fetchPracticeWeeks(studentId, 8), practiceRows(studentId)]);
+  if (!weeks || !rows) return null;
+  const entries = rows
+    .filter((r) => r.practised_on >= weeks[weeks.length - 1].weekStart)
+    .map((r) => ({
+      id: r.id,
+      practisedOn: r.practised_on,
+      minutes: r.minutes,
+      source: r.source,
+      taalId: r.taal_id,
+      note: r.note,
+      feeling: r.feeling ?? null,
+      practised: r.practised ?? null,
+    }));
+  return { studentId, weeks, entries };
+}
+
+type PracticeRow = {
+  id: number;
+  practised_on: string;
+  minutes: number;
+  source: 'timer' | 'manual';
+  taal_id: number | null;
+  note: string | null;
+  feeling?: Feeling | null;
+  practised?: Practised[] | null;
+};
+
+/** The student's last 100 entries, newest first; before 0056 ran (no feeling column) without how they went. */
+async function practiceRows(studentId: string): Promise<PracticeRow[] | null> {
+  const read = (columns: string) =>
     supabase
       .from('practice_logs')
-      .select('id, practised_on, minutes, source, taal_id, note')
+      .select(columns)
       .eq('student_id', studentId)
       .order('practised_on', { ascending: false })
       .order('id', { ascending: false })
-      .limit(100),
-  ]);
-  if (!weeks || rows.error) return null;
-  const entries = (rows.data as { id: number; practised_on: string; minutes: number; source: 'timer' | 'manual'; taal_id: number | null; note: string | null }[])
-    .filter((r) => r.practised_on >= weeks[weeks.length - 1].weekStart)
-    .map((r) => ({ id: r.id, practisedOn: r.practised_on, minutes: r.minutes, source: r.source, taalId: r.taal_id, note: r.note }));
-  return { studentId, weeks, entries };
+      .limit(100);
+  let result = await read('id, practised_on, minutes, source, taal_id, note, feeling, practised');
+  if (result.error?.code === '42703') result = await read('id, practised_on, minutes, source, taal_id, note');
+  return result.error ? null : (result.data as unknown as PracticeRow[]);
+}
+
+/**
+ * A student's whole practice history with their goal (practice_history, 0056; #493), for the milestones. null = could
+ * not be loaded (or 0056 has not run): the milestones are left out.
+ */
+export async function fetchPracticeHistory(studentId: string): Promise<PracticeDays | null> {
+  const { data, error } = await supabase.rpc('practice_history', { p_student: studentId });
+  if (error || !data) return null;
+  const row = data as { goal_days: number; goal_minutes: number; goal_own?: boolean; days: { on: string; minutes: number }[] };
+  return {
+    goal: { days: row.goal_days ?? DEFAULT_GOAL.days, minutes: row.goal_minutes ?? DEFAULT_GOAL.minutes },
+    own: row.goal_own === true,
+    days: (row.days ?? []).map((d) => ({ on: d.on, minutes: d.minutes })),
+  };
+}
+
+/** Sessions by how they went (#494). */
+export type FeelingTally = { hard: number; okay: number; good: number };
+
+/**
+ * How a student's sessions of the last `weeks` weeks went (the student and staff read practice_logs, 0018). null =
+ * could not be loaded (or 0056 has not run): left out.
+ */
+export async function fetchRecentFeelings(studentId: string, weeks: number): Promise<FeelingTally | null> {
+  const since = addDays(mondayOf(todayLocal()), -7 * (weeks - 1));
+  const { data, error } = await supabase
+    .from('practice_logs')
+    .select('feeling')
+    .eq('student_id', studentId)
+    .gte('practised_on', since)
+    .not('feeling', 'is', null);
+  if (error || !data) return null;
+  const tally = { hard: 0, okay: 0, good: 0 };
+  for (const row of data as { feeling: Feeling }[]) {
+    if (row.feeling === 1) tally.hard++;
+    else if (row.feeling === 2) tally.okay++;
+    else if (row.feeling === 3) tally.good++;
+  }
+  return tally;
+}
+
+// ---------------------------------------------------------------- practice this week, staff (0056, #495)
+
+/** One student's practice in a week, for the staff list. */
+export type StudentPracticeWeek = {
+  studentId: string;
+  rollNo: string | null;
+  fullName: string;
+  levelId: number;
+  status: string;
+  mentorId: string | null;
+  weekStart: string;
+  minutes: number;
+  days: number;
+  goal: PracticeGoal;
+  /** Last day with practice ever, or null. */
+  lastOn: string | null;
+  /** That week's sessions by how they went. */
+  feelings: { hard: number; okay: number; good: number };
+};
+
+/**
+ * Practice of every student still in the class in the week `weeksAgo` weeks before this one (0-8), least first.
+ * Staff only. null = could not be loaded (or 0056 has not run).
+ */
+export async function fetchStaffPracticeWeek(weeksAgo: number): Promise<StudentPracticeWeek[] | null> {
+  const { data, error } = await supabase.rpc('staff_practice_week', { p_weeks_ago: weeksAgo });
+  if (error || !data) return null;
+  return (
+    data as {
+      student_id: string;
+      roll_no: string | null;
+      full_name: string;
+      level_id: number;
+      status: string;
+      mentor_id: string | null;
+      week_start: string;
+      minutes: number;
+      days: number;
+      goal_days: number;
+      goal_minutes: number;
+      last_on: string | null;
+      hard: number;
+      okay: number;
+      good: number;
+    }[]
+  ).map((r) => ({
+    studentId: r.student_id,
+    rollNo: r.roll_no,
+    fullName: r.full_name,
+    levelId: r.level_id,
+    status: r.status,
+    mentorId: r.mentor_id,
+    weekStart: r.week_start,
+    minutes: r.minutes,
+    days: r.days,
+    goal: { days: r.goal_days, minutes: r.goal_minutes },
+    lastOn: r.last_on,
+    feelings: { hard: r.hard, okay: r.okay, good: r.good },
+  }));
 }

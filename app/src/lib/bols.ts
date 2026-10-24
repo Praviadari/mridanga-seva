@@ -24,8 +24,8 @@ export type Zone = 'kinar' | 'maidan' | 'syahiEdge' | 'syahi' | 'whole';
 /** What touches the head. Shown in words next to the drawing. */
 export type Touch = 'index' | 'middle' | 'threeFingers' | 'flatHand' | 'fingers' | 'wristFingers' | 'slide';
 
-/** The sounds the player makes (synthesised in lib/practice-sounds.ts). */
-export type SoundId = 'ta' | 'na' | 'ti' | 'ra' | 'te' | 'ka' | 'gha' | 'ga' | 'gin' | 'plain' | 'click' | 'accent';
+/** The sounds the player makes (synthesised in lib/practice-sounds.ts); kartal = the kartal layer (#492). */
+export type SoundId = 'ta' | 'na' | 'ti' | 'ra' | 'te' | 'ka' | 'gha' | 'ga' | 'gin' | 'plain' | 'click' | 'accent' | 'kartal' | 'kartalClosed';
 
 /** One stroke of one hand. */
 export type Stroke = {

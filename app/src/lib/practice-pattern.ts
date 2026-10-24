@@ -7,15 +7,20 @@
 import { readBeat, type Bol, type SoundId } from './bols';
 import type { PlayerPosition } from './practice-player';
 
+/** A layer of sounds with its own volume, under the strokes (#492). */
+export type Layer = 'kartal';
+
 /** One sound in the cycle. */
 export type PatternEvent = {
   /** Position in beats from the start of the cycle (0 ≤ at < beats). */
   at: number;
-  /** The beat it belongs to (0-based). */
+  /** The beat it belongs to (0-based; within one taal cycle when the pattern holds several). */
   beat: number;
   /** Which bol of the beat (0-based), for the two-head view. */
   part: number;
   sound: SoundId;
+  /** A layer with its own volume; none = the strokes or clicks themselves. */
+  layer?: Layer;
 };
 
 /** One cycle. */
@@ -26,6 +31,11 @@ export type Pattern = {
   events: PatternEvent[];
   /** Same key = same sounds, so an engine can keep what it prepared. */
   key: string;
+  /**
+   * Silent cycles (#490): the loop is `play` cycles with sound and `mute` without, each `cycleBeats` long, so `beats`
+   * = cycleBeats × (play + mute). Absent: the loop is one cycle.
+   */
+  silent?: { cycleBeats: number; play: number; mute: number };
 };
 
 /** Metronome: one bar of `beatsPerBar` clicks, the first one accented. */
@@ -42,20 +52,145 @@ export function readTaal(bols: readonly string[]): Bol[][] {
   return bols.map(readBeat);
 }
 
-/** Taal player: every stroke of every bol of one cycle. */
-export function taalPattern(bols: readonly string[]): Pattern {
-  const beats = readTaal(bols);
+/**
+ * Layakari (#491): 1 = barabar (one written beat a beat), 2 = dugun, 3 = tigun, 4 = chaugun: so many written beats in
+ * each beat of the cycle, the theka going round 2, 3 or 4 times in one cycle while sam and the vibhags stay.
+ */
+export type Laya = 1 | 2 | 3 | 4;
+
+/** The layakari choices, in order. */
+export const LAYAS: readonly Laya[] = [1, 2, 3, 4];
+
+/** One written beat inside a beat of the cycle, at layakari: which written beat and its bols. */
+export type LayaGroup = { from: number; bols: Bol[] };
+
+/**
+ * The taal at layakari `laya`: for each beat of the cycle, the `laya` written beats it holds, in order (beat b holds
+ * written beats b × laya … b × laya + laya − 1, round the cycle). At 1 each beat holds its own.
+ */
+export function layaGroups(bols: readonly string[], laya: Laya = 1): LayaGroup[][] {
+  const written = readTaal(bols);
+  const n = written.length;
+  return written.map((_, beat) =>
+    Array.from({ length: laya }, (__, j) => {
+      const from = (beat * laya + j) % n;
+      return { from, bols: written[from] };
+    }),
+  );
+}
+
+/** The bols of each beat of the cycle at layakari, one after the other (what the two-head view reads by part). */
+export function layaBeats(bols: readonly string[], laya: Laya = 1): Bol[][] {
+  return layaGroups(bols, laya).map((groups) => groups.flatMap((g) => g.bols));
+}
+
+/**
+ * How a beat reads at layakari, for the beat grid: each written beat as one word, its bols run together ('te.re' →
+ * "tere"), the words apart, a rest as "–": dugun of dhā | ti → "dhā ti", of te.re | dhā → "tere dhā". At 1 the
+ * beat's bols apart as before ("te re").
+ */
+export function layaText(groups: readonly LayaGroup[]): string {
+  if (groups.length === 1) {
+    const only = groups[0].bols;
+    return only.length === 1 && only[0].text === '-' ? '–' : only.map((b) => b.text).join(' ');
+  }
+  return groups.map((g) => (g.bols.length === 1 && g.bols[0].text === '-' ? '–' : g.bols.map((b) => (b.text === '-' ? '–' : b.text)).join(''))).join(' ');
+}
+
+/**
+ * Taal player: every stroke of every bol of one cycle; at layakari (#491) each beat holds `laya` written beats, each
+ * a 1/laya of the beat, its bols spread evenly inside that.
+ */
+export function taalPattern(bols: readonly string[], laya: Laya = 1): Pattern {
   const events: PatternEvent[] = [];
-  beats.forEach((parts, beat) => {
-    parts.forEach((bol, part) => {
-      const start = beat + part / parts.length;
-      for (const stroke of bol.strokes) {
-        events.push({ at: start + (stroke.delay ?? 0) / parts.length, beat, part, sound: stroke.sound });
-      }
+  layaGroups(bols, laya).forEach((groups, beat) => {
+    let part = 0;
+    groups.forEach((group, j) => {
+      const width = 1 / (laya * group.bols.length);
+      group.bols.forEach((bol, k) => {
+        const start = beat + j / laya + k * width;
+        for (const stroke of bol.strokes) {
+          events.push({ at: start + (stroke.delay ?? 0) * width, beat, part, sound: stroke.sound });
+        }
+        part++;
+      });
     });
   });
   events.sort((a, b) => a.at - b.at);
-  return { beats: bols.length, events, key: `taal:${bols.join(' ')}` };
+  return { beats: bols.length, events, key: `taal:${bols.join(' ')}${laya > 1 ? `:x${laya}` : ''}` };
+}
+
+/**
+ * The kartal layer (#492) under a taal: a ringing (open) kartal on the first beat of each vibhag, a short closed one on
+ * every other beat; on the beats, also at dugun to chaugun. A plain time-keeping pattern until the Guru gives the
+ * class's own.
+ */
+export function withKartal(pattern: Pattern, divisions: readonly number[]): Pattern {
+  const starts = new Set<number>();
+  let at = 0;
+  for (const size of divisions) {
+    starts.add(at);
+    at += size;
+  }
+  if (starts.size === 0) starts.add(0);
+  const kartal: PatternEvent[] = Array.from({ length: pattern.beats }, (_, beat) => ({
+    at: beat,
+    beat,
+    part: -1,
+    sound: starts.has(beat) ? 'kartal' : 'kartalClosed',
+    layer: 'kartal',
+  }));
+  // At the same moment the kartal comes before the stroke (the playhead skips layers anyway).
+  const events = [...kartal, ...pattern.events].sort((a, b) => a.at - b.at || (a.layer ? 0 : 1) - (b.layer ? 0 : 1));
+  return { ...pattern, events, key: `${pattern.key}:kartal` };
+}
+
+/** Most cycles with sound, and without, in the silent-cycles trainer (#490). */
+export const SILENT_CHOICES = [1, 2, 3, 4] as const;
+
+/**
+ * The longest loop, seconds, that the silent cycles may make: the phone mixes the whole loop into one WAV file
+ * (practice-audio.ts; 160 s ≈ 7 MB at 22.05 kHz).
+ */
+export const MAX_LOOP_SECONDS = 160;
+
+/** True when `play` + `mute` cycles of `cycleBeats` beats at `bpm` fit in one loop. */
+export function silentFits(cycleBeats: number, bpm: number, play: number, mute: number): boolean {
+  return bpm > 0 && (cycleBeats * (play + mute) * 60) / bpm <= MAX_LOOP_SECONDS;
+}
+
+/**
+ * Silent cycles (#490): `play` cycles of the pattern with sound, then `mute` cycles of silence, round again. The
+ * events keep their beat within the cycle; `silent` says how the loop is made.
+ */
+export function withSilentCycles(pattern: Pattern, play: number, mute: number): Pattern {
+  if (play < 1 || mute < 1) return pattern;
+  const events: PatternEvent[] = [];
+  for (let c = 0; c < play; c++) {
+    for (const e of pattern.events) events.push({ ...e, at: e.at + c * pattern.beats });
+  }
+  return {
+    beats: pattern.beats * (play + mute),
+    events,
+    key: `${pattern.key}:silent${play}/${mute}`,
+    silent: { cycleBeats: pattern.beats, play, mute },
+  };
+}
+
+/**
+ * Where a position in the loop is in taal cycles (#490): the beat within its cycle, which cycle of the loop it is
+ * (0-based), and whether that cycle is a silent one. A loop of one cycle: as given, never silent.
+ */
+export function cycleAt(pattern: Pattern, beat: number): { beat: number; cycleInLoop: number; silent: boolean } {
+  if (!pattern.silent) return { beat, cycleInLoop: 0, silent: false };
+  const { cycleBeats, play } = pattern.silent;
+  const cycleInLoop = Math.min(Math.floor(beat / cycleBeats), pattern.beats / cycleBeats - 1);
+  return { beat: beat - cycleInLoop * cycleBeats, cycleInLoop, silent: cycleInLoop >= play };
+}
+
+/** Cycles in one loop: 1, or play + mute with silent cycles. */
+export function cyclesPerLoop(pattern: Pattern): number {
+  return pattern.silent ? pattern.silent.play + pattern.silent.mute : 1;
 }
 
 /** The tempo the player runs at: the chosen beats a minute times the slow-down (0.5, 0.75 or 1). */

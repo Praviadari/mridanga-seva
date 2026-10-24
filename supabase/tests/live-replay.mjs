@@ -54,6 +54,8 @@ const GO_LIVE = ['0013', '0014', '0015', '0016', '0017', '0018', '0019', '0020',
   '0054',
   // Learn more links under Practice (#474).
   '0055',
+  // Practice extras (#493-#495): how a session went, the history for milestones, the staff week list.
+  '0056',
   // Practice while waiting for the desk (#510-#512; branch onboarding-offline).
   '0057',
   // The weekly email to parents (#530-#539).

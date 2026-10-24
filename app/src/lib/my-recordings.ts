@@ -6,15 +6,16 @@
 
 import { Directory, File, Paths } from 'expo-file-system';
 
+import type { Laya } from './practice-pattern';
 import type { RecordedTake } from './recording';
 
 /** Most recordings kept on the phone. */
 export const MAX_RECORDINGS = 30;
 
-/** What was playing while recording, to play it again beside the recording. */
+/** What was playing while recording, to play it again beside the recording (a taal's layakari since #491; none = 1). */
 export type RecordingSetting =
   | { mode: 'metronome'; bpm: number; beatsPerBar: number }
-  | { mode: 'taal'; taalId: number; taalName: string; taalBpm: number; speed: number }
+  | { mode: 'taal'; taalId: number; taalName: string; taalBpm: number; speed: number; laya?: Laya }
   // Echo me (#472): the calls of one vibhag (null = all in turn) with the answers' clicks or not; speed is always 1.
   | { mode: 'echo'; taalId: number; taalName: string; taalBpm: number; speed: 1; vibhag: number | null; clicks: boolean };
 
