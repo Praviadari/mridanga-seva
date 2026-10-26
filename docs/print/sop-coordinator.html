@@ -1,0 +1,643 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Mridanga Seva coordinator guide</title>
+<!--
+  Screen SOP, phase 2: the coordinator's screens. A4 portrait, printed to PDF with headless Edge or Chrome:
+    msedge --headless --disable-gpu --no-pdf-header-footer --print-to-pdf=docs/print/sop-coordinator.pdf docs/print/sop-coordinator.html
+  ALL wording lives in the TEXT block in the script at the end, so a Telugu or Hindi copy only replaces that block.
+  Same renderer as sop-student.html; only IMG, COVER and MAP_IMG below the TEXT block differ.
+  Screenshots: docs/print/sop-coordinator/*.jpg, taken on the TEST web version (made-up people), 390 x 844.
+  A mark is [number, x, y] in the screenshot's own 390 x 844 pixels; the red circle is drawn at that point.
+-->
+<style>
+  @page { size: A4; margin: 0; }
+  :root { --night: #1B1E4B; --night2: #262A66; --gold: #E0B25C; --gold2: #F2CF86; --cream: #FBF4E6; --ink: #1d1f33;
+          --muted: #555a7a; --green: #2E7D32; --red: #D7263D; --saffron: #9C4A06; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { font-family: "Segoe UI", "Nirmala UI", Arial, sans-serif; font-size: 10.5pt; line-height: 1.4; color: var(--ink);
+         -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .page { width: 210mm; height: 297mm; padding: 11mm 13mm 0; position: relative; overflow: hidden; page-break-after: always; background: #fff; }
+  .page:last-child { page-break-after: auto; }
+  .serif { font-family: "Cambria", "Georgia", "Times New Roman", serif; }
+  b, strong { color: #14163a; }
+  .foot { position: absolute; left: 13mm; right: 13mm; bottom: 7mm; display: flex; justify-content: space-between;
+          font-size: 8pt; color: var(--muted); border-top: 1px solid #e6dcc3; padding-top: 1.5mm; }
+
+  /* workflow header band */
+  .band { background: linear-gradient(135deg, var(--night), var(--night2)); color: #fff; border-radius: 4mm; padding: 4mm 6mm 3.6mm;
+          position: relative; border-bottom: 1.2mm solid var(--gold); }
+  .band .kick { color: var(--gold2); font-size: 8.5pt; letter-spacing: 1.6px; text-transform: uppercase; font-weight: 700; }
+  .band h2 { margin: 0.6mm 0 0; font-size: 19pt; font-weight: 700; color: #fff; line-height: 1.15; }
+  .band .who { margin-top: 1.4mm; font-size: 9.5pt; color: #e3e1f6; }
+  .band .who b { color: var(--gold2); }
+  .intro { margin: 3mm 1mm 0; font-size: 10.5pt; }
+
+  /* phones */
+  .phones { display: flex; justify-content: center; gap: 7mm; margin: 3.5mm 0 0; }
+  .phones.two { gap: 16mm; }
+  .shot { width: 50mm; display: flex; flex-direction: column; align-items: center; }
+  .phone { width: 50mm; background: #121426; border-radius: 7mm; padding: 4.2mm 1.9mm 2.6mm; position: relative;
+           box-shadow: 0 1.2mm 3mm rgba(20,22,58,.28); }
+  .phone::before { content: ""; position: absolute; top: 1.5mm; left: 50%; width: 11mm; height: 1.4mm; margin-left: -5.5mm;
+                   background: #2c2f4a; border-radius: 1mm; }
+  .screen { position: relative; width: 100%; aspect-ratio: 390 / 844; }
+  .screen img { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: 3.4mm; }
+  .mk { position: absolute; transform: translate(-50%, -50%); width: 6mm; height: 6mm; border-radius: 50%; background: var(--red);
+        color: #fff; font-weight: 700; font-size: 9pt; line-height: 5.2mm; text-align: center; border: 0.45mm solid #fff;
+        box-shadow: 0 0 0 0.5mm rgba(215,38,61,.35), 0 0.6mm 1.2mm rgba(0,0,0,.35); }
+  .cap { margin-top: 1.8mm; font-size: 8.6pt; color: var(--muted); text-align: center; line-height: 1.3; min-height: 7mm; }
+  .cap b { color: var(--ink); }
+
+  /* drawn screen (no screenshot yet) */
+  .drawn { position: absolute; inset: 0; border-radius: 3.4mm; overflow: hidden; background: #FBF4E6; font-size: 5.6pt; line-height: 1.35; }
+  .drawn .top { background: linear-gradient(160deg, #1B1E4B, #2a2f74); color: var(--gold2); text-align: center; padding: 4mm 2mm 3.4mm; }
+  .drawn .top .t { font-family: Cambria, Georgia, serif; font-size: 9pt; }
+  .drawn .top .m { font-size: 5pt; color: #e8d6a6; }
+  .drawn .card { background: #fffdf8; margin: 2mm 2mm 0; border-radius: 1.6mm; border-top: 0.6mm solid var(--gold); padding: 2mm 2.2mm;
+                 box-shadow: 0 0.3mm 0.8mm rgba(0,0,0,.12); }
+  .drawn h4 { margin: 0 0 1mm; font-family: Cambria, Georgia, serif; font-size: 8pt; color: #1d1f33; font-weight: 600; }
+  .drawn .st { display: flex; gap: 1.4mm; margin: 1.1mm 0; align-items: flex-start; }
+  .drawn .st i { flex: none; width: 3mm; height: 3mm; border-radius: 50%; font-style: normal; text-align: center; line-height: 3mm; font-size: 5pt; color: #fff; }
+  .drawn .st i.done { background: var(--green); } .drawn .st i.now { background: var(--saffron); } .drawn .st i.todo { background: #fff; border: 0.3mm solid #b9a77f; }
+  .drawn .btn { margin-top: 1.4mm; border-radius: 3mm; background: var(--saffron); color: #fff; text-align: center; padding: 1.2mm; font-weight: 700; }
+  .drawn .row { display: flex; justify-content: space-between; border: 0.25mm solid #e3d6b8; border-radius: 1.2mm; padding: 1.2mm 1.6mm; margin-top: 1mm; }
+  .drawn .row span { color: var(--muted); }
+  .ribbon { position: absolute; left: 0; right: 0; bottom: 4mm; text-align: center; }
+  .ribbon span { background: rgba(27,30,75,.88); color: #fff; font-size: 6.5pt; padding: 0.8mm 2mm; border-radius: 2mm; }
+
+  /* a workflow: its screens in order, an arrow between them, the step under each */
+  .flow { margin: 3mm 0 0; }
+  .flow .frow { display: flex; justify-content: center; align-items: flex-start; }
+  .flow .frow + .frow { margin-top: 2mm; }
+  .flow .shot, .flow .phone { width: var(--pw); }
+  .flow .cap { text-align: left; color: var(--ink); font-size: 8.6pt; line-height: 1.32; min-height: 0; margin-top: 1.6mm; }
+  .arr { flex: none; width: 6.5mm; display: flex; align-items: center; justify-content: center; align-self: flex-start;
+         height: calc(var(--pw) * 2.164 + 6mm); }
+  .arr span { width: 5mm; height: 5mm; border-radius: 50%; background: var(--gold); color: var(--night); font-weight: 700;
+              font-size: 9pt; line-height: 4.8mm; text-align: center; }
+  .b { display: inline-block; width: 4.3mm; height: 4.3mm; border-radius: 50%; background: var(--red); color: #fff; font-weight: 700;
+       font-size: 7pt; line-height: 4.3mm; text-align: center; margin: 0 0.6mm 0 0; vertical-align: 0.2mm; }
+  .flow .mk { width: 5.2mm; height: 5.2mm; font-size: 8pt; line-height: 4.4mm; }
+  .tip { margin: 3.4mm 1mm 0; background: var(--cream); border-left: 1.4mm solid var(--gold); padding: 2.2mm 3.4mm; border-radius: 0 2mm 2mm 0; font-size: 9.6pt; }
+  .trouble { margin: 3mm 1mm 0; background: #fdf0ee; border-left: 1.4mm solid var(--red); padding: 2.2mm 3.4mm; border-radius: 0 2mm 2mm 0; font-size: 9.4pt; }
+  .trouble h3, .tip h3 { margin: 0 0 0.8mm; font-size: 10pt; color: #8e1b2b; }
+  .tip h3 { color: #7a5200; }
+  .trouble ul { margin: 0; padding-left: 4.5mm; } .trouble li { margin: 0.5mm 0; }
+
+  /* cover */
+  .cover { background: radial-gradient(ellipse at 50% 18%, #3a3f8f 0%, var(--night2) 38%, var(--night) 75%); color: #fff; padding: 0; }
+  .cover .inner { padding: 22mm 18mm 0; text-align: center; }
+  .cover .logo { width: 30mm; height: 30mm; border-radius: 50%; background: var(--cream); display: inline-flex; align-items: center; justify-content: center;
+                 box-shadow: 0 0 0 1.2mm rgba(224,178,92,.55); }
+  .cover .logo img { width: 30mm; height: 30mm; border-radius: 50%; }
+  .cover .app { margin-top: 5mm; font-size: 30pt; color: var(--gold2); }
+  .cover .motto { color: #f0d9a4; letter-spacing: 1px; font-size: 11pt; }
+  .cover .rule { width: 60mm; height: 0.5mm; background: var(--gold); margin: 6mm auto; opacity: .8; }
+  .cover h1 { font-size: 27pt; margin: 0; color: #fff; }
+  .cover .sub { margin-top: 2.5mm; font-size: 13pt; color: #e3e1f6; }
+  .cover .phones { margin-top: 12mm; gap: 6mm; }
+  .cover .phone { box-shadow: 0 2mm 6mm rgba(0,0,0,.45); }
+  .cover .note { position: absolute; left: 18mm; right: 18mm; bottom: 12mm; font-size: 9pt; color: #c9c6e6; text-align: center; line-height: 1.5; }
+
+  /* contents, map, help */
+  h2.plain { font-size: 18pt; color: var(--night); margin: 0 0 3mm; padding-bottom: 1.6mm; border-bottom: 0.9mm solid var(--gold); }
+  .toc { list-style: none; margin: 0; padding: 0; }
+  .toc li { display: flex; align-items: baseline; gap: 2mm; padding: 1.1mm 0; border-bottom: 1px dotted #d9ccad; font-size: 11pt; }
+  .toc li .no { width: 8mm; color: var(--saffron); font-weight: 700; }
+  .toc li .t { flex: 1; } .toc li .who { color: var(--muted); font-size: 9pt; } .toc li .pg { width: 10mm; text-align: right; font-weight: 700; color: var(--night); }
+  .how { display: grid; grid-template-columns: 1fr 1fr; gap: 3mm 6mm; margin-top: 4mm; }
+  .how .box { background: var(--cream); border-radius: 2.5mm; padding: 2.6mm 3.4mm; font-size: 9.6pt; }
+  .how .box h3 { margin: 0 0 1mm; font-size: 10.5pt; color: var(--night); }
+  .map { display: flex; gap: 8mm; margin-top: 3mm; align-items: flex-start; }
+  .map .phone { width: 66mm; flex: none; }
+  table.keys { border-collapse: collapse; width: 100%; font-size: 9.4pt; }
+  table.keys td { border-bottom: 1px solid #e6dcc3; padding: 1.5mm 1.2mm; vertical-align: top; }
+  table.keys td.k { width: 8mm; } table.keys td.p { width: 13mm; text-align: right; color: var(--night); font-weight: 700; white-space: nowrap; }
+  table.keys .n { display: inline-block; width: 6mm; height: 6mm; border-radius: 50%; background: var(--red); color: #fff; font-weight: 700; font-size: 9pt; line-height: 6mm; text-align: center; }
+  table.help { border-collapse: collapse; width: 100%; font-size: 9.8pt; margin-top: 2mm; }
+  table.help th { background: var(--night); color: #fff; text-align: left; padding: 1.8mm 2.4mm; }
+  table.help td { border-bottom: 1px solid #e6dcc3; padding: 1.8mm 2.4mm; vertical-align: top; }
+  table.help tr:nth-child(even) td { background: #fbf8f1; }
+</style>
+</head>
+<body>
+<div id="doc"></div>
+
+<script>
+/* ======================================================================
+   TEXT: every word on the printed pages. Translate this block only.
+   Wrapped in **double stars** = bold (a button or screen word as the app shows it).
+   ====================================================================== */
+const TEXT = {
+  lang: "en",
+  docTitle: "Coordinator guide",
+  foot: "Mridanga Seva · Coordinator guide · English · October 2026",
+  pageWord: "Page",
+  forWord: "For:",
+  troubleTitle: "If something goes wrong",
+  cover: {
+    app: "Mridanga Seva",
+    motto: "Saṅkalpa · Sādhana · Seva",
+    title: "Coordinator guide",
+    sub: "Running the class with the app, step by step, with pictures",
+    note: "For coordinators. The pictures come from the test copy of the app with a made-up coordinator " +
+          "(\"Coordinator Test\") and made-up students; a few lists were filled with sample names for the picture. " +
+          "Phase 2 of the guides. The student guide came first; the Guru's guide follows."
+  },
+  contents: {
+    title: "What is in this guide",
+    pages: [["map", "The coordinator area at a glance"]],
+    howTitle: "How to read this guide",
+    how: [
+      ["One page, one job", "Each page shows one thing you do, for example \"Check students in at the door\". Read the title, then follow the numbers."],
+      ["Red numbers", "A red circle on a picture marks where to tap or look. The same number under the picture tells you what to do there. The arrows show the order of the screens."],
+      ["Words in bold", "**Bold words** are written exactly as the app shows them, so you can find the button."],
+      ["If something goes wrong", "The red box at the foot of each page says what to do when there is no internet, a save is refused, and so on."],
+      ["Tap and Back", "Tap = touch once with your finger. The arrow ← at the top left goes back one screen."],
+      ["Android app or web", "The screens are the same in the Android app and in the web version. On a laptop the tabs sit at the left instead of the bottom."]
+    ]
+  },
+  map: {
+    kick: "Start here",
+    title: "The coordinator area at a glance",
+    who: "Every coordinator the Guru has given the coordinator role.",
+    intro: "After you sign in, the app opens on **Home**. Everything starts from the menu button, the three boxes, the circles around the drum and the five tabs at the bottom.",
+    cap: "**Home**",
+    marks: [[1, 36, 52], [2, 354, 52], [3, 317, 200], [4, 195, 275], [5, 291, 310], [6, 342, 398], [7, 324, 498], [8, 246, 563], [9, 144, 563], [10, 66, 498], [11, 48, 398], [12, 99, 310], [13, 18, 815]],
+    keys: [
+      [1, "The menu: **Overview**, **Groups**, **Level-ups**, **Practice**, **Suggestions**, **Class fund**, **My reports**, **Notifications**, and **View my profile**", ["menu", "groups", "levelup", "reports"]],
+      [2, "The bell: **Notifications**, with the number not read", ["menu"]],
+      [3, "**in class now**, **check-ins today** and **to do**: what waits for you (people at the desk, calls due, recordings to review)", ["herenow", "calls"]],
+      [4, "**Me**: your own QR and progress, only when the Guru linked your login to your own student record", []],
+      [5, "**Welcome desk**: people who signed up, and registering a student", ["accept", "register"]],
+      [6, "**Newcomers**: who joined in the last weeks, with their visits", ["students"]],
+      [7, "**Instruments**: lend, take back, labels", ["instruments"]],
+      [8, "**Seva roster**: your shifts", ["roster"]],
+      [9, "**Assessments**: give one to students, follow it, review recordings", ["assessgive", "review"]],
+      [10, "**Lessons** and [12] **Ishtagoshti**: the same as the students see (the Guru edits them)", ["students"]],
+      [11, "**Events & polls**", ["events"]],
+      [13, "Tabs: **Home**, **Check-in**, **Students**, **Follow-ups**, **News**", ["checkin", "students", "calls", "news"]]
+    ],
+    note: "A card about the privacy notice may show at the top of Home once: read it, tick and tap **Agree**, as students do. Nothing is blocked meanwhile."
+  },
+  workflows: [
+    { id: "signin", kick: "Getting started", title: "Sign in, and set up your sign-in code",
+      who: "Every coordinator. The Guru may ask every staff member for a sign-in code.",
+      intro: "Staff see children's and parents' details, so a password alone is not enough. A sign-in code from an authenticator app on your phone keeps them safe.",
+      shots: [
+        { img: "sign-in", marks: [[1, 33, 551], [2, 33, 641], [3, 40, 707]],
+          cap: "[1] Your email, [2] your password, [3] **Sign in**. Then type the 6 digits of your code if asked." },
+        { img: "home", marks: [[4, 36, 52]], cap: "[4] Open the menu, then **View my profile**." },
+        { img: "profile-mid", marks: [[5, 33, 197]], cap: "[5] Under **Sign-in code** tap **My sign-in code**." },
+        { img: "mycode", marks: [[6, 33, 398]],
+          cap: "[6] **Set up my sign-in code**: add the app to your authenticator, type one code, **Turn on my sign-in code**." }
+      ],
+      tip: "Install an authenticator first (Google Authenticator, Microsoft Authenticator, Authy). After that, every sign-in asks: after the password, the **Sign-in code** screen wants the 6 digits the authenticator shows; tap **Continue**. A new code comes every 30 seconds.",
+      trouble: [
+        "\"That code is not right\": type the code the authenticator shows now, not an old one.",
+        "Lost or changed your phone: ask the Guru to reset your code (Set-up → Sign-in codes), sign in with the password and set it up again.",
+        "\"Private details need your sign-in code\": the Guru asks for codes and you have none yet. Everything else works; set it up to see parents' details and call notes."
+      ] },
+
+    { id: "menu", kick: "Getting started", title: "The menu and My profile",
+      who: "Every coordinator.",
+      intro: "Screens that are not on Home or in the tabs are in the menu. My profile holds your language, the look of the app and Sign out.",
+      shots: [
+        { img: "home", marks: [[1, 36, 52], [2, 354, 52]], cap: "[1] The menu button. [2] The bell: your **Notifications**." },
+        { img: "menu", marks: [[3, 33, 70], [4, 33, 314], [5, 33, 602]],
+          cap: "[3] **View my profile**. [4] Teaching: **Level-ups**, **Practice**, **Suggestions**. [5] **My reports**." },
+        { img: "profile-top", marks: [[6, 33, 299], [7, 33, 505], [8, 33, 761]],
+          cap: "[6] **Language**. [7] **Appearance**. [8] **Change my name or phone**." },
+        { img: "profile-bottom", marks: [[9, 33, 448], [10, 33, 700], [11, 33, 762]],
+          cap: "[9] **Notifications on this browser** (web). [10] **Sign out**. [11] **What's new**." }
+      ],
+      tip: "**Your referral code** in My profile: give it to people you bring to the class; they type it in About you, and the Guru sees how students found the class. **See my data and rights** shows what the class keeps about you.",
+      trouble: [
+        "\"Notifications are blocked for this site\": allow notifications for the class site in the browser's settings, then come back.",
+        "Sign out on a shared or borrowed phone. Check-ins waiting for the signal are lost if you sign out before they are sent (page {checkin})."
+      ] },
+
+    { id: "accept", kick: "Welcome desk", title: "Accept people who signed up",
+      who: "The coordinator at the class desk.",
+      intro: "People who made an account at home wait for the desk. Check their name against an ID, then accept them: the app registers them from what they typed and gives a roll number.",
+      shots: [
+        { img: "desk", marks: [[1, 33, 213], [2, 33, 391], [3, 33, 481]],
+          cap: "[1] Home → **Welcome desk**: who waits. [2] **Refresh list**. [3] **Find a person waiting**." },
+        { img: "desk-list", marks: [[4, 33, 249], [5, 33, 510]],
+          cap: "[4] **Accept** beside the person. [5] A child: \"**Parent consented by email**\"." },
+        { img: "desk-accept", marks: [[6, 33, 268], [7, 33, 407], [8, 33, 463]],
+          cap: "[6] Check name and age against the ID. [7] **Accept**. [8] Something wrong? **Change something first: fill the form**." },
+        { img: "desk-child", marks: [[9, 33, 235], [10, 78, 529], [11, 33, 697]],
+          cap: "A child: [9] the parent's details. [10] Tick the parent's ID you saw. [11] **Accept**." }
+      ],
+      tip: "Only the kind of ID is kept, never its number. A child appears in the list only after the parent has agreed by email; the parent comes to the desk with an ID the first time.",
+      trouble: [
+        "Nobody in the list: tap **Refresh list**. The person may not have opened the email link yet, or signed up at another centre.",
+        "\"Possible duplicate\": the same name and date of birth, or phone, is already there. Open it and check before you accept.",
+        "No date of birth, or under 18 without the parent's consent: only **fill the form** is offered (page {register})."
+      ] },
+
+    { id: "register", kick: "Welcome desk", title: "Register a student at the desk (Fill the form)",
+      who: "The coordinator at the class desk. For walk-ins, and for sign-ups that need a change.",
+      intro: "Two steps, about two minutes. For a sign-up, **fill the form** puts in what they typed; check every field with the person.",
+      shots: [
+        { img: "desk-step1", marks: [[1, 33, 130], [2, 33, 356], [3, 33, 515], [4, 33, 674]],
+          cap: "Step 1: [1] from the sign-up. [2] Name as on the ID. [3] Date of birth. [4] Phone, email. **Next: more details**." },
+        { img: "desk-save", marks: [[5, 33, 291], [6, 33, 381], [7, 33, 796]],
+          cap: "Step 2: area, pincode, interests, [5] gender, [6] **Mentor coordinator**. [7] **Save student**." },
+        { img: "desk-parent", marks: [[8, 33, 224], [9, 33, 519], [10, 33, 664]],
+          cap: "Under 18: [8] the parent's name, phone, email. [9] Relation. [10] The ID you saw." },
+        { img: "desk-consent", marks: [[11, 33, 398], [12, 33, 573]],
+          cap: "[11] Show the **Privacy notice for parents**. [12] Tick: the parent signed the paper form." }
+      ],
+      tip: "Never write down an ID number. The parent's paper consent form stays with the class records. **More about the student (optional)** holds the About-you questions; the student can also fill them in later.",
+      trouble: [
+        "A red message under a box: correct that box (names take letters only), then **Save student** again. The app goes to the first box with a problem.",
+        "\"Possible duplicate\": the person may already be registered. Open the record before saving a second one.",
+        "Saved twice by mistake (a lost answer): the app keeps the student once and says so."
+      ] },
+
+    { id: "checkin", kick: "Every class", title: "Check students in at the door",
+      who: "The coordinator at the door.",
+      intro: "Students show **My QR** on their phone or a printed QR card. No phone and no card? Find the name.",
+      shots: [
+        { img: "checkin", marks: [[1, 33, 125], [2, 33, 523]],
+          cap: "[1] The **Check-in** tab: **Scan to check in**. [2] Or **Find by name**." },
+        { img: "scan-allow", marks: [[3, 33, 168]],
+          cap: "[3] The first time: **Allow the camera**. Hold the code in front of it." },
+        { img: "checkin-search", marks: [[4, 33, 523], [5, 33, 701]],
+          cap: "[4] Two letters of the name or digits of the roll number. [5] **Check in**." },
+        { img: "checkin-done", marks: [[6, 33, 700]],
+          cap: "[6] Green: **Checked in at** and the time. Scan again when they leave: **checked out**." }
+      ],
+      tip: "No internet? Keep going. The app says **No connection: saved on this phone** and sends the check-ins by itself when the signal is back. Keep the app open and do not sign out until they are sent.",
+      trouble: [
+        "\"Already checked in\": the code was scanned twice within 30 seconds. Nothing changed.",
+        "A red **Outside area** line: the phone was outside the centre's area or gave no location. The visit is saved; the Guru sees the flag.",
+        "A printed card \"not recognised\": it was replaced by a new one. Use My QR or print a new card (page {qrcards})."
+      ] },
+
+    { id: "herenow", kick: "Every class", title: "Who is in class, and Check out all",
+      who: "The coordinator closing the class.",
+      intro: "See who is in the hall now, check one student out, or everyone at closing time.",
+      shots: [
+        { img: "checkin", marks: [[1, 33, 362]], cap: "[1] Check-in tab → **In class now** (or the box on Home)." },
+        { img: "herenow", marks: [[2, 33, 192], [3, 33, 412], [4, 33, 702]],
+          cap: "[2] **Check out** one student. [3] A flagged check-in. [4] **Check out all**." },
+        { img: "checkout-all", marks: [[5, 33, 732]],
+          cap: "[5] **Yes, check out all**. Each visit ends now." }
+      ],
+      tip: "A visit left open from an earlier day ends at that day's closing time. When the Guru has switched on emails to parents, a child's parent gets an email at check-out.",
+      trouble: [
+        "Nobody listed but students are in the hall: they were not checked in. Check them in now from the Check-in tab.",
+        "The list looks old: tap **Refresh**."
+      ] },
+
+    { id: "students", kick: "Students", title: "Find a student and open the student page",
+      who: "Every coordinator.",
+      intro: "The Students tab lists everyone in the class. A student's page holds the details, calls, visits, syllabus and level-up check.",
+      shots: [
+        { img: "students", marks: [[1, 33, 202], [2, 33, 290], [3, 33, 486]],
+          cap: "[1] Search by name or roll number. [2] **Filters**: level, status, mentor, last visit. [3] Tap a student." },
+        { img: "student-top", marks: [[4, 33, 254], [5, 33, 318], [6, 33, 392]],
+          cap: "[4] **Record a call**. [5] **Check in** from here. [6] **Details**: phone, email, mentor." },
+        { img: "student-syllabus", marks: [[7, 33, 224], [8, 33, 618]],
+          cap: "Further down: [7] **All visits by month**. [8] **Tick syllabus items** (page {progress})." }
+      ],
+      tip: "Statuses: **New**, **Active**, **Irregular** (no visit for a while), **Inactive**, **Paused**, **Left**. Irregular and Inactive students appear in Follow-ups for a call (page {calls}). **Edit these details** changes the About-you answers.",
+      trouble: [
+        "Parents' details hidden (\"Private details need your sign-in code\"): set up your code (page {signin}).",
+        "A wrong name or date of birth: correct it with the student present and the ID seen; ask the Guru if you cannot change it."
+      ] },
+
+    { id: "progress", kick: "Teaching", title: "Mark progress: tick the syllabus",
+      who: "Coordinators who teach in class.",
+      intro: "When a student shows an item of their level in class, tick it. The tick carries the date and your name; the student sees it in My progress.",
+      shots: [
+        { img: "student-syllabus", marks: [[1, 33, 618]], cap: "[1] On the student page: **Tick syllabus items**." },
+        { img: "mark-progress", marks: [[2, 33, 340], [3, 33, 525], [4, 33, 581]],
+          cap: "[2] The level (now). [3] Tap the box when the item is shown. [4] **Tick with a remark**." },
+        { img: "mark-remark", marks: [[5, 33, 378], [6, 33, 523]],
+          cap: "[5] A remark, e.g. \"needs a steadier tempo\". [6] **Tick and save the remark**." },
+        { img: "mark-ticked", marks: [[7, 33, 233]],
+          cap: "[7] Ticked: date and name. **Add a remark** later." }
+      ],
+      tip: "When every item of the level is ticked, the app says the level is complete. Moving up is the Guru's decision: recommend the student (page {levelup}).",
+      trouble: [
+        "Ticked by mistake: tap the box again; the app asks before it takes the tick away.",
+        "The level shown is wrong: only the Guru changes a student's level."
+      ] },
+
+    { id: "calls", kick: "Students", title: "Follow-ups: call a student who stopped coming",
+      who: "The mentor coordinator of each student.",
+      intro: "Students who have not come for a while appear in **Follow-ups**. Call them kindly, then record what was said, so whoever calls next knows.",
+      shots: [
+        { img: "followups", marks: [[1, 179, 214], [2, 33, 269], [3, 33, 666]],
+          cap: "[1] **Everyone** or **My students**. [2] **Needs the facilitator**. [3] **Call due**: tap a name." },
+        { img: "call-top", marks: [[4, 33, 238], [5, 33, 399], [6, 33, 609]],
+          cap: "[4] **Call Student** (or the parent). [5] **Outcome**. [6] **Reason**." },
+        { img: "call-bottom", marks: [[7, 33, 423], [8, 33, 570], [9, 33, 732]],
+          cap: "[7] **Expected on**. [8] **What was said** (needed). [9] **Save**." }
+      ],
+      tip: "**Coming back**: if they have not come by the day after that date, a new call is due. **Stopped coming** asks once more; the login and messages go on until the Guru switches the login off.",
+      trouble: [
+        "\"No phone number on the record\": add it on the student page, or ask in class.",
+        "\"Some fields need a fix\": fill **What was said** and the outcome, then **Save** again.",
+        "Several calls with no answer move the student to **Needs the facilitator**."
+      ] },
+
+    { id: "news", kick: "Staying in touch", title: "Post an announcement",
+      who: "Every coordinator.",
+      intro: "News reaches the whole class, one level, your mentees, the staff or a group. Students see it in their News tab; Android phones also get a notification.",
+      shots: [
+        { img: "news-list", marks: [[1, 33, 113], [2, 33, 235]],
+          cap: "[1] News tab → **New announcement**. [2] Each post shows **Seen by**." },
+        { img: "news-new", marks: [[3, 33, 138], [4, 33, 308], [5, 33, 740]],
+          cap: "[3] **Title**. [4] **Message**. [5] **Add photos** or **Add a PDF** (up to 3)." },
+        { img: "news-audience", marks: [[6, 237, 201], [7, 91, 443], [8, 30, 720], [9, 33, 796]],
+          cap: "[6] **Who is it for?** [7] The level. [8] **Pin it to the top of the list**. [9] **Post announcement**." },
+        { img: "news-seen", marks: [[10, 33, 404], [11, 33, 505]],
+          cap: "[10] **Seen by** 3 of 8. [11] **Not seen yet**: tell them in class." }
+      ],
+      tip: "**Later** posts it at a time you choose. A photo that shows a student needs the parent's photo consent. Students can reply privately; only the author and the facilitator see replies.",
+      trouble: [
+        "\"Students in this audience do not use the app\": tell them in class.",
+        "To change a post: open it and edit it (the author or the Guru). Students see **Edited**."
+      ] },
+
+    { id: "groups", kick: "Staying in touch", title: "Groups for announcements",
+      who: "Coordinators who post to a team, for example the festival performers.",
+      intro: "A group is a list of people. An announcement sent to **A group** reaches only its members.",
+      shots: [
+        { img: "menu", marks: [[1, 33, 222]], cap: "[1] Menu → **Groups**." },
+        { img: "groups", marks: [[2, 33, 240], [3, 33, 823]],
+          cap: "[2] Tap a group. [3] At the foot: **New group**, a name and what it is for, **Create group**." },
+        { img: "group-members", marks: [[4, 33, 428], [5, 33, 779], [6, 33, 337]],
+          cap: "[4] **Members**, **Remove**. [5] **Add people**: search a name. [6] **Switch off** when not needed." }
+      ],
+      tip: "Students who use the app, coordinators and the facilitator can be members. Then post the news with **Who is it for?** → **A group** (page {news}).",
+      trouble: [
+        "A student cannot be found to add: they have no app login yet. Tell them in class.",
+        "A switched-off group is not offered when posting."
+      ] },
+
+    { id: "assessgive", kick: "Teaching", title: "Give an assessment to students",
+      who: "Coordinators. The Guru writes the assessments; coordinators give them to students.",
+      intro: "An assessment is a short task, for example \"Play Ekatala four times\". Students record it and send it; you review it (page {review}).",
+      shots: [
+        { img: "assess-list", marks: [[1, 33, 262]], cap: "[1] Home → **Assessments**: tap one." },
+        { img: "assess-one", marks: [[2, 33, 428], [3, 33, 672]],
+          cap: "[2] The task and how marks are given. [3] **Assign**." },
+        { img: "assess-assign", marks: [[4, 33, 272], [5, 206, 523], [6, 182, 749]],
+          cap: "[4] Notes for the students. [5] Due date: **In 7 days**. [6] Pick a level." },
+        { img: "assess-give", marks: [[7, 33, 115], [8, 33, 796]],
+          cap: "[7] Tick the students. [8] **Give to the picked students**." }
+      ],
+      tip: "Students who already have it are not shown. \"No app login: tell them in class\": they cannot send a recording from the app.",
+      trouble: [
+        "An assessment is missing from the list: the Guru has not sent it to the coordinators yet.",
+        "A student is not in the list: check the level chip, or search by name."
+      ] },
+
+    { id: "review", kick: "Teaching", title: "Follow an assessment and review recordings",
+      who: "Coordinators who gave an assessment.",
+      intro: "The assessment page shows each student: **Not seen**, **Seen**, **Submitted**, **Reviewed**, **Redo**, **Late**. Open a student to listen and review.",
+      shots: [
+        { img: "assess-tracker", marks: [[1, 130, 240], [2, 33, 381], [3, 33, 555]],
+          cap: "[1] **Not sent**, **To review**, **Reviewed**. [2] Late, no app. [3] Reviewed: 14 of 15." },
+        { img: "assess-review", marks: [[4, 107, 512], [5, 33, 640]],
+          cap: "[4] **Open** the recording or link. [5] The score per line and the total." },
+        { img: "assess-redo", marks: [[6, 33, 635], [7, 33, 791]],
+          cap: "[6] An earlier take with **Redo**. [7] The comment the student read." }
+      ],
+      tip: "To review a sent recording: give a score per line, write a comment or record a voice note (up to 5 minutes), then **Accept** or **Ask for a redo** (a redo needs a comment or a voice note). On a level-up assessment, **Send level-up to the facilitator**. Reminders go out by themselves at 09:00 the day before and on the due day.",
+      trouble: [
+        "\"Could not load this file\": tap **Try again**; check the internet. Recordings are deleted 30 days after the review; the marks stay.",
+        "Nothing sent yet: **Remind everyone who has not sent it** (students with the app only)."
+      ] },
+
+    { id: "levelup", kick: "Teaching", title: "Level-ups: recommend a student, give feedback",
+      who: "Coordinators. The Guru decides every level-up.",
+      intro: "When a student is ready for the next level, recommend them. Other coordinators who teach them give feedback: **Ready**, **Almost** or **Not yet**.",
+      shots: [
+        { img: "nominate", marks: [[1, 33, 280], [2, 33, 695]],
+          cap: "Student page → **Level-up**: [1] the criteria. [2] **Reason**." },
+        { img: "nominate-ask", marks: [[3, 33, 512], [4, 33, 796]],
+          cap: "[3] Tick the coordinators to ask. [4] **Recommend and ask 1 for feedback**." },
+        { img: "levelups", marks: [[5, 33, 210], [6, 33, 548]],
+          cap: "Menu → **Level-ups**: [5] **Your feedback is asked**. [6] Your students ready." },
+        { img: "levelup-feedback", marks: [[7, 33, 450], [8, 33, 715]],
+          cap: "[7] The criteria when recommended. [8] Each coordinator's answer." }
+      ],
+      tip: "Criteria: the whole syllabus of the level ticked, 8 or more visits in 8 weeks, and an accepted level-up assessment. The Guru sees the check, the reason and every answer, then decides.",
+      trouble: [
+        "After a \"not yet\" the student page shows the date a new recommendation is possible.",
+        "Asked for feedback: open it from Level-ups and choose **Ready**, **Almost** or **Not yet** with a comment; you can change it while it is open."
+      ] },
+
+    { id: "events", kick: "Staying in touch", title: "Events and polls",
+      who: "Coordinators who plan a programme or ask the class a question.",
+      intro: "An event collects Going / Maybe / Not going; a poll asks one quick question.",
+      shots: [
+        { img: "events", marks: [[1, 33, 176], [2, 167, 112]],
+          cap: "[1] Home → **Events & polls** → **New event**. [2] The **Polls** tab." },
+        { img: "event-new", marks: [[3, 33, 138], [4, 115, 373], [5, 33, 577]],
+          cap: "[3] **Title**. [4] **Next Sunday** or a day. [5] **Starts at**." },
+        { img: "event-who", marks: [[6, 93, 257], [7, 33, 778]],
+          cap: "[6] **Who is it for?** [7] Then **Create event**." },
+        { img: "event-detail", marks: [[8, 33, 343], [9, 275, 600]],
+          cap: "[8] **Answers**. [9] **No answer**: **Remind** them." },
+        { img: "event-came", marks: [[10, 33, 380]],
+          cap: "**Who came**: [10] tap each one, **Save**." },
+        { img: "poll-new", marks: [[11, 33, 170], [12, 33, 515], [13, 33, 782]],
+          cap: "**New poll**: [11] question, [12] answers, [13] **Closes**." }
+      ],
+      tip: "**Who plays**: pick the performers and their part. **Cancel the event** tells everyone.",
+      trouble: [
+        "Once someone answered, the event's audience and a poll's answers are fixed."
+      ] },
+
+    { id: "instruments", kick: "Seva", title: "Instruments: lend and take back",
+      who: "Coordinators who look after the class's mridangas, kartals and sound.",
+      intro: "Every item has a label code, for example KHOL-002. The app keeps who holds it, since when, and its condition.",
+      shots: [
+        { img: "home", marks: [[1, 324, 498]], cap: "[1] Home → **Instruments**." },
+        { img: "inventory", marks: [[2, 95, 236], [3, 33, 473], [4, 33, 620]],
+          cap: "[2] **Scan a label** to open an item. [3] **In use**, **Lent out**, **Needs attention**. [4] Tap an item." },
+        { img: "inv-lend", marks: [[5, 33, 390], [6, 33, 505], [7, 33, 799]],
+          cap: "**Lend**: [5] who takes it, [6] **Condition now**, [7] **Bring back by**. Then **Lend it**." }
+      ],
+      tip: "When it comes back: open the item, **Take back**, note the condition. **Condition check** records a check without lending. **Print labels** and **Count instruments** (a stocktake) are on the same screen.",
+      trouble: [
+        "A label does not scan: type its code in **Find by code or name**.",
+        "\"Another centre's item\": it belongs to another centre; return it there."
+      ] },
+
+    { id: "roster", kick: "Seva", title: "Seva roster and students' practice",
+      who: "Every coordinator.",
+      intro: "Your duty shifts for the next four weeks, and a kind look at how much each student practised.",
+      shots: [
+        { img: "home", marks: [[1, 246, 563]], cap: "[1] Home → **Seva roster**." },
+        { img: "roster", marks: [[2, 33, 253], [3, 33, 368]],
+          cap: "[2] **My shifts**. [3] **Roster, next 4 weeks**: who is on duty." },
+        { img: "practice-week", marks: [[4, 183, 242], [5, 259, 388], [6, 33, 716]],
+          cap: "Menu → **Practice** → **Students' practice this week**: [4] the week, [5] **My students**, [6] least first." }
+      ],
+      tip: "A reminder comes the evening before your shift (18:00). The Guru plans the shifts. Use the practice list for a kind word or call, never to compare students.",
+      trouble: [
+        "\"No shifts planned\": the Guru has not added shifts yet.",
+        "\"No practice logged yet\": the student may practise without logging it. Ask them gently."
+      ] },
+
+    { id: "qrcards", kick: "Students", title: "Print QR cards for students without a phone",
+      who: "Coordinators at the desk (web version on a laptop).",
+      intro: "A printed card has the same code as My QR. Ten bank-card size cards fit on one A4 sheet.",
+      shots: [
+        { img: "students", marks: [[1, 33, 354]], cap: "[1] Students tab → **Print QR cards**." },
+        { img: "qr-pick", marks: [[2, 106, 391], [3, 33, 747]],
+          cap: "[2] **Without the app** or **All students**. [3] Tick the students." },
+        { img: "qr-sheet", marks: [[4, 33, 260], [5, 33, 537]],
+          cap: "[4] **Print**: A4, scale 100 %, no margins. [5] Cut along the dashed lines. (Codes blurred here.)" }
+      ],
+      tip: "Whoever holds a card can be checked in as that student: give it only to the student. A lost card is replaced by the Guru on the student page; the old card then scans as not recognised.",
+      trouble: [
+        "On a phone the page opens in the browser: print from a laptop or desktop.",
+        "Cards print too small or too big: in the print window choose scale 100 % (Actual size)."
+      ] },
+
+    { id: "reports", kick: "Reports", title: "My reports",
+      who: "Every coordinator, for their own mentees.",
+      intro: "How your mentees are doing for the dates you choose: visits, calls, statuses and syllabus progress.",
+      shots: [
+        { img: "menu", marks: [[1, 33, 602]], cap: "[1] Menu → **My reports**." },
+        { img: "reports", marks: [[2, 33, 223], [3, 33, 508]],
+          cap: "[2] **This month**, **Last month**, **Last 4 weeks** … [3] The numbers: in class, joined, visits, calls." },
+        { img: "reports-csv", marks: [[4, 33, 572], [5, 33, 663]],
+          cap: "[4] **Download CSV** for Excel or Google Sheets. [5] One line per student; tap to open." }
+      ],
+      tip: "**Flagged check-ins** in the report counts visits where the phone was outside the area or gave no location. The Guru sees the same report for the whole class.",
+      trouble: [
+        "A student is missing: the report shows only your mentees. Ask the Guru to change the mentor.",
+        "Where the CSV goes: on the web it downloads like any file; in the Android app choose a folder or share it."
+      ] }
+  ],
+  help: {
+    title: "Quick help",
+    intro: "Most problems have a simple fix. If none of these helps, ask the Guru.",
+    head: ["What happened", "What to do"],
+    rows: [
+      ["No internet at the door", "Keep checking in: the check-ins are saved on the phone and sent when the signal is back. Do not sign out meanwhile (page {checkin})."],
+      ["I forgot my password", "Sign-in screen → **Forgot password?** → your email → **Send link**."],
+      ["Lost or changed my phone (sign-in code)", "Ask the Guru to reset your code, then set it up again (page {signin})."],
+      ["A sign-up does not appear at the desk", "**Refresh list**. The person must open the email link first; a child needs the parent's email consent."],
+      ["Two records for one person", "Do not register again. Tell the Guru; the Guru can remove a record entered by mistake."],
+      ["A student forgot to check out", "**In class now** → **Check out**, or **Check out all** at closing time (page {herenow})."],
+      ["Parents' details are hidden", "Set up your sign-in code in My profile (page {signin})."],
+      ["The app looks different from these pictures", "Your app may be newer. **My profile** → **What's new** shows what changed."]
+    ],
+    contact: "Who to ask: the Guru (the facilitator). Privacy questions: **My profile** → **See my data and rights** → **Who to contact**."
+  }
+};
+
+/* ======================================================================
+   Renderer: builds the pages from TEXT. No wording below this line.
+   ====================================================================== */
+const IMG = "sop-coordinator/";
+const COVER = ["home", "checkin", "desk"];   /* the three phones on the cover */
+const MAP_IMG = "home";                       /* the screen on the map page */
+const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+const pageOf = {};
+let pageNo = 0;
+const md = (s) => esc(s).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/\{(\w+)\}/g, (m, id) => pageOf[id] || "?")
+  .replace(/\[(\d+)\]/g, '<span class="b">$1</span>');
+
+/* a mark near the left edge (x <= 45) moves onto the phone's rim, so it points at the row without hiding its words */
+function marksHtml(marks) {
+  return (marks || []).map(([n, x, y]) =>
+    `<span class="mk" style="left:${((x <= 45 ? -9 : x) / 390 * 100).toFixed(2)}%;top:${(y / 844 * 100).toFixed(2)}%">${n}</span>`).join("");
+}
+function drawnWaiting(k) {
+  const w = TEXT.waitingDrawing;
+  return `<div class="drawn"><div style="transform:scale(${k});transform-origin:0 0;width:${100 / k}%;height:${100 / k}%;position:relative"><div class="top"><div class="t">${esc(TEXT.cover.app)}</div><div class="m">${esc(TEXT.cover.motto)}</div></div>
+    <div class="card"><h4>${esc(w.title)}</h4><div>${esc(w.body)}</div>
+      ${w.steps.map(([k, sym, t]) => `<div class="st"><i class="${k}">${sym}</i><div>${esc(t)}</div></div>`).join("")}
+      <div class="btn">${esc(w.check)}</div></div>
+    <div class="card"><h4>${esc(w.waitTitle)}</h4><div>${esc(w.waitBody)}</div>
+      ${w.rows.map(([a, b]) => `<div class="row"><div><b>${esc(a)}</b><br><span>${esc(b)}</span></div><div>›</div></div>`).join("")}</div>
+    <div class="ribbon"><span>${esc(w.ribbon)}</span></div></div></div>`;
+}
+function phoneHtml(shot, cls, pw) {
+  const inner = shot.drawn ? drawnWaiting((pw || 50) / 50) : `<img src="${IMG}${shot.img}.jpg" alt="">`;
+  return `<div class="shot"${cls ? ` style="${cls}"` : ""}><div class="phone"><div class="screen">${inner}${marksHtml(shot.marks)}</div></div>` +
+         (shot.cap !== undefined ? `<div class="cap">${md(shot.cap)}</div>` : "") + `</div>`;
+}
+/* up to 4 screens in one row; 5 or 6 in rows of 3. Phone width: 3 → 54 mm, 4 → 42 mm, 5-6 → 40 mm */
+function flowHtml(shots) {
+  const n = shots.length, pw = n <= 3 ? 54 : n === 4 ? 42 : 40;
+  const rows = n <= 4 ? [shots] : [shots.slice(0, 3), shots.slice(3)];
+  return `<div class="flow" style="--pw:${pw}mm">` + rows.map((row) =>
+    `<div class="frow">${row.map((s) => phoneHtml(s, "", pw)).join(`<div class="arr"><span>›</span></div>`)}</div>`).join("") + `</div>`;
+}
+function foot() { return `<div class="foot"><span>${esc(TEXT.foot)}</span><span>${esc(TEXT.pageWord)} ${pageNo}</span></div>`; }
+
+/* page numbers first, so {id} references resolve */
+const order = ["cover", "contents", "map", ...TEXT.workflows.map((w) => w.id), "help"];
+order.forEach((id, i) => { pageOf[id] = i + 1; });
+
+const out = [];
+/* cover */
+pageNo = 1;
+out.push(`<section class="page cover"><div class="inner">
+  <div class="logo"><img src="${IMG}app-icon.png" alt=""></div>
+  <div class="app serif">${esc(TEXT.cover.app)}</div><div class="motto">${esc(TEXT.cover.motto)}</div>
+  <div class="rule"></div><h1 class="serif">${esc(TEXT.cover.title)}</h1><div class="sub">${esc(TEXT.cover.sub)}</div>
+  <div class="phones">${COVER.map((img) => phoneHtml({ img })).join("")}</div></div>
+  <div class="note">${esc(TEXT.cover.note)}</div></section>`);
+
+/* contents */
+pageNo = 2;
+const tocRows = [["", TEXT.map.title, TEXT.map.who, pageOf.map],
+  ...TEXT.workflows.map((w, i) => [String(i + 1), w.title, w.who, pageOf[w.id]]), ["", TEXT.help.title, "", pageOf.help]];
+out.push(`<section class="page"><h2 class="plain serif">${esc(TEXT.contents.title)}</h2>
+  <ul class="toc">${tocRows.map(([n, t, who, p]) => `<li><span class="no">${n}</span><span class="t">${esc(t)}</span><span class="pg">${p}</span></li>`).join("")}</ul>
+  <h2 class="plain serif" style="margin-top:6mm">${esc(TEXT.contents.howTitle)}</h2>
+  <div class="how">${TEXT.contents.how.map(([h, b]) => `<div class="box"><h3>${esc(h)}</h3>${md(b)}</div>`).join("")}</div>${foot()}</section>`);
+
+/* map */
+pageNo = 3;
+const m = TEXT.map;
+out.push(`<section class="page"><div class="band"><div class="kick">${esc(m.kick)}</div><h2 class="serif">${esc(m.title)}</h2><div class="who">${esc(m.who)}</div></div>
+  <p class="intro">${md(m.intro)}</p>
+  <div class="map"><div>${phoneHtml({ img: MAP_IMG, marks: m.marks, cap: m.cap }, "width:66mm")}</div>
+  <table class="keys">${m.keys.map(([n, t, ids]) => `<tr><td class="k"><span class="n">${n}</span></td><td>${md(t)}</td><td class="p">${ids.map((id) => pageOf[id]).join(", ")}</td></tr>`).join("")}</table></div>
+  <div class="tip">${md(m.note)}</div>${foot()}</section>`);
+
+/* workflows */
+TEXT.workflows.forEach((w, i) => {
+  pageNo = pageOf[w.id];
+  out.push(`<section class="page"><div class="band"><div class="kick">${i + 1} · ${esc(w.kick)}</div><h2 class="serif">${esc(w.title)}</h2>
+    <div class="who"><b>${esc(TEXT.forWord)}</b> ${esc(w.who)}</div></div>
+    <p class="intro">${md(w.intro)}</p>
+    ${flowHtml(w.shots)}
+    ${w.tip ? `<div class="tip">${md(w.tip)}</div>` : ""}
+    <div class="trouble"><h3>${esc(TEXT.troubleTitle)}</h3><ul>${w.trouble.map((t) => `<li>${md(t)}</li>`).join("")}</ul></div>
+    ${foot()}</section>`);
+});
+
+/* help */
+pageNo = pageOf.help;
+const h = TEXT.help;
+out.push(`<section class="page"><div class="band"><div class="kick">${esc(TEXT.docTitle)}</div><h2 class="serif">${esc(h.title)}</h2></div>
+  <p class="intro">${md(h.intro)}</p>
+  <table class="help"><tr><th>${esc(h.head[0])}</th><th>${esc(h.head[1])}</th></tr>
+  ${h.rows.map(([a, b]) => `<tr><td>${md(a)}</td><td>${md(b)}</td></tr>`).join("")}</table>
+  <div class="tip" style="margin-top:5mm">${md(h.contact)}</div>${foot()}</section>`);
+
+document.getElementById("doc").innerHTML = out.join("\n");
+document.title = TEXT.cover.app + " " + TEXT.docTitle.toLowerCase();
+</script>
+</body>
+</html>
