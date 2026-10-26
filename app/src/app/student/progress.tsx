@@ -7,6 +7,7 @@
 // the whole level come first. An item the facilitator retired shows only when it was ticked, and
 // does not count (docs/DECISIONS.md #44).
 // Also Me > My progress in the staff app, for a staff member's own record (0053, #319; staff/me/progress.tsx).
+// Since 24-10-2026 the bar is the level path (components/level-path-view.tsx, #620).
 
 import { router, Stack, useFocusEffect, usePathname } from 'expo-router';
 import { useCallback } from 'react';
@@ -17,17 +18,18 @@ import { useAuth } from '@/auth/auth-provider';
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { EmptyState } from '@/components/empty-state';
+import { LevelPathView } from '@/components/level-path-view';
 import { ListRow } from '@/components/list-row';
 import { MaterialRow } from '@/components/material-row';
 import { PracticePanel } from '@/components/practice-parts';
 import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
-import { ProgressBar } from '@/components/progress-bar';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { fetchMyProgress, type MyProgress } from '@/data/syllabus';
-import { levelName } from '@/i18n/labels';
+import { LEVEL_IDS, levelName } from '@/i18n/labels';
 import { formatDate } from '@/lib/dates';
+import { levelPath } from '@/lib/level-path';
 import { ownAreaOf } from '@/lib/own-area';
 import { spacing } from '@/theme/use-theme';
 import { RefreshFailed } from '@/components/refresh-failed';
@@ -89,13 +91,9 @@ export default function MyProgressScreen() {
       <RefreshFailed at={refreshFailed} onRetry={() => load()} />
       {header}
       <Section icon="level" title={t('home.student.myLevel', { level })} description={t('progress.intro')}>
+        {/* The level path (#620): "7 of 20 in Beginner", the next items to learn, the level after. */}
         {loaded.total > 0 ? (
-          <ProgressBar
-            done={loaded.done}
-            total={loaded.total}
-            label={t('syllabus.progressLabel', { level })}
-            valueText={t('profile.syllabusDone', { done: loaded.done, total: loaded.total })}
-          />
+          <LevelPathView path={levelPath(loaded.items, loaded.levelId, LEVEL_IDS)} />
         ) : (
           <AppText tone="muted">{t('profile.noSyllabus')}</AppText>
         )}

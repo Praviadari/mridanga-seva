@@ -15,14 +15,20 @@
 // saves the My QR card on the phone once per run of the app (data/my-student.ts keepMyCardSaved).
 // A login that has just become a student sees a welcome card once on this phone in place of the circles (roll
 // number, what My QR is for; components/welcome-card.tsx, lib/welcome.ts, #342); About you waits until the next start.
+// The level path (#620): the strip says "7 of 20 in Beginner" and the next item to learn. A small celebration (#621-#623)
+// stands in place of the circles once per event: an item ticked in class, a practice milestone, a move up a level
+// (components/celebration-card.tsx, lib/celebrations.ts). Both come from data/level-path.ts, read after the numbers
+// and at most every PATH_EVERY_MS (pull to refresh reads at once), so the ring never waits for them.
 
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet } from 'react-native';
 
 import { useAuth } from '@/auth/auth-provider';
+import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
+import { CelebrationCard } from '@/components/celebration-card';
 import { FactCard } from '@/components/fact-card';
 import { HomeHeader } from '@/components/home-header';
 import { ModuleRing, type Module } from '@/components/module-ring';
@@ -35,14 +41,21 @@ import { UpdateNotice } from '@/components/update-notice';
 import { WelcomeCard } from '@/components/welcome-card';
 import { fetchMyUnreadCount } from '@/data/announcements';
 import { fetchStudentHome, type StudentHome } from '@/data/home';
+import { fetchMyPath } from '@/data/level-path';
 import { keepMyCardSaved } from '@/data/my-student';
 import { fetchPollsToVote } from '@/data/polls';
-import { levelName } from '@/i18n/labels';
+import { LEVEL_IDS, levelName } from '@/i18n/labels';
 import { useAboutPrompt } from '@/lib/about-prompt';
+import { celebrationEvents, takeDueCelebrations, type CelebrationEvent } from '@/lib/celebrations';
 import { todayLocal } from '@/lib/dates';
 import { useLatestLoad } from '@/lib/latest-load';
+import { levelPath, type LevelPath } from '@/lib/level-path';
+import { milestones } from '@/lib/milestones';
 import { useReloadOnResume } from '@/lib/reload-on-resume';
 import { markWelcomeSeen, welcomeDue, welcomeSeen } from '@/lib/welcome';
+
+/** The path and celebrations are read again at most this often on coming back to the home (pull to refresh: at once). */
+const PATH_EVERY_MS = 2 * 60_000;
 
 /** Student home screen. */
 export default function StudentHomeScreen() {
@@ -69,21 +82,50 @@ export default function StudentHomeScreen() {
   // typed at sign-up (FS2-10).
   const name = (home && home !== 'not_found' ? home.fullName.trim() : '') || profile?.full_name.trim();
 
-  const load = useCallback(async () => {
-    const isNewest = beginLoad();
-    // My QR saved on this phone before the student needs it at the door without signal (R1-02, #303).
-    void keepMyCardSaved(myId);
-    // Only what the ring shows: the badge needs ids and my reads, not posts (P5-06, #330).
-    const [loadedHome, loadedUnread, loadedPolls] = await Promise.all([
-      fetchStudentHome({ weekStarts: false }),
-      fetchMyUnreadCount(myId),
-      fetchPollsToVote(),
-    ]);
-    if (!isNewest()) return; // an older load answering late (D6-19)
-    setHome(loadedHome);
-    setUnreadCount(loadedUnread);
-    setPollsToVote(loadedPolls);
-  }, [myId, beginLoad]);
+  // The level path of the strip (#620) and the events to celebrate now (#621); [] = none.
+  const [path, setPath] = useState<LevelPath | null>(null);
+  const [celebration, setCelebration] = useState<CelebrationEvent[]>([]);
+  const pathReadAt = useRef(0);
+
+  const load = useCallback(
+    async (refresh = false) => {
+      const isNewest = beginLoad();
+      // My QR saved on this phone before the student needs it at the door without signal (R1-02, #303).
+      void keepMyCardSaved(myId);
+      // Only what the ring shows: the badge needs ids and my reads, not posts (P5-06, #330).
+      const [loadedHome, loadedUnread, loadedPolls] = await Promise.all([
+        fetchStudentHome({ weekStarts: false }),
+        fetchMyUnreadCount(myId),
+        fetchPollsToVote(),
+      ]);
+      if (!isNewest()) return; // an older load answering late (D6-19)
+      setHome(loadedHome);
+      setUnreadCount(loadedUnread);
+      setPollsToVote(loadedPolls);
+
+      // Then the path and the celebrations, not more often than PATH_EVERY_MS.
+      if (!myId || !loadedHome || loadedHome === 'not_found') return;
+      if (!refresh && Date.now() - pathReadAt.current < PATH_EVERY_MS) return;
+      const loadedPath = await fetchMyPath(myId);
+      if (!isNewest() || !loadedPath) return;
+      pathReadAt.current = Date.now();
+      setPath(levelPath(loadedPath.items, loadedPath.levelId, LEVEL_IDS));
+      // Only with everything read: a part missing would make its old events look new next time.
+      if (loadedPath.levelChanges === null || loadedPath.practice === null) return;
+      const today = todayLocal();
+      // The welcome goes first; its events wait for a later visit to the home.
+      if (welcomeDue(welcomeSeen(myId), loadedHome.joinedOn, today)) return;
+      const events = celebrationEvents(
+        loadedPath.items,
+        loadedPath.levelChanges,
+        milestones(loadedPath.practice.days, loadedPath.practice.goal, today),
+        LEVEL_IDS,
+      );
+      const due = takeDueCelebrations(myId, events, today);
+      if (due.length > 0) setCelebration(due);
+    },
+    [myId, beginLoad],
+  );
 
   // F9 / R4-04 (#327): back after a while (a phone that slept), the screen loads again.
   useReloadOnResume(load);
@@ -146,7 +188,7 @@ export default function StudentHomeScreen() {
   ];
 
   return (
-    <Screen wide compact header={<HomeHeader name={name} />} onRefresh={load}>
+    <Screen wide compact header={<HomeHeader name={name} />} onRefresh={() => load(true)}>
       <UpdateNotice />
       <PushNotice place="home" />
       <PrivacyNoticeCard />
@@ -180,13 +222,15 @@ export default function StudentHomeScreen() {
             setWelcomeClosed(true);
           }}
         />
+      ) : celebration.length > 0 ? (
+        <CelebrationCard events={celebration} onClose={() => setCelebration([])} />
       ) : (
         <>
           {/* Shown while loading too: every circle opens its screen, which loads on its own. */}
           <ModuleRing modules={modules} />
 
           {/* Under the ring (#242): my level at a glance (opens S4), and today's fact about the mṛdaṅga. */}
-          {home && home !== 'not_found' ? <LevelStrip home={home} /> : null}
+          {home && home !== 'not_found' ? <LevelStrip home={home} path={path} /> : null}
           <FactCard />
         </>
       )}
@@ -194,21 +238,33 @@ export default function StudentHomeScreen() {
   );
 }
 
-/** My level and its syllabus as one slim bar; a button to My progress (S4). */
-function LevelStrip({ home }: { home: StudentHome }) {
+/**
+ * My level and its syllabus as one slim bar, "7 of 20 in Beginner", and the next item to learn once the path is read
+ * (#620); a button to My progress (S4).
+ */
+function LevelStrip({ home, path }: { home: StudentHome; path: LevelPath | null }) {
   const { t } = useTranslation();
   const level = levelName(t, home.levelId);
   const text =
     home.syllabusTotal > 0
       ? t('home.student.levelStrip', { level, done: home.syllabusDone, total: home.syllabusTotal })
       : t('home.student.levelStripNone', { level });
+  // The path of another level (moved up since it was read) says nothing here.
+  const ownPath = path?.levelId === home.levelId ? path : null;
+  const next = ownPath?.next[0];
+  const nextText = next ? t('levelPath.next', { title: next.title }) : ownPath?.complete ? t('levelPath.complete', { level }) : null;
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={text}
+      accessibilityLabel={nextText ? `${text}. ${nextText}` : text}
       onPress={() => router.push('/student/progress')}
       style={({ pressed }) => [styles.strip, pressed && styles.pressed]}>
       <ProgressBar done={home.syllabusDone} total={home.syllabusTotal} label={text} valueText={text} />
+      {nextText ? (
+        <AppText variant="small" numberOfLines={1}>
+          {nextText}
+        </AppText>
+      ) : null}
     </Pressable>
   );
 }
@@ -217,6 +273,7 @@ const styles = StyleSheet.create({
   strip: {
     minHeight: 48,
     justifyContent: 'center',
+    gap: 2,
   },
   pressed: {
     opacity: 0.7,

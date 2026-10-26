@@ -237,7 +237,7 @@
       "myLevel": "मेरा स्तर: {{level}}",
       "unread": "आपके लिए नई: {{count}}",
       "allAnnouncements": "सभी सूचनाएँ",
-      "levelStrip": "मेरा स्तर: {{level}} · {{total}} में से {{done}}",
+      "levelStrip": "{{level}} में {{total}} में से {{done}}",
       "levelStripNone": "मेरा स्तर: {{level}}"
     },
     "staff": {
@@ -1121,6 +1121,24 @@
     "notYet": "अभी नहीं",
     "levelLessons": "{{level}} स्तर के पाठ",
     "retired": "अब नहीं पढ़ाया जाता"
+  },
+  "levelPath": {
+    "label": "{{level}} में मेरा रास्ता",
+    "next": "आगे: {{title}}",
+    "nextTitle": "आगे सीखना है",
+    "complete": "{{level}} के सभी विषय टिक हो गए हैं।",
+    "nextLevel": "{{level}} के बाद {{next}} आता है। अगले स्तर पर जाना गुरुजी का निर्णय है।",
+    "topLevel": "{{level}} आख़िरी स्तर है।"
+  },
+  "celebrate": {
+    "title": "हरे कृष्ण! एक क़दम आगे",
+    "level": "अब आप {{level}} में हैं।",
+    "milestone": "अभ्यास का पड़ाव: {{name}}",
+    "tick": "कक्षा में टिक हुआ: {{title}}",
+    "more_one": "और {{count}} क़दम",
+    "more_other": "और {{count}} क़दम",
+    "blessing": "प्रेम से अपना अभ्यास अर्पित करते रहें, एक-एक क़दम।",
+    "continue": "आगे बढ़ें"
   },
   "syllabusEditor": {
     "module": "पाठ",

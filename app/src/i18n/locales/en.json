@@ -237,7 +237,7 @@
       "myLevel": "My level: {{level}}",
       "unread": "New for you: {{count}}",
       "allAnnouncements": "All announcements",
-      "levelStrip": "My level: {{level}} · {{done}} of {{total}}",
+      "levelStrip": "{{done}} of {{total}} in {{level}}",
       "levelStripNone": "My level: {{level}}"
     },
     "staff": {
@@ -1121,6 +1121,24 @@
     "notYet": "Not yet",
     "levelLessons": "Lessons for {{level}}",
     "retired": "No longer taught"
+  },
+  "levelPath": {
+    "label": "My path in {{level}}",
+    "next": "Next: {{title}}",
+    "nextTitle": "Next to learn",
+    "complete": "Every item of {{level}} is ticked.",
+    "nextLevel": "After {{level}} comes {{next}}. Moving up is the facilitator's decision.",
+    "topLevel": "{{level}} is the last level."
+  },
+  "celebrate": {
+    "title": "Hare Krishna! A step forward",
+    "level": "You are now in {{level}}.",
+    "milestone": "Practice milestone: {{name}}",
+    "tick": "Ticked in class: {{title}}",
+    "more_one": "and {{count}} more step",
+    "more_other": "and {{count}} more steps",
+    "blessing": "Keep offering your practice with love, one step at a time.",
+    "continue": "Continue"
   },
   "syllabusEditor": {
     "module": "Lessons",
