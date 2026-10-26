@@ -71,6 +71,12 @@ test('the side menu never opens a tab screen as a second copy (R4-01) and lists 
   assert.match(fnText(shortcuts, 'openMenuItem'), /router\.push\(item\.href\)/);
 });
 
+test('the Guru reaches Sign-in codes and App errors from the Set-up menu (no other screen links them)', () => {
+  const groups = fnText(shortcuts, 'staffMenuGroups');
+  assert.match(groups, /href: '\/staff\/sign-in-codes'/);
+  assert.match(groups, /href: '\/staff\/app-errors'/);
+});
+
 test('the side menu is reachable and closable for everyone: label, Back/Escape, modal focus, 48 dp rows', () => {
   assert.match(menu, /accessibilityLabel=\{t\('menu\.open'\)\}/);
   assert.match(menu, /accessibilityLabel=\{t\('menu\.close'\)\}/);

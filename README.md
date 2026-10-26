@@ -82,7 +82,7 @@ docs/                  How it works and why — start with docs/README.md
 |---|---|
 | [docs/guide/easy/](docs/guide/easy/README.md) | **Not technical?** The easy guide in everyday words, for school and college students and people from the medical field; also in [తెలుగు](docs/guide/easy/te/README.md) and [हिन्दी](docs/guide/easy/hi/README.md) |
 | [docs/guide/](docs/guide/README.md) | **New here? Start with the beginner's guide**: why the app exists, how to use it per role, how it works and how it was built, in plain words |
-| [docs/print/](docs/print/sop-student.pdf) | **Printable A4 guides**: the student and coordinator screens step by step, and the whole app explained for maintainers |
+| [docs/print/](docs/print/sop-student.pdf) | **Printable A4 guides**: the student, coordinator and Guru screens step by step, and the whole app explained for maintainers |
 | [docs/MAINTAINER_HANDBOOK.md](docs/MAINTAINER_HANDBOOK.md) | **Maintaining it?** Two pages: where things live, the checks, how a release goes |
 | [docs/WHY_THIS_STACK.md](docs/WHY_THIS_STACK.md) | **Why this tech stack?** Expo, Supabase and PostgreSQL compared with the usual alternatives |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | How the app, database and roles fit together |

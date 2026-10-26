@@ -163,6 +163,9 @@ export function staffMenuGroups(guru: boolean, t: TFunction): MenuGroup[] {
         { key: 'centres', icon: 'location', label: t('centres.title'), href: '/staff/centres' },
         { key: 'settings', icon: 'settings', label: t('settings.title'), href: '/staff/settings' },
         { key: 'options', icon: 'lists', label: t('options.title'), href: '/staff/options' },
+        // 0061 (docs/DECISIONS.md #582, #587): nothing else opens these since Running the class lost its circle.
+        { key: 'codes', icon: 'settings', label: t('staffCodes.title'), href: '/staff/sign-in-codes' },
+        { key: 'errors', icon: 'alert', label: t('appErrors.title'), href: '/staff/app-errors' },
       ],
     });
   }
