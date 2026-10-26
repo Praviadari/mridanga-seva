@@ -7,6 +7,7 @@ node_modules/
 .expo/
 dist/
 dist-update/
+dist-update-maps/
 web-build/
 expo-env.d.ts
 
