@@ -38,10 +38,10 @@ export default {
 
   app: {
     /**
-     * The web version of the app: the LIVE site on Cloudflare Pages since 16-10-2026 (GO_LIVE_CHECKLIST E1);
-     * it moves to app.mridangaseva.com once the domain is on Cloudflare (E3).
+     * The web version of the app: the LIVE site on Cloudflare Pages since 16-10-2026 (GO_LIVE_CHECKLIST E1),
+     * at app.mridangaseva.com since the domain moved to Cloudflare on 26-10-2026 (E3).
      */
-    webUrl: 'https://mridanga-seva.pages.dev/',
+    webUrl: 'https://app.mridangaseva.com/',
     /** false shows the web app as "coming soon" without a link. */
     webLive: true,
     /**

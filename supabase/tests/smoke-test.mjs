@@ -6277,12 +6277,12 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
     const email = buildConsentEmail({ claim: 'c', profile_id: 'p', email: 'x@example.com', language, parent_name: 'Pay.Example', child_name: 'Go.To.Site',
       child_dob: '2012-03-10', centre: 'Abids', code: '123456', expires_on: '2026-10-28' }, consentPageUrl(undefined, undefined, language));
     check(`0051: the ${language} email has the code, the LIVE page, the end date, and no name a mail app could link`,
-      email.text.includes('123456') && email.text.includes('https://mridanga-seva.pages.dev/parent-consent') && email.text.includes('28-10-2026')
+      email.text.includes('123456') && email.text.includes('https://app.mridangaseva.com/parent-consent') && email.text.includes('28-10-2026')
         && !/Pay\.Example|Go\.To/.test(email.text + email.subject + email.html) && email.text.includes('Pay. Example'), email.subject);
   }
   check('0051: APP_WEB_URL overrides the page, a bad value does not', consentPageUrl('https://qeozvvizcojzxcjgnaei.supabase.co', 'https://mridangaseva.com', 'en')
     === 'https://mridangaseva.com/parent-consent' && consentPageUrl('https://qeozvvizcojzxcjgnaei.supabase.co', 'javascript:alert(1)', 'hi')
-    === 'https://mridanga-seva.pages.dev/parent-consent?lang=hi');
+    === 'https://app.mridangaseva.com/parent-consent?lang=hi');
 
   // Deleting a login (Authentication -> Users) takes the request with it.
   const cascade51 = await signUp51('cascade.51@example.com', { ...parent51, parent_email: 'cascade.parent.51@example.com' });

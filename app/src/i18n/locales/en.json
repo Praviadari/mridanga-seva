@@ -4311,7 +4311,7 @@
     "generatedAt": "As on {{time}}",
     "downloadJson": "Download a copy (JSON)",
     "print": "Print or save as PDF",
-    "printOnWeb": "To print it, open the app in a web browser (mridanga-seva.pages.dev) and use \"Print or save as PDF\".",
+    "printOnWeb": "To print it, open the app in a web browser (app.mridangaseva.com) and use \"Print or save as PDF\".",
     "exportFailed": "The copy could not be made. Please try again.",
     "showSummary": "Show everything we keep",
     "processorsHint": "These services handle data for the class, only on our instructions. Nothing is sold or used for advertising.",

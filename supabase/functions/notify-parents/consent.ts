@@ -34,7 +34,7 @@ export const CONSENT_CLAIM_LIMIT = 20;
 
 /** The web app of each Supabase project: the consent page is <web app>/parent-consent. */
 const WEB_APPS: Record<string, string> = {
-  qeozvvizcojzxcjgnaei: 'https://mridanga-seva.pages.dev', // LIVE
+  qeozvvizcojzxcjgnaei: 'https://app.mridangaseva.com', // LIVE (pages.dev until 26-10-2026)
   fhuqykssenuhczdqbafu: 'https://mridanga-seva-test.pages.dev', // TEST
 };
 

@@ -180,7 +180,7 @@ const TEXT = {
       [10, "**Welcome desk** and [11] **Newcomers**: as in the coordinator guide, pages 6-7", []],
       [12, "Tabs **Home**, **Check-in**, **Students**, **Follow-ups**, **News**: coordinator guide, pages 8-13", []]
     ],
-    note: "**Sign-in codes** and **App errors** are not in the menu yet. Open them as written on pages {codes} and {errors} until the menu has them."
+    note: "**Sign-in codes** and **App errors** are the last two items of **Set-up**, below Form choices (pages {codes} and {errors})."
   },
   workflows: [
     { id: "menu", kick: "Getting started", title: "The menu: where the Guru's screens are",
@@ -191,12 +191,12 @@ const TEXT = {
         { img: "menu", marks: [[2, 33, 170], [3, 33, 562], [4, 33, 654]],
           cap: "[2] **Follow-ups by coordinator**. [3] **Class fund**. [4] Reports: **Reports**, **How students found us**, **Change history**." },
         { img: "menu-setup", marks: [[5, 33, 393], [6, 33, 445], [7, 33, 497], [8, 33, 549], [9, 33, 601]],
-          cap: "Set-up: [5] **Coordinators**, [6] **All students**, [7] **Centres**, [8] **Settings**, [9] **Form choices**." }
+          cap: "Set-up: [5] **Coordinators**, [6] **All students**, [7] **Centres**, [8] **Settings**, [9] **Form choices**; below them **Sign-in codes** and **App errors**." }
       ],
       tip: "**Follow-ups by coordinator** shows each coordinator's calls that are late or passed to you, and opens their list. The bell and **Notifications** tell you when a data request or a level-up waits.",
       trouble: [
         "The menu shows fewer groups: you are signed in as a coordinator, not as the Guru. Sign out and in with the Guru's login.",
-        "Sign-in codes and App errors: not in the menu yet (pages {codes}, {errors})."
+        "Sign-in codes or App errors missing under Set-up: the app is older than 26-10-2026. Close and reopen it to get the update."
       ] },
 
     { id: "makecoord", kick: "Set-up", title: "Make a coordinator from a waiting login",
@@ -368,7 +368,7 @@ const TEXT = {
         { img: "codes-reset", marks: [[5, 33, 370], [6, 33, 500], [7, 253, 502]],
           cap: "[5] **No code yet**. [6] **Has a code since …**. [7] **Reset** for a lost or changed phone." }
       ],
-      tip: "How to open it: this screen is not in the menu yet. On the web, go to the class site and add **/staff/sign-in-codes** to the address. The last step of a reset: tap **Reset**, then **Tap again** to confirm; the person sets up a new code at their next sign-in. **Ask for codes** can be switched on only when every Guru and coordinator has a code and you signed in with yours.",
+      tip: "How to open it: **Menu → Set-up → Sign-in codes**. The last step of a reset: tap **Reset**, then **Tap again** to confirm; the person sets up a new code at their next sign-in. **Ask for codes** can be switched on only when every Guru and coordinator has a code and you signed in with yours.",
       trouble: [
         "\"This sign-in did not give your code\": set up your own code in My profile, then sign out and in again.",
         "Your own code cannot be reset here. If you lose your phone, the person who looks after the app removes it."
@@ -404,7 +404,7 @@ const TEXT = {
         { img: "audit-list", marks: [[7, 33, 255], [8, 33, 428]],
           cap: "[7] **When**. [8] Tap a change to see the values before and after." }
       ],
-      tip: "How to open App errors: not in the menu yet. On the web, add **/staff/app-errors** to the class site's address. Errors are kept 30 days. Tell the person who looks after the app about anything that repeats. **Reads of private details** lists who opened a parent's details, consents or call notes.",
+      tip: "How to open App errors: **Menu → Set-up → App errors**. Errors are kept 30 days. Tell the person who looks after the app about anything that repeats. **Reads of private details** lists who opened a parent's details, consents or call notes.",
       trouble: [
         "\"The error log is not set up on the server yet\": tell the person who looks after the app.",
         "A change by \"The system or the dashboard\": made by the app's nightly jobs or by the person who looks after the server."

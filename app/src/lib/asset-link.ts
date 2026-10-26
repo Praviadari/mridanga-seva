@@ -7,13 +7,13 @@ import { Platform } from 'react-native';
 
 /**
  * The LIVE web app's addresses (docs/DECISIONS.md #294, audit R2-08). The first is where the phone app
- * opens "Print QR cards" and what new labels carry; every one of them scans. Until the domain move
- * (GO_LIVE_CHECKLIST E3) the LIVE site is mridanga-seva.pages.dev and app.mridangaseva.com is not live.
- * THE DOMAIN MOVE = swap these two lines, so labels printed from either site keep scanning.
+ * opens "Print QR cards" and what new labels carry; every one of them scans. Since the domain move
+ * (GO_LIVE_CHECKLIST E3, 26-10-2026) the LIVE site is app.mridangaseva.com; labels printed earlier
+ * carry mridanga-seva.pages.dev, which stays second so they keep scanning.
  */
 export const LIVE_WEB_ORIGINS = [
-  'https://mridanga-seva.pages.dev',
   'https://app.mridangaseva.com',
+  'https://mridanga-seva.pages.dev',
 ] as const;
 
 /** The LIVE web app's address for real labels and printing: the first of LIVE_WEB_ORIGINS. */
