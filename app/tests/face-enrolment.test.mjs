@@ -293,7 +293,7 @@ test('face scan shows nothing while the switch is off: every entry checks the se
 test('#436: the models are loaded from a file:// copy (an installed APK gives bare resource names fast-tflite refuses)', () => {
   const pipeline = read('src/face/pipeline.ts');
   assert.match(pipeline, /Asset\.fromModule\(module\)\.downloadAsync\(\)/);
-  assert.equal((pipeline.match(/modelFile\(require\('@\/assets\/models\/[\w.]+\.tflite'\)\)/g) ?? []).length, 3);
+  assert.equal((pipeline.match(/modelFile\(require\('@\/assets\/models\/[\w.]+\.bin'\)\)/g) ?? []).length, 3);
   assert.doesNotMatch(pipeline, /loadTensorflowModel\(require\(/);
   // A picture that keeps failing ends the scan with a message instead of waiting at "picture 0 of 5".
   assert.match(read('src/face/face-scanner.tsx'), /failures\.current >= 3[\s\S]{0,200}setProblem\(t\('face\.scan\.cameraProblem'\)\)/);

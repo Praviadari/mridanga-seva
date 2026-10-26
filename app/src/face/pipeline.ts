@@ -67,11 +67,11 @@ export function loadModels(): Promise<Models> {
     const t0 = Date.now();
     const [sface, fasA, fasB] = await Promise.all([
       // eslint-disable-next-line @typescript-eslint/no-require-imports -- Metro asset
-      modelFile(require('@/assets/models/sface_2021dec_int8.tflite')).then((m) => loadTensorflowModel(m, [])),
+      modelFile(require('@/assets/models/sface_2021dec_int8.bin')).then((m) => loadTensorflowModel(m, [])),
       // eslint-disable-next-line @typescript-eslint/no-require-imports -- Metro asset
-      modelFile(require('@/assets/models/minifasnet_v2_2_7_int8.tflite')).then((m) => loadTensorflowModel(m, [])),
+      modelFile(require('@/assets/models/minifasnet_v2_2_7_int8.bin')).then((m) => loadTensorflowModel(m, [])),
       // eslint-disable-next-line @typescript-eslint/no-require-imports -- Metro asset
-      modelFile(require('@/assets/models/minifasnet_v1se_4_0_int8.tflite')).then((m) => loadTensorflowModel(m, [])),
+      modelFile(require('@/assets/models/minifasnet_v1se_4_0_int8.bin')).then((m) => loadTensorflowModel(m, [])),
     ]);
     return { sface, fasA, fasB, layout: { sface: layoutOf(sface, 112), fas: layoutOf(fasA, 80) }, loadMs: Date.now() - t0 };
   })();
