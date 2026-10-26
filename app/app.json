@@ -119,7 +119,8 @@
         {
           "faceIDPermission": false
         }
-      ]
+      ],
+      "./plugins/with-mlkit-play-services"
     ],
     "experiments": {
       "typedRoutes": true,

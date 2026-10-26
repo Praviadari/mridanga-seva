@@ -7416,3 +7416,21 @@ fills clockwise from the top with each picture and flashes white once per pictur
 inside the oval while the camera works. With the phone's "Remove animations" (reduced motion) there is no sweep and no
 flash. The rules are pure (`src/face/face-guide-state.ts`, tested); the guide is drawing only: touches pass through
 and screen readers skip it, since the prompt under the camera already says what to do.
+
+## 630. ML Kit from Google Play services, not inside the APK — 26 Oct 2026
+
+**Status: prepared (branch claude/app-size-native), native: new fingerprint, needs a facetest APK on a phone before the
+face production APK.** expo-camera's QR scan and the face detector use the "bundled" ML Kit: its own native library and
+models in the APK for both ABIs (arm64 alone: libbarhopper_v3.so 2.1 MB, libface_detector_v2_jni.so 3.4 MB; models
+2.6 MB). **Decision (if the phone test passes).** `plugins/with-mlkit-play-services.js` swaps them in the app's Gradle
+build for Google's Play services twins (same API, model kept once per phone by Play services) and asks for the models
+in the manifest. About −10 MB. The cost: until Play services has the model, a scan fails ("waiting for the module to
+be downloaded"); for an APK installed outside the Play Store it may come only at first use. Play services is already
+needed (Play Integrity, push). Test: fresh install, QR scan and face scan at once with internet, then offline.
+
+## 631. Face models end in .bin — 26 Oct 2026
+
+**Status: prepared (branch claude/app-size-native), fingerprint unchanged.** The Android build never compresses a
+`.tflite` file, so SFace (9.9 MB) sat in the APK at full size. **Decision.** The three models end in `.bin`
+(byte-identical, README hashes unchanged); Metro's assetExts gets `bin`. About −1.9 MB APK. Nothing else changes:
+fast-tflite reads the copied file whatever its name (#436).
