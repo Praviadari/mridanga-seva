@@ -635,6 +635,7 @@ to `app/dist/`. Always use this command, not a bare `npx expo export`, because
 
 | Date | Site | Commit | Built (UTC) | By |
 |---|---|---|---|---|
+| 26-10-2026 | test (domain move in code: labels and print open app.mridangaseva.com; Guru menu has Sign-in codes and App errors) | 1e7f0b8 (main; entry-0a133640…; deployment db4d6c1e) | 2026-10-26T10:46:27Z | Claude (wrangler, Praveen's login) |
 | 26-10-2026 | test (level path and celebrations merged; What's new for the next update gains two lines) | a5efad9 (main; entry-f9b024b1…; deployment d7c63b02) | 2026-10-26T05:07:04Z | Claude (wrangler, Praveen's login) |
 | 24-10-2026 | test (web push 0062 with the TEST public key, E2E tests, student SOP and explainer PDFs merged) | 316a03e (main; entry-bd8023bc…; deployment f70eda09) | 2026-10-24T18:25:44Z | Claude (wrangler, Praveen's login) |
 | 24-10-2026 | test (lead-test merged: privacy notice 1.0 0060, staff sign-in codes + error log 0061, web bundle diet with staff screens loaded by staff only, offline door and practice queue; What's new entry for the next update) | 9eaa901 (main; entry-82edbbf1…; deployment 130ba954) | 2026-10-24T15:31:24Z | Claude (wrangler, Praveen's login) |
