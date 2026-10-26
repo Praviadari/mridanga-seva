@@ -4465,9 +4465,9 @@
         "name": "Cloudflare",
         "what": "Hosts the website and the web app (worldwide)"
       },
-      "zoho": {
-        "name": "Zoho Mail",
-        "what": "The team's email, including privacy@mridangaseva.com"
+      "email": {
+        "name": "Cloudflare Email Routing",
+        "what": "Forwards mail to privacy@mridangaseva.com and the class's other addresses to the team's Gmail (worldwide)"
       },
       "youtube": {
         "name": "YouTube (Google)",

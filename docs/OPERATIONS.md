@@ -12,7 +12,8 @@ will rely on it.
 | Expo | Building the Android app (EAS Build) and updating it on the phones (EAS Update); its push service passes notifications on | Free (15 Android builds a month; updates for 1,000 people a month, 100 GiB of downloads) | Team email account | Maintainer's personal account |
 | Firebase (Google) | Delivers push notifications to Android phones (Cloud Messaging) | Free | Team email account | Maintainer's personal account |
 | Cloudflare | Hosting the web version and the public website (Cloudflare Pages) | Free | Team email account | Maintainer's personal account |
-| Zoho | The domain mridangaseva.com (registrar) and the team's mail (info@, privacy@ aliases) | Zoho Mail free plan | Team Zoho account | **[[TEAM]]:** confirm |
+| Zoho Domains | The domain mridangaseva.com (registrar; DNS moved to Cloudflare 26-10-2026) | Paid yearly (renews 06-10-2027) | Sarvesh's Zoho login (rsarvesh@gmail.com) | Sarvesh |
+| Cloudflare Email Routing | The class's addresses (privacy@, info@, admin@, notices@, seva@, sadhana@, 108@, connect@) forwarded to Gmail; since 26-10-2026 | Free | Cloudflare account adaripraveen.23@gmail.com (zone mridangaseva.com) | Maintainer |
 | GitHub | Source code | Free, public repository | Maintainer | Maintainer's personal account |
 | YouTube | Lesson videos | Free | Team or channel owner | **[[TEAM]]:** confirm |
 
@@ -42,7 +43,7 @@ s.16), so a processor abroad is allowed, but it must be recorded and named in th
 | Google Firebase Cloud Messaging | Delivers push notifications to Android phones | Same as Expo's push service: token, title, text | Google's regions | [[TEAM]] |
 | Brevo (**planned**: live sign-up mail, audit brief 8; parent codes once its key is set) | Sends sign-up confirmations, password resets, Ishtagoshti parent codes and the consent email to a child's parent (0051) | Email address, the person's name in the mail, the mail's text (a consent email: the child's name, date of birth and centre) | EU (France) | [[TEAM]] |
 | Cloudflare (Pages) | Serves the web version of the app and the public website | Visitors' IP addresses and request details in its logs; the app's data goes from the browser straight to Supabase, not through Cloudflare | Worldwide edge | [[TEAM]] |
-| Zoho Mail | The team's mail: privacy@ and info@ | Whatever parents write to us: requests, complaints, their contact details | **[[TEAM]]:** the account's data centre (zoho.in = India, zoho.com = USA; Zoho Mail admin → Organization). On 24-10-2026 public DNS had **no MX record** for mridangaseva.com, so mail to privacy@ cannot arrive: the privacy notice and the app name it ([DECISIONS.md #575](DECISIONS.md)) | [[TEAM]] |
+| Cloudflare Email Routing + Gmail (Google) | Forwards mail to privacy@, info@ and the class's other addresses to the team's Gmail (privacy@ and info@ → the Guru, Sarvesh; the rest → the maintainer until team leads take them); since 26-10-2026, replacing the planned Zoho Mail (Zoho offered only a paid plan) | Whatever parents write to us: requests, complaints, their contact details | Cloudflare worldwide network; Gmail worldwide | Cloudflare and Google terms |
 | YouTube (Google) | Lesson videos shown in the app | The viewer's IP address and device, and YouTube's own cookies on the web; the app sends it no names | Google's regions | YouTube's terms |
 | Team cloud folder `Mridanga Seva backups` | Keeps the weekly backups (see "Backups") | Encrypted 7z archives only: unreadable without the archive password, which is never stored with them | **[[TEAM]]:** the provider and its region | — |
 | GitHub | Source code (public) | None: no personal data is kept in the repository | USA | — |
@@ -635,6 +636,7 @@ to `app/dist/`. Always use this command, not a bare `npx expo export`, because
 
 | Date | Site | Commit | Built (UTC) | By |
 |---|---|---|---|---|
+| 26-10-2026 | **live** at app.mridangaseva.com (privacy notice 1.0 0060, staff sign-in codes + error log 0061, web push 0062, offline queues, bundle diet, level path, domain move in code; LIVE DB 0062 pasted by Praveen, web-push secrets set, notify-announcements + notify-parents deployed; same day production update group a9fc0b43 / Android 01a17935 from e5f465f; website deployment 6f4e4742) | e5f465f (main; entry-51211837…; deployment 5fce1cb2) | 2026-10-26T17:03:15Z | Claude (wrangler, Praveen's login); OTA Praveen |
 | 26-10-2026 | test (domain move in code: labels and print open app.mridangaseva.com; Guru menu has Sign-in codes and App errors) | 1e7f0b8 (main; entry-0a133640…; deployment db4d6c1e) | 2026-10-26T10:46:27Z | Claude (wrangler, Praveen's login) |
 | 26-10-2026 | test (level path and celebrations merged; What's new for the next update gains two lines) | a5efad9 (main; entry-f9b024b1…; deployment d7c63b02) | 2026-10-26T05:07:04Z | Claude (wrangler, Praveen's login) |
 | 24-10-2026 | test (web push 0062 with the TEST public key, E2E tests, student SOP and explainer PDFs merged) | 316a03e (main; entry-bd8023bc…; deployment f70eda09) | 2026-10-24T18:25:44Z | Claude (wrangler, Praveen's login) |

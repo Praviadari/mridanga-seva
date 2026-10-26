@@ -4465,9 +4465,9 @@
         "name": "Cloudflare",
         "what": "वेबसाइट और वेब ऐप (विश्वभर)"
       },
-      "zoho": {
-        "name": "Zoho Mail",
-        "what": "टीम का ईमेल, privacy@mridangaseva.com सहित"
+      "email": {
+        "name": "Cloudflare Email Routing",
+        "what": "privacy@mridangaseva.com और कक्षा के अन्य पतों पर आई मेल को टीम के Gmail तक पहुँचाता है (विश्वव्यापी)"
       },
       "youtube": {
         "name": "YouTube (Google)",

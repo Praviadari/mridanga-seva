@@ -5,7 +5,7 @@
       "_comment": "Next production update (lead-test merged into main 24-10-2026): privacy notice 1.0, staff sign-in codes, offline queues, lighter web, level path, web notifications. Set date and id when published.",
       "version": "1.0.0",
       "kind": "update",
-      "id": null,
+      "id": "01a17935",
       "date": "2026-10-26",
       "notes": {
         "en": [

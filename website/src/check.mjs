@@ -97,6 +97,10 @@ for (const file of htmlFiles) {
       if (!Object.values(config.emails).includes(url.slice(7))) fail(name, `unknown mailto ${url}`);
       continue;
     }
+    if (url.startsWith('tel:')) {
+      if (url.slice(4) !== config.phone) fail(name, `unknown tel ${url}`);
+      continue;
+    }
     if (url.startsWith('#')) {
       if (url.length > 1 && !idsOf(file).has(url.slice(1))) fail(name, `no element with id ${url}`);
       continue;

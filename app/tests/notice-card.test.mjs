@@ -72,14 +72,14 @@ test('the three homes show the card', () => {
   assert.match(component, /ask !== 'show' \? \(\s*<Checkbox/, 'an adult ticks; a child only says Done');
 });
 
-test('#571: notice 1.0 on the website and in the app, final, with one team fact left', () => {
+test('#571: notice 1.0 on the website and in the app, final, no team fact left', () => {
   assert.equal(PRIVACY_NOTICE_VERSION, '1.0');
   assert.match(repo('website/site.config.mjs'), /privacyNotice: \{ version: '1\.0',/);
   assert.match(repo('website/src/site.mjs'), /\{ id: 'privacy', slug: 'privacy', file: 'privacy\.html', final: true \}/);
   for (const lang of ['en', 'te', 'hi']) {
     const page = repo(`website/content/${lang}/privacy.html`).replace(/<!--[\s\S]*?-->/g, '');
     const blanks = [...page.matchAll(/\[\[TEAM:[^\]]*\]\]/g)];
-    assert.equal(blanks.length, 1, `${lang}: only the Zoho data centre is left`);
-    assert.match(blanks[0][0], /Zoho/);
+    assert.equal(blanks.length, 0, `${lang}: no [[TEAM]] blank left`);
+    assert.match(page, /Cloudflare Email Routing/, `${lang}: the team's mail processor`);
   }
 });

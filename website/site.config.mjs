@@ -30,11 +30,14 @@ export default {
    */
   launch: '2026-10-20',
 
-  /** Mail aliases on the Zoho domain (NOTES_lead.md, 06-10-2026). */
+  /** Mail addresses, forwarded by Cloudflare Email Routing since 26-10-2026 (NOTES_lead.md). */
   emails: {
     info: 'info@mridangaseva.com',
     privacy: 'privacy@mridangaseva.com',
   },
+
+  /** The one phone number the site publishes (Sarvesh Prabhu, Guru; Praveen 26-10-2026), for tel: links. */
+  phone: '+919989336301',
 
   app: {
     /**
