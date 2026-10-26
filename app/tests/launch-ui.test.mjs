@@ -37,6 +37,8 @@ test('every screen the old staff homes offered is still offered: a tab, a circle
     '/staff/ishtagoshti', '/staff/inventory', '/staff/duty', '/staff/suggestions', '/staff/fund',
     '/staff/coordinators', '/staff/database', '/staff/settings', '/staff/centres', '/staff/audit-log', '/staff/options',
     '/staff/heard-about', '/staff/register', '/staff/profile', '/staff/notifications',
+    // Added to Running the class later (0061); missing from the menu until the SOP phase 3 found it.
+    '/staff/sign-in-codes', '/staff/app-errors',
   ];
   const offered = shortcuts + today;
   for (const path of old) assert.ok(offered.includes(`'${path}'`), `${path} is offered nowhere`);
