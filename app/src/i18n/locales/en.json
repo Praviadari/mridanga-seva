@@ -4378,7 +4378,8 @@
       "switchOff": "Switch the parent page off",
       "confirmOn": "Tap again to switch on",
       "confirmOff": "Tap again to switch off",
-      "opened": "Pages opened: {{week}} in 7 days, {{month}} in 30 days ({{children}} children)."
+      "opened_one": "Pages opened: {{week}} in 7 days, {{month}} in 30 days (1 child).",
+      "opened_other": "Pages opened: {{week}} in 7 days, {{month}} in 30 days ({{count}} children)."
     }
   },
   "dataRights": {

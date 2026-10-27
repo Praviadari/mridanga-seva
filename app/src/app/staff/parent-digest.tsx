@@ -262,7 +262,7 @@ function ParentPageSection({ overview, guru, onChange }: { overview: ParentViewO
         <AppText tone="muted">{t('parentDigest.guruSwitches')}</AppText>
       )}
       {error ? <Notice tone="error">{t(error)}</Notice> : null}
-      <AppText>{t('parentView.staff.opened', { week: overview.opened7, month: overview.opened30, children: overview.children30 })}</AppText>
+      <AppText>{t('parentView.staff.opened', { week: overview.opened7, month: overview.opened30, count: overview.children30 })}</AppText>
     </Section>
   );
 }
