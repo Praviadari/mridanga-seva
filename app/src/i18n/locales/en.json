@@ -4949,7 +4949,7 @@
     "bellUnread_other": "Updates, {{count}} new"
   },
   "todayPractice": {
-    "title": "Today's Practice",
+    "title": "Daily Mission",
     "free": "Free practice: any taal or lesson",
     "guna": "Guna: {{guna}}",
     "tempo": "{{bpm}} beats a minute",

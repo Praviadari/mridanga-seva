@@ -1,4 +1,4 @@
-// Today's Practice (docs/DECISIONS.md #673; Sarvesh Prji's student spec, section 2): the one thing the student home
+// Today's Practice, shown as the Daily Mission card (docs/DECISIONS.md #673; Sarvesh Prji's student spec, section 2): the one thing the student home
 // puts first. Worked out here from what the app already keeps, with no new table (no migration):
 // - What: one item of the teachers' Weekly Practice for the student's level (practice_plans, #401), a different one
 //   each day of the week in the plan's order; without a plan the next syllabus item of the level path (#620); else

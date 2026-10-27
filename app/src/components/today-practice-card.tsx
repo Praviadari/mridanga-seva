@@ -1,4 +1,5 @@
-// Today's Practice (docs/DECISIONS.md #673; Sarvesh Prji's student spec, section 2), first on the student home and
+// The Daily Mission card, named Today's Practice in the spec (docs/DECISIONS.md #673; Sarvesh Prji's student spec,
+// section 2; the English name since 27-10-2026), first on the student home and
 // on the Practice tab: the Śrī Khol, what to practise (a taal of the Weekly Practice, a lesson, the next syllabus item
 // or free practice), the guna and tempo, the minutes suggested, how far today is, and one big Start / Continue to the
 // practice tools, which start the timer with the first sound (S5). Worked out in lib/today-practice.ts. Until it is

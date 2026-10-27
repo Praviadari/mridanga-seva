@@ -8276,9 +8276,9 @@ cut from Ionicons (#592) and stays as it is; no native change (fp 23dc7e4a). Nev
 count of announcements not opened; the notifications inbox (A2) is a row in Me with its own count. My profile's person
 button left the student band (Me replaces it). **Why.** The spec puts Updates behind the bell; one bell, not two.
 
-## 673. Today's Practice without a new table — 27 Oct 2026
+## 673. Daily Mission (Today's Practice) without a new table — 27 Oct 2026
 
-**Decision.** lib/today-practice.ts: one item of the level's Weekly Practice a day (taals still in the list, lessons the
+**Name.** Sarvesh Prji (via Praveen, 27-10-2026): the card is called "Daily Mission" in English, not "Today's Practice" or "Today's Sādhana"; Start / Continue stay. Telugu and Hindi wait for the native review (no draft wording; the keys keep the earlier drafts until then). **Decision.** lib/today-practice.ts: one item of the level's Weekly Practice a day (taals still in the list, lessons the
 student may open), else the level path's next item, else free practice; guna = ekgun for a taal (the plan keeps no guna,
 Start plays at layakari 1); minutes = the goal's minutes a day; progress = minutes logged today; Start / Continue /
 done. Start opens the practice tools. **Open.** A guna per plan item needs a practice_plans column (a migration), for
@@ -8286,7 +8286,7 @@ the Guru to decide.
 
 ## 674. The student home: compact band, Today's Practice first, cards under it — 27 Oct 2026
 
-**Decision.** Replaces the ring of #240 on S1: the band without the rule, then Today's Practice, Śloka Study across the
+**Decision.** Replaces the ring of #240 on S1: the band without the rule, then the Daily Mission card (#673), Śloka Study across the
 row, and cards for Lessons, Assessments (count to do), My QR, Events (polls to vote), My Growth (Practice History) and,
 while unfinished, My Details. The fact of the day stays at the foot; the level strip moved to Learn. Welcome and
 celebration cards still take the cards' place once.
