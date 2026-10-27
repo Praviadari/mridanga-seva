@@ -7963,6 +7963,27 @@ runs only, never pull requests from forks) is proposed in `e2e/README.md` for Pr
 five flows gets an E2E step, not another regex over a screen's source; `e2e/SOURCE_TEXT_TESTS.md` lists the existing
 source-text tests and which flow covers each. None is deleted without the lead's agreement.
 
+## 618. The Material Symbols font leaves the Android app — 26 Oct 2026
+
+**Status: built (branch claude/app-size), JS only, fingerprint 23dc7e4a unchanged.** The Android export carried a
+970 KB font nobody sees: every expo-router layout reaches NativeTabs' icon converter, which imports expo-symbols, which
+registers Material Symbols as an asset (plus a 77 KB name table in the bundle). The app draws its icons with its own
+font (#592) and uses neither NativeTabs nor SymbolView. **Decision.** `app/metro.config.js` resolves `expo-symbols` to
+`src/lib/expo-symbols-stub.tsx` on Android only (web and iOS untouched): Android assets 1,573 → 603 KB, Hermes bundle
+−105 KB. The next APK is 0.4-1 MB smaller; updates to today's APK gain nothing (the font is already inside it). A
+screen that one day uses SymbolView gets an empty icon and a loud error, not a silent megabyte. When face-scan is
+merged, its metro.config.js (`assetExts.push('tflite')`) and this one become one file.
+
+## 619. Updates are exported with source maps — 26 Oct 2026
+
+**Status: built (branch claude/app-size), JS only.** `publish-update.mjs` exported without source maps, so Hermes kept
+its debug tables inside the bytecode: 8,889 KB per update against 7,410 KB in the APK's own bundle (Gradle passes a
+source map) and in what `eas update` makes by itself. **Decision.** Export with `--source-maps` (−1.4 MB on each phone
+that takes an update, about −540 KB to download with brotli), then move the maps to `dist-update-maps/` (ignored)
+before the bundle checks: they are not part of the update (EAS uploads maps only with `--upload-source-maps`, not
+used) and they hold the app's source, which names the test project (src/lib/asset-link.ts) and would stop a
+production publish. They stay on the publishing PC to read an App errors stack against that update.
+
 ## 620. The level path: "7 of 20 in Beginner" and what comes next — 24 Oct 2026
 
 **Status: built (level-path worker, audit 22-10-2026 fix 12).** The student home's strip under the ring now reads

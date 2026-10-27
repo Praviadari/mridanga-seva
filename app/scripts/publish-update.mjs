@@ -32,10 +32,10 @@
 // Exits with code 1 and publishes nothing if any check fails or the answer is not yes.
 
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, renameSync, rmSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
-import { dirname, extname, join } from 'node:path';
+import { dirname, extname, join, relative } from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import { connect } from 'node:tls';
 
@@ -46,6 +46,8 @@ import { releaseGitState } from './lib/release-git.mjs';
 import { NOTES_FILE, whatsNewState } from './lib/whats-new-check.mjs';
 
 const OUT = 'dist-update';
+/** The export's source maps, moved out of OUT (step 3). */
+const MAPS_OUT = 'dist-update-maps';
 
 /** Files of the bundle that can hold the settings. Android bundles are Hermes bytecode (.hbc). */
 const BUNDLE_FILES = new Set(['.hbc', '.js', '.json', '.map']);
@@ -232,14 +234,28 @@ console.log(`publish-update: ${channel} → ${settings.EXPO_PUBLIC_SUPABASE_URL}
 
 // ---------------------------------------------------------------- 3. export
 rmSync(OUT, { recursive: true, force: true });
+rmSync(MAPS_OUT, { recursive: true, force: true });
 const expoCli = require.resolve('expo/bin/cli');
 const run = spawnSync(
   process.execPath,
-  [expoCli, 'export', '--platform', 'android', '--output-dir', OUT, '--dump-assetmap', '--clear'],
+  // --source-maps (docs/DECISIONS.md #619): Hermes then keeps its debug tables in the .map file instead of the
+  // bytecode, as in the APK's own bundle and as `eas update` does by itself: 1.4 MB less on every phone that takes
+  // the update (about 540 KB less to download).
+  [expoCli, 'export', '--platform', 'android', '--output-dir', OUT, '--dump-assetmap', '--source-maps', '--clear'],
   // EXPO_NO_DOTENV: Expo itself loads no .env file into the bundle (audit D11-08).
   { stdio: 'inherit', env: { ...process.env, ...settings, EXPO_NO_DOTENV: '1' } },
 );
 if (run.status !== 0) fail('expo export failed (see above).');
+// The maps are not part of the update (EAS uploads them only with --upload-source-maps, never passed here), and they
+// hold the app's source, which names the test project (src/lib/asset-link.ts): moved out before the checks, kept
+// beside dist-update/ to read a stack trace from App errors against this update.
+const maps = listFiles(OUT).filter((file) => extname(file) === '.map');
+for (const file of maps) {
+  const target = join(MAPS_OUT, relative(OUT, file));
+  mkdirSync(dirname(target), { recursive: true });
+  renameSync(file, target);
+}
+if (maps.length === 0) fail('expo export wrote no source map; the bundle would carry its debug tables. Nothing was published.');
 
 // ---------------------------------------------------------------- 4. check the bundle
 if (!existsSync(join(OUT, 'metadata.json'))) fail(`${OUT}/metadata.json is missing; the export did not finish.`);
