@@ -29,11 +29,13 @@ function HeaderBell() {
 
 /** Tab navigator for the student screens. */
 export default function StudentTabsLayout() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { colors } = useTheme();
   const titleFont = useHeadingFont();
-  const { fontScale } = useWindowDimensions();
-  const tabs = tabsScreenOptions(colors, false, fontScale, titleFont);
+  const { fontScale, width } = useWindowDimensions();
+  // A narrow window (a small phone, or the browser zoomed to 200 %) takes the Telugu and Hindi names on two lines
+  // ("నేర్చుకోండి"), so the bar keeps room for the second line as for large text (#670; seen in the 27-10 walk).
+  const tabs = tabsScreenOptions(colors, false, i18n.language !== 'en' && width / 4 < 100 ? Math.max(fontScale, 1.15) : fontScale, titleFont);
   return (
     <Tabs
       screenLayout={documentTitleLayout}

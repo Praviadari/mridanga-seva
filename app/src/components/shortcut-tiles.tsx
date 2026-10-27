@@ -1,9 +1,9 @@
 // The student home's secondary cards under Today's Practice (docs/DECISIONS.md #674; Sarvesh Prji's student spec,
-// section 2): two to a row, one to a row when the phone's text is large, each a coloured circle (module tones, #368)
+// section 2): two to a row, one to a row when the phone's text is large or the window narrow, each a coloured circle (module tones, #368)
 // with its name and, when something waits, a count said in its accessible name ("Assessments, 2 to do"). A wide
 // tile across the row for the one shortcut that must stand out (Śloka Study).
 
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import type { ModuleTone } from '@/theme/colors';
 import { cardLook, spacing, useLargeText, useTheme } from '@/theme/use-theme';
@@ -32,7 +32,9 @@ export type ShortcutTilesProps = { shortcuts: readonly Shortcut[]; wide?: boolea
 export function ShortcutTiles({ shortcuts, wide }: ShortcutTilesProps) {
   const { colors } = useTheme();
   const large = useLargeText();
-  const full = wide || large;
+  // Two to a row broke the Telugu names apart under 360 px (a browser zoomed to 200 %, 27-10 walk).
+  const { width } = useWindowDimensions();
+  const full = wide || large || width < 360;
   return (
     <View style={styles.grid}>
       {shortcuts.map((s) => {
