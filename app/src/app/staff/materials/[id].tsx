@@ -8,6 +8,8 @@
 // Phase 2 slice 8 (C18, docs/DECISIONS.md #65): a coordinator opens 'new' to suggest a material,
 // with a reason, for the Guru (data/suggestions.ts). The Guru opens a waiting suggestion here to
 // review it: edit it if needed, then Add to lessons or Decline with a reason.
+// 0064 (#683-#685): a lesson video may carry an audio file (at most 10 MB, replaced or removed later) and notes beside
+// it; students then see one lesson screen with Video / Audio / Notes tabs.
 
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -30,9 +32,13 @@ import {
   checkMaterialForm,
   deleteMaterial,
   fetchMaterial,
+  isLessonKind,
+  LESSON_NOTES_MAX,
   MATERIAL_NOTE_MAX,
   MATERIAL_TITLE_MAX,
+  MAX_LESSON_AUDIO_BYTES,
   MAX_PANES,
+  pickLessonAudio,
   pickMaterialFile,
   updateMaterial,
   type Material,
@@ -75,6 +81,9 @@ function MaterialScreenContent() {
     levelId: Number(params.level) || 1,
     itemId: Number(params.item) || null,
     file: null,
+    lessonNotes: '',
+    audio: null,
+    removeAudio: false,
   });
   const [errors, setErrors] = useState<MaterialFormErrors>({});
   const [busy, setBusy] = useState<'save' | 'pick' | 'delete' | null>(null);
@@ -117,6 +126,9 @@ function MaterialScreenContent() {
           levelId: material.levelId,
           itemId: material.itemId,
           file: null,
+          lessonNotes: material.notes ?? '',
+          audio: null,
+          removeAudio: false,
         });
       }
     }
@@ -170,13 +182,22 @@ function MaterialScreenContent() {
     if (file) update({ file, title: form.title || file.name.replace(/\.[^.]*$/, '') });
   }
 
+  async function pickAudio() {
+    setBusy('pick');
+    setMessage(null);
+    const result = await pickLessonAudio();
+    setBusy(null);
+    if (result.errorKey) setMessage(t(result.errorKey, { max: fileSizeText(t, MAX_LESSON_AUDIO_BYTES) }));
+    if (result.file) update({ audio: result.file, removeAudio: false });
+  }
+
   async function save() {
     const found = checkMaterialForm(form, isNew);
     setErrors(found);
     if (Object.keys(found).length > 0) return;
     setBusy('save');
     setMessage(null);
-    const outcome = isNew ? await addMaterial(myId, form, requestId()) : await updateMaterial(Number(params.id), form);
+    const outcome = isNew || !material ? await addMaterial(myId, form, requestId()) : await updateMaterial(material, form, myId);
     setBusy(null);
     if (outcome.errorKey) {
       setMessage(t(outcome.errorKey));
@@ -197,7 +218,7 @@ function MaterialScreenContent() {
     }
     setBusy('save');
     setMessage(null);
-    const saved = approve ? await updateMaterial(material.id, form) : {};
+    const saved = approve ? await updateMaterial(material, form, myId) : {};
     const outcome = saved.errorKey ? saved : await decideSuggestion(material.id, approve, declineReason);
     setBusy(null);
     if (outcome.errorKey) setMessage(t(outcome.errorKey));
@@ -338,6 +359,50 @@ function MaterialScreenContent() {
         ) : null}
       </Section>
 
+      {isLessonKind(form.kind) ? (
+        // 0064 (#683): audio and notes beside the video; each shows as its own tab only when it is there.
+        <Section icon="audio" title={t('materials.lessonExtrasTitle')} description={t('materials.lessonExtrasHint')}>
+          <View style={styles.file}>
+            {form.audio ? (
+              <AppText>{t('materials.audioPicked', { name: form.audio.name, size: fileSizeText(t, form.audio.size) })}</AppText>
+            ) : material?.audioPath && !form.removeAudio ? (
+              <AppText>{t('materials.audioKept', { name: material.audioName ?? '', size: fileSizeText(t, material.audioSize ?? 0) })}</AppText>
+            ) : (
+              <AppText tone="muted">{t('materials.audioNone', { max: fileSizeText(t, MAX_LESSON_AUDIO_BYTES) })}</AppText>
+            )}
+            <View style={styles.row}>
+              <Button
+                variant="secondary"
+                icon="audio"
+                label={form.audio || (material?.audioPath && !form.removeAudio) ? t('materials.audioReplace') : t('materials.audioAdd')}
+                loading={busy === 'pick'}
+                disabled={busy !== null}
+                onPress={() => void pickAudio()}
+              />
+              {form.audio || (material?.audioPath && !form.removeAudio) ? (
+                <Button
+                  variant="link"
+                  icon="delete"
+                  label={t('materials.audioRemove')}
+                  disabled={busy !== null}
+                  onPress={() => update({ audio: null, removeAudio: !!material?.audioPath })}
+                />
+              ) : null}
+            </View>
+          </View>
+          <TextField
+            label={t('materials.lessonNotesLabel')}
+            hint={t('materials.lessonNotesHint')}
+            value={form.lessonNotes}
+            onChangeText={(lessonNotes) => update({ lessonNotes })}
+            multiline
+            maxLength={LESSON_NOTES_MAX + 50}
+            counter={LESSON_NOTES_MAX}
+            error={errors.lessonNotes ? t(errors.lessonNotes) : undefined}
+          />
+        </Section>
+      ) : null}
+
       <Section icon="level" title={t('materials.whereTitle')} description={t('materials.whereHint')}>
         <ChoiceGroup<number>
           label={t('materials.levelLabel')}
@@ -354,7 +419,7 @@ function MaterialScreenContent() {
         />
       </Section>
 
-      {busy === 'save' && isNew && form.file ? <AppText tone="muted">{t('announcements.files.uploading')}</AppText> : null}
+      {busy === 'save' && ((isNew && form.file) || form.audio) ? <AppText tone="muted">{t('announcements.files.uploading')}</AppText> : null}
       {/* P1-11 (#323): the problems and the server's answer beside the buttons, not at the top of the page. */}
       <FormErrorSummary errors={errors} serverError={message} />
       {suggestion ? (

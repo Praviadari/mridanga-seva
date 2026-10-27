@@ -6,6 +6,8 @@
 // total, verdict, comment, voice note and score per rubric line, then the task, and for a redo the way to send it
 // again. Recordings are named by number and day ("Recording 2 · 03-10-2026"); one made in the app reads as audio.
 // Opened from S5 Record myself with ?take=<recording id>, that take is attached, ready to listen to and send.
+// 0064 (#686-#688): the status in the student's words (Assigned, Submitted, Under review, Reviewed, Redo requested)
+// and a receipt for each recording sent: its number and the time it was received.
 // Opening it tells the coordinator it was seen. The address holds the assignment id, so a push
 // notification opens it.
 // Data: src/data/assessments.ts, files src/data/assessment-files.ts (migration 0016).
@@ -18,7 +20,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { useAuth } from '@/auth/auth-provider';
 import { AppText } from '@/components/app-text';
-import { AssignmentChips, MediaList, ScoreLines } from '@/components/assessment-parts';
+import { MediaList, ScoreLines, StudentStatusChips } from '@/components/assessment-parts';
 import { AudioRecorderPanel, PlayButton } from '@/components/audio-recorder';
 import { Button } from '@/components/button';
 import { Icon } from '@/components/icon';
@@ -44,6 +46,7 @@ import {
   NOTE_MAX,
   OPEN_STATUSES,
   rubricTotal,
+  studentStatusOf,
   submitRecording,
   type AssignmentDetail,
   type RubricLine,
@@ -52,7 +55,7 @@ import {
 } from '@/data/assessments';
 import { fileSizeText } from '@/i18n/labels';
 import { newestReviewed, recordingNumber } from '@/lib/assessment-view';
-import { formatDate, localDate } from '@/lib/dates';
+import { formatDate, localDate, localTime } from '@/lib/dates';
 import { listMyRecordings } from '@/lib/my-recordings';
 import { takeOf } from '@/lib/recording';
 import { radius, spacing, useTheme } from '@/theme/use-theme';
@@ -150,6 +153,10 @@ function MyAssessmentScreenContent() {
 
   const { assessment: a, release, submissions, status } = loaded;
   const canSend = OPEN_STATUSES.includes(status);
+  // Newest first: the status and the receipt go by the newest recording.
+  const studentStatus = studentStatusOf(status, submissions[0]?.reviewStartedAt ?? null);
+  const receipt = (s: Submission) =>
+    t('assessments.submit.receipt', { number: s.id, date: formatDate(localDate(s.submittedAt)), time: localTime(s.submittedAt) });
 
   async function pick(picker: (room: number) => Promise<MediaPickResult>) {
     setPickError(null);
@@ -190,9 +197,14 @@ function MyAssessmentScreenContent() {
       {/* F9 (#327): a failed refresh keeps what is shown and says so. */}
       <RefreshFailed at={refreshFailed} onRetry={() => load()} />
       {header}
-      <AssignmentChips status={status} dueOn={release.dueOn} />
-      {sent ? <Notice tone="success">{t('assessments.submit.sent')}</Notice> : null}
-      {status === 'submitted' && !sent ? <Notice tone="info">{t('assessments.submit.waiting')}</Notice> : null}
+      <StudentStatusChips status={status} studentStatus={studentStatus} dueOn={release.dueOn} />
+      {sent ? (
+        <Notice tone="success" title={t('assessments.submit.sent')}>
+          {submissions[0] ? receipt(submissions[0]) : null}
+        </Notice>
+      ) : null}
+      {studentStatus === 'submitted' && !sent ? <Notice tone="info">{t('assessments.submit.waiting')}</Notice> : null}
+      {studentStatus === 'under_review' ? <Notice tone="info">{t('assessments.submit.underReview')}</Notice> : null}
 
       {/* The mark first (#383): what the student opens the screen for once a review is in. */}
       {marked ? <MarkCard submission={marked} rubric={a.rubric} recordingName={recordingName(submissions.indexOf(marked))} /> : null}
@@ -293,6 +305,9 @@ function MyAssessmentScreenContent() {
                   name={recordingName(i)}
                   removedNote={s.fileRemovedAt ? t('assessments.files.removed') : undefined}
                 />
+                <AppText variant="small" tone="muted">
+                  {receipt(s)}
+                </AppText>
                 {s === marked ? (
                   // Its mark is the card at the top; one line here.
                   <AppText tone="muted">{[scoreText(t, s), verdictText(t, s)].filter(Boolean).join(' · ')}</AppText>

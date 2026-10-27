@@ -43,6 +43,10 @@ type Row = {
   item_id: number | null;
   approved_by: string | null;
   panes: number | null;
+  audio_path: string | null;
+  audio_name: string | null;
+  audio_size: number | null;
+  notes: string | null;
   uploaded_by: string | null;
   created_at: string;
   suggest_reason: string | null;
@@ -52,7 +56,7 @@ type Row = {
 };
 
 const COLUMNS =
-  'id, title, kind, url, storage_path, file_name, file_size, body, level_id, item_id, approved_by, panes, uploaded_by, created_at, ' +
+  'id, title, kind, url, storage_path, file_name, file_size, body, level_id, item_id, approved_by, panes, audio_path, audio_name, audio_size, notes, uploaded_by, created_at, ' +
   'suggest_reason, decided_at, declined_reason, uploader:profiles!materials_uploaded_by_fkey(full_name)';
 
 function toSuggestion(row: Row): Suggestion | null {
@@ -71,6 +75,10 @@ function toSuggestion(row: Row): Suggestion | null {
       itemId: row.item_id,
       approved: row.approved_by !== null,
       panes: row.panes ?? 1,
+      audioPath: row.audio_path ?? null,
+      audioName: row.audio_name ?? null,
+      audioSize: row.audio_size ?? null,
+      notes: row.notes ?? null,
     },
     state: row.approved_by !== null ? 'added' : row.decided_at ? 'declined' : 'waiting',
     reason: row.suggest_reason,

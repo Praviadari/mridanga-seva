@@ -9,6 +9,9 @@
 // The video plays in a page of its own (lib/lesson-player-html.ts) inside a WebView on phones
 // (react-native-webview, next planned APK) or an iframe in the browser; the controls are the app's,
 // under the video (nothing may be drawn over YouTube's player).
+// 0064 (#683-#685): one lesson screen with Video / Audio / Notes tabs, only those the lesson has (no tab bar when it
+// has the video alone). The video is the first tab; the audio's link is made only when its tab is first opened, and
+// leaving a tab pauses what it plays. Nothing here records progress: a lesson is ticked as learnt by the teacher (C9).
 
 import { Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
@@ -18,12 +21,13 @@ import { Linking, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { ChoiceGroup } from '@/components/choice-group';
+import { LessonAudio } from '@/components/lesson-audio';
 import { LessonVideoFrame, type LessonVideoFrameHandle } from '@/components/lesson-video-frame';
 import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
-import { fetchMaterial, lessonSourceOf, type Material } from '@/data/materials';
+import { fetchMaterial, lessonFormats, lessonSourceOf, type LessonFormat, type Material } from '@/data/materials';
 import type { PlayerCommand, PlayerEvent } from '@/lib/lesson-player-html';
 import { maxDashboardWidth, spacing, useTheme } from '@/theme/use-theme';
 
@@ -62,6 +66,9 @@ export function LessonPlayer() {
   const [loopA, setLoopA] = useState<number | null>(null);
   const [loopB, setLoopB] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // 0064: the open tab (null = the first the lesson has) and whether the Audio tab was ever opened.
+  const [tab, setTab] = useState<LessonFormat | null>(null);
+  const [audioOpened, setAudioOpened] = useState(false);
 
   const load = useCallback(async () => {
     setLoaded(await fetchMaterial(id));
@@ -79,6 +86,8 @@ export function LessonPlayer() {
   const source = material ? lessonSourceOf(material) : null;
   const isFile = source?.kind === 'file';
   const panes = source?.kind === 'file' ? source.panes : 1;
+  const formats = material ? lessonFormats(material) : [];
+  const current = tab ?? formats[0] ?? 'video';
 
   const onEvent = useCallback(
     (event: PlayerEvent) => {
@@ -170,6 +179,12 @@ export function LessonPlayer() {
     setLoopB(time);
     send({ cmd: 'loop', value: { a: loopA, b: time } });
   };
+  const changeTab = (next: LessonFormat) => {
+    // Leaving the video pauses it (YouTube's terms: nothing plays from a player not on screen).
+    if (current === 'video' && next !== 'video') send({ cmd: 'pause' });
+    if (next === 'audio') setAudioOpened(true);
+    setTab(next);
+  };
   const clearLoop = () => {
     setLoopA(null);
     setLoopB(null);
@@ -179,6 +194,16 @@ export function LessonPlayer() {
   return (
     <Screen underHeader wide>
       {header}
+      {formats.length > 1 ? (
+        <ChoiceGroup<LessonFormat>
+          chips
+          label={t('lessonPlayer.tabsLabel')}
+          value={current}
+          onChange={changeTab}
+          choices={formats.map((f) => ({ value: f, label: t(`lessonPlayer.tabs.${f}`), icon: TAB_ICON[f] }))}
+        />
+      ) : null}
+      <View style={current === 'video' ? styles.tab : styles.hidden}>
       <View onLayout={(e) => setWidth(Math.round(e.nativeEvent.layout.width))} style={styles.frameBox}>
         <View style={{ width: frameWidth, maxWidth: '100%' }}>
           <LessonVideoFrame ref={frame} source={source} height={height} background={colors.background} onEvent={onEvent} />
@@ -270,11 +295,40 @@ export function LessonPlayer() {
       </Section>
 
       {material.body ? <AppText>{material.body}</AppText> : null}
+      </View>
+
+      {audioOpened && material.audioPath ? (
+        <View style={current === 'audio' ? styles.tab : styles.hidden}>
+          <Section icon="audio" title={t('lessonPlayer.tabs.audio')}>
+            <LessonAudio path={material.audioPath} name={material.audioName} active={current === 'audio'} />
+          </Section>
+        </View>
+      ) : null}
+
+      {current === 'notes' && material.notes ? (
+        <Section icon="notes" title={t('lessonPlayer.tabs.notes')}>
+          <AppText selectable>{material.notes}</AppText>
+        </Section>
+      ) : null}
+
+      <AppText variant="small" tone="muted">
+        {t('lessonPlayer.progressNote')}
+      </AppText>
     </Screen>
   );
 }
 
+/** The icon of each tab. */
+const TAB_ICON = { video: 'lessonVideo', audio: 'audio', notes: 'notes' } as const;
+
 const styles = StyleSheet.create({
+  tab: {
+    gap: spacing.md,
+  },
+  // A tab not shown stays mounted (the video keeps its place) but takes no room.
+  hidden: {
+    display: 'none',
+  },
   frameBox: {
     width: '100%',
     overflow: 'hidden',
