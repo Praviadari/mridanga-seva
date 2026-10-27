@@ -47,6 +47,7 @@ import {
 import './email-link';
 import { sessionNeedsCode } from './mfa';
 import { finishPendingSignOuts } from './pending-sign-out';
+import { isRecoveryLogin, markRecovery, markRecoveryDone, recoveryUserId } from './recovery-mark';
 import { forgetSavedProfile, readSavedProfile, saveProfile } from './saved-profile';
 import { noteSignedOut } from './session-end';
 import type { Area, IgState, MinorState, Profile } from './types';
@@ -92,8 +93,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [session, setSession] = useState<Session | null>(null);
   // With no settings there is nothing to load, so the setup message can show at once.
   const [sessionLoaded, setSessionLoaded] = useState(supabaseConfigProblem !== null);
-  // Set when the person arrives from a password-reset email link (web only).
-  const [recovering, setRecovering] = useState(false);
+  // The login a password-reset email link signed in (web only), until the new password is saved or the person signs
+  // out. Kept on the device, so Back or a reload cannot skip the new password (src/auth/recovery-mark.ts, #660).
+  const [recoveryUser, setRecoveryUser] = useState<string | null>(() =>
+    supabaseConfigProblem ? null : recoveryUserId(),
+  );
   const [profileResult, setProfileResult] = useState<ProfileResult | null>(null);
   // The user id of a login that is saved on this device but could not be restored at start,
   // because its token had expired and there was no internet to refresh it. Null otherwise.
@@ -142,8 +146,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
     // Supabase warns against awaiting other Supabase calls inside this callback (it can lock
     // up), so the profile is fetched in the effect below instead.
     const { data } = supabase.auth.onAuthStateChange((event, newSession) => {
-      if (event === 'PASSWORD_RECOVERY') setRecovering(true);
-      if (event === 'USER_UPDATED' || event === 'SIGNED_OUT') setRecovering(false);
+      if (event === 'PASSWORD_RECOVERY' && newSession) markRecovery(newSession.user.id);
+      if (event === 'USER_UPDATED' || event === 'SIGNED_OUT') markRecoveryDone();
+      // From the device, not only these events: a sign-in with the password ends the mark too (signIn in auth-actions).
+      setRecoveryUser(recoveryUserId());
       // A remembered profile must never open someone's area after they signed out.
       if (event === 'SIGNED_OUT') {
         forgetSavedProfile();
@@ -210,9 +216,13 @@ export function AuthProvider({ children }: PropsWithChildren) {
         ? 'network'
         : 'server';
 
+  // A login from a reset link never opens the person's home or the pending screen before the new password, not even
+  // from the remembered profile while the login is restored or waits for internet.
+  const recovering = isRecoveryLogin(recoveryUser, session?.user.id ?? offlineUserId);
+
   let area: Area;
-  if (!sessionLoaded) area = saved ? areaForProfile(saved) : 'loading';
-  else if (waitingOffline) area = offlineProfile ? areaForProfile(offlineProfile) : 'pending';
+  if (!sessionLoaded) area = recoveryUser ? 'loading' : saved ? areaForProfile(saved) : 'loading';
+  else if (waitingOffline) area = recovering ? 'recovery' : offlineProfile ? areaForProfile(offlineProfile) : 'pending';
   else area = areaFor(session, recovering, needsCode, current);
 
   const value: AuthState = {

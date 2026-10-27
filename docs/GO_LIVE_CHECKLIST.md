@@ -412,6 +412,9 @@ checks(sort, check_name, ok, found, expected) as (
   select 1, 'Guru logins', (select count(*) from staff where role = 'guru' and active) >= 1,
     (select count(*) from staff where role = 'guru' and active)::text,
     '1 or more (the first Guru: Table Editor → profiles → role guru, OPERATIONS "Setting up a new environment"); 0 = nobody can make coordinators'
+  union all select 8, 'Guru logins at most 2', (select count(*) from staff where role = 'guru' and active) <= 2,
+    (select coalesce(string_agg(nullif(name, ''), ', ' order by name), '-') from staff where role = 'guru' and active),
+    '2 or fewer (#663): a Guru login reads every child''s record and the change history. The Guru and one stand-in; anyone else becomes a coordinator (Table Editor → profiles → role coordinator), then run this again'
   union all select 2, 'coordinators', (select count(*) from staff where role = 'coordinator' and active) >= 1,
     (select count(*) from staff where role = 'coordinator' and active)::text,
     '1 or more by Tuesday: the Guru → Coordinators → a waiting login → Make a coordinator'
@@ -452,6 +455,20 @@ Also: `/auth/v1/settings` (D9) still shows `"mailer_autoconfirm":false`; the cro
 [OPERATIONS.md](OPERATIONS.md#scheduled-jobs-health-check) the next morning shows every daily job
 succeeded once.
 
+**Staff governance** (gap 6 of the 26-10-2026 re-score, [DECISIONS.md #663](DECISIONS.md)). The staff security built in
+0061 counts only once it is switched on, and every Guru login reads every child's record. In this order, each step
+recorded in G:
+1. **Guru count.** Run the Day one query; row 8 (`Guru logins at most 2`) must be `true`. More than two: Praveen (or the
+   Guru) agrees who stays, and anyone else gets `role` = `coordinator` in Table Editor → profiles (the app cannot change
+   a Guru role, `guru_role_dashboard_only`). Run it again and write the names in G "Guru logins".
+2. **Owner MFA.** Each Owner of the Supabase organisation signs in as themselves → Account → Security → MFA on; then
+   organisation → Team: write who is a member and with which role in G "Owner MFA". Nobody records it for someone else.
+3. **Every staff code.** Each Guru and coordinator sets up their own sign-in code (OPERATIONS "Staff sign-in codes",
+   step 1), until Set-up → Sign-in codes shows "Has a code" for everyone.
+4. **Then the switch.** The Guru signs out and in with the code and chooses **Ask for codes** (`staff_mfa_required`
+   true; the app refuses while anyone has no code). Write the date in G "Staff sign-in codes". A coordinator made later
+   is asked for a code before private details show.
+
 ## G. LIVE settings record
 
 Fill in on the day; one row per setting, the value **as seen** in the dashboard (never a key or
@@ -463,7 +480,9 @@ changes later, with the new date.
 | Replay commit | A3, `git log -1` | the main commit the replay passed on; migrations, functions (C4, C7) and the web site (E1) all from it | 512429d (replay passed on 600b620; migrations copied from 512429d raw) | 15-10-2026 | lead chat 10 |
 | Last migration (probe) | SQL editor | `0050`, MISSING none | 0050, MISSING none | 16-10-2026 | lead chat 10 (Praveen pasted 0020-0050) |
 | Backup before go-live | `backup-log.csv` | archive name, `before go-live` — or on 15 Oct 2026 `waived: LIVE empty (row counts <date>)` (A2 waiver) | waived: LIVE empty (row counts 15-10-2026: students/visits/guardians/consents 0, 2 team logins) | 15-10-2026 | lead chat 10, Praveen confirmed logins |
-| Owner MFA | supabase.com Account → Security; organisation → Team | on for every Owner; members = __ | | | |
+| Owner MFA | supabase.com Account → Security (each Owner, signed in as themselves); organisation → Team | ⏳ on for every Owner; members and roles = __ (#663) | | | |
+| Guru logins | Day one row 8 | ⏳ 2 or fewer; their names = __; re-read after every role change (#663) | | | |
+| Staff sign-in codes | the Guru: Set-up → Sign-in codes | ⏳ every Guru and coordinator "Has a code", then **Ask for codes** on (`staff_mfa_required` true) | | | |
 | Drift before / after | CSVs of A4, B-end | `ALL` hashes noted; KIND rows = TEST except the expected | before ALL 359 89928db8…; after ALL 1528 bbdb960a…; KIND rows = TEST except config_rows, pg_net, vault, 0049 | 15/16-10-2026 | lead chat 10 |
 | Scheduled jobs | verification row 3 | 11 of 11 active | 11 of 11 active | 17-10-2026 | lead chat 10 |
 | pg_net | Database → Extensions | on | on, 0.20.4 | 16-10-2026 | Praveen |

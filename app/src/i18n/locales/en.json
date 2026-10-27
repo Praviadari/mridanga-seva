@@ -48,17 +48,17 @@
       "memberNotAllowed": "This person cannot be added to the group.",
       "switchOffFirst": "Switch the login off first.",
       "notYourself": "You cannot do this to your own login.",
-      "guruOnly": "Only the Guru can do this.",
-      "staffOnly": "Only coordinators and the Guru can do this.",
+      "guruOnly": "Only the facilitator can do this.",
+      "staffOnly": "Only coordinators and the facilitator can do this.",
       "centreInUse": "This centre is in use and cannot be deleted. Switch it off instead.",
       "fundKept": "Fund entries are never deleted.",
       "alreadySaved": "This was saved already.",
       "visitFuture": "A visit cannot be in the future.",
       "settingRequired": "This setting cannot be left empty.",
       "tooManyRows": "Too many rows at once. Split the sheet and try again.",
-      "mfaRequired": "This needs your sign-in code: the Guru asks for one before private details show. Set it up in My profile → Sign-in code."
+      "mfaRequired": "This needs your sign-in code: the facilitator asks for one before private details show. Set it up in My profile → Sign-in code."
     },
-    "studentWithdrawn": "Consent for this student was withdrawn. Nothing new can be recorded for them; ask the Guru.",
+    "studentWithdrawn": "Consent for this student was withdrawn. Nothing new can be recorded for them; ask the facilitator.",
     "networkError": "Could not reach the server, or it did not answer. Check your internet connection and try again; if it keeps happening, tell a coordinator.",
     "refreshFailed": "Could not refresh. Showing what was loaded at {{time}}.",
     "fixFieldsAbove": "Some fields need a fix ({{count}}). Each has its message under it, above.",
@@ -136,7 +136,7 @@
     "title": "Reset your password",
     "subtitle": "Enter your email. We will send you a link to set a new password.",
     "submit": "Send link",
-    "sent": "If an account exists for {{email}}, a link is on its way. It can take a few minutes.",
+    "sent": "We have sent a reset link to {{email}} if it is registered here. Not there in a few minutes? Check the spam folder, or sign up as a new student.",
     "backToSignIn": "Back to sign in"
   },
   "resetPassword": {
@@ -166,12 +166,13 @@
     "weakPassword": "This password is too easy to guess. Choose a stronger one.",
     "rateLimited": "Too many tries. Please wait a few minutes and try again.",
     "emailNotSent": "The email could not be sent just now. Please try again in a few minutes, or later in the day. You can also come to the class: the desk registers you there.",
+    "waitAMinute": "Please wait a minute, then try again. Only one email can be sent each minute.",
     "samePassword": "The new password must be different from the old one.",
     "sessionEnded": "Your sign-in has ended. Please sign in again.",
     "linkExpired": "This email link has expired or was already used. Ask for a new one.",
     "signupClosed": "New accounts cannot be made just now. Please ask a coordinator.",
     "accountOff": "This account is switched off. Please ask a coordinator.",
-    "signUpRefused": "The login could not be made. If your name is the same as the Guru's or a coordinator's, add your surname or an initial and try again. Otherwise ask at the class desk."
+    "signUpRefused": "The login could not be made. If your name is the same as the facilitator's or a coordinator's, add your surname or an initial and try again. Otherwise ask at the class desk."
   },
   "pending": {
     "title": "Waiting for access",
@@ -212,7 +213,7 @@
     "lessonsOffline": "No internet: this is the list kept on this device. The videos play once you are online again.",
     "lessonsFailed": "Could not load the lessons.",
     "lessonsEmptyTitle": "No Beginner lessons yet",
-    "lessonsEmptyBody": "The Guru adds the lesson videos. Meanwhile the practice tools are ready for you.",
+    "lessonsEmptyBody": "The facilitator adds the lesson videos. Meanwhile the practice tools are ready for you.",
     "watchLesson": "Watch {{title}}",
     "closedTitle": "Not open yet",
     "closedBody": "This opens once the desk has accepted you, or, under 18, once your parent has given consent.",
@@ -463,7 +464,7 @@
     "title": "Me",
     "intro": "Your own student record: your QR card, progress, attendance and practice, as a student sees them. A colleague checks you in and ticks your syllabus.",
     "noRecordTitle": "No own student record",
-    "noRecordBody": "Your login is not linked to a student record of your own. The Guru links it on Coordinators."
+    "noRecordBody": "Your login is not linked to a student record of your own. The facilitator links it on Coordinators."
   },
   "levels": {
     "1": "Beginner",
@@ -519,7 +520,7 @@
     "doneBody": "{{name}} is registered. Roll number: {{rollNo}}",
     "linked": "Their app login is now connected to this record.",
     "signUpNotLinkedTitle": "The sign-up is still waiting",
-    "signUpNotLinked": "The app login of {{name}} was not connected to this record: a child's record is never connected by itself, and an adult's only when the email is the same. The sign-up stays in the waiting list. If this login should open this record in the app, the Guru links it: Coordinators, the person, \"Or link to a student record\". Do not register {{name}} again.",
+    "signUpNotLinked": "The app login of {{name}} was not connected to this record: a child's record is never connected by itself, and an adult's only when the email is the same. The sign-up stays in the waiting list. If this login should open this record in the app, the facilitator links it: Coordinators, the person, \"Or link to a student record\". Do not register {{name}} again.",
     "alreadySaved": "This student had already been saved: the answer to the first Save did not arrive. Nothing new was stored; check the details on the student's record.",
     "another": "Register another student",
     "done": "Done",
@@ -539,7 +540,7 @@
       "mentorInactive": "That mentor is no longer active. Choose another mentor, or Automatic.",
       "nameInvalid": "Check the name: letters only (any language), at least two. A space, dot, apostrophe or hyphen may go between them.",
       "genderUnknown": "This gender is not in the form choices. Choose one of the options.",
-      "consentRefused": "The server did not accept the parent's consent for this student. Check the parent's details and save again; if it happens again, tell the Guru."
+      "consentRefused": "The server did not accept the parent's consent for this student. Check the parent's details and save again; if it happens again, tell the facilitator."
     },
     "privacyNotice": "Privacy notice for parents",
     "privacyNoticeHint": "Show it to the parent before they sign the consent form.",
@@ -563,7 +564,7 @@
       "title_one": "Possible duplicate: is this person already here?",
       "title_other": "{{count}} possible duplicates: is this person already here?",
       "student": "{{name}}, {{rollNo}} · {{centre}} · joined {{date}}",
-      "studentWithdrawn": "{{name}}, {{rollNo}} · {{centre}} · consent withdrawn: ask the Guru",
+      "studentWithdrawn": "{{name}}, {{rollNo}} · {{centre}} · consent withdrawn: ask the facilitator",
       "signUp": "{{name}} · signed up {{date}} · {{centre}} · waiting in the list above",
       "sameNameAndBirth": "same name and date of birth",
       "samePhone": "same phone",
@@ -726,9 +727,9 @@
     "approvedBy": "approved by {{name}}",
     "tickSyllabus": "Tick syllabus items",
     "withdrawnTitle": "Consent withdrawn on {{date}}",
-    "withdrawnBody": "Nothing new is recorded for this student (visits, calls, practice, loans). The record is erased 30 days after the withdrawal, unless the parent or student consents again before then; the Guru can erase it sooner.",
+    "withdrawnBody": "Nothing new is recorded for this student (visits, calls, practice, loans). The record is erased 30 days after the withdrawal, unless the parent or student consents again before then; the facilitator can erase it sooner.",
     "ownTitle": "This is your own student record",
-    "ownBody": "A colleague checks you in and out, ticks your syllabus, logs calls and nominates you; the Guru decides your level. Your QR card and progress are under Me on your home.",
+    "ownBody": "A colleague checks you in and out, ticks your syllabus, logs calls and nominates you; the facilitator decides your level. Your QR card and progress are under Me on your home.",
     "staffLogin": "Yes: {{name}}'s own record"
   },
   "syllabus": {
@@ -810,7 +811,7 @@
     "commentHint": "Required. A short note for whoever calls next.",
     "save": "Save",
     "confirmLeftTitle": "Mark {{name}} as Left?",
-    "confirmLeftBody": "They leave the follow-up list. Their record, roll number and history are kept, and their next visit makes them Active again. Their login keeps working, and they still get class messages and notifications, until the Guru switches the login off.",
+    "confirmLeftBody": "They leave the follow-up list. Their record, roll number and history are kept, and their next visit makes them Active again. Their login keeps working, and they still get class messages and notifications, until the facilitator switches the login off.",
     "confirmLeftYes": "Yes, save and mark as Left",
     "savedTitle": "Call saved",
     "saved": {
@@ -1309,7 +1310,7 @@
       "nameRequired": "Enter your name.",
       "nameTooLong": "The name is too long (at most 80 characters).",
       "nameInvalid": "Use letters and spaces only; the name holds a hidden or control character.",
-      "nameTaken": "This is the name of the Guru or a coordinator. Add your surname or an initial.",
+      "nameTaken": "This is the name of the facilitator or a coordinator. Add your surname or an initial.",
       "phoneInvalid": "Enter a real phone number; for a number abroad start with + and the country code."
     },
     "appearance": "Appearance",
@@ -2591,7 +2592,7 @@
     "layaNow_one": "{{count}} written beat in each beat.",
     "layaNow_other": "{{count}} written beats in each beat: the theka goes round {{count}} times in one cycle.",
     "kartal": "Kartal under the taal",
-    "kartalHint": "Kartal on every beat, ringing on the first beat of each vibhag. A simple pattern until the Guru gives the class's own.",
+    "kartalHint": "Kartal on every beat, ringing on the first beat of each vibhag. A simple pattern until the facilitator gives the class's own.",
     "kartalVolume": "Kartal volume",
     "feelingQuestion": "How did it go?",
     "feelingHard": "Hard",
@@ -2665,7 +2666,7 @@
     "bpm": "Tempo (beats a minute)",
     "bpmHint": "{{min}} to {{max}}",
     "lesson": "Lesson video",
-    "noLessons": "This level has no lesson videos yet (the Guru's Lessons).",
+    "noLessons": "This level has no lesson videos yet (the facilitator's Lessons).",
     "remove": "Remove",
     "addTaal": "Add a taal",
     "addLesson": "Add a lesson video",
@@ -2676,7 +2677,7 @@
     "lastChanged": "Last changed {{date}}",
     "loadFailed": "The practice of the week could not be loaded.",
     "errors": {
-      "not_allowed": "Only the Guru and coordinators set the practice of the week.",
+      "not_allowed": "Only the facilitator and coordinators set the practice of the week.",
       "plan_goal_invalid": "Choose 1 to 7 days and 5 to 120 minutes.",
       "plan_note_too_long": "The note is too long (300 characters at most).",
       "plan_items_invalid": "At most 3 things to practise.",
@@ -2689,7 +2690,7 @@
     "entry": "Mantra before practice",
     "title": "Mantra before practice",
     "none": "No mantra yet.",
-    "noneEditor": "Add the mantra the class reads before practice: the text as the Guru gives it.",
+    "noneEditor": "Add the mantra the class reads before practice: the text as the facilitator gives it.",
     "add": "Add the mantra",
     "addFirst": "Add the mantra (read before practice)",
     "addAnother": "Add another mantra",
@@ -2718,14 +2719,14 @@
     "newTitle": "New mantra",
     "editTitle": "Edit mantra",
     "notFound": "This mantra could not be found.",
-    "editorHint": "Type or paste the mantra exactly as the Guru gives it. Give at least one script; the others and the meanings are optional.",
+    "editorHint": "Type or paste the mantra exactly as the facilitator gives it. Give at least one script; the others and the meanings are optional.",
     "textTitle": "The mantra",
     "titleField": "Title",
     "titleHint": "For example: Mridanga pranam",
     "scriptsHint": "Students choose the script; their language's script is shown first.",
     "more": "More",
     "sourceField": "Source (optional)",
-    "sourceHint": "Where the text comes from, as the Guru names it.",
+    "sourceHint": "Where the text comes from, as the facilitator names it.",
     "sort": "Order",
     "sortHint": "Smaller numbers come first.",
     "active": "Students see this mantra",
@@ -2733,7 +2734,7 @@
     "delete": "Delete",
     "confirmDelete": "Yes, delete",
     "errors": {
-      "not_allowed": "Only the Guru and Ishtagoshti editors add or change the mantras.",
+      "not_allowed": "Only the facilitator and Ishtagoshti editors add or change the mantras.",
       "mantra_title_invalid": "Give a title of 1 to 80 characters.",
       "mantra_text_required": "Give the mantra in at least one script.",
       "mantra_text_too_long": "Too long: at most 3000 characters a script, 2000 a meaning.",
@@ -4421,7 +4422,7 @@
     "roles": {
       "student": "Student",
       "coordinator": "Coordinator",
-      "guru": "Guru"
+      "guru": "Facilitator"
     },
     "consentScope": {
       "data": "Data",
@@ -4634,7 +4635,7 @@
     "sound": "Drum sound",
     "soundSynth": "Synthesised",
     "soundReal": "Real khol",
-    "soundComing": "Drum sound: synthesised. Real khol strokes come once the Guru has recorded them.",
+    "soundComing": "Drum sound: synthesised. Real khol strokes come once the facilitator has recorded them.",
     "padLeft": "Left pad: baya, left hand",
     "padRight": "Right pad: dayan, right hand",
     "padLeftShort": "Baya · left",
@@ -4724,12 +4725,12 @@
   },
   "learnMore": {
     "title": "Learn more",
-    "tile": "Free lessons the Guru trusts",
-    "intro": "Free lessons and pages elsewhere that the Guru trusts. They open in your browser and need the internet.",
+    "tile": "Free lessons the facilitator trusts",
+    "intro": "Free lessons and pages elsewhere that the facilitator trusts. They open in your browser and need the internet.",
     "saved": "No connection: showing the links saved on this phone.",
     "openFailed": "The link could not be opened on this phone.",
     "none": "No links yet",
-    "noneStudent": "The Guru adds them here.",
+    "noneStudent": "The facilitator adds them here.",
     "noneGuru": "Add the first one with Add a link.",
     "add": "Add a link",
     "addTitle": "Add a link",
@@ -4754,7 +4755,7 @@
       "link_title_invalid": "A title of 1-80 characters.",
       "link_url_invalid": "An https link to a site, at most 500 characters, without spaces.",
       "link_note_too_long": "The note has at most 200 characters.",
-      "not_allowed": "Only the Guru changes these links."
+      "not_allowed": "Only the facilitator changes these links."
     }
   },
   "signInCode": {
@@ -4767,17 +4768,17 @@
     "sixDigits": "Type the 6 digits the app shows.",
     "wrong": "That code is not right, or it changed meanwhile. Type the code the app shows now.",
     "tooMany": "Too many tries. Wait a few minutes, then try again.",
-    "notEnabled": "Sign-in codes are not switched on for this app. Tell the Guru.",
+    "notEnabled": "Sign-in codes are not switched on for this app. Tell the facilitator.",
     "wasReset": "Your sign-in code was reset. Sign out, sign in again and set up a new one in My profile.",
     "lostTitle": "Lost or changed your phone?",
-    "lostBody": "A coordinator asks the Guru to reset the code (Set-up → Sign-in codes), then signs in with the password and sets up a new one. The Guru asks another Guru, or the person who looks after the app."
+    "lostBody": "A coordinator asks the facilitator to reset the code (Set-up → Sign-in codes), then signs in with the password and sets up a new one. The facilitator asks another facilitator, or the person who looks after the app."
   },
   "myCode": {
     "title": "Sign-in code",
     "profileHint": "A code from an authenticator app at every sign-in, so a stolen password is not enough.",
     "open": "My sign-in code",
     "intro": "A sign-in code keeps children's and parents' details safe: after your password the app asks for the 6 digits your authenticator app shows (Google Authenticator, Microsoft Authenticator, Authy or similar). Install one from the app store first.",
-    "guruAsks": "The Guru asks every staff member for a sign-in code: parents' details, consents, call notes and the change history need it.",
+    "guruAsks": "The facilitator asks every staff member for a sign-in code: parents' details, consents, call notes and the change history need it.",
     "isOnNow": "Your sign-in code is on. Every sign-in will ask for it.",
     "isOffNow": "Your sign-in code is off.",
     "missing": "Sign-in codes are not set up on the server yet.",
@@ -4800,16 +4801,16 @@
     "setUp": "Set up my sign-in code",
     "turnOff": "Turn off my sign-in code",
     "confirmOff": "Tap again to turn it off",
-    "cannotTurnOff": "While the Guru asks for codes, yours stays on. For a new phone, set it up again.",
+    "cannotTurnOff": "While the facilitator asks for codes, yours stays on. For a new phone, set it up again.",
     "hiddenTitle": "Private details need your sign-in code",
-    "hiddenBody": "The Guru asks for a sign-in code before parents' details, consents, call notes and the change history show. Set up yours (or sign in again with it); everything else works as before.",
+    "hiddenBody": "The facilitator asks for a sign-in code before parents' details, consents, call notes and the change history show. Set up yours (or sign in again with it); everything else works as before.",
     "contactHidden": "Parent's phone and email: shown after your sign-in code"
   },
   "staffCodes": {
     "title": "Sign-in codes",
     "intro": "Who has set up a sign-in code. Once everyone has, switch codes on: parents' details, consents, call notes and the change history then need a sign-in that gave the code.",
     "switchTitle": "Ask for codes",
-    "switchHint": "Can be switched on only when every Guru and coordinator below has a code, and you signed in with yours.",
+    "switchHint": "Can be switched on only when every facilitator and coordinator below has a code, and you signed in with yours.",
     "isOn": "On: private details need the code",
     "isOff": "Off: the password is enough",
     "waitingFor_one": "Still without a code: {{count}} person.",

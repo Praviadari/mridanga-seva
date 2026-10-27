@@ -235,3 +235,14 @@ test('the email limit (per hour, or 60 s per address) says the email waits; othe
   const requests = await authErrorFor(signUpCall, 429, { code: 'over_request_rate_limit', msg: 'Request rate limit reached' });
   assert.equal(signUpErrorKey(requests), 'authErrors.rateLimited');
 });
+
+test('a second reset email within 60 s says "wait a minute", not "could not be sent" (E5, #661)', async () => {
+  const again = await authErrorFor(resetCall, 429, {
+    code: 'over_email_send_rate_limit', msg: 'For security purposes, you can only request this after 52 seconds.',
+  });
+  assert.equal(authErrorKey(again), 'authErrors.waitAMinute');
+  const oneSecond = await authErrorFor(resetCall, 429, {
+    code: 'over_email_send_rate_limit', msg: 'For security purposes, you can only request this after 1 second.',
+  });
+  assert.equal(authErrorKey(oneSecond), 'authErrors.waitAMinute');
+});

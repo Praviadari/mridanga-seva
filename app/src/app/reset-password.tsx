@@ -1,6 +1,7 @@
 // A1 Set a new password. Opens only after the person follows a reset link from their email
 // (web version; the auth provider sets area 'recovery'). Saving the password ends recovery and
-// the app moves on to the person's screens. The screen names the account the link signed in
+// the app moves on to the person's screens; until then (Back, a reload) the app keeps coming back here
+// (src/auth/recovery-mark.ts, #660). The screen names the account the link signed in
 // (D3-03), and offers to sign out of this browser with the save: the link signed the person in
 // here, and someone who uses the Android app or a shared computer should not stay signed in (FLOW-05).
 

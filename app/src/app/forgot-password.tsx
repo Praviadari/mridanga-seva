@@ -1,5 +1,6 @@
 // A1 Forgot password: emails a link to set a new password. The link opens the web version of
-// the app on the reset-password screen (src/app/reset-password.tsx).
+// the app on the reset-password screen (src/app/reset-password.tsx). The message after sending never says whether
+// the email has an account (no account enumeration); a second request within a minute says to wait (#661).
 
 import { router } from 'expo-router';
 import { useState } from 'react';
@@ -45,6 +46,8 @@ export default function ForgotPasswordScreen() {
             <Notice tone="success">{t('forgotPassword.sent', { email: sentTo })}</Notice>
             {/* The link opens the web version; the phone app needs its own sign-in after it (FLOW-05). */}
             {Platform.OS !== 'web' ? <AppText tone="muted">{t('common.linkOpensInBrowser')}</AppText> : null}
+            {/* The message suggests signing up when no link comes; offered to everyone, so it says nothing about the email (E5). */}
+            <Button variant="secondary" label={t('signIn.createAccount')} onPress={() => router.replace('/sign-up')} />
           </>
         ) : (
           <>

@@ -14,7 +14,7 @@ will rely on it.
 | Cloudflare | Hosting the web version and the public website (Cloudflare Pages) | Free | Team email account | Maintainer's personal account |
 | Zoho Domains | The domain mridangaseva.com (registrar; DNS moved to Cloudflare 26-10-2026) | Paid yearly (renews 06-10-2027) | Sarvesh's Zoho login (rsarvesh@gmail.com) | Sarvesh |
 | Cloudflare Email Routing | The class's addresses (privacy@, info@, admin@, notices@, seva@, sadhana@, 108@, connect@) forwarded to Gmail; since 26-10-2026 | Free | Cloudflare account adaripraveen.23@gmail.com (zone mridangaseva.com) | Maintainer |
-| GitHub | Source code | Free, public repository | Maintainer | Maintainer's personal account |
+| GitHub | Source code; the uptime check of LIVE (Actions, its alert emails; "App errors and uptime") | Free, public repository | Maintainer | Maintainer's personal account |
 | YouTube | Lesson videos | Free | Team or channel owner | **[[TEAM]]:** confirm |
 
 Keep the logins for these in one place the team controls, so the system never depends on one person.
@@ -2050,21 +2050,36 @@ backup: an error that repeats on one screen and version is a bug for the maintai
 means check that update (OPERATIONS "Updating the Android app" for going back). Nothing to deploy; the job
 `mridanga-client-errors-purge` keeps it to 30 days.
 
-**Uptime check (plan for Praveen; nothing is set up yet).** Today an outage of the LIVE web app or of Supabase is
-noticed only when someone complains. Two free ways, pick one; either needs Praveen to choose who gets the alerts (him
-and a second person):
-1. **GitHub Actions in the existing repository (no new account).** A scheduled workflow every 30 minutes that
-   fetches the LIVE web address (expects 200 and the app's page) and `https://qeozvvizcojzxcjgnaei.supabase.co/auth/v1/health`
-   with the public anon key as `apikey` header (a repository secret; the key is public in the web app anyway) and
-   fails when either does not answer within 20 s. GitHub emails the repository owner on a failed scheduled run.
-   Limits: GitHub may delay scheduled runs by some minutes and pauses them after 60 days without a commit (re-enable
-   in the Actions tab). Ask the lead to add `.github/workflows/uptime.yml`; it uses no secret beyond the anon key.
-2. **UptimeRobot or Better Stack free plan (a new account Praveen makes).** Two monitors, every 5 minutes: an HTTP(S)
-   keyword monitor on the LIVE web address, and one on Supabase's health address above. Supabase answers that
-   address only with the `apikey` header: if the chosen free plan cannot send a header, monitor the address for
-   reachability only (an answer of 401 still shows Supabase is up) and check the plan's limits when signing up.
-   Alerts by email (and the provider's phone app) to Praveen and the second person.
-Either way, add the alert recipients and where to look to "Accounts the system depends on" and to the handover list.
+**Uptime check ([DECISIONS.md #662](DECISIONS.md)).** GitHub Actions in this repository (no new account, no secret)
+runs `.github/workflows/uptime.yml` every 15 minutes (at :07, :22, :37 and :52; GitHub may start a run some minutes
+late). The script `.github/uptime-check.mjs` only reads, with three tries of 20 s each:
+- the LIVE web app `https://app.mridangaseva.com/` and its app code (the `entry-….js` the page names);
+- Supabase Auth's health address `https://qeozvvizcojzxcjgnaei.supabase.co/auth/v1/health`, with the public
+  `sb_publishable_…` key it reads from that app code (every visitor's browser gets the same key);
+- the website `https://mridangaseva.com/` (its home page title).
+
+Any of them down fails the run, and the run's page says which (`::error::` lines). **The alert is GitHub's email for a
+failed scheduled run**, sent to the account that last changed the `cron:` line (Praveen's, Praviadari, as long as he or
+the lead pushes it). One email per failed run: a two-hour outage sends about eight; the first run that passes again
+sends nothing. The check does not test sign-in, the database or email sending: the app's error log and complaints still
+cover those.
+
+**What Praveen does once (5 minutes, no secret):**
+1. github.com → Settings → Notifications → **Actions**: tick **Email**, and "Only notify for failed workflows".
+2. After the merge: the repository → **Actions** → **Uptime** → **Run workflow** (on `main`); the run turns green and
+   its log ends with `All up`. If Actions asks to enable workflows, enable them.
+3. A second person gets the alerts by a Gmail filter on Praveen's mailbox: from `notifications@github.com`, subject
+   `Uptime`, → Forward to that person (Gmail asks to confirm the forwarding address once).
+
+**When an alert comes:** open the run (link in the email); the `::error::` line names what is down. The web app or the
+website: Cloudflare dashboard → Workers & Pages → the project → Deployments ("Publishing the web version", "The public
+website"), and
+https://www.cloudflarestatus.com. Supabase: https://status.supabase.com and the project's dashboard. A single failed run
+that passes 15 minutes later was a short blip; write longer ones in "Incidents" when people were affected.
+**Limits:** GitHub pauses scheduled workflows in a public repository after 60 days without a commit (re-enable in
+Actions → Uptime); Dependabot proposes updates of the checkout action monthly, like for CI. Running the check by hand:
+`node .github/uptime-check.mjs` from the repository root.
+
 ## Incidents
 
 Everything that may have exposed personal data, or put the app in someone else's hands. Start with

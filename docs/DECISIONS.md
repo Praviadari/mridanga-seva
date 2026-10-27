@@ -8029,3 +8029,48 @@ is not calm.
 The path and the celebrations show the student data they already see on My progress and in the practice milestones;
 the only thing new kept on the phone is the list of event keys already shown (item ids, milestone names, level-history
 row ids), never sent anywhere and deleted with the app's data. DECISIONS #624-#629 stay free.
+
+## 660. A login from a password-reset link stays on the new-password screen — 27 Oct 2026
+
+**Context.** E5 of the LIVE sign-up test (27 Oct 2026): the reset link signs the person in and is used up. Supabase says
+PASSWORD_RECOVERY only on that first page load, and the app kept it in memory only, so Back (the browser goes back to
+the used link, which reloads the app) or a reload opened the person's home with the old password still set.
+**Decision.** `src/auth/recovery-mark.ts` keeps the user id of that login on the device (local storage) from
+PASSWORD_RECOVERY until USER_UPDATED (the new password is saved) or SIGNED_OUT; a sign-in with the password ends it
+first. While it is there that login's area is `recovery`, also before the login is restored and while it waits for
+internet: the remembered profile never opens home or pending. Another login is never held back (the id must match).
+**Privacy.** Only the user id, on this device, deleted at the save or sign-out: no notice change.
+
+## 661. Forgot password: plainer "sent", and "wait a minute" for the second request — 27 Oct 2026
+
+**Decision.** The sent message says the link went to the address "if it is registered here", with spam folder and
+sign-up as next steps, and the screen offers New student registration to everyone, so it still says nothing about
+whether the email has an account. Supabase's 60 s per address limit (429 `over_email_send_rate_limit`, "only request
+this after N seconds") gets `authErrors.waitAMinute`; the hourly project limit with the same code keeps
+`emailNotSent`. te/hi are drafts for the native review. Known limit: Supabase answers 429 only for an address that
+has an account, so a second request within a minute can tell that apart; the server does it, the app cannot hide it.
+
+## 662. Uptime check: GitHub Actions every 15 minutes, no secret — 27 Oct 2026
+
+**Decision.** Replaces the plan of #588. `.github/workflows/uptime.yml` runs `.github/uptime-check.mjs`, which only reads
+the LIVE web app and its code, Supabase Auth's health address and the website; the publishable key for the health
+address is read from the LIVE app code, so nothing is stored in the repository or its secrets. A failed scheduled run
+is the alert (GitHub's email to the account that last changed the schedule). **Why.** No new account, nothing to pay
+(public repository), one place with the code; UptimeRobot-style 5-minute checks stay an option if 15 minutes proves too
+slow. Praveen's one-time steps are in OPERATIONS "App errors and uptime".
+
+## 663. Staff governance before the switch: at most two Guru logins, owner MFA recorded — 27 Oct 2026
+
+**Context.** Gap 6 of the 26-10-2026 re-score: five Guru logins read every child's record; the owner's MFA was never
+recorded; the sign-in codes of 0061 count only once switched on. **Decision.** The Day one query gets row 8 `Guru logins
+at most 2` (names the Guru logins); GO_LIVE_CHECKLIST part F lists the order (Guru count, owner MFA, every staff code,
+then the Guru's Ask for codes) and G has a row for each. Docs only: a Guru role is still given and taken in the
+dashboard (`guru_role_dashboard_only`), so no migration.
+
+## 664. One English word for the Guru role: facilitator — 27 Oct 2026
+
+**Decision.** Follows #40: the English strings that still said "Guru" (35 places) (including `roles.guru` in the data-rights
+roles) now say "facilitator" ("The facilitator" at a sentence start); the website already did. The privacy notice's
+"the facilitator (Guru)" stays as a gloss. Telugu and Hindi keep గురువు / गुरु (#40); the spots that use the plain
+form instead of గురువుగారు / गुरुजी are listed for the native review in NOTES_ops_signin_polish.md.
+DECISIONS #665-#669 stay free.

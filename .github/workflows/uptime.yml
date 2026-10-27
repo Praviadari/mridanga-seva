@@ -1,0 +1,32 @@
+# Uptime check of LIVE (gap 8 of the 26-10-2026 re-score, docs/OPERATIONS.md "App errors and uptime",
+# docs/DECISIONS.md #662). Every 15 minutes .github/uptime-check.mjs reads, and only reads, the LIVE web app, the website
+# and Supabase Auth's health address. A failed run is the alert: GitHub emails it to the person who last changed the
+# schedule line below. Needs no secrets (the script says why). Public repository: the runs cost nothing.
+name: Uptime
+
+on:
+  schedule:
+    # Off the hour, when GitHub's scheduler is busiest and late.
+    - cron: '7,22,37,52 * * * *'
+  workflow_dispatch:
+
+# Reads the code for the script, nothing more.
+permissions:
+  contents: read
+
+concurrency:
+  group: uptime
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: LIVE web app, website, Supabase Auth
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: .github
+      # The runner's own Node (20 or newer) has fetch; nothing to install.
+      - run: node .github/uptime-check.mjs
