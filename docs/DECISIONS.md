@@ -8030,6 +8030,55 @@ The path and the celebrations show the student data they already see on My progr
 the only thing new kept on the phone is the list of event keys already shown (item ids, milestone names, level-history
 row ids), never sent anywhere and deleted with the app's data. DECISIONS #624-#629 stay free.
 
+## 650. The web version loads the student screens beyond the tabs later, with the code they share with staff — 27 Oct 2026
+
+**Status: branch `web-entry-diet` (re-score 26-10-2026 gap 13, the lead's brief of 27 Oct 2026). JS and the export script
+only, fingerprint 23dc7e4a; no migration.**
+
+**Context.** After #590 the web version's first download was still 3,058 KB (gzip 869, brotli 671): every visit, signed
+out or not, downloaded the practice tools, Echo me, the tap pad, lessons, assessments, events, polls, My profile and My
+data. Praveen's rule (27 Oct 2026): speed and any phone first, size second; no slower first screen, no broken offline
+start, no native code.
+
+**Decision.** Like the staff screens (#590), every student and waiting screen except their layouts and the student's
+four tabs (Home, My QR, Announcements, Ishtagoshti) is a stand-in on the web that loads one file, `student-area.ts`
+(`student-area-<hash>.js`, 31 screens). The four tabs stay in the first download, so the student home never waits. The
+loader is now one for both areas (`src/web-routes/lazy-area.tsx`); the lists of later screens are
+`src/web-routes/area-screens.ts`, written by `npm run area-screens` (was `staff-screens`), refused by export-web and the
+tests when stale. A student's or waiting login starts the student file 1.5 s after the first screen
+(`src/lib/web-areas.web.ts`), so the home's own requests go first on a slow line; a staff login starts the staff file at
+once, as before. The service worker keeps the student file at install (after sign-in), so practice offline works from
+the first visit as before; the staff file stays out of its list (#591).
+
+**The shared code.** Nearly all student-screen code is also used by staff screens (practice tools, Echo me, lesson
+player, events, polls, assessments). Expo's export puts code two later files share into `__common-<hash>.js`, which
+index.html loads at start: the first cut moved only 37 KB (3,058 → 3,025 KB). export-web therefore folds `__common` into
+each area file (step 2b, `scripts/lib/fold-common.mjs`): a copy at the head of the staff and of the student file, new
+content hashes in their names, the entry's table of later files and index.html rewritten, `__common` deleted. Safe
+because `__common` only defines modules (it runs nothing), none of them is in the entry, and Metro's `define()` keeps
+the first copy of a module and ignores a second. Anything unexpected (two `__common` files, a name found other than
+once) stops the export.
+
+**Practice as its own file: not taken.** Measured: code only the practice screens use is 3 KB; the rest is shared. A
+separate practice file would carry its own copy of the shared code, so a student would download it twice.
+
+**Measured** (TEST export, 27 Oct 2026; before 5e7e06f, after this branch): first download 3,058 → 2,657 KB (entry
+2,647 + Expo's runtime file 10; gzip 869 → 741, brotli 671 → 579); student file 404 KB (gzip 130), loaded by students
+and waiting logins after the home; staff file 842 → 1,210 KB (it now carries the shared code that was in the entry; a
+staff phone's total 3,900 → 3,867 KB). Service worker install list 29 files 3,423 KB → 31 files 3,425 KB (a student
+phone keeps what it kept before). Sign-in screen on a 1.6 Mbit/s, 150 ms link (local copy, gzip, browser pane, two runs
+each): 6.7 / 6.5 s before, 5.5 / 6.0 s after.
+
+**Looked at, left.** Telugu and Hindi already load only when chosen (#331) and are kept offline once loaded (#591);
+English stays in the first download as the fallback and the start language of most (only ~4 KB of its texts is used
+by staff screens alone, so splitting it would not pay). The heading fonts already load per language at run time
+(#337, #367); the QR reader is not in the first download. What is left is mostly the framework: Expo Router 429 KB,
+react-native-web 276, react-dom 175, Supabase ~240, and libphonenumber-js 201 KB (sign-up, About you, parent consent:
+Metro does not tree-shake and the package's `exports` blocks its small entry points, so As-you-type, find-numbers
+and the rest come along; the metadata alone is 81 KB). Next candidates: libphonenumber's metadata and code loaded only by the forms that need them, and the
+announcement upload code (expo-image-manipulator, -image-picker, -document-picker, ~30 KB) split from the readers'
+`announcement-files.ts`.
+
 ## 660. A login from a password-reset link stays on the new-password screen — 27 Oct 2026
 
 **Context.** E5 of the LIVE sign-up test (27 Oct 2026): the reset link signs the person in and is used up. Supabase says

@@ -72,7 +72,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "export:web": "node ./scripts/export-web.mjs",
-    "staff-screens": "node ./scripts/staff-screens.mjs",
+    "area-screens": "node ./scripts/area-screens.mjs",
     "icons": "node ./scripts/make-icon-font.mjs",
     "update:preview": "node ./scripts/publish-update.mjs preview",
     "update:production": "node ./scripts/publish-update.mjs production",

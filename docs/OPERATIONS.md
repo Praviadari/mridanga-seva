@@ -602,9 +602,11 @@ to `app/dist/`. Always use this command, not a bare `npx expo export`, because
 - writes `dist/sw.js`, the service worker that keeps the app's own files for offline use, with this build's id and
   file list ([#513](DECISIONS.md)); it prints how many files and KB it keeps (the staff screens and the Telugu and
   Hindi files are kept only on a device that loads them, [#591](DECISIONS.md)).
-- refuses to start when `src/web-routes/staff-screens.ts` no longer matches `src/app/staff` (run
-  `npm run staff-screens` and commit), and checks the staff screens came out as one `staff-area-<hash>.js`; it prints
-  the size of the first download and of the staff file ([#590](DECISIONS.md)). After adding or changing an icon in
+- refuses to start when `src/web-routes/area-screens.ts` no longer matches `src/app` (run `npm run area-screens`
+  and commit after adding, moving or removing a staff, student or waiting screen), folds Expo's `__common` file into
+  the area files, and checks the staff and the student screens came out as one `staff-area-<hash>.js` and one
+  `student-area-<hash>.js`; it prints the size of the first download (every script index.html loads) and of each area
+  file ([#590](DECISIONS.md), [#650](DECISIONS.md)). After adding or changing an icon in
   `src/components/icon.tsx`, run `npm run icons` (needs Python with fontTools) and commit the font ([#592](DECISIONS.md)).
 
 **After every upload, check the headers** (a minute, on the site's address):
