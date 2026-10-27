@@ -636,6 +636,7 @@ to `app/dist/`. Always use this command, not a bare `npx expo export`, because
 
 | Date | Site | Commit | Built (UTC) | By |
 |---|---|---|---|---|
+| 27-10-2026 | test (app size: icon font out of Android, updates exported with source maps; metro.config.js) | 782e020 (main; entry-18c4a247…; deployment ac6be666) | 2026-10-27T09:55:05Z | Claude (wrangler, Praveen's login) |
 | 26-10-2026 | **live** at app.mridangaseva.com (privacy notice 1.0 0060, staff sign-in codes + error log 0061, web push 0062, offline queues, bundle diet, level path, domain move in code; LIVE DB 0062 pasted by Praveen, web-push secrets set, notify-announcements + notify-parents deployed; same day production update group a9fc0b43 / Android 01a17935 from e5f465f; website deployment 6f4e4742) | e5f465f (main; entry-51211837…; deployment 5fce1cb2) | 2026-10-26T17:03:15Z | Claude (wrangler, Praveen's login); OTA Praveen |
 | 26-10-2026 | test (domain move in code: labels and print open app.mridangaseva.com; Guru menu has Sign-in codes and App errors) | 1e7f0b8 (main; entry-0a133640…; deployment db4d6c1e) | 2026-10-26T10:46:27Z | Claude (wrangler, Praveen's login) |
 | 26-10-2026 | test (level path and celebrations merged; What's new for the next update gains two lines) | a5efad9 (main; entry-f9b024b1…; deployment d7c63b02) | 2026-10-26T05:07:04Z | Claude (wrangler, Praveen's login) |
