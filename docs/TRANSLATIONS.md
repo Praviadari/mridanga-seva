@@ -325,3 +325,8 @@ The privacy texts of 0034 (`signUp.privacyNotice`, `signUp.under18`, `register.p
   meaning first: "consent" సమ్మతి / सहमति, "withdraw" ఉపసంహరించు / वापस लेना, "erase" తొలగించు / मिटाना, "parent or
   legal guardian" తల్లిదండ్రులు లేదా చట్టపరమైన సంరక్షకులు / माता-पिता या वैध अभिभावक. Checked for mixed Telugu-Devanagari
   words on 24 Oct 2026.
+- **Parent page** (branch `parent-view`, migration 0063, [DECISIONS.md #640-#649](DECISIONS.md), 27 Oct 2026): new block
+  `parentView` (the parent's page, its states and the staff's "Parent page" section), `auditLog.readFunctions.parent_view`,
+  and the weekly email's `view` line in `supabase/functions/notify-parents/digest.ts`; Telugu and Hindi are drafts. Words to
+  check first: "parent page" తల్లిదండ్రుల పేజీ / अभिभावक पेज, "Stop" ఆపండి / बंद करें, "streak" వరుసగా … రోజులు /
+  लगातार … दिन, "goal's minutes" లక్ష్య నిమిషాలు / लक्ष्य के मिनट; the notice lines in #649.
