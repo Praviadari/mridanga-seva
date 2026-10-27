@@ -27,6 +27,7 @@ import { SignOutButton } from '@/components/sign-out-button';
 import { TextField } from '@/components/text-field';
 import type { MessageKey } from '@/data/errors';
 import { giveParentConsent, type ConsentResult } from '@/data/minor-signup';
+import { showLanguage } from '@/i18n';
 import { asciiDigits } from '@/lib/digits';
 import { PRIVACY_NOTICE_VERSION } from '@/lib/privacy-notice';
 import { spacing } from '@/theme/use-theme';
@@ -45,7 +46,7 @@ const REFUSED: Partial<Record<ConsentResult, MessageKey>> = {
 
 /** The consent form, then the thank-you. */
 export default function ParentConsentScreen() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const { area } = useAuth();
   const { lang } = useLocalSearchParams<{ lang?: string }>();
   const [email, setEmail] = useState('');
@@ -61,8 +62,8 @@ export default function ParentConsentScreen() {
 
   // The email's language (?lang=te or hi) for this visit only; the language picker still works.
   useEffect(() => {
-    if (lang === 'en' || lang === 'te' || lang === 'hi') void i18n.changeLanguage(lang);
-  }, [lang, i18n]);
+    if (lang === 'en' || lang === 'te' || lang === 'hi') showLanguage(lang);
+  }, [lang]);
 
   async function submit() {
     if (busy) return;

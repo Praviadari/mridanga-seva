@@ -20,6 +20,7 @@ import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { fetchParentView, stopParentView, viewTokenFrom, type ParentView, type ParentViewResult } from '@/data/parent-view';
+import { showLanguage } from '@/i18n';
 import { levelName } from '@/i18n/labels';
 import { announce } from '@/lib/announce';
 import { formatDate } from '@/lib/dates';
@@ -33,7 +34,7 @@ function tokenOfAddress(): string | null {
 }
 
 export default function ParentPageScreen() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const { lang } = useLocalSearchParams<{ lang?: string }>();
   const [token] = useState(tokenOfAddress);
   // undefined = loading.
@@ -44,8 +45,8 @@ export default function ParentPageScreen() {
 
   // The email's language (?lang=te or hi) for this visit only; the language picker still works.
   useEffect(() => {
-    if (lang === 'en' || lang === 'te' || lang === 'hi') void i18n.changeLanguage(lang);
-  }, [lang, i18n]);
+    if (lang === 'en' || lang === 'te' || lang === 'hi') showLanguage(lang);
+  }, [lang]);
 
   const load = useCallback(async () => {
     if (token) setResult(await fetchParentView(token));

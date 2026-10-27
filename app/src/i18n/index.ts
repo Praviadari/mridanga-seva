@@ -160,6 +160,15 @@ export function chooseLanguage(language: Language): void {
 }
 
 /**
+ * Shows `language` for this visit only, without remembering it: a parent's page opened with ?lang= (the consent page,
+ * the parent page). On the web the language is downloaded first, as for a choice (#331); a bare changeLanguage would
+ * keep English.
+ */
+export function showLanguage(language: Language): void {
+  if (language !== currentLanguage()) withLanguage(language, () => void i18n.changeLanguage(language));
+}
+
+/**
  * Switches to the language saved on the person's profile and remembers it on this device, so
  * the next start (and the sign-in screen after a sign-out) opens in it.
  */
