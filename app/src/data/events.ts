@@ -20,6 +20,13 @@ export const EVENT_DESCRIPTION_MAX = 4000;
 export const EVENT_PLACE_MAX = 200;
 export const CANCEL_REASON_MAX = 500;
 export const PART_MAX = 60;
+/** The optional details for students (migration 0064, #681). */
+export const EVENT_REHEARSAL_MAX = 200;
+export const EVENT_DRESS_MAX = 200;
+export const EVENT_ROLE_MAX = 120;
+export const EVENT_MAPS_MAX = 500;
+/** Reporting is at or before the start, at most this many hours before (as the database). */
+export const REPORTING_MAX_HOURS = 12;
 /** How far back the lists go: older events are history nobody needs on a phone. */
 const PAST_DAYS = 60;
 
@@ -43,6 +50,13 @@ export type ClassEvent = {
   cancelledAt: string | null;
   cancelReason: string | null;
   lastRemindedAt: string | null;
+  /** Optional details for those taking part (0064): when to arrive, rehearsal, dress code, whom to contact, role, map. */
+  reportingAt: string | null;
+  rehearsal: string | null;
+  dressCode: string | null;
+  coordinatorId: string | null;
+  attendeeRole: string | null;
+  mapsUrl: string | null;
 };
 
 /** Counts of one event (event_counts), and the signed-in person's own answer, part and attendance. */
@@ -80,10 +94,16 @@ type EventRow = {
   cancelled_at: string | null;
   cancel_reason: string | null;
   last_reminded_at: string | null;
+  reporting_at: string | null;
+  rehearsal: string | null;
+  dress_code: string | null;
+  coordinator_id: string | null;
+  attendee_role: string | null;
+  maps_url: string | null;
 };
 
 const EVENT_COLUMNS =
-  'id, title, description, starts_at, ends_at, centre_id, place, audience, audience_level, audience_group, created_by, cancelled_at, cancel_reason, last_reminded_at';
+  'id, title, description, starts_at, ends_at, centre_id, place, audience, audience_level, audience_group, created_by, cancelled_at, cancel_reason, last_reminded_at, reporting_at, rehearsal, dress_code, coordinator_id, attendee_role, maps_url';
 
 function toEvent(r: EventRow): ClassEvent {
   return {
@@ -101,7 +121,19 @@ function toEvent(r: EventRow): ClassEvent {
     cancelledAt: r.cancelled_at,
     cancelReason: r.cancel_reason,
     lastRemindedAt: r.last_reminded_at,
+    reportingAt: r.reporting_at,
+    rehearsal: r.rehearsal,
+    dressCode: r.dress_code,
+    coordinatorId: r.coordinator_id,
+    attendeeRole: r.attendee_role,
+    mapsUrl: r.maps_url,
   };
+}
+
+/** True for a link the database takes as a maps link: https, no spaces, at most 500 characters. */
+export function mapsLinkOk(link: string): boolean {
+  const value = link.trim();
+  return value.length <= EVENT_MAPS_MAX && /^https:\/\/[^\s/?#]+\S*$/.test(value);
 }
 
 /** True once the event has ended (or started, when it has no end). */
@@ -137,6 +169,7 @@ const EVENT_ERROR_CODES = [
   'title_too_long', 'description_too_long', 'place_required', 'place_too_long', 'centre_invalid', 'starts_required',
   'starts_past', 'starts_too_far', 'ends_invalid', 'audience_invalid', 'level_required', 'group_required', 'audience_locked',
   'reason_too_long', 'too_many', 'student_invalid', 'part_invalid', 'too_early', 'too_soon', 'response_invalid',
+  'reporting_invalid', 'rehearsal_too_long', 'dress_code_too_long', 'attendee_role_too_long', 'maps_link_invalid', 'coordinator_invalid',
 ] as const;
 
 /** Names needed to word events: centres and groups by id, staff by profile id. */
@@ -375,6 +408,14 @@ export type EventForm = {
   audience: Audience | null;
   levelId: number | null;
   groupId: number | null;
+  /** Details for those taking part (0064), all optional. Reporting time on the event's day, 24-hour. */
+  reportingTime: string;
+  rehearsal: string;
+  dressCode: string;
+  /** The staff member to contact (profile id); null = none named (the author). */
+  coordinatorId: string | null;
+  attendeeRole: string;
+  mapsUrl: string;
 };
 
 export type EventFormErrors = Partial<Record<keyof EventForm, MessageKey>>;
@@ -382,6 +423,7 @@ export type EventFormErrors = Partial<Record<keyof EventForm, MessageKey>>;
 /** The form of a new event: everything empty; who it is for must be chosen. */
 export const EMPTY_EVENT_FORM: EventForm = {
   title: '', description: '', date: '', time: '', endTime: '', centreId: null, place: '', audience: null, levelId: null, groupId: null,
+  reportingTime: '', rehearsal: '', dressCode: '', coordinatorId: null, attendeeRole: '', mapsUrl: '',
 };
 
 /** The form filled from an event (to edit it). An end on another day is kept only when unchanged. */
@@ -397,6 +439,12 @@ export function formFromEvent(e: ClassEvent): EventForm {
     audience: e.audience,
     levelId: e.audienceLevel,
     groupId: e.audienceGroup,
+    reportingTime: e.reportingAt && localDate(e.reportingAt) === localDate(e.startsAt) ? localTime(e.reportingAt) : '',
+    rehearsal: e.rehearsal ?? '',
+    dressCode: e.dressCode ?? '',
+    coordinatorId: e.coordinatorId,
+    attendeeRole: e.attendeeRole ?? '',
+    mapsUrl: e.mapsUrl ?? '',
   };
 }
 
@@ -429,7 +477,24 @@ export function checkEventForm(form: EventForm, now = Date.now(), savedStart?: s
   if (!form.audience) errors.audience = 'events.form.audienceRequired';
   else if (form.audience === 'level' && form.levelId === null) errors.levelId = 'events.errors.level_required';
   else if (form.audience === 'group' && form.groupId === null) errors.groupId = 'events.errors.group_required';
+  if (form.reportingTime.trim()) {
+    const reporting = parseTimeOfDay(form.reportingTime);
+    if (!reporting) errors.reportingTime = 'events.form.timeInvalid';
+    else if (time && (reporting > time || minutesOf(time) - minutesOf(reporting) > REPORTING_MAX_HOURS * 60)) {
+      errors.reportingTime = 'events.errors.reporting_invalid';
+    }
+  }
+  if (form.rehearsal.trim().length > EVENT_REHEARSAL_MAX) errors.rehearsal = 'events.errors.rehearsal_too_long';
+  if (form.dressCode.trim().length > EVENT_DRESS_MAX) errors.dressCode = 'events.errors.dress_code_too_long';
+  if (form.attendeeRole.trim().length > EVENT_ROLE_MAX) errors.attendeeRole = 'events.errors.attendee_role_too_long';
+  if (form.mapsUrl.trim() && !mapsLinkOk(form.mapsUrl)) errors.mapsUrl = 'events.errors.maps_link_invalid';
   return errors;
+}
+
+/** "18:30" → 1110. */
+function minutesOf(time: string): number {
+  const [h, m] = time.split(':').map(Number);
+  return h * 60 + m;
 }
 
 /** The row the form saves. `keepEnd` keeps an end on another day that the form does not show. */
@@ -437,6 +502,7 @@ function rowOf(form: EventForm, keepEnd: string | null) {
   const date = parseDayMonthYear(form.date) as string;
   const time = parseTimeOfDay(form.time) as string;
   const end = parseTimeOfDay(form.endTime);
+  const reporting = parseTimeOfDay(form.reportingTime);
   return {
     title: form.title.trim(),
     description: form.description.trim(),
@@ -447,6 +513,12 @@ function rowOf(form: EventForm, keepEnd: string | null) {
     audience: form.audience,
     audience_level: form.audience === 'level' ? form.levelId : null,
     audience_group: form.audience === 'group' ? form.groupId : null,
+    reporting_at: reporting ? localMoment(date, reporting) : null,
+    rehearsal: form.rehearsal.trim() || null,
+    dress_code: form.dressCode.trim() || null,
+    coordinator_id: form.coordinatorId,
+    attendee_role: form.attendeeRole.trim() || null,
+    maps_url: form.mapsUrl.trim() || null,
   };
 }
 

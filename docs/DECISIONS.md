@@ -8249,3 +8249,88 @@ roles) now say "facilitator" ("The facilitator" at a sentence start); the websit
 "the facilitator (Guru)" stays as a gloss. Telugu and Hindi keep గురువు / गुरु (#40); the spots that use the plain
 form instead of గురువుగారు / गुरुजी are listed for the native review in NOTES_ops_signin_polish.md.
 DECISIONS #665-#669 stay free.
+
+## 680. Learn screens from the Guru's student-module specification — 27 Oct 2026
+
+**Status: branch `learn-screens` (the lead's brief of 27 Oct 2026; Praveen agreed the three items with Sarvesh Prabhu
+the same day). Migration 0064, JS-only app (fingerprint 23dc7e4a unchanged).**
+
+**Context.** Sarvesh Prabhu's "Student module change specification" (27-10-2026, 16 pages) asks, among much else, for
+event details, one lesson screen with Video / Audio / Notes, and clear assessment statuses (§4 rows p.8, p.13, p.15,
+§10.4). Its pictures are AI concepts, not designs. The PDF on `\\fileserver02` was not reachable from the worker's PC on
+27-10-2026; this was built from the lead's summary of those rows. **Decision.** Three changes inside the event, lesson
+and assessment screens and their staff forms (#681-#688); student navigation, Home and the icon set are another
+worker's (`student-nav`) and are not touched. Kartāl and harmonium stay Phase 2.
+
+## 681. Event details for those taking part — 27 Oct 2026
+
+**Decision.** Six optional columns on `events`: reporting time (`reporting_at`, the same day on the form, at or before the
+start, at most 12 hours before), rehearsal (free text: day, time, place), dress code and what to bring, the role of those
+taking part, the staff member to contact (`coordinator_id`, an active coordinator or the Guru), and an https maps link.
+Staff set them in a "For those taking part" section of C16; students see them on the event card (S11) — "Report by
+17:30", "Rehearsal: …", "Wear and bring: …", "Role: …", "Questions: ask …" — with Open the map, and the calendar entry
+carries them. **Venue** is the existing centre and/or place (0022), now headed "Venue" on the form: no second venue
+field. A performer's own part (Performers, 0022) still shows as "Your part"; the role here is everyone's. **RSVP:**
+events have no answer deadline — answers close when the event starts (0022, unchanged); a separate deadline was not
+added. Changing only a detail tells nobody (as before, only a new time or place is told). Checked by a trigger of its
+own (`guard_event_details`), so 0022's guard is untouched.
+
+## 682. No new personal data; the privacy notice needs no new line — 27 Oct 2026
+
+**Decision.** Event details are class logistics, not data about a student. The contact is a staff member's **name**,
+which students already see on events ("Created by") and announcements; no phone number or email is shown (a student
+asks in class or through the coordinator's usual channel). Lesson audio and notes are teaching material. The
+assessment receipt and "Under review" show times the database already kept (`submitted_at`) or a staff action on a
+recording (`review_started_at`). **The privacy notice needs no new line.**
+
+## 683. A lesson's audio and notes live on the lesson's own row — 27 Oct 2026
+
+**Decision.** A lesson is one material row of kind `youtube` or `video` (0013, 0020); its audio (`audio_path`, name,
+size) and notes (`notes`, at most 4000 characters) are columns on that row, not a new table, so every lesson list, the
+suggestion flow (C18) and the Guru's edit form keep working with no other change. The audio file is in the private
+bucket `material-files` (10 MB, as PDFs and photos; the bucket now takes audio types), played through a signed link
+that works for an hour, never stored in a table row. Unlike a PDF or photo, a lesson's audio may be added, replaced or
+removed later; the app removes the old file after the row is saved. The Storage rules count `audio_path` as a file the
+material lists (read by those who may read the lesson; a listed file cannot be uploaded again). Notes are plain text;
+notation PDFs stay separate materials.
+
+## 684. One lesson screen: tabs only for what the lesson has — 27 Oct 2026
+
+**Decision.** The lesson player (V3) shows Video / Audio / Notes chips only for the formats the lesson has, in that
+order, and no tab bar when it has only the video — never an empty tab. The video is the first tab. The audio's signed
+link is made and its player created only when the Audio tab is first opened; leaving a tab pauses what it plays;
+nothing plays by itself. A lesson card names the extra formats on its kind line ("YouTube video · Audio · Notes"): one
+card, one screen. The Audio tab has Play / Pause, back and forward 5 s, the time and 0.75x / 1x.
+
+## 685. Watching is not mastery — 27 Oct 2026
+
+**Decision.** Progress stays at lesson (syllabus-item) level and is ticked by the teacher (C9, `student_progress`).
+Opening, watching or listening records nothing; the lesson screen says "Your teacher ticks a lesson as learnt in class;
+watching or listening here does not."
+
+## 686. Student assessment statuses: Assigned, Submitted, Under review, Reviewed, Redo requested — 27 Oct 2026
+
+**Decision.** Students see five statuses mapped from what is stored: `assigned` and `seen` → Assigned; `submitted` →
+Submitted; `submitted` with the newest recording's `review_started_at` set → **Under review**; `reviewed` → Reviewed;
+`redo` → Redo requested. Staff keep their tracker words (Not seen / Seen / Submitted / Reviewed / Redo): the coordinators
+need to know who has opened it. "Under review" needed one fact the data did not hold: `assessment_submissions.
+review_started_at`, set once by `start_submission_review` when a staff member opens C14 on the newest recording waiting
+for its review (never on their own work). No status value was added or rewritten, so every existing assignment reads
+as before (null = Submitted). **Option considered:** "Under review" = an accepted level-up waiting for the Guru's
+decision; rejected — it would never appear for ordinary assessments.
+
+## 687. A receipt for every recording sent — 27 Oct 2026
+
+**Decision.** Each recording on S7 shows "Receipt no. <id> · received <day> at <time>": the submission's id and the
+database's `submitted_at` (not the phone's clock). After Send the success notice carries the same line. No new data.
+
+## 688. Teachers see only authorised records, as before — 27 Oct 2026
+
+**Decision.** No policy changes. `start_submission_review` is staff-only (security definer), touches only
+`review_started_at` on one recording and is logged by the existing audit trigger; students cannot call it.
+
+## 689. Left out on purpose — 27 Oct 2026
+
+**Decision.** Not in this change: the Beginner lessons list of a waiting login (its offline copy keeps title and link
+only; its lesson screen still shows the tabs); a staff "Under review" column on the tracker; Notes as rich text or PDF;
+a contact's phone on events. Telugu and Hindi strings are drafts for the native review (docs/TRANSLATIONS.md).

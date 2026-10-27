@@ -1264,12 +1264,25 @@
       "removeFailed": "The file could not be removed, so nothing was deleted. Check your internet connection and try again.",
       "notAllowed": "Only the facilitator can add and change lessons.",
       "videoLinkInvalid": "Give an https link to an .mp4, .webm, .m4v or .mov file.",
-      "panesInvalid": "A video file has 1 to 4 camera angles side by side."
+      "panesInvalid": "A video file has 1 to 4 camera angles side by side.",
+      "notesTooLong": "The notes are longer than 4000 characters.",
+      "notAudio": "This is not an audio file. Choose an MP3, M4A, AAC, WAV or OGG.",
+      "audioRefused": "The audio could not be added. Choose it again and save."
     },
     "videoLinkLabel": "Link to the video file",
     "videoLinkHint": "The team's own copy (https, ending in .mp4, .webm, .m4v or .mov). Students can mirror and zoom it; a YouTube video cannot be mirrored or zoomed.",
     "panesLabel": "Camera angles side by side",
-    "panesHint": "For a lesson filmed from 2-4 phones and joined side by side: students tap one angle to see it large."
+    "panesHint": "For a lesson filmed from 2-4 phones and joined side by side: students tap one angle to see it large.",
+    "lessonExtrasTitle": "Audio and notes (optional)",
+    "lessonExtrasHint": "Beside the video. Students see a tab for each one the lesson has; nothing empty is shown.",
+    "audioPicked": "New audio: {{name}} ({{size}})",
+    "audioKept": "Audio: {{name}} ({{size}})",
+    "audioNone": "No audio. An MP3 or M4A of at most {{max}}, e.g. the bols spoken slowly.",
+    "audioAdd": "Add audio",
+    "audioReplace": "Choose other audio",
+    "audioRemove": "Remove audio",
+    "lessonNotesLabel": "Notes",
+    "lessonNotesHint": "The bols, counts or tips for this lesson; shown on its Notes tab."
   },
   "visitHistory": {
     "title": "My attendance",
@@ -2131,7 +2144,9 @@
       "redoAsked": "Please record it again",
       "notReviewed": "Not reviewed yet.",
       "recordingName": "Recording {{number}} · {{date}}",
-      "markTitle": "Your mark"
+      "markTitle": "Your mark",
+      "receipt": "Receipt no. {{number}} · received {{date}} at {{time}}",
+      "underReview": "Your teacher is reviewing it now. The mark comes here when it is done."
     },
     "files": {
       "play": "Play",
@@ -2191,6 +2206,13 @@
       "button": "Edit",
       "save": "Save changes",
       "lockedNote": "It has been given to students, so the type, level, level-up and rubric stay as they are. The title, instructions, files and link can change."
+    },
+    "studentStatus": {
+      "assigned": "Assigned",
+      "submitted": "Submitted",
+      "under_review": "Under review",
+      "reviewed": "Reviewed",
+      "redo": "Redo requested"
     }
   },
   "promotion": {
@@ -2823,7 +2845,15 @@
     "pane": "Angle {{n}}",
     "zoomHint": "Or tap an angle on the video to see it large; tap again for all.",
     "youtubeNoMirror": "YouTube's rules do not allow the app to mirror or zoom a YouTube video. Speed and A-B loop work. For mirror and zoom, the facilitator can add the lesson as a video file.",
-    "openYouTube": "Open in YouTube"
+    "openYouTube": "Open in YouTube",
+    "tabsLabel": "Lesson formats",
+    "tabs": {
+      "video": "Video",
+      "audio": "Audio",
+      "notes": "Notes"
+    },
+    "audioLoading": "Getting the audio…",
+    "progressNote": "Your teacher ticks a lesson as learnt in class; watching or listening here does not."
   },
   "recording": {
     "record": "Record",
@@ -3061,7 +3091,7 @@
       "endTimeHint": "Same day, 24-hour. Leave empty if not known.",
       "dateInvalid": "Write a real date as dd-mm-yyyy.",
       "timeInvalid": "Write the time as hh:mm, 24-hour.",
-      "where": "Where",
+      "where": "Venue",
       "centre": "Centre",
       "noCentre": "Elsewhere",
       "place": "Place or address",
@@ -3075,7 +3105,22 @@
       "newNotice": "Everyone it is for gets a notice in the app (and a push on Android).",
       "editNotice": "A new time or place is sent to everyone it is for as a notice.",
       "create": "Create event",
-      "save": "Save changes"
+      "save": "Save changes",
+      "detailsTitle": "For those taking part",
+      "detailsHint": "All optional. Students see these to know when to come, what to wear and bring, and whom to ask.",
+      "reportingTime": "Reporting time",
+      "reportingTimeHint": "When to arrive, same day, 24-hour (e.g. 17:30). At or before the start, at most 12 hours before.",
+      "rehearsal": "Rehearsal",
+      "rehearsalHint": "Day, time and place of the rehearsal, if there is one. At most {{max}} characters.",
+      "dressCode": "Dress code and what to bring",
+      "dressCodeHint": "E.g. dhoti-kurta; bring your own mridanga. At most {{max}} characters.",
+      "attendeeRole": "Role of those taking part",
+      "attendeeRoleHint": "E.g. kirtan accompaniment in the procession. A performer's own part is set on Performers. At most {{max}} characters.",
+      "contact": "Whom students contact",
+      "contactNone": "Not named",
+      "contactInactive": "(switched off)",
+      "mapsUrl": "Map link",
+      "mapsUrlHint": "Optional: share the venue from Google Maps and paste the https link here."
     },
     "detail": {
       "createdBy": "Created by {{name}}",
@@ -3109,7 +3154,13 @@
       "delete": "Delete the event",
       "deleteTitle": "Delete this event?",
       "deleteBody": "Nobody has answered yet, so it can be deleted. Notices already sent will open nothing.",
-      "deleteYes": "Yes, delete it"
+      "deleteYes": "Yes, delete it",
+      "reportBy": "Report by {{time}}",
+      "rehearsal": "Rehearsal: {{text}}",
+      "dressCode": "Wear and bring: {{text}}",
+      "role": "Role: {{text}}",
+      "contact": "Questions: ask {{name}}",
+      "openMap": "Open the map"
     },
     "calendar": {
       "title": "Add to calendar",
@@ -3179,7 +3230,13 @@
       "part_invalid": "Each performer needs a part of 1 to 60 characters.",
       "too_early": "Attendance can be ticked from the event's day.",
       "too_soon": "A reminder was sent less than 12 hours ago.",
-      "response_invalid": "Choose Going, Maybe or Not going."
+      "response_invalid": "Choose Going, Maybe or Not going.",
+      "reporting_invalid": "The reporting time is at or before the start, at most 12 hours before.",
+      "rehearsal_too_long": "The rehearsal is too long.",
+      "dress_code_too_long": "The dress code is too long.",
+      "attendee_role_too_long": "The role is too long.",
+      "maps_link_invalid": "Give an https link, such as one shared from Google Maps.",
+      "coordinator_invalid": "Choose an active coordinator or the facilitator to contact."
     }
   },
   "polls": {

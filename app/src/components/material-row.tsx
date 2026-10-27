@@ -2,7 +2,7 @@
 // PDF, photo, note), the title, the optional note, and Open. A lesson video (YouTube link or the
 // team's own video file) opens the V3 player inside the app (screens/lesson-player.tsx, Phase 2
 // slice 4); a PDF or photo opens in the browser through a signed link (src/data/materials.ts).
-// For the Guru an Edit button opens the material form.
+// For the Guru an Edit button opens the material form. A lesson with audio or notes says so on its card (0064).
 
 import { router } from 'expo-router';
 import { useState } from 'react';
@@ -10,7 +10,7 @@ import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
 import { useAuth } from '@/auth/auth-provider';
-import { lessonSourceOf, openMaterial, type Material } from '@/data/materials';
+import { lessonFormats, lessonSourceOf, openMaterial, type Material } from '@/data/materials';
 import { fileSizeText } from '@/i18n/labels';
 import { radius, spacing, useTheme } from '@/theme/use-theme';
 
@@ -46,6 +46,9 @@ export function MaterialRow({ material, onEdit }: MaterialRowProps) {
         : `${material.kind === 'pdf' ? t('materials.kinds.pdf') : t('materials.kinds.image')}${
             material.fileSize ? ` · ${fileSizeText(t, material.fileSize)}` : ''
           }`;
+  // 0064 (#684): a lesson card names the other formats it has (Audio, Notes); one card, one lesson screen.
+  const extras = lessonFormats(material).filter((f) => f !== 'video').map((f) => t(`lessonPlayer.tabs.${f}`));
+  const formatsLine = [kindLine, ...extras].join(' · ');
 
   async function open() {
     if (lessonSourceOf(material)) {
@@ -65,7 +68,7 @@ export function MaterialRow({ material, onEdit }: MaterialRowProps) {
         <View style={styles.text}>
           <AppText variant="label">{material.title}</AppText>
           <AppText variant="small" tone="muted">
-            {material.approved ? kindLine : `${kindLine} · ${t('materials.suggestion')}`}
+            {material.approved ? formatsLine : `${formatsLine} · ${t('materials.suggestion')}`}
           </AppText>
           {material.body ? <AppText variant="small">{material.body}</AppText> : null}
           {failed ? (

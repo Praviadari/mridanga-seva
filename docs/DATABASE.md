@@ -2165,3 +2165,30 @@ After it passes, still run a new migration on a test project before the live one
 rows, then every later file in order, each run twice, compared with a fresh build
 ([GO_LIVE_CHECKLIST.md](GO_LIVE_CHECKLIST.md), [DECISIONS.md #233](DECISIONS.md)). A new migration must be
 added to the checklist's table first.
+
+## Learn screens (0064)
+
+Event details for students, a lesson video's audio and notes (one lesson screen with Video / Audio / Notes tabs), and
+"Under review" for a student's recording. [DECISIONS.md #680-#689](DECISIONS.md) (the Guru's student-module specification,
+27-10-2026). Every new column is empty on existing rows, which read as before; no policy changes.
+
+| Object | What |
+|---|---|
+| `events.reporting_at` | When those taking part arrive: at or before `starts_at`, at most 12 hours before (checked when it or the start changes) |
+| `events.rehearsal`, `dress_code`, `attendee_role` | Free text, trimmed, at most 200 / 200 / 120 characters; empty = null. `attendee_role` is everyone's; a performer's own part stays in `event_performers.part` |
+| `events.coordinator_id` | The staff member students contact (an active coordinator or the Guru when set or changed); students see the name through `staff_names` |
+| `events.maps_url` | An https link, no spaces, at most 500 characters |
+| `guard_event_details()` | Trigger `events_details_guard` (before insert/update, runs before `events_guard`); errors `reporting_invalid`, `rehearsal_too_long`, `dress_code_too_long`, `attendee_role_too_long`, `maps_link_invalid`, `coordinator_invalid`. Column rights: insert and update of the six columns for signed-in people (row-level security as 0022) |
+| `materials.audio_path`, `audio_name`, `audio_size` | A lesson video's (kind `youtube` or `video`) audio in the private bucket `material-files` (`<login>/<uuid>.<mp3\|m4a\|aac\|wav\|ogg\|webm>`, `material_audio_path_ok`), 10 MB; size from Storage. May be added, changed or removed on an existing lesson (the uploader's own file, in Storage) |
+| `materials.notes` | A lesson video's notes, at most 4000 characters (the Notes tab) |
+| `guard_material()` | 0020's rules plus the audio and notes: `lesson_extras_video_only`, `lesson_audio_invalid`, `lesson_audio_not_yours`, `lesson_audio_missing`, `notes_too_long` |
+| `material_file_readable / uploadable / deletable` | As before, with `audio_path` counted as a file the material lists; the bucket now takes audio types |
+| `assessment_submissions.review_started_at` | When a staff member first opened the recording to review it; the student sees Under review |
+| `start_submission_review(submission)` | Staff: sets it once on the newest recording of an assignment that waits for its review (not one's own); anything else is left as it is, no error. Errors `not_allowed`, `submission_not_found` |
+
+The student's assessment status (app only, `studentStatusOf`): `assigned`/`seen` → Assigned; `submitted` → Submitted, or
+Under review once `review_started_at` is set on the newest recording; `reviewed` → Reviewed; `redo` → Redo requested. The
+receipt is the recording's id and `submitted_at`.
+
+No new job (16). Tests: section "0064 learn screens" in `supabase/tests/smoke-test.mjs` (32 checks) and
+`app/tests/learn-screens.test.mjs`.

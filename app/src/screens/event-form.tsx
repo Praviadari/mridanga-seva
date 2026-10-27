@@ -1,5 +1,6 @@
 // C16 New event / Edit event, for coordinators and the Guru: title, day and time (at the class), an end
-// time on the same day, a centre and/or a place, who it is for, and a description. Saving tells
+// time on the same day, a centre and/or a place, who it is for, a description, and optional details for those taking
+// part (0064, #681: reporting time, rehearsal, dress code, whom to contact, role, maps link). Saving tells
 // everyone it is for (a new event; on an edit only a new time or place). Routes:
 // staff/events/new.tsx and staff/events/edit/[id].tsx. Data: src/data/events.ts (migration 0022).
 
@@ -19,12 +20,16 @@ import { Section } from '@/components/section';
 import { QuickTimes } from '@/components/quick-times';
 import { DATE_KEYBOARD, TextField } from '@/components/text-field';
 import { AUDIENCES, fetchComposeOptions, type ComposeOptions } from '@/data/announcements';
+import { fetchDutyPeople } from '@/data/duty';
 import {
   checkEventForm,
   createEvent,
   EMPTY_EVENT_FORM,
   EVENT_DESCRIPTION_MAX,
+  EVENT_DRESS_MAX,
   EVENT_PLACE_MAX,
+  EVENT_REHEARSAL_MAX,
+  EVENT_ROLE_MAX,
   EVENT_TITLE_MAX,
   fetchActiveCentres,
   fetchEvent,
@@ -42,6 +47,8 @@ import { useFormChanged, useLeaveGuard } from '@/lib/use-leave-guard';
 type Loaded = {
   options: ComposeOptions;
   centres: { id: number; name: string }[];
+  /** Active staff, to name whom students contact (0064). */
+  staff: { id: string; name: string }[];
   /** The event being edited, with whether people answered (the audience is then fixed). */
   original: { event: ClassEvent; answered: boolean } | null;
 };
@@ -63,12 +70,13 @@ export function EventFormScreen({ eventId }: { eventId?: number }) {
   const { allowLeave } = useLeaveGuard(useFormChanged(form, typeof loaded === 'object' && loaded !== null));
 
   const load = useCallback(async () => {
-    const [options, centres, existing] = await Promise.all([
+    const [options, centres, staff, existing] = await Promise.all([
       fetchComposeOptions(myId),
       fetchActiveCentres(),
+      fetchDutyPeople(),
       eventId !== undefined ? fetchEvent(eventId) : Promise.resolve(null),
     ]);
-    if (!options || !centres || existing === null && eventId !== undefined) {
+    if (!options || !centres || !staff || existing === null && eventId !== undefined) {
       setLoaded(null);
       return;
     }
@@ -88,7 +96,7 @@ export function EventFormScreen({ eventId }: { eventId?: number }) {
       if (original) setForm(formFromEvent(original.event));
       else if (centres.length === 1) setForm((f) => ({ ...f, centreId: centres[0].id }));
     }
-    setLoaded({ options, centres, original });
+    setLoaded({ options, centres, staff, original });
   }, [eventId, myId]);
 
   useFocusEffect(
@@ -118,7 +126,7 @@ export function EventFormScreen({ eventId }: { eventId?: number }) {
     );
   }
 
-  const { options, centres, original } = loaded;
+  const { options, centres, staff, original } = loaded;
   const update = (change: Partial<EventForm>) => {
     setForm((current) => ({ ...current, ...change }));
     setServerError(null);
@@ -245,6 +253,68 @@ export function EventFormScreen({ eventId }: { eventId?: number }) {
         numberOfLines={5}
         style={{ minHeight: 120, textAlignVertical: 'top' }}
       />
+      {/* 0064 (#681): what students need to know beforehand — all optional. */}
+      <Section icon="info" title={t('events.form.detailsTitle')} description={t('events.form.detailsHint')}>
+        <TextField
+          label={t('events.form.reportingTime')}
+          hint={t('events.form.reportingTimeHint')}
+          value={form.reportingTime}
+          onChangeText={(v) => update({ reportingTime: v })}
+          error={errors.reportingTime ? t(errors.reportingTime) : undefined}
+          keyboardType="numbers-and-punctuation"
+          maxLength={8}
+        />
+        <TextField
+          label={t('events.form.rehearsal')}
+          hint={t('events.form.rehearsalHint', { max: EVENT_REHEARSAL_MAX })}
+          value={form.rehearsal}
+          onChangeText={(v) => update({ rehearsal: v })}
+          error={errors.rehearsal ? t(errors.rehearsal) : undefined}
+          maxLength={EVENT_REHEARSAL_MAX}
+        />
+        <TextField
+          label={t('events.form.dressCode')}
+          hint={t('events.form.dressCodeHint', { max: EVENT_DRESS_MAX })}
+          value={form.dressCode}
+          onChangeText={(v) => update({ dressCode: v })}
+          error={errors.dressCode ? t(errors.dressCode) : undefined}
+          maxLength={EVENT_DRESS_MAX}
+        />
+        <TextField
+          label={t('events.form.attendeeRole')}
+          hint={t('events.form.attendeeRoleHint', { max: EVENT_ROLE_MAX })}
+          value={form.attendeeRole}
+          onChangeText={(v) => update({ attendeeRole: v })}
+          error={errors.attendeeRole ? t(errors.attendeeRole) : undefined}
+          maxLength={EVENT_ROLE_MAX}
+        />
+        <ChoiceGroup<string>
+          chips
+          label={t('events.form.contact')}
+          choices={[
+            { value: '', label: t('events.form.contactNone') },
+            ...staff
+              // A contact switched off since keeps showing until changed.
+              .concat(form.coordinatorId && !staff.some((s) => s.id === form.coordinatorId)
+                ? [{ id: form.coordinatorId, name: t('events.form.contactInactive') }]
+                : [])
+              .map((s) => ({ value: s.id, label: s.name })),
+          ]}
+          value={form.coordinatorId ?? ''}
+          onChange={(id) => update({ coordinatorId: id || null })}
+        />
+        <TextField
+          label={t('events.form.mapsUrl')}
+          hint={t('events.form.mapsUrlHint')}
+          value={form.mapsUrl}
+          onChangeText={(v) => update({ mapsUrl: v })}
+          error={errors.mapsUrl ? t(errors.mapsUrl) : undefined}
+          autoCapitalize="none"
+          autoCorrect={false}
+          keyboardType="url"
+          maxLength={500}
+        />
+      </Section>
       {original ? <Notice tone="info">{t('events.form.editNotice')}</Notice> : <Notice tone="info">{t('events.form.newNotice')}</Notice>}
       <FormErrorSummary errors={errors} />
       {serverError ? <Notice tone="error">{serverError}</Notice> : null}

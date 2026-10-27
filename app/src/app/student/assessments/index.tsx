@@ -1,6 +1,6 @@
 // S7 Assessments (Phase 2), for the student: the assessments the coordinators gave them, the ones
-// still to send first (by due date), each with its status (Not seen, Seen, Submitted, Reviewed,
-// Redo) and "Late" after the due date. Tapping one opens it (./[id].tsx). Opened from the
+// still to send first (by due date), each with its status (0064, #686: Assigned, Submitted, Under review, Reviewed,
+// Redo requested) and "Late" after the due date. Tapping one opens it (./[id].tsx). Opened from the
 // Assessments circle on the student home's ring.
 // Data: src/data/assessments.ts; a student sees only their own (migration 0016).
 
@@ -8,7 +8,7 @@ import { router, Stack, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { assessmentKindName, assignmentStatusName } from '@/components/assessment-parts';
+import { assessmentKindName, studentStatusName } from '@/components/assessment-parts';
 import { Button } from '@/components/button';
 import { EmptyState } from '@/components/empty-state';
 import { ListRow } from '@/components/list-row';
@@ -63,7 +63,7 @@ export default function MyAssessmentsScreen() {
           highlighted={item.status === 'reviewed'}
           details={[
             [
-              assignmentStatusName(t, item.status),
+              studentStatusName(t, item.studentStatus),
               ...(isOverdue(item) ? [t('assessments.late')] : []),
               ...(item.levelUp ? [t('assessments.levelUp')] : []),
             ].join(' · '),

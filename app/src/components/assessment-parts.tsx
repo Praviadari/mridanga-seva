@@ -15,7 +15,7 @@ import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
 import { mediaLinks, type MediaFile, type MediaKind } from '@/data/assessment-files';
-import { isOverdue, type AssessmentKind, type AssignmentStatus, type RubricLine } from '@/data/assessments';
+import { isOverdue, type AssessmentKind, type AssignmentStatus, type RubricLine, type StudentStatus } from '@/data/assessments';
 import { fileSizeText } from '@/i18n/labels';
 import { shownKind } from '@/lib/assessment-view';
 import type { ChipTone } from '@/theme/colors';
@@ -40,6 +40,20 @@ export function assignmentStatusName(t: TFunction, status: AssignmentStatus): st
   return t(`assessments.status.${status}`);
 }
 
+/** What the student sees (0064, #686): Assigned grey, Submitted amber, Under review blue, Reviewed green, Redo requested red. */
+const STUDENT_TONE: Record<StudentStatus, ChipTone> = {
+  assigned: 'neutral',
+  submitted: 'warning',
+  under_review: 'info',
+  reviewed: 'success',
+  redo: 'danger',
+};
+
+/** The student's word for a status: Assigned, Submitted, Under review, Reviewed, Redo requested. */
+export function studentStatusName(t: TFunction, status: StudentStatus): string {
+  return t(`assessments.studentStatus.${status}`);
+}
+
 /** The word for a type: Playing, Singing, Theory, Other. */
 export function assessmentKindName(t: TFunction, kind: AssessmentKind): string {
   return t(`assessments.kinds.${kind}`);
@@ -51,6 +65,17 @@ export function AssignmentChips({ status, dueOn }: { status: AssignmentStatus; d
   return (
     <View style={styles.chips}>
       <Chip label={assignmentStatusName(t, status)} tone={STATUS_TONE[status]} />
+      {dueOn && isOverdue({ status, dueOn }) ? <Chip label={t('assessments.late')} tone="danger" /> : null}
+    </View>
+  );
+}
+
+/** The student's status as a coloured label (0064), and "Late" as AssignmentChips. */
+export function StudentStatusChips({ status, studentStatus, dueOn }: { status: AssignmentStatus; studentStatus: StudentStatus; dueOn?: string }) {
+  const { t } = useTranslation();
+  return (
+    <View style={styles.chips}>
+      <Chip label={studentStatusName(t, studentStatus)} tone={STUDENT_TONE[studentStatus]} />
       {dueOn && isOverdue({ status, dueOn }) ? <Chip label={t('assessments.late')} tone="danger" /> : null}
     </View>
   );

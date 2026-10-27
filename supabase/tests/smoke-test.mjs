@@ -143,7 +143,7 @@ process.on('uncaughtException', (error) => {
 // D14-10: every check is counted, and the run fails when fewer (or more) checks ran than expected,
 // so a block skipped by a renamed migration or a commented-out section cannot pass unseen.
 // Adding or removing checks? Run the suite and set this to the new total it prints.
-const EXPECTED_CHECKS = 2289; // 0063 parent page: +32; 0062 web push: +33; 0061 staff sign-in codes and the error log: +53; 0060 privacy notice 1.0: +35; 0059 data rights: +56; 0058 weekly parent email: +64; 0057 practice while waiting: +24; 0056 practice extras: +35; 0055 learn more links: +23; 0054 after-launch forms: +49; 0053 staff own record: +55; 0052 more practice: +56; 0051 child's sign-up at home: +80; 0050 staff dashboard: +15; 0049 launch clean-up: +30; 0048 withdrawn records and leaks: +50; 0047 form rules: +109; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
+const EXPECTED_CHECKS = 2321; // 0064 learn screens: +32; 0063 parent page: +32; 0062 web push: +33; 0061 staff sign-in codes and the error log: +53; 0060 privacy notice 1.0: +35; 0059 data rights: +56; 0058 weekly parent email: +64; 0057 practice while waiting: +24; 0056 practice extras: +35; 0055 learn more links: +23; 0054 after-launch forms: +49; 0053 staff own record: +55; 0052 more practice: +56; 0051 child's sign-up at home: +80; 0050 staff dashboard: +15; 0049 launch clean-up: +30; 0048 withdrawn records and leaks: +50; 0047 form rules: +109; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
 let failures = 0;
 let passes = 0;
 
@@ -4212,6 +4212,8 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
     'save_web_push(text,text,text)', 'remove_web_push(text)',
     // 0063: the parent page's switch and numbers (staff and the Guru checked inside); the page itself is service role only
     'parent_view_overview()', 'set_parent_view(boolean)',
+    // 0064: the lesson-audio path check for the Storage rules; Under review (staff checked inside)
+    'material_audio_path_ok(text)', 'start_submission_review(bigint)',
   ];
   const runnableBy = async (role) => (await asOwner(`select p.oid::regprocedure::text as f from pg_proc p
     where p.pronamespace = 'public'::regnamespace
@@ -8144,6 +8146,116 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   let again63 = '';
   try { await db.exec(file63); } catch (e) { again63 = String(e.message); }
   check('0063 can run again and changes no row', again63 === '' && JSON.stringify(await count63()) === JSON.stringify(before63), again63);
+}
+
+// ---------------------------------------------------------------- 0064 learn screens (DECISIONS #680-#689)
+// Event details for students, a lesson video's audio and notes, and "Under review" on a student's recording.
+{
+  const file64 = readFileSync(new URL('migrations/0064_learn_screens.sql', supabaseDir), 'utf8');
+  const one = async (sql) => (await asOwner(sql))[0];
+
+  // Event details (#681): optional, checked, shown to those the event is for.
+  const ev64 = (fields) => asApp('authenticated', coordinator, `insert into events (title, starts_at, place, audience, reporting_at, rehearsal,
+    dress_code, coordinator_id, attendee_role, maps_url) values ('Ratha Yatra Sixtyfour', now() + interval '5 days', 'Abids temple', 'all',
+    now() + interval '5 days' - ($1 || ' minutes')::interval, $2, $3, $4, $5, $6) returning *`,
+    [String(fields.reportBefore ?? 60), fields.rehearsal ?? null, fields.dress ?? null, fields.contact ?? null, fields.role ?? null,
+     fields.maps ?? null]).then((r) => r[0]);
+  const full = await ev64({ rehearsal: '  Sat 18:00, temple hall ', dress: ' Dhoti-kurta; bring your own mridanga ', contact: coordinator2,
+    role: ' Kirtan accompaniment ', maps: 'https://maps.app.goo.gl/abc123' });
+  check('0064 #681: staff save an event with every detail, trimmed', full.rehearsal === 'Sat 18:00, temple hall'
+    && full.dress_code === 'Dhoti-kurta; bring your own mridanga' && full.attendee_role === 'Kirtan accompaniment'
+    && full.coordinator_id === coordinator2 && full.maps_url === 'https://maps.app.goo.gl/abc123' && full.reporting_at !== null, JSON.stringify(full));
+  const plain = (await asApp('authenticated', coordinator, `insert into events (title, starts_at, place, audience)
+    values ('Plain Sixtyfour', now() + interval '6 days', 'Hall', 'all') returning *`))[0];
+  check('0064 #681: every detail is optional (an event as before)', plain.reporting_at === null && plain.dress_code === null
+    && plain.coordinator_id === null && plain.maps_url === null);
+  await refusesWith('0064 #681: reporting after the start is refused', 'reporting_invalid', () => ev64({ reportBefore: -10 }));
+  await refusesWith('0064 #681: ... and more than 12 hours before it', 'reporting_invalid', () => ev64({ reportBefore: 13 * 60 }));
+  await refusesWith('0064 #681: a maps link is https', 'maps_link_invalid', () => ev64({ maps: 'http://maps.example.com/x' }));
+  await refusesWith('0064 #681: the contact is a staff member, not a student', 'coordinator_invalid', () => ev64({ contact: arjun }));
+  await refusesWith('0064 #681: the dress code is at most 200 characters', 'dress_code_too_long', () => ev64({ dress: 'x'.repeat(201) }));
+  await refusesWith('0064 #681: a later start that leaves reporting 12 hours early is refused', 'reporting_invalid', () => asApp('authenticated',
+    coordinator, `update events set starts_at = starts_at + interval '1 day' where id = $1`, [full.id]));
+  await asApp('authenticated', coordinator, `update events set title = 'Ratha Yatra 64' where id = $1`, [full.id]);
+  check('0064 #681: an edit of other fields keeps the details', (await one(`select dress_code, reporting_at is not null as r from events
+    where id = ${full.id}`)).r === true);
+  const seen64 = await asApp('authenticated', arjun, 'select dress_code, coordinator_id, maps_url from events where id = $1', [full.id]);
+  check('0064 #681: a student the event is for reads its details', seen64[0]?.dress_code === 'Dhoti-kurta; bring your own mridanga'
+    && seen64[0]?.coordinator_id === coordinator2, JSON.stringify(seen64));
+
+  // Lesson audio and notes (#683, #684): beside a lesson video, a private file read through the material's rules.
+  const [mb64] = await asOwner(`select allowed_mime_types, file_size_limit from storage.buckets where id = 'material-files'`);
+  check('0064 #683: material-files takes audio, still 10 MB and still PDFs and photos', mb64.allowed_mime_types.includes('audio/mpeg')
+    && mb64.allowed_mime_types.includes('application/pdf') && Number(mb64.file_size_limit) === 10485760, JSON.stringify(mb64));
+  const lesson64 = (userId, fields) => asApp('authenticated', userId, `insert into materials (title, kind, url, storage_path, file_name, file_size,
+    level_id, audio_path, audio_name, audio_size, notes) values ($1, $2, $3, $4, $5, $6, 1, $7, $8, $9, $10) returning *`,
+    [fields.title ?? 'Lesson Sixtyfour', fields.kind ?? 'youtube', fields.kind && fields.kind !== 'youtube' ? null : 'https://youtu.be/dQw4w9WgXcQ',
+     fields.path ?? null, fields.name ?? null, fields.size ?? null, fields.audio ?? null, fields.audioName ?? (fields.audio ? 'Tala.mp3' : null),
+     fields.audio ? 1 : null, fields.notes ?? null]).then((r) => r[0]);
+  const audio1 = await filePath(guru, 'mp3');
+  await uploadMaterial(guru, audio1, 2000000);
+  const withAudio = await lesson64(guru, { audio: audio1, audioName: ' Tala slow.mp3 ', notes: '  Dha Ge Na Ti — count 1 to 8.  ' });
+  check('0064 #683: the Guru adds a lesson video with audio and notes; the size from Storage', Number(withAudio.audio_size) === 2000000
+    && withAudio.audio_name === 'Tala slow.mp3' && withAudio.notes === 'Dha Ge Na Ti — count 1 to 8.', JSON.stringify(withAudio));
+  await refusesWith('0064 #683: audio that is not in Storage is refused', 'lesson_audio_missing', async () => lesson64(guru, { audio: await filePath(guru, 'mp3') }));
+  const coordAudio = await filePath(coordinator, 'mp3');
+  await uploadMaterial(coordinator, coordAudio);
+  await refusesWith('0064 #683: ... and audio from another folder', 'lesson_audio_not_yours', () => lesson64(guru, { audio: coordAudio }));
+  await refusesWith('0064 #683: an audio path needs an audio ending', 'lesson_audio_invalid', async () => lesson64(guru, { audio: await filePath(guru, 'pdf') }));
+  await refusesWith('0064 #683: a file with another ending cannot be uploaded as audio', 'new row violates row-level security policy for table "objects"',
+    async () => uploadMaterial(guru, await filePath(guru, 'exe')));
+  const pdf64 = await filePath(guru, 'pdf');
+  await uploadMaterial(guru, pdf64);
+  await refusesWith('0064 #684: audio and notes go with a lesson video only', 'lesson_extras_video_only', () =>
+    lesson64(guru, { kind: 'pdf', path: pdf64, name: 'Notes.pdf', size: 1, notes: 'Read this' }));
+  await refusesWith('0064 #684: notes are at most 4000 characters', 'notes_too_long', () => lesson64(guru, { notes: 'n'.repeat(4001) }));
+  check('0064 #683: a student opens the audio of a lesson they may see', await canOpenMaterial(arjun, audio1));
+  const loose = await filePath(guru, 'm4a');
+  await uploadMaterial(guru, loose);
+  check('0064 #683: ... but not an audio file no lesson lists', !(await canOpenMaterial(arjun, loose)));
+  await refusesWith('0064 #683: a listed audio file cannot be uploaded again (no swap)', 'new row violates row-level security policy for table "objects"',
+    () => uploadMaterial(guru, audio1));
+  await asApp('authenticated', guru, `update materials set audio_path = $2, audio_name = 'Tala new.m4a', audio_size = 1 where id = $1`, [withAudio.id, loose]);
+  check('0064 #683: the Guru changes a lesson\'s audio later; the old file is no longer readable', await canOpenMaterial(arjun, loose)
+    && !(await canOpenMaterial(arjun, audio1)));
+  check('0064 #683: a coordinator cannot change a lesson\'s audio or notes (the Guru\'s, as before)', (await asApp('authenticated', coordinator,
+    `update materials set notes = 'x' where id = $1 returning id`, [withAudio.id])).length === 0);
+  await asApp('authenticated', guru, `update materials set audio_path = null where id = $1`, [withAudio.id]);
+  check('0064 #683: removing the audio clears its name and size; the notes stay', JSON.stringify(await one(`select audio_name, audio_size, notes
+    from materials where id = ${withAudio.id}`)) === JSON.stringify({ audio_name: null, audio_size: null, notes: 'Dha Ge Na Ti — count 1 to 8.' }));
+  check('0064: lessons saved before 0064 read as before (no audio, no notes)', (await one(`select count(*)::int as n from materials
+    where id < ${withAudio.id} and (audio_path is not null or notes is not null)`)).n === 0);
+
+  // "Under review" (#686): set once when staff open a recording waiting for its review; nothing else changes.
+  const a64 = await createAssessment(guru, { title: 'Under review Sixtyfour', sent: true });
+  await release(coordinator, a64.id, [arjunStudent]);
+  const [{ id: asg64 }] = await asOwner(`select id from assessment_assignments where assessment_id = ${a64.id}`);
+  const s64 = await submit(arjun, asg64, null, 'https://youtu.be/dQw4w9WgXcQ');
+  const startAs = (who, id) => asApp('authenticated', who, 'select start_submission_review($1)', [id]);
+  const started = async () => (await asApp('authenticated', arjun, 'select review_started_at from assessment_submissions where id = $1', [s64]))[0]
+    ?.review_started_at ?? null;
+  check('0064 #686: a new recording is Submitted, not yet under review', (await started()) === null);
+  await refusesWith('0064 #686: a student cannot mark a recording under review', 'not_allowed', () => startAs(arjun, s64));
+  await refusesWith('0064 #686: an unknown recording', 'submission_not_found', () => startAs(coordinator, 0));
+  await startAs(coordinator, s64);
+  const first64 = await started();
+  check('0064 #686: a coordinator opening it marks it under review; the student reads that; the status stays submitted', first64 !== null
+    && (await one(`select status from assessment_assignments where id = ${asg64}`)).status === 'submitted');
+  await startAs(coordinator2, s64);
+  check('0064 #686: a second opening keeps the first time', String(await started()) === String(first64));
+  await asApp('authenticated', coordinator, 'select review_submission($1, $2::int[], $3, $4)', [s64, [4, 5], 'Good', 'accepted']);
+  await startAs(coordinator, s64);
+  check('0064 #686: the review works as before and keeps the time; opening a reviewed one changes nothing',
+    (await one(`select status from assessment_assignments where id = ${asg64}`)).status === 'reviewed' && String(await started()) === String(first64));
+
+  // A second run of the file changes nothing.
+  const count64 = async () => one(`select (select count(*) from materials where notes is not null)::int as m,
+    (select count(*) from events where dress_code is not null)::int as e, (select array_length(allowed_mime_types, 1) from storage.buckets
+    where id = 'material-files') as b`);
+  const before64 = await count64();
+  let again64 = '';
+  try { await db.exec(file64); } catch (e) { again64 = String(e.message); }
+  check('0064 can run again and changes no row', again64 === '' && JSON.stringify(await count64()) === JSON.stringify(before64), again64);
 }
 // ---------------------------------------------------------------- row-level security
 const seen =await asApp('authenticated', arjun, 'select full_name from students');

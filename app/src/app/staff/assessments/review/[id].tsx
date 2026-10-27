@@ -4,7 +4,8 @@
 // or link and the student's note; then the review: a score for each rubric line, a comment, Accept
 // or Ask for a redo, a voice note recorded in the app (slice 4, expo-audio), and for a level-up assessment "Send level-up to the Guru" (the Guru's
 // decision, G7, comes in slice 2). Earlier recordings are listed with their reviews. While the
-// student has not sent it yet, Remind sends them a push notification.
+// student has not sent it yet, Remind sends them a push notification. Opening a recording that waits for its review
+// tells the student it is under review (0064, #686); nothing else changes until the review is sent.
 // Data: src/data/assessments.ts (review_submission, remind_assessment; migration 0016).
 
 import { Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
@@ -33,6 +34,7 @@ import {
   OPEN_STATUSES,
   remindStudents,
   reviewSubmission,
+  startReview,
   type AssignmentDetail,
   type ReviewForm,
   type ReviewFormErrors,
@@ -63,6 +65,8 @@ function ReviewScreenContent() {
     const result = await fetchAssignment(id, true);
     setLoaded(result);
     if (result && result !== 'not_found') {
+      const newest = result.submissions[0];
+      if (result.status === 'submitted' && newest && !newest.reviewStartedAt) void startReview(newest.id);
       setForm((current) =>
         current.scores.length === result.assessment.rubric.length
           ? current
