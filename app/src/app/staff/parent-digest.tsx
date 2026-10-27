@@ -2,7 +2,8 @@
 // switch (off by default; every change in the audit log), who would get it and why not, this week's and today's
 // numbers against the daily ceilings, and, opened from a student's page (?student=<id>), a preview of exactly the
 // email that student's parent gets, built by notify-parents with the code that sends it. Coordinators see
-// everything but the switch. Data: src/data/parent-digest.ts.
+// everything but the switch. Data: src/data/parent-digest.ts. Also the parent page's own switch and how often it was
+// opened (0063, docs/DECISIONS.md #640-#649; src/data/parent-view.ts).
 
 import { Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
@@ -19,6 +20,7 @@ import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import type { MessageKey } from '@/data/errors';
 import { fetchDigestOverview, fetchDigestPreview, switchDigest, type DigestOverview, type DigestPreview } from '@/data/parent-digest';
+import { fetchParentViewOverview, switchParentView, type ParentViewOverview } from '@/data/parent-view';
 import { LANGUAGES, type Language } from '@/i18n';
 import { announce } from '@/lib/announce';
 import { formatDate, formatDateTime } from '@/lib/dates';
@@ -47,6 +49,11 @@ export default function ParentDigestScreen() {
   const load = useCallback(async () => {
     setOverview(await fetchDigestOverview());
   }, []);
+  // undefined = loading, null = could not load, 'missing' = before 0063 (the section stays hidden).
+  const [page, setPage] = useState<ParentViewOverview | 'missing' | null | undefined>(undefined);
+  const loadPage = useCallback(async () => {
+    setPage(await fetchParentViewOverview());
+  }, []);
   const loadPreview = useCallback(async (lang: Language | null) => {
     if (!studentId) return;
     setPreview(undefined);
@@ -56,10 +63,11 @@ export default function ParentDigestScreen() {
   useFocusEffect(
     useCallback(() => {
       void load();
+      void loadPage();
       void loadPreview(language);
       // The language is changed by its own chips below; a focus reloads what is shown.
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [load, loadPreview]),
+    }, [load, loadPage, loadPreview]),
   );
 
   const header = <Stack.Screen options={{ title: t('parentDigest.title') }} />;
@@ -109,7 +117,7 @@ export default function ParentDigestScreen() {
   const lim = overview.limits;
 
   return (
-    <Screen underHeader onRefresh={async () => { await load(); await loadPreview(language); }}>
+    <Screen underHeader onRefresh={async () => { await load(); await loadPage(); await loadPreview(language); }}>
       {header}
       <ScreenIntro text={t('parentDigest.intro')} />
 
@@ -130,6 +138,8 @@ export default function ParentDigestScreen() {
         )}
         {switchError ? <Notice tone="error">{t(switchError)}</Notice> : null}
       </Section>
+
+      {page && page !== 'missing' ? <ParentPageSection overview={page} guru={guru} onChange={setPage} /> : null}
 
       <Section icon="students" title={t('parentDigest.whoTitle')} description={t('parentDigest.whoHint')}>
         <AppText>{t('parentDigest.gets', { n: gets })}</AppText>
@@ -204,5 +214,55 @@ export default function ParentDigestScreen() {
         ) : null}
       </Section>
     </Screen>
+  );
+}
+
+/**
+ * The parent page (0063, docs/DECISIONS.md #640-#649): its own switch (the Guru; asked twice; off by default; off stops
+ * every link at once and the next weekly emails carry none), how long a link works, and how often pages were opened.
+ */
+function ParentPageSection({ overview, guru, onChange }: { overview: ParentViewOverview; guru: boolean; onChange: (next: ParentViewOverview) => void }) {
+  const { t } = useTranslation();
+  const [confirming, setConfirming] = useState(false);
+  const [switching, setSwitching] = useState(false);
+  const [error, setError] = useState<MessageKey | null>(null);
+  const turnOn = !overview.enabled;
+  async function flip() {
+    if (!confirming) {
+      setConfirming(true);
+      confirmShown();
+      announce(t(turnOn ? 'parentView.staff.confirmOn' : 'parentView.staff.confirmOff'));
+      return;
+    }
+    if (!confirmReady()) return;
+    setConfirming(false);
+    setSwitching(true);
+    const result = await switchParentView(turnOn);
+    setSwitching(false);
+    if ('errorKey' in result) setError(result.errorKey);
+    else {
+      setError(null);
+      onChange(result.overview);
+    }
+  }
+  return (
+    <Section icon="guardian" title={t('parentView.staff.title')} description={t('parentView.staff.hint', { days: overview.linkDays })}>
+      <AppText variant="label" tone={overview.enabled ? 'success' : 'default'}>
+        {overview.enabled ? t('parentView.staff.isOn') : t('parentView.staff.isOff')}
+      </AppText>
+      {guru ? (
+        <Button
+          variant={turnOn ? 'primary' : 'secondary'}
+          icon={turnOn ? 'open' : 'pause'}
+          loading={switching}
+          label={confirming ? t(turnOn ? 'parentView.staff.confirmOn' : 'parentView.staff.confirmOff') : t(turnOn ? 'parentView.staff.switchOn' : 'parentView.staff.switchOff')}
+          onPress={() => void flip()}
+        />
+      ) : (
+        <AppText tone="muted">{t('parentDigest.guruSwitches')}</AppText>
+      )}
+      {error ? <Notice tone="error">{t(error)}</Notice> : null}
+      <AppText>{t('parentView.staff.opened', { week: overview.opened7, month: overview.opened30, count: overview.children30 })}</AppText>
+    </Section>
   );
 }

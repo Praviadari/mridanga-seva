@@ -67,7 +67,9 @@ const GO_LIVE = ['0013', '0014', '0015', '0016', '0017', '0018', '0019', '0020',
   // Staff sign-in codes (TOTP, aal2 for private reads when the Guru switches it on) and the client error log (#580-#589).
   '0061',
   // Web push for the web version: browsers in push_tokens, their own queue part (#596-#609).
-  '0062'];
+  '0062',
+  // The read-only parent page from the weekly email's link, service role only (#640-#649).
+  '0063'];
 
 let failures = 0;
 let passes = 0;

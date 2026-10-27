@@ -8030,6 +8030,132 @@ The path and the celebrations show the student data they already see on My progr
 the only thing new kept on the phone is the list of event keys already shown (item ids, milestone names, level-history
 row ids), never sent anywhere and deleted with the app's data. DECISIONS #624-#629 stay free.
 
+## 640. A read-only parent page, opened from the weekly email — 27 Oct 2026
+
+**Status: branch `parent-view` (re-score of 26 Oct 2026, gap 10: Parents 4.5/10, the lowest dimension; the lead's brief
+of 27 Oct 2026 under Praveen's delegation). Migration 0063, Edge Function `notify-parents` (deploy), JS-only app
+(fingerprint 23dc7e4a). Off until the Guru switches it on (#646).**
+
+**Context.** Parents get a weekly email (0058, #530) and, once switched on, check-out emails (#246); they have no page
+of their own. Many students are children: a parent supporting practice at home wants to see more than one week, the
+level path and what comes next.
+
+**Decision.** `/parent` on the web app: for one child, read-only, the level and the syllabus of that level (done of all,
+the next three items), items learnt in the last 8 weeks, level changes in the last year, visits per week for 8 weeks and
+the last 5 visits with times, practice per week for 4 weeks against the goal and the current run of days, events for the
+child in the next 31 days, and the announcements addressed to the child in the last 30 days (#644). The only thing a
+parent can do there is stop the weekly email and the page (#647). In the parent's language (the email's `?lang=`, the
+language picker).
+
+## 641. A signed link from the weekly email, not a parent login — 27 Oct 2026
+
+**Decision.** The weekly email carries `<web app>/parent?lang=te#v=<guardian id>.<expiry>.<signature>`: an HMAC-SHA256 of
+"parent-view:<guardian>:<expiry>" with the push secret (as the unsubscribe links, #537, with a purpose of its own), good
+for **14 days** (two weekly emails, so last week's link still works when this week's comes). The page sends the token to
+`notify-parents` in a POST body; the function checks the signature (constant time) and the age, then the database decides
+(#643).
+
+**Why not a parent login (option considered).** A login linked through the guardian's confirmed email would create a new
+account per parent (email, password hash, sessions, devices: new personal data and a new breach surface), a fourth role
+through every policy and the grant sweep, a sign-up flow for adults the class has only met at the desk, and a clash with
+#184 (a child's record never holds a parent's email; parent and child sharing one address). The link adds **no new
+personal data**: it uses the address the parent already gave and the written yes already recorded at the desk, where the
+parent's ID was seen (verifiable consent, DPDP Act s.9, Rule 10). A forwarded link shows one child for at most 14 days and
+the parent can stop it; the Guru can stop all at once.
+
+**Consequences.** A parent without the weekly email has no page. A parent who loses the link waits for the next email or
+asks for "Send again" at the desk (#535).
+
+## 642. Row-level security stays closed: the page is the service role's, for one guardian row — 27 Oct 2026
+
+**Decision.** Parents have no database identity, so no policy changes and nothing opens to anon (the anon allow-list stays
+`sign_up_choices`, `give_parent_consent`). `parent_view(guardian)`, `stop_parent_view(guardian)` and `parent_view_on()`
+are granted to the service role only (`notify-parents`); signed-in people may run only the staff overview and the Guru's
+switch (both check the role inside; on the allow-list of the function sweep). `parent_view` reads the one student of that
+guardian row and nothing keyed by anything else, so a token for one child can never show another: a brother or sister has
+their own guardian row, email and link. The token sits after `#`, so it never reaches Cloudflare or Supabase in an address
+or a Referer (`strict-origin-when-cross-origin` already); the page reads it on the web only.
+
+## 643. Exactly the parents who may get the weekly email, checked at every opening — 27 Oct 2026
+
+**Decision.** `parent_view` answers only while `parent_digest_block(student, guardian, ignore the weekly email's switch)`
+is null: the parent's written yes to the weekly email on any guardian row of the child with that address (#531), a current
+data consent, an active student under 18, not withdrawn. Otherwise `not_available`, **never why** (a forwarded or old link
+learns nothing). So a withdrawal (`withdraw_consent`), an erasure (the guardian row goes, and the access log's id is
+blanked, 0034), the child turning 18 (then the student's own consent, #577), a pause or leaving, Stop on the page or
+Unsubscribe in an email end it at the next opening, without waiting for the link to expire.
+
+## 644. What the page shows, and what it never shows — 27 Oct 2026
+
+**Decision.** Only what the child already sees in the app (My progress, the level path #620, attendance, practice,
+events, announcements), for that child: see #640. **Never** a location, distance or area flag (#212), a photo, a mark or
+an assessment, a coordinator's remark on a tick, a call note, an event's `place` text, a file or a reply, or anything
+about another child. Announcements: those `audience_students` gives the child (as events; never staff-only), published,
+the last 30 days, at most 5, title and text (at most 1000 characters). Staff write announcements to students knowing a
+parent may read them (OPERATIONS "The parent page" says so).
+
+## 645. Each opening is in the access log — 27 Oct 2026
+
+**Decision.** Each page answered with content writes one `access_log` row (`function_name` `parent_view`, no reader,
+the student, 1 row): the Guru sees it under the audit log's Reads as "Parent page (link in the weekly email)", reader
+"System". Kept a year, as every read (0034). No address, device or IP is kept. The staff overview counts openings in 7 and
+30 days and the children, no names (`parent_view_overview`).
+
+## 646. The Guru's switch, off by default — 27 Oct 2026
+
+**Decision.** Setting `parent_view_enabled` (false), changed only by `set_parent_view(on)` (the Guru; audited through
+`audit_setting`; a direct update is refused, `setting_unknown`, as #534). On the screen "Weekly email to parents" beside
+the weekly email's switch, asked twice. Off: every link answers "switched off" at once and the next weekly emails carry no
+link (`notify-parents` asks `parent_view_on()` once a run). It is separate from the weekly email's switch: the Guru may run
+the email without the page. Switched on only after form line D carries the page sentence (#649).
+
+## 647. One consent for the email and the page; Stop on the page — 27 Oct 2026
+
+**Decision.** No new consent scope: the page is the same purpose as the weekly email ("telling the parent about their
+child's progress", #531) for the same person, reached from that email. The parent's yes (scope `digest`) covers both once
+form line D says so (#649). The page's one control, "Stop the weekly email and this page" (asked twice), runs
+`stop_parent_view` = `stop_parent_digests`: every `digest` yes of that address is revoked (kept, with the time) and waiting
+emails end as stopped, exactly as the email's Unsubscribe (s.6(4): as easy to withdraw as to give). Starting again is at
+the desk. The child's own login signed in on the same browser can open the page (it shows what the child already sees).
+
+## 648. The link is written as text; the preview shows none — 27 Oct 2026
+
+**Decision.** In the email the link is a plain line of text in both the text and the HTML part, never an `<a>`, so a
+sender's click tracking (Brevo's) does not rewrite it through a tracking address; mail apps make it tappable. Its line says
+the link is for the parent and works 14 days. Staff's preview (#536) shows the email without the link line: a link is made
+per guardian when the email goes. States the page can show: the page; switched off; not available; expired (a correctly
+signed link past 14 days: "the next weekly email brings a new one"); a link that is not ours ("open the whole link from the
+email"); stopped.
+
+## 649. The privacy notice needs lines; form line D a sentence — 27 Oct 2026
+
+**Decision.** Yes, the notice needs them before the Guru switches the page on (the lead handles the notice version, #150;
+this branch does not edit `website/content/*/privacy.html`). Drafts (English the reference; Telugu and Hindi for the
+native review, docs/TRANSLATIONS.md):
+
+1. **What parents receive**, after the weekly email:
+   - en: "The weekly email also has a link to a page about your child: level and syllabus, visits, practice at home, coming
+     class events and class announcements to your child. The link works for 14 days and shows only that child; each
+     opening is logged. Stopping the weekly email also stops the page."
+   - te: "వారపు ఈమెయిల్‌లో మీ పిల్లల గురించి ఒక పేజీ లింక్ కూడా ఉంటుంది: స్థాయి, పాఠ్యాంశం, తరగతికి రాకలు, ఇంట్లో సాధన,
+     రాబోయే తరగతి కార్యక్రమాలు, మీ పిల్లలకు తరగతి ప్రకటనలు. లింక్ 14 రోజులు పనిచేస్తుంది, ఆ పిల్లలను మాత్రమే చూపిస్తుంది;
+     ప్రతిసారి తెరిచినది నమోదవుతుంది. వారపు ఈమెయిల్ ఆపితే పేజీ కూడా ఆగుతుంది."
+   - hi: "साप्ताहिक ईमेल में आपके बच्चे के बारे में एक पेज का लिंक भी होता है: स्तर और पाठ्यक्रम, कक्षा में आना, घर पर
+     अभ्यास, आने वाले कक्षा कार्यक्रम और आपके बच्चे के लिए कक्षा की घोषणाएँ। लिंक 14 दिन चलता है और केवल उसी बच्चे को
+     दिखाता है; हर बार खोलना दर्ज होता है। साप्ताहिक ईमेल बंद करने से पेज भी बंद हो जाता है।"
+2. **How long we keep data**: "Openings of the parent page: one year, in the access log (no address or device)."
+   (te: "తల్లిదండ్రుల పేజీ తెరిచినవి: ఒక సంవత్సరం, యాక్సెస్ లాగ్‌లో (చిరునామా, పరికరం ఉండవు)." hi: "अभिभावक पेज खोलने का
+   रिकॉर्ड: एक वर्ष, एक्सेस लॉग में (कोई पता या डिवाइस नहीं)।")
+3. No new processor: the page is served by Cloudflare Pages and Supabase, already listed; the email by Brevo, already listed.
+
+**Form line D** gets one sentence (draft en; te/hi follow the form's other lines): "The email also carries a link to a page
+with your child's last weeks (attendance, practice, progress, class events and announcements). The link works for 14 days
+and is only for you; please do not forward it."
+
+**Order at LIVE.** 0063 (TEST first), then `notify-parents` from main, then the web upload with `/parent`; the notice and
+form line D with the next notice version; then the Guru switches the page on. In any other order nothing breaks: an older
+function sends no link; the switch is off.
+
 ## 650. The web version loads the student screens beyond the tabs later, with the code they share with staff — 27 Oct 2026
 
 **Status: branch `web-entry-diet` (re-score 26-10-2026 gap 13, the lead's brief of 27 Oct 2026). JS and the export script

@@ -111,7 +111,8 @@ with m(migration, present) as (values
   ('0059', to_regclass('public.data_requests') is not null),
   ('0060', to_regclass('public.notice_acceptances') is not null),
   ('0061', to_regclass('public.client_errors') is not null),
-  ('0062', exists (select 1 from pg_proc where proname = 'claim_web_push' and pronamespace = 'public'::regnamespace))
+  ('0062', exists (select 1 from pg_proc where proname = 'claim_web_push' and pronamespace = 'public'::regnamespace)),
+  ('0063', exists (select 1 from pg_proc where proname = 'parent_view' and pronamespace = 'public'::regnamespace))
 )
 select migration, case when present then 'yes' else 'no' end as present from m
 union all
@@ -123,7 +124,7 @@ select 'MISSING', coalesce((select string_agg(a.migration, ' ' order by a.migrat
 order by 1;
 ```
 
-## B. Migrations 0013-0062, one file per run
+## B. Migrations 0013-0063, one file per run
 
 For each row: GitHub main → `supabase/migrations/<file>` → **Copy raw file** → LIVE → SQL Editor →
 New query → paste → check the project → **Run** → then paste the probe again (or keep it in a second
@@ -190,7 +191,8 @@ a second paste. So pasting a file twice by mistake is harmless; still, never do 
 | M0061 | `0061_staff_mfa.sql` (branch `claude/staff-mfa-72bdd5`) | Praveen · dashboard | No rows; probe `0061`, `MISSING` `none`; verification row 3 `16 of 16` | **Staff sign-in codes and the error log** ([#580-#589](DECISIONS.md), audit 22-10-2026 fixes 15 and 16): new setting `staff_mfa_required` = **false** (changed only by the Guru's `set_staff_mfa_required`: on needs the Guru's own code and a code for every active staff member); while it is on, `get_guardians`, `get_consents`, `get_call_notes`, `get_audit_log`, the Guru's `guru_read` policies on `guardians`, `consents`, `call_logs`, `access_log` and the parent's email and phone in `waiting_sign_ups` need a session that gave the code (`aal2`; error `mfa_required`). These five functions and four policies are **replaced** with the same rule plus that condition; nothing changes while the switch is off. New `staff_mfa_overview`, `my_mfa_state`, `reset_staff_mfa` (the Guru resets another staff member's code; audited); new tables `client_errors` (the Guru reads; no personal data) and `client_error_quota` (no policy), `log_client_error` and job `mridanga-client-errors-purge` (01:55 UTC, 30 days). Changes no stored row. Safe to run twice. **TEST first** (`fhuqyk…`), then LIVE, **before** the OTA with Sign-in code and App errors (without it the app hides both; error reports are refused and lost, nothing breaks). Check after the run: `select count(*) from auth.mfa_factors` must answer (a count, 0 is fine): if it says permission denied, codes can only be reset in the dashboard (OPERATIONS "Staff sign-in codes") |
 | M0062 | `0062_web_push.sql` (branch `claude/recursing-roentgen-771f9b`) | Praveen · dashboard | No rows; probe `0062`, `MISSING` `none`; verification row 3 `16 of 16` (no new job) | **Web push for the web version** ([#596-#609](DECISIONS.md), audit 22-10-2026 fix 13): `push_tokens` takes browsers too (platform `web`, the push service address as the token, new columns `web_p256dh`, `web_auth`; constraints `push_tokens_platform_check` widened and `push_tokens_web_keys` added), so sign-out, switch-off, withdrawal, the erase functions and the 90-day retention of 0060 forget browsers as they forget phones; new `save_web_push`, `remove_web_push` (the caller's own browser); `push_queue.web`, `push_status.last_web_run(_at)`; **`claim_push_queue` replaced** with the same columns (it now also queues browser rows and still hands out phones only), new `claim_web_push`, `finish_web_push` (service role only; a 404/410 deletes the address). Changes no stored row. Safe to run twice. **TEST first** (`fhuqyk…`), then LIVE; then set the LIVE secrets `WEB_PUSH_PUBLIC_KEY`, `WEB_PUSH_PRIVATE_KEY`, `WEB_PUSH_SUBJECT` and deploy `notify-announcements` from main (OPERATIONS "Push notifications" part C), then the LIVE web export with `EXPO_PUBLIC_WEB_PUSH_KEY` in `app/.env.live`. In any other order nothing breaks: the deployed function keeps sending to phones; browser rows wait and are given up after a day |
 
-**A file newer than 0062 on main:** the replay's first check fails until this table lists it. Add it
+| M0063 | `0063_parent_view.sql` (branch `parent-view`) | Praveen · dashboard | No rows; probe `0063`, `MISSING` `none`; verification row 3 `16 of 16` (no new job) | **The parent page** ([#640-#649](DECISIONS.md), re-score 26-10-2026 gap 10): new setting `parent_view_enabled` = **false** (changed only by the Guru's `set_parent_view`; audited); new `parent_view` (one child's read-only page for a guardian row; only while that parent may get the weekly email; logs each opening in `access_log` as `parent_view`), `stop_parent_view` (= the weekly email's Unsubscribe), `parent_view_on` (service role only, for `notify-parents`), `parent_view_overview` (staff). No table, policy or stored row changes; nothing opens to anon. Safe to run twice. **TEST first** (`fhuqyk…`), then LIVE, then deploy `notify-parents` from main (the link in the weekly email and the page's answers). In any other order nothing breaks: an older function sends no link; before 0063 the newer function sends none either. The Guru switches the page on only after the paper form's line D carries the page sentence (OPERATIONS "Weekly email to parents" → "The parent page") |
+**A file newer than 0063 on main:** the replay's first check fails until this table lists it. Add it
 here, with its own steps, then run it last.
 
 **0049 (launch clean-up)** is on TEST but not on main on 15 Oct 2026. It joins this table when branch
@@ -336,7 +338,8 @@ with m(migration, present) as (values
   ('0059', to_regclass('public.data_requests') is not null),
   ('0060', to_regclass('public.notice_acceptances') is not null),
   ('0061', to_regclass('public.client_errors') is not null),
-  ('0062', exists (select 1 from pg_proc where proname = 'claim_web_push' and pronamespace = 'public'::regnamespace))
+  ('0062', exists (select 1 from pg_proc where proname = 'claim_web_push' and pronamespace = 'public'::regnamespace)),
+  ('0063', exists (select 1 from pg_proc where proname = 'parent_view' and pronamespace = 'public'::regnamespace))
 ),
 last_in_order as (select coalesce(max(a.migration), 'before 0010') as v from m a
   where a.present and not exists (select 1 from m b where b.migration <= a.migration and not b.present)),
@@ -347,7 +350,7 @@ jobs(name) as (values ('mridanga-status-refresh'), ('mridanga-close-visits'), ('
   ('mridanga-cron-history-purge'), ('mridanga-orphan-files'), ('mridanga-parent-notices'), ('mridanga-minor-signups'),
   ('mridanga-parent-digests'), ('mridanga-data-requests'), ('mridanga-retention'), ('mridanga-client-errors-purge')),
 checks(sort, check_name, ok, found, expected) as (
-  select 1, 'last migration', (select v from last_in_order) = '0062', (select v from last_in_order), '0062'
+  select 1, 'last migration', (select v from last_in_order) = '0063', (select v from last_in_order), '0063'
   union all select 2, 'migrations missing', (select v from missing) = 'none', (select v from missing), 'none'
   union all select 3, 'scheduled jobs',
     (select count(*) from jobs j join cron.job c on c.jobname = j.name and c.active) = 16,

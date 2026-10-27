@@ -1870,6 +1870,26 @@ No new job (16). Tests: section "0062 web push" in `supabase/tests/smoke-test.mj
 only, the 5-browser limit, the queue split, a gone address, a retry, a notice, retention, a second run) and the "web
 push" checks in `push-messages.test.mjs` (the encryption decrypted by http_ece, the VAPID signature, the push services'
 answers). Checked end to end on TEST with Mozilla's push service (24-10-2026).
+
+## Parent page (0063)
+
+A read-only page about one child for a parent who gets the weekly email, opened from the email's link without a login.
+[DECISIONS.md #640-#649](DECISIONS.md) (re-score 26-10-2026 gap 10). The link (`<web app>/parent#v=<guardian>.<expiry>.<HMAC>`,
+14 days) is made and checked by `notify-parents` (`view.ts`); the page posts the token to it, and it runs `parent_view`
+with the service role. Nothing opens to anon; no table or policy changes.
+
+| Object | What |
+|---|---|
+| `settings.parent_view_enabled` | false by default; written only by `set_parent_view` (the Guru; audit log). Off: every link answers `switched_off`, the weekly emails carry no link |
+| `parent_view(guardian)` | Service role. `switched_off`; `not_available` (unknown guardian, or `parent_digest_block(…, ignore switch)` not null: no yes, no data consent, adult, withdrawn, not active; no reason given); or `ok` with the child's name, the email language, the class contact, centre, today, level, syllabus of the level (done, total, next 3), items learnt in 8 weeks (title, day; never the remark), level changes in a year, visits per week for 8 weeks and the last 5 (day, in, out), practice per week for 4 weeks against the goal and the run of days, events for the child in 31 days (no place), announcements addressed to the child in 30 days (title, text up to 1000, at most 5). Each `ok` writes one `access_log` row (`parent_view`, no reader) |
+| `stop_parent_view(guardian)` | Service role: the page's Stop = `stop_parent_digests` (every `digest` yes of that address revoked, waiting emails stopped) |
+| `parent_view_on()` | Service role: whether the weekly email carries the link |
+| `parent_view_overview()` | Guru, coordinator: on/off, link days, openings in 7 and 30 days, children in 30 days |
+| `set_parent_view(on)` | Guru: the switch; returns the overview |
+
+No new job (16). Tests: section "0063 parent page" in `supabase/tests/smoke-test.mjs` (off by default, the switch, who
+gets a page, what it shows and never shows, the access log, grants, Stop, withdrawal, erasure, a second run) and "the
+parent page's link" in `parent-notices.test.mjs` (signature, expiry, purpose, the email line).
 ## Linking a login to a student
 
 A student record can exist without a login (many students never install the app). When a person
@@ -1959,6 +1979,7 @@ switched-off login is refused like a stranger.
 | `set_guardian_digest(guardian, on, notice_version)` | Guru, coordinator | Records the parent's written yes to the weekly email (a `digest` consent), or withdraws it (0058) |
 | `resend_parent_digest(guardian)` | Guru, coordinator | Send again: the latest week's weekly email once more to this parent, once in 24 hours (0058) |
 | `preview_parent_digest(student, week)` | Guru, coordinator | What a parent of this student gets for a week (default this week so far), per guardian whether and in which language; `notify-parents` builds the email from it (0058) |
+| `set_parent_view(on)`, `parent_view_overview()` | Guru (switch); Guru, coordinator (overview) | The parent page's switch and its numbers (0063). See "Parent page (0063)" |
 | `withdraw_consent(student, note)` | Guru (or the owner in the SQL editor) | Records a withdrawal of consent and freezes the record. See "Withdrawal and erasure (0025)" |
 | `erase_student(student, reason, request_ref)` | Guru (or the owner in the SQL editor) | Erases the student, the login and the audit copies; leaves a tombstone. See "Withdrawal and erasure (0025)" |
 | `my_data_summary()`, `file_data_request(kind, field, body)`, `cancel_data_request(id)` | The person (student, coordinator, Guru) | My data and rights: the summary of one's own data, a request about oneself, taking it back. See "Data requests (0059)" |
@@ -2013,6 +2034,7 @@ the security-round triggers `guard_student_frozen`, `note_level_change`, `releas
 the weekly-email helpers `parent_digest_limits`, `parent_digest_block`, `parent_digest_week`, `parent_digest_queue_open`,
 `parent_digest_send_open`, `app_parent_mails_today`, `parent_digest_room`, `parent_digest_content`, `queue_parent_digests`,
 `send_parent_digests` (0058; `claim_parent_digests`, `finish_parent_digests`, `stop_parent_digests` for the Edge Function only),
+`parent_view`, `stop_parent_view`, `parent_view_on` (0063, for the Edge Function only),
 and the helpers `my_role`, `is_guru`, `is_staff`,
 `setting_int`, `today_ist`.
 

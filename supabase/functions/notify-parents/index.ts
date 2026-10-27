@@ -19,6 +19,9 @@
 //     body {"preview": "<student id>", "language"?: "en|te|hi", "week"?: "YYYY-MM-DD"}): preview_parent_digest
 //     runs AS THAT PERSON (it refuses anyone but staff), and the answer is the email built by the same code
 //     that sends it. Nothing is sent. Open to the web app's origin (CORS) for this call only.
+//   - the parent page (migration 0063, ./view.ts; no sign-in): body {"view": "<token from the email's link>"}
+//     answers parent_view for the guardian the signed, unexpired token names, or {"view": …, "stop": true}
+//     stops the weekly email and the page (stop_parent_view). CORS open, as for the preview.
 //
 // Runs with the service role, which bypasses row-level security; that key never leaves Supabase.
 // Logs ids and counts only, never an address, a name or a text.
@@ -28,9 +31,10 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.117.2';
 
 import { pickServiceKey } from '../notify-announcements/messages.ts';
-import { consentPageUrl, runConsentCodes } from './consent.ts';
+import { consentPageUrl, runConsentCodes, webAppUrl } from './consent.ts';
 import { buildDigestPreview, runDigests, type DigestPreviewData } from './digest.ts';
 import { brevoMailer, checkStop, runNotices, STOP_PARAM, stopUrl, type Rpc, type StopKind } from './send.ts';
+import { checkView, viewUrl } from './view.ts';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -76,6 +80,32 @@ async function preview(url: string, authorization: string, body: Record<string, 
   return reply(200, buildDigestPreview(data as DigestPreviewData, language), true);
 }
 
+/**
+ * The parent page (0063): the token's signature and age first, then the database decides (parent_view checks the
+ * parent's yes, the consent, the child and the Guru's switch at every opening). Logs outcomes only.
+ */
+async function parentPage(rpc: Rpc, secret: string, body: Record<string, unknown>): Promise<Response> {
+  const guardianId = await checkView(secret, body.view);
+  if (guardianId === null) return reply(400, { error: 'bad_link' }, true);
+  if (guardianId === 'expired') return reply(200, { result: 'expired' }, true);
+  if (body.stop === true) {
+    const stopped = await rpc('stop_parent_view', { p_guardian: guardianId });
+    if (stopped.error) {
+      console.error('stop_parent_view failed', stopped.error.message);
+      return reply(500, { error: 'stop_failed' }, true);
+    }
+    console.log('weekly emails and parent page stopped from the page');
+    return reply(200, { result: 'stopped' }, true);
+  }
+  const page = await rpc('parent_view', { p_guardian: guardianId });
+  if (page.error || !page.data || typeof page.data !== 'object') {
+    console.error('parent_view failed', page.error?.message ?? 'no data');
+    return reply(500, { error: 'view_failed' }, true);
+  }
+  console.log('parent page', (page.data as { result?: string }).result);
+  return reply(200, page.data as Record<string, unknown>, true);
+}
+
 Deno.serve(async (request) => {
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
   const secret = Deno.env.get('PUSH_SECRET');
@@ -109,9 +139,10 @@ Deno.serve(async (request) => {
   // Only the database jobs know this secret (Vault mridanga_push_secret = function secret PUSH_SECRET).
   const pushSecret = request.headers.get('x-push-secret');
   if (pushSecret === null) {
-    // No job: staff's preview, signed in.
+    // No job: the parent page (no sign-in), or staff's preview, signed in.
     const authorization = request.headers.get('Authorization') ?? '';
     const body = await request.json().catch(() => ({}));
+    if (body && typeof body === 'object' && 'view' in body) return parentPage(rpc, secret, body as Record<string, unknown>);
     if (/^Bearer \S+$/.test(authorization) && body && typeof body === 'object' && 'preview' in body) {
       return preview(url, authorization, body as Record<string, unknown>);
     }
@@ -131,8 +162,13 @@ Deno.serve(async (request) => {
   const consent = await runConsentCodes(rpc, mailer, (language) => consentPageUrl(url, appUrl, language));
   const functionUrl = `${url.replace(/\/$/, '')}/functions/v1/notify-parents`;
   const result = await runNotices(rpc, mailer, (guardianId) => stopUrl(functionUrl, secret, guardianId));
+  // The parent page's link goes in the weekly email only while the Guru has the page on (0063). Before 0063 the
+  // function is missing: no link.
+  const viewOn = await rpc('parent_view_on');
+  const webApp = webAppUrl(url, appUrl);
   const digests = await runDigests(rpc, dryRun ? null : brevoMailer(fetch, apiKey, sender, replyTo, 'parent-digest'),
-    (guardianId) => stopUrl(functionUrl, secret, guardianId, 'digest'));
+    (guardianId) => stopUrl(functionUrl, secret, guardianId, 'digest'), console.log,
+    viewOn.data === true ? (guardianId, language) => viewUrl(webApp, secret, guardianId, language) : null);
   if ('error' in result) return reply(500, { ...result, consent, digests });
   if ('error' in consent) return reply(500, { error: consent.error, notices: result, digests });
   if ('error' in digests) return reply(500, { error: digests.error, notices: result, consent });

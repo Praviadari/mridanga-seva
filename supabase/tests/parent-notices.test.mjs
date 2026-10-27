@@ -9,6 +9,7 @@
 import { buildEmail, dayFirst, escapeHtml, languageOf } from '../functions/notify-parents/template.ts';
 import { BREVO_URL, brevoMailer, checkStop, runNotices, stopSignature, stopUrl } from '../functions/notify-parents/send.ts';
 import { buildDigestEmail, buildDigestPreview, DIGEST_CLAIM_LIMIT, runDigests } from '../functions/notify-parents/digest.ts';
+import { checkView, VIEW_LINK_DAYS, viewSignature, viewUrl } from '../functions/notify-parents/view.ts';
 
 let failures = 0;
 
@@ -251,5 +252,41 @@ const digest = (over = {}, content = {}) => ({
   check('preview: one language on request', Object.keys(buildDigestPreview(data, 'en').emails).join() === 'en');
 }
 
+// ---------------------------------------------------------------- the parent page's link (0063, #640-#649)
+{
+  const secret = 'test-secret';
+  const now = Date.UTC(2026, 9, 27, 12, 0, 0);
+  const url = await viewUrl('https://app.example.org/', secret, GUARDIAN, 'te', now);
+  const token = url.split('#v=')[1];
+  check('page link: web app + /parent, the language as ?lang=, the token after # (never in the query)',
+    url.startsWith('https://app.example.org/parent?lang=te#v=') && !url.split('#')[0].includes(GUARDIAN), url);
+  check('page link: English has no ?lang=', (await viewUrl('https://app.example.org', secret, GUARDIAN, 'en', now)).startsWith('https://app.example.org/parent#v='));
+  check('page link: the token opens the page of its guardian for 14 days', VIEW_LINK_DAYS === 14
+    && (await checkView(secret, token, now)) === GUARDIAN && (await checkView(secret, token, now + 14 * 86400000 - 1000)) === GUARDIAN);
+  check('page link: ... and says expired after that', (await checkView(secret, token, now + 14 * 86400000)) === 'expired');
+  const [id, expires, sig] = token.split('.');
+  const other = '1b4e28ba-2fa1-41d2-883f-0016d3cca427';
+  check('page link: another guardian, a later expiry, a changed signature or another secret open nothing',
+    (await checkView(secret, `${other}.${expires}.${sig}`, now)) === null
+    && (await checkView(secret, `${id}.${Number(expires) + 86400}.${sig}`, now)) === null
+    && (await checkView(secret, `${id}.${expires}.${sig.slice(0, -1)}A`, now)) === null
+    && (await checkView('other-secret', token, now)) === null);
+  check('page link: a stop signature is no page token, nor junk', (await checkView(secret, `${GUARDIAN}.${await stopSignature(secret, GUARDIAN, 'digest')}`, now)) === null
+    && (await checkView(secret, undefined, now)) === null && (await checkView(secret, `${token}.x`, now)) === null
+    && (await checkView(secret, 'x'.repeat(300), now)) === null);
+  check('page link: the token is signed for its own purpose', sig === await viewSignature(secret, GUARDIAN, Number(expires))
+    && sig !== await stopSignature(secret, GUARDIAN, 'digest'));
+  const withLink = buildDigestEmail(digest(), 'https://app.example.org/parent#v=abc');
+  check('digest: with the page on, the link is in the text and in the HTML as text, not as a mail link',
+    withLink.text.includes('https://app.example.org/parent#v=abc') && withLink.text.includes('works for 14 days')
+    && withLink.html.includes('https://app.example.org/parent#v=abc') && !withLink.html.includes('<a '), withLink.text);
+  check('digest: without it (page off) no such line', !buildDigestEmail(digest()).text.includes('/parent'));
+  const rpc = async (name) => (name === 'claim_parent_digests' ? { data: [digest({ digest_id: 1, language: 'hi' })], error: null } : { data: null, error: null });
+  const mails = [];
+  await runDigests(rpc, async (to, email) => { mails.push(email); return { status: 'sent' }; }, noLink, quiet,
+    (guardianId, language) => viewUrl('https://app.example.org', secret, guardianId, language, now));
+  check('digest run: each email carries its guardian\'s page link in the email\'s language',
+    mails[0]?.text.includes(`https://app.example.org/parent?lang=hi#v=${GUARDIAN}.`) === true && mails[0].text.includes('14 दिन'), mails[0]?.text);
+}
 console.log(failures ? `\n${failures} check(s) FAILED` : '\nAll parent-notice checks passed');
 process.exit(failures ? 1 : 0);
