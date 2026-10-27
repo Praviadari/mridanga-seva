@@ -138,7 +138,7 @@ test('a sign-up the database refuses gets the staff-name hint, not "Something we
   assert.match(src('auth/auth-errors.ts'), /database error saving new user/i); // moved from auth-actions (#397)
   assert.match(src('auth/auth-actions.ts'), /errorKey: signUpErrorKey\(error\)/);
   assertWorded('authErrors.signUpRefused');
-  assert.match(text('en', 'authErrors.signUpRefused'), /Guru's or a coordinator's/);
+  assert.match(text('en', 'authErrors.signUpRefused'), /facilitator's or a coordinator's/);
 });
 
 // ---------------------------------------------------------------- R1-01, R1-03 wording

@@ -37,10 +37,11 @@ export function authErrorKey(error: unknown): MessageKey {
         return 'authErrors.samePassword';
       case 'email_address_invalid':
         return 'validation.emailInvalid';
-      // The project's emails per hour (150 for the sign-up weekend), or the 60 s before another email to the same
-      // address: the email is what waits, not the person's tries (#397).
+      // The project's emails per hour (150 for the sign-up weekend): the email is what waits, not the person's tries
+      // (#397). The 60 s before another email to the same address ("... only request this after 52 seconds") has the
+      // same code: then a minute is enough (E5, #661).
       case 'over_email_send_rate_limit':
-        return 'authErrors.emailNotSent';
+        return /after \d+ seconds?/i.test(error.message) ? 'authErrors.waitAMinute' : 'authErrors.emailNotSent';
       case 'over_request_rate_limit':
         return 'authErrors.rateLimited';
       // Audit D8-04: these need a new sign-in, a new link or staff help, not another try.

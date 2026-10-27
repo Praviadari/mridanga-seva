@@ -16,6 +16,7 @@ import { forgetStoredLogin, storedRefreshToken, supabase } from '@/lib/supabase'
 
 import { authErrorKey, signUpErrorKey } from './auth-errors';
 import { keepPendingSignOut } from './pending-sign-out';
+import { markRecoveryDone } from './recovery-mark';
 import { markOwnSignOut } from './session-end';
 
 /** A translation key, for example 'authErrors.invalidCredentials'. */
@@ -48,6 +49,9 @@ export { isValidEmail } from '@/lib/email';
  * the app moves to the person's screens by itself.
  */
 export async function signIn(email: string, password: string): Promise<AuthResult> {
+  // Whoever knows the password needs no new one: an old reset-link mark must not hold this login (#660). Ended before
+  // the call, because its SIGNED_IN event reaches the auth provider before the call returns.
+  markRecoveryDone();
   const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
   return error ? { errorKey: authErrorKey(error) } : {};
 }
