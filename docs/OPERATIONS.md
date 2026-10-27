@@ -638,6 +638,7 @@ to `app/dist/`. Always use this command, not a bare `npx expo export`, because
 
 | Date | Site | Commit | Built (UTC) | By |
 |---|---|---|---|---|
+| 27-10-2026 | test (parent page /parent, 0063 on TEST, notify-parents from the parent-view branch = same code; switch off) | e9b26ef (main; entry-59f76576…; deployment 73b2324e) | 2026-10-27T13:20:06Z | Claude (wrangler, Praveen's login) |
 | 27-10-2026 | test (web entry diet: first download 2,658 KB, student area 404 KB later, __common folded into area files) | de0baee (main; entry-25707c2f…; deployment 5c1ee880) | 2026-10-27T13:06:19Z | Claude (wrangler, Praveen's login) |
 | 27-10-2026 | test (sign-in polish: reset link keeps the new-password step, forgot-password copy, one-minute message; uptime workflow) | a79e6ae (main; entry-70cec0ea…; deployment e0ad1730) | 2026-10-27T11:17:28Z | Claude (wrangler, Praveen's login) |
 | 27-10-2026 | test (app size: icon font out of Android, updates exported with source maps; metro.config.js) | 782e020 (main; entry-18c4a247…; deployment ac6be666) | 2026-10-27T09:55:05Z | Claude (wrangler, Praveen's login) |
