@@ -8249,3 +8249,61 @@ roles) now say "facilitator" ("The facilitator" at a sentence start); the websit
 "the facilitator (Guru)" stays as a gloss. Telugu and Hindi keep గురువు / गुरु (#40); the spots that use the plain
 form instead of గురువుగారు / गुरुजी are listed for the native review in NOTES_ops_signin_polish.md.
 DECISIONS #665-#669 stay free.
+
+## 670. The student's four tabs: Home, Learn, Practice, Me — 27 Oct 2026
+
+**Context.** Re-score gap 12 and Sarvesh Prji's student module spec (27-10-2026, sections 1-2). **Decision.** The student
+tabs are Home | Learn | Practice | Me (amends #57, #353): Learn = My Level, syllabus and lessons, assessments, milestones,
+Learn more; Practice = Today's Practice, the practice tools, Weekly Practice, My Practice Goal, Practice History, the
+games; Me = who I am with My QR, attendance, My Details, notifications, language and appearance, Privacy & Data, What's
+new, Help, Sign out. My QR, Updates (announcements) and Śloka Study (Ishtagoshti) left the tab bar: their files moved
+from student/(tabs)/ to student/ at the same addresses (/student/my-qr, /student/announcements, /student/ishtagoshti), so
+links, notifications and What's new open them as before, now with a back button. The Practice tab is
+/student/my-practice: /student/practice stays the practice tools (the reminder's address). The lesson, event and
+assessment screens did not move. **Why.** The spec's order, and the tabs stay light for the web's first download (#650):
+the three old tabs are now in the student area, the first download went from 2,675 KB to 2,665 KB.
+
+## 671. Practice is drawn as the Śrī Khol — 27 Oct 2026
+
+**Decision.** components/khol-icon.tsx: a monoline two-headed khol (24-unit box, 1.5 stroke like the Ionicons outlines,
+wide bass head left, small treble head right, two straps); the open tab tints the body. Icon name `practice` draws it
+everywhere (Practice tab, Today's Practice, every Practice shortcut). react-native-svg, not the icon font: the font is
+cut from Ionicons (#592) and stays as it is; no native change (fp 23dc7e4a). Never a Western drum or an emoji (spec 2).
+
+## 672. Updates behind the bell; the notifications inbox in Me — 27 Oct 2026
+
+**Decision.** The student bell (home band and every tab's header bar, components/updates-bell.tsx) opens Updates with the
+count of announcements not opened; the notifications inbox (A2) is a row in Me with its own count. My profile's person
+button left the student band (Me replaces it). **Why.** The spec puts Updates behind the bell; one bell, not two.
+
+## 673. Daily Mission (Today's Practice) without a new table — 27 Oct 2026
+
+**Name.** Sarvesh Prji (via Praveen, 27-10-2026): the card is called "Daily Mission" in English, not "Today's Practice" or "Today's Sādhana"; Start / Continue stay. Telugu and Hindi wait for the native review (no draft wording; the keys keep the earlier drafts until then). **Decision.** lib/today-practice.ts: one item of the level's Weekly Practice a day (taals still in the list, lessons the
+student may open), else the level path's next item, else free practice; guna = ekgun for a taal (the plan keeps no guna,
+Start plays at layakari 1); minutes = the goal's minutes a day; progress = minutes logged today; Start / Continue /
+done. Start opens the practice tools. **Open.** A guna per plan item needs a practice_plans column (a migration), for
+the Guru to decide.
+
+## 674. The student home: compact band, Today's Practice first, cards under it — 27 Oct 2026
+
+**Decision.** Replaces the ring of #240 on S1: the band without the rule, then the Daily Mission card (#673), Śloka Study across the
+row, and cards for Lessons, Assessments (count to do), My QR, Events (polls to vote), My Growth (Practice History) and,
+while unfinished, My Details. The fact of the day stays at the foot; the level strip moved to Learn. Welcome and
+celebration cards still take the cards' place once.
+
+## 675-677. Learn, Practice and Me hold rows only — 27 Oct 2026
+
+**Decision.** The three new tabs are lists of rows and cards that open existing screens; nothing heavy is imported
+(the assessments count is one head request, fetchMyOpenAssessmentCount), so the first download does not grow.
+
+## 678. Sign-out warns while saves wait on the phone — 27 Oct 2026
+
+**Decision.** SignOutButton (everywhere): while practice entries or check-ins of this login wait in the offline queue
+(#593), the first tap shows how many and that signing out deletes them, with Stay signed in first and Sign out anyway
+second (spec section 11).
+
+## 679. Sarvesh Prji's English terms — 27 Oct 2026
+
+**Decision.** English only, keys kept: Updates (News), Śloka Study (Slokas), My Learning (My progress), Practice History
+(My practice log), Weekly Practice (Practice of the week), My Practice Goal (This week), My Details (About you), Privacy
+& Data (My data and rights). Telugu and Hindi wait for the native review (NOTES_student_nav.md lists them).

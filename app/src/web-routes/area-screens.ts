@@ -118,6 +118,7 @@ export const STAFF_SCREENS: readonly string[] = [
 /** Every student and waiting screen except the layouts and the student's four tabs. */
 export const STUDENT_SCREENS: readonly string[] = [
   'student/about-you.tsx',
+  'student/announcements.tsx',
   'student/announcements/[id].tsx',
   'student/assessments/[id].tsx',
   'student/assessments/index.tsx',
@@ -125,6 +126,7 @@ export const STUDENT_SCREENS: readonly string[] = [
   'student/echo-me.tsx',
   'student/events/[id].tsx',
   'student/events/index.tsx',
+  'student/ishtagoshti.tsx',
   'student/ishtagoshti/sloka/[id].tsx',
   'student/ishtagoshti/slokas.tsx',
   'student/ishtagoshti/theme/[id].tsx',
@@ -133,6 +135,7 @@ export const STUDENT_SCREENS: readonly string[] = [
   'student/lesson/[id].tsx',
   'student/mantra.tsx',
   'student/my-data.tsx',
+  'student/my-qr.tsx',
   'student/notifications.tsx',
   'student/polls/[id].tsx',
   'student/practice-log.tsx',

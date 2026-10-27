@@ -239,7 +239,10 @@
       "unread": "आपके लिए नई: {{count}}",
       "allAnnouncements": "सभी सूचनाएँ",
       "levelStrip": "{{level}} में {{total}} में से {{done}}",
-      "levelStripNone": "मेरा स्तर: {{level}}"
+      "levelStripNone": "मेरा स्तर: {{level}}",
+      "lessons": "पाठ",
+      "growth": "मेरा विकास",
+      "slokaDetail": "आज का श्लोक, विषय और आपके नोट्स"
     },
     "staff": {
       "shortcuts": "स्क्रीनें",
@@ -277,7 +280,8 @@
       "toVote": "{{count}} पर वोट बाकी",
       "notFinished": "अधूरा",
       "due": "{{count}} बाकी",
-      "waiting": "{{count}} इंतज़ार में"
+      "waiting": "{{count}} इंतज़ार में",
+      "toDo": "{{count}} करने हैं"
     },
     "modules": {
       "overview": "सारांश",
@@ -339,7 +343,10 @@
     "news": "सूचनाएँ",
     "myQr": "मेरा QR",
     "ishtagoshti": "श्लोक",
-    "account": "खाता"
+    "account": "खाता",
+    "learn": "सीखें",
+    "practice": "अभ्यास",
+    "me": "मैं"
   },
   "setup": {
     "title": "ऐप सेट नहीं है",
@@ -4936,5 +4943,54 @@
     },
     "when_one": "एक बार, आख़िरी {{last}}",
     "when_other": "{{count}} बार, आख़िरी {{last}}"
+  },
+  "updates": {
+    "bellUnread_one": "अपडेट, {{count}} नया",
+    "bellUnread_other": "अपडेट, {{count}} नए"
+  },
+  "todayPractice": {
+    "title": "आज का अभ्यास",
+    "free": "मुक्त अभ्यास: कोई भी ताल या पाठ",
+    "guna": "गुण: {{guna}}",
+    "tempo": "{{bpm}} बीट प्रति मिनट",
+    "minutes_one": "{{count}} मिनट सुझाया",
+    "minutes_other": "{{count}} मिनट सुझाए",
+    "progressLabel": "आज किया अभ्यास",
+    "progress": "आज {{total}} में से {{done}} मिनट",
+    "start": "शुरू करें",
+    "continue": "जारी रखें",
+    "more": "आज का पूरा हुआ। और अभ्यास करें"
+  },
+  "learnTab": {
+    "level": "मेरा स्तर",
+    "syllabus": "पाठ्यक्रम और पाठ",
+    "syllabusDetail": "मेरे स्तर का हर विषय, उसके वीडियो, PDF और फ़ोटो के साथ",
+    "assessmentsNone": "अभी कुछ करना नहीं है",
+    "assessmentsOpen_one": "{{count}} करना है",
+    "assessmentsOpen_other": "{{count}} करने हैं",
+    "milestones": "उपलब्धियाँ",
+    "milestonesDetail": "{{total}} में से {{reached}} पूरी"
+  },
+  "practiceTab": {
+    "tools": "मेट्रोनोम, ताल प्लेयर और खुद को रिकॉर्ड करें",
+    "toolsDetail": "टैप टेम्पो, काउंट-इन, स्पीड ट्रेनर, हाथ और लयकारी",
+    "weeklyNone": "आपके स्तर के लिए अभी कुछ तय नहीं",
+    "weeklyItems_one": "आपके शिक्षकों से {{count}} चीज़",
+    "weeklyItems_other": "आपके शिक्षकों से {{count}} चीज़ें",
+    "games": "खेल"
+  },
+  "meTab": {
+    "qrDetail": "दरवाज़े पर दिखाएँ; बिना इंटरनेट के चलता है",
+    "settings": "भाषा और रूप",
+    "settingsDetail": "मेरी प्रोफ़ाइल, भाषा, हल्की या गहरी स्क्रीन",
+    "help": "सहायता",
+    "helpBody": "कक्षा में किसी कोऑर्डिनेटर से पूछें, या किसी अपडेट का जवाब दें। कक्षा आपके बारे में क्या रखती है, यह गोपनीयता और डेटा में देखें।"
+  },
+  "signOutWarning": {
+    "title": "अभी भेजा नहीं गया",
+    "body_one": "इस फ़ोन पर {{count}} अभ्यास प्रविष्टि या चेक-इन अभी कक्षा तक नहीं पहुँचा (इंटरनेट नहीं)। अभी साइन आउट करने पर वह मिट जाएगा।",
+    "body_other": "इस फ़ोन पर {{count}} अभ्यास प्रविष्टियाँ या चेक-इन अभी कक्षा तक नहीं पहुँचे (इंटरनेट नहीं)। अभी साइन आउट करने पर वे मिट जाएँगे।",
+    "stay": "साइन इन रहें",
+    "anyway": "फिर भी साइन आउट करें"
   }
 }

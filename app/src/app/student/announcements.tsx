@@ -3,6 +3,7 @@
 // edits and files are on its own screen. Tapping one opens it (./[id].tsx), which tells the coordinator it was
 // seen. Scheduled announcements appear only from their time; the database decides which ones a
 // student sees (docs/DECISIONS.md #25). Data: src/data/announcements.ts.
+// Called Updates and opened by the bell since #672 (a tab until #670), on top of the tabs at the same address.
 
 import { router, Stack, useFocusEffect } from 'expo-router';
 import { useCallback } from 'react';

@@ -128,11 +128,12 @@ test('the events count as shown once taken, per login on this phone', () => {
 
 // ---------------------------------------------------------------- wiring, texts, accessibility
 
-test('the home strip and My progress show the path; the home reads it after the numbers, not on every focus', () => {
+test('the level strip (Learn tab since #675) and My Learning show the path; the home reads it after the numbers, not on every focus', () => {
   const home = src('app/student/(tabs)/index.tsx');
   assert.ok(home.includes('fetchMyPath(myId)'));
   assert.ok(home.includes('PATH_EVERY_MS'));
-  assert.ok(home.includes("t('levelPath.next'"));
+  assert.ok(src('components/level-strip.tsx').includes("t('levelPath.next'"));
+  assert.ok(src('app/student/(tabs)/learn.tsx').includes('<LevelStrip home={mine} path={path} />'));
   assert.ok(home.includes('takeDueCelebrations(myId, events, today)'));
   assert.ok(home.includes('<CelebrationCard'));
   // Only with every part read, and never over the welcome.

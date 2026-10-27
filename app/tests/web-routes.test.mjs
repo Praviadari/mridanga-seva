@@ -48,10 +48,10 @@ test('the lists of later screens match src/app (a new screen would be missing on
   const { staff, student } = areaScreenFiles(appDir);
   assert.ok(staff.includes('staff/register.tsx') && staff.includes('staff/(tabs)/index.tsx') && staff.includes('staff/fund/[id].tsx'));
   assert.ok(!staff.includes('staff/_layout.tsx') && !staff.includes('staff/(tabs)/_layout.tsx'), 'the layouts stay in the first download');
-  for (const path of ['student/practice.tsx', 'student/echo-me.tsx', 'student/lesson/[id].tsx', 'waiting/practice.tsx', 'waiting/lessons.tsx']) {
+  for (const path of ['student/practice.tsx', 'student/my-qr.tsx', 'student/announcements.tsx', 'student/echo-me.tsx', 'student/lesson/[id].tsx', 'waiting/practice.tsx', 'waiting/lessons.tsx']) {
     assert.ok(student.includes(path), path);
   }
-  for (const path of ['student/_layout.tsx', 'student/(tabs)/index.tsx', 'student/(tabs)/my-qr.tsx', 'waiting/_layout.tsx', 'subscriber/ishtagoshti/slokas.tsx']) {
+  for (const path of ['student/_layout.tsx', 'student/(tabs)/index.tsx', 'student/(tabs)/my-practice.tsx', 'waiting/_layout.tsx', 'subscriber/ishtagoshti/slokas.tsx']) {
     assert.equal(areaOf(path), null, path);
   }
   assert.match(read('scripts/export-web.mjs'), /listIsCurrent\(\)/, 'export-web refuses stale lists');
@@ -68,7 +68,7 @@ test('every route is known once: the first download has all but the later screen
     assert.equal(studentArea.test(key), area === 'student', `student area: ${key}`);
   }
   for (const layout of ['./staff/_layout.tsx', './staff/(tabs)/_layout.tsx', './_layout.tsx', './student/_layout.tsx']) assert.ok(first.test(layout), layout);
-  assert.ok(first.test('./student/(tabs)/index.tsx') && first.test('./student/(tabs)/my-qr.tsx') && first.test('./sign-in.tsx'));
+  assert.ok(first.test('./student/(tabs)/index.tsx') && first.test('./student/(tabs)/my-practice.tsx') && first.test('./sign-in.tsx'));
   assert.ok(!first.test('./waiting/practice.tsx') && !first.test('./student/practice.tsx'));
 });
 

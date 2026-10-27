@@ -57,7 +57,7 @@ test('Waiting for access: three steps and a check by itself every 30 s while wai
 });
 
 test('My QR: a white pass in both modes, and a green check-in that buzzes only when the scan lands on screen (#381)', () => {
-  const qr = src('app/student/(tabs)/my-qr.tsx');
+  const qr = src('app/student/my-qr.tsx');
   assert.match(qr, /backgroundColor: qrColours\.light/);
   assert.match(qr, /lightPalette\.bar/);
   assert.match(qr, /<Notice tone="success" haptic=\{landed\}/);
@@ -79,7 +79,9 @@ test('titles match their tabs: News, Slokas, Events & polls (#382)', () => {
     assert.equal(l.announcements.title, l.tabs.news, `${lang} News`);
     assert.equal(l.events.homeTitle, l.events.module, `${lang} Events & polls`);
   }
-  assert.match(src('app/student/(tabs)/_layout.tsx'), /title: t\('tabs\.ishtagoshti'\)/);
+  // Śloka Study is a screen on top of the tabs since #670; its header says what the home's shortcut says.
+  assert.match(src('app/student/_layout.tsx'), /name="ishtagoshti" options=\{\{ title: t\('tabs\.ishtagoshti'\) \}\}/);
+  assert.match(src('app/student/(tabs)/index.tsx'), /label: t\('tabs\.ishtagoshti'\)/);
 });
 
 test('About you no longer points at "the name above" (#382)', () => {

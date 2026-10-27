@@ -80,7 +80,7 @@ test('the attendance tab still opens the camera for ?scan= (#339; the home butto
 });
 
 test('My QR keeps the screen awake only while it is in view (#342)', () => {
-  const text = read('src/app/student/(tabs)/my-qr.tsx');
+  const text = read('src/app/student/my-qr.tsx');
   assert.match(text, /activateKeepAwakeAsync\(tag\)/);
   assert.match(text, /deactivateKeepAwake\(tag\)/);
   assert.match(text, /useFocusEffect\(/);

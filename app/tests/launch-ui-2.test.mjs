@@ -45,7 +45,7 @@ test('announcement cards: one short meta line; "New" never on your own post; the
   const detail = src('app/staff/announcements/[id].tsx');
   for (const kept of ['noLoginNote', 'postedBy', 'audienceName', 'announcements.edited']) assert.ok(detail.includes(kept), `${kept} on the detail`);
 
-  const student = element(src('app/student/(tabs)/announcements.tsx'), 'AnnouncementCard');
+  const student = element(src('app/student/announcements.tsx'), 'AnnouncementCard');
   assert.ok(!student.includes('files.count') && !student.includes('audienceName') && !student.includes('announcements.edited'));
   assert.match(student, /\[formatDateTime\(a\.publishAt\), \.\.\.authorLine\(/);
 });
@@ -130,8 +130,9 @@ test('module colours are five families; pink and indigo are gone; each ring keep
   const tonesOf = (text) => [...text.matchAll(/tone: '(\w+)'/g)].map((m) => m[1]);
   const contiguous = (tones) => tones.every((tone, i) => i === 0 || tone === tones[i - 1] || !tones.slice(0, i).includes(tone));
   const student = src('app/student/(tabs)/index.tsx');
-  const studentRing = tonesOf(student.slice(student.indexOf('const modules: Module[] = ['), student.indexOf('];', student.indexOf('const modules: Module[] = ['))));
-  assert.deepEqual(studentRing, ['blue', 'blue', 'purple', 'purple', 'teal', 'orange', 'orange', 'green']);
+  const studentRing = tonesOf(student.slice(student.indexOf('const shortcuts: Shortcut[] = ['), student.indexOf('];', student.indexOf('const shortcuts: Shortcut[] = ['))));
+  // The home's cards since #674 (the ring of #240 before).
+  assert.deepEqual(studentRing, ['purple', 'purple', 'blue', 'orange', 'teal', 'green']);
   assert.ok(contiguous(studentRing));
   const shortcuts = src('components/staff-shortcuts.tsx');
   const shared = Object.fromEntries([...shortcuts.matchAll(/(\w+): \{ key: '\w+', icon: '\w+', tone: '(\w+)'/g)].map((m) => [m[1], m[2]]));

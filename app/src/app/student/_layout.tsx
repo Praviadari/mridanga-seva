@@ -1,6 +1,6 @@
 // Screens for the Student role. Open only when useAuth().area is 'student' (src/app/_layout.tsx).
-// Home, My QR and Announcements are tabs ((tabs)/_layout.tsx); one announcement opens on top of
-// them with a saffron header bar and a back button.
+// Home, Learn, Practice and Me are tabs ((tabs)/_layout.tsx, #670); every other screen, My QR, Updates and Śloka
+// Study among them, opens on top of them with a saffron header bar and a back button.
 
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -32,6 +32,8 @@ export default function StudentLayout() {
       <Stack screenLayout={documentTitleLayout} screenOptions={{ ...bar, ...headerTitleOptions(bar.headerTitleStyle), ...webBackOptions }}>
         {/* No bar of its own (the tabs have theirs); the title is what Back says on the next screen. */}
         <Stack.Screen name="(tabs)" options={{ headerShown: false, title: t('home.title') }} />
+        {/* Tabs until #670; the header says what the home's shortcut says. */}
+        <Stack.Screen name="ishtagoshti" options={{ title: t('tabs.ishtagoshti') }} />
       </Stack>
     </>
   );

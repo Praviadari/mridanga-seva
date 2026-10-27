@@ -10,6 +10,7 @@
 // Since 15-10-2026 (#381) the card is a pass, white in light and dark mode alike, and a check-in is a green box with a
 // tick that pops in and, when the scan lands while the screen is open, one success buzz.
 // Brighter screen: with the next APK (expo-brightness is not in the app yet).
+// A tab until #670; since then opened from the home's card and Me, on top of the tabs at the same address.
 
 import { Stack, useFocusEffect } from 'expo-router';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';

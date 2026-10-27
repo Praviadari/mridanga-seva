@@ -239,7 +239,10 @@
       "unread": "New for you: {{count}}",
       "allAnnouncements": "All announcements",
       "levelStrip": "{{done}} of {{total}} in {{level}}",
-      "levelStripNone": "My level: {{level}}"
+      "levelStripNone": "My level: {{level}}",
+      "lessons": "Lessons",
+      "growth": "My Growth",
+      "slokaDetail": "The sloka of the day, themes and your notes"
     },
     "staff": {
       "shortcuts": "Screens",
@@ -277,7 +280,8 @@
       "toVote": "{{count}} to vote",
       "notFinished": "not finished",
       "due": "{{count}} due",
-      "waiting": "{{count}} waiting"
+      "waiting": "{{count}} waiting",
+      "toDo": "{{count}} to do"
     },
     "modules": {
       "overview": "Overview",
@@ -336,10 +340,13 @@
     "attendance": "Check-in",
     "students": "Students",
     "calls": "Follow-ups",
-    "news": "News",
+    "news": "Updates",
     "myQr": "My QR",
-    "ishtagoshti": "Slokas",
-    "account": "Account"
+    "ishtagoshti": "Śloka Study",
+    "account": "Account",
+    "learn": "Learn",
+    "practice": "Practice",
+    "me": "Me"
   },
   "setup": {
     "title": "App not set up",
@@ -836,7 +843,7 @@
     "dialFailed": "This device cannot open a phone call. Dial {{phone}} on your phone."
   },
   "announcements": {
-    "title": "News",
+    "title": "Updates",
     "loadFailed": "Could not load the announcements.",
     "new": "New announcement",
     "empty": "No announcements yet.",
@@ -1114,7 +1121,7 @@
     "back": "Back to home"
   },
   "progress": {
-    "title": "My progress",
+    "title": "My Learning",
     "open": "See every item",
     "loadFailed": "Could not load your progress.",
     "intro": "The items you have shown in class are ticked by your coordinator. Moving up a level is the facilitator's decision.",
@@ -2460,7 +2467,7 @@
     },
     "timerIdle": "Timer starts with Start",
     "timerStartNow": "Start now",
-    "goalTitle": "This week",
+    "goalTitle": "My Practice Goal",
     "goalDays": "{{met}} of {{goal}} days this week",
     "goalNone": "no practice",
     "goalDayMet": "goal reached",
@@ -2481,7 +2488,7 @@
     "trainerNextCycles_one": "Now {{bpm}}: {{next}} after {{count}} more cycle",
     "trainerNextCycles_other": "Now {{bpm}}: {{next}} after {{count}} more cycles",
     "trainerReached": "Top tempo {{bpm}} reached. Well played!",
-    "planTitle": "Practice of the week",
+    "planTitle": "Weekly Practice",
     "planFrom": "From your teachers, for {{level}}.",
     "planTempo": "At {{bpm}} beats a minute",
     "planStart": "Start",
@@ -2540,8 +2547,8 @@
     "stepHear": "Hear it"
   },
   "practiceLog": {
-    "open": "My practice log",
-    "title": "My practice log",
+    "open": "Practice History",
+    "title": "Practice History",
     "loadFailed": "Practice could not be loaded.",
     "weeks": "By week",
     "addTitle": "Add practice",
@@ -2652,8 +2659,8 @@
     "weekFeelings": "Good {{good}} · Okay {{okay}} · Hard {{hard}}"
   },
   "practicePlan": {
-    "open": "Practice of the week",
-    "title": "Practice of the week",
+    "open": "Weekly Practice",
+    "title": "Weekly Practice",
     "intro": "For each level: what students practise this week and their weekly goal. Students of the level see it at the top of Practice tools, with Start and Watch.",
     "level": "Level",
     "goalTitle": "Weekly goal",
@@ -3918,7 +3925,7 @@
     "opensCalendar": "Opens a calendar."
   },
   "about": {
-    "title": "About you",
+    "title": "My Details",
     "intro": "A few questions to help the class look after you. All are optional and you can change them later in My profile.",
     "progress": "About you",
     "stepOf": "Step {{step}} of {{total}}",
@@ -3958,7 +3965,7 @@
     "loadFailed": "Could not load your details.",
     "notReady": "This part of the app is not ready on the server yet.",
     "back": "Back",
-    "cardTitle": "About you",
+    "cardTitle": "My Details",
     "cardBody": "A few optional questions: your phone, an emergency contact, how you found the class and the service you like.",
     "cardDone": "Thank you, your answers are saved.",
     "cardOpen": "Tell us about you",
@@ -4384,8 +4391,8 @@
     }
   },
   "dataRights": {
-    "title": "My data and rights",
-    "open": "See my data and rights",
+    "title": "Privacy & Data",
+    "open": "Open Privacy & Data",
     "profileHint": "What the class keeps about you, a copy to download, and how to ask for a correction, erasure or withdrawal.",
     "intro": "Here is what Mridanga Seva keeps about you and who handles it for us. You can download a copy, and ask us to correct or erase your data, withdraw a consent, name someone to act for you, or make a complaint. We answer every request within 30 days.",
     "notSetUp": "Data requests are not switched on yet. Please write to privacy@mridangaseva.com or speak to a coordinator at the desk.",
@@ -4936,5 +4943,54 @@
     },
     "when_one": "Once, last {{last}}",
     "when_other": "{{count}} times, last {{last}}"
+  },
+  "updates": {
+    "bellUnread_one": "Updates, {{count}} new",
+    "bellUnread_other": "Updates, {{count}} new"
+  },
+  "todayPractice": {
+    "title": "Daily Mission",
+    "free": "Free practice: any taal or lesson",
+    "guna": "Guna: {{guna}}",
+    "tempo": "{{bpm}} beats a minute",
+    "minutes_one": "{{count}} minute suggested",
+    "minutes_other": "{{count}} minutes suggested",
+    "progressLabel": "Practised today",
+    "progress": "{{done}} of {{total}} minutes today",
+    "start": "Start",
+    "continue": "Continue",
+    "more": "Done for today. Practise more"
+  },
+  "learnTab": {
+    "level": "My Level",
+    "syllabus": "Syllabus and lessons",
+    "syllabusDetail": "Every item of my level with its videos, PDFs and photos",
+    "assessmentsNone": "Nothing to do now",
+    "assessmentsOpen_one": "{{count}} to do",
+    "assessmentsOpen_other": "{{count}} to do",
+    "milestones": "Milestones",
+    "milestonesDetail": "{{reached}} of {{total}} reached"
+  },
+  "practiceTab": {
+    "tools": "Metronome, taal player and Record myself",
+    "toolsDetail": "Tap tempo, count-in, speed trainer, hands and layakari",
+    "weeklyNone": "Nothing set for your level yet",
+    "weeklyItems_one": "{{count}} thing from your teachers",
+    "weeklyItems_other": "{{count}} things from your teachers",
+    "games": "Games"
+  },
+  "meTab": {
+    "qrDetail": "Show it at the door; it works without internet",
+    "settings": "Language and appearance",
+    "settingsDetail": "My profile, language, light or dark screens",
+    "help": "Help",
+    "helpBody": "Ask a coordinator at the class, or reply to an Update. For what the class keeps about you, see Privacy & Data."
+  },
+  "signOutWarning": {
+    "title": "Not sent yet",
+    "body_one": "{{count}} practice entry or check-in on this phone has not reached the class yet (no internet). Signing out now deletes it.",
+    "body_other": "{{count}} practice entries or check-ins on this phone have not reached the class yet (no internet). Signing out now deletes them.",
+    "stay": "Stay signed in",
+    "anyway": "Sign out anyway"
   }
 }
