@@ -7419,8 +7419,9 @@ and screen readers skip it, since the prompt under the camera already says what 
 
 ## 630. ML Kit from Google Play services, not inside the APK — 26 Oct 2026
 
-**Status: prepared (branch claude/app-size-native), native: new fingerprint, needs a facetest APK on a phone before the
-face production APK.** expo-camera's QR scan and the face detector use the "bundled" ML Kit: its own native library and
+**Status: not adopted (Praveen, 27 Oct 2026: speed first, the app must install and work on any Android phone; size is
+not the problem). The plugin is kept in commit bcc92dd, to bring back if the app moves to the Play Store, where the
+models come with the install.** What was prepared: expo-camera's QR scan and the face detector use the "bundled" ML Kit: its own native library and
 models in the APK for both ABIs (arm64 alone: libbarhopper_v3.so 2.1 MB, libface_detector_v2_jni.so 3.4 MB; models
 2.6 MB). **Decision (if the phone test passes).** `plugins/with-mlkit-play-services.js` swaps them in the app's Gradle
 build for Google's Play services twins (same API, model kept once per phone by Play services) and asks for the models
