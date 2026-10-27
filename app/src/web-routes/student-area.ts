@@ -1,6 +1,6 @@
 // The student area of the web version (docs/DECISIONS.md #650): every student and waiting screen except their layouts
-// and the student's four tabs (Home, My QR, Announcements, Ishtagoshti: in the first download, so the student home
-// never waits). The practice tools, Echo me, the tap pad, lessons, assessments, events, polls, My profile and the rest.
+// and the student's four tabs (Home, Learn, Practice, Me since #670: in the first download, so the student home
+// never waits; My QR, Updates and Śloka Study are here since). The practice tools, Echo me, the tap pad, lessons, assessments, events, polls, My profile and the rest.
 // Loaded only with import() from lazy-area.tsx, so the web export makes it one file of its own
 // (student-area-<hash>.js); a student's or waiting login's phone loads it soon after the first screen, and the service
 // worker keeps it for offline use from the first sign-in.

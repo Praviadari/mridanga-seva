@@ -20,6 +20,7 @@ import { InboxBell } from './inbox-bell';
 import { MenuButton } from './side-menu';
 import { ProfileButton } from './profile-button';
 import { SaffronBand } from './saffron-band';
+import { UpdatesBell } from './updates-bell';
 
 /** Props for HomeHeader. */
 export type HomeHeaderProps = {
@@ -32,17 +33,22 @@ export type HomeHeaderProps = {
   role?: string;
   /** Staff homes: the side menu's button (components/side-menu.tsx) on the left, in place of My profile (#350). */
   menu?: boolean;
+  /**
+   * The student home since #672: the band made compact (no rule, the greeting closer), the Updates bell on the right
+   * and nothing on the left (My profile is in the Me tab), so Today's Practice comes higher on the phone.
+   */
+  student?: boolean;
 };
 
 /** The home's header band with the app's name and the greeting. */
-export function HomeHeader({ name, role, menu }: HomeHeaderProps) {
+export function HomeHeader({ name, role, menu, student }: HomeHeaderProps) {
   const { t } = useTranslation();
   const { colors } = useTheme();
 
   return (
     <SaffronBand>
       <View style={styles.row}>
-        <View style={styles.side}>{menu ? <MenuButton place="band" /> : <ProfileButton />}</View>
+        <View style={styles.side}>{menu ? <MenuButton place="band" /> : student ? null : <ProfileButton />}</View>
         <View style={styles.brand}>
           {/* As wide as the space between the buttons, and smaller rather than cut at large text (#372). */}
           <AppText
@@ -58,16 +64,18 @@ export function HomeHeader({ name, role, menu }: HomeHeaderProps) {
           </AppText>
         </View>
         <View style={[styles.side, styles.right]}>
-          <InboxBell />
+          {student ? <UpdatesBell place="band" /> : <InboxBell />}
         </View>
       </View>
 
-      {/* A thin gold rule with a dot in the middle, like the website's lotus divider. */}
-      <View style={styles.rule} aria-hidden>
-        <View style={[styles.ruleLine, { backgroundColor: colors.headerGold }]} />
-        <View style={[styles.ruleDot, { backgroundColor: colors.headerGold }]} />
-        <View style={[styles.ruleLine, { backgroundColor: colors.headerGold }]} />
-      </View>
+      {/* A thin gold rule with a dot in the middle, like the website's lotus divider; not on the compact band. */}
+      {student ? null : (
+        <View style={styles.rule} aria-hidden>
+          <View style={[styles.ruleLine, { backgroundColor: colors.headerGold }]} />
+          <View style={[styles.ruleDot, { backgroundColor: colors.headerGold }]} />
+          <View style={[styles.ruleLine, { backgroundColor: colors.headerGold }]} />
+        </View>
+      )}
 
       <View style={styles.greeting}>
         {/* "Hare Krishna, Name" on one line when it fits, so the circles stay near the top. */}

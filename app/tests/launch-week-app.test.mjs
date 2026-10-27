@@ -71,7 +71,7 @@ function tabLinksOutsideTabs() {
 
 test('the tab addresses are found (the guard below has something to guard)', () => {
   const tabs = tabAddresses();
-  for (const address of ['/staff', '/staff/students', '/staff/follow-up', '/staff/attendance', '/student/my-qr']) {
+  for (const address of ['/staff', '/staff/students', '/staff/follow-up', '/staff/attendance', '/student/me', '/student/my-practice']) {
     assert.ok(tabs.includes(address), address);
   }
 });
@@ -81,12 +81,10 @@ test('no screen on top of the tabs opens a tab address (it would push a second c
 });
 
 test('the guard catches the pattern it is for', () => {
-  // The four places of R4-01 as they were on 13-10-2026.
   const before = [
     "router.push({ pathname: '/staff/students', params: { status: 'notLeft' } })",
     "router.push('/staff/follow-up')",
     "router.push('/staff/attendance')",
-    "router.push('/student/my-qr')",
   ];
   const tabs = new Set(tabAddresses());
   for (const call of before) {
@@ -100,7 +98,7 @@ test('each stack copy shows the tab page, and the old places open the copy', () 
     'app/staff/class-list.tsx': './(tabs)/students',
     'app/staff/calls.tsx': './(tabs)/follow-up',
     'app/staff/mark-attendance.tsx': './(tabs)/attendance',
-    'app/student/qr.tsx': './(tabs)/my-qr',
+    'app/student/qr.tsx': './my-qr',
   };
   for (const [file, tab] of Object.entries(copies)) {
     assert.ok(existsSync(new URL(file, srcUrl)), file);

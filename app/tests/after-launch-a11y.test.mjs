@@ -101,7 +101,9 @@ test('P5-03 / P5-06: lists and homes load only what they show', () => {
   assert.ok(/fetchSlokaPage[\s\S]*select\(SLOKA_COLUMNS\)/.test(ig), 'the full text on the sloka page');
   assert.ok(src('screens/ishtagoshti-home.tsx').includes('fetchIshtagoshtiCounts(profileId)'));
   const home = src('app/student/(tabs)/index.tsx');
-  assert.ok(home.includes('fetchMyUnreadCount(myId)') && home.includes('fetchStudentHome({ weekStarts: false })'));
+  assert.ok(home.includes('fetchMyOpenAssessmentCount()') && home.includes('fetchStudentHome({ weekStarts: false })'));
+  // The Updates count is the bell's own (#672), ids and my reads only.
+  assert.ok(src('components/updates-bell.tsx').includes('fetchMyUnreadCount(myId)'));
   assert.ok(!src('data/announcements.ts').includes('fetchMyLatestAnnouncements'));
 });
 

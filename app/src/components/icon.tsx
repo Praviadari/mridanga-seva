@@ -13,6 +13,7 @@ import { useModuleTone } from '@/theme/module-tone';
 import { useTheme } from '@/theme/use-theme';
 
 import { GLYPHS } from './icon-glyphs';
+import { KholIcon } from './khol-icon';
 import { MridangaMark } from './mridanga-mark';
 
 /** The app's icon font (scripts/make-icon-font.mjs). */
@@ -98,7 +99,8 @@ const SHAPES = {
   // A medal (#353): the rising arrow looked like the stock market.
   promote: 'medal-outline',
   feedback: 'chatbubbles-outline',
-  // Practice tools (Phase 2 slice 3): the module, stop, tap tempo, the taal editor.
+  // Practice tools (Phase 2 slice 3): the module, stop, tap tempo, the taal editor. Practice is drawn as the Śrī Khol
+  // (components/khol-icon.tsx, #671); the Ionicons name is only the fallback shape.
   practice: 'musical-note-outline',
   pause: 'stop-circle-outline',
   tap: 'hand-left-outline',
@@ -168,6 +170,7 @@ export function Icon({ name, size = 22, color, filled }: IconProps) {
     // The drum's lacing is cut out of its body (transparent), so it shows on any background.
     return <MridangaMark size={Math.round(size * 1.15)} color={String(color ?? colors.text)} accent="transparent" />;
   }
+  if (name === 'practice') return <KholIcon size={size} color={String(color ?? colors.text)} filled={filled} />;
   return (
     <Ionicons
       name={filled ? filledShape(name) : SHAPES[name]}

@@ -48,7 +48,7 @@ test('Me has the student\'s circles and reuses the student screens, no copies', 
     assert.ok(me.includes(`router.push('${path}')`), path);
   }
   const reused = {
-    'app/staff/me/qr.tsx': "from '../../student/(tabs)/my-qr'",
+    'app/staff/me/qr.tsx': "from '../../student/my-qr'",
     'app/staff/me/progress.tsx': "from '../../student/progress'",
     'app/staff/me/visits.tsx': "from '../../student/visits'",
     'app/staff/me/practice-log.tsx': "from '../../student/practice-log'",

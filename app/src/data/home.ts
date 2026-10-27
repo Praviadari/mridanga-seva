@@ -87,6 +87,19 @@ export async function fetchStudentHome(options: { weekStarts?: boolean } = {}): 
 }
 
 /**
+ * How many of my assessments wait for me (assigned, seen, or sent back to redo; OPEN_STATUSES of data/assessments.ts),
+ * for the Assessments card on the student home and the Learn tab (#674). A count only (row-level security keeps it
+ * to my own), so the home does not load the assessments module. Null when it could not be loaded.
+ */
+export async function fetchMyOpenAssessmentCount(): Promise<number | null> {
+  const { count, error } = await supabase
+    .from('assessment_assignments')
+    .select('id', { count: 'exact', head: true })
+    .in('status', ['assigned', 'seen', 'redo']);
+  return error ? null : (count ?? 0);
+}
+
+/**
  * Only what My QR's door line needs (lib/door-status.ts): checked in now, and the last check-in. One request
  * (student_home), not fetchStudentHome's two: the door line asks every few seconds while My QR is open
  * (launch audit LA-10, docs/DECISIONS.md #394). Null when it could not be loaded or there is no record.

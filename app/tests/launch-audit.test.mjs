@@ -141,7 +141,7 @@ test('the door line asks student_home only, and stops asking once the check-in s
   assert.match(door, /supabase\.rpc\('student_home'\)/);
   assert.doesNotMatch(door, /fetchWeekStarts|\.from\(/);
   assert.match(door, /hereNow: row\.here_now, lastVisitAt: row\.last_visit_at/);
-  const screen = src('app/student/(tabs)/my-qr.tsx');
+  const screen = src('app/student/my-qr.tsx');
   const hook = screen.slice(screen.indexOf('function useDoorStatus('), screen.indexOf('function DoorLine('));
   assert.match(hook, /fetchDoorVisit\(\)/);
   assert.match(hook, /if \(next\.kind === 'in'\) clearInterval\(timer\)/);
@@ -151,7 +151,7 @@ test('the door line asks student_home only, and stops asking once the check-in s
 // ---------------------------------------------------------------- #391 My QR asks again on focus
 
 test('My QR loads the card each time it comes into view, not once per mount', () => {
-  const screen = src('app/student/(tabs)/my-qr.tsx');
+  const screen = src('app/student/my-qr.tsx');
   const focus = screen.indexOf('useFocusEffect(');
   assert.ok(focus >= 0 && screen.indexOf('fetchMyCard(profileId)', focus) > focus, 'fetchMyCard inside useFocusEffect');
   assert.doesNotMatch(screen, /useEffect\(\(\) => \{\s*if \(!profileId\)/);
@@ -177,7 +177,7 @@ test('a clean main equal to origin/main has nothing against a publish', () => {
 
 test('a branch, uncommitted or new files, or an unpushed commit are each named (LA-16)', () => {
   const state = releaseGitState(fakeGit({
-    status: ' M src/app/student/(tabs)/my-qr.tsx\n?? src/app/new-screen.tsx\n',
+    status: ' M src/app/student/my-qr.tsx\n?? src/app/new-screen.tsx\n',
     branch: 'launch-audit\n',
     head: 'b'.repeat(40),
   }));
