@@ -43,10 +43,14 @@ const WEB_APPS: Record<string, string> = {
  * web app of the project's ref, else LIVE's. Always https, never with a code or a name in it.
  */
 export function consentPageUrl(supabaseUrl: string | undefined, override: string | undefined, language: Language): string {
+  return `${webAppUrl(supabaseUrl, override)}/parent-consent${language === 'en' ? '' : `?lang=${language}`}`;
+}
+
+/** The web app of this project, as consentPageUrl chooses it, without a trailing slash (the parent page too, 0063). */
+export function webAppUrl(supabaseUrl: string | undefined, override: string | undefined): string {
   const ref = /^https:\/\/([a-z0-9]{20})\.supabase\.co/.exec(supabaseUrl ?? '')?.[1] ?? '';
-  const base = (override && /^https:\/\/[^\s/?#]+$/.test(override.replace(/\/$/, '')) ? override : WEB_APPS[ref] ?? WEB_APPS.qeozvvizcojzxcjgnaei)
+  return (override && /^https:\/\/[^\s/?#]+$/.test(override.replace(/\/$/, '')) ? override : WEB_APPS[ref] ?? WEB_APPS.qeozvvizcojzxcjgnaei)
     .replace(/\/$/, '');
-  return `${base}/parent-consent${language === 'en' ? '' : `?lang=${language}`}`;
 }
 
 /**

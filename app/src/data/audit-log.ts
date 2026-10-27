@@ -117,7 +117,7 @@ export async function fetchAuditPage(filters: AuditFilters, beforeId: number | n
 }
 
 /** What a logged read was of: the function that wrote the access_log row (0034). */
-export type ReadKind = 'get_guardians' | 'get_consents' | 'get_call_notes' | 'get_audit_log';
+export type ReadKind = 'get_guardians' | 'get_consents' | 'get_call_notes' | 'get_audit_log' | 'get_student_details' | 'parent_view';
 
 /** One access_log row: who read what, about which student, how many rows. */
 export type AccessEntry = {

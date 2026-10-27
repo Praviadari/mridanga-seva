@@ -1810,7 +1810,8 @@
       "get_consents": "Consent records",
       "get_call_notes": "Call notes",
       "get_audit_log": "Change history page",
-      "get_student_details": "About the student (emergency contact and details)"
+      "get_student_details": "About the student (emergency contact and details)",
+      "parent_view": "Parent page (link in the weekly email)"
     },
     "readErased": "Deleted record",
     "readLine_one": "{{who}} · {{when}} · {{count}} row",
@@ -4300,6 +4301,85 @@
     "donePhotoNo": "You did not agree to photos: none will be kept.",
     "doneDesk": "At the first class, please send your ID with your child, or come yourself (for example Aadhaar): a coordinator checks your name and that you are 18 or over before registering your child. Only the kind of ID is noted, never its number.",
     "doneWithdraw": "You can withdraw consent at any time, at the class desk or by writing to the class."
+  },
+  "parentView": {
+    "title": "Your child's page",
+    "heading": "{{name}} at Mridanga Seva",
+    "intro": "The last weeks at the class and at home, as on {{date}}. Read only.",
+    "loadFailed": "Could not open the page.",
+    "states": {
+      "switched_off": {
+        "title": "The parent page is switched off",
+        "body": "The class has switched the parent page off for now. Please ask at the class desk."
+      },
+      "not_available": {
+        "title": "This page is not available",
+        "body": "This link no longer opens a page. Please ask at the class desk."
+      },
+      "expired": {
+        "title": "This link has expired",
+        "body": "A link works for 14 days. The next weekly email brings a new one."
+      },
+      "bad_link": {
+        "title": "This link does not work",
+        "body": "Open the page from the whole link in the weekly email. If it still does not work, please ask at the class desk."
+      },
+      "stopped": {
+        "title": "Stopped",
+        "body": "The weekly email and this page are stopped. To start them again, tell the class desk."
+      }
+    },
+    "levelTitle": "Level and syllabus",
+    "level": "{{level}} level",
+    "levelAt": "{{level}} level · {{centre}}",
+    "syllabus": "{{done}} of {{total}} items of this level learnt.",
+    "noSyllabus": "The syllabus of this level is not in the app yet.",
+    "next": "Next to learn: {{items}}.",
+    "levelChange": "Moved to the {{level}} level on {{date}}. Congratulations!",
+    "learntTitle": "Learnt in the last 8 weeks",
+    "noLearnt": "Nothing new ticked in the last 8 weeks.",
+    "learntLine": "{{title}} ({{date}})",
+    "attendanceTitle": "At class",
+    "attendanceHint": "Visits per week, newest first, from the check-in at the class.",
+    "visitsTotal_one": "1 visit in the last 8 weeks.",
+    "visitsTotal_other": "{{count}} visits in the last 8 weeks.",
+    "weekVisits_one": "Week of {{date}}: 1 visit",
+    "weekVisits_other": "Week of {{date}}: {{count}} visits",
+    "recentTitle": "Last visits",
+    "visitLine": "{{date}}: {{in}} to {{out}}",
+    "visitOpen": "{{date}}: from {{in}} (no check-out recorded)",
+    "practiceTitle": "Practice at home",
+    "goal": "Goal: {{days}} days a week, {{minutes}} minutes a day.",
+    "streak_one": "1 day in a row with practice.",
+    "streak_other": "{{count}} days in a row with practice.",
+    "noStreak": "No practice recorded yesterday or today.",
+    "practiceWeek": "Week of {{date}}: {{minutes}} minutes on {{days}} days; the goal's minutes reached on {{met}}",
+    "practiceNone": "Week of {{date}}: no practice recorded",
+    "practiceHint": "As your child records it in the app. A few minutes every day, offered with devotion, make a big difference.",
+    "eventsTitle": "Coming up",
+    "event": "{{title}}, {{date}} at {{time}}",
+    "eventAt": "{{title}}, {{date}} at {{time}}, {{centre}}",
+    "newsTitle": "From the class",
+    "newsHint": "Announcements sent to your child in the last 30 days.",
+    "aboutTitle": "About this page",
+    "about": "You see this page because you agreed to the weekly email at the class desk. It shows what your child sees in the app, never your child's location or photo, or anything about another child. Nothing here can be changed.",
+    "private": "The link is only for you and works for 14 days; please do not forward it.",
+    "questions": "Questions: {{contact}}",
+    "stop": "Stop the weekly email and this page",
+    "stopConfirm": "Tap again to stop",
+    "stopHint": "The same as Unsubscribe in the email. To start again, tell the class desk.",
+    "stopFailed": "Could not stop it. Check the connection and try again, or tell the class desk.",
+    "staff": {
+      "title": "Parent page",
+      "hint": "A read-only page for each child, opened from the link in the weekly email (it works {{days}} days). Only parents who get the weekly email have one; a withdrawal, an erasure or Stop ends it at once.",
+      "isOn": "On: the weekly emails carry the link.",
+      "isOff": "Off: no link, and old links say the page is switched off.",
+      "switchOn": "Switch the parent page on",
+      "switchOff": "Switch the parent page off",
+      "confirmOn": "Tap again to switch on",
+      "confirmOff": "Tap again to switch off",
+      "opened": "Pages opened: {{week}} in 7 days, {{month}} in 30 days ({{children}} children)."
+    }
   },
   "dataRights": {
     "title": "My data and rights",

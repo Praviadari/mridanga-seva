@@ -127,6 +127,8 @@ function RootNavigator() {
         <Stack.Screen name="i/[token]" />
         {/* Always open too: a parent's consent page for a child who signed up at home (#399), signed in or not. */}
         <Stack.Screen name="parent-consent" options={{ title: t('parentConsent.title') }} />
+        {/* Always open too: the parent page from the weekly email's link (0063, #640); no parent login. */}
+        <Stack.Screen name="parent" options={{ title: t('parentView.title') }} />
 
         <Stack.Protected guard={area === 'signedOut'}>
           <Stack.Screen name="sign-in" options={{ title: t('signIn.title') }} />

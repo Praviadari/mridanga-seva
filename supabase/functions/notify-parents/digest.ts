@@ -70,6 +70,7 @@ type Texts = {
   about: string;
   questions: string;
   stop: string;
+  view: string;
   signature: string;
   weekdays: string[];
   levels: Record<number, string>;
@@ -98,6 +99,7 @@ const TEXTS: Record<Language, Texts> = {
     about: 'This weekly email comes from the Mridanga Seva class because you agreed to it. It never includes your child\'s location or photo, or anything about another child.',
     questions: 'Questions: {contact}',
     stop: 'To stop these weekly emails: use Unsubscribe in your mail app, or tell the class desk.',
+    view: '{name}\'s page: the last weeks at class and at home, and what comes next. The link is for you and works for 14 days:\n{url}',
     signature: 'Mridanga Seva',
     weekdays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
     levels: { 1: 'Beginner', 2: 'Intermediate', 3: 'Advanced' },
@@ -124,6 +126,7 @@ const TEXTS: Record<Language, Texts> = {
     about: 'మీరు అంగీకరించినందున ఈ వారపు ఈమెయిల్ మృదంగ సేవ తరగతి నుండి వస్తుంది. ఇందులో మీ పిల్లల స్థానం, ఫోటో, లేదా వేరే పిల్లల గురించి ఏదీ ఎప్పుడూ ఉండదు.',
     questions: 'ప్రశ్నలు: {contact}',
     stop: 'ఈ వారపు ఈమెయిల్స్ ఆపడానికి: మీ మెయిల్ యాప్‌లో Unsubscribe నొక్కండి, లేదా తరగతి డెస్క్‌కు చెప్పండి.',
+    view: '{name} పేజీ: గత వారాల తరగతి, ఇంటి సాధన, తర్వాత ఏమిటి. ఈ లింక్ మీ కోసమే, 14 రోజులు పనిచేస్తుంది:\n{url}',
     signature: 'మృదంగ సేవ',
     weekdays: ['సోమ', 'మంగళ', 'బుధ', 'గురు', 'శుక్ర', 'శని', 'ఆది'],
     levels: { 1: 'ప్రారంభ', 2: 'మధ్యమ', 3: 'ఉన్నత' },
@@ -150,6 +153,7 @@ const TEXTS: Record<Language, Texts> = {
     about: 'आपकी सहमति से यह साप्ताहिक ईमेल मृदंग सेवा कक्षा से आता है। इसमें आपके बच्चे का स्थान, फ़ोटो, या किसी दूसरे बच्चे के बारे में कुछ भी कभी नहीं होता।',
     questions: 'प्रश्न: {contact}',
     stop: 'ये साप्ताहिक ईमेल बंद करने के लिए: अपने मेल ऐप में Unsubscribe दबाएँ, या कक्षा डेस्क को बताएँ।',
+    view: '{name} का पेज: पिछले सप्ताहों की कक्षा, घर पर अभ्यास, और आगे क्या है। यह लिंक केवल आपके लिए है और 14 दिन चलता है:\n{url}',
     signature: 'मृदंग सेवा',
     weekdays: ['सोम', 'मंगल', 'बुध', 'गुरु', 'शुक्र', 'शनि', 'रवि'],
     levels: { 1: 'प्रारंभिक', 2: 'मध्यम', 3: 'उन्नत' },
@@ -173,7 +177,12 @@ function levelName(texts: Texts, id: number | null, stored: string | null): stri
 }
 
 /** The email for one student's week, in `language`. */
-export function buildDigestEmail(row: Pick<DigestRow, 'language' | 'student_name' | 'contact' | 'content'>): Email {
+export function buildDigestEmail(
+  row: Pick<DigestRow, 'language' | 'student_name' | 'contact' | 'content'>,
+  // The parent page's link (0063, ./view.ts), or null when the Guru has the page off. Written out as text, never
+  // as a mail link, so no sender's click tracking rewrites it; mail apps make it tappable (#648).
+  viewUrl: string | null = null,
+): Email {
   const texts = TEXTS[languageOf(row.language)];
   const c = row.content;
   const name = row.student_name.trim();
@@ -222,6 +231,7 @@ export function buildDigestEmail(row: Pick<DigestRow, 'language' | 'student_name
     practice,
     learnt.length ? learnt.join('\n') : null,
     event,
+    viewUrl ? fill(texts.view, { name, url: viewUrl }) : null,
     fill(texts.closing, v),
     [texts.about, contact ? fill(texts.questions, { contact }) : null, texts.stop].filter(Boolean).join('\n'),
     texts.signature,
@@ -238,13 +248,15 @@ export const DIGEST_CLAIM_LIMIT = 10;
 
 /**
  * One digest run, as runNotices (send.ts) for the check-out emails. `mailer` null = dry run: each row is
- * logged as "would send" and finished as skipped. `linkFor` makes the guardian's unsubscribe link.
+ * logged as "would send" and finished as skipped. `linkFor` makes the guardian's unsubscribe link; `viewFor`, when
+ * given, the parent page's link in the email's language (0063; not given while the Guru has the page off).
  */
 export async function runDigests(
   rpc: Rpc,
   mailer: Mailer | null,
   linkFor: (guardianId: string) => Promise<string | null>,
   log: (...parts: unknown[]) => void = console.log,
+  viewFor: ((guardianId: string, language: string) => Promise<string>) | null = null,
 ): Promise<RunSummary | { error: string }> {
   const claimed = await rpc('claim_parent_digests', { p_limit: DIGEST_CLAIM_LIMIT });
   if (claimed.error) {
@@ -266,7 +278,7 @@ export async function runDigests(
       retry.push(row.digest_id);
       continue;
     }
-    const email = buildDigestEmail(row);
+    const email = buildDigestEmail(row, viewFor ? await viewFor(row.guardian_id, languageOf(row.language)) : null);
     if (!mailer) {
       log('would send digest', row.digest_id, languageOf(row.language));
       skipped.push(row.digest_id);

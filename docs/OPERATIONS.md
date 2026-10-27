@@ -1777,6 +1777,35 @@ down), `gave_up` (5 tries), `brevo_400` (bad address or sender), `stopped` (the 
 
 **In an emergency:** switch off on the screen, or `select cron.unschedule('mridanga-parent-digests');` (back on:
 `select cron.schedule('mridanga-parent-digests', '*/5 * * * *', 'select send_parent_digests()');`).
+
+### The parent page
+
+Since 0063 ([DECISIONS.md #640-#649](DECISIONS.md)) the weekly email can carry a link to a **read-only page about the
+child** (`<web app>/parent#v=…`): level and syllabus, items learnt, visits per week, practice per week against the goal,
+coming events and the announcements to the child. No parent login: the link is signed by `notify-parents`, works **14
+days**, shows one child, and opens only while that parent may get the weekly email (their yes, the data consent, an
+active minor). Withdrawal, erasure, Stop on the page or Unsubscribe in an email end it at once. Each opening is in the
+audit log's Reads ("Parent page"). Announcements to students may be read by their parents there: write them so.
+
+**The Guru:** the screen "Weekly email to parents" → "Parent page" → "Switch the parent page on" (asks once more; off by
+default; separate from the weekly email's switch). Off: every link says the page is switched off, and the next emails
+carry none. The section counts openings in 7 and 30 days.
+
+**Before switching it on at LIVE:** form line D carries the page sentence (#649) and the privacy notice the page lines
+(#649), in a new notice version; `notify-parents` deployed from the 0063 commit; the web upload has `/parent`.
+
+**On TEST** (`fhuqykssenuhczdqbafu`): run `0063_parent_view.sql`, check
+`select value from settings where key = 'parent_view_enabled';` = `false` and
+`select parent_view_overview();` refuses in the SQL editor (`not_allowed`, no staff login there: expected); deploy
+`notify-parents` as in step 2 above; switch the page on (Guru); a test child with a parent's yes → Student's page →
+"Send the weekly email again" (or queue the week by hand, step 3) → with the Brevo secrets the email has the link line;
+without them, the link can be made for a test with the push secret (never on LIVE). Open the link in a browser: the page,
+in the email's language. Try Stop (asks once more), then the same link again: "not available". Switch the page off again
+when done.
+
+**In an emergency:** switch it off on the screen, or in the SQL editor
+`update settings set value = 'false' where key = 'parent_view_enabled';` (as the owner).
+
 ## Files no announcement uses
 
 Photos and PDFs are removed from Storage by the app when an announcement or one of its files is

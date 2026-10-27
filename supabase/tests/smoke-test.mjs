@@ -143,7 +143,7 @@ process.on('uncaughtException', (error) => {
 // D14-10: every check is counted, and the run fails when fewer (or more) checks ran than expected,
 // so a block skipped by a renamed migration or a commented-out section cannot pass unseen.
 // Adding or removing checks? Run the suite and set this to the new total it prints.
-const EXPECTED_CHECKS = 2257; // 0062 web push: +33; 0061 staff sign-in codes and the error log: +53; 0060 privacy notice 1.0: +35; 0059 data rights: +56; 0058 weekly parent email: +64; 0057 practice while waiting: +24; 0056 practice extras: +35; 0055 learn more links: +23; 0054 after-launch forms: +49; 0053 staff own record: +55; 0052 more practice: +56; 0051 child's sign-up at home: +80; 0050 staff dashboard: +15; 0049 launch clean-up: +30; 0048 withdrawn records and leaks: +50; 0047 form rules: +109; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
+const EXPECTED_CHECKS = 2289; // 0063 parent page: +32; 0062 web push: +33; 0061 staff sign-in codes and the error log: +53; 0060 privacy notice 1.0: +35; 0059 data rights: +56; 0058 weekly parent email: +64; 0057 practice while waiting: +24; 0056 practice extras: +35; 0055 learn more links: +23; 0054 after-launch forms: +49; 0053 staff own record: +55; 0052 more practice: +56; 0051 child's sign-up at home: +80; 0050 staff dashboard: +15; 0049 launch clean-up: +30; 0048 withdrawn records and leaks: +50; 0047 form rules: +109; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
 let failures = 0;
 let passes = 0;
 
@@ -4210,6 +4210,8 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
     'log_client_error(text,text,text,text,text)',
     // 0062: web push, this browser of the caller only (roles checked inside)
     'save_web_push(text,text,text)', 'remove_web_push(text)',
+    // 0063: the parent page's switch and numbers (staff and the Guru checked inside); the page itself is service role only
+    'parent_view_overview()', 'set_parent_view(boolean)',
   ];
   const runnableBy = async (role) => (await asOwner(`select p.oid::regprocedure::text as f from pg_proc p
     where p.pronamespace = 'public'::regnamespace
@@ -4338,8 +4340,9 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
     for (const rel of rels) {
       const { col } = baseTables.find((t) => t.rel === rel);
       // 0058: parent_digest_enabled is written only through set_parent_digest (#534), staff_mfa_required only through
-      // set_staff_mfa_required (0061, #582), so a direct update of either is refused.
-      const only = rel === 'settings' ? " where key not in ('parent_digest_enabled', 'staff_mfa_required')" : '';
+      // set_staff_mfa_required (0061, #582), parent_view_enabled only through set_parent_view (0063, #646), so a direct
+      // update of any of them is refused.
+      const only = rel === 'settings' ? " where key not in ('parent_digest_enabled', 'staff_mfa_required', 'parent_view_enabled')" : '';
       const r = await tryAs('authenticated', tn[who], `update public.${rel} set ${col} = ${col}${only} returning 1`);
       if (!(r.rows > 0)) positive.push(`${who} ${rel}: ${r.error ?? '0 rows'}`);
     }
@@ -8015,6 +8018,133 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
     `${again62} ${JSON.stringify(before62)}`);
 }
 
+// ---------------------------------------------------------------- 0063 parent page (DECISIONS #640-#649)
+{
+  const file63 = readFileSync(new URL('migrations/0063_parent_view.sql', supabaseDir), 'utf8');
+  const one = async (sql) => (await asOwner(sql))[0];
+  const view = async (g) => (await asApp('service_role', null, 'select parent_view($1) as r', [g]))[0].r;
+  const reg63 = async (name, years, email) => (await asApp('authenticated', coordinator, `select register_student(p_full_name => $1,
+    p_dob => (current_date - ($2 || ' years')::interval)::date, p_guardian_name => 'Parent Sixtythree', p_guardian_phone => '9876506363',
+    p_guardian_email => $3, p_guardian_relation => 'mother', p_id_type_checked => 'school_id', p_written_consent => true) as r`,
+    [name, String(years), email]))[0].r;
+
+  // Off by default (#646); only the Guru switches it, through its function (audited).
+  check('0063: the parent page is OFF by default', (await one(`select value from settings where key = 'parent_view_enabled'`)).value === false
+    && (await asApp('service_role', null, 'select parent_view_on() as r'))[0].r === false);
+  const kid = await reg63('Gopal Page Sixtythree', 10, 'parent.63@example.com');
+  const [{ id: g63 }] = await asOwner(`select id from guardians where student_id = '${kid.id}'`);
+  const off63 = await view(g63);
+  check('0063: switched off, every link answers switched_off and nothing else', off63.result === 'switched_off' && Object.keys(off63).length === 1,
+    JSON.stringify(off63));
+  await refusesWith('0063: a coordinator cannot switch the parent page on', 'not_allowed', () => asApp('authenticated', coordinator, 'select set_parent_view(true)'));
+  await refusesWith('0063: ... nor the Guru by writing the setting directly', 'setting_unknown', () =>
+    asApp('authenticated', guru, `update settings set value = 'true' where key = 'parent_view_enabled'`));
+  await refusesWith('0063: anon cannot', 'permission denied for function set_parent_view', () => asApp('anon', null, 'select set_parent_view(true)'));
+  const ov = (await asApp('authenticated', guru, 'select set_parent_view(true) as r'))[0].r;
+  check('0063: the Guru switches it on; the answer is the overview (14-day links)', ov.enabled === true && ov.link_days === 14
+    && (await asApp('service_role', null, 'select parent_view_on() as r'))[0].r === true, JSON.stringify(ov));
+  check('0063: ... and the switch is in the audit log, with who', (await one(`select count(*)::int as n from audit_log
+    where table_name = 'settings' and row_id = 'parent_view_enabled' and changed_by = '${guru}'`)).n === 1);
+
+  // Only parents who get the weekly email (#643): the parent's written yes, whatever the weekly email's own switch.
+  check('0063: a parent without the weekly-email yes gets not_available, with no reason', (await view(g63)).result === 'not_available'
+    && Object.keys(await view(g63)).length === 1);
+  check('0063: an unknown guardian id: not_available', (await view('00000000-0000-4000-8000-000000000000')).result === 'not_available');
+  await asApp('authenticated', coordinator, `select set_guardian_digest($1, true, '1.0')`, [g63]);
+
+  // What the page shows (#644), and only that.
+  const sib = await reg63('Radha Sibling Sixtythree', 8, 'other.parent.63@example.com');
+  const items = await asOwner(`select id, title from syllabus_items where level_id = 1 and retired_at is null order by sort limit 3`);
+  await db.exec(`
+    insert into visits (student_id, check_in, check_out, method) values
+      ('${kid.id}', now() - interval '2 days', now() - interval '2 days' + interval '90 minutes', 'qr'),
+      ('${kid.id}', now() - interval '20 days', null, 'manual'),
+      ('${kid.id}', now() - interval '70 days', now() - interval '70 days' + interval '1 hour', 'qr'),
+      ('${sib.id}', now() - interval '1 day', null, 'qr');
+    insert into practice_logs (student_id, practised_on, minutes, source) values
+      ('${kid.id}', (now() at time zone 'Asia/Kolkata')::date, 20, 'manual'),
+      ('${kid.id}', (now() at time zone 'Asia/Kolkata')::date - 1, 15, 'manual'),
+      ('${kid.id}', (now() at time zone 'Asia/Kolkata')::date - 2, 5, 'manual'),
+      ('${kid.id}', (now() at time zone 'Asia/Kolkata')::date - 4, 30, 'manual'),
+      ('${sib.id}', (now() at time zone 'Asia/Kolkata')::date, 99, 'manual');
+    insert into student_progress (student_id, item_id, done_on, remark) values
+      ('${kid.id}', ${items[0].id}, (now() at time zone 'Asia/Kolkata')::date - 3, 'Remark Secret 63'),
+      ('${sib.id}', ${items[1].id}, (now() at time zone 'Asia/Kolkata')::date - 3, null);
+    insert into events (title, starts_at, centre_id, place, audience, created_by) values
+      ('Gaura Purnima Sixtythree', now() + interval '3 days', 1, 'Hidden hall 63', 'all', '${guru}'),
+      ('Staff tea Sixtythree', now() + interval '2 days', 1, null, 'staff', '${guru}');
+    insert into announcements (title, body, audience, created_by, publish_at) values
+      ('Class news Sixtythree', 'Bring your mridanga on Sunday.', 'all', '${guru}', now()),
+      ('Staff only Sixtythree', 'x', 'staff', '${guru}', now() - interval '1 day'),
+      ('Old news Sixtythree', 'x', 'all', '${guru}', now() - interval '40 days'),
+      ('Later news Sixtythree', 'x', 'all', '${guru}', now() + interval '1 day');
+    insert into announcements (title, body, audience, audience_level, created_by, publish_at) values
+      ('Advanced only Sixtythree', 'x', 'level', 3, '${guru}', now() - interval '1 day');`);
+  const before = (await one(`select count(*)::int as n from access_log where function_name = 'parent_view'`)).n;
+  const page = await view(g63);
+  const text = JSON.stringify(page);
+  check('0063: with the yes, the page: the child\'s name, level, centre and today', page.result === 'ok' && page.student_name === 'Gopal Page Sixtythree'
+    && page.level === 1 && !!page.centre && !!page.today, text.slice(0, 300));
+  check('0063: the syllabus of the level: done of all, and the next items in order', page.syllabus.done === 1 && page.syllabus.total >= 1
+    && page.syllabus.next[0] === items[1]?.title, JSON.stringify(page.syllabus));
+  check('0063: learnt lately: the title and day, never the remark', page.learnt.length === 1 && page.learnt[0].title === items[0].title
+    && !text.includes('Remark Secret'), JSON.stringify(page.learnt));
+  check('0063: visits: 8 weeks, the last ones with times (an open one has no check-out); a 70-day-old one not counted',
+    page.attendance.weeks.length === 8 && page.attendance.weeks.reduce((n, w) => n + w.visits, 0) === 2
+    && page.attendance.recent.length === 3 && page.attendance.recent.some((v) => v.out === null), JSON.stringify(page.attendance));
+  check('0063: practice: 4 weeks against the goal, and a run of 3 days', page.practice.weeks.length === 4 && page.practice.streak === 3
+    && page.practice.weeks.reduce((n, w) => n + w.minutes, 0) === 70 && page.practice.goal_minutes >= 5, JSON.stringify(page.practice));
+  check('0063: events for the child (not staff ones), never the place text', page.events.some((e) => e.title === 'Gaura Purnima Sixtythree')
+    && !text.includes('Staff tea') && !text.includes('Hidden hall'), JSON.stringify(page.events));
+  check('0063: announcements to the child in the last 30 days only: not staff, not another level, not old, not future',
+    page.announcements.length <= 5 && page.announcements.some((a) => a.title === 'Class news Sixtythree' && a.body.includes('mridanga'))
+    && !/Advanced only|Staff only|Old news|Later news/.test(text), JSON.stringify(page.announcements.map((a) => a.title)));
+  check('0063: nothing about another child, no location, photo, mark or remark', !text.includes('Radha') && !text.includes('99')
+    && !/(lat|lng|distance|in_area|photo|accuracy|remark|marks|score)/i.test(text), text.slice(0, 200));
+  const logged = await one(`select actor_id, student_id::text as s, row_count from access_log where function_name = 'parent_view' order by id desc limit 1`);
+  check('0063: each opening is in the access log (no reader, the child)', (await one(`select count(*)::int as n from access_log where function_name = 'parent_view'`)).n === before + 1
+    && logged.actor_id === null && logged.s === kid.id && logged.row_count === 1, JSON.stringify(logged));
+
+  // Closed to everyone but notify-parents (#642).
+  await refusesWith('0063: anon cannot open a page', 'permission denied for function parent_view', () => asApp('anon', null, 'select parent_view($1)', [g63]));
+  await refusesWith('0063: ... nor the Guru', 'permission denied for function parent_view', () => asApp('authenticated', guru, 'select parent_view($1)', [g63]));
+  await refusesWith('0063: ... nor a student its own parent\'s', 'permission denied for function parent_view', () => asApp('authenticated', arjun, 'select parent_view($1)', [g63]));
+  await refusesWith('0063: signed-in people cannot stop a page', 'permission denied for function stop_parent_view', () =>
+    asApp('authenticated', guru, 'select stop_parent_view($1)', [g63]));
+  await refusesWith('0063: ... nor read whether it is on', 'permission denied for function parent_view_on', () => asApp('authenticated', guru, 'select parent_view_on()'));
+  await refusesWith('0063: a student cannot read the overview', 'not_allowed', () => asApp('authenticated', arjun, 'select parent_view_overview()'));
+  const ov2 = (await asApp('authenticated', coordinator, 'select parent_view_overview() as r'))[0].r;
+  check('0063: the overview (staff): openings in 7 and 30 days and children, no names', ov2.opened_7 >= 1 && ov2.opened_30 >= 1 && ov2.children_30 >= 1
+    && !JSON.stringify(ov2).includes('Gopal'), JSON.stringify(ov2));
+
+  // Ends at once (#643, #647): Stop on the page, withdrawal, erasure, the Guru's switch.
+  check('0063: the page\'s Stop: true, the weekly-email yes withdrawn, the page closed', (await asApp('service_role', null, 'select stop_parent_view($1) as r', [g63]))[0].r === true
+    && (await one(`select count(*)::int as n from consents where student_id = '${kid.id}' and scope = 'digest' and revoked_at is null`)).n === 0
+    && (await view(g63)).result === 'not_available');
+  await asApp('authenticated', coordinator, `select set_guardian_digest($1, true, '1.0')`, [g63]);
+  check('0063: a new yes at the desk opens it again', (await view(g63)).result === 'ok');
+  await asApp('authenticated', guru, 'select set_parent_view(false)');
+  check('0063: the Guru\'s switch off closes every page at once', (await view(g63)).result === 'switched_off'
+    && (await asApp('service_role', null, 'select parent_view_on() as r'))[0].r === false);
+  await asApp('authenticated', guru, 'select set_parent_view(true)');
+  await asApp('authenticated', guru, 'select withdraw_consent($1, $2)', [kid.id, 'mother, at the desk']);
+  check('0063: withdrawal closes it', (await view(g63)).result === 'not_available');
+  const [{ id: gSib }] = await asOwner(`select id from guardians where student_id = '${sib.id}'`);
+  await asApp('authenticated', coordinator, `select set_guardian_digest($1, true, '1.0')`, [gSib]);
+  check('0063: the sibling\'s parent sees only the sibling', (await view(gSib)).student_name === 'Radha Sibling Sixtythree');
+  await asApp('authenticated', guru, `select erase_student($1, 'parent asked', 'REQ-63')`, [sib.id]);
+  check('0063: erasure: the guardian row is gone, the link opens nothing, the access log keeps no id',
+    (await view(gSib)).result === 'not_available'
+    && (await one(`select count(*)::int as n from access_log where student_id = '${sib.id}'`)).n === 0);
+
+  // A second run of the file changes nothing (the switch stays as the Guru set it).
+  const count63 = async () => one(`select (select value from settings where key = 'parent_view_enabled') as v,
+    (select count(*) from access_log where function_name = 'parent_view')::int as a`);
+  const before63 = await count63();
+  let again63 = '';
+  try { await db.exec(file63); } catch (e) { again63 = String(e.message); }
+  check('0063 can run again and changes no row', again63 === '' && JSON.stringify(await count63()) === JSON.stringify(before63), again63);
+}
 // ---------------------------------------------------------------- row-level security
 const seen =await asApp('authenticated', arjun, 'select full_name from students');
 check('student sees only their own student record', seen.length === 1 && seen[0].full_name === 'Arjun Rao');
