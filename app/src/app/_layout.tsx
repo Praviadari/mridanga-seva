@@ -35,8 +35,8 @@ import { forgetOfflineShell, keepOfflineShell } from '@/lib/offline-shell';
 import { registerForPush, usePushTaps } from '@/lib/push';
 import { pushNeedsRetry } from '@/lib/push-state';
 import { useTakingLong } from '@/lib/slow-start';
-import { preloadStaffArea } from '@/lib/staff-area';
 import { supabaseConfigProblem } from '@/lib/supabase';
+import { preloadAreasFor } from '@/lib/web-areas';
 import { HeadingFontProvider } from '@/theme/fonts';
 import { useTheme } from '@/theme/use-theme';
 
@@ -197,9 +197,9 @@ function PushSetup() {
 
 /**
  * The web version offline (src/lib/offline-shell.web.ts, docs/DECISIONS.md #513): the service worker is registered once
- * someone is signed in, and removed with what it kept whenever the app is signed out. A staff login starts loading the
- * staff screens, which the web version keeps out of the first download (src/lib/staff-area.web.ts, #590). Does
- * nothing on phones. Renders nothing.
+ * someone is signed in, and removed with what it kept whenever the app is signed out. A login starts loading the
+ * screens of its area that the web version keeps out of the first download (src/lib/web-areas.web.ts, #590, #650).
+ * Does nothing on phones. Renders nothing.
  */
 function OfflineShell() {
   const { area } = useAuth();
@@ -207,7 +207,7 @@ function OfflineShell() {
   useEffect(() => {
     if (signedIn) keepOfflineShell();
     else if (area === 'signedOut') void forgetOfflineShell();
-    if (area === 'guru' || area === 'coordinator') preloadStaffArea();
+    preloadAreasFor(area);
   }, [signedIn, area]);
   return null;
 }

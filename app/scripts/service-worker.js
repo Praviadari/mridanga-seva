@@ -12,8 +12,8 @@
 // - The page (any address: the single-page app has one index.html): the network first; without an answer in 4 s, or
 //   offline, the copy kept at the last good load. Kept only when it is a 200 HTML page of this site.
 // - The build's files (hashed names under /_expo/static/ and /assets/, the icons and manifest): kept at install,
-//   then served from the device; one missing is fetched and kept. The Telugu and Hindi scripts and the staff screens
-//   (staff-area-<hash>.js, #590) are not in the list: the page names the ones it loaded ('keep'), and one loaded later
+//   then served from the device (the student screens' file, student-area-<hash>.js, #650, among them); one missing is
+//   fetched and kept. The Telugu and Hindi scripts and the staff screens (staff-area-<hash>.js, #590) are not in the list: the page names the ones it loaded ('keep'), and one loaded later
 //   (a language switched to, a staff login's screens) is kept when it loads.
 // - version.txt, the QR reader's WebAssembly (/zxing/, staff and scanning need the network anyway) and this file
 //   itself: never kept.

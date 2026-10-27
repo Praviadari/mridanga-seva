@@ -16,6 +16,8 @@
 //    exported files. Expo puts images that come from packages (the header back arrow, for
 //    example) under a folder named node_modules, and Cloudflare Pages never uploads a folder
 //    with that name, so those images would be missing on the live site.
+// 2b. Folds Expo's __common file (code the staff and student areas share) into each area file, so index.html does not
+//    load it at start (scripts/lib/fold-common.mjs, docs/DECISIONS.md #650).
 // 3. Refuses to finish if the export holds the Supabase secret (service_role) key. Everything
 //    in EXPO_PUBLIC_* is readable by anyone who opens the site, and that key bypasses every
 //    access rule. The app itself also refuses to start with it (src/lib/supabase.ts).
@@ -32,9 +34,9 @@
 // 9. Writes dist/sw.js from scripts/service-worker.js (docs/DECISIONS.md #513): this build's id and the list of the
 //    site's own files it keeps for offline use (the page as '/', scripts, fonts, icons; never version.txt, _headers,
 //    source maps, the QR reader's WebAssembly, the other languages or the staff screens), and checks the result parses.
-// Before 1, it refuses a stale list of staff screens (src/web-routes/staff-screens.ts, #590): a staff screen missing
-// from it would not open on the web. After 9 it checks the staff screens came out as one file of their own, and says
-// how big the first download is.
+// Before 1, it refuses stale lists of later screens (src/web-routes/area-screens.ts, #590, #650): a screen missing from
+// them would not open on the web. After 9 it checks the staff, student and practice screens came out as one file each,
+// and says how big the first download is (every script index.html loads).
 //
 // Uses only Node's built-in modules (and reads two installed packages). Exits with code 1 if
 // dist/ must not be uploaded.
@@ -47,8 +49,9 @@ import { dirname, extname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { holdsSecretKey, listFiles, SETTING_NAMES, supabaseSettingsFrom, WEB_PUSH_SETTING, webPushKeyFrom } from './bundle-checks.mjs';
-import { serviceWorkerSource, shellFiles, staffChunk } from './lib/offline-shell.mjs';
-import { LIST_FILE, listIsCurrent } from './lib/staff-screens.mjs';
+import { foldCommon } from './lib/fold-common.mjs';
+import { serviceWorkerSource, shellFiles } from './lib/offline-shell.mjs';
+import { LIST_FILE, listIsCurrent } from './lib/area-screens.mjs';
 
 const DIST = 'dist';
 const FROM = '/assets/node_modules/';
@@ -149,6 +152,16 @@ if (existsSync(fromDir)) {
   renameSync(fromDir, toDir);
 }
 
+// ---------------------------------------------------------------- 2b. shared code of the areas (#650)
+// Code the staff and student areas share goes into each area file instead of a __common file every visit loads.
+let folded;
+try {
+  folded = foldCommon(DIST);
+} catch (error) {
+  fail(`could not fold __common into the area files: ${error.message}. See DECISIONS #650.`);
+}
+if (folded) console.log(`export-web: ${folded.common} (${folded.kb} KB) folded into the area files; not loaded at start.`);
+
 // ---------------------------------------------------------------- 3 and 4. check every file
 let rewritten = 0;
 const settingsFound = new Set();
@@ -247,13 +260,25 @@ try {
 writeFileSync(join(DIST, 'sw.js'), worker);
 console.log(`export-web: sw.js keeps ${shell.length} files (${Math.round(bytes / 1024)} KB) for offline use.`);
 
-// ---------------------------------------------------------------- the first download (#590)
+// ---------------------------------------------------------------- the first download (#590, #650)
 const scripts = readdirSync(entryDir);
-const staffFiles = scripts.filter((name) => staffChunk(`/_expo/static/js/web/${name}`));
-if (staffFiles.length !== 1) fail(`expected one staff-area file in ${entryDir}, found ${staffFiles.length}: the staff screens must load later.`);
-if (scripts.some((name) => name.startsWith('__common'))) fail('the export made a __common file that every visit loads; see DECISIONS #590.');
 const kb = (name) => Math.round(statSync(join(entryDir, name)).size / 1024);
-console.log(`export-web: first download ${entry} ${kb(entry)} KB; staff screens ${staffFiles[0]} ${kb(staffFiles[0])} KB, loaded by staff only.`);
+const areaFiles = ['staff', 'student'].map((area) => {
+  const files = scripts.filter((name) => new RegExp(`^${area}-area-[0-9a-f]+\\.js$`).test(name));
+  if (files.length !== 1) fail(`expected one ${area}-area file in ${entryDir}, found ${files.length}: the ${area} screens must load later.`);
+  return `${area} ${kb(files[0])} KB`;
+});
+// What every visit loads: the scripts index.html names (the entry and Expo's small runtime file; never __common, 2b).
+const firstScripts = [...readFileSync(join(DIST, 'index.html'), 'utf8').matchAll(/<script src="\/_expo\/static\/js\/web\/([^"]+\.js)"/g)].map(
+  (match) => match[1],
+);
+if (!firstScripts.includes(entry)) fail(`index.html does not load ${entry}.`);
+if (firstScripts.some((name) => /-area-|^__common/.test(name))) fail('index.html loads an area or __common file at start: the later screens must load later.');
+const firstKb = firstScripts.reduce((sum, name) => sum + kb(name), 0);
+console.log(
+  `export-web: first download ${firstScripts.map((name) => `${name} ${kb(name)} KB`).join(' + ')} = ${firstKb} KB; ` +
+    `later: ${areaFiles.join(', ')}.`,
+);
 console.log(`export-web: ${rewritten} asset paths moved to ${TO}; QR reader zxing-wasm ${zxingVersion} copied.`);
 if (changed) console.warn('export-web: the folder has uncommitted changes; commit first for a site people use.');
 console.log(

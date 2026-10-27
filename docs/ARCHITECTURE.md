@@ -166,9 +166,10 @@ app/
                        saves that wait for the signal, door check-ins and practice (offline-queue.ts keeps them,
                        offline-send.ts sends them with their request ids; #593);
                        the error log's reporter (error-report.ts, its pure rules in error-report-rules.ts, 0061)
-    web-routes/        The web version's screen list (route-context.ts): the staff screens are stand-ins that load
-                       one file, staff-area.ts, when a staff login opens them (lazy-staff.tsx); the list of staff
-                       screens is written by `npm run staff-screens` (DECISIONS.md #590). The web starts from
+    web-routes/        The web version's screen list (route-context.ts): the staff screens, and the student and
+                       waiting screens beyond the student's tabs, are stand-ins that load one file per area,
+                       staff-area.ts or student-area.ts, when first opened (lazy-area.tsx); the lists are written
+                       by `npm run area-screens` (DECISIONS.md #590, #650). The web starts from
                        src/entry.web.tsx, the phones from src/entry.ts (Expo Router's own start)
     theme/             Colours, spacing and text sizes, light and dark; the card look, the header
                        bars and the tab bar (use-theme.ts)
