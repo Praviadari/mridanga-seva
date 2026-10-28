@@ -9099,3 +9099,11 @@ the band and a slimmer Daily Mission card (one row and a thin progress bar), the
 Assessments with its count, My Growth, Śloka Study, Events & polls and, while unfinished, My Details) takes the cards'
 place. The ring is sized to the room left above the tabs so the home never scrolls; the fact of the day stays only while
 the ring can still be 300 px with it. ShortcutTiles stays for the Practice tab's games.
+
+## 772. W4's two open points: the quest stays off the ring home; its edits in W1/W2 files kept — 28 Oct 2026
+
+**Decision.** The lead, under Praveen's delegation (23-10-2026), at the W4 merge. (1) The ring home's slim Daily
+Mission card (#771) keeps its one row: the Daily Sādhana Quest lines (#754) show only on the Practice tab's full card,
+so the home still never scrolls and the ring keeps its size. (2) W4's small edits in W1/W2 files (use-game-round.ts
+reads ?mode/&len, the Surprise row on the Playground home, setSurprise, catalogue routes, the built-games test list,
+W1's seed counts in the smoke test) stay: W1 and W2 are merged and archived, and the app and smoke tests cover them.
