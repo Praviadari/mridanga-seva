@@ -157,7 +157,7 @@ process.on('uncaughtException', (error) => {
 // D14-10: every check is counted, and the run fails when fewer (or more) checks ran than expected,
 // so a block skipped by a renamed migration or a commented-out section cannot pass unseen.
 // Adding or removing checks? Run the suite and set this to the new total it prints.
-const EXPECTED_CHECKS = 2446; // 0069 game recordings and the W5 TEST seed: +9; 0068 my data with the Playground: +4; 0065 Rhythm Playground engine: +67; 0067 facilitator wording: +5; 0066 facilitator safeguards: +40 (0059/0026/0025/0049 checks adjusted for #710/#713); 0064 learn screens: +32; 0063 parent page: +32; 0062 web push: +33; 0061 staff sign-in codes and the error log: +53; 0060 privacy notice 1.0: +35; 0059 data rights: +56; 0058 weekly parent email: +64; 0057 practice while waiting: +24; 0056 practice extras: +35; 0055 learn more links: +23; 0054 after-launch forms: +49; 0053 staff own record: +55; 0052 more practice: +56; 0051 child's sign-up at home: +80; 0050 staff dashboard: +15; 0049 launch clean-up: +30; 0048 withdrawn records and leaks: +50; 0047 form rules: +109; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
+const EXPECTED_CHECKS = 2447; // 0069 game recordings and the W5 TEST seed: +10; 0068 my data with the Playground: +4; 0065 Rhythm Playground engine: +67; 0067 facilitator wording: +5; 0066 facilitator safeguards: +40 (0059/0026/0025/0049 checks adjusted for #710/#713); 0064 learn screens: +32; 0063 parent page: +32; 0062 web push: +33; 0061 staff sign-in codes and the error log: +53; 0060 privacy notice 1.0: +35; 0059 data rights: +56; 0058 weekly parent email: +64; 0057 practice while waiting: +24; 0056 practice extras: +35; 0055 learn more links: +23; 0054 after-launch forms: +49; 0053 staff own record: +55; 0052 more practice: +56; 0051 child's sign-up at home: +80; 0050 staff dashboard: +15; 0049 launch clean-up: +30; 0048 withdrawn records and leaks: +50; 0047 form rules: +109; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
 let failures = 0;
 let passes = 0;
 
@@ -8811,6 +8811,14 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   const ord69 = await createAssessment(guru, { title: 'Ordinary Sixtynine', sent: true });
   await release(coordinator, ord69.id, [arjunStudent]);
   const [{ id: asgOrd69 }] = await asOwner(`select id from assessment_assignments where assessment_id = ${ord69.id}`);
+  const [formSave69] = await asApp('authenticated', guru,
+    `insert into assessments (title, instructions, kind, level_id, level_up, playground_game, rubric, media, sent_at)
+     values ('Form Sixtynine', 'Sing one line.', 'singing', 3, false, 'voice_companion', $1, '[]', null) returning id`,
+    [JSON.stringify(rubric)]);
+  await asApp('authenticated', guru, `update assessments set playground_game = null where id = ${formSave69.id}`);
+  check('0069 #766: the Guru saves and edits an assessment with its Playground game as the form sends it',
+    (await one(`select playground_game from assessments where id = ${formSave69.id}`)).playground_game === null);
+  await asOwner(`delete from assessments where id = ${formSave69.id}`);
   await refusesWith('0069 #766: an assessment\'s Playground game is a game id', 'playground_game_invalid', () =>
     asOwner(`update assessments set playground_game = 'karaoke' where id = ${ord69.id}`));
   // Earlier blocks' game takes of Arjun are taken as reviewed, so the count starts at 0.

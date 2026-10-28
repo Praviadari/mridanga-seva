@@ -33,6 +33,9 @@ end $$;
 drop trigger if exists assessment_playground_game_guard on assessments;
 create trigger assessment_playground_game_guard before insert or update of playground_game on assessments
   for each row execute function guard_assessment_playground_game();
+-- The facilitator sets the game on the assessment form: 0016 grants insert/update column by column and 0065 added the
+-- column without one, so every save from the form (which always sends it) was refused as "not allowed".
+grant insert (playground_game), update (playground_game) on assessments to authenticated;
 
 -- 1-2. A recording sent to a game's assessment. Security definer: it counts the student's other submissions, which
 -- the caller (submit_assessment, itself security definer) may not see through row-level security.
