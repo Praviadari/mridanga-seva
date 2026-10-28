@@ -10,6 +10,7 @@ import { StyleSheet, View } from 'react-native';
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { Notice } from '@/components/notice';
+import { ChoiceCards } from '@/components/playground/choice-cards';
 import { applySoundChoice } from '@/lib/khol-samples';
 import { createPracticePlayer } from '@/lib/practice-audio';
 import { writtenBeat } from '@/lib/playground/notation';
@@ -117,13 +118,11 @@ export function MissingBeat() {
               <AppText variant="label">
                 {gaps.length > 1 ? t('playground.mb.pickPlace', { n: gaps[nextGap] + 1 }) : t('playground.mb.pick')}
               </AppText>
-              <View style={styles.choices}>
-                {challenge.choices.map((choice) => (
-                  <View key={choice.key} style={styles.choice}>
-                    <Button size="large" variant="secondary" label={choiceText(choice, game.index)} onPress={() => choose(choice.key)} />
-                  </View>
-                ))}
-              </View>
+              <ChoiceCards
+                choices={challenge.choices.map((choice) => ({ key: choice.key, label: choiceText(choice, game.index) }))}
+                onChoose={choose}
+                chosen={picks.length > 0 && picks.length < gaps.length ? picks[picks.length - 1] : null}
+              />
             </>
           )}
         </>
@@ -142,6 +141,4 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  choices: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  choice: { flexGrow: 1, flexBasis: '40%' },
 });

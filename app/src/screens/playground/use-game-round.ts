@@ -13,6 +13,7 @@ import { todayLocal } from '@/lib/dates';
 import { realSoundsReady } from '@/lib/khol-samples';
 import { stepAdvice, stepLimits } from '@/lib/playground/adaptive';
 import { isRight } from '@/lib/playground/check';
+import { reportDroppedChallenges } from '@/lib/playground/drop-report';
 import { generateRound, topStep } from '@/lib/playground/generator';
 import { templateFor } from '@/lib/playground/eligibility';
 import { bolIndex } from '@/lib/playground/notation';
@@ -105,6 +106,8 @@ export function useGameRound(game: GameId) {
         seen: seenItems(load.rounds),
         now: Date.now(),
       });
+      // A challenge the check refused is dropped, never shown, and reported without personal data (§8.5).
+      if (made.dropped.length > 0) void reportDroppedChallenges(made.dropped, made.recipe.contentVersion);
       setStep(s);
       setRound(made);
       setAt(0);

@@ -8770,8 +8770,8 @@ placeholder pack (§19.3).
 
 **Decision.** `/student/which-bol` opens Sound Detective: **Rounds** (the engine's seeded rounds from the published
 pack, 2-4 cards, saved for progress) and **Free play** (the old quiz of #471 on the level's taals, nothing kept). The
-facilitators' `/staff/which-bol` keeps the old quiz until W3's preview. A card shows the bol as the class writes it,
-the hand(s) and the hand drawing; it plays its own beats, so its sound is its label. Two tries per card: "That's it!",
+facilitators' `/staff/which-bol` keeps the old quiz until W3's preview. A card (W1's ChoiceCards) shows the bol as the
+class writes it and the hand(s); it plays its own beats, so its sound is its label (the hand drawings stay in Free play). Two tries per card: "That's it!",
 "Not yet — listen again", then the answer is shown and played; every card can be heard after the answer. Nothing
 sounds until the student taps Start (then Next plays the next prompt).
 
@@ -8814,10 +8814,11 @@ rounds, offers the steps W1's adaptive rules allow (warm-up after 14 days, harde
 student chooses), asks the engine for a round with the seed of student + game + day + round of the day, and counts
 tries, replays and time. A round is queued on the phone when it ends, or with the items answered so far when the
 student leaves mid-round, then sent by record_round when online (W1's round queue; a resend saves nothing twice).
-Recognition counts the first pick only (a second-try right is practice). `screens/playground/game-parts.tsx` is the
-shared frame (TEST badge, how to play, step choice, "2 of 6", Review mark, feedback in words with an icon, summary);
-`screens/playground/playground-data.ts` is the one file that calls W1's data module. W1's planned
-`components/playground` shell did not exist when W2 was built; when it lands, the frame can move there.
+Recognition counts the first pick only (a second-try right is practice). `screens/playground/game-parts.tsx` puts the
+games in W1's shared components (GameShell, InstructionsPreview, ChoiceCards, FeedbackPanel, RoundSummary) with the
+step choice; `screens/playground/playground-data.ts` is the one file that calls W1's data module. W1 does not keep the
+student's state on the phone, so W2 keeps the last one (`lib/playground-games/state-cache.ts`, wiped at sign-out) and
+the games open offline from the cached pack. Dropped challenges are reported (`reportDroppedChallenges`).
 ## 737. Prji's first pack: the bīja strokes te | re | khe | ta; the design is a preliminary version — 28 Oct 2026
 
 **Decision (Prji, relayed by Praveen through the lead on 28-10).** The Playground design is approved as a

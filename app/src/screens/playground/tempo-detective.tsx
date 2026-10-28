@@ -10,6 +10,7 @@ import { StyleSheet, View } from 'react-native';
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { Notice } from '@/components/notice';
+import { ChoiceCards } from '@/components/playground/choice-cards';
 import { applySoundChoice } from '@/lib/khol-samples';
 import { createPracticePlayer } from '@/lib/practice-audio';
 import type { Challenge } from '@/lib/playground/types';
@@ -46,8 +47,15 @@ export function TempoDetective() {
     void player.playOnce(beatsPattern(challenge.prompt.beats), bpm).then((ok) => setSoundFailed(!ok));
   };
 
+  const [picked, setPicked] = useState<string | null>(null);
+  const [pickedFor, setPickedFor] = useState<Challenge | null>(null);
+  if (pickedFor !== challenge) {
+    setPickedFor(challenge);
+    setPicked(null);
+  }
   const choose = (answer: (typeof ANSWERS)[number]) => {
-    if (!challenge || game.done) return;
+    if (!challenge || game.done || answer === picked) return;
+    setPicked(answer);
     game.answer(answer);
   };
 
@@ -75,15 +83,13 @@ export function TempoDetective() {
               <Button variant="secondary" label={t('playground.td.hearB')} onPress={() => hearOne(bpmB)} />
             </View>
           </View>
-          {!game.done ? (
-            <View style={styles.answers}>
-              {ANSWERS.map((a) => (
-                <Button key={a} size="large" label={t(`playground.td.${a}`)} onPress={() => choose(a)} />
-              ))}
-            </View>
-          ) : (
-            <BeatDots count={challenge.prompt.beats.length} bpmA={bpmA} bpmB={bpmB} />
-          )}
+          <ChoiceCards
+            choices={ANSWERS.filter((a) => challenge.choices.some((c) => c.key === a)).map((a) => ({ key: a, label: t(`playground.td.${a}`) }))}
+            onChoose={(key) => choose(key as (typeof ANSWERS)[number])}
+            chosen={picked}
+            rightKey={game.done ? challenge.answer : null}
+          />
+          {game.done ? <BeatDots count={challenge.prompt.beats.length} bpmA={bpmA} bpmB={bpmB} /> : null}
         </>
       ) : null}
     </GameFrame>
@@ -122,7 +128,6 @@ function BeatDots({ count, bpmA, bpmB }: { count: number; bpmA: number; bpmB: nu
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', gap: spacing.sm },
   half: { flex: 1 },
-  answers: { gap: spacing.sm },
   picture: { gap: spacing.sm },
   dotRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minHeight: 32 },
   dotName: { width: 24 },
