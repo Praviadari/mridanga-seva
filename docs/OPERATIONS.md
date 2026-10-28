@@ -644,6 +644,7 @@ to `app/dist/`. Always use this command, not a bare `npx expo export`, because
 
 | Date | Site | Commit | Built (UTC) | By |
 |---|---|---|---|---|
+| 28-10-2026 | test (web: Daily Quest waits for the student area file — a direct load of the Practice tab crashed; also on the stable walk alias walk.mridanga-seva-test.pages.dev, deployment e35f9d7f; first download 2722 KB) | ff54c21 (main; entry-0b8bd82d…; deployment 7cf7573d) | 2026-10-28 | Claude (wrangler, Praveen's login) |
 | 28-10-2026 | test (0069 fixes from the W5 walk: assessment form saves with a Playground game, browser game takes accepted; en hint wording; first download 2722 KB) | 3f24b96 (main; entry-74d1bd9b…; deployment 8a83e11c) | 2026-10-28T16:14:10Z | Claude (wrangler, Praveen's login) |
 | 28-10-2026 | test (Playground W4: Tap the Beat rounds, Echo bank calls, Tāla Cycle Master, Rhythm Switching, Surprise me, Daily Sādhana Quest; 0069 playground_game column grant; first download 2722 KB) | 7ecb606 (main; entry-396d6e30…; deployment 35ec5614) | 2026-10-28T15:57:13Z | Claude (wrangler, Praveen's login) |
 | 28-10-2026 | test (Playground W5: Sound Explorer, Voice Companion, Vocal Sādhana Studio, Kīrtan Companion, Kīrtan Sync; game takes to the facilitator, 0069; first download 2714 KB) | 29450e0 (main; entry-3b2122fb…; deployment aa842d15) | 2026-10-28T15:22:32Z | Claude (wrangler, Praveen's login) |
