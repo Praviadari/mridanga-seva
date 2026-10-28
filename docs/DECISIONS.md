@@ -8540,3 +8540,13 @@ Recognition counts the first pick only (a second-try right is practice). `screen
 shared frame (TEST badge, how to play, step choice, "2 of 6", Review mark, feedback in words with an icon, summary);
 `screens/playground/playground-data.ts` is the one file that calls W1's data module. W1's planned
 `components/playground` shell did not exist when W2 was built; when it lands, the frame can move there.
+## 737. Prji's first pack: the bīja strokes te | re | khe | ta; the design is a preliminary version — 28 Oct 2026
+
+**Decision (Prji, relayed by Praveen through the lead on 28-10).** The Playground design is approved as a
+**preliminary version**: build it, Prji tries it, then it is refined. The first pack uses only the four bīja strokes
+**te | re | khe | ta** ("khe" is the spelling) in all four listening games: Sound Detective with 2, then 3, then 4
+cards at the Beginner steps; phrases only from these four in approved patterns. W1 seeds them. The screens need no
+change for it: in the app te and re are dayan strokes (re sounds as ra), khe is the closed baya stroke (as ka — one of
+the four mappings Prji still confirms, §16.2 D2) and tā is dayan, so all four play; with only four items a round shows
+"Review practice", and Rhythm Builder adds no extra tile when no fifth bol exists (tested in
+app/tests/listening-games.test.mjs).

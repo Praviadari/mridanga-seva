@@ -254,6 +254,45 @@ test('Tempo Detective: A and B on one clock — same strokes, B spaced by its te
   [0, 0.8, 1.6, 2.4].forEach((s, i) => assert.ok(Math.abs(times.b[i] - s) < 1e-9));
 });
 
+// ---------------------------------------------------------------- Prji's first pack: te | re | khe | ta (#737)
+
+test('the bīja pack te | re | khe | ta: all four games make rounds; cards are only these four; Rhythm Builder without extras', () => {
+  const four = [bol('te', 'te', 'dayan'), bol('re', 're', 'dayan'), bol('khe', 'khe', 'baya'), bol('ta', 'tā', 'dayan')];
+  const index = bolIndex(four);
+  for (const b of four) assert.equal(readBol(b.written).unknown, false, b.id);
+  const sdSteps = [{ step: 1, choices: 2, len: [1, 1] }, { step: 2, choices: 3, len: [1, 1] }, { step: 3, choices: 4, len: [1, 1] }];
+  const pack = {
+    ...PACK,
+    bols: four,
+    templates: [tpl(1, 'sound_detective', 'listen.stroke', sdSteps), ...TEMPLATES.slice(1)],
+    exercises: [
+      ...four.map((b) => ex('sound_detective', 1, [b.id])),
+      ex('missing_beat', 2, ['te', 're', 'khe', 'ta']),
+      ex('missing_beat', 2, ['ta', 'khe', 're', 'te']),
+      ex('rhythm_builder', 3, ['te', 're', 'khe', 'ta']),
+      ex('tempo_detective', 4, ['te', 're', 'khe', 'ta']),
+    ],
+  };
+  const gen = (game, step, seed) => generateRound({ pack, levelId: 1, levelUpOk: false, ticked: [], game, step, seed, mode: 'play', seen: [], now: NOW });
+  for (let seed = 1; seed <= 50; seed++) {
+    for (const step of [1, 2, 3]) {
+      const sd = gen('sound_detective', step, seed);
+      assert.ok(sd.challenges.length > 0);
+      assert.ok(sd.lowContent, 'four items: Review practice');
+      for (const c of sd.challenges) {
+        assert.equal(c.choices.length, step + 1);
+        for (const ch of c.choices) assert.ok(index.has(ch.key), ch.key);
+      }
+    }
+    for (const c of gen('missing_beat', 1, seed).challenges) for (const ch of c.choices) assert.ok(index.has(ch.key));
+    for (const c of gen('rhythm_builder', 2, seed).challenges) {
+      assert.equal(c.choices.length, 4, 'no fifth bol to add as an extra tile');
+      assert.deepEqual(play.placedBeats(c.prompt.beats, c.choices, play.rightPlaces(c.prompt.beats, c.choices, index)), c.prompt.beats);
+    }
+    assert.ok(gen('tempo_detective', 1, seed).challenges.length > 0);
+  }
+});
+
 // ---------------------------------------------------------------- feedback, saved items, summary (#736)
 
 test('feedback: right, then "listen again" once, then the answer is shown; words with an icon, never wrong or failed', () => {
