@@ -21,10 +21,12 @@ import { ProgressBar } from './progress-bar';
 export type TodayPracticeCardProps = {
   /** null while loading. */
   today: TodayPractice | null;
+  /** The ring home (preview 28-10-2026): one row, so the ring fits under it without scrolling. */
+  slim?: boolean;
 };
 
 /** The Today's Practice card. */
-export function TodayPracticeCard({ today }: TodayPracticeCardProps) {
+export function TodayPracticeCard({ today, slim }: TodayPracticeCardProps) {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const topic = today?.topic;
@@ -43,6 +45,36 @@ export function TodayPracticeCard({ today }: TodayPracticeCardProps) {
   const valueText = today ? t('todayPractice.progress', { done: today.doneToday, total: today.minutes }) : '';
   const start = today?.state === 'continue' ? t('todayPractice.continue') : today?.state === 'done' ? t('todayPractice.more') : t('todayPractice.start');
 
+  if (slim) {
+    // One row: the khol, the name, what to practise and today's minutes, and Start; a thin line for today's progress.
+    const line = today ? valueText : '';
+    return (
+      <View style={[styles.slim, cardLook(colors), { borderTopWidth: 3, borderTopColor: colors.accent }]}>
+        <View style={styles.top}>
+          <IconBadge name="practice" size={40} tone="teal" solid />
+          <View style={styles.words}>
+            <AppText variant="small" tone="muted" numberOfLines={1}>
+              {t('todayPractice.title')}
+            </AppText>
+            <AppText variant="label" numberOfLines={1}>
+              {what}
+            </AppText>
+            {line ? (
+              <AppText variant="small" tone="muted" numberOfLines={2}>
+                {line}
+              </AppText>
+            ) : null}
+          </View>
+          <Button icon="play" label={start} accessibilityLabel={`${start}: ${what}`} onPress={() => router.push('/student/practice')} />
+        </View>
+        {today ? (
+          <View style={[styles.track, { backgroundColor: colors.border }]} aria-hidden>
+            <View style={[styles.fill, { backgroundColor: colors.accent, width: `${Math.round((100 * done) / today.minutes)}%` }]} />
+          </View>
+        ) : null}
+      </View>
+    );
+  }
   return (
     <View style={[styles.card, cardLook(colors), { borderTopWidth: 3, borderTopColor: colors.accent }]}>
       <View style={styles.top}>
@@ -68,6 +100,19 @@ export function TodayPracticeCard({ today }: TodayPracticeCardProps) {
 }
 
 const styles = StyleSheet.create({
+  slim: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    gap: spacing.sm,
+  },
+  track: {
+    height: 4,
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  fill: {
+    height: 4,
+  },
   card: {
     padding: spacing.md,
     gap: spacing.md,

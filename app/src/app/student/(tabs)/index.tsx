@@ -17,8 +17,10 @@
 // cards never wait for it.
 
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useWindowDimensions, View } from 'react-native';
+import { BottomTabBarHeightContext } from 'expo-router/tabs';
 
 import { useAuth } from '@/auth/auth-provider';
 import { Button } from '@/components/button';
@@ -52,6 +54,14 @@ import { markWelcomeSeen, welcomeDue, welcomeSeen } from '@/lib/welcome';
 
 /** The path and celebrations are read again at most this often on coming back to the home (pull to refresh: at once). */
 const PATH_EVERY_MS = 2 * 60_000;
+
+/** PREVIEW: the space under the bottom circle for its label, and the fact card's height until measured. */
+const LABEL_BELOW = 36;
+const FACT_GUESS = 104;
+/** PREVIEW: the ring keeps the fact of the day only while it can still be this big with it. */
+const RING_WITH_FACT = 300;
+/** PREVIEW: never smaller than this (a very short window scrolls rather than squeeze the circles together). */
+const RING_MIN = 260;
 
 /** Student home screen. */
 export default function StudentHomeScreen() {
@@ -192,6 +202,25 @@ export default function StudentHomeScreen() {
 
   // PREVIEW: the ring in reading order, families side by side (#368): blue, purple, teal, orange, green.
   const byKey = new Map([...sloka, ...shortcuts].map((s) => [s.key, s]));
+  // The ring sized to the space between the card and the tabs, so the home never scrolls (Praveen 28-10-2026).
+  // At least the bar's own 60 px (theme/use-theme.ts): it reads 49, the library's guess, until the bar is measured.
+  const tabBar = Math.max(useContext(BottomTabBarHeightContext) ?? 0, 60);
+  const { height: windowHeight } = useWindowDimensions();
+  const ringBox = useRef<View>(null);
+  const [ringTop, setRingTop] = useState<number | null>(null);
+  const [factHeight, setFactHeight] = useState(FACT_GUESS);
+  // Where the ring starts on the screen: again when the card above it or the band changes height (the web tells a
+  // view only that its own size changed, not that it moved).
+  const measureRing = useCallback(() => {
+    ringBox.current?.measureInWindow((_x, y) => setRingTop((was) => (was !== null && Math.abs(was - y) < 1 ? was : y)));
+  }, []);
+  useEffect(() => {
+    const timer = setTimeout(measureRing, 50);
+    return () => clearTimeout(timer);
+  }, [measureRing, home, today, name]);
+  const room = ringTop === null ? null : windowHeight - tabBar - ringTop - 8;
+  const withFact = room === null || room - factHeight - 8 - LABEL_BELOW >= RING_WITH_FACT;
+  const ringMax = room === null ? undefined : Math.max(RING_MIN, room - LABEL_BELOW - (withFact ? factHeight + 8 : 0));
   const ring = ['qr', 'lessons', 'assessments', 'growth', 'ishtagoshti', 'events', 'about'].flatMap((k) => byKey.get(k) ?? []);
 
   return (
@@ -234,10 +263,22 @@ export default function StudentHomeScreen() {
       ) : (
         <>
           {/* Shown while loading too: Start opens the practice tools, which load on their own. */}
-          {home !== 'not_found' ? <TodayPracticeCard today={today} /> : null}
+          {home !== 'not_found' ? (
+            <View onLayout={measureRing}>
+              <TodayPracticeCard today={today} slim />
+            </View>
+          ) : null}
           {/* PREVIEW 28-10-2026 (Praveen): the ring of #240 back under the Daily Mission, in place of the cards. */}
-          <ModuleRing modules={ring} />
-          <FactCard />
+          <View
+            ref={ringBox}
+            onLayout={measureRing}>
+            <ModuleRing modules={ring} maxSize={ringMax} />
+          </View>
+          {withFact ? (
+            <View onLayout={(e) => setFactHeight(Math.round(e.nativeEvent.layout.height))}>
+              <FactCard />
+            </View>
+          ) : null}
         </>
       )}
     </Screen>
