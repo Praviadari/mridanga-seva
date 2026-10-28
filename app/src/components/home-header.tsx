@@ -11,7 +11,7 @@
 // components/profile-button.tsx, #240).
 
 import { useTranslation } from 'react-i18next';
-import { StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { spacing, useTheme } from '@/theme/use-theme';
 
@@ -44,18 +44,23 @@ export type HomeHeaderProps = {
 export function HomeHeader({ name, role, menu, student }: HomeHeaderProps) {
   const { t } = useTranslation();
   const { colors } = useTheme();
+  const { width } = useWindowDimensions();
+  const fit = Platform.OS !== 'web';
+  const narrow = !fit && width < 360;
 
   return (
     <SaffronBand>
       <View style={styles.row}>
         <View style={styles.side}>{menu ? <MenuButton place="band" /> : student ? null : <ProfileButton />}</View>
         <View style={styles.brand}>
-          {/* As wide as the space between the buttons, and smaller rather than cut at large text (#372). */}
+          {/* As wide as the space between the buttons, and smaller rather than cut at large text (#372). The web
+              cannot shrink a text to fit, so there it is smaller on a narrow window and takes a second line rather
+              than end in "…" ("మృదంగ…" in the browser zoomed to 200 %, 28-10 walk; as header-title.tsx). */}
           <AppText
             variant="title"
-            style={[styles.brandName, { color: colors.headerGold }]}
-            numberOfLines={1}
-            adjustsFontSizeToFit
+            style={[styles.brandName, narrow && styles.brandNameNarrow, { color: colors.headerGold }]}
+            numberOfLines={fit ? 1 : 2}
+            adjustsFontSizeToFit={fit}
             minimumFontScale={0.6}>
             {t('app.name')}
           </AppText>
@@ -119,6 +124,10 @@ const styles = StyleSheet.create({
   brandName: {
     alignSelf: 'stretch',
     textAlign: 'center',
+  },
+  brandNameNarrow: {
+    fontSize: 22,
+    lineHeight: 30,
   },
   motto: {
     alignSelf: 'stretch',

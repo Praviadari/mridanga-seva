@@ -164,7 +164,11 @@ test('the app name spans its band, so Android cannot hide its last word (#372: "
   assert.equal((brand.match(/\[styles\.line\b/g) ?? []).length, 5);
   const home = src('components/home-header.tsx');
   assert.match(home, /brandName: \{\s*alignSelf: 'stretch',/);
-  assert.match(home, /numberOfLines=\{1\}\s*adjustsFontSizeToFit\s*minimumFontScale=\{0\.6\}/);
+  // The phone shrinks it onto one line; the web cannot, so there it is smaller on a narrow window and may take a
+  // second line, never "…" ("మృదంగ…" at 200 % zoom, 28-10-2026).
+  assert.match(home, /const fit = Platform\.OS !== 'web';\s*const narrow = !fit && width < 360;/);
+  assert.match(home, /numberOfLines=\{fit \? 1 : 2\}\s*adjustsFontSizeToFit=\{fit\}\s*minimumFontScale=\{0\.6\}/);
+  assert.match(home, /narrow && styles\.brandNameNarrow/);
 });
 
 test('ring labels keep clear of the drum circle: the drum shrinks only as far as the labels need', async () => {
