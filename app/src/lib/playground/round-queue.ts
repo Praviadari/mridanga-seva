@@ -113,7 +113,9 @@ export function syncRounds(profileId: string, send: (round: PlayedRound) => Prom
   sending = (async () => {
     const report: SyncReport = { saved: 0, refused: 0, tooOld: 0, waiting: 0 };
     try {
-      const mine = queuedRounds().filter((q) => q.profileId === profileId);
+      const mine = queuedRounds()
+        .filter((q) => q.profileId === profileId)
+        .sort((a, b) => Date.parse(a.round.startedAt) - Date.parse(b.round.startedAt));
       for (let i = 0; i < mine.length; i++) {
         const { round } = mine[i];
         if (now - Date.parse(round.startedAt) >= ROUND_SEND_DAYS * DAY_MS) {

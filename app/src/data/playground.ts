@@ -1,17 +1,13 @@
 // Rhythm Playground data (docs/RHYTHM_PLAYGROUND.md §9; docs/DECISIONS.md #720-#729; migration 0065). The pack of
 // published content (cached on the phone, refreshed when its version changes), one student's state, rounds saved
 // through the offline queue (idempotent by the round's id), the staff reads, approval and publishing, signed links
-// for recorded sounds, and the no-personal-data report of a challenge the check dropped.
+// for recorded sounds, and the name a dropped challenge is reported under (lib/playground/drop-report.ts sends it).
 //
 // Row-level security: content is read through playground_pack (approved, published, non-placeholder unless TEST
 // allows placeholders); a student reads their own state and rounds; rounds are written only by record_round, which
 // re-marks every recognition answer. Staff write drafts directly (play_bols, play_exercises, ... — W3's screens);
 // the Guru approves (play_set_status) and publishes (publish_playground).
 
-import { Platform } from 'react-native';
-
-import { runningVersion } from '@/lib/app-update';
-import { platformOf, versionTag } from '@/lib/error-report-rules';
 import { labelRules } from '@/lib/playground/labels';
 import { cachedPack, savePack } from '@/lib/playground/pack-cache';
 import { enqueueRound, rememberRounds, syncRounds, type SendOutcome, type SyncReport } from '@/lib/playground/round-queue';
@@ -151,7 +147,12 @@ export function parseRound(r: Json): PlayedRound {
     finishedAt: str(r.finished_at),
     items: arr<RoundItem>(r.items),
     timing: t
-      ? { medianMs: num(t.median_ms) ?? 0, spreadMs: num(t.spread_ms) ?? 0, calibrated: t.calibrated === true, offsetMs: num(t.offset_ms) ?? undefined }
+      ? {
+          medianMs: num(t.median_ms) ?? 0,
+          spreadMs: num(t.spread_ms) ?? 0,
+          calibrated: t.calibrated === true,
+          ...(num(t.offset_ms) !== null ? { offsetMs: num(t.offset_ms) as number } : {}),
+        }
       : null,
     device: (str(r.device) as PlayedRound['device']) ?? null,
   };
@@ -388,27 +389,4 @@ export async function playgroundAudioUrls(paths: readonly string[]): Promise<Rec
 export function dropErrorName(drop: DroppedChallenge, contentVersion: number): string {
   const reason = drop.reason.replace(/[^a-z_]/g, '');
   return `PlayCheck_${reason}_e${drop.exerciseId}_t${drop.templateId ?? 0}_v${contentVersion}`.slice(0, 60);
-}
-
-/** Reports dropped challenges to App errors (client_errors, 0061), quietly. */
-export async function reportDroppedChallenges(drops: readonly DroppedChallenge[], contentVersion: number): Promise<void> {
-  const platform = platformOf(Platform.OS);
-  if (!platform) return;
-  const seen = new Set<string>();
-  for (const drop of drops) {
-    const name = dropErrorName(drop, contentVersion);
-    if (seen.has(name)) continue;
-    seen.add(name);
-    try {
-      await supabase.rpc('log_client_error', {
-        p_kind: 'unhandled',
-        p_error: name,
-        p_screen: '/student/playground',
-        p_version: versionTag(runningVersion()),
-        p_platform: platform,
-      });
-    } catch {
-      // A report is never worth an error on the screen.
-    }
-  }
 }
