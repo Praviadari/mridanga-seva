@@ -8766,6 +8766,85 @@ replaced with 0017's rules plus "never reviewed and sent 60+ days ago, when its 
 existing clean-up chain deletes the file. Not in 0065 (W5, with the send wiring): the cap of 2 open takes per student
 and the 90-second limit (#696). `my_data_summary` (0059) does not list Playground data yet — a follow-up for the lead.
 
+## 730. Rhythm Playground home: one card on the Practice tab, games by group, unbuilt ones dimmed — 28 Oct 2026
+
+**Decision (package W2).** The Practice tab's Games tiles are replaced by one large "Rhythm Playground" card
+(`/student/playground`). The home lists Surprise me, then the games as circles three to a row by group — Listening,
+Rhythm, Voice, Kīrtan — and My Playground progress. A game not built yet has no address: dimmed, "Coming soon", read
+out as "…, coming soon", not a button. Tap the Beat and Echo Challenge open today's tap pad and Echo me at their old
+addresses until W4 changes them; Surprise me waits for W4. The Daily Sādhana Quest is the Daily Mission card, not a
+tile. A "TEST sounds" badge shows on every Playground screen while no recording is bundled or the pack is a TEST
+placeholder pack (§19.3).
+
+## 731. Sound Detective at the address of "Which bol?" — 28 Oct 2026
+
+**Decision.** `/student/which-bol` opens Sound Detective: **Rounds** (the engine's seeded rounds from the published
+pack, 2-4 cards, saved for progress) and **Free play** (the old quiz of #471 on the level's taals, nothing kept). The
+facilitators' `/staff/which-bol` keeps the old quiz until W3's preview. A card (W1's ChoiceCards) shows the bol as the
+class writes it and the hand(s); it plays its own beats, so its sound is its label (the hand drawings stay in Free play). Two tries per card: "That's it!",
+"Not yet — listen again", then the answer is shown and played; every card can be heard after the answer. Nothing
+sounds until the student taps Start (then Next plays the next prompt).
+
+## 732. Missing Beat, Rhythm Builder, Tempo Detective on the screen — 28 Oct 2026
+
+**Decision.** The engine (W1, lib/playground/generator.ts) builds every round; the screens only play and check it
+(lib/playground-games/listening.ts). **Missing Beat:** the approved sequence with the gap beats silent, "?" on the grid
+(hidden when the step hides it), one pick per gap in order, then the whole pattern with the grid filled. **Rhythm
+Builder** (#733): tap a tile, then its place; tap a place to take it back; rests are already placed; vibhag lines while
+the grid shows; Play mine; Check marks the places that sound different ("listen" + Hear place n again); a tile that
+sounds the same (ke for ka) is right; after the last try the approved order is placed and played. **Tempo Detective**
+(#734): A, two quiet beats, then B on one player clock (same strokes, B spaced by bpmA/bpmB); Hear A / Hear B alone;
+after the answer a still picture of both as beat dots spaced by time (nothing moves, so reduced motion needs nothing
+more). Missing Beat's "which place was changed?" step and Sound Detective's phrase steps come with content and a
+template step for them; the screens already play phrase cards.
+
+## 733. Rhythm Builder: tap-to-place, no dragging — 28 Oct 2026
+
+**Decision.** See #732. Every tile and place is a button with its contents in words ("Place 3: te·re", "Place 2:
+rest", "dhā, placed"), so a screen reader and a keyboard can build the pattern; the same bol twice is two tiles.
+
+## 734. Tempo Detective plays A and B on one clock — 28 Oct 2026
+
+**Decision.** See #732. One rendered pattern for A and B avoids a gap of unknown length between two player starts on
+phones (expo-audio cannot schedule a start), so the only difference the student hears is the tempo.
+
+## 735. My Playground progress: label words, recognition and performance apart — 28 Oct 2026
+
+**Decision.** One row per skill: its name, the label word with an icon (Exploring / Practising / Steady / Ready for
+Review, never a number alone), "12 of 15 right in the last weeks" (recognition) or rounds measured (timing), the trend
+against two weeks before, timing confidence, the last day, and "Practise this" for a built game. Recognition and
+performance are two blocks under "Playing on your khol is checked by your facilitator in class." No points, no
+comparison, nothing "lost". Worked out on the phone from the saved rounds and those on the phone (W1's labels.ts), so it
+shows offline too.
+
+## 736. One round hook and frame for the listening games; rounds saved through the phone's queue — 28 Oct 2026
+
+**Decision.** `screens/playground/use-game-round.ts` loads the pack (the phone's copy first), the student's state and
+rounds, offers the steps W1's adaptive rules allow (warm-up after 14 days, harder/easier offers after the round — the
+student chooses), asks the engine for a round with the seed of student + game + day + round of the day, and counts
+tries, replays and time. A round is queued on the phone when it ends, or with the items answered so far when the
+student leaves mid-round, then sent by record_round when online (W1's round queue; a resend saves nothing twice).
+Recognition counts the first pick only (a second-try right is practice). `screens/playground/game-parts.tsx` puts the
+games in W1's shared components (GameShell, InstructionsPreview, ChoiceCards, FeedbackPanel, RoundSummary) with the
+step choice; `screens/playground/playground-data.ts` is the one file that calls W1's data module. W1 does not keep the
+student's state on the phone, so W2 keeps the last one (`lib/playground-games/state-cache.ts`, wiped at sign-out) and
+the games open offline from the cached pack; "offline" means the state could not be read (the pack loader also says
+`fromCache` when the version is unchanged). Dropped challenges are reported (`reportDroppedChallenges`). Found in the
+TEST walk: `syncRounds` (W1, round-queue.ts) on an empty queue runs to its `finally` before `sending` is assigned, so
+`sending` keeps a finished promise and every later sync returns `{saved: 0}` without sending; W2 syncs on opening only
+when this login has rounds waiting. The fix belongs in round-queue.ts (clear `sending` after the assignment, e.g.
+`.finally(() => { sending = null; })` on the promise) — for W1/the lead.
+## 737. Prji's first pack: the bīja strokes te | re | khe | ta; the design is a preliminary version — 28 Oct 2026
+
+**Decision (Prji, relayed by Praveen through the lead on 28-10).** The Playground design is approved as a
+**preliminary version**: build it, Prji tries it, then it is refined. The first pack uses only the four bīja strokes
+**te | re | khe | ta** ("khe" is the spelling) in all four listening games: Sound Detective with 2, then 3, then 4
+cards at the Beginner steps; phrases only from these four in approved patterns. W1 seeds them. The screens need no
+change for it: in the app te and re are dayan strokes (re sounds as ra), khe is the closed baya stroke (as ka — one of
+the four mappings Prji still confirms, §16.2 D2) and tā is dayan, so all four play; with only four items a round shows
+"Review practice", and Rhythm Builder adds no extra tile when no fifth bol exists (tested in
+app/tests/listening-games.test.mjs).
+
 ## 770. My data lists the Playground (0068) — 28 Oct 2026
 
 **Context.** W1's 0065 added student data (game settings, rounds, weekly skill summaries, ratings) that the person's

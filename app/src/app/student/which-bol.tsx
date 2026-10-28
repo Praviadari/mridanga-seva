@@ -1,8 +1,9 @@
-// "Which bol?", an ear quiz (screens/which-bol.tsx, docs/DECISIONS.md #471).
+// Sound Detective, the Rhythm Playground's first game, at the address "Which bol?" had (screens/playground/
+// sound-detective.tsx, docs/DECISIONS.md #471, #731): old links and What's new entries still open it.
 
-import { WhichBol } from '@/screens/which-bol';
+import { SoundDetective } from '@/screens/playground/sound-detective';
 
 /** Student route. */
 export default function StudentWhichBolScreen() {
-  return <WhichBol />;
+  return <SoundDetective />;
 }

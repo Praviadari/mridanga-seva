@@ -110,33 +110,36 @@ export type SyncReport = { saved: number; refused: number; tooOld: number; waiti
  */
 export function syncRounds(profileId: string, send: (round: PlayedRound) => Promise<SendOutcome>, now: number = Date.now()): Promise<SyncReport> {
   if (sending) return sending;
-  sending = (async () => {
+  const run = (async () => {
     const report: SyncReport = { saved: 0, refused: 0, tooOld: 0, waiting: 0 };
-    try {
-      const mine = queuedRounds()
-        .filter((q) => q.profileId === profileId)
-        .sort((a, b) => Date.parse(a.round.startedAt) - Date.parse(b.round.startedAt));
-      for (let i = 0; i < mine.length; i++) {
-        const { round } = mine[i];
-        if (now - Date.parse(round.startedAt) >= ROUND_SEND_DAYS * DAY_MS) {
-          removeQueuedRounds([round.id]);
-          report.tooOld++;
-          continue;
-        }
-        const outcome = await send(round);
-        if (outcome === 'offline') {
-          report.waiting = mine.length - i;
-          break;
-        }
+    const mine = queuedRounds()
+      .filter((q) => q.profileId === profileId)
+      .sort((a, b) => Date.parse(a.round.startedAt) - Date.parse(b.round.startedAt));
+    for (let i = 0; i < mine.length; i++) {
+      const { round } = mine[i];
+      if (now - Date.parse(round.startedAt) >= ROUND_SEND_DAYS * DAY_MS) {
         removeQueuedRounds([round.id]);
-        report[outcome]++;
+        report.tooOld++;
+        continue;
       }
-    } finally {
-      sending = null;
+      const outcome = await send(round);
+      if (outcome === 'offline') {
+        report.waiting = mine.length - i;
+        break;
+      }
+      removeQueuedRounds([round.id]);
+      report[outcome]++;
     }
     return report;
   })();
-  return sending;
+  sending = run;
+  // Cleared after the run, not inside it: with nothing to send the body ends before `sending` is set, which once left
+  // a finished run in place and every later sync returned its empty report (W2 TEST walk 28-10-2026).
+  const clear = () => {
+    if (sending === run) sending = null;
+  };
+  run.then(clear, clear);
+  return run;
 }
 
 /** Deletes the queue and the history: at sign-out (lib/device-traces.ts). */
