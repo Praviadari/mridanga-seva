@@ -470,6 +470,10 @@ test('round queue: the same id once, sent oldest first, stops when offline, refu
   assert.equal(queue.syncRounds('me', async () => 'refused'), first);
   release();
   assert.equal((await first).saved, 1);
+  // A sync with nothing waiting does not block the next one (W2 TEST walk 28-10-2026).
+  assert.deepEqual(await queue.syncRounds('me', async () => 'saved'), { saved: 0, refused: 0, tooOld: 0, waiting: 0 });
+  queue.enqueueRound('me', round('e', 0));
+  assert.equal((await queue.syncRounds('me', async () => 'saved')).saved, 1, 'the round after an empty sync is sent');
   queue.forgetPlayground();
   assert.deepEqual([queue.queuedRounds(), queue.recentRounds('me')], [[], []], 'sign-out deletes both');
   assert.deepEqual(queue.mergeRounds([round('x', 1)], [round('x', 1), round('y', 0)]).map((r) => r.id), ['y', 'x']);

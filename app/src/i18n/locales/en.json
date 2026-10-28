@@ -4955,6 +4955,198 @@
     "noBest": "Your best in a row is kept on this phone.",
     "tooFew": "Fewer than three bols for this level. The facilitator adds taals."
   },
+  "playground": {
+    "title": "Rhythm Playground",
+    "entryDetail": "Short listening and rhythm games, at your own pace",
+    "intro": "Short games for your ear and your sense of rhythm. Play a round or two, then practise on your khol.",
+    "testSounds": "TEST sounds",
+    "testSoundsHint": "These are the app’s practice sounds, not your facilitator’s recordings yet.",
+    "comingSoon": "Coming soon",
+    "comingSoonSaid": "{{name}}, coming soon",
+    "group": {
+      "listening": "Listening",
+      "rhythm": "Rhythm",
+      "voice": "Voice",
+      "kirtan": "Kīrtan"
+    },
+    "surprise": "Surprise me",
+    "surpriseDetail": "One mixed round of three games",
+    "progressLink": "My Playground progress",
+    "progressDetail": "How your listening is growing",
+    "game": {
+      "sound_detective": {
+        "name": "Sound Detective",
+        "detail": "Which bol did you hear?"
+      },
+      "missing_beat": {
+        "name": "Missing Beat",
+        "detail": "Find the bol that is missing"
+      },
+      "tempo_detective": {
+        "name": "Tempo Detective",
+        "detail": "Faster, slower or the same?"
+      },
+      "sound_explorer": {
+        "name": "Sound Explorer",
+        "detail": "Which instrument is playing?"
+      },
+      "tap_the_beat": {
+        "name": "Tap the Beat",
+        "detail": "Keep a steady beat on the pads"
+      },
+      "echo": {
+        "name": "Echo Challenge",
+        "detail": "Listen, then play it back"
+      },
+      "rhythm_builder": {
+        "name": "Rhythm Builder",
+        "detail": "Build the pattern you heard"
+      },
+      "tala_cycle": {
+        "name": "Tāla Cycle Master",
+        "detail": "Follow the cycle back to sam"
+      },
+      "rhythm_switching": {
+        "name": "Rhythm Switching",
+        "detail": "Keep the beat as the speed inside changes"
+      },
+      "voice_companion": {
+        "name": "Voice Companion",
+        "detail": "Hear a note and sing it gently"
+      },
+      "vocal_studio": {
+        "name": "Vocal Sādhana Studio",
+        "detail": "Pitch, steady notes and bol recitation"
+      },
+      "kirtan_companion": {
+        "name": "Kīrtan Companion",
+        "detail": "Find where the khol joins the kīrtan"
+      },
+      "kirtan_sync": {
+        "name": "Kīrtan Synchronization",
+        "detail": "Play along with a kīrtan"
+      },
+      "daily_quest": {
+        "name": "Daily Sādhana Quest",
+        "detail": "Short games on your Daily Mission"
+      }
+    },
+    "round": {
+      "start": "Start the round",
+      "hearAgain": "Hear it again",
+      "step": "Step",
+      "stepChoice": "Step {{n}}",
+      "noContent": "No exercises for your level yet. Your facilitator adds them.",
+      "notReady": "The Playground is not ready yet. Your facilitator turns it on.",
+      "loading": "Getting the games ready…",
+      "offline": "No internet: playing from the games kept on this phone. Your rounds are sent later.",
+      "waiting_one": "{{count}} round waits to be sent.",
+      "waiting_other": "{{count}} rounds wait to be sent.",
+      "soundFailed": "No sound could be played here. Check the volume, then tap Hear it again.",
+      "warmUp": "Welcome back! We start one step lower to warm up."
+    },
+    "summary": {
+      "pair": "{{a}} and {{b}}"
+    },
+    "sd": {
+      "instructions": "Listen. Which bol did you hear? Tap the card. You can listen again as often as you like.",
+      "pick": "Which did you hear?",
+      "compare": "Tap a card to hear it and compare.",
+      "rounds": "Rounds",
+      "freePlay": "Free play",
+      "freePlayHint": "Free play: the bols of your level’s taals, no rounds kept.",
+      "hands": {
+        "right": "right hand",
+        "left": "left hand",
+        "both": "both hands"
+      },
+      "cardSaid": "{{bols}}, {{hands}}",
+      "cardRight": "{{bols}}: this one",
+      "cardMine": "{{bols}}: your pick",
+      "thisOne": "This one",
+      "yourPick": "Your pick"
+    },
+    "mb": {
+      "instructions": "Listen to the pattern. One bol is missing (a quiet “?”). Which one?",
+      "pick": "Which bol is missing?",
+      "pickPlace": "Which bol is missing at place {{n}}?",
+      "gridHidden": "Listen closely: the pattern is not shown at this step.",
+      "hearWhole": "Hear the whole pattern",
+      "place": "Place {{n}}: {{bol}}",
+      "placeGap": "Place {{n}}: missing"
+    },
+    "rb": {
+      "instructions": "Listen. Put the bols in the order you heard: tap a bol, then tap its place.",
+      "tiles": "Bols",
+      "places": "Places",
+      "chosen": "{{bol}} chosen: now tap its place.",
+      "playMine": "Play mine",
+      "check": "Check",
+      "placeSaid": "Place {{n}}: {{bol}}",
+      "placeEmpty": "Place {{n}}: empty",
+      "placeRest": "Place {{n}}: rest",
+      "tileSaid": "{{bol}}",
+      "tileUsed": "{{bol}}, placed",
+      "hearPart": "Hear place {{n}} again"
+    },
+    "td": {
+      "instructions": "Listen to both. Was the second one faster, slower or the same?",
+      "hearBoth": "Hear A, then B",
+      "hearA": "Hear A",
+      "hearB": "Hear B",
+      "faster": "Faster",
+      "slower": "Slower",
+      "same": "The same",
+      "picture": "Each dot is a beat. Dots closer together = faster.",
+      "rowSaid": "{{name}}: {{bpm}} beats a minute"
+    },
+    "progress": {
+      "title": "My Playground progress",
+      "intro": "What your games show so far. Nothing here is shared with other students.",
+      "recognition": "Knowing by ear (games)",
+      "performance": "Playing (timing, and your facilitator’s checks)",
+      "khol": "Playing on your khol is checked by your facilitator in class.",
+      "none": "Play a round of a game to see your progress here.",
+      "correct": "{{correct}} of {{total}} right in the last weeks",
+      "rounds_one": "{{count}} round measured",
+      "rounds_other": "{{count}} rounds measured",
+      "trend": {
+        "more": "More right than 2 weeks ago",
+        "same": "About the same as 2 weeks ago",
+        "fewer": "Fewer right than 2 weeks ago — keep listening"
+      },
+      "last": "Last practised {{date}}",
+      "calibrated": "Timing measured on a tuned phone",
+      "notCalibrated": "Practice only: tune your phone in Tap the Beat",
+      "practise": "Practise this"
+    },
+    "label": {
+      "exploring": "Exploring",
+      "practising": "Practising",
+      "steady": "Steady",
+      "ready_for_review": "Ready for Review"
+    },
+    "skill": {
+      "listen_stroke": "Knowing strokes by ear",
+      "listen_phrase": "Knowing short phrases by ear",
+      "listen_tempo": "Hearing tempo changes",
+      "listen_instrument": "Knowing instruments by ear",
+      "listen_kirtan": "Following a kīrtan",
+      "rhythm_pulse": "Keeping a steady beat",
+      "rhythm_matra": "Counting mātrās",
+      "rhythm_cycle_sam": "Finding sam in the cycle",
+      "rhythm_guna": "Changing guna, steady beat",
+      "rhythm_sequence": "Putting bols in order",
+      "rhythm_recall": "Remembering patterns",
+      "vocal_pitch": "Matching a note",
+      "vocal_steady": "Holding a steady note",
+      "vocal_bol_recite": "Reciting bols",
+      "vocal_call_response": "Call and response",
+      "kirtan_entry": "Joining a kīrtan at the right place",
+      "kirtan_keep": "Keeping the kīrtan’s beat",
+      "kirtan_recover": "Finding the beat again"
+    }
+  },
   "echo": {
     "title": "Echo me",
     "tile": "Listen, then play it back",
