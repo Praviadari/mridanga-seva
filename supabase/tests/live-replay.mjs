@@ -71,7 +71,9 @@ const GO_LIVE = ['0013', '0014', '0015', '0016', '0017', '0018', '0019', '0020',
   // The read-only parent page from the weekly email's link, service role only (#640-#649).
   '0063',
   // Event details, lesson audio and notes, Under review on a recording (#680-#689).
-  '0064'];
+  '0064',
+  // No Guru in the Telugu and Hindi notice lines (#706).
+  '0067'];
 
 let failures = 0;
 let passes = 0;

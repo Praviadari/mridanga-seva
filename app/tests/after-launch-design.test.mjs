@@ -68,7 +68,8 @@ test('the staff homes load their numbers in one request, and fall back when 0050
     const text = read(screen);
     assert.match(text, /fetchStaffDashboard\(/, screen);
     assert.doesNotMatch(text, /fetchPromotionHome\(|fetchCoordinatorDashboard\(\)|fetchGuruDashboard\(\)/, `${screen} makes a second request`);
-    assert.match(text, /<StaffToday /, screen);
+    // The facilitator's Today boxes are inside the Needs attention strip since #702.
+    assert.match(text, /<StaffToday |<NeedsAttention /, screen);
   }
   const home = read('src/data/home.ts');
   assert.match(home, /rpc\('staff_dashboard'\)/);

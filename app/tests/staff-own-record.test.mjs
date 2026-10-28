@@ -65,10 +65,11 @@ test('the Me circle is on the staff homes only when the login has its own record
   const shortcuts = src('components/staff-shortcuts.tsx');
   assert.match(shortcuts, /\.\.\.\(me \? \[\{ key: 'me'.*router\.push\('\/staff\/me'\)/s);
   assert.match(shortcuts, /me = false/, 'hidden by default');
-  for (const file of ['screens/coordinator-home.tsx', 'screens/guru-home.tsx']) {
-    assert.match(src(file), /hasOwnRecord\(myId\)/, file);
-    assert.match(src(file), /me=\{me\}/, file);
-  }
+  assert.match(src('screens/coordinator-home.tsx'), /hasOwnRecord\(myId\)/);
+  assert.match(src('screens/coordinator-home.tsx'), /me=\{me\}/);
+  // The facilitator (#700): Me is a row of Settings → Personal, shown only with an own record.
+  assert.match(src('lib/facilitator-modules.ts'), /\{ key: 'me', icon: 'person', label: 'facilitatorHome\.rows\.me', href: '\/staff\/me', ownRecord: true \}/);
+  assert.match(src('app/staff/modules/[key].tsx'), /void hasOwnRecord\(myId\)\.then/);
 });
 
 /** A fake database client answering the card query with `answer`. */

@@ -2192,3 +2192,12 @@ receipt is the recording's id and `submitted_at`.
 
 No new job (16). Tests: section "0064 learn screens" in `supabase/tests/smoke-test.mjs` (32 checks) and
 `app/tests/learn-screens.test.mjs`.
+
+## Facilitator wording (0067)
+
+`0067_facilitator_wording.sql` ([DECISIONS.md #706](DECISIONS.md)) replaces the two text helpers that write the line
+under a notice's title, `promotion_push_line(kind, lang)` (0017) and `team_push_line(kind, lang, extra)` (0023), with the
+same lines except four Telugu and Hindi ones: the facilitator is ఫెసిలిటేటర్ గారు / फ़ैसिलिटेटर, never గురువుగారు /
+गुरुजी. English, the privileges (internal: no execute for logins) and every stored row are unchanged; notices already
+queued keep their text. The role's value stays `guru` everywhere. Smoke test: 5 checks (no te/hi line says Guru, the
+new words, English as before, still internal, runs twice).

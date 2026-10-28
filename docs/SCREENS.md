@@ -16,6 +16,10 @@ screen numbers and the older working names; the app now says In class now (C6), 
 Newcomers, Follow-ups (C10), Record a call (C11), Mark progress (C9), Lessons (G4/G5), Level-ups (C22, C23, G7),
 Seva roster (C20), Instruments (C19), Count instruments (stocktake), Suggestions (C18), All students (G3), Form
 choices (G12), Change history (G11), Set-up (Running the class) and To do (Waiting for you); full list in #353.
+Since the Facilitator SOP review (28 Oct 2026, [DECISIONS.md #707](DECISIONS.md)): Administration (Set-up), Funds
+(Class fund), Audit History (G11), App Diagnostics (G16), Referral Sources (G13), Sign-in Security (G15), Approve
+coordinator; no screen says "Guru" (the role's value stays `guru`, [#706](DECISIONS.md)). The facilitator's Home is the
+eleven modules: see "Facilitator modules" below.
 
 Since 1 Oct 2026 each role has tabs ([DECISIONS.md #36](DECISIONS.md)): students Home (S1) · My QR (S3) ·
 Announcements (S10); the Guru and coordinators Home (G1 or C1) · Attendance (C5) · Students (C7) ·
@@ -71,7 +75,7 @@ screens open on top of the tabs with a back button.
 
 | # | Screen | Status | Code |
 |---|---|---|---|
-| G1 | Home (Home tab, `/staff`), since the launch UI 14 Oct 2026 ([DECISIONS.md #350-#353](DECISIONS.md)): as C1, with the Today boxes in class now, this week (a number only) and to do; ring, coloured by family and grouped (#368): blue Overview; purple Level-ups (nominations to decide, G7), Assessments, Lessons; orange Events & polls, Ishtagoshti; green Welcome desk, Newcomers; no circle repeats a tab. Side menu: Class (Follow-ups by coordinator, Groups, Seva roster, Instruments), Teaching (Practice, Suggestions), Seva (Class fund), Reports (Reports G8, How students found us G13, Change history G11), Set-up (Coordinators G2, All students G3, Centres G9, Settings G10, Form choices G12), You. Overview holds students who came this week, in class (opens C7 not left), newcomers, follow-ups to check (C10), the level-up queue and students per level and per status Under the band, once per privacy-notice version: the **privacy notice card** (0060, [DECISIONS.md #577](DECISIONS.md)): an adult reads the notice and ticks "I have read the privacy notice and agree"; a student registered as a child who is 18 now gives their own consent the same way; a child is asked to show it to the parent (Done). Nothing is blocked meanwhile. | Built | `app/src/screens/guru-home.tsx` (shown by `app/src/app/staff/(tabs)/index.tsx`), `app/src/data/home.ts`, `app/src/components/staff-shortcuts.tsx`, `side-menu.tsx`, `privacy-notice-card.tsx`, `app/src/data/notice-card.ts` |
+| G1 | **Since 28 Oct 2026 the 11-module Home** ([DECISIONS.md #700-#705](DECISIONS.md); "Facilitator modules" below): the band with the menu button and the bell, the "Needs attention" strip (the three Today boxes, folds away, remembered on the device), then eleven circles in three columns (3 + 3 + 3 + 2, last two centred; more columns on a laptop, fewer when 320 px at large text or 200 % zoom), "Did you know?" under them; the side menu lists the same modules. *Before 28 Oct:* since the launch UI 14 Oct 2026 ([DECISIONS.md #350-#353](DECISIONS.md)): as C1, with the Today boxes in class now, this week (a number only) and to do; ring, coloured by family and grouped (#368): blue Overview; purple Level-ups (nominations to decide, G7), Assessments, Lessons; orange Events & polls, Ishtagoshti; green Welcome desk, Newcomers; no circle repeats a tab. Side menu: Class (Follow-ups by coordinator, Groups, Seva roster, Instruments), Teaching (Practice, Suggestions), Seva (Class fund), Reports (Reports G8, How students found us G13, Change history G11), Set-up (Coordinators G2, All students G3, Centres G9, Settings G10, Form choices G12), You. Overview holds students who came this week, in class (opens C7 not left), newcomers, follow-ups to check (C10), the level-up queue and students per level and per status Under the band, once per privacy-notice version: the **privacy notice card** (0060, [DECISIONS.md #577](DECISIONS.md)): an adult reads the notice and ticks "I have read the privacy notice and agree"; a student registered as a child who is 18 now gives their own consent the same way; a child is asked to show it to the parent (Done). Nothing is blocked meanwhile. | Built | `app/src/screens/guru-home.tsx` (shown by `app/src/app/staff/(tabs)/index.tsx`), `app/src/data/home.ts`, `app/src/components/staff-shortcuts.tsx`, `side-menu.tsx`, `privacy-notice-card.tsx`, `app/src/data/notice-card.ts` |
 | — | Follow-ups per coordinator (Guru, #240): overdue and escalated calls of each coordinator, each opening C10 for them; a button to all calls | Built | `app/src/app/staff/follow-ups-by-coordinator.tsx`, `GuruFollowUps` in `app/src/screens/guru-home.tsx` |
 | — | Set-up (was Running the class; Guru only, #240, #350): G8, G2, G3, G10, G9, G11, G12, G13 as a list; no longer offered on the home or in the menu (its screens are the menu's Reports and Set-up groups), kept for links | Built | `app/src/app/staff/running-the-class.tsx`, `app/src/components/admin-links.tsx` |
 | G2 | Coordinators (round 8): the facilitator and coordinators with their mentees and duty hours, the people waiting for a role, logins put aside; on a person: make a waiting person a coordinator or link them to a student record without a login, write duty hours, pick mentees and move them to another coordinator, switch a login off or on (a coordinator with mentees must hand them over first); every change asks first; since 0036 the staff member's gender (for matching students) and referral code. Guru only ([DECISIONS.md #45](DECISIONS.md)) | Built | `app/src/app/staff/coordinators/index.tsx`, `coordinators/[id].tsx`, `app/src/data/coordinators.ts` |
@@ -90,6 +94,63 @@ screens open on top of the tabs with a back button.
 
 Coordinator screens that the Guru also uses live in `app/src/app/staff/`
 (see ARCHITECTURE.md "Navigation by role").
+
+## Facilitator modules (28 Oct 2026, [DECISIONS.md #700-#709](DECISIONS.md))
+
+The facilitator's Home (G1) shows eleven circular modules in the order Sarvesh Prji's Facilitator SOP 360° review
+(27 Oct 2026) locked. Each opens a **module landing screen** `/staff/modules/<key>` (`app/src/app/staff/modules/[key].tsx`)
+with sections; each row opens a screen that already existed, **at its old address** (no screen moved or was copied).
+Back from a screen → the module → Home. The tree is `app/src/lib/facilitator-modules.ts`; the Home grid and the Needs
+attention strip are `app/src/components/facilitator-modules.tsx`; the side menu (`staff-shortcuts.tsx`
+`staffMenuGroups`) lists the same modules. Modules and rows are hidden from a role that cannot use them (Admin,
+Coordinators, Security & Audits are facilitator-only); that is not the guard: each screen checks the role and
+row-level security refuses the data. The coordinator home (C1) is unchanged.
+
+| Module (key) | Section → row (address) |
+|---|---|
+| Admin (`admin`) | Centres → Centres G9 (`/staff/centres`); Operations → Form choices G12 (`/staff/options`) |
+| Coordinators (`coordinators`) | Team → Coordinators G2 (`/staff/coordinators`); Follow-ups → Follow-ups by coordinator (`/staff/follow-ups-by-coordinator`) |
+| Students (`students`) | Directory → Student list C7 (`/staff/class-list`, the Students tab's page on top), All students G3 (`/staff/database`, facilitator), Print QR cards C24 (`/staff/qr-cards`); Registration → Welcome desk C2 (`/staff/register`), Newcomers (`/staff/new-joiners`), Import students (`/staff/database/import`, facilitator); Attendance → Check-in C5 (`/staff/mark-attendance`, the tab's page on top), In class now C6 (`/staff/here-now`); Follow-ups → Follow-up calls C10 (`/staff/calls`, the tab's page on top) |
+| Teaching (`teaching`) | Syllabus and lessons → Lessons G4/G5 (`/staff/levels`), Suggestions C18 (`/staff/suggestions`); Assessments (`/staff/assessments`); Level-ups G7 (`/staff/promotion`; its count on the circle); Practice S5 (`/staff/practice`); Ishtagoshti (Śloka Study) (`/staff/ishtagoshti`, the tab: opened in the tabs) |
+| Inventory (`inventory`) | Instruments and assets → Instruments C19 (`/staff/inventory`), Scan a label (`/staff/inventory/scan`); Counts and labels → Count instruments (`/staff/inventory/stocktake`), Print labels (`/staff/inventory/labels`) |
+| Media (`media`) | **Coming soon**: dimmed, not a button; nothing built (lead decision 28-10-2026). Its address says Coming soon |
+| Events & Seva (`events`) | Events → Events & polls C16/C17 (`/staff/events`); Seva → Seva roster C20 (`/staff/duty`); Communications → Updates C15 (`/staff/announcements`, the tab), Groups (`/staff/groups`) |
+| Funds (`funds`) | Class fund → Balance and entries (`/staff/fund`), Categories (`/staff/fund/categories`) |
+| Reports (`reports`) | Overview (`/staff/overview`); Reports and exports → Reports G8 (`/staff/reports`), Referral Sources G13 (`/staff/heard-about`, facilitator) |
+| Security & Audits (`security`) | Security → Sign-in Security G15 (`/staff/sign-in-codes`); Privacy → Data requests G14 (`/staff/data-requests`); Audits → Audit History G11 (`/staff/audit-log`); Technical → App Diagnostics G16 (`/staff/app-errors`) |
+| Settings (`settings`) | Class rules → Class settings G10 (`/staff/settings`, facilitator); Communications → Weekly email to parents (`/staff/parent-digest`); Personal → My profile A3 (`/staff/profile`), Notifications A2 (`/staff/notifications`, also the bell), My own student page (`/staff/me`, only with an own record, 0053) |
+
+**Old way in → module** (every destination of the facilitator's old ring, side menu and tabs, each in exactly one module):
+
+| Before 28 Oct 2026 | Now |
+|---|---|
+| Ring: Overview | Reports → Overview |
+| Ring: Level-ups (count) | Teaching → Level-ups (count on Teaching) |
+| Ring: Assessments, Lessons | Teaching |
+| Ring: Events & polls | Events & Seva → Events |
+| Ring: Ishtagoshti | Teaching → Ishtagoshti (Śloka Study) |
+| Ring: Welcome desk, Newcomers | Students → Registration |
+| Ring: Me (own record) | Settings → Personal → My own student page |
+| Menu Class: Follow-ups by coordinator | Coordinators → Follow-ups |
+| Menu Class: Groups | Events & Seva → Communications |
+| Menu Class: Seva roster | Events & Seva → Seva |
+| Menu Class: Instruments | Inventory → Instruments and assets |
+| Menu Teaching: Practice, Suggestions | Teaching |
+| Menu Seva: Class fund | Funds |
+| Menu Reports: Reports, How students found us, Change history | Reports → Reports G8, Referral Sources; Security & Audits → Audit History |
+| Menu Set-up: Coordinators | Coordinators → Team |
+| Menu Set-up: All students | Students → Directory |
+| Menu Set-up: Centres, Form choices | Admin |
+| Menu Set-up: Settings | Settings → Class rules |
+| Menu Set-up: Sign-in codes, App errors | Security & Audits |
+| Menu You: Notifications | Settings → Personal (and the bell) |
+| Person card: My profile | Settings → Personal (and the person card in the menu) |
+| Tabs: Check-in, Students, Follow-ups, Updates | stay as tabs (daily shortcuts); in the tree: Students → Check-in, Student list, Follow-up calls; Events & Seva → Updates |
+| Today boxes: In class now, this week, To do | the Needs attention strip; In class now also Students → Attendance |
+
+Not in the tree (opened from inside other screens, as before): My data and My sign-in code
+(My profile), Weekly email preview (C8), Taals (Practice), Learn more, the games, What's new, Running the class
+(`running-the-class.tsx`, no link since #350).
 
 ## Phase 2 (on main since the Phase 2 merge; on Android with the new APK)
 

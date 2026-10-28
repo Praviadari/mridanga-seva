@@ -113,7 +113,8 @@ with m(migration, present) as (values
   ('0061', to_regclass('public.client_errors') is not null),
   ('0062', exists (select 1 from pg_proc where proname = 'claim_web_push' and pronamespace = 'public'::regnamespace)),
   ('0063', exists (select 1 from pg_proc where proname = 'parent_view' and pronamespace = 'public'::regnamespace)),
-  ('0064', exists (select 1 from pg_proc where proname = 'start_submission_review' and pronamespace = 'public'::regnamespace))
+  ('0064', exists (select 1 from pg_proc where proname = 'start_submission_review' and pronamespace = 'public'::regnamespace)),
+  ('0067', exists (select 1 from pg_proc where proname = 'team_push_line' and pronamespace = 'public'::regnamespace and prosrc like '%ఫెసిలిటేటర్%'))
 )
 select migration, case when present then 'yes' else 'no' end as present from m
 union all
@@ -125,7 +126,7 @@ select 'MISSING', coalesce((select string_agg(a.migration, ' ' order by a.migrat
 order by 1;
 ```
 
-## B. Migrations 0013-0064, one file per run
+## B. Migrations 0013-0067, one file per run
 
 For each row: GitHub main → `supabase/migrations/<file>` → **Copy raw file** → LIVE → SQL Editor →
 New query → paste → check the project → **Run** → then paste the probe again (or keep it in a second
@@ -194,7 +195,8 @@ a second paste. So pasting a file twice by mistake is harmless; still, never do 
 
 | M0063 | `0063_parent_view.sql` (branch `parent-view`) | Praveen · dashboard | No rows; probe `0063`, `MISSING` `none`; verification row 3 `16 of 16` (no new job) | **The parent page** ([#640-#649](DECISIONS.md), re-score 26-10-2026 gap 10): new setting `parent_view_enabled` = **false** (changed only by the Guru's `set_parent_view`; audited); new `parent_view` (one child's read-only page for a guardian row; only while that parent may get the weekly email; logs each opening in `access_log` as `parent_view`), `stop_parent_view` (= the weekly email's Unsubscribe), `parent_view_on` (service role only, for `notify-parents`), `parent_view_overview` (staff). No table, policy or stored row changes; nothing opens to anon. Safe to run twice. **TEST first** (`fhuqyk…`), then LIVE, then deploy `notify-parents` from main (the link in the weekly email and the page's answers). In any other order nothing breaks: an older function sends no link; before 0063 the newer function sends none either. The Guru switches the page on only after the paper form's line D carries the page sentence (OPERATIONS "Weekly email to parents" → "The parent page") |
 | M0064 | `0064_learn_screens.sql` (branch `learn-screens`) | Praveen · dashboard | No rows; probe `0064`, `MISSING` `none`; verification row 3 `16 of 16` (no new job) | **Learn screens** ([#680-#689](DECISIONS.md), Guru's student-module specification 27-10-2026): `events` gets six optional columns (`reporting_at`, `rehearsal`, `dress_code`, `coordinator_id`, `attendee_role`, `maps_url`) with column rights for signed-in people (row-level security unchanged) and a new trigger `events_details_guard` (`guard_event_details`); `materials` gets `audio_path`, `audio_name`, `audio_size`, `notes` and an index; **`guard_material`, `material_file_readable`, `material_file_uploadable`, `material_file_deletable` replaced** with the same rules plus the lesson audio; the bucket `material-files` takes audio types (still private, still 10 MB); new `material_audio_path_ok`; `assessment_submissions.review_started_at` and `start_submission_review` (staff; sets it once). Changes no stored row. Safe to run twice. **TEST first** (`fhuqyk…`), then LIVE, **before** the OTA with event details, lesson tabs and Under review (an older app ignores the new columns; a newer app on a database without 0064 cannot load events or lessons) |
-**A file newer than 0064 on main:** the replay's first check fails until this table lists it. Add it
+| M0067 | `0067_facilitator_wording.sql` (branch `claude/facilitator-home-221f89`) | Praveen · dashboard | No rows; probe `0067`, `MISSING` `none`; verification row 3 `16 of 16` (no new job) | **No Guru in the Telugu and Hindi notices** ([#706](DECISIONS.md), Facilitator SOP 360° review 27-10-2026): **`promotion_push_line` and `team_push_line` replaced** with the same lines except four te/hi ones (ఫెసిలిటేటర్ గారు / फ़ैसिलिटेटर instead of గురువుగారు / गुरुजी); English unchanged; privileges unchanged. No table, policy or stored row changes; queued notices keep their text. Safe to run twice. Any time after 0064 (independent of 0066); best with the OTA whose te/hi strings say ఫెసిలిటేటర్ |
+**A file newer than 0067 on main:** the replay's first check fails until this table lists it. Add it
 here, with its own steps, then run it last.
 
 **0049 (launch clean-up)** is on TEST but not on main on 15 Oct 2026. It joins this table when branch
@@ -342,7 +344,8 @@ with m(migration, present) as (values
   ('0061', to_regclass('public.client_errors') is not null),
   ('0062', exists (select 1 from pg_proc where proname = 'claim_web_push' and pronamespace = 'public'::regnamespace)),
   ('0063', exists (select 1 from pg_proc where proname = 'parent_view' and pronamespace = 'public'::regnamespace)),
-  ('0064', exists (select 1 from pg_proc where proname = 'start_submission_review' and pronamespace = 'public'::regnamespace))
+  ('0064', exists (select 1 from pg_proc where proname = 'start_submission_review' and pronamespace = 'public'::regnamespace)),
+  ('0067', exists (select 1 from pg_proc where proname = 'team_push_line' and pronamespace = 'public'::regnamespace and prosrc like '%ఫెసిలిటేటర్%'))
 ),
 last_in_order as (select coalesce(max(a.migration), 'before 0010') as v from m a
   where a.present and not exists (select 1 from m b where b.migration <= a.migration and not b.present)),
@@ -353,7 +356,7 @@ jobs(name) as (values ('mridanga-status-refresh'), ('mridanga-close-visits'), ('
   ('mridanga-cron-history-purge'), ('mridanga-orphan-files'), ('mridanga-parent-notices'), ('mridanga-minor-signups'),
   ('mridanga-parent-digests'), ('mridanga-data-requests'), ('mridanga-retention'), ('mridanga-client-errors-purge')),
 checks(sort, check_name, ok, found, expected) as (
-  select 1, 'last migration', (select v from last_in_order) = '0064', (select v from last_in_order), '0064'
+  select 1, 'last migration', (select v from last_in_order) = '0067', (select v from last_in_order), '0067'
   union all select 2, 'migrations missing', (select v from missing) = 'none', (select v from missing), 'none'
   union all select 3, 'scheduled jobs',
     (select count(*) from jobs j join cron.job c on c.jobname = j.name and c.active) = 16,

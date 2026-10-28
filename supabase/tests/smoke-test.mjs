@@ -143,7 +143,7 @@ process.on('uncaughtException', (error) => {
 // D14-10: every check is counted, and the run fails when fewer (or more) checks ran than expected,
 // so a block skipped by a renamed migration or a commented-out section cannot pass unseen.
 // Adding or removing checks? Run the suite and set this to the new total it prints.
-const EXPECTED_CHECKS = 2321; // 0064 learn screens: +32; 0063 parent page: +32; 0062 web push: +33; 0061 staff sign-in codes and the error log: +53; 0060 privacy notice 1.0: +35; 0059 data rights: +56; 0058 weekly parent email: +64; 0057 practice while waiting: +24; 0056 practice extras: +35; 0055 learn more links: +23; 0054 after-launch forms: +49; 0053 staff own record: +55; 0052 more practice: +56; 0051 child's sign-up at home: +80; 0050 staff dashboard: +15; 0049 launch clean-up: +30; 0048 withdrawn records and leaks: +50; 0047 form rules: +109; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
+const EXPECTED_CHECKS = 2326; // 0067 facilitator wording: +5; 0064 learn screens: +32; 0063 parent page: +32; 0062 web push: +33; 0061 staff sign-in codes and the error log: +53; 0060 privacy notice 1.0: +35; 0059 data rights: +56; 0058 weekly parent email: +64; 0057 practice while waiting: +24; 0056 practice extras: +35; 0055 learn more links: +23; 0054 after-launch forms: +49; 0053 staff own record: +55; 0052 more practice: +56; 0051 child's sign-up at home: +80; 0050 staff dashboard: +15; 0049 launch clean-up: +30; 0048 withdrawn records and leaks: +50; 0047 form rules: +109; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
 let failures = 0;
 let passes = 0;
 
@@ -8256,6 +8256,30 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   let again64 = '';
   try { await db.exec(file64); } catch (e) { again64 = String(e.message); }
   check('0064 can run again and changes no row', again64 === '' && JSON.stringify(await count64()) === JSON.stringify(before64), again64);
+}
+// ---------------------------------------------------------------- 0067 facilitator wording (DECISIONS #706)
+// No "Guru" in the Telugu and Hindi notice lines; English and the helpers' privileges as before.
+{
+  const file67 = readFileSync(new URL('migrations/0067_facilitator_wording.sql', supabaseDir), 'utf8');
+  const one = async (sql) => (await asOwner(sql))[0];
+  const guruLines = async () => (await one(`select count(*)::int as n
+      from (values ('asked'), ('ready'), ('more'), ('promoted'), ('promoted_staff'), ('not_yet')) k(kind), (values ('te'), ('hi')) l(lang)
+     where promotion_push_line(kind, lang) ~ '(గురు|गुरु)' or team_push_line('approved', lang, 'x') ~ '(గురు|गुरु)'`)).n;
+  check('0067 #706: no Telugu or Hindi notice line says Guru', (await guruLines()) === 0);
+  const named = await one(`select promotion_push_line('more', 'te') as te, promotion_push_line('not_yet', 'hi') as hi,
+    team_push_line('approved', 'te') as team_te, team_push_line('approved', 'hi') as team_hi`);
+  check('0067 #706: the lines name the facilitator (ఫెసిలిటేటర్ / फ़ैसिलिटेटर)', named.te.includes('ఫెసిలిటేటర్') && named.hi.includes('फ़ैसिलिटेटर')
+    && named.team_te.includes('ఫెసిలిటేటర్') && named.team_hi.includes('फ़ैसिलिटेटर'), JSON.stringify(named));
+  const en67 = await one(`select promotion_push_line('more', 'en') as more, team_push_line('approved', 'en') as approved,
+    team_push_line('duty', 'te', 'Sat 18:00') as duty`);
+  check('0067: English and the other lines are as before', en67.more === 'The facilitator asks for more feedback.'
+    && en67.approved === 'The facilitator added your suggestion to the lessons.' && en67.duty === 'రేపు మీకు డ్యూటీ ఉంది: Sat 18:00', JSON.stringify(en67));
+  const grants67 = await one(`select has_function_privilege('authenticated', 'promotion_push_line(text, text)', 'execute') as promo,
+    has_function_privilege('authenticated', 'team_push_line(text, text, text)', 'execute') as team`);
+  check('0067: the two helpers stay internal (no execute for logins)', grants67.promo === false && grants67.team === false, JSON.stringify(grants67));
+  let again67 = '';
+  try { await db.exec(file67); } catch (e) { again67 = String(e.message); }
+  check('0067 can run again', again67 === '' && (await guruLines()) === 0, again67);
 }
 // ---------------------------------------------------------------- row-level security
 const seen =await asApp('authenticated', arjun, 'select full_name from students');
