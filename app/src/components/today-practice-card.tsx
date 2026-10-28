@@ -4,17 +4,25 @@
 // or free practice), the guna and tempo, the minutes suggested, how far today is, and one big Start / Continue to the
 // practice tools, which start the timer with the first sound (S5). Worked out in lib/today-practice.ts. Until it is
 // loaded (or without internet) the card still shows Start.
+//
+// Under the khol line, the Daily Sādhana Quest (docs/RHYTHM_PLAYGROUND.md §7.10; docs/DECISIONS.md #754): 2-4 short
+// Playground games for today, each a line "Listen · Missing Beat · 2 min" that opens the game with a ready round and
+// is ticked when played. The khol stays first. Shown only for a student the Playground is on for; its code is loaded
+// when the card is shown (a separate download on the web, #650). A skipped day loses nothing and says nothing.
 
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
+import { useAuth } from '@/auth/auth-provider';
 import type { TodayPractice } from '@/lib/today-practice';
+import type { QuestLineTo } from '@/screens/playground/daily-quest-load';
 import { cardLook, spacing, useTheme } from '@/theme/use-theme';
 
 import { AppText } from './app-text';
 import { Button } from './button';
-import { IconBadge } from './icon';
+import { Icon, IconBadge } from './icon';
 import { ProgressBar } from './progress-bar';
 
 /** Props for TodayPracticeCard. */
@@ -95,10 +103,72 @@ export function TodayPracticeCard({ today, slim }: TodayPracticeCardProps) {
       </View>
       {today ? <ProgressBar done={done} total={today.minutes} label={t('todayPractice.progressLabel')} valueText={valueText} /> : null}
       <Button size="large" icon="play" label={start} accessibilityLabel={`${start}: ${what}`} onPress={() => router.push('/student/practice')} />
+      <DailyQuest />
     </View>
   );
 }
 
+/** Today's Playground lines, read when the card comes into view (so a game just played shows ticked). */
+function useDailyQuest(): QuestLineTo[] | null {
+  const { profile } = useAuth();
+  const profileId = profile?.id ?? '';
+  const [lines, setLines] = useState<QuestLineTo[] | null>(null);
+  useFocusEffect(
+    useCallback(() => {
+      let live = true;
+      if (profile?.role !== 'student') return undefined;
+      void import('@/screens/playground/daily-quest-load')
+        .then((m) => m.loadDailyQuest(profileId))
+        .then((next) => {
+          if (live) setLines(next);
+        })
+        .catch(() => undefined);
+      return () => {
+        live = false;
+      };
+    }, [profileId, profile?.role]),
+  );
+  return lines;
+}
+
+/** The quest's lines: "Today in the Playground", each game a button, ticked when done. */
+function DailyQuest() {
+  const { t } = useTranslation();
+  const { colors } = useTheme();
+  const lines = useDailyQuest();
+  if (!lines || lines.length === 0) return null;
+  return (
+    <View style={[styles.quest, { borderTopColor: colors.border }]}>
+      <AppText variant="label" tone="muted">
+        {t('todayPractice.questTitle')}
+      </AppText>
+      {lines.map((line) => {
+        const name = t(`playground.game.${line.game}.name`);
+        const group = t(line.group === 'listening' ? 'todayPractice.questListen' : 'todayPractice.questRhythm');
+        const said = t(line.done ? 'todayPractice.questDoneSaid' : 'todayPractice.questSaid', { group, name, minutes: line.minutes });
+        return (
+          <Pressable
+            key={line.game}
+            accessibilityRole="button"
+            accessibilityLabel={said}
+            onPress={() => router.push({ pathname: line.route, params: { mode: 'daily', len: String(line.len) } })}
+            style={({ pressed }) => [styles.line, { borderColor: colors.border }, pressed ? styles.pressed : null]}
+          >
+            <Icon name={line.done ? 'tick' : 'play'} size={20} color={line.done ? colors.accent : colors.text} />
+            <AppText style={styles.lineText}>
+              {t('todayPractice.questLine', { group, name, minutes: line.minutes })}
+            </AppText>
+            {line.done ? (
+              <AppText variant="small" tone="muted">
+                {t('todayPractice.questDone')}
+              </AppText>
+            ) : null}
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
 const styles = StyleSheet.create({
   slim: {
     paddingHorizontal: spacing.md,
@@ -125,5 +195,25 @@ const styles = StyleSheet.create({
   words: {
     flex: 1,
     gap: 2,
+  },
+  quest: {
+    gap: spacing.xs,
+    borderTopWidth: 1,
+    paddingTop: spacing.sm,
+  },
+  line: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    minHeight: 44,
+    paddingHorizontal: spacing.sm,
+    borderWidth: 1,
+    borderRadius: 8,
+  },
+  lineText: {
+    flex: 1,
+  },
+  pressed: {
+    opacity: 0.7,
   },
 });

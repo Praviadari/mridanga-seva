@@ -23,6 +23,7 @@ import type { Challenge, GameId, GeneratedRound, PlayedRound, RoundItem, StepAdv
 import { playedRound, pickOutcome, savedItem, summarise, TRIES, type PickOutcome, type RoundSummary } from '@/lib/playground-games/round';
 
 import { loadPlayground, saveRound, type PlaygroundLoad } from './playground-data';
+import { useRoundParams } from './round-params';
 
 /** Where the screen is. */
 export type RoundPhase = 'loading' | 'off' | 'empty' | 'ready' | 'playing' | 'summary';
@@ -36,6 +37,8 @@ const freshCurrent = (): Current => ({ tries: 0, outcome: null, replays: 0, show
 export function useGameRound(game: GameId) {
   const { profile } = useAuth();
   const profileId = profile?.id ?? '';
+  // From the Daily Sādhana Quest or Surprise me: saved with that mode, N challenges (#754).
+  const { mode, len } = useRoundParams();
   const [load, setLoad] = useState<PlaygroundLoad | null>(null);
   const [step, setStep] = useState<number | null>(null);
   const [round, setRound] = useState<GeneratedRound | null>(null);
@@ -102,9 +105,10 @@ export function useGameRound(game: GameId) {
         game,
         step: s,
         seed: roundSeed(load.state.studentId, game, today, todays + 1),
-        mode: 'play',
+        mode,
         seen: seenItems(load.rounds),
         now: Date.now(),
+        roundLen: len,
       });
       // A challenge the check refused is dropped, never shown, and reported without personal data (§8.5).
       if (made.dropped.length > 0) void reportDroppedChallenges(made.dropped, made.recipe.contentVersion);
@@ -119,7 +123,7 @@ export function useGameRound(game: GameId) {
       saved.current = false;
       return made;
     },
-    [load, chosenStep, game],
+    [load, chosenStep, game, mode, len],
   );
 
   const challenge: Challenge | null = round?.challenges[at] ?? null;

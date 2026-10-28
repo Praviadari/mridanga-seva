@@ -2238,10 +2238,12 @@ retention job remove Playground data with the record.
 **TEST seed** `supabase/seed/playground_test.sql` (never LIVE; it refuses a project without seed.sql's example
 students): switches placeholders and the Playground on, adds Prji's first set of 4 placeholder bols **te | re | khe |
 ta** (#722), 4 templates and 30 exercises written only with them (Sound Detective, Missing Beat, Rhythm Builder, Tempo
-Detective), retires any other placeholder bols and their exercises, and publishes when something changed. Safe to run
+Detective) and, for the rhythm games (W4, #750-#755), 4 more templates and 25 exercises (Tap the Beat, Echo Challenge,
+Tāla Cycle Master, Rhythm Switching; the guna per level, switch orders and tempo caps are template data for Prji's
+D3/D4), retires any other placeholder bols and their exercises, and publishes when something changed. Safe to run
 twice. On TEST 28-10-2026: version 1 (an earlier 14-bol set), then version 2 (the four).
 
-Tests: section "0065 Rhythm Playground engine" in `supabase/tests/smoke-test.mjs` (67 checks) and
+Tests: section "0065 Rhythm Playground engine" in `supabase/tests/smoke-test.mjs` (69 checks, 2 of them W4's rhythm rounds) and
 `app/tests/playground-engine.test.mjs` (the engine, DYN-01..08).
 
 ## Facilitator safeguards (0066)

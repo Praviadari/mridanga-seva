@@ -4,6 +4,8 @@
 // position(): the audio clock in the browser, the looping file's place on a phone), never from JavaScript timers, and
 // moved by the phone's own delay found once with "Tune to this phone" (calibrationOffset). Each finished cycle gets
 // 0-3 stars. Echo me (lib/echo.ts) grades its answers with the same scorer. Nothing here leaves the phone.
+// The Rhythm Playground's rhythm games (#750) grade runs of taps against pulses here too (gradePulse): the middle error,
+// its spread and "Steady" / "A little rushed" / "A little slow"; their rounds keep the timing for the student's progress.
 
 import type { SoundId } from './bols';
 import { readTaal } from './practice-pattern';
@@ -211,6 +213,109 @@ export function correctedBeat(at: number, offsetMs: number, bpm: number): number
 /** How far a tap was from the nearest beat, ms (negative = before it): the taps of "Tune to this phone". */
 export function beatErrorMs(at: number, bpm: number): number {
   return (at - Math.round(at)) * msPerBeat(bpm);
+}
+
+// ---------------------------------------------------------------- pulse and evenness (Rhythm Playground, #750)
+
+/** How a run of pulse taps went, from the middle tap error: never "off beat" or "wrong" (§7.2). */
+export type PulseVerdict = 'steady' | 'rushed' | 'slow';
+
+/** The middle tap error within this, either way, is "Steady", ms; with "Relaxed timing" the wider one. */
+export const STEADY_MS = 45;
+export const RELAXED_STEADY_MS = 80;
+/** A tap takes the nearest expected pulse within this share of a beat (never more than PULSE_WINDOW_MS). */
+export const PULSE_WINDOW_BEATS = 0.4;
+export const PULSE_WINDOW_MS = 250;
+/** Pulses that must be tapped for a run to count as "kept" (an answered item), share. */
+export const PULSE_KEPT_SHARE = 0.75;
+
+/** One run of taps against pulses (beats, sam or a hidden pulse in silent cycles). */
+export type PulseResult = {
+  /** Pulses expected in the run. */
+  expected: number;
+  /** Pulses with a tap near them. */
+  tapped: number;
+  /** Taps near no pulse, or a second tap on one. */
+  stray: number;
+  /** Each pulse's tap error, ms (negative = early), or null when not tapped. */
+  errorsMs: (number | null)[];
+  /** Middle error and the spread of the middle half (interquartile range), ms; null without taps. */
+  medianMs: number | null;
+  spreadMs: number | null;
+  /** tapped / expected. */
+  share: number;
+  verdict: PulseVerdict | null;
+};
+
+/** The q-quantile of sorted numbers (nearest rank, as calibrationOffset). */
+function quantile(sorted: readonly number[], q: number): number {
+  return sorted[Math.min(sorted.length - 1, Math.max(0, Math.round(q * (sorted.length - 1))))];
+}
+
+/** Middle value and interquartile spread of errors, ms; null for none. */
+export function errorSummary(errorsMs: readonly number[]): { medianMs: number; spreadMs: number } | null {
+  if (errorsMs.length === 0) return null;
+  const sorted = [...errorsMs].sort((a, b) => a - b);
+  return { medianMs: Math.round(quantile(sorted, 0.5)), spreadMs: Math.round(quantile(sorted, 0.75) - quantile(sorted, 0.25)) };
+}
+
+/** "Steady", "A little rushed" or "A little slow" from the middle error; null without taps. */
+export function pulseVerdict(medianMs: number | null, relaxed = false): PulseVerdict | null {
+  if (medianMs === null) return null;
+  const limit = relaxed ? RELAXED_STEADY_MS : STEADY_MS;
+  return Math.abs(medianMs) <= limit ? 'steady' : medianMs < 0 ? 'rushed' : 'slow';
+}
+
+/**
+ * Grades taps (absolute beats, already moved by the phone's delay) against expected pulses (absolute beats, sorted).
+ * Each tap goes to the nearest pulse within the window; a pulse takes one tap, the rest are stray. Taps in silent
+ * cycles count against the hidden pulse like any other (§7.2 acceptance).
+ */
+export function gradePulse(taps: readonly number[], pulses: readonly number[], bpm: number, relaxed = false): PulseResult {
+  const beatMs = msPerBeat(bpm);
+  const window = Math.min(PULSE_WINDOW_BEATS, PULSE_WINDOW_MS / beatMs);
+  const errorsMs: (number | null)[] = pulses.map(() => null);
+  let stray = 0;
+  for (const tap of [...taps].sort((a, b) => a - b)) {
+    let best = -1;
+    for (let i = 0; i < pulses.length; i++) {
+      const d = Math.abs(tap - pulses[i]);
+      if (d <= window + 1e-9 && errorsMs[i] === null && (best < 0 || d < Math.abs(tap - pulses[best]))) best = i;
+    }
+    if (best < 0) stray++;
+    else errorsMs[best] = Math.round((tap - pulses[best]) * beatMs);
+  }
+  const given = errorsMs.filter((e): e is number => e !== null);
+  const summary = errorSummary(given);
+  return {
+    expected: pulses.length,
+    tapped: given.length,
+    stray,
+    errorsMs,
+    medianMs: summary?.medianMs ?? null,
+    spreadMs: summary?.spreadMs ?? null,
+    share: pulses.length > 0 ? given.length / pulses.length : 0,
+    verdict: pulseVerdict(summary?.medianMs ?? null, relaxed),
+  };
+}
+
+/**
+ * Was a run "kept": enough pulses tapped and, on a tuned phone, steady. On a phone not tuned the timing is practice
+ * only (§7.2, spec §11): null, so the round saves no right or wrong for it.
+ */
+export function pulseKept(result: PulseResult, tuned: boolean): boolean | null {
+  if (!tuned) return null;
+  return result.share >= PULSE_KEPT_SHARE && result.verdict === 'steady';
+}
+
+/** The pulses of `cycles` cycles of `beats` beats from beat 0: every beat, or only sam (`samOnly`). */
+export function pulsesOf(beats: number, cycles: number, samOnly = false): number[] {
+  const out: number[] = [];
+  for (let c = 0; c < cycles; c++) {
+    if (samOnly) out.push(c * beats);
+    else for (let b = 0; b < beats; b++) out.push(c * beats + b);
+  }
+  return out;
 }
 
 /** Taps needed to tune, and the widest spread of the middle half of them that is still taken, ms. */

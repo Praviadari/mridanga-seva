@@ -8933,6 +8933,77 @@ first), then by name — never by score. A row opens the Student profile. The pr
 not on the facilitator's own record (0053) — Rate a skill (performance skills only, 0-3: not yet / beginning / nearly
 there / shown, a note; `play_ratings`) and Assign a game. Rubric words are drafts for Prji (§18.2 item 6).
 
+## 750. Rhythm games: a run of taps graded on the phone, timing only from a tuned phone — 28 Oct 2026
+
+**Decision.** Tap the Beat (pulse mode), Echo Challenge, Tāla Cycle Master and Rhythm Switching (docs/RHYTHM_PLAYGROUND.md
+§7.2, §7.3, §7.11, §7.12; package W4) share `screens/playground/use-rhythm-round.ts` (as W2's round hook, #736: the
+phone's pack and state first, the adaptive steps, a seeded round, the round queued for record_round, kept when the
+student leaves) and `use-timed-run.ts`: the run plays once through on the practice player (one loop holding the whole
+run plus a quiet beat, so nothing sounds again after the end), taps are read on the player's own clock and moved by
+the phone's tuned delay, as the tap pad does (#470). `lib/tap-grading.ts` gains `gradePulse` (each tap to the nearest
+pulse within 0.4 beat / 250 ms; taps in silent cycles count against the hidden pulse), the median error and the spread
+of the middle half, and the words "Steady" / "A little rushed" / "A little slow" (median within 45 ms, 80 ms with the
+facilitator's "Relaxed timing"). The round's `timing` is that median and spread with `calibrated` = the phone was tuned;
+an item's `ok` is set only on a tuned phone (otherwise the run is practice only, no timing word shown, spec §11).
+Tap the Beat and Echo Challenge keep their addresses: Rounds on top for students, the old play-along / call and
+response as Free play (the staff routes are unchanged). Pulse steps (template data): clicks on every beat → guide hidden
+→ silent cycles → clicks only on sam. **Why.** One timing path for all four games, on the clock the tap pad already
+trusts; the design's rule that timing is evidence only when the phone is calibrated (§12.1).
+
+## 751. Rhythm Switching: guna sections in one loop; guna, orders and tempo caps are data (D3, D4) — 28 Oct 2026
+
+**Decision.** `lib/practice-pattern.ts` `gunaSections` plays the cycle's sections one after the other at guna 1, 2, 3, 4
+or 8 (beat b holds written beats b·g … b·g+g−1, as the taal player's layakari, #491), so the pulse is identical in every
+section. What a level may use is the template's data, not code: `gunaByLevel` (W1), `orders` (the approved switch
+orders), `gunaBpmMax` (a guna is never offered above its cap) and `cyclesPerSection` (fewer when the loop would pass the
+phone's 160 s). Without `orders`: up through the playable guna and back to 1. Step 1 names the guna of a second part;
+steps 2-3 tap the beat through the switches with and without the section's name and dots; feedback per section.
+**Default (TEST seed only, for Prji's D3/D4):** Beginner 1-2, Intermediate 1-2-4, Advanced 1-2-3-4-8; orders 1-2-1,
+1-2-4-1, 1-2-4-2-1, 1-2-4-8-1; guna 4 up to 90 bpm, guna 8 up to 60; tempo 56-72 from the exercises. **Why.** The class's
+convention (1/2/4/8 or 1/2/3/4) is open; Prji sets it as content without a new app release.
+
+## 752. Echo Challenge: calls from the bank, answers graded by order of hands — 28 Oct 2026
+
+**Decision.** `lib/echo.ts` `echoCall`: an approved sequence (2-8 beats) as the call, optional silent cycles (recall
+after a delay, step data `delay`), then an answer window exactly as long as the call, with soft clicks when `clicks`.
+Pad answers: only taps inside the window count; the order of hands (left = bāyā, right = dāyā; both at once in any
+order) is the recognition answer saved (`a` = "R R L R"), each stroke's timing goes to the round's timing (tuned phones).
+Khol answers: the student's own "Did it sound the same?" after hearing the call again, saved with no right or wrong
+(spec: not scored by the app). "Send to my facilitator" for khol answers is left to the assessments wiring (W5, §10.4).
+
+## 753. Tāla Cycle Master: restart place, cycle count, sam taps — 28 Oct 2026
+
+**Decision.** Steps (template data `ask`): "restart" — the sound starts at a random beat after sam and runs to the end
+of the next whole cycle; the student taps the place where the cycle starts again (bols shown, then dots only; every
+place where the whole cycle begins is right, for cycles that repeat inside themselves); "count" — 2-4 cycles, how many
+(the answer as "3 cycles = 12 beats"); "sam" — one cycle sounds, 1-2 go on in silence, tap every sam. The question
+comes from a generator seeded with the round's seed and the challenge's place (`challengeRng`), so a replay asks the
+same (DYN-06); nothing is saved beyond W1's query and the answer. Skill `rhythm.cycle_sam` (timing evidence from the sam
+steps; the pick steps are counted as items). Kartāl-only accompaniment (§7.11 progression) waits for content.
+
+## 754. Daily Sādhana Quest on the Daily Mission card — 28 Oct 2026
+
+**Decision.** `lib/today-practice.ts` `questLines`: 2-4 lines (template `daily_quest` param `lines`, default 2) under
+the khol line, which stays first: the weakest skill first (assigned games, then never played, lower label, longest
+unpractised), then a game of the other group (one listening, one rhythm), then the next weakest, never a skill twice in
+a row; ties broken by a generator seeded with student + date; picks worked out over the last 7 days so a day is never
+the day before's games. A line ("Listen · Missing Beat · 2 min") opens the game with `?mode=daily&len=N` (3 challenges
+for listening, 2 for rhythm, `screens/playground/round-params.ts`), the round is saved with mode `daily`, and the line
+is ticked when such a round exists today (saved or on the phone). W2's listening hook reads the same parameters. The
+card loads the quest with a dynamic import (`screens/playground/daily-quest-load.ts`), only for students, so the home's
+first web download does not grow (#650); without the Playground (LIVE before release, offline first open) no lines
+show. No penalty or "missed" wording; D7 stands (Playground time is not khol practice time). **Why.** §7.10 with no new
+table: the rounds already say what was played.
+
+## 755. Surprise me — 28 Oct 2026
+
+**Decision.** `/student/playground/surprise` (the home's row, no longer "Coming soon"): three games the student can play
+now (an approved template for their level and an eligible exercise), chosen with W1's `pickDailyGames` (no skill twice
+in a row) seeded with student + day + the surprise's number; "Another surprise" after all three, not the same three.
+Each line opens its game with a one-challenge round saved with mode `surprise`. The student switches Surprise me off
+and on there (`play_set_surprise`); off, no picks are shown. **Why.** §7.15; one round of three games is three rounds
+because a round belongs to one game (record_round).
+
 ## 760. Sound Explorer: instruments as a set, ensembles checked per card — 28 Oct 2026
 
 **Context.** W1's engine already makes Sound Explorer rounds (cards from the pack's instrument names) and `record_round`

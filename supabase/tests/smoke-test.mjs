@@ -157,7 +157,7 @@ process.on('uncaughtException', (error) => {
 // D14-10: every check is counted, and the run fails when fewer (or more) checks ran than expected,
 // so a block skipped by a renamed migration or a commented-out section cannot pass unseen.
 // Adding or removing checks? Run the suite and set this to the new total it prints.
-const EXPECTED_CHECKS = 2447; // 0069 game recordings and the W5 TEST seed: +10; 0068 my data with the Playground: +4; 0065 Rhythm Playground engine: +67; 0067 facilitator wording: +5; 0066 facilitator safeguards: +40 (0059/0026/0025/0049 checks adjusted for #710/#713); 0064 learn screens: +32; 0063 parent page: +32; 0062 web push: +33; 0061 staff sign-in codes and the error log: +53; 0060 privacy notice 1.0: +35; 0059 data rights: +56; 0058 weekly parent email: +64; 0057 practice while waiting: +24; 0056 practice extras: +35; 0055 learn more links: +23; 0054 after-launch forms: +49; 0053 staff own record: +55; 0052 more practice: +56; 0051 child's sign-up at home: +80; 0050 staff dashboard: +15; 0049 launch clean-up: +30; 0048 withdrawn records and leaks: +50; 0047 form rules: +109; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
+const EXPECTED_CHECKS = 2449; // W4 rhythm rounds: +2; 0069 game recordings and the W5 TEST seed: +10; 0068 my data with the Playground: +4; 0065 Rhythm Playground engine: +67; 0067 facilitator wording: +5; 0066 facilitator safeguards: +40 (0059/0026/0025/0049 checks adjusted for #710/#713); 0064 learn screens: +32; 0063 parent page: +32; 0062 web push: +33; 0061 staff sign-in codes and the error log: +53; 0060 privacy notice 1.0: +35; 0059 data rights: +56; 0058 weekly parent email: +64; 0057 practice while waiting: +24; 0056 practice extras: +35; 0055 learn more links: +23; 0054 after-launch forms: +49; 0053 staff own record: +55; 0052 more practice: +56; 0051 child's sign-up at home: +80; 0050 staff dashboard: +15; 0049 launch clean-up: +30; 0048 withdrawn records and leaks: +50; 0047 form rules: +109; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
 let failures = 0;
 let passes = 0;
 
@@ -8381,13 +8381,13 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   // The TEST seed (§19.3): refuses LIVE, publishes placeholders on TEST, and a second run adds nothing.
   await db.exec(seed65);
   const p2 = await pack(arjun);
-  check('0065 §19.3: the TEST seed switches placeholders on and publishes Prji\'s first set te re khe ta: 4 bols, 4 templates, 30 exercises',
+  check('0065 §19.3: the TEST seed switches placeholders on and publishes Prji\'s first set te re khe ta: 4 bols, 8 templates, 55 exercises (W4 #750: + the rhythm games)',
     (await setting('playground_allow_placeholders')) === true && (await setting('playground_enabled')) === true && p2.placeholders === true
-    && p2.version === 3 && p2.exercises.filter((e) => e.placeholder).length === 30 && p2.templates.length === 5
+    && p2.version === 3 && p2.exercises.filter((e) => e.placeholder).length === 55 && p2.templates.length === 9
     && p2.bols.filter((b) => b.placeholder).map((b) => b.id).sort().join() === 'khe,re,ta,te', `v${p2.version} ${p2.exercises.length} ${p2.templates.length} ${p2.bols.length}`);
   await db.exec(seed65);
   check('0065 §19.3: ... a second run adds and publishes nothing', (await one('select max(version) as v from play_publications')).v === 3
-    && (await one('select count(*)::int as n from play_exercises where placeholder')).n === 30);
+    && (await one('select count(*)::int as n from play_exercises where placeholder')).n === 55);
   check('0065 §19.3: the seed refuses a project without seed.sql\'s example students (LIVE)', seed65.includes(`'arjun.rao@example.com'`)
     && seed65.indexOf('playground_test.sql refused') < seed65.indexOf('begin;'));
 
@@ -8530,7 +8530,16 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   let again65 = '';
   try { await db.exec(file65); } catch (e) { again65 = String(e.message); }
   check('0065 can run again and changes no row', again65 === '' && JSON.stringify(await count65()) === JSON.stringify(before65), again65);
-}
+
+  // W4 rhythm games (#750-#755): a timed round keeps the phone's "ok" and its timing; the exercise must be the game's.
+  const pulseEx = await exId('tap_the_beat', '{te,re,khe,ta}');
+  const pulse = await record(arjun, round([{ e: pulseEx, a: 'steady 16/16', ok: true, q: { t: 70, g: 1 } }, { e: pulseEx, a: 'none 0/16' }],
+    { game: 'tap_the_beat', skill: 'rhythm.pulse', timing: { median_ms: 18, spread_ms: 22, calibrated: true, offset_ms: 120 } }));
+  const pulseRow = await one(`select n_items, n_correct, mode, timing from play_rounds where id = '${pulse.id}'`);
+  check('W4 #750: Tap the Beat: the phone\'s "ok" is kept for a timing game (not re-marked), an unjudged item stays unjudged, timing saved',
+    pulseRow.n_items === 2 && pulseRow.n_correct === 1 && pulseRow.timing.median_ms === 18 && pulseRow.timing.calibrated === true, JSON.stringify(pulseRow));
+  await refusesWith('W4 #753: a Tāla Cycle round cannot carry another game\'s exercise', 'round_content_unknown', () =>
+    record(arjun, round([{ e: pulseEx, a: '3', ok: true }], { game: 'tala_cycle', skill: 'rhythm.cycle_sam' })));}
 // ---------------------------------------------------------------- 0066 facilitator safeguards (DECISIONS #710-#719)
 // The P0 rows of Sarvesh's Facilitator Module review (27-10-2026, §8): FUND-01 nobody decides their own fund entry (a
 // table rule; a refused try is logged), FUND-02 a reversal after a month's report leaves the month alone, PRIV-01 an
