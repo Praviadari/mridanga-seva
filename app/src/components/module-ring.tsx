@@ -55,6 +55,8 @@ export type ModuleRingProps = {
    * under it, read after the ring's.
    */
   more?: readonly Module[];
+  /** The ring at most this wide and tall (the student ring home, preview 28-10-2026: it must not scroll). */
+  maxSize?: number;
 };
 
 /** Diameter of a module's circle. */
@@ -92,7 +94,7 @@ const MAX_ON_RING = 10;
 const MIN_WIDTH = 340;
 
 /** The staff home's modules, as a ring (or a grid when the text is large). */
-export function ModuleRing({ title, modules, more = [] }: ModuleRingProps) {
+export function ModuleRing({ title, modules, more = [], maxSize }: ModuleRingProps) {
   const { width } = useWindowDimensions();
   const largeText = useLargeText();
   const asGrid = largeText || width < MIN_WIDTH || modules.length > MAX_ON_RING;
@@ -103,7 +105,7 @@ export function ModuleRing({ title, modules, more = [] }: ModuleRingProps) {
         <ModuleGrid modules={[...modules, ...more]} />
       ) : (
         <>
-          <Ring modules={modules} width={width} />
+          <Ring modules={modules} width={width} maxSize={maxSize} />
           {more.length > 0 ? <CircleRow modules={more} /> : null}
         </>
       )}
@@ -132,11 +134,11 @@ function guessLabel(label: string, labelWidth: number): LabelSize {
 }
 
 /** The circles placed around the drum. */
-function Ring({ modules, width }: { modules: readonly Module[]; width: number }) {
+function Ring({ modules, width, maxSize }: { modules: readonly Module[]; width: number; maxSize?: number }) {
   const { t } = useTranslation();
   const { colors } = useTheme();
   // 16 px page sides; on a phone the ring fills the width, on a laptop it stops at MAX_SIZE.
-  const size = Math.min(width - 2 * spacing.md, modules.length <= 4 ? MAX_SIZE_FEW : MAX_SIZE);
+  const size = Math.min(width - 2 * spacing.md, modules.length <= 4 ? MAX_SIZE_FEW : MAX_SIZE, maxSize ?? MAX_SIZE);
   const dense = modules.length >= DENSE_FROM;
   const ten = modules.length >= MAX_ON_RING;
   // A narrow phone (360 px): smaller circles and drum, so the top labels keep clear of the drum (#351).

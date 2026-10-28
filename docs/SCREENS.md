@@ -207,6 +207,22 @@ inside it, at their old addresses. Every screen shows a "TEST sounds" badge whil
 | P5 | Tempo Detective (`/student/playground/tempo-detective`): Hear A, then B (one clock); Hear A / Hear B alone; Faster / Slower / The same; afterwards both as rows of beat dots spaced by time | Student | Built (TEST) | `app/src/screens/playground/tempo-detective.tsx` |
 | P6 | My Playground progress (`/student/playground/progress`): per skill the label word with an icon (Exploring / Practising / Steady / Ready for Review), "12 of 15 right", trend against 2 weeks before, last practised, Practise this; recognition and performance in separate blocks under "Playing on your khol is checked by your facilitator in class."; worked out on the phone, so offline too | Student | Built (TEST) | `app/src/screens/playground/progress.tsx` |
 
+Rhythm Playground, facilitator side (package W3, [DECISIONS.md #740-#749](DECISIONS.md), design
+[RHYTHM_PLAYGROUND.md](RHYTHM_PLAYGROUND.md) §6.2, §10, §12). No migration of its own (W1's 0065), JavaScript only.
+Opened from Teaching → Practice → "Rhythm Playground". Coordinators write drafts; only the head facilitator (role
+`guru`, never named so on screen) approves, retires and publishes.
+
+| # | Screen | Who | Status | Code |
+|---|---|---|---|---|
+| F1 | Rhythm Playground (`/staff/playground`): the version students have, waiting for approval, changes for the next publish; Content library, Waiting for approval, Publish (head facilitator), Assignments, Class progress, Recordings to review (Assessments) | Guru, coordinator | Built (TEST) | `app/src/app/staff/playground/index.tsx`, `app/src/screens/staff-playground/admin-home.tsx` |
+| F2 | Content library (`/staff/playground/library?tab=`): Bols · Sounds · Exercises · Templates with status, revision, TEST placeholder; pool sizes per game and level; Add | Guru, coordinator | Built (TEST) | `library.tsx` |
+| F3 | Bol / Sound / Template / Exercise editors (`/staff/playground/{bol,sound,template,exercise}/[id]`, `new` adds): drafts saved straight to the 0065 tables; the Approval section with the login's status buttons and Delete for a never-published draft; the exercise editor's beat grid, "Copy from a taal" and "Preview generated variants" (five fixed seeds); the sound editor uploads m4a/mp3/wav ≤ 15 MB to `playground-audio` and plays it back | Guru, coordinator | Built (TEST) | `bol-editor.tsx`, `sound-editor.tsx`, `template-editor.tsx`, `exercise-editor.tsx`, `parts.tsx`, `content-rules.ts`, `app/src/data/playground-admin.ts` |
+| F4 | Waiting for approval (`/staff/playground/review`): every item sent for approval, bols first, oldest first; opens the editor | Guru (acts), coordinator (reads) | Built (TEST) | `review.tsx` |
+| F5 | Publish (`/staff/playground/publish`): new / changed / leaving in the next version, pool sizes, placeholder warning, note, Publish | Guru | Built (TEST) | `publish.tsx` |
+| F6 | Assignments (`/staff/playground/assignments`, `?student=` from the profile): game, skill, level / group / one student, step range, due in 1-4 weeks, note; running ones with End | Guru, coordinator | Built (TEST) | `assignments.tsx` |
+| F7 | Class progress (`/staff/playground/class`): a level or group; Ready for Review first, then longest without practice; labels per skill with sample size | Guru, coordinator | Built (TEST) | `class-progress.tsx` |
+| C8+ | Student profile → "Rhythm Playground" section: labels, assigned games, ratings, Rate a skill (0-3), Assign a game (not on one's own record) | Guru, coordinator | Built (TEST) | `student-panel.tsx`, `app/src/app/staff/students/[id].tsx` |
+
 Slice 4 (branch `phase2-media`, rebased on main after the Phase 2 merge), media ([DECISIONS.md #56](DECISIONS.md)): the
 lesson-video player V3 (approved), "Record myself" in S5, and recording in the app for S7 and C14 (#52).
 Phones need the next APK (react-native-webview, expo-audio); the browser works now, except YouTube on

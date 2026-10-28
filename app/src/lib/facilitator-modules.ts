@@ -160,7 +160,15 @@ export const FACILITATOR_MODULES: readonly FacilitatorModule[] = [
       },
       { key: 'assessments', title: 'facilitatorHome.sections.assessments', rows: [{ key: 'assessments', icon: 'assessment', label: 'assessments.title', href: '/staff/assessments' }] },
       { key: 'levelUps', title: 'facilitatorHome.sections.levelUps', rows: [{ key: 'promotions', icon: 'promote', label: 'home.modules.promotions', href: '/staff/promotion' }] },
-      { key: 'practice', title: 'facilitatorHome.sections.practice', rows: [{ key: 'practice', icon: 'practice', label: 'practice.module', href: '/staff/practice' }] },
+      {
+        key: 'practice',
+        title: 'facilitatorHome.sections.practice',
+        rows: [
+          { key: 'practice', icon: 'practice', label: 'practice.module', href: '/staff/practice' },
+          // Rhythm Playground content, approval, assignments and class progress (docs/DECISIONS.md #740).
+          { key: 'playground', icon: 'listen', label: 'staffPlayground.title', href: '/staff/playground' },
+        ],
+      },
       {
         key: 'ishtagoshti',
         title: 'facilitatorHome.sections.ishtagoshti',

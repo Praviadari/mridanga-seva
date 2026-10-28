@@ -644,6 +644,7 @@ to `app/dist/`. Always use this command, not a bare `npx expo export`, because
 
 | Date | Site | Commit | Built (UTC) | By |
 |---|---|---|---|---|
+| 28-10-2026 | test (ring Student Home picked by the team: slim Daily Mission card + module ring, #771; first download 2696 KB) | b2e9841 (main; entry-fb996714…; deployment 99def0c0) | 2026-10-28T11:26:31Z | Claude (wrangler, Praveen's login) |
 | 28-10-2026 | test (Playground W2: Practice-tab Playground home, Sound Detective, Missing Beat, Rhythm Builder, Tempo Detective; round-queue fix; My data Playground row; first download 2692 KB) | 35db777 (main; entry-d34c5ca2…; deployment 2db34a78) | 2026-10-28T10:44:19Z | Claude (wrangler, Praveen's login) |
 | 28-10-2026 | test (Playground engine W1: 0065 + TEST seed te/re/khe/ta, engine and shell, no student screen yet; 0068 my data with the Playground on TEST DB) | c58b9a0 (main; entry-ccd73b5f…; deployment aea049d8) | 2026-10-28T09:28:01Z | Claude (wrangler, Praveen's login) |
 | 28-10-2026 | test (Facilitator Home = 11 modules with landing screens and Needs attention; no "Guru" in en/te/hi; 0067 on TEST) | d50a0fa (main; entry-d152a258…; deployment 14787925) | 2026-10-28T08:26:19Z | Claude (wrangler, Praveen's login) |
