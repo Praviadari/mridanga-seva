@@ -101,7 +101,7 @@ export function RhythmBuilder() {
   const answerText = challenge ? beats.map((b) => writtenBeat(b, game.index)).join(' ') : '';
 
   return (
-    <GameFrame game={game} title={t('playground.game.rhythm_builder.name')} instructions={t('playground.rb.instructions')} play={play} answerText={answerText}>
+    <GameFrame game={game} title={t('playground.game.rhythm_builder.name')} instructions={[t('playground.rb.instructions')]} icon="taal" play={play} answerText={answerText}>
       {challenge ? (
         <>
           {soundFailed ? <Notice tone="error">{t('playground.round.soundFailed')}</Notice> : null}

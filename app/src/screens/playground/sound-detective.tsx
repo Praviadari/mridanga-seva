@@ -98,7 +98,8 @@ export function SoundDetective() {
     <GameFrame
       game={game}
       title={t('playground.game.sound_detective.name')}
-      instructions={t('playground.sd.instructions')}
+      instructions={[t('playground.sd.instructions')]}
+      icon="listen"
       play={play}
       answerText={challenge ? choiceText({ key: challenge.answer, beats: [] }, game.index) : ''}
       top={top}

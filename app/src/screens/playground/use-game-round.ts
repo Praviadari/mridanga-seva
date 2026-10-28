@@ -147,6 +147,9 @@ export function useGameRound(game: GameId) {
     [challenge, current, index],
   );
 
+  /** Clears "Not yet" so the student picks again (a try is left). */
+  const retry = useCallback(() => setCurrent((c) => (c.outcome === 'again' ? { ...c, outcome: null } : c)), []);
+
   const done = current.outcome === 'right' || current.outcome === 'shown';
   const last = round ? at >= round.challenges.length - 1 : true;
 
@@ -193,6 +196,7 @@ export function useGameRound(game: GameId) {
   const summary: RoundSummary | null = finished ? summarise(items, mixed) : null;
 
   return {
+    profileId,
     phase,
     load,
     index,
@@ -211,7 +215,10 @@ export function useGameRound(game: GameId) {
     start,
     replayed,
     answer,
+    retry,
     next,
+    /** The items answered so far in this round. */
+    items,
     /** No recording is approved and bundled yet: the app's synthesised strokes play (§19.3). */
     testSounds: !realSoundsReady() || Boolean(load?.pack?.placeholders),
   };

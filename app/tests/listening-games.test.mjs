@@ -295,23 +295,23 @@ test('the bīja pack te | re | khe | ta: all four games make rounds; cards are o
 
 // ---------------------------------------------------------------- feedback, saved items, summary (#736)
 
-test('feedback: right, then "listen again" once, then the answer is shown; words with an icon, never wrong or failed', () => {
+test('feedback: right, then "listen again" once, then the answer is shown — in the shared panel; never wrong or failed', () => {
   assert.equal(round.TRIES, 2);
   assert.equal(round.pickOutcome(1, true), 'right');
   assert.equal(round.pickOutcome(1, false), 'again');
   assert.equal(round.pickOutcome(2, false), 'shown');
   assert.equal(round.pickOutcome(2, true), 'right');
-  assert.equal(en.playground.feedback.right, 'That’s it!');
-  assert.equal(en.playground.feedback.again, 'Not yet — listen again.');
-  for (const outcome of ['right', 'again', 'shown']) {
-    const text = round.feedbackKey(outcome).split('.').slice(1).reduce((o, k) => o[k], en.playground);
-    assert.ok(text && round.feedbackIcon(outcome), outcome);
+  const frame = src('screens/playground/game-parts.tsx');
+  for (const part of ['<GameShell', '<InstructionsPreview', '<FeedbackPanel', '<RoundSummary']) assert.ok(frame.includes(part), part);
+  assert.match(frame, /right=\{game\.outcome === 'right'\}/);
+  assert.match(frame, /triesLeft=\{game\.outcome === 'again' \? game\.triesLeft : 0\}/);
+  for (const screen of ['sound-detective', 'missing-beat', 'rhythm-builder', 'tempo-detective']) {
+    assert.match(src(`screens/playground/${screen}.tsx`), /<GameFrame/, screen);
   }
-  for (const lang of ['en', 'te', 'hi']) assert.ok(locale(lang).playground.feedback.shown.includes('{{answer}}'), lang);
   // No Playground string says wrong, failed, lost, streak, rank or points.
   assert.doesNotMatch(JSON.stringify(en.playground), /\bwrong\b|\bfail(ed)?\b|\blost\b|\bstreak|\brank|\bpoints?\b|off beat/i);
+  assert.equal(en.playground.summary.pair, '{{a}} and {{b}}');
 });
-
 test('saved item: short keys for record_round with the first answer, first-try right, tries, replays and the review mark', () => {
   const c = make('sound_detective', 2, 5).challenges[0];
   const item = round.savedItem({ ...c, review: true }, { given: 'na', ok: false, tries: 2, replays: 3, ms: 2300.4 });

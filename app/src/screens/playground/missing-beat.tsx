@@ -65,7 +65,7 @@ export function MissingBeat() {
   const answerText = challenge ? challenge.answer.split(' ').map((b) => writtenBeat(b, game.index)).join(', ') : '';
 
   return (
-    <GameFrame game={game} title={t('playground.game.missing_beat.name')} instructions={t('playground.mb.instructions')} play={play} answerText={answerText}>
+    <GameFrame game={game} title={t('playground.game.missing_beat.name')} instructions={[t('playground.mb.instructions')]} icon="search" play={play} answerText={answerText}>
       {challenge ? (
         <>
           {soundFailed ? <Notice tone="error">{t('playground.round.soundFailed')}</Notice> : null}

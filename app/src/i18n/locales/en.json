@@ -4926,26 +4926,11 @@
         "detail": "Short games on your Daily Mission"
       }
     },
-    "khol": "Now play it on your khol.",
-    "feedback": {
-      "right": "That’s it!",
-      "again": "Not yet — listen again.",
-      "shown": "It was {{answer}}. Listen to it once more."
-    },
     "round": {
-      "instructions": "How to play",
-      "hearInstructions": "Show how to play",
       "start": "Start the round",
       "hearAgain": "Hear it again",
-      "next": "Next",
-      "finish": "See how it went",
       "step": "Step",
       "stepChoice": "Step {{n}}",
-      "review": "Review",
-      "reviewSaid": "Review: you met this one before",
-      "reviewPractice": "Review practice — new exercises come as your facilitator adds them.",
-      "itemOf": "{{n}} of {{total}}",
-      "back": "Back to Playground",
       "noContent": "No exercises for your level yet. Your facilitator adds them.",
       "notReady": "The Playground is not ready yet. Your facilitator turns it on.",
       "loading": "Getting the games ready…",
@@ -4956,17 +4941,7 @@
       "warmUp": "Welcome back! We start one step lower to warm up."
     },
     "summary": {
-      "title": "Round done",
-      "recognised": "You recognised {{correct}} of {{total}} at the first try.",
-      "close": "{{a}} and {{b}} sounded close — practise them?",
-      "review_one": "{{count}} was a review.",
-      "review_other": "{{count}} were reviews.",
-      "again": "Play another round",
-      "harder": "Ready to try a harder step?",
-      "easier": "Shall we make it a little easier?",
-      "goStep": "Go to step {{n}}",
-      "stay": "Stay at this step",
-      "saved": "Your round is kept."
+      "pair": "{{a}} and {{b}}"
     },
     "sd": {
       "instructions": "Listen. Which bol did you hear? Tap the card. You can listen again as often as you like.",
@@ -5007,9 +4982,7 @@
       "placeRest": "Place {{n}}: rest",
       "tileSaid": "{{bol}}",
       "tileUsed": "{{bol}}, placed",
-      "hearPart": "Hear place {{n}} again",
-      "again": "Not yet — the places marked “listen” sound different. Hear them again.",
-      "marks": "Vibhag marks"
+      "hearPart": "Hear place {{n}} again"
     },
     "td": {
       "instructions": "Listen to both. Was the second one faster, slower or the same?",
@@ -5268,5 +5241,61 @@
     "body_other": "{{count}} practice entries or check-ins on this phone have not reached the class yet (no internet). Signing out now deletes them.",
     "stay": "Stay signed in",
     "anyway": "Sign out anyway"
+  },
+  "playEngine": {
+    "shell": {
+      "exit": "Exit",
+      "exitHint": "Leave {{game}}. Your answers so far are kept.",
+      "progress": "Challenge {{n}} of {{total}}",
+      "testSounds": "TEST sounds",
+      "testSoundsHint": "These are the app's practice sounds, not your teacher's recordings yet.",
+      "review": "Review",
+      "reviewHint": "You met this one before. It comes back to help you remember.",
+      "reviewPractice": "Review practice — new exercises come as your facilitator adds them."
+    },
+    "instructions": {
+      "title": "How to play",
+      "readAgain": "Read again",
+      "start": "Start",
+      "step": "Step {{step}}"
+    },
+    "cards": {
+      "rightCard": "The answer",
+      "yourChoice": "Your choice",
+      "hear": "Hear {{label}}"
+    },
+    "feedback": {
+      "right": "That's it!",
+      "notYet": "Not yet — listen again",
+      "answer": "The answer: {{answer}}",
+      "listenAgain": "Listen again",
+      "tryAgain": "Try again",
+      "next": "Next",
+      "finish": "See how it went"
+    },
+    "summary": {
+      "found": "You found {{right}} of {{total}}.",
+      "done": "Round finished. Well done for practising!",
+      "closePairs": "These were close: {{pairs}}. Practise them on your khol?",
+      "waiting_one": "{{count}} round is kept on this phone and will be sent when you are online.",
+      "waiting_other": "{{count}} rounds are kept on this phone and will be sent when you are online.",
+      "khol": "Now play it on your khol.",
+      "harder": "Ready to try a harder one?",
+      "easier": "Shall we make it a little easier?",
+      "playAgain": "Play again",
+      "back": "Back to Playground"
+    },
+    "errors": {
+      "notAllowed": "Only signed-in students and staff of the class can use the Playground.",
+      "approvalGuruOnly": "Only the head facilitator approves, retires or publishes Playground content.",
+      "placeholdersNotAllowed": "TEST placeholder content cannot be published here. Retire it first.",
+      "bolNotApproved": "Approve every bol this exercise uses in the bol dictionary first.",
+      "assetNotApproved": "Approve the recordings this exercise uses first.",
+      "assetFileMissing": "The sound file is not uploaded yet.",
+      "assetLicence": "Add the credit (CC BY) or where the signed permission is kept before approving.",
+      "contentInvalid": "Please check the entry: it does not follow the bol notation or the rules for this item.",
+      "contentNotFound": "This item no longer exists. Pull down to refresh.",
+      "roundLimit": "That is a lot of practice for one day! Rest your ears and come back tomorrow."
+    }
   }
 }

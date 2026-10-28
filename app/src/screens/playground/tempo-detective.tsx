@@ -54,7 +54,7 @@ export function TempoDetective() {
   const answerText = challenge ? t(`playground.td.${challenge.answer as (typeof ANSWERS)[number]}`) : '';
 
   return (
-    <GameFrame game={game} title={t('playground.game.tempo_detective.name')} instructions={t('playground.td.instructions')} play={play} answerText={answerText}>
+    <GameFrame game={game} title={t('playground.game.tempo_detective.name')} instructions={[t('playground.td.instructions')]} icon="time" play={play} answerText={answerText}>
       {challenge ? (
         <>
           {soundFailed ? <Notice tone="error">{t('playground.round.soundFailed')}</Notice> : null}

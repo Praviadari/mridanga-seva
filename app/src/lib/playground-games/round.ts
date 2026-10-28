@@ -1,7 +1,8 @@
 // What every Playground listening game does with a round the engine made (docs/RHYTHM_PLAYGROUND.md §6.1 game flow,
-// §7 feedback words, §12.1; docs/DECISIONS.md #736): two tries per challenge, the feedback after each pick, the
-// item saved for the round (record_round re-marks it), the round's summary and the round as queued for sending. The
-// rounds themselves come from the engine (lib/playground/generator.ts, package W1); nothing here chooses content.
+// §7, §12.1; docs/DECISIONS.md #736): two tries per challenge and what each pick leads to (the words are in
+// components/playground/feedback-panel.tsx), the item saved for the round (record_round re-marks it), the round's
+// summary and the round as queued for sending. The rounds themselves come from the engine (lib/playground/
+// generator.ts, package W1); nothing here chooses content.
 
 import type { Challenge, Device, GeneratedRound, PlayedRound, RoundItem, SkillId } from '../playground/types';
 
@@ -15,16 +16,6 @@ export type PickOutcome = 'right' | 'again' | 'shown';
 export function pickOutcome(tries: number, right: boolean): PickOutcome {
   if (right) return 'right';
   return tries >= TRIES ? 'shown' : 'again';
-}
-
-/** The feedback words (§7): never "wrong", "failed" or "off beat"; shown with an icon, never by colour alone. */
-export function feedbackKey(outcome: PickOutcome): 'playground.feedback.right' | 'playground.feedback.again' | 'playground.feedback.shown' {
-  return outcome === 'right' ? 'playground.feedback.right' : outcome === 'again' ? 'playground.feedback.again' : 'playground.feedback.shown';
-}
-
-/** The feedback icon, beside the words. */
-export function feedbackIcon(outcome: PickOutcome): 'tick' | 'listen' | 'info' {
-  return outcome === 'right' ? 'tick' : outcome === 'again' ? 'listen' : 'info';
 }
 
 /** How one challenge went, as the screen counts it. */

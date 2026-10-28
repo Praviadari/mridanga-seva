@@ -20,6 +20,9 @@
 //   (lib/offline-queue.ts, #593): they belong to the login that made them.
 // - on the web, the note of whose this browser's push subscription is (lib/web-push.web.ts, #604); the
 //   subscription itself ends with the service worker.
+// - the Rhythm Playground's rounds waiting to be sent and its 30-day history on this phone, and the cached pack
+//   (lib/playground/round-queue.ts, pack-cache.ts; #728), and the student's last Playground state (lib/playground-games/
+//   state-cache.ts; #736).
 
 import { Directory, Paths } from 'expo-file-system';
 import { Image } from 'expo-image';
@@ -31,6 +34,9 @@ import { forgetMyRecordings } from '@/lib/my-recordings';
 import { forgetOfflineQueue } from '@/lib/offline-queue';
 import { forgetOfflineShell } from '@/lib/offline-shell';
 import { forgetPlayBests } from '@/lib/play-bests';
+import { forgetPack } from '@/lib/playground/pack-cache';
+import { forgetPlayground } from '@/lib/playground/round-queue';
+import { forgetPlayState } from '@/lib/playground-games/state-cache';
 import { forgetPracticeReminders } from '@/lib/practice-reminder';
 import { dismissNotifications } from '@/lib/push';
 import { forgetWebPushNote } from '@/lib/web-push';
@@ -47,6 +53,9 @@ export async function clearDeviceTraces(): Promise<void> {
   forgetWaitingPractice();
   forgetPlayBests();
   forgetOfflineQueue();
+  forgetPlayground();
+  forgetPack();
+  forgetPlayState();
   forgetWebPushNote();
   await forgetMyRecordings();
   await Promise.all([

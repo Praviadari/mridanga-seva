@@ -143,7 +143,7 @@ process.on('uncaughtException', (error) => {
 // D14-10: every check is counted, and the run fails when fewer (or more) checks ran than expected,
 // so a block skipped by a renamed migration or a commented-out section cannot pass unseen.
 // Adding or removing checks? Run the suite and set this to the new total it prints.
-const EXPECTED_CHECKS = 2321; // 0064 learn screens: +32; 0063 parent page: +32; 0062 web push: +33; 0061 staff sign-in codes and the error log: +53; 0060 privacy notice 1.0: +35; 0059 data rights: +56; 0058 weekly parent email: +64; 0057 practice while waiting: +24; 0056 practice extras: +35; 0055 learn more links: +23; 0054 after-launch forms: +49; 0053 staff own record: +55; 0052 more practice: +56; 0051 child's sign-up at home: +80; 0050 staff dashboard: +15; 0049 launch clean-up: +30; 0048 withdrawn records and leaks: +50; 0047 form rules: +109; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
+const EXPECTED_CHECKS = 2388; // 0065 Rhythm Playground engine: +67; 0064 learn screens: +32; 0063 parent page: +32; 0062 web push: +33; 0061 staff sign-in codes and the error log: +53; 0060 privacy notice 1.0: +35; 0059 data rights: +56; 0058 weekly parent email: +64; 0057 practice while waiting: +24; 0056 practice extras: +35; 0055 learn more links: +23; 0054 after-launch forms: +49; 0053 staff own record: +55; 0052 more practice: +56; 0051 child's sign-up at home: +80; 0050 staff dashboard: +15; 0049 launch clean-up: +30; 0048 withdrawn records and leaks: +50; 0047 form rules: +109; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
 let failures = 0;
 let passes = 0;
 
@@ -4214,6 +4214,10 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
     'parent_view_overview()', 'set_parent_view(boolean)',
     // 0064: the lesson-audio path check for the Storage rules; Under review (staff checked inside)
     'material_audio_path_ok(text)', 'start_submission_review(bigint)',
+    // 0065: the Rhythm Playground (roles checked inside; the three play_audio_* run as the reader in the Storage rules)
+    'playground_pack(integer)', 'my_playground_state()', 'play_set_surprise(boolean)', 'record_round(jsonb)',
+    'play_set_status(text,text,text)', 'publish_playground(text)', 'staff_playground_progress(uuid)', 'staff_playground_class(smallint,bigint)',
+    'play_audio_readable(text)', 'play_audio_uploadable(text)', 'play_audio_deletable(text)',
   ];
   const runnableBy = async (role) => (await asOwner(`select p.oid::regprocedure::text as f from pg_proc p
     where p.pronamespace = 'public'::regnamespace
@@ -4343,8 +4347,8 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
       const { col } = baseTables.find((t) => t.rel === rel);
       // 0058: parent_digest_enabled is written only through set_parent_digest (#534), staff_mfa_required only through
       // set_staff_mfa_required (0061, #582), parent_view_enabled only through set_parent_view (0063, #646), so a direct
-      // update of any of them is refused.
-      const only = rel === 'settings' ? " where key not in ('parent_digest_enabled', 'staff_mfa_required', 'parent_view_enabled')" : '';
+      // update of any of them is refused; the Playground's settings (0065, #720) only in the SQL editor.
+      const only = rel === 'settings' ? " where key not in ('parent_digest_enabled', 'staff_mfa_required', 'parent_view_enabled') and key not like 'playground%'" : '';
       const r = await tryAs('authenticated', tn[who], `update public.${rel} set ${col} = ${col}${only} returning 1`);
       if (!(r.rows > 0)) positive.push(`${who} ${rel}: ${r.error ?? '0 rows'}`);
     }
@@ -8256,6 +8260,242 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   let again64 = '';
   try { await db.exec(file64); } catch (e) { again64 = String(e.message); }
   check('0064 can run again and changes no row', again64 === '' && JSON.stringify(await count64()) === JSON.stringify(before64), again64);
+}
+
+// ---------------------------------------------------------------- 0065 Rhythm Playground engine (DECISIONS #720-#729)
+// Content approval and publishing, the pack, rounds re-marked by the server, row-level security, the TEST seed,
+// retention (180 days → weekly summaries; unreviewed game recordings after 60 days).
+{
+  const file65 = readFileSync(new URL('migrations/0065_playground.sql', supabaseDir), 'utf8');
+  const seed65 = readFileSync(new URL('seed/playground_test.sql', supabaseDir), 'utf8');
+  const one = async (sql) => (await asOwner(sql))[0];
+  const setting = async (key) => (await one(`select value from settings where key = '${key}'`))?.value;
+  const pack = async (who, have = 0) => (await asApp('authenticated', who, 'select playground_pack($1) as p', [have]))[0].p;
+
+  check('0065: the Playground is off, placeholders are not allowed, the label numbers are there (§12.2)',
+    (await setting('playground_enabled')) === false && (await setting('playground_allow_placeholders')) === false
+    && (await setting('playground_labels')).steadyItems === 20 && (await setting('playground_labels')).timingMedianMs === 60);
+  await refusesWith('0065 #720: the Guru cannot switch placeholders on from the app (SQL editor only)', 'setting_unknown', () =>
+    asApp('authenticated', guru, `update settings set value = 'true' where key = 'playground_allow_placeholders'`));
+  check('0065: nothing published yet: the pack is null', (await pack(arjun)) === null);
+  await refusesWith('0065: anon cannot read the pack', 'permission denied for function playground_pack', () => asApp('anon', null, 'select playground_pack(0)'));
+
+  // Content: coordinators write drafts; only the Guru approves (#720).
+  const bol = (who, id, status = 'draft', extra = {}) => asApp('authenticated', who, `insert into play_bols (id, written, head, level_id, status,
+    placeholder, sounds_like) values ($1, $2, 'dayan', 1, $3, $4, $5) returning *`, [id, extra.written ?? id, status, extra.placeholder ?? false,
+    extra.soundsLike ?? []]).then((r) => r[0]);
+  const draft = await bol(coordinator, 'tha', 'draft', { written: ' thā ' });
+  check('0065 #720: a coordinator adds a draft bol, trimmed, revision 1, with the author', draft.written === 'thā' && draft.revision === 1
+    && draft.created_by === coordinator && draft.published_in === null);
+  await refusesWith('0065 #720: a coordinator cannot add an approved bol', 'approval_guru_only', () => bol(coordinator, 'dhe', 'approved'));
+  await asApp('authenticated', coordinator, `update play_bols set status = 'in_review', published_in = 7, revision = 9 where id = 'tha'`);
+  check('0065 #720: ... sends it for review; published_in and revision cannot be written by hand',
+    JSON.stringify(await one(`select status, published_in, revision from play_bols where id = 'tha'`)) === JSON.stringify({ status: 'in_review', published_in: null, revision: 1 }));
+  await refusesWith('0065 #720: a coordinator cannot approve', 'approval_guru_only', () =>
+    asApp('authenticated', coordinator, `select play_set_status('bol', 'tha', 'approved')`));
+  await asApp('authenticated', guru, `select play_set_status('bol', 'tha', 'approved')`);
+  check('0065 #720: the Guru approves; the approver and time are kept', (await one(`select status, approved_by, approved_at is not null as at
+    from play_bols where id = 'tha'`)).approved_by === guru);
+  await refusesWith('0065: a bol has a written form of at most 12 characters', 'bol_invalid', () => bol(coordinator, 'dho', 'draft', { written: 'x'.repeat(13) }));
+  await refusesWith('0065: an unknown status kind is refused', 'kind_invalid', () => asApp('authenticated', guru, `select play_set_status('song', '1', 'approved')`));
+
+  const template = (who, game, steps, status = 'draft') => asApp('authenticated', who, `insert into play_templates (game, skill, response_mode,
+    level_min, level_max, steps, status) values ($1, 'listen.stroke', 'choose', 1, 3, $2, $3) returning *`, [game, steps, status]).then((r) => r[0]);
+  await refusesWith('0065: a template has 1-20 steps', 'template_invalid', () => template(coordinator, 'sound_detective', '[]'));
+  await refusesWith('0065: ... each with its step number once', 'template_invalid', () => template(coordinator, 'sound_detective', '[{"step":1},{"step":1}]'));
+  const t65 = await template(guru, 'sound_detective', '[{"step":1,"choices":2},{"step":2,"choices":3}]', 'approved');
+  const exercise = (who, seq, status = 'draft', extra = {}) => asApp('authenticated', who, `insert into play_exercises (game, template_id,
+    level_id, skills, sequence, status, placeholder, bpm_min, bpm_max) values ($1, $2, $3, '{listen.stroke}', $4, $5, $6, $7, $8) returning *`,
+    [extra.game ?? 'sound_detective', extra.game ? null : t65.id, extra.level ?? 1, seq, status, extra.placeholder ?? false,
+     extra.bpmMin ?? null, extra.bpmMax ?? null]).then((r) => r[0]);
+  await refusesWith('0065 #722: an exercise is written in the notation (dictionary ids, - or 1-4 bols a beat)', 'exercise_invalid', () =>
+    exercise(coordinator, ['Tā!']));
+  await refusesWith('0065 #722: ... at most 4 bols in a beat', 'exercise_invalid', () => exercise(coordinator, ['ta.na.ta.na.ta']));
+  await refusesWith('0065 #723: an exercise with a bol the dictionary has not approved cannot be approved', 'exercise_bol_not_approved', () =>
+    exercise(guru, ['tha', 'xyz'], 'approved'));
+  const ex65 = await exercise(guru, ['tha'], 'approved');
+  const drafted = await exercise(coordinator, ['tha', 'tha']);
+
+  // Publishing (#720): the Guru; a version per publish; the pack is null while unchanged.
+  await refusesWith('0065 #720: a coordinator cannot publish', 'not_allowed', () => asApp('authenticated', coordinator, 'select publish_playground(null)'));
+  const pub1 = (await asApp('authenticated', guru, `select publish_playground('First') as r`))[0].r;
+  const p1 = await pack(arjun);
+  check('0065 #728: a student gets the published pack: the approved bol and exercise, not the draft', pub1.version === 1 && p1.version === 1
+    && p1.placeholders === false && p1.bols.some((b) => b.id === 'tha') && p1.exercises.length === 1 && p1.exercises[0].id === ex65.id
+    && p1.templates.length === 1 && p1.labels.steadyShare === 0.8, JSON.stringify(pub1));
+  check('0065 #728: ... and null when the phone has this version', (await pack(arjun, 1)) === null);
+  await asApp('authenticated', coordinator, `update play_exercises set bpm_min = 60 where id = $1`, [ex65.id]);
+  check('0065 #720: editing an approved exercise sends it back to review with revision 2, out of the published set',
+    JSON.stringify(await one(`select status, revision, published_in, first_published_in from play_exercises where id = ${ex65.id}`))
+      === JSON.stringify({ status: 'in_review', revision: 2, published_in: null, first_published_in: 1 }));
+  check('0065: a student reads approved, published, non-placeholder content only (direct read)',
+    (await asApp('authenticated', arjun, 'select id from play_exercises')).length === 0
+    && (await asApp('authenticated', arjun, `select id from play_bols where id = 'tha'`)).length === 1);
+  check('0065: staff read every row, drafts included', (await asApp('authenticated', coordinator, 'select id from play_exercises')).length === 2);
+  await refusesWith('0065: a student cannot add content', 'new row violates row-level security policy for table "play_bols"', () => bol(arjun, 'dhe'));
+  await bol(guru, 'zzz', 'approved', { placeholder: true });
+  await refusesWith('0065 #720 §19.3: publish refuses placeholder content while placeholders are not allowed', 'placeholders_not_allowed', () =>
+    asApp('authenticated', guru, 'select publish_playground(null)'));
+  await asApp('authenticated', guru, `select play_set_status('bol', 'zzz', 'retired')`);
+  await asApp('authenticated', guru, `select play_set_status('exercise', $1, 'approved')`, [String(ex65.id)]);
+  check('0065: retired, the placeholder is no obstacle; the re-approved exercise is in version 2',
+    (await asApp('authenticated', guru, 'select publish_playground(null) as r'))[0].r.version === 2
+    && (await pack(arjun, 1)).exercises.some((e) => e.id === ex65.id && e.revision === 2));
+  check('0065: a coordinator deletes their own draft never published; not the published one',
+    (await asApp('authenticated', coordinator, 'delete from play_exercises where id = $1 returning id', [drafted.id])).length === 1
+    && (await asApp('authenticated', coordinator, 'delete from play_exercises where id = $1 returning id', [ex65.id])).length === 0);
+
+  // The TEST seed (§19.3): refuses LIVE, publishes placeholders on TEST, and a second run adds nothing.
+  await db.exec(seed65);
+  const p2 = await pack(arjun);
+  check('0065 §19.3: the TEST seed switches placeholders on and publishes 14 bols, 4 templates, 38 exercises',
+    (await setting('playground_allow_placeholders')) === true && (await setting('playground_enabled')) === true && p2.placeholders === true
+    && p2.version === 3 && p2.exercises.filter((e) => e.placeholder).length === 38 && p2.templates.length === 5
+    && p2.bols.filter((b) => b.placeholder).length === 14, `v${p2.version} ${p2.exercises.length} ${p2.templates.length} ${p2.bols.length}`);
+  await db.exec(seed65);
+  check('0065 §19.3: ... a second run adds and publishes nothing', (await one('select max(version) as v from play_publications')).v === 3
+    && (await one('select count(*)::int as n from play_exercises where placeholder')).n === 38);
+  check('0065 §19.3: the seed refuses a project without seed.sql\'s example students (LIVE)', seed65.includes(`'arjun.rao@example.com'`)
+    && seed65.indexOf('playground_test.sql refused') < seed65.indexOf('begin;'));
+
+  // Rounds (#721): the server re-marks every recognition answer; idempotent; content and limits checked.
+  const exId = async (game, seq) => (await one(`select id from play_exercises where game = '${game}' and placeholder and sequence = '${seq}'`)).id;
+  const [ta, na, ka] = [await exId('sound_detective', '{ta}'), await exId('sound_detective', '{na}'), await exId('sound_detective', '{ka}')];
+  const round = (items, extra = {}) => ({ id: extra.id ?? randomUUID(), game: extra.game ?? 'sound_detective', skill: extra.skill ?? 'listen.stroke',
+    mode: 'play', step: 2, seed: 12345, content_version: 3, started_at: extra.started ?? new Date(Date.now() - 120000).toISOString(),
+    finished_at: new Date().toISOString(), device: 'web', items, ...(extra.timing ? { timing: extra.timing } : {}) });
+  const record = (who, r) => asApp('authenticated', who, 'select record_round($1) as r', [r]).then((x) => x[0].r);
+  const r1 = round([{ e: ta, a: 'ta', ok: false, rp: 1, ms: 2100 }, { e: na, a: 'ta', ok: true }, { e: ka, a: 'ke', ok: false }]);
+  const saved1 = await record(arjun, r1);
+  check('0065 #721 #723: a changed "ok" does not count: the server marks ta right, na wrong, ka = ke (sounds alike) right',
+    saved1.result === 'saved' && saved1.n_correct === 2 && saved1.items.map((i) => i.ok).join() === 'true,false,true'
+    && saved1.items[0].r === 1 && saved1.items[0].rp === 1, JSON.stringify(saved1));
+  const again = await record(arjun, r1);
+  check('0065 #721: the same round again: duplicate, still one row', again.result === 'duplicate'
+    && (await one(`select count(*)::int as n from play_rounds where id = '${r1.id}'`)).n === 1);
+  await refusesWith('0065 #721: another student cannot reuse the id', 'round_id_taken', () => record(meera, r1));
+  await refusesWith('0065 #721: a draft never published is refused', 'round_content_unknown', async () =>
+    record(arjun, round([{ e: (await exercise(coordinator, ['tha'])).id, a: 'tha' }])));
+  await refusesWith('0065 #721: an exercise of another game is refused', 'round_content_unknown', () =>
+    record(arjun, round([{ e: ta, a: 'ta' }], { game: 'missing_beat', skill: 'listen.phrase' })));
+  await refusesWith('0065 #721: more than 40 items', 'round_invalid', () => record(arjun, round(Array.from({ length: 41 }, () => ({ e: ta, a: 'ta' })))));
+  await refusesWith('0065 #721: a round started more than 14 days ago', 'round_invalid', () =>
+    record(arjun, round([{ e: ta, a: 'ta' }], { started: new Date(Date.now() - 15 * 86400000).toISOString() })));
+  await refusesWith('0065 #721: an unknown skill', 'round_invalid', () => record(arjun, round([{ e: ta, a: 'ta' }], { skill: 'listen.everything' })));
+  const mb = await exId('missing_beat', '{te,re,ka,ta}');
+  const mbRound = await record(arjun, round([{ e: mb, a: 'ka', q: { gap: [2] } }, { e: mb, a: 'ra', q: { gap: [1] } }, { e: mb, a: 'ta', q: { gap: [9] } }],
+    { game: 'missing_beat', skill: 'listen.phrase' }));
+  check('0065 #723: Missing Beat: the gap\'s bol is the answer (re = ra sounds alike); a gap outside the beats is never right',
+    mbRound.items.map((i) => i.ok).join() === 'true,true,false', JSON.stringify(mbRound.items));
+  const td = await exId('tempo_detective', '{ta,na,ta,na}');
+  const tdRound = await record(arjun, round([{ e: td, a: 'faster', q: { bpm: [60, 75] } }, { e: td, a: 'same', q: { bpm: [70, 63] } }],
+    { game: 'tempo_detective', skill: 'listen.tempo' }));
+  check('0065 #723: Tempo Detective: faster / slower from the two tempos played', tdRound.items.map((i) => i.ok).join() === 'true,false');
+  await refusesWith('0065 DYN-03: a tempo outside the exercise\'s range is refused', 'round_invalid', () =>
+    record(arjun, round([{ e: td, a: 'faster', q: { bpm: [60, 120] } }], { game: 'tempo_detective', skill: 'listen.tempo' })));
+  await refusesWith('0065: anon cannot save a round', 'permission denied for function record_round', () => asApp('anon', null, 'select record_round($1)', [r1]));
+  await refusesWith('0065: a staff login without its own record cannot save a round', 'not_allowed', () => record(coordinator2, round([{ e: ta, a: 'ta' }])));
+  const timed = await record(arjun, round([{ e: ta, a: 'ta' }], { timing: { median_ms: -12.4, spread_ms: 34, calibrated: true, offset_ms: 180 } }));
+  const tm = (await one(`select timing from play_rounds where id = '${timed.id}'`)).timing;
+  check('0065: timing is kept rounded (calibrated phones only count for labels)', tm.median_ms === -12 && tm.spread_ms === 34 && tm.calibrated === true
+    && tm.offset_ms === 180, JSON.stringify(tm));
+
+  // Row-level security on rounds, settings, assignments, ratings.
+  check('0065: a student reads only their own rounds; staff read all',
+    (await asApp('authenticated', meera, 'select id from play_rounds')).length === 0
+    && (await asApp('authenticated', arjun, 'select id from play_rounds')).length === 4
+    && (await asApp('authenticated', coordinator, 'select id from play_rounds')).length === 4);
+  await refusesWith('0065: a student cannot change a saved round', 'permission denied for table play_rounds', () =>
+    asApp('authenticated', arjun, `update play_rounds set n_correct = 3 where id = $1`, [r1.id]));
+  await refusesWith('0065: ... nor add one directly', 'permission denied for table play_rounds', () =>
+    asApp('authenticated', arjun, `insert into play_rounds (id, student_id, game, skill, mode, step, seed, content_version, started_at, items, n_items)
+      values (gen_random_uuid(), $1, 'echo', 'rhythm.recall', 'play', 1, 1, 1, now(), '[]', 1)`, [arjunStudent]));
+  await asApp('authenticated', coordinator, `insert into play_assignments (game, student_id, step_max, note) values ('sound_detective', $1, 2, ' Practise the close pairs ')`, [arjunStudent]);
+  await asApp('authenticated', coordinator, `insert into play_assignments (game, level_id) values ('missing_beat', 3)`);
+  await asApp('authenticated', arjun, 'select play_set_surprise(false)');
+  const st = (await asApp('authenticated', arjun, 'select my_playground_state() as s'))[0].s;
+  check('0065: the student\'s state: level, own and level assignments, Surprise me off, 30 days of rounds',
+    st.level_id === 3 && st.assignments.length === 2 && st.assignments.some((a) => a.note === 'Practise the close pairs' && a.step_max === 2) && st.settings.surprise === false
+    && st.rounds.length === 4 && st.rounds[0].items.length >= 1, JSON.stringify(st).slice(0, 300));
+  const stMeera = (await asApp('authenticated', meera, 'select my_playground_state() as s'))[0].s;
+  check('0065: ... another student of the level gets the level\'s assignment and none of Arjun\'s', stMeera.assignments.length === 1
+    && stMeera.assignments[0].game === 'missing_beat' && stMeera.rounds.length === 0 && stMeera.settings === null, JSON.stringify(stMeera).slice(0, 400));
+  check('0065: a student reads no assignment or settings row directly', (await asApp('authenticated', arjun, 'select 1 from play_assignments')).length === 0
+    && (await asApp('authenticated', arjun, 'select 1 from play_student_settings')).length === 0);
+  await refusesWith('0065: a student cannot read another\'s progress (staff function)', 'not_allowed', () =>
+    asApp('authenticated', arjun, 'select staff_playground_progress($1)', [meeraStudent]));
+  await asApp('authenticated', coordinator, `insert into play_ratings (student_id, skill, rating, note) values ($1, 'vocal.call_response', 2, ' Clear entry ')`, [arjunStudent]);
+  const prog = (await asApp('authenticated', coordinator, 'select staff_playground_progress($1) as p', [arjunStudent]))[0].p;
+  check('0065 #727: staff see a student\'s rounds, ratings (with the rater\'s name) and weekly summaries', prog.rounds.length === 4
+    && prog.ratings.length === 1 && prog.ratings[0].note === 'Clear entry' && prog.ratings[0].rated_by_name !== null && Array.isArray(prog.weeks));
+  check('0065: a student reads their own rating, not another\'s', (await asApp('authenticated', arjun, 'select 1 from play_ratings')).length === 1
+    && (await asApp('authenticated', meera, 'select 1 from play_ratings')).length === 0);
+  await refusesWith('0065: a rating is 0-3', 'new row for relation "play_ratings" violates check constraint "play_ratings_rating_check"', () =>
+    asApp('authenticated', coordinator, `insert into play_ratings (student_id, skill, rating) values ($1, 'kirtan.entry', 4)`, [arjunStudent]));
+  const cls = (await asApp('authenticated', coordinator, 'select staff_playground_class(3::smallint, null) as c'))[0].c;
+  check('0065: Class progress: the level\'s students with their rounds', cls.some((s) => s.student_id === arjunStudent && s.rounds.length === 4)
+    && cls.some((s) => s.student_id === meeraStudent && s.rounds.length === 0) && cls.every((s) => s.level_id === 3), JSON.stringify(cls).slice(0, 400));
+  await refusesWith('0065: Class progress needs a level or a group', 'filter_required', () =>
+    asApp('authenticated', coordinator, 'select staff_playground_class(null, null)'));
+
+  // Sound files (bucket playground-audio): staff upload as <kind>/<uuid>.<ext>; approving needs the file.
+  const audioName = `stroke/${randomUUID()}.wav`;
+  await refusesWith('0065: a sound file needs the <kind>/<uuid>.<ext> name', 'new row violates row-level security policy for table "objects"', () =>
+    asApp('authenticated', coordinator, `insert into storage.objects (bucket_id, name, owner) values ('playground-audio', 'tabla.wav', auth.uid())`));
+  await refusesWith('0065: a student cannot upload one', 'new row violates row-level security policy for table "objects"', () =>
+    asApp('authenticated', arjun, `insert into storage.objects (bucket_id, name, owner) values ('playground-audio', $1, auth.uid())`, [audioName]));
+  await refusesWith('0065: approving a sound needs its file in Storage', 'asset_file_missing', () => asApp('authenticated', guru,
+    `insert into play_assets (kind, path, licence, status) values ('stroke', $1, 'own', 'approved')`, [audioName]));
+  await asApp('authenticated', coordinator, `insert into storage.objects (bucket_id, name, owner) values ('playground-audio', $1, auth.uid())`, [audioName]);
+  await refusesWith('0065: a CC BY sound needs its credit to be approved', 'asset_licence_incomplete', () => asApp('authenticated', guru,
+    `insert into play_assets (kind, path, licence, status) values ('stroke', $1, 'cc_by', 'approved')`, [audioName]));
+  const asset = (await asApp('authenticated', guru, `insert into play_assets (kind, path, licence, performer, status) values ('stroke', $1, 'own',
+    'Prji', 'approved') returning id`, [audioName]))[0];
+  const canRead = async (who) => (await asApp('authenticated', who, `select 1 from storage.objects where bucket_id = 'playground-audio' and name = $1`, [audioName])).length === 1;
+  check('0065: a student cannot open a sound before it is published; staff can', !(await canRead(arjun)) && (await canRead(coordinator)));
+  await asApp('authenticated', guru, 'select publish_playground(null)');
+  check('0065: ... published, the student opens it; staff cannot delete an approved sound',
+    (await canRead(arjun)) && (await asApp('authenticated', coordinator, `delete from storage.objects where bucket_id = 'playground-audio' and name = $1 returning 1`, [audioName])).length === 0
+    && asset.id > 0);
+
+  // Retention (§13.4, #729): rounds over 180 days → weekly summaries; unreviewed game recordings after 60 days.
+  await asOwner(`insert into play_rounds (id, student_id, game, skill, mode, step, seed, content_version, started_at, items, n_items, n_correct)
+    values (gen_random_uuid(), '${arjunStudent}', 'sound_detective', 'listen.stroke', 'play', 1, 1, 1, now() - interval '200 days', '[{"e":1}]', 6, 5),
+           (gen_random_uuid(), '${arjunStudent}', 'sound_detective', 'listen.stroke', 'play', 1, 2, 1, now() - interval '200 days', '[{"e":1}]', 4, 1)`);
+  const folded = (await one('select playground_daily() as n')).n;
+  check('0065 #729: the nightly job folds rounds older than 180 days into one weekly summary and deletes them; recent rounds stay',
+    folded === 2 && (await one(`select count(*)::int as n from play_rounds where started_at < now() - interval '180 days'`)).n === 0
+    && JSON.stringify(await one(`select opportunities, correct, rounds from play_skill_weeks where student_id = '${arjunStudent}'`))
+      === JSON.stringify({ opportunities: 10, correct: 6, rounds: 2 })
+    && (await one(`select count(*)::int as n from play_rounds where student_id = '${arjunStudent}'`)).n === 4);
+  check('0065 #729: the job is scheduled daily after the retention job', (await one(`select schedule, command from cron.job where jobname = 'mridanga-playground'`))
+    ?.command === 'select playground_daily()');
+  const a65 = await createAssessment(guru, { title: 'Echo take Sixtyfive', sent: true });
+  await asOwner(`update assessments set playground_game = 'echo' where id = ${a65.id}`);
+  await release(coordinator, a65.id, [arjunStudent]);
+  const [{ id: asg65 }] = await asOwner(`select id from assessment_assignments where assessment_id = ${a65.id}`);
+  const s65 = await submit(arjun, asg65, null, 'https://youtu.be/dQw4w9WgXcQ');
+  const expired = async (id) => (await one(`select submission_file_expired(${id}, null, false) as x`)).x;
+  check('0065 #729: an unreviewed game recording is kept for 60 days', (await expired(s65)) === false);
+  await asOwner(`update assessment_submissions set submitted_at = now() - interval '61 days' where id = ${s65}`);
+  const aOld = await createAssessment(guru, { title: 'Ordinary Sixtyfive', sent: true });
+  await release(coordinator, aOld.id, [arjunStudent]);
+  const [{ id: asgOld }] = await asOwner(`select id from assessment_assignments where assessment_id = ${aOld.id}`);
+  const sOld = await submit(arjun, asgOld, null, 'https://youtu.be/dQw4w9WgXcQ');
+  await asOwner(`update assessment_submissions set submitted_at = now() - interval '61 days' where id = ${sOld}`);
+  check('0065 #729: ... and then removed; an ordinary unreviewed recording is kept as before', (await expired(s65)) === true && (await expired(sOld)) === false);
+  check('0065 §13.4: every student table goes with the record (on delete cascade)', (await one(`select count(*)::int as n from pg_constraint
+    where contype = 'f' and confrelid = 'students'::regclass and confdeltype = 'c'
+      and conrelid::regclass::text in ('play_rounds', 'play_skill_weeks', 'play_ratings', 'play_student_settings', 'play_assignments')`)).n === 5);
+
+  // A second run of the file changes nothing.
+  const count65 = async () => one(`select (select count(*) from play_exercises)::int as e, (select count(*) from play_rounds)::int as r,
+    (select max(version) from play_publications) as v, (select value from settings where key = 'playground_allow_placeholders') as ph,
+    (select count(*) from cron.job where jobname = 'mridanga-playground')::int as j`);
+  const before65 = await count65();
+  let again65 = '';
+  try { await db.exec(file65); } catch (e) { again65 = String(e.message); }
+  check('0065 can run again and changes no row', again65 === '' && JSON.stringify(await count65()) === JSON.stringify(before65), again65);
 }
 // ---------------------------------------------------------------- row-level security
 const seen =await asApp('authenticated', arjun, 'select full_name from students');

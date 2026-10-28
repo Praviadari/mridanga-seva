@@ -8478,6 +8478,107 @@ whether Playground time counts towards the weekly practice goal (suggested: no);
 thresholds; the privacy-notice line for game results and the consent form for recordings sent from games; who owns
 accessibility QA and go/no-go. DECISIONS #720 onwards are free for the build packages.
 
+## 720. Playground content: coordinators write drafts, only the Guru approves and publishes — 28 Oct 2026
+
+**Decision (W1, migration 0065).** The four content tables (`play_bols`, `play_assets`, `play_templates`,
+`play_exercises`) are written directly by staff under row-level security, like `taals` and `practice_links`, instead of
+the design's `play_save_*` functions: one trigger per table checks the content, and one shared trigger
+(`guard_play_status`) owns status, revision and publication. Coordinators move rows between draft and in_review; only
+the Guru (or the SQL editor) approves, retires or takes a row out of approved/retired (`approval_guru_only`); editing
+an approved row sends it back to in_review with revision + 1 and out of the published set; `published_in` and
+`first_published_in` are set only inside `publish_playground` (a session flag the app cannot set: the trigger also
+checks that it runs as the owner). `publish_playground` gives every approved, unpublished row one new version number
+and refuses placeholder rows unless the TEST-only setting `playground_allow_placeholders` is on. The four Playground
+settings are not in `guard_setting`, so the app cannot change them: placeholders and the Playground switch are set in
+the SQL editor only. Students read approved, published, non-placeholder rows directly; the app reads the pack through
+`playground_pack` (which honours the TEST setting). A change reaches phones with the next publish (the pack is cached
+by version). Deleting: only a draft never published, by the Guru or its author.
+
+## 721. Rounds: one row each, saved by `record_round`, idempotent by the phone's id — 28 Oct 2026
+
+**Decision.** A round is made on the phone with a seed (`hash32(student|game|day|round of the day)`, mulberry32) and
+saved as one `play_rounds` row with short item keys (e, r, q, a, ok, rp, ms, rv, tr) and a `skill` column (one
+template = one skill per round; the labels count per skill). `record_round` takes rounds started in the last 14 days,
+1-40 items, each of an exercise of the round's game that has been published at least once in a version up to the
+round's (so an offline round survives a later edit) and is not a placeholder unless TEST allows it; the revision played
+is kept when it is not newer than today's. The same id again answers `duplicate` and changes nothing; another student's
+id is `round_id_taken`; at most 200 rounds a day; a withdrawn record is refused. Students never update or delete rounds.
+
+## 722. The Playground notation: dictionary ids in the taal shape — 28 Oct 2026
+
+**Decision.** Exercises are written with the dictionary's ids (plain forms, a-z, 1-10 letters): a beat is `-` or 1-4 ids
+joined with `.`, as `guard_taal`; answers and distractors are the same beats joined by spaces (`te.re ka`). The class's
+spelling is the dictionary's `written`, used for display only. Two answers sound the same when every bol matches the
+other's or is in its `sounds_like` list (either way round, not transitive), the same rule in `lib/playground/notation.ts`
+and the database's `play_same_answer`.
+
+## 723. The curriculum guard and the checks, on the phone and again on the server — 28 Oct 2026
+
+**Decision.** `lib/playground/eligibility.ts` applies §8.5 rules 1-5 and 7 (levels compared by id, as the practice
+tools do; one level up with `level_up_ok`; a bol must be in the pack and taught at or below that level and soundable —
+an approved recording or a stroke `lib/bols.ts` knows). The challenge check drops a challenge whose answer is not among
+the cards, whose cards sound alike, whose gap is a rest, whose tempo is outside the range or whose guna is not allowed;
+a drop is reported to App errors as `PlayCheck_<reason>_e<exercise>_t<template>_v<version>` (kind `unhandled`, screen
+`/student/playground`) — never the student, seed or answer. The server re-marks Sound Detective, Missing Beat, Rhythm
+Builder, Tempo Detective and Sound Explorer answers from the exercise and the saved question (`play_expected`); a
+changed `ok` does not count; Tempo Detective tempos outside the range refuse the round. Timing and self-check items keep
+the phone's mark.
+
+## 724. Repeat guard, spaced review and the low-content fallback as specified — 28 Oct 2026
+
+**Decision.** §8.6-§8.7 implemented in `lib/playground/repeat-guard.ts`: never back-to-back (also across the previous
+round), recent exclusion K = min(8, pool − round length), fresh items (3+ days) three times as likely, assigned skills
+twice, review boxes 1/3/7 days (a right review moves on, a wrong one starts again; three right reviews end it), at most
+a third of a round review and labelled; low content below max(6, 2 × round length) repeats items without making any up.
+`pickDailyGames` gives the Daily Mission / Surprise me no skill twice in a row and not yesterday's set. History = this
+phone's rounds (30 days, kept in local storage) merged with the server's last 30 days.
+
+## 725. The generator only selects and transforms — 28 Oct 2026
+
+**Decision.** `lib/playground/generator.ts` builds Sound Detective (single bols with distractors from the exercise's
+list, close pairs at the close-pair step, the other head at step 1; phrases with distractors from the exercise or other
+eligible phrases of the same length — never a new phrase), Missing Beat (1-2 gaps on non-rest beats; single-beat cards),
+Rhythm Builder (the sequence's tiles plus extra tiles that sound like none of them), Tempo Detective (two tempos inside
+the range, rounded so the second never leaves it; a range too narrow for the step drops the challenge) and Sound
+Explorer (instrument cards). Other games get the approved sequence at an approved tempo and guna, no cards; W4/W5 add
+their transforms. Rounds are 4-8 (template `roundLen`, default 6; the Daily Mission may ask for fewer).
+
+## 726. Adaptive offers are advice only; the facilitator's limits win — 28 Oct 2026
+
+**Decision.** `stepAdvice` offers harder after 2 rounds in a row at the step with ≥ 80 % right and ≤ 1 replay per item,
+easier after 2 below 50 %, nothing for mixed results; after 14 days away it starts one step lower; by hand the student
+picks any step up to the highest reached; the facilitator's minimum and maximum (student settings and assignment, the
+narrower) always win; timing games offer nothing on an uncalibrated phone. Correctness and replays only, never speed.
+
+## 727. Labels worked out in the app from rounds; numbers in a setting — 28 Oct 2026
+
+**Decision.** `lib/playground/labels.ts` gives Exploring / Practising / Steady / Ready for Review per skill (§12.2),
+recognition and timing separately; timing counts only rounds measured on a calibrated phone, so an uncalibrated phone
+never shows a timing label above Exploring (DYN-08). The thresholds are the setting `playground_labels` (sent with the
+pack; missing numbers fall back to the defaults) so Prji changes them without an app update. Staff get rounds through
+`staff_playground_progress` / `staff_playground_class` and use the same code, so the student and the facilitator see
+the same label. `play_ratings` (0-3, a staff member never rates their own record) hold the judged skills.
+
+## 728. Offline: pack cache and round queue; shared shell components — 28 Oct 2026
+
+**Decision.** The pack is cached in local storage by version (`playground_pack(p_have_version)` answers null while it
+is unchanged); finished or left rounds wait in their own queue (not lib/offline-queue.ts, whose kinds are fixed) and are
+sent oldest first while their login is signed in, one sending at a time; saved and refused rounds leave, rounds older
+than 14 days are dropped. Sign-out deletes the queue, the history and the pack (lib/device-traces.ts). The five shell
+components (`GameShell`, `ChoiceCards`, `FeedbackPanel`, `RoundSummary`, `InstructionsPreview`) use kind words only
+("That's it!", "Not yet — listen again"), icon + word for every result, targets ≥ 48 dp (cards ≥ 88), no animation,
+screen-reader labels and one announcement per result; their strings are `playEngine.*` (te/hi drafts for review).
+
+## 729. Retention: 180-day fold, 60-day unreviewed game recordings — 28 Oct 2026
+
+**Decision.** Job `mridanga-playground` (`playground_daily`, 21:30 UTC = 03:00 IST, after `mridanga-retention`) folds
+rounds older than 180 days into `play_skill_weeks` (Monday weeks, India time; opportunities, right answers, rounds, the
+calibrated timing averages) and deletes them. Every student table cascades with the record, so `erase_student` and the
+retention job of 0060 remove Playground data with the person. Recordings sent from a game: `submission_file_expired` is
+replaced with 0017's rules plus "never reviewed and sent 60+ days ago, when its assessment has `playground_game`"; the
+existing clean-up chain deletes the file. Not in 0065 (W5, with the send wiring): the cap of 2 open takes per student
+and the 90-second limit (#696). `my_data_summary` (0059) does not list Playground data yet — a follow-up for the lead.
+
 ## 730. Rhythm Playground home: one card on the Practice tab, games by group, unbuilt ones dimmed — 28 Oct 2026
 
 **Decision (package W2).** The Practice tab's Games tiles are replaced by one large "Rhythm Playground" card

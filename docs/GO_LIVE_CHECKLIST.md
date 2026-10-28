@@ -113,7 +113,8 @@ with m(migration, present) as (values
   ('0061', to_regclass('public.client_errors') is not null),
   ('0062', exists (select 1 from pg_proc where proname = 'claim_web_push' and pronamespace = 'public'::regnamespace)),
   ('0063', exists (select 1 from pg_proc where proname = 'parent_view' and pronamespace = 'public'::regnamespace)),
-  ('0064', exists (select 1 from pg_proc where proname = 'start_submission_review' and pronamespace = 'public'::regnamespace))
+  ('0064', exists (select 1 from pg_proc where proname = 'start_submission_review' and pronamespace = 'public'::regnamespace)),
+  ('0065', to_regclass('public.play_rounds') is not null)
 )
 select migration, case when present then 'yes' else 'no' end as present from m
 union all
@@ -125,7 +126,7 @@ select 'MISSING', coalesce((select string_agg(a.migration, ' ' order by a.migrat
 order by 1;
 ```
 
-## B. Migrations 0013-0064, one file per run
+## B. Migrations 0013-0065, one file per run
 
 For each row: GitHub main → `supabase/migrations/<file>` → **Copy raw file** → LIVE → SQL Editor →
 New query → paste → check the project → **Run** → then paste the probe again (or keep it in a second
@@ -194,7 +195,8 @@ a second paste. So pasting a file twice by mistake is harmless; still, never do 
 
 | M0063 | `0063_parent_view.sql` (branch `parent-view`) | Praveen · dashboard | No rows; probe `0063`, `MISSING` `none`; verification row 3 `16 of 16` (no new job) | **The parent page** ([#640-#649](DECISIONS.md), re-score 26-10-2026 gap 10): new setting `parent_view_enabled` = **false** (changed only by the Guru's `set_parent_view`; audited); new `parent_view` (one child's read-only page for a guardian row; only while that parent may get the weekly email; logs each opening in `access_log` as `parent_view`), `stop_parent_view` (= the weekly email's Unsubscribe), `parent_view_on` (service role only, for `notify-parents`), `parent_view_overview` (staff). No table, policy or stored row changes; nothing opens to anon. Safe to run twice. **TEST first** (`fhuqyk…`), then LIVE, then deploy `notify-parents` from main (the link in the weekly email and the page's answers). In any other order nothing breaks: an older function sends no link; before 0063 the newer function sends none either. The Guru switches the page on only after the paper form's line D carries the page sentence (OPERATIONS "Weekly email to parents" → "The parent page") |
 | M0064 | `0064_learn_screens.sql` (branch `learn-screens`) | Praveen · dashboard | No rows; probe `0064`, `MISSING` `none`; verification row 3 `16 of 16` (no new job) | **Learn screens** ([#680-#689](DECISIONS.md), Guru's student-module specification 27-10-2026): `events` gets six optional columns (`reporting_at`, `rehearsal`, `dress_code`, `coordinator_id`, `attendee_role`, `maps_url`) with column rights for signed-in people (row-level security unchanged) and a new trigger `events_details_guard` (`guard_event_details`); `materials` gets `audio_path`, `audio_name`, `audio_size`, `notes` and an index; **`guard_material`, `material_file_readable`, `material_file_uploadable`, `material_file_deletable` replaced** with the same rules plus the lesson audio; the bucket `material-files` takes audio types (still private, still 10 MB); new `material_audio_path_ok`; `assessment_submissions.review_started_at` and `start_submission_review` (staff; sets it once). Changes no stored row. Safe to run twice. **TEST first** (`fhuqyk…`), then LIVE, **before** the OTA with event details, lesson tabs and Under review (an older app ignores the new columns; a newer app on a database without 0064 cannot load events or lessons) |
-**A file newer than 0064 on main:** the replay's first check fails until this table lists it. Add it
+| M0065 | `0065_playground.sql` (branch `playground-engine`) | Praveen · dashboard | No rows; probe `0065`, `MISSING` `none`; verification row 3 `17 of 17` (new job `mridanga-playground`) | **Rhythm Playground engine** ([#720-#729](DECISIONS.md), docs/RHYTHM_PLAYGROUND.md §8-§9): new settings `playground_enabled` = **false**, `playground_pilot_group` = null, `playground_allow_placeholders` = **false** (must stay false on LIVE: placeholder content can then never be published or shown), `playground_labels` (label numbers); new tables `play_bols`, `play_assets`, `play_templates`, `play_exercises`, `play_publications`, `play_assignments`, `play_student_settings`, `play_rounds`, `play_skill_weeks`, `play_ratings` (row-level security on all; students read approved + published content and their own rounds/ratings; rounds written only by `record_round`); private bucket `playground-audio` (15 MB, audio) with three Storage rules; `assessments.playground_game`; new functions `playground_pack`, `my_playground_state`, `play_set_surprise`, `record_round`, `play_set_status`, `publish_playground`, `staff_playground_progress`, `staff_playground_class`; job **`mridanga-playground`** (03:00 IST: rounds over 180 days folded into weekly summaries); **`submission_file_expired` replaced** (same rules plus: an unreviewed recording sent from a game is removed after 60 days). Changes no stored row. Safe to run twice. **TEST first** (`fhuqyk…`), then LIVE, before the OTA with the Playground. **Never run `supabase/seed/playground_test.sql` on LIVE** (it refuses a project without seed.sql's example students) |
+**A file newer than 0065 on main:** the replay's first check fails until this table lists it. Add it
 here, with its own steps, then run it last.
 
 **0049 (launch clean-up)** is on TEST but not on main on 15 Oct 2026. It joins this table when branch
@@ -342,7 +344,8 @@ with m(migration, present) as (values
   ('0061', to_regclass('public.client_errors') is not null),
   ('0062', exists (select 1 from pg_proc where proname = 'claim_web_push' and pronamespace = 'public'::regnamespace)),
   ('0063', exists (select 1 from pg_proc where proname = 'parent_view' and pronamespace = 'public'::regnamespace)),
-  ('0064', exists (select 1 from pg_proc where proname = 'start_submission_review' and pronamespace = 'public'::regnamespace))
+  ('0064', exists (select 1 from pg_proc where proname = 'start_submission_review' and pronamespace = 'public'::regnamespace)),
+  ('0065', to_regclass('public.play_rounds') is not null)
 ),
 last_in_order as (select coalesce(max(a.migration), 'before 0010') as v from m a
   where a.present and not exists (select 1 from m b where b.migration <= a.migration and not b.present)),
@@ -351,13 +354,14 @@ missing as (select coalesce(string_agg(a.migration, ' ' order by a.migration), '
 jobs(name) as (values ('mridanga-status-refresh'), ('mridanga-close-visits'), ('mridanga-push'), ('mridanga-inbox-cleanup'),
   ('mridanga-assessments'), ('mridanga-events-polls'), ('mridanga-duty'), ('mridanga-access-log-purge'),
   ('mridanga-cron-history-purge'), ('mridanga-orphan-files'), ('mridanga-parent-notices'), ('mridanga-minor-signups'),
-  ('mridanga-parent-digests'), ('mridanga-data-requests'), ('mridanga-retention'), ('mridanga-client-errors-purge')),
+  ('mridanga-parent-digests'), ('mridanga-data-requests'), ('mridanga-retention'), ('mridanga-client-errors-purge'),
+  ('mridanga-playground')),
 checks(sort, check_name, ok, found, expected) as (
-  select 1, 'last migration', (select v from last_in_order) = '0064', (select v from last_in_order), '0064'
+  select 1, 'last migration', (select v from last_in_order) = '0065', (select v from last_in_order), '0065'
   union all select 2, 'migrations missing', (select v from missing) = 'none', (select v from missing), 'none'
   union all select 3, 'scheduled jobs',
-    (select count(*) from jobs j join cron.job c on c.jobname = j.name and c.active) = 16,
-    (select count(*) from jobs j join cron.job c on c.jobname = j.name and c.active)::text || ' of 16', '16 of 16 (active)'
+    (select count(*) from jobs j join cron.job c on c.jobname = j.name and c.active) = 17,
+    (select count(*) from jobs j join cron.job c on c.jobname = j.name and c.active)::text || ' of 17', '17 of 17 (active)'
   union all select 4, 'other mridanga jobs', not exists (select 1 from cron.job where jobname like 'mridanga%' and jobname not in (select name from jobs)),
     coalesce((select string_agg(jobname, ', ') from cron.job where jobname like 'mridanga%' and jobname not in (select name from jobs)), 'none'),
     'none'
