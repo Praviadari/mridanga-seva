@@ -231,6 +231,12 @@ and again three days before its answer-by date.
    only its type and dates. Then do the steps below that the app cannot: tell the coordinators (withdrawal), answer
    a withdrawn person by phone or email (their sign-in is off), and **add the roll number, the date and the `DR-`
    reference to the private erasure register** (Backups → Restoring, step 5: a restore would bring the person back).
+   **Erasure needs two people (0066, #712):** first another Guru opens the request, chooses how the person asking was
+   checked (own signed-in app / ID seen at the desk / the email the class has / call-back on the phone the class has)
+   and taps Approve the erasure; the Guru who recorded a desk request does not approve it. Then a Guru other than the
+   approver carries it out as above. With only one active Guru login, the owner runs `erase_student` / `erase_login`
+   in the SQL editor (section "Erasure request") and notes the second person in the request's answer. The app can no
+   longer call `erase_student` / `erase_login` directly (#713).
 4. A staff login without a student record cannot be erased here (`not_pending`): use "Staff who leave".
 5. An open loan stops an erasure: take the lent instrument back and record the return first.
 
@@ -638,6 +644,8 @@ to `app/dist/`. Always use this command, not a bare `npx expo export`, because
 
 | Date | Site | Commit | Built (UTC) | By |
 |---|---|---|---|---|
+| 28-10-2026 | test (Facilitator Home = 11 modules with landing screens and Needs attention; no "Guru" in en/te/hi; 0067 on TEST) | d50a0fa (main; entry-d152a258…; deployment 14787925) | 2026-10-28T08:26:19Z | Claude (wrangler, Praveen's login) |
+| 28-10-2026 | test (Facilitator P0 safeguards: own fund entry refused + logged, two-person erasure, import dry run / all or none / error CSV, sign-out on switch-off, error-log names only; 0066 on TEST; Playground design doc) | 71ef86d (main; entry-dcb57ccd…; deployment 42d8ed9f) | 2026-10-28T08:08:54Z | Claude (wrangler, Praveen's login) |
 | 28-10-2026 | test (home header app name whole on a web window < 360 px, #672; version.txt + sw.js load) | 8fcd01c (main; entry-70be3f89…; deployment a5de9cc6) | 2026-10-28T04:47:20Z | Claude (wrangler, Praveen's login) |
 | 28-10-2026 | test (student tabs and cards at 200 %, event details, lesson Video/Audio/Notes, assessment statuses; 0064 on TEST; sw.js 30 files all load) | 50e7fd1 (main; entry-db9ad23c…; deployment 1122e435) | 2026-10-28T04:08:38Z | Claude (wrangler, Praveen's login) |
 | 27-10-2026 | test (parent page /parent, 0063 on TEST, notify-parents from the parent-view branch = same code; switch off) | e9b26ef (main; entry-59f76576…; deployment 73b2324e) | 2026-10-27T13:20:06Z | Claude (wrangler, Praveen's login) |

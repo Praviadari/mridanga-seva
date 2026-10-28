@@ -71,7 +71,7 @@ export function CoordinatorHome() {
         </>
       ) : null}
       {board === null ? null : <StaffToday guru={false} board={board} />}
-      <StaffModules guru={false} promotionsWaiting={board ? board.promotions : 0} me={me} />
+      <StaffModules me={me} />
       {/* Under the ring, as on the student home (#242; Praveen 14-10-2026): a fact about the mṛdaṅga a day. */}
       <FactCard />
     </Screen>

@@ -79,6 +79,7 @@ export const STAFF_SCREENS: readonly string[] = [
   'staff/me/progress.tsx',
   'staff/me/qr.tsx',
   'staff/me/visits.tsx',
+  'staff/modules/[key].tsx',
   'staff/my-data.tsx',
   'staff/my-sign-in-code.tsx',
   'staff/new-joiners.tsx',

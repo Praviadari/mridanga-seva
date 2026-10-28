@@ -98,6 +98,20 @@ const supabaseImitation = `
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()
   );
+  -- Supabase Auth's sessions and refresh tokens (0066 ends them when a login is switched off); user_id of a
+  -- refresh token is text there too.
+  create table auth.sessions (
+    id uuid primary key default gen_random_uuid(),
+    user_id uuid not null references auth.users (id) on delete cascade,
+    created_at timestamptz not null default now()
+  );
+  create table auth.refresh_tokens (
+    id bigint generated always as identity primary key,
+    token text,
+    user_id text,
+    revoked boolean default false,
+    session_id uuid references auth.sessions (id) on delete cascade
+  );
   create schema cron;
   -- pg_cron's job table, so the test net can check every scheduled command (D14-12); a job is
   -- never run here. Scheduling a name again replaces its job, as in pg_cron.
@@ -143,7 +157,7 @@ process.on('uncaughtException', (error) => {
 // D14-10: every check is counted, and the run fails when fewer (or more) checks ran than expected,
 // so a block skipped by a renamed migration or a commented-out section cannot pass unseen.
 // Adding or removing checks? Run the suite and set this to the new total it prints.
-const EXPECTED_CHECKS = 2388; // 0065 Rhythm Playground engine: +67; 0064 learn screens: +32; 0063 parent page: +32; 0062 web push: +33; 0061 staff sign-in codes and the error log: +53; 0060 privacy notice 1.0: +35; 0059 data rights: +56; 0058 weekly parent email: +64; 0057 practice while waiting: +24; 0056 practice extras: +35; 0055 learn more links: +23; 0054 after-launch forms: +49; 0053 staff own record: +55; 0052 more practice: +56; 0051 child's sign-up at home: +80; 0050 staff dashboard: +15; 0049 launch clean-up: +30; 0048 withdrawn records and leaks: +50; 0047 form rules: +109; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
+const EXPECTED_CHECKS = 2433; // 0067 facilitator wording: +5; 0066 facilitator safeguards: +40 (0059/0026/0025/0049 checks adjusted for #710/#713); 0065 Rhythm Playground engine: +67; 0064 learn screens: +32; 0063 parent page: +32; 0062 web push: +33; 0061 staff sign-in codes and the error log: +53; 0060 privacy notice 1.0: +35; 0059 data rights: +56; 0058 weekly parent email: +64; 0057 practice while waiting: +24; 0056 practice extras: +35; 0055 learn more links: +23; 0054 after-launch forms: +49; 0053 staff own record: +55; 0052 more practice: +56; 0051 child's sign-up at home: +80; 0050 staff dashboard: +15; 0049 launch clean-up: +30; 0048 withdrawn records and leaks: +50; 0047 form rules: +109; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
 let failures = 0;
 let passes = 0;
 
@@ -2728,8 +2742,11 @@ const big = await record(coordinator2, 'expense', repair, 250000, { bill: await 
 check('an expense over Rs 2,000 waits and does not count yet', (await entryOf(big)).status === 'waiting' && (await balanceAs(guru)) === 800000);
 check('... the Guru is told', (await fundOutboxFor(guru, big)).some((r) => r.title === 'Rs 2500 · Instrument repair or purchase'
   && /^An entry by .* needs your approval\.$/.test(r.body)));
-await refusesWith('the maker cannot approve their own entry', 'own_entry', () => asApp('authenticated', coordinator2,
-  'select decide_fund_entry($1, true)', [big]));
+// Since 0066 (#710) a self-approval is refused with { refused } (and logged) instead of an error.
+const decideAs = async (userId, id, approve, note = null) => (await asApp('authenticated', userId,
+  'select decide_fund_entry($1, $2, $3) as r', [id, approve, note]))[0].r;
+check('the maker cannot approve their own entry', (await decideAs(coordinator2, big, true))?.refused === 'own_entry'
+  && (await entryOf(big)).status === 'waiting');
 await refusesWith('a coordinator who is not treasurer cannot approve', 'not_allowed', () => asApp('authenticated', coordinator, 'select decide_fund_entry($1, true)', [big]));
 await asApp('authenticated', guru, 'select decide_fund_entry($1, true)', [big]);
 check('the Guru approves it; now it counts', (await entryOf(big)).status === 'approved' && (await entryOf(big)).decided_by === guru
@@ -2737,13 +2754,14 @@ check('the Guru approves it; now it counts', (await entryOf(big)).status === 'ap
 check('... and the treasurer is told', (await fundOutboxFor(coordinator2, big)).some((r) => r.body === 'Your entry was approved.'));
 await refusesWith('a decision is made once', 'already_decided', () => asApp('authenticated', guru, 'select decide_fund_entry($1, false, $2)', [big, 'No']));
 const guruBig = await record(guru, 'expense', prasadam, 300000, { bill: await uploadBill(guru) });
-await refusesWith('the Guru cannot approve the Guru\'s own entry', 'own_entry', () => asApp('authenticated', guru, 'select decide_fund_entry($1, true)', [guruBig]));
+check('the Guru cannot approve the Guru\'s own entry', (await decideAs(guru, guruBig, true))?.refused === 'own_entry'
+  && (await entryOf(guruBig)).status === 'waiting');
 check('... the treasurer is told instead', (await fundOutboxFor(coordinator2, guruBig)).length === 1 && (await fundOutboxFor(guru, guruBig)).length === 0);
 await asApp('authenticated', coordinator2, 'select decide_fund_entry($1, true)', [guruBig]);
 check('... and approves it', (await entryOf(guruBig)).status === 'approved' && (await balanceAs(guru)) === 250000);
 const treasurerBig = await record(coordinator2, 'expense', melaCat, 400000, { bill: await uploadBill(coordinator2) });
-await refusesWith('a treasurer cannot approve another treasurer\'s or own entry', 'own_entry', () => asApp('authenticated', coordinator2,
-  'select decide_fund_entry($1, true)', [treasurerBig]));
+check('a treasurer cannot approve another treasurer\'s or own entry', (await decideAs(coordinator2, treasurerBig, true))?.refused === 'own_entry'
+  && (await entryOf(treasurerBig)).status === 'waiting');
 await refusesWith('declining needs a reason', 'reason_required', () => asApp('authenticated', guru, 'select decide_fund_entry($1, false, $2)', [treasurerBig, '  ']));
 await asApp('authenticated', guru, 'select decide_fund_entry($1, false, $2)', [treasurerBig, ' Get a second quote. ']);
 check('the Guru declines with a reason; it never counts', (await entryOf(treasurerBig)).status === 'declined'
@@ -2968,11 +2986,13 @@ check('... nor read her record', (await asApp('authenticated', minorLogin, 'sele
 await refusesWith('a withdrawal is recorded once', 'already_withdrawn', () => asApp('authenticated', guru, 'select withdraw_consent($1)', [minor.id]));
 
 // D4-03: erasure. Afterwards nothing in any table, nor in audit_log, holds the child's data.
-await refusesWith('a coordinator cannot erase a student', 'not_allowed', () => asApp('authenticated', coordinator, `select erase_student($1, 'x')`, [minor.id]));
-await refusesWith('an erasure needs a reason', 'reason_required', () => asApp('authenticated', guru, `select erase_student($1, ' ')`, [minor.id]));
+// Since 0066 (#713) the app reaches erase_student only through a request two Gurus handled (act_on_data_request,
+// the "0066" block); the SQL editor still runs it directly, as here.
+await refusesWith('a coordinator cannot erase a student', 'permission denied for function erase_student', () => asApp('authenticated', coordinator, `select erase_student($1, 'x')`, [minor.id]));
+await refusesWith('an erasure needs a reason', 'reason_required', () => asOwner(`select erase_student('${minor.id}', ' ')`));
 const [{ qr_token: minorQr }] = await asOwner(`select qr_token from students where id = '${minor.id}'`);
-const [{ r: erased }] = await asApp('authenticated', guru, `select erase_student($1, 'parent asked', 'REQ-1') as r`, [minor.id]);
-check('the Guru erases the student and her login', erased.roll_no === minor.roll_no && erased.login_deleted === true
+const [{ r: erased }] = await asOwner(`select erase_student('${minor.id}', 'parent asked', 'REQ-1') as r`);
+check('the owner (SQL editor) erases the student and her login', erased.roll_no === minor.roll_no && erased.login_deleted === true
   && erased.audit_rows_redacted > 0, JSON.stringify(erased));
 const needles = [minor.id, minorLogin, minorQr, 'sec.minor@example.com', 'Sec Minor Child', 'sec.parent@example.com', 'Sec Parent'];
 const tables = (await asOwner(`select c.relname from pg_class c where c.relnamespace = 'public'::regnamespace and c.relkind = 'r'`)).map((r) => r.relname);
@@ -2994,7 +3014,7 @@ const loaner = await register(coordinator, { p_full_name: 'Sec Borrower', p_dob:
 const loanItem = (await addItem(guru, 'Sec khol')).id;
 await issue(coordinator, loanItem, loaner.id, null, 'good');
 await refusesWith('an erasure waits until a lent instrument is back', 'open_loan', () =>
-  asApp('authenticated', guru, `select erase_student($1, 'parent asked')`, [loaner.id]));
+  asOwner(`select erase_student('${loaner.id}', 'parent asked')`));
 // The owner in the SQL editor (no signed-in user) may record a withdrawal and erase too.
 await asOwner(`select set_config('request.jwt.claim.sub', '', false)`);
 check('the owner (SQL editor) records a withdrawal and erases an adult', (await asOwner(
@@ -3057,7 +3077,7 @@ for (const f of internal) {
 }
 check('grant sweep: internal functions are closed to signed-in people', openInternal.length === 0, openInternal.join(' '));
 check('... while the app functions stay open to them', (await asOwner(`select bool_and(has_function_privilege('authenticated', f, 'execute')) as ok
-  from unnest(array['erase_student(uuid,text,text)', 'withdraw_consent(uuid,text)', 'unlink_student_login(uuid)', 'scan_qr(uuid,text,jsonb)',
+  from unnest(array['withdraw_consent(uuid,text)', 'unlink_student_login(uuid)', 'scan_qr(uuid,text,jsonb)',
     'toggle_visit(uuid,visit_method,text,jsonb)', 'register_student(text,date,text,text,text,text,smallint,uuid,text,text,text,text,text,boolean,boolean,uuid,text)',
     'is_staff()', 'my_role()', 'get_guardians(uuid)', 'get_consents(uuid)', 'get_call_notes(uuid,integer)',
     'get_audit_log(text,uuid,text,timestamptz,bigint,integer)']) f`))[0].ok === true);
@@ -3826,7 +3846,7 @@ check('the nightly purge removes only rows older than 400 days', purged === 1 &&
 // Erasure leaves no student id in the log; the rows (who, when, what) stay.
 const alRowsBefore = (await asOwner(`select count(*)::int as n from access_log where student_id = '${alMinor.id}'`))[0].n;
 const alTotal = await logRows();
-await asApp('authenticated', guru, `select erase_student($1, 'parent asked', 'REQ-AL') as r`, [alMinor.id]);
+await asOwner(`select erase_student('${alMinor.id}', 'parent asked', 'REQ-AL') as r`);
 check('erasure blanks the student\'s id in access_log and keeps the rows', alRowsBefore >= 4
   && (await asOwner(`select count(*)::int as n from access_log where student_id = '${alMinor.id}'`))[0].n === 0
   && (await logRows()) === alTotal, `${alRowsBefore}`);
@@ -4124,7 +4144,7 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
     'check_inventory_item(bigint,text,text)', 'check_out_all(smallint)', 'class_report(date,date,uuid)',
     'clean_audience(text,smallint,bigint)', 'coordinator_dashboard()', 'decide_fund_entry(bigint,boolean,text)',
     'decide_material_suggestion(bigint,boolean,text)', 'decide_promotion(bigint,text,text,date)',
-    'delete_practice(bigint)', 'erase_student(uuid,text,text)', 'event_counts(bigint[])', 'event_people_list(bigint)',
+    'delete_practice(bigint)', 'event_counts(bigint[])', 'event_people_list(bigint)',
     'event_student_list(bigint,boolean)', 'event_visible_to(bigint,uuid)', 'fund_balance()',
     'fund_bill_deletable(text)', 'fund_bill_readable(text)', 'fund_bill_uploadable(text)',
     'give_promotion_feedback(bigint,text,text)', 'guru_dashboard()', 'has_class_role()', 'ig_audio_path_ok(text)',
@@ -4176,8 +4196,7 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
     'clean_person_name(text,integer)', 'person_name_symbols()', 'default_home_centre()', 'possible_duplicates(text,date,text)',
     // 0048: the caller's own audience (polls rule, #288; audience_profiles closed); the desk's notice for an adult (#290)
     'in_audience(text,smallint,bigint,uuid)', 'record_desk_notice(uuid,text)',
-    // 0049: the Guru erases a waiting sign-up (privacy_caller_ok inside)
-    'erase_login(uuid,text,text)',
+    // 0049's erase_login: since 0066 (#713) only through act_on_data_request or the SQL editor, so not listed
     // 0050: the staff homes' numbers (staff only inside)
     'staff_dashboard()',
     // 0051: a child's sign-up at home (the child's own request; the consent page; Accept for a child, staff only inside)
@@ -4218,6 +4237,8 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
     'playground_pack(integer)', 'my_playground_state()', 'play_set_surprise(boolean)', 'record_round(jsonb)',
     'play_set_status(text,text,text)', 'publish_playground(text)', 'staff_playground_progress(uuid)', 'staff_playground_class(smallint,bigint)',
     'play_audio_readable(text)', 'play_audio_uploadable(text)', 'play_audio_deletable(text)',
+    // 0066: the first of the two Gurus approves an erasure (is_guru inside)
+    'approve_data_erasure(uuid,text)', 'import_all_or_none(jsonb,boolean)',
   ];
   const runnableBy = async (role) => (await asOwner(`select p.oid::regprocedure::text as f from pg_proc p
     where p.pronamespace = 'public'::regnamespace
@@ -5861,7 +5882,7 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
 
   // S3-02: a recording Ram uploaded and never submitted.
   const ramUnsent = await objectAt(ramLogin, 'm4a', 4096, '3 days');
-  const [{ r: erased49 }] = await asApp('authenticated', guru, `select erase_student($1, 'asked by email', 'REQ-49') as r`, [ram.id]);
+  const [{ r: erased49 }] = await asOwner(`select erase_student('${ram.id}', 'asked by email', 'REQ-49') as r`);
   check('S3-02: erasure lists the recordings in the child\'s folder that were never submitted', erased49.files.includes(ramUnsent),
     JSON.stringify(erased49.files));
   check('S2-06: erasing ram.49@ leaves the audit trail of sriram.49@ whole', (await fullAuditRows(sriram.id)) === sriramRows && sriramRows > 0,
@@ -5941,9 +5962,13 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   await asApp('authenticated', ann, 'select save_about_me($1::jsonb)', [JSON.stringify({ occupation: 'working' })]);
   const joann = await signUpWith('joann.49@example.com', { full_name: 'Joann Fortynine', centre_id: centre49 });
   const joannRows = await fullAuditRows(joann);
-  const erase = (who, id, reason = 'asked by email') => asApp('authenticated', who, `select erase_login($1, $2, 'REQ-49L') as r`, [id, reason]);
-  await refusesWith('S4-06: a coordinator cannot erase a sign-up', 'not_allowed', () => erase(coordinator, ann));
-  await refusesWith('S4-06: nor the sign-up itself (only the Guru)', 'not_allowed', () => erase(ann, ann));
+  // Since 0066 (#713) the app reaches erase_login only through a request two Gurus handled; here the SQL editor runs it
+  // (`guru` stands for that path), app users are refused before the function starts.
+  const erase = async (who, id, reason = 'asked by email') => who === guru
+    ? (await db.query(`select erase_login($1, $2, 'REQ-49L') as r`, [id, reason])).rows
+    : asApp('authenticated', who, `select erase_login($1, $2, 'REQ-49L') as r`, [id, reason]);
+  await refusesWith('S4-06: a coordinator cannot erase a sign-up', 'permission denied for function erase_login', () => erase(coordinator, ann));
+  await refusesWith('S4-06: nor the sign-up itself (nor the Guru alone, #713)', 'permission denied for function erase_login', () => erase(ann, ann));
   await refusesWith('S4-06: nor anon', 'permission denied for function erase_login', () =>
     asApp('anon', null, `select erase_login($1, 'x')`, [ann]));
   await refusesWith('S4-06: a reason is needed', 'reason_required', () => erase(guru, ann, ' '));
@@ -6615,7 +6640,7 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   await refusesWith('0053 #320: consent on a coordinator\'s own record is not withdrawn while the login is on it', 'staff_login_linked', () =>
     asApp('authenticated', guru, `select withdraw_consent($1, 'asked')`, [recA.id]));
   await refusesWith('0053 #320: ... nor is it erased', 'staff_login_linked', () =>
-    asApp('authenticated', guru, `select erase_student($1, 'asked')`, [recA.id]));
+    asOwner(`select erase_student('${recA.id}', 'asked')`));
   await refusesWith('0053 #320: ... nor deleted in the dashboard', 'staff_login_linked', () =>
     asOwner(`delete from students where id = '${recA.id}'`));
   check('0053 #320: ... the login stays on', (await asOwner(`select active from profiles where id = '${asha}'`))[0].active === true);
@@ -7335,7 +7360,7 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   check('0058: withdrawal: the waiting digest is not sent and ends as not_eligible', afterWithdraw.claimed === 0 && sent58.length === 1
     && (await rows58()).at(-1).outcome === 'not_eligible', JSON.stringify(await rows58()));
   await asOwner(`insert into parent_digests (student_id, guardian_id, week_start, again) values ('${sib.id}', (select id from guardians where student_id = '${sib.id}'), '${week}', true)`);
-  await asApp('authenticated', guru, `select erase_student($1, 'parent asked', 'REQ-58')`, [sib.id]);
+  await asOwner(`select erase_student('${sib.id}', 'parent asked', 'REQ-58')`);
   check('0058: erasure: the child\'s digests go with the record', (await rows58(sib.id)).length === 0);
 
   // Switching off ends waiting rows; an expired one is not sent; 30 days kept.
@@ -7480,7 +7505,12 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   await refusesWith('0059: at most 5 requests a day', 'too_many_requests', () => file(daraLogin, 'erasure'));
 
   // Erasure (c): the Guru erases with the roll number; the tombstone carries the reference; the request stays bare.
+  // Since 0066 (#712) another Guru approves an erasure first (the "0066" block checks the rule itself).
+  const guruB59 = await signUp('guru.b59@example.com', true);
+  await asOwner(`update profiles set role = 'guru' where id = '${guruB59}'`);
+  const approve59 = (id, how) => asApp('authenticated', guruB59, 'select approve_data_erasure($1, $2)', [id, how]);
   const gone = await file(ekaLogin, 'erasure', null, 'Please delete everything about me.');
+  await approve59(gone.id, 'own_login');
   const erased59 = await act(guru, gone.id, 'erase', eka.roll_no, 'Asked in the app');
   const bare = await row(gone.id);
   check('0059 #555: the Guru erases a student from the request (erase_student)', erased59.roll_no === eka.roll_no && erased59.login_deleted === true
@@ -7495,6 +7525,7 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
     && (await row(ekaAsk.id)).profile_id === null);
   await refusesWith('0059: a request whose person is gone cannot be acted on', 'person_gone', async () => {
     const [{ id }] = await asOwner(`insert into data_requests (kind, source) values ('erasure', 'email') returning id`);
+    await approve59(id, 'registered_email');
     return act(guru, id, 'erase', 'x');
   });
   await answer(guru, ekaAsk.id, 'refused', 'The person was erased at their request.');
@@ -7515,6 +7546,7 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   // A waiting login (no record), asked by email: erase_login, confirmed with its email.
   const waiting59 = await signUp('wait.59@example.com', true);
   const waitAsk = await asApp('authenticated', guru, `select record_data_request($1, 'erasure', 'email', 'self', null, null) as r`, ['Wait.59@Example.com']);
+  await approve59(waitAsk[0].r.id, 'registered_email');
   await refusesWith('0059: a login without a record is confirmed with its email', 'confirm_mismatch', () => act(guru, waitAsk[0].r.id, 'erase', 'MS-2026-0001'));
   const waitGone = await act(guru, waitAsk[0].r.id, 'erase', 'wait.59@example.com', 'Asked by email');
   check('0059 #555: ... and erased with erase_login', waitGone.login_deleted === true && (await row(waitAsk[0].r.id)).action === 'erase_login'
@@ -7550,6 +7582,7 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   try { await db.exec(file59); } catch (e) { again59 = String(e.message); }
   check('0059: a second run changes nothing', again59 === '' && JSON.stringify(await counts59()) === JSON.stringify(before59),
     `${again59} ${JSON.stringify(before59)}`);
+  await asOwner(`update profiles set active = false where id = '${guruB59}'`); // later blocks count the Gurus
 }
 
 // ---------------------------------------------------------------- 0060 privacy notice 1.0 (DECISIONS #571-#579)
@@ -8138,7 +8171,7 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   const [{ id: gSib }] = await asOwner(`select id from guardians where student_id = '${sib.id}'`);
   await asApp('authenticated', coordinator, `select set_guardian_digest($1, true, '1.0')`, [gSib]);
   check('0063: the sibling\'s parent sees only the sibling', (await view(gSib)).student_name === 'Radha Sibling Sixtythree');
-  await asApp('authenticated', guru, `select erase_student($1, 'parent asked', 'REQ-63')`, [sib.id]);
+  await asOwner(`select erase_student('${sib.id}', 'parent asked', 'REQ-63')`);
   check('0063: erasure: the guardian row is gone, the link opens nothing, the access log keeps no id',
     (await view(gSib)).result === 'not_available'
     && (await one(`select count(*)::int as n from access_log where student_id = '${sib.id}'`)).n === 0);
@@ -8496,6 +8529,241 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   let again65 = '';
   try { await db.exec(file65); } catch (e) { again65 = String(e.message); }
   check('0065 can run again and changes no row', again65 === '' && JSON.stringify(await count65()) === JSON.stringify(before65), again65);
+}
+
+// ---------------------------------------------------------------- 0066 facilitator safeguards (DECISIONS #710-#719)
+// The P0 rows of Sarvesh's Facilitator Module review (27-10-2026, §8): FUND-01 nobody decides their own fund entry (a
+// table rule; a refused try is logged), FUND-02 a reversal after a month's report leaves the month alone, PRIV-01 an
+// erasure needs two Gurus and records how the person asking was checked, STU-01/02 an import all or none and a dry run
+// that keeps nothing, AUTH-02 a switched-off login loses its sessions, AUD-02 the error log keeps no name or number.
+{
+  const file66 = readFileSync(new URL('migrations/0066_facilitator_p0.sql', supabaseDir), 'utf8');
+  // Earlier blocks ran 0049, 0059 and 0061 again (their erase grants, act_on_data_request, log_client_error): 0066 again.
+  await db.exec(file66);
+  const one66 = async (sql, params) => (await db.query(sql, params)).rows[0];
+
+  // FUND-01 (#710): the maker, or a treasurer for a coordinator's entry, is refused with { refused } and logged.
+  await asApp('authenticated', guru, 'update profiles set is_treasurer = true where id = any ($1)', [[coordinator, coordinator2]]);
+  const cat66 = (await asOwner(`select id from fund_categories where code = 'instruments'`))[0].id;
+  const bill66 = `${coordinator2}/${await newId()}.jpg`;
+  await asApp('authenticated', coordinator2, `insert into storage.objects (bucket_id, name, owner, metadata) values ('fund-bills', $1, auth.uid(), $2)`,
+    [bill66, JSON.stringify({ size: 2048, mimetype: 'image/jpeg' })]);
+  const today66 = (await asOwner('select today_ist()::text as d'))[0].d;
+  const [{ id: big66 }] = await asApp('authenticated', coordinator2,
+    `select record_fund_entry('expense', $1::smallint, $2::date, 300000, 'Drum maker', null, null, $3, 'Bill.jpg') as id`, [cat66, today66, bill66]);
+  const decide66 = async (who, approve = true, note = null) =>
+    (await asApp('authenticated', who, 'select decide_fund_entry($1, $2, $3) as r', [big66, approve, note]))[0].r;
+  const refusedRows = async () => (await asOwner(`select changed_by, new_row from audit_log
+    where table_name = 'fund_entries' and row_id = '${big66}' and action = 'REFUSED' order by id`));
+  check('0066 FUND-01: the treasurer cannot approve their own entry: refused, the entry still waits',
+    (await decide66(coordinator2))?.refused === 'own_entry' && (await one66(`select status from fund_entries where id = $1`, [big66])).status === 'waiting');
+  check('0066 FUND-01: ... and the try is in the change log (who, which entry, what was tried)', await (async () => {
+    const rows = await refusedRows();
+    return rows.length === 1 && rows[0].changed_by === coordinator2 && rows[0].new_row.refused === 'own_entry' && rows[0].new_row.tried === 'approve';
+  })(), JSON.stringify(await refusedRows()));
+  check('0066 FUND-01: another treasurer may not decide a coordinator\'s entry either (only the Guru): refused and logged',
+    (await decide66(coordinator, false, 'No'))?.refused === 'not_approver' && (await refusedRows()).length === 2
+    && (await refusedRows())[1].changed_by === coordinator);
+  check('0066 FUND-01: the Guru reads the refusals on Change log (get_audit_log, action REFUSED)', (await asApp('authenticated', guru,
+    `select row_id from get_audit_log('fund_entries', null, 'REFUSED')`)).filter((r) => r.row_id === String(big66)).length === 2);
+  await refusesWith('0066 FUND-01: a login that keeps no fund is still refused outright', 'not_allowed', () =>
+    asApp('authenticated', late, 'select decide_fund_entry($1, true)', [big66]));
+  await refusesWith('0066 FUND-01: the table itself refuses a decision by the maker, even from the dashboard',
+    'new row for relation "fund_entries" violates check constraint "fund_entries_not_own_decision"', async () => {
+      await db.exec('begin');
+      try {
+        await db.query(`select set_config('mridanga.fund_deciding', 'on', true)`);
+        await db.query(`update fund_entries set status = 'approved', decided_by = created_by, decided_at = now() where id = $1`, [big66]);
+      } finally {
+        await db.exec('rollback');
+      }
+    });
+  const approved66 = await decide66(guru);
+  check('0066 FUND-01: the Guru approves it: { status }, decided by the Guru', approved66?.status === 'approved'
+    && (await one66(`select decided_by from fund_entries where id = $1`, [big66])).decided_by === guru, JSON.stringify(approved66));
+
+  // FUND-02: an income of last month, reversed this month after the month's report.
+  const lastMonth = (await asOwner(`select (date_trunc('month', today_ist()) - interval '1 month')::date::text as d`))[0].d;
+  const [{ id: old66 }] = await asApp('authenticated', coordinator2,
+    `select record_fund_entry('income', (select id from fund_categories where code = 'donation'), $1::date, 120000, 'Old donor') as id`, [lastMonth]);
+  const monthTotal = async (from) => Number((await asApp('authenticated', coordinator, `select coalesce(sum(case direction when 'income'
+    then amount_paise else -amount_paise end), 0)::bigint as t from fund_entries where status = 'approved'
+    and on_date >= $1::date and on_date < ($1::date + interval '1 month')`, [from]))[0].t);
+  const reportBefore = await monthTotal(lastMonth);
+  const original = await one66('select * from fund_entries where id = $1', [old66]);
+  const balanceBefore = Number((await asApp('authenticated', guru, 'select fund_balance() as b'))[0].b);
+  const [{ id: rev66 }] = await asApp('authenticated', coordinator2, 'select reverse_fund_entry($1, $2) as id', [old66, 'Cheque bounced']);
+  const rev = await one66('select * from fund_entries where id = $1', [rev66]);
+  check('0066 FUND-02: the reversal is a new entry dated today, linked to the original, the amount negative',
+    rev.reverses_id === old66 && rev.on_date.toISOString?.().slice(0, 10) !== lastMonth && Number(rev.amount_paise) === -120000
+    && rev.status === 'approved', JSON.stringify(rev));
+  check('0066 FUND-02: the original stays as it was', JSON.stringify(await one66('select * from fund_entries where id = $1', [old66]))
+    === JSON.stringify(original));
+  check('0066 FUND-02: last month\'s report is unchanged; the balance reconciles (original + reversal = 0)',
+    (await monthTotal(lastMonth)) === reportBefore
+    && Number((await asApp('authenticated', guru, 'select fund_balance() as b'))[0].b) === balanceBefore - 120000);
+  await asApp('authenticated', guru, 'update profiles set is_treasurer = false where id = any ($1)', [[coordinator, coordinator2]]);
+
+  // PRIV-01 (#712, #713): an erasure by two Gurus; the identity check and both people recorded.
+  const guruB = await signUp('guru.b66@example.com', true);
+  await asOwner(`update profiles set role = 'guru' where id = '${guruB}'`);
+  const doraLogin = await signUp('dora.66@example.com', true);
+  const dora = await register(coordinator, { p_full_name: 'Dora Sixtysix', p_dob: '1991-02-03', p_email: 'dora.66@example.com' });
+  const [{ r: ask66 }] = await asApp('authenticated', doraLogin, `select file_data_request('erasure', null, 'Please forget me.') as r`);
+  const approve = (who, id, how) => asApp('authenticated', who, 'select approve_data_erasure($1, $2)', [id, how]);
+  const act66 = async (who, id, confirm, note = 'Asked in the app') =>
+    (await asApp('authenticated', who, `select act_on_data_request($1, 'erase', $2, $3) as r`, [id, confirm, note]))[0].r;
+  const req66 = (id) => one66('select * from data_requests where id = $1', [id]);
+  await refusesWith('0066 PRIV-01: one Guru alone cannot erase: another Guru approves first', 'second_approval_needed', () =>
+    act66(guru, ask66.id, dora.roll_no));
+  await refusesWith('0066 PRIV-01: a coordinator cannot approve an erasure', 'not_allowed', () => approve(coordinator, ask66.id, 'own_login'));
+  await refusesWith('0066 PRIV-01: the identity check is one of the four', 'identity_invalid', () => approve(guru, ask66.id, 'aadhaar 1234'));
+  await approve(guru, ask66.id, 'own_login');
+  const approved = await req66(ask66.id);
+  check('0066 PRIV-01: the approval records who, when and how the person asking was checked', approved.approved_by === guru
+    && approved.approved_at !== null && approved.identity_check === 'own_login' && approved.status === 'open', JSON.stringify(approved));
+  await refusesWith('0066 PRIV-01: approved once', 'already_approved', () => approve(guruB, ask66.id, 'own_login'));
+  await refusesWith('0066 PRIV-01: the approver does not also carry it out', 'approver_cannot_erase', () => act66(guru, ask66.id, dora.roll_no));
+  await refusesWith('0066 #713: the Guru cannot call erase_student directly from the app', 'permission denied for function erase_student', () =>
+    asApp('authenticated', guruB, `select erase_student($1, 'x')`, [dora.id]));
+  await refusesWith('0066 #713: ... nor erase_login', 'permission denied for function erase_login', () =>
+    asApp('authenticated', guruB, `select erase_login($1, 'x')`, [doraLogin]));
+  const done66 = await act66(guruB, ask66.id, dora.roll_no);
+  const after = await req66(ask66.id);
+  check('0066 PRIV-01: the second Guru carries it out: the record and login are gone', done66.roll_no === dora.roll_no
+    && done66.login_deleted === true && (await one66('select count(*)::int as n from students where id = $1', [dora.id])).n === 0, JSON.stringify(done66));
+  check('0066 PRIV-01: ... the bare request keeps both people, the times and the identity check, not the text',
+    after.status === 'done' && after.action === 'erase_student' && after.approved_by === guru && after.closed_by === guruB
+    && after.identity_check === 'own_login' && after.approved_at !== null && after.closed_at !== null && after.body === null
+    && after.profile_id === null, JSON.stringify(after));
+  // A parent's request for a child, recorded at the desk: the recorder is not the approver; own_login does not fit.
+  const kid66 = await register(coordinator, { p_full_name: 'Kavi Sixtysix', p_dob: childDob, p_guardian_name: 'Kavi Parent',
+    p_guardian_phone: '9000066066', p_guardian_relation: 'father', p_id_type_checked: 'aadhaar', p_photo_consent: false, p_written_consent: true });
+  const [{ r: desk66 }] = await asApp('authenticated', guru, `select record_data_request($1, 'erasure', 'desk', 'parent', null, 'Father asked at the desk.') as r`,
+    [kid66.roll_no]);
+  await refusesWith('0066 PRIV-01: the Guru who recorded a desk request does not approve it', 'not_the_recorder', () => approve(guru, desk66.id, 'id_seen'));
+  await refusesWith('0066 PRIV-01: own_login only fits a request filed from the person\'s own login', 'identity_invalid', () =>
+    approve(guruB, desk66.id, 'own_login'));
+  await approve(guruB, desk66.id, 'id_seen');
+  const kidGone = await act66(guru, desk66.id, kid66.roll_no, 'Father asked; his ID seen');
+  const deskAfter = await req66(desk66.id);
+  check('0066 PRIV-01: ... approved by one Guru (ID seen), carried out by the other', kidGone.roll_no === kid66.roll_no
+    && deskAfter.approved_by === guruB && deskAfter.closed_by === guru && deskAfter.identity_check === 'id_seen', JSON.stringify(deskAfter));
+  await refusesWith('0066 PRIV-01: an approval is whole (who, when and how, together)', /violates check constraint "data_requests_approval_whole"/, () =>
+    asOwner(`update data_requests set approved_by = '${guru}', approved_at = now(), identity_check = null where id = '${desk66.id}'`));
+  await refusesWith('0066 PRIV-01: only an erasure request is approved', 'not_erasure', async () => {
+    const [{ roll_no: arjunRoll }] = await asOwner(`select roll_no from students where profile_id = '${arjun}'`);
+    const [{ r }] = await asApp('authenticated', guru, `select record_data_request($1, 'access', 'desk', 'self', null, 'A copy.') as r`, [arjunRoll]);
+    return approve(guruB, r.id, 'id_seen');
+  });
+
+  // STU-01/02 (#714): all or none, and a dry run that keeps nothing (roll numbers included).
+  const rows66 = [
+    { line: 2, full_name: 'Ira Sixtysix', dob: '1990-04-05', phone: '+91 90000 66001' },
+    { line: 3, full_name: 'Jai Sixtysix', dob: '1989-06-07', email: 'jai.66@example.com' },
+    { line: 4, full_name: 'Kid Sixtysix', dob: childDob },
+    { line: 5, full_name: 'Ira Sixtysix', dob: '1990-04-05' },
+  ];
+  const whole = async (rows, dry = false) =>
+    (await asApp('authenticated', guru, 'select import_all_or_none($1, $2) as r', [JSON.stringify(rows), dry]))[0].r;
+  const studentsNow = async () => (await one66(`select (select count(*) from students)::int as s, (select coalesce(max(last), 0) from roll_counters)::int as roll`));
+  const before66 = await studentsNow();
+  // One word per row: ok, held or the error (jsonb orders an object's keys its own way).
+  const shape = (rows) => rows.map((r) => `${r.line}:${r.ok ? 'ok' : r.held ? 'held' : r.error}`).join(' ');
+  const dry = await whole(rows66, true);
+  check('0066 STU-01: the dry run says per row what the database would do: good rows ok, an under-18 row and a repeat refused',
+    shape(dry) === '2:ok 3:ok 4:minor_use_form 5:duplicate_student', JSON.stringify(dry));
+  check('0066 STU-01: ... and keeps nothing, not even a roll number', JSON.stringify(await studentsNow()) === JSON.stringify(before66),
+    JSON.stringify(await studentsNow()));
+  const held = await whole(rows66);
+  check('0066 STU-02: all or none with a refused row saves nothing; the good rows are held back',
+    shape(held) === '2:held 3:held 4:minor_use_form 5:duplicate_student'
+    && JSON.stringify(await studentsNow()) === JSON.stringify(before66), JSON.stringify(held));
+  const saved66 = await whole(rows66.slice(0, 2));
+  check('0066 STU-02: all or none with good rows saves every one, with roll numbers', saved66.length === 2
+    && saved66.every((r) => /^MS-\d{4}-\d{4}$/.test(r.roll_no) && r.id) && (await studentsNow()).s === before66.s + 2, JSON.stringify(saved66));
+  await refusesWith('0066 STU-02: a coordinator cannot import', 'not_allowed', () =>
+    asApp('authenticated', coordinator, 'select import_all_or_none($1)', [JSON.stringify(rows66.slice(0, 1))]));
+  await refusesWith('0066 STU-02: at most 500 rows at once', 'too_many_rows', () => whole(Array.from({ length: 501 }, (_, i) => ({ line: i + 2 })), true));
+
+  // AUTH-02 (#715): switching a login off ends its sessions and refresh tokens, nobody else's.
+  const off66 = await signUp('coord.off66@example.com', true);
+  await asOwner(`update profiles set role = 'coordinator' where id = '${off66}'`);
+  const sessionFor = async (id) => {
+    const [{ id: sid }] = await asOwner(`insert into auth.sessions (user_id) values ('${id}') returning id`);
+    await asOwner(`insert into auth.refresh_tokens (token, user_id, session_id) values ('t-${sid}', '${id}', '${sid}')`);
+  };
+  await sessionFor(off66);
+  await sessionFor(off66);
+  await sessionFor(coordinator2);
+  const sessionsOf = async (id) => (await one66(`select (select count(*) from auth.sessions where user_id = $1)::int
+    + (select count(*) from auth.refresh_tokens where user_id = $1::text)::int as n`, [id])).n;
+  check('0066 AUTH-02: (state) the coordinator is signed in on two devices', (await sessionsOf(off66)) === 4);
+  await asApp('authenticated', guru, 'update profiles set active = false where id = $1', [off66]);
+  check('0066 AUTH-02: switched off: every session and refresh token of theirs is gone at once', (await sessionsOf(off66)) === 0);
+  check('0066 AUTH-02: ... nobody else\'s', (await sessionsOf(coordinator2)) === 2);
+  await asApp('authenticated', guru, 'update profiles set active = true where id = $1', [off66]);
+  check('0066 AUTH-02: switching on again changes no other login', (await sessionsOf(coordinator2)) === 2
+    && (await one66('select active from profiles where id = $1', [off66])).active === true);
+  await asOwner(`delete from auth.sessions where user_id = '${coordinator2}'`);
+
+  // AUD-02 (#716): only an error class name is kept.
+  const names66 = await one66(`select client_error_name('TypeError') as a, client_error_name('AuthApiError') as b, client_error_name('NonError') as c,
+    client_error_name('Priyanka') as d, client_error_name('Error9876543210') as e, client_error_name('eyJhbGciOiJIUzI1NiJ9') as f,
+    client_error_name('priya_example_com') as g, client_error_name('ReferenceError') as h`);
+  check('0066 AUD-02: error class names are kept; a name, a phone, a token or an email-like word becomes Error', JSON.stringify(names66)
+    === JSON.stringify({ a: 'TypeError', b: 'AuthApiError', c: 'NonError', d: 'Error', e: 'Error', f: 'Error', g: 'Error', h: 'ReferenceError' }),
+    JSON.stringify(names66));
+  const reporter66 = await signUp('reporter.66@example.com', true);
+  await asApp('authenticated', reporter66, `select log_client_error('crash', 'Priyanka9876543210', '/staff/fund', 'web-test+abc6666', 'web')`);
+  const kept66 = await asOwner(`select error_name from client_errors where app_version = 'web-test+abc6666'`);
+  check('0066 AUD-02: a report naming a person is stored as Error', kept66.length === 1 && kept66[0].error_name === 'Error', JSON.stringify(kept66));
+  check('0066 AUD-02: nothing in the error log holds a person\'s name, email or phone', (await one66(`select count(*)::int as n from client_errors
+    where error_name ~ '[0-9]{5}' or error_name ~* 'priya|@' or screen ~ '[0-9]{5}'`)).n === 0);
+
+  // Who may run what, and a second run.
+  check('0066: the new functions are for signed-in people (roles checked inside), never anon; the name rule is internal', (await one66(`select
+    has_function_privilege('authenticated', 'approve_data_erasure(uuid,text)', 'execute')
+    and has_function_privilege('authenticated', 'import_all_or_none(jsonb,boolean)', 'execute')
+    and not has_function_privilege('anon', 'approve_data_erasure(uuid,text)', 'execute')
+    and not has_function_privilege('anon', 'import_all_or_none(jsonb,boolean)', 'execute')
+    and not has_function_privilege('anon', 'decide_fund_entry(bigint,boolean,text)', 'execute')
+    and not has_function_privilege('authenticated', 'client_error_name(text)', 'execute')
+    and not has_function_privilege('authenticated', 'end_switched_off_sessions()', 'execute') as ok`)).ok === true);
+  const state66 = async () => one66(`select (select count(*) from fund_entries)::int as f, (select count(*) from data_requests)::int as d,
+    (select count(*) from students)::int as s, (select count(*) from pg_trigger where tgname = 'profiles_end_sessions')::int as t,
+    (select count(*) from pg_constraint where conname in ('fund_entries_not_own_decision', 'data_requests_approval_whole'))::int as c`);
+  const beforeAgain = await state66();
+  let again66 = '';
+  try { await db.exec(file66); } catch (e) { again66 = String(e.message); }
+  check('0066 can run again and changes no row', again66 === '' && JSON.stringify(await state66()) === JSON.stringify(beforeAgain),
+    `${again66} ${JSON.stringify(beforeAgain)}`);
+  await asOwner(`update profiles set active = false where id = '${guruB}'`);
+}
+
+// ---------------------------------------------------------------- 0067 facilitator wording (DECISIONS #706)
+// No "Guru" in the Telugu and Hindi notice lines; English and the helpers' privileges as before.
+{
+  const file67 = readFileSync(new URL('migrations/0067_facilitator_wording.sql', supabaseDir), 'utf8');
+  const one = async (sql) => (await asOwner(sql))[0];
+  const guruLines = async () => (await one(`select count(*)::int as n
+      from (values ('asked'), ('ready'), ('more'), ('promoted'), ('promoted_staff'), ('not_yet')) k(kind), (values ('te'), ('hi')) l(lang)
+     where promotion_push_line(kind, lang) ~ '(గురు|गुरु)' or team_push_line('approved', lang, 'x') ~ '(గురు|गुरु)'`)).n;
+  check('0067 #706: no Telugu or Hindi notice line says Guru', (await guruLines()) === 0);
+  const named = await one(`select promotion_push_line('more', 'te') as te, promotion_push_line('not_yet', 'hi') as hi,
+    team_push_line('approved', 'te') as team_te, team_push_line('approved', 'hi') as team_hi`);
+  check('0067 #706: the lines name the facilitator (ఫెసిలిటేటర్ / फ़ैसिलिटेटर)', named.te.includes('ఫెసిలిటేటర్') && named.hi.includes('फ़ैसिलिटेटर')
+    && named.team_te.includes('ఫెసిలిటేటర్') && named.team_hi.includes('फ़ैसिलिटेटर'), JSON.stringify(named));
+  const en67 = await one(`select promotion_push_line('more', 'en') as more, team_push_line('approved', 'en') as approved,
+    team_push_line('duty', 'te', 'Sat 18:00') as duty`);
+  check('0067: English and the other lines are as before', en67.more === 'The facilitator asks for more feedback.'
+    && en67.approved === 'The facilitator added your suggestion to the lessons.' && en67.duty === 'రేపు మీకు డ్యూటీ ఉంది: Sat 18:00', JSON.stringify(en67));
+  const grants67 = await one(`select has_function_privilege('authenticated', 'promotion_push_line(text, text)', 'execute') as promo,
+    has_function_privilege('authenticated', 'team_push_line(text, text, text)', 'execute') as team`);
+  check('0067: the two helpers stay internal (no execute for logins)', grants67.promo === false && grants67.team === false, JSON.stringify(grants67));
+  let again67 = '';
+  try { await db.exec(file67); } catch (e) { again67 = String(e.message); }
+  check('0067 can run again', again67 === '' && (await guruLines()) === 0, again67);
 }
 // ---------------------------------------------------------------- row-level security
 const seen =await asApp('authenticated', arjun, 'select full_name from students');

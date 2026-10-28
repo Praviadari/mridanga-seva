@@ -8478,6 +8478,183 @@ whether Playground time counts towards the weekly practice goal (suggested: no);
 thresholds; the privacy-notice line for game results and the consent form for recordings sent from games; who owns
 accessibility QA and go/no-go. DECISIONS #720 onwards are free for the build packages.
 
+## 700. The facilitator's Home is eleven modules — 28 Oct 2026
+
+**Context.** Sarvesh Prji's "Facilitator Module 360° review" (27 Oct 2026, locked by the product owner): 11 circular
+module icons on the facilitator's Home, an inverted tree (Home → module → feature), no "More" menu.
+**Decision.** The facilitator's Home (G1, role value `guru`) shows, under the band (wordmark, motto, menu button, bell),
+the Needs attention strip (#702) and eleven circles in this order: Admin · Coordinators · Students · Teaching ·
+Inventory · Media · Events & Seva · Funds · Reports · Security & Audits · Settings, then "Did you know?". A phone shows
+three to a row, 3 + 3 + 3 + 2 with the last two centred, each label under its circle, wrapping (never cut); a wide
+window shows up to six to a row in the same order; when three cells would be narrower than a label needs (320 px at
+large text, the browser at 200 %) two or one (`gridColumns`, lib/facilitator-modules.ts). The ring of eight of #350
+leaves the facilitator's Home; the coordinator home (C1) keeps its ring and menu (task 4: only the unused `guru` and
+`promotionsWaiting` props went from its `<StaffModules>` call). JS only, no new APK.
+
+## 701. Module landing screens on one route; every way in moved, no screen moved — 28 Oct 2026
+
+**Decision.** A circle opens `/staff/modules/<key>` (`app/staff/modules/[key].tsx`): the module's sections (the spec's
+submodules) with rows, each opening a screen that already existed at its own address; Back returns to the module,
+Back again to Home. A row that is a bottom tab with a copy for screens on top uses that copy (Check-in →
+`/staff/mark-attendance`, Students → `/staff/class-list`, Follow-ups → `/staff/calls`, R4-01); Updates and Ishtagoshti,
+which have none, are opened in the tabs with `router.navigate` (no second copy of the tabs; Back there goes Home, #359).
+On a wide web window a one-line "Home › Module" stands above the sections. The tree is plain data
+(lib/facilitator-modules.ts, labels checked by tsc as i18n keys); docs/SCREENS.md "Facilitator modules" has the
+old → new map. **Why one route.** Eleven near-identical files would be eleven places to keep in step; an unknown key
+says so.
+
+## 702. Needs attention: the Today boxes, folded with one tap — 28 Oct 2026
+
+**Decision.** The overview of SOP p.3 stays as a small strip, not a second menu: a heading button "Needs attention"
+(amber when anything waits, the To do total shown while folded) over the three Today boxes of #351 (in class now, this
+week, to do → To do). Open by default; folding is remembered on the device (local storage, no personal data). Teaching
+keeps the Level-ups count the old ring had. The bell opens Notifications as before.
+
+## 703. Media is "Coming soon"; Inventory is live — 28 Oct 2026
+
+**Decision.** Lead decision 28-10: a module with nothing built is dimmed with "Coming soon" under its name, is not a
+button (read as "Media, Coming soon", disabled) and has no screens; its address says Coming soon. Only Media is so: no
+media library exists (announcement and lesson files belong to their screens). Inventory is built (instruments C19,
+scan, stocktake, labels) and opens; its Phase 2 parts (maintenance, vendors, transport) are not shown at all rather than
+as empty screens.
+
+## 704. Modules are filtered by role; hiding is never the guard — 28 Oct 2026
+
+**Decision.** Each module and row names the staff roles that may open it. Admin, Coordinators and Security & Audits are
+the facilitator's; so are the rows All students, Import students, Referral Sources and Class settings. A coordinator who
+types a module's address sees the "Only the facilitator uses this page" notice or the rows left for them. Every screen
+keeps its own role check and row-level security refuses the data, as before; no policy changed. Today only the
+facilitator's Home shows the modules, so the filter matters for typed addresses; it is ready for a coordinator Home in
+modules later.
+
+## 705. One tree: the side menu lists the modules; the tabs stay — 28 Oct 2026
+
+**Decision.** The facilitator's side menu (from every tab's header) lists the same modules in the same order, each
+opening its landing screen; Media is left out of the menu (nothing to open). Notifications and My profile are in
+Settings → Personal and stay on the bell and the person card. The bottom tabs (Home, Check-in, Students, Follow-ups,
+Updates) stay: they are shared with the coordinators and are the daily shortcuts; in the tree each of their screens has
+its one module. Every destination of the old ring, menu and tabs is in exactly one module (tests/facilitator-home.test.mjs).
+
+## 706. No "Guru" anywhere a person reads it; the internal name stays — 28 Oct 2026
+
+**Context.** The SOP review: "never use Guru in user-facing screens, emails, notifications, error messages,
+documentation or role display". **Decision.** Amends #40 and #664 for Telugu and Hindi: the role is ఫెసిలిటేటర్ /
+फ़ैसिलिटेटर (the words of the website and the translation glossary), with గారు after it in Telugu where the sentence had
+గురువుగారు (149 te and 143 hi strings); where English says "your teacher(s)" Telugu says ఉపాధ్యాయులు and Hindi शिक्षक.
+గురు / गुरु as Thursday (duty weekdays, the duty-hours example) stay. Past What's new entries and the website's app and
+classes pages (en/te/hi) changed too. The database writes two te/hi notice lines with గురువుగారు / गुरुजी, so
+migration **0067** replaces `promotion_push_line` and `team_push_line` with those four lines changed (English and
+privileges unchanged; no table, policy or row). **Kept on purpose:** the role's value `guru` and every table, column,
+function (`guru_ids`, `guru_read` ...), file and route name and the screen codes G1-G16 (#40: renaming means a migration
+on both projects for nothing anyone sees); code comments; the privacy notice's gloss "facilitator (Guru)" in 0060 and on
+the website's privacy pages, which is versioned legal text (drop it in the next notice version); docs/print/sop-guru
+and docs/guide, which the app does not link (re-render as "Facilitator Guide" with the new Home's screenshots: follow-up).
+Telugu and Hindi are drafts for the native review.
+
+## 707. The spec's plain relabels — 28 Oct 2026
+
+**Decision.** Applied where it is a word only: Set-up → Administration, Class fund → Funds, Change history → Audit
+History, App errors → App Diagnostics, How students found us → Referral Sources, Sign-in codes → Sign-in Security, Make a
+coordinator → Approve coordinator (en/te/hi; the sentences naming the old menu path follow). Not applied: All students →
+Students (the module is Students; the database list keeps "All students" so a module and its row do not share a name);
+Mentees → Assigned students and Level-ups → Level Advancement (the spec allows both to stay); Switch off → Deactivate
+access and Delete this record → Delete duplicate record (the coordinator-disable and erasure screens belong to the
+facilitator-p0 work, #710-#719); Ishtagoshti keeps its name, "(Śloka Study)" added on its Teaching row.
+
+## 708. Module colours keep the five families — 28 Oct 2026
+
+**Decision.** No palette change (lead decision 28-10: indigo #22307A + gold #FFC845 header). The circles use the families
+of #368: green Coordinators and Students, purple Teaching, teal Inventory and Funds (as their screens), orange Media and
+Events & Seva, blue Reports; Admin, Security & Audits and Settings are set-up, saffron. Pink and indigo stay unused.
+
+## 709. Left out on purpose — 28 Oct 2026
+
+**Decision.** Not in this change: a coordinator Home in modules (task 4: unchanged); search across modules (UAT-NAV-09);
+breadcrumbs beyond the one line on a wide web window; three instruments, Media library, Inventory maintenance and
+vendors (Phase 2 in the spec); the website upload of the en/te/hi app and classes pages (with the next website release);
+re-rendering the facilitator SOP PDF. No new personal data and no privacy-notice change.
+
+## 710. Nobody decides their own fund entry, and a refused try is logged — 28 Oct 2026
+
+**Decision.** Sarvesh's Facilitator Module review (27-10-2026, FUND-01: "blocked and logged"). `decide_fund_entry`
+already refused the maker (#80) but only inside the function, and the refusal left no trace (a raised error undoes
+any log row in the same call). Now (0066): a table rule `fund_entries_not_own_decision` (an approved or declined entry
+was decided by someone other than its maker, whatever writes it), and `decide_fund_entry` returns `{ status }` or
+`{ refused: own_entry | not_approver }` instead of raising for those two, writing an `audit_log` row with action
+`REFUSED` (who, which entry, approve or decline). The Guru sees them on Change log (filter "Refused try"). Other
+refusals (not a fund keeper, already decided, no reason) still raise. **Older app:** it ignores the answer, so a refused
+self-approval looks done there, but nothing changes in the ledger; the app has never offered Approve on one's own entry.
+
+## 711. A reversal after a month's report changes nothing in that month — 28 Oct 2026
+
+**Decision.** FUND-02 was already true (#80): entries are never changed or deleted; a reversal is a new entry dated
+the day it is made, linked by `reverses_id`, so a closed month's total stays and the balance reconciles. 0066 adds the
+proof (smoke: a last-month income reversed this month: the month's total, the original row and the balance) and no
+code.
+
+## 712. An erasure takes two Gurus; how the person asking was checked is recorded — 28 Oct 2026
+
+**Decision.** PRIV-01 ("dual authorization for erasure, verified requester"). `approve_data_erasure` (the first Guru)
+records `identity_check` — `own_login` (filed from the person's own signed-in app; only then), `id_seen` (the person's,
+or for a child the parent's, ID seen at the desk), `registered_email`, `phone_callback` — with `approved_by` and
+`approved_at`; a code only, never a document number (as at Accept). The Guru who recorded a desk request (`made_by`)
+does not approve it. `act_on_data_request` then erases only an approved request and never by the approver, so two
+different staff members always take part; both, the times and the check stay on the bare request after the erasure.
+**Considered:** a coordinator as second approver — rejected for now: coordinators do not read data requests (#554).
+With one active Guru login the owner erases in the SQL editor (OPERATIONS "Erasure request"), as before.
+
+## 713. The app cannot erase without the request — 28 Oct 2026
+
+**Decision.** `erase_student` and `erase_login` lose `execute` for `authenticated`: a Guru calling them straight from
+the API would skip #712. They still run through `act_on_data_request` (security definer), the retention jobs (0060)
+and the SQL editor. `withdraw_consent` and the photo withdrawal stay one-person (reversible in effect; not erasure).
+
+## 714. An import can be all or none, and checked with the database first — 28 Oct 2026
+
+**Decision.** STU-01/02. The preview (every row checked before anything is saved), duplicates (in the file and against
+saved records), under-18 rows refused to the parent's form and undo were already there (#46, #326). Added:
+`import_all_or_none(rows, dry_run)` runs `import_students` inside a step that is undone when any row is refused (the
+good rows come back `held`) or always for a dry run; so "Check with the class database" shows what the database would
+refuse before anything is written, and roll numbers are not used up. The Guru chooses **Partial** (each good row on its
+own, as before) or **All or none** (only for a file without problems, at most 500 rows); the result says which. The rows
+with problems download as a CSV — the file's own columns plus "Problem" — to fix in Excel and import again (before and
+after the import). `import_students` itself is unchanged, so older apps keep working.
+
+## 715. A login switched off is signed out — 28 Oct 2026
+
+**Decision.** AUTH-02. Mentees must already be moved first (`has_mentees`, 0014) and phones and browsers were already
+forgotten (0039); every rule already refused a switched-off login. Now its Supabase Auth sessions and refresh tokens
+are deleted in the same step (trigger `profiles_end_sessions`), so the next token refresh fails and the app signs out;
+the access token it still holds (at most an hour) opens nothing. Proved on TEST's real Auth tables in a rolled-back
+transaction (a coordinator's 15 sessions and 43 refresh tokens → 0). Switching on again does not restore sessions: the
+person signs in again.
+
+## 716. The error log keeps only error class names — 28 Oct 2026
+
+**Decision.** AUD-02. The log already held no message, id or address (#585). An error's *name* could still be anything
+a library set (a person's name, a number, a token). The app now sends a name only when it reads as an error class
+(a capital, letters only, ending in Error or Exception), else "Error"; the database applies the same rule
+(`client_error_name`), so an older app cannot store one either.
+
+## 717. Level-up decisions were already conflict-safe — 28 Oct 2026
+
+**Decision.** LEVEL-01 ("two reviewers decide at once → one result"). `decide_promotion` (0017) locks the nomination
+(`for update`), refuses a decided one (`nomination_closed`), locks the student and refuses `level_changed`; one open
+nomination per student (`promotion_one_open`). The second of two simultaneous Gurus waits for the first and is then
+refused. No change; the smoke test covers the second decision (PGlite has one connection, so not the wait itself).
+
+## 718. New words say "facilitator" — 28 Oct 2026
+
+**Decision.** The new English strings (approval, import modes) say "facilitator", never "Guru" (Sarvesh's review;
+the wider relabel is facilitator-home's, #700-#709). Telugu and Hindi are drafts for the native review
+(docs/TRANSLATIONS.md). The privacy notice needs no new line: no new personal data (the identity check is a code).
+
+## 719. Left for later — 28 Oct 2026
+
+**Decision.** Not in 0066: a reason and approver for a manual level change (SOP p.8), coordinators scoped by centre
+(AUTH-03: one class today), export logging (EXPORT-01), a TEST two-session walk of LEVEL-01. Listed in
+NOTES_facilitator_p0.md.
+
 ## 720. Playground content: coordinators write drafts, only the Guru approves and publishes — 28 Oct 2026
 
 **Decision (W1, migration 0065).** The four content tables (`play_bols`, `play_assets`, `play_templates`,

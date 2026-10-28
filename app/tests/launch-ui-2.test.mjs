@@ -135,13 +135,19 @@ test('module colours are five families; pink and indigo are gone; each ring keep
   assert.deepEqual(studentRing, ['purple', 'purple', 'blue', 'orange', 'teal', 'green']);
   assert.ok(contiguous(studentRing));
   const shortcuts = src('components/staff-shortcuts.tsx');
-  const shared = Object.fromEntries([...shortcuts.matchAll(/(\w+): \{ key: '\w+', icon: '\w+', tone: '(\w+)'/g)].map((m) => [m[1], m[2]]));
-  shared.register = 'green';
-  const ringText = shortcuts.slice(shortcuts.indexOf('const ring: Module[] = guru'), shortcuts.indexOf('return <ModuleRing'));
-  const [guruText, coordinatorText] = ringText.split('\n    : [');
-  const ringTones = (text) => [...text.matchAll(/shared\.(\w+)|^\s+(register),|tone: '(\w+)'/gm)].map((m) => (m[1] ? shared[m[1]] : m[2] ? 'green' : m[3]));
-  assert.deepEqual(ringTones(guruText), ['blue', 'purple', 'purple', 'purple', 'orange', 'orange', 'green', 'green']);
-  assert.deepEqual(ringTones(coordinatorText), ['green', 'green', 'teal', 'teal', 'purple', 'purple', 'orange', 'orange']);
+  // The coordinator ring (#368); the facilitator's eleven modules since #700, each family side by side but Funds (teal,
+  // as the fund screens) after the community modules, in the spec's order; Admin, Security & Audits and Settings are
+  // set-up, saffron.
+  const ringText = shortcuts.slice(shortcuts.indexOf('const ring: Module[] = ['), shortcuts.indexOf('return <ModuleRing'));
+  assert.deepEqual(tonesOf(ringText), ['green', 'green', 'teal', 'teal', 'purple', 'purple', 'orange', 'orange']);
+  assert.doesNotMatch(src('lib/facilitator-modules.ts'), /tone: '(pink|indigo)'/);
+  const { FACILITATOR_MODULES } = await import('../src/lib/facilitator-modules.ts');
+  assert.deepEqual(FACILITATOR_MODULES.map((m) => m.tone ?? 'saffron'),
+    ['saffron', 'green', 'green', 'purple', 'teal', 'orange', 'orange', 'teal', 'blue', 'saffron', 'saffron']);
+  // A module's circle and its screens agree (lib/module-tone.ts).
+  for (const [key, route] of [['students', 'students'], ['teaching', 'levels'], ['inventory', 'inventory'], ['events', 'events'], ['funds', 'fund'], ['reports', 'reports']]) {
+    assert.equal(FACILITATOR_MODULES.find((m) => m.key === key).tone, moduleToneFor(['staff', route]), key);
+  }
 });
 // ---------------------------------------------------------------- #369 sign-in band in gold, #370 ring labels clear of the drum
 

@@ -4,7 +4,9 @@
 // withdrawal or an erasure out: the roll number (or, for a login without a record, its email) is typed to confirm,
 // and a note is the answer and the reason. Withdrawal = withdraw_consent (the record frozen, the login off); erasure =
 // erase_student or erase_login, whose tombstone keeps the request's reference. Everything is in the audit log.
-// Data: src/data/data-rights.ts (0059).
+// Since 0066 (#712) an erasure needs two people: one Guru says how the person asking was checked and approves it (not
+// the one who recorded it), another carries it out. Before 0066 the approval step is not shown.
+// Data: src/data/data-rights.ts (0059, 0066).
 
 import { Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
@@ -15,6 +17,7 @@ import { useAuth } from '@/auth/auth-provider';
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { Checkbox } from '@/components/checkbox';
+import { ChoiceGroup } from '@/components/choice-group';
 import { DetailGrid } from '@/components/detail-grid';
 import { GuruOnly } from '@/components/guru-only';
 import { LoadingCards } from '@/components/loading-cards';
@@ -28,11 +31,16 @@ import {
   actionFor,
   actOnRequest,
   answerRequest,
+  approveErasure,
   daysLeft,
+  fetchErasureApproval,
   fetchRequest,
+  identityChecksFor,
   REQUEST_TEXT_MAX,
   type ActionResult,
   type DataRequest,
+  type ErasureApproval,
+  type IdentityCheck,
 } from '@/data/data-rights';
 import { formatDate, formatDateTime, isMinorOn, todayLocal } from '@/lib/dates';
 import { spacing } from '@/theme/use-theme';
@@ -58,9 +66,14 @@ function DataRequestDetail() {
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ tone: 'error' | 'success'; text: string } | null>(null);
+  // An erasure's approval (0066): undefined = loading, null = could not load, 'not_set_up' = before 0066.
+  const [approval, setApproval] = useState<ErasureApproval | 'not_set_up' | null | undefined>(undefined);
+  const [check, setCheck] = useState<IdentityCheck | null>(null);
 
   const load = useCallback(async () => {
-    setRequest(await fetchRequest(id));
+    const next = await fetchRequest(id);
+    setRequest(next);
+    if (next && next !== 'not_found' && next.kind === 'erasure' && next.status === 'open') setApproval(await fetchErasureApproval(id));
   }, [id]);
 
   useFocusEffect(
@@ -100,6 +113,19 @@ function DataRequestDetail() {
     await load();
   }
 
+  async function approve(r: DataRequest) {
+    setBusy(true);
+    setMessage(null);
+    const outcome = await approveErasure(r.id, check);
+    setBusy(false);
+    if (outcome.errorKey) {
+      setMessage({ tone: 'error', text: t(outcome.errorKey) });
+      return;
+    }
+    setMessage({ tone: 'success', text: t('dataRequests.approval.done') });
+    await load();
+  }
+
   function resultText(result: ActionResult | undefined): string {
     if (!result) return t('dataRequests.done');
     const parts = [t('dataRequests.done')];
@@ -117,6 +143,12 @@ function DataRequestDetail() {
   // What the Guru types to confirm an action: the roll number, or the email of a login without a record.
   const expected = r?.person?.rollNo ?? r?.person?.email ?? '';
   const left = r ? daysLeft(r.answerBy) : 0;
+  // An open erasure after 0066: approved by one Guru, carried out by another.
+  const erasing = r?.status === 'open' && action === 'erase';
+  const twoPeople = erasing && approval !== 'not_set_up';
+  const state = approval && approval !== 'not_set_up' ? approval : null;
+  const approved = state?.approved ?? null;
+  const canCarryOut = !twoPeople || (approved !== null && approved.by !== profile?.id);
 
   return (
     <Screen underHeader onRefresh={load}>
@@ -165,7 +197,36 @@ function DataRequestDetail() {
 
           {message ? <Notice tone={message.tone}>{message.text}</Notice> : null}
 
-          {r.status === 'open' && action ? (
+          {twoPeople ? (
+            <Section icon="groups" title={t('dataRequests.approval.title')} description={t('dataRequests.approval.what')}>
+              {approval === undefined ? <LoadingCards /> : null}
+              {approval === null ? <Notice tone="error">{t('common.networkError')}</Notice> : null}
+              {approved ? (
+                <AppText>
+                  {t('dataRequests.approval.line', {
+                    name: approved.name ?? '—',
+                    date: formatDateTime(approved.at),
+                    check: t(`dataRequests.approval.checks.${approved.check}`),
+                  })}
+                </AppText>
+              ) : null}
+              {approved && approved.by === profile?.id ? <Notice tone="info">{t('dataRequests.approval.youApproved')}</Notice> : null}
+              {state && !approved && state.madeBy === profile?.id ? <Notice tone="info">{t('dataRequests.approval.youRecorded')}</Notice> : null}
+              {state && !approved && state.madeBy !== profile?.id ? (
+                <>
+                  <ChoiceGroup<IdentityCheck>
+                    label={t('dataRequests.approval.checkLabel')}
+                    choices={identityChecksFor(r, state.madeBy).map((c) => ({ value: c, label: t(`dataRequests.approval.checks.${c}`) }))}
+                    value={check}
+                    onChange={setCheck}
+                  />
+                  <Button icon="check" label={t('dataRequests.approval.button')} loading={busy} disabled={busy || !check} onPress={() => void approve(r)} />
+                </>
+              ) : null}
+            </Section>
+          ) : null}
+
+          {r.status === 'open' && action && canCarryOut ? (
             <Section icon="alert" title={t(`dataRequests.act.${action}.title`)} description={t(`dataRequests.act.${action}.what`)}>
               <TextField
                 label={t('dataRequests.confirmLabel', { expected })}

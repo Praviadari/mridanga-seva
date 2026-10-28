@@ -287,11 +287,50 @@ function sheetErrorKey(error: SheetError): MessageKey {
   return `importErrors.file.${error}`;
 }
 
-/** What happened to one row sent to the database. */
-export type ImportResult = { line: number; rollNo?: string; problem?: RowProblem };
+/** What happened to one row sent to the database. `held`: good, but not saved because another row was refused (all or none). */
+export type ImportResult = { line: number; rollNo?: string; problem?: RowProblem; held?: boolean };
+
+/**
+ * How an import saves (0066, #714): `partial` = each good row on its own (rows with problems are left out);
+ * `all` = every row or none (the database undoes the whole import when it refuses one row).
+ */
+export type ImportMode = 'partial' | 'all';
 
 /** Rows sent per call; the database takes at most 500. */
 const BATCH = 200;
+/** Rows an all-or-none import or a database check sends in one call (the database's own limit). */
+export const WHOLE_MAX = 500;
+
+/** The rows as the database functions take them, each with the import's id. */
+function rowsForDatabase(rows: readonly PreviewRow[], importId: string | null) {
+  return rows.map(({ line, values }) => ({
+    line,
+    full_name: values.fullName,
+    dob: values.dob,
+    phone: values.phone || null,
+    email: values.email || null,
+    area: values.area || null,
+    pincode: values.pincode || null,
+    level_id: values.levelId ?? 1,
+    joined_on: values.joinedOn,
+    import_id: importId,
+  }));
+}
+
+function sendErrorKey(message: string): MessageKey {
+  if (isNetworkError(message)) return 'common.networkError';
+  return message === 'not_allowed' ? 'importErrors.notAllowed' : 'common.genericError';
+}
+
+/** One row of the database's answer as an ImportResult. */
+export function toImportResult(r: { line: number; roll_no?: string; error?: string; held?: boolean }): ImportResult {
+  return {
+    line: r.line,
+    rollNo: r.roll_no,
+    problem: r.error ? ((ROW_PROBLEMS as readonly string[]).includes(r.error) ? (r.error as RowProblem) : 'row_failed') : undefined,
+    held: r.held ? true : undefined,
+  };
+}
 
 /**
  * Sends the good rows to import_students, in batches, each row with the import's id (`importId`, #326).
@@ -301,38 +340,59 @@ const BATCH = 200;
 export async function importRows(rows: readonly PreviewRow[], importId: string): Promise<{ results: ImportResult[]; errorKey?: MessageKey }> {
   const results: ImportResult[] = [];
   for (let start = 0; start < rows.length; start += BATCH) {
-    const batch = rows.slice(start, start + BATCH).map(({ line, values }) => ({
-      line,
-      full_name: values.fullName,
-      dob: values.dob,
-      phone: values.phone || null,
-      email: values.email || null,
-      area: values.area || null,
-      pincode: values.pincode || null,
-      level_id: values.levelId ?? 1,
-      joined_on: values.joinedOn,
-      import_id: importId,
-    }));
+    const batch = rowsForDatabase(rows.slice(start, start + BATCH), importId);
     const { data, error } = await supabase.rpc('import_students', { p_rows: batch });
-    if (error) {
-      return {
-        results,
-        errorKey: isNetworkError(error.message)
-          ? 'common.networkError'
-          : error.message === 'not_allowed'
-            ? 'importErrors.notAllowed'
-            : 'common.genericError',
-      };
-    }
-    for (const r of data as { line: number; roll_no?: string; error?: string }[]) {
-      results.push({
-        line: r.line,
-        rollNo: r.roll_no,
-        problem: r.error ? ((ROW_PROBLEMS as readonly string[]).includes(r.error) ? (r.error as RowProblem) : 'row_failed') : undefined,
-      });
-    }
+    if (error) return { results, errorKey: sendErrorKey(error.message) };
+    for (const r of data as { line: number; roll_no?: string; error?: string }[]) results.push(toImportResult(r));
   }
   return { results };
+}
+
+/**
+ * All or none (0066, #714): the rows go in one call (at most WHOLE_MAX); the database saves every one, or none when it
+ * refuses a row (then the others come back `held`).
+ */
+export async function importAllOrNone(rows: readonly PreviewRow[], importId: string): Promise<{ results: ImportResult[]; errorKey?: MessageKey }> {
+  if (rows.length > WHOLE_MAX) return { results: [], errorKey: 'importStudents.wholeTooMany' };
+  const { data, error } = await supabase.rpc('import_all_or_none', { p_rows: rowsForDatabase(rows, importId), p_dry_run: false });
+  if (error) return { results: [], errorKey: error.code === 'PGRST202' ? 'importStudents.wholeNotSetUp' : sendErrorKey(error.message) };
+  return { results: (data as { line: number; roll_no?: string; error?: string; held?: boolean }[]).map(toImportResult) };
+}
+
+/**
+ * The dry run (0066, #714): the database tries every row exactly as an import would and keeps nothing. Returns the
+ * problem it found per line (lines it accepts are left out), 'not_set_up' before 0066, or an error key.
+ */
+export async function checkWithDatabase(rows: readonly PreviewRow[]): Promise<Map<number, RowProblem> | 'not_set_up' | { errorKey: MessageKey }> {
+  const found = new Map<number, RowProblem>();
+  for (let start = 0; start < rows.length; start += WHOLE_MAX) {
+    const { data, error } = await supabase.rpc('import_all_or_none', {
+      p_rows: rowsForDatabase(rows.slice(start, start + WHOLE_MAX), null),
+      p_dry_run: true,
+    });
+    if (error) return error.code === 'PGRST202' ? 'not_set_up' : { errorKey: sendErrorKey(error.message) };
+    for (const r of (data as { line: number; error?: string }[]).map(toImportResult)) if (r.problem) found.set(r.line, r.problem);
+  }
+  return found;
+}
+
+/**
+ * The error file (STU-01): the file's own heading row with a "Problem" column, then every row with a problem, its
+ * cells as they were, so the Guru can fix them in Excel and import the file again. `problems` are already translated.
+ */
+export function problemCsvRows(rows: SheetRows, lines: ReadonlyMap<number, readonly string[]>, problemHeading: string): string[][] {
+  const headings = rows[0] ?? [];
+  const width = Math.max(headings.length, ...[...lines.keys()].map((line) => rows[line - 1]?.length ?? 0));
+  const pad = (cells: readonly string[]) => Array.from({ length: width }, (_, i) => cells[i] ?? '');
+  return [
+    [...pad(headings), problemHeading],
+    ...[...lines.entries()].sort(([a], [b]) => a - b).map(([line, problems]) => [...pad(rows[line - 1] ?? []), problems.join('; ')]),
+  ];
+}
+
+/** The error file's name: <the file's name>-problems.csv. */
+export function problemFileName(fileName: string): string {
+  return `${fileName.replace(/\.[^.]+$/, '') || 'import'}-problems.csv`;
 }
 
 /** An import that can still be undone: when it ran and how many of its records are left. */
