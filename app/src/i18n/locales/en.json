@@ -331,9 +331,68 @@
       "teaching": "Teaching",
       "seva": "Seva",
       "reports": "Reports",
-      "setup": "Set-up",
-      "me": "You"
+      "setup": "Administration",
+      "me": "You",
+      "modules": "Modules"
     }
+  },
+  "facilitatorHome": {
+    "title": "Modules",
+    "modules": {
+      "admin": "Admin",
+      "coordinators": "Coordinators",
+      "students": "Students",
+      "teaching": "Teaching",
+      "inventory": "Inventory",
+      "media": "Media",
+      "events": "Events & Seva",
+      "funds": "Funds",
+      "reports": "Reports",
+      "security": "Security & Audits",
+      "settings": "Settings"
+    },
+    "sections": {
+      "centres": "Centres",
+      "operations": "Operations",
+      "team": "Team",
+      "followUps": "Follow-ups",
+      "directory": "Directory",
+      "registration": "Registration",
+      "attendance": "Attendance",
+      "syllabus": "Syllabus and lessons",
+      "assessments": "Assessments",
+      "levelUps": "Level-ups",
+      "practice": "Practice",
+      "ishtagoshti": "Ishtagoshti",
+      "assets": "Instruments and assets",
+      "checks": "Counts and labels",
+      "events": "Events",
+      "seva": "Seva",
+      "communications": "Communications",
+      "ledger": "Class fund",
+      "overview": "Overview",
+      "reports": "Reports and exports",
+      "security": "Security",
+      "privacy": "Privacy",
+      "audits": "Audits",
+      "technical": "Technical",
+      "classRules": "Class rules",
+      "personal": "Personal"
+    },
+    "rows": {
+      "studentList": "Student list",
+      "calls": "Follow-up calls",
+      "ishtagoshti": "Ishtagoshti (Śloka Study)",
+      "classSettings": "Class settings",
+      "ledger": "Balance and entries",
+      "me": "My own student page"
+    },
+    "needsAttention": "Needs attention",
+    "showAttention": "Show what needs attention",
+    "hideAttention": "Hide what needs attention",
+    "soonBody": "This module is not built yet. It will open here once it is ready.",
+    "notFound": "There is no such module. Go back to Home and choose one there.",
+    "crumb": "{{home}} › {{module}}"
   },
   "tabs": {
     "home": "Home",
@@ -1271,12 +1330,25 @@
       "removeFailed": "The file could not be removed, so nothing was deleted. Check your internet connection and try again.",
       "notAllowed": "Only the facilitator can add and change lessons.",
       "videoLinkInvalid": "Give an https link to an .mp4, .webm, .m4v or .mov file.",
-      "panesInvalid": "A video file has 1 to 4 camera angles side by side."
+      "panesInvalid": "A video file has 1 to 4 camera angles side by side.",
+      "notesTooLong": "The notes are longer than 4000 characters.",
+      "notAudio": "This is not an audio file. Choose an MP3, M4A, AAC, WAV or OGG.",
+      "audioRefused": "The audio could not be added. Choose it again and save."
     },
     "videoLinkLabel": "Link to the video file",
     "videoLinkHint": "The team's own copy (https, ending in .mp4, .webm, .m4v or .mov). Students can mirror and zoom it; a YouTube video cannot be mirrored or zoomed.",
     "panesLabel": "Camera angles side by side",
-    "panesHint": "For a lesson filmed from 2-4 phones and joined side by side: students tap one angle to see it large."
+    "panesHint": "For a lesson filmed from 2-4 phones and joined side by side: students tap one angle to see it large.",
+    "lessonExtrasTitle": "Audio and notes (optional)",
+    "lessonExtrasHint": "Beside the video. Students see a tab for each one the lesson has; nothing empty is shown.",
+    "audioPicked": "New audio: {{name}} ({{size}})",
+    "audioKept": "Audio: {{name}} ({{size}})",
+    "audioNone": "No audio. An MP3 or M4A of at most {{max}}, e.g. the bols spoken slowly.",
+    "audioAdd": "Add audio",
+    "audioReplace": "Choose other audio",
+    "audioRemove": "Remove audio",
+    "lessonNotesLabel": "Notes",
+    "lessonNotesHint": "The bols, counts or tips for this lesson; shown on its Notes tab."
   },
   "visitHistory": {
     "title": "My attendance",
@@ -1335,7 +1407,7 @@
     "editDetails": "Change my name or phone"
   },
   "admin": {
-    "title": "Set-up",
+    "title": "Administration",
     "guruOnly": "Only the facilitator uses this page.",
     "coordinatorsLine": "Roles for new sign-ups, mentees, duty hours",
     "databaseLine": "Every student record, and the Excel import",
@@ -1398,7 +1470,7 @@
     "giveRoleHint": "Check who this is before you give a role. Students who signed up are accepted at the Welcome desk, not here.",
     "makeCoordinatorAsk": "Make {{name}} a coordinator?",
     "makeCoordinatorBody": "They will see every student's record, children included, mark attendance, log calls, tick the syllabus and post announcements. The app cannot take the role back: only switching the login off stops it.",
-    "makeCoordinator": "Make a coordinator",
+    "makeCoordinator": "Approve coordinator",
     "madeCoordinator": "Now a coordinator. They see it after they open the app again or tap Check again.",
     "linkTitle": "Or link to a student record",
     "linkHint": "For a student whose record has a different email, or none. Search the name or roll number; only records without a login are shown.",
@@ -1549,6 +1621,27 @@
     "undoKept_one": "{{count}} record was kept:",
     "undoKept_other": "{{count}} records were kept:",
     "keptLine": "{{roll}} · {{name}}: {{reason}}",
+    "dbCheck": "Check with the class database (nothing is saved)",
+    "dbCheckHint": "The database tries the good rows exactly as an import would, then undoes it. Rows it would refuse move to Problems.",
+    "dbCheckOk_one": "Checked: the database takes the {{count}} good row.",
+    "dbCheckOk_other": "Checked: the database takes all {{count}} good rows.",
+    "dbCheckFound_one": "The database would refuse {{count}} row: it is now under Problems.",
+    "dbCheckFound_other": "The database would refuse {{count}} rows: they are now under Problems.",
+    "dbCheckNotSetUp": "This check needs the latest database update; the rows are still checked when they are imported.",
+    "problemsCsvTitle": "The rows with problems as a file",
+    "problemsCsvHint": "Your own columns plus a Problem column. Fix the rows in Excel and import that file.",
+    "problemColumn": "Problem",
+    "modeLabel": "How to save",
+    "modePartial": "Partial: save each good row; rows with problems stay out",
+    "modeAll": "All or none: save only if the database takes every row",
+    "modeAllNeedsClean": "All or none is for a file without problems, of at most 500 rows.",
+    "wholeTooMany": "All or none takes at most 500 rows at once.",
+    "wholeNotSetUp": "All or none needs the latest database update. Use Partial for now.",
+    "donePartial": "Partial import: each good row was saved on its own; rows with problems were left out.",
+    "doneAllSaved": "All or none: every row was saved.",
+    "doneAllNone_one": "All or none: nothing was saved, because the database refused {{count}} row. Fix it and import the file again.",
+    "doneAllNone_other": "All or none: nothing was saved, because the database refused {{count}} rows. Fix them and import the file again.",
+    "heldLine": "Row {{line}} · good, not saved (all or none)",
     "undoNotFound": "Nothing of this import is left to undo.",
     "recentTitle": "Imports of the last 30 days",
     "recentHint": "A wrong file or a wrong column match can be undone here.",
@@ -1641,7 +1734,7 @@
     },
     "translatorTitle": "Ishtagoshti translator",
     "translatorHint": "The name shown as \"Translation and purport: …\" on a sloka whose own credit is left empty. Empty = no credit.",
-    "fundTitle": "Class fund",
+    "fundTitle": "Funds",
     "fundHint": "Expenses over the approval limit wait for the facilitator (or a treasurer, for the facilitator's own). A bill photo is needed over the bill limit. 0 = every expense.",
     "fundRangeHint": "Whole rupees, 0 to {{max}}.",
     "noticesTitle": "Emails to parents",
@@ -1759,7 +1852,7 @@
     }
   },
   "auditLog": {
-    "title": "Change history",
+    "title": "Audit History",
     "intro": "Every change to students, profiles, calls, levels, syllabus, lessons, announcements, settings and centres, newest first. Tap a change to see the values before and after.",
     "loadFailed": "Could not load the change history.",
     "empty": "No changes match.",
@@ -1779,7 +1872,8 @@
     "actions": {
       "INSERT": "Added",
       "UPDATE": "Changed",
-      "DELETE": "Deleted"
+      "DELETE": "Deleted",
+      "REFUSED": "Refused try"
     },
     "tables": {
       "students": "Student",
@@ -1817,7 +1911,7 @@
       "get_guardians": "Parent or guardian details",
       "get_consents": "Consent records",
       "get_call_notes": "Call notes",
-      "get_audit_log": "Change history page",
+      "get_audit_log": "Audit History page",
       "get_student_details": "About the student (emergency contact and details)",
       "parent_view": "Parent page (link in the weekly email)"
     },
@@ -2138,7 +2232,9 @@
       "redoAsked": "Please record it again",
       "notReviewed": "Not reviewed yet.",
       "recordingName": "Recording {{number}} · {{date}}",
-      "markTitle": "Your mark"
+      "markTitle": "Your mark",
+      "receipt": "Receipt no. {{number}} · received {{date}} at {{time}}",
+      "underReview": "Your teacher is reviewing it now. The mark comes here when it is done."
     },
     "files": {
       "play": "Play",
@@ -2198,6 +2294,13 @@
       "button": "Edit",
       "save": "Save changes",
       "lockedNote": "It has been given to students, so the type, level, level-up and rubric stay as they are. The title, instructions, files and link can change."
+    },
+    "studentStatus": {
+      "assigned": "Assigned",
+      "submitted": "Submitted",
+      "under_review": "Under review",
+      "reviewed": "Reviewed",
+      "redo": "Redo requested"
     }
   },
   "promotion": {
@@ -2830,7 +2933,15 @@
     "pane": "Angle {{n}}",
     "zoomHint": "Or tap an angle on the video to see it large; tap again for all.",
     "youtubeNoMirror": "YouTube's rules do not allow the app to mirror or zoom a YouTube video. Speed and A-B loop work. For mirror and zoom, the facilitator can add the lesson as a video file.",
-    "openYouTube": "Open in YouTube"
+    "openYouTube": "Open in YouTube",
+    "tabsLabel": "Lesson formats",
+    "tabs": {
+      "video": "Video",
+      "audio": "Audio",
+      "notes": "Notes"
+    },
+    "audioLoading": "Getting the audio…",
+    "progressNote": "Your teacher ticks a lesson as learnt in class; watching or listening here does not."
   },
   "recording": {
     "record": "Record",
@@ -3068,7 +3179,7 @@
       "endTimeHint": "Same day, 24-hour. Leave empty if not known.",
       "dateInvalid": "Write a real date as dd-mm-yyyy.",
       "timeInvalid": "Write the time as hh:mm, 24-hour.",
-      "where": "Where",
+      "where": "Venue",
       "centre": "Centre",
       "noCentre": "Elsewhere",
       "place": "Place or address",
@@ -3082,7 +3193,22 @@
       "newNotice": "Everyone it is for gets a notice in the app (and a push on Android).",
       "editNotice": "A new time or place is sent to everyone it is for as a notice.",
       "create": "Create event",
-      "save": "Save changes"
+      "save": "Save changes",
+      "detailsTitle": "For those taking part",
+      "detailsHint": "All optional. Students see these to know when to come, what to wear and bring, and whom to ask.",
+      "reportingTime": "Reporting time",
+      "reportingTimeHint": "When to arrive, same day, 24-hour (e.g. 17:30). At or before the start, at most 12 hours before.",
+      "rehearsal": "Rehearsal",
+      "rehearsalHint": "Day, time and place of the rehearsal, if there is one. At most {{max}} characters.",
+      "dressCode": "Dress code and what to bring",
+      "dressCodeHint": "E.g. dhoti-kurta; bring your own mridanga. At most {{max}} characters.",
+      "attendeeRole": "Role of those taking part",
+      "attendeeRoleHint": "E.g. kirtan accompaniment in the procession. A performer's own part is set on Performers. At most {{max}} characters.",
+      "contact": "Whom students contact",
+      "contactNone": "Not named",
+      "contactInactive": "(switched off)",
+      "mapsUrl": "Map link",
+      "mapsUrlHint": "Optional: share the venue from Google Maps and paste the https link here."
     },
     "detail": {
       "createdBy": "Created by {{name}}",
@@ -3116,7 +3242,13 @@
       "delete": "Delete the event",
       "deleteTitle": "Delete this event?",
       "deleteBody": "Nobody has answered yet, so it can be deleted. Notices already sent will open nothing.",
-      "deleteYes": "Yes, delete it"
+      "deleteYes": "Yes, delete it",
+      "reportBy": "Report by {{time}}",
+      "rehearsal": "Rehearsal: {{text}}",
+      "dressCode": "Wear and bring: {{text}}",
+      "role": "Role: {{text}}",
+      "contact": "Questions: ask {{name}}",
+      "openMap": "Open the map"
     },
     "calendar": {
       "title": "Add to calendar",
@@ -3186,7 +3318,13 @@
       "part_invalid": "Each performer needs a part of 1 to 60 characters.",
       "too_early": "Attendance can be ticked from the event's day.",
       "too_soon": "A reminder was sent less than 12 hours ago.",
-      "response_invalid": "Choose Going, Maybe or Not going."
+      "response_invalid": "Choose Going, Maybe or Not going.",
+      "reporting_invalid": "The reporting time is at or before the start, at most 12 hours before.",
+      "rehearsal_too_long": "The rehearsal is too long.",
+      "dress_code_too_long": "The dress code is too long.",
+      "attendee_role_too_long": "The role is too long.",
+      "maps_link_invalid": "Give an https link, such as one shared from Google Maps.",
+      "coordinator_invalid": "Choose an active coordinator or the facilitator to contact."
     }
   },
   "polls": {
@@ -3520,7 +3658,7 @@
     }
   },
   "fund": {
-    "title": "Class fund",
+    "title": "Funds",
     "shortcutLine": "Income, expenses, approvals, balance",
     "loadFailed": "The fund could not be loaded.",
     "introKeeper": "The team's own fund. The app only records money: pay into the temple or team account as usual. Expenses over {{approval}} wait for approval; a bill is needed over {{bill}}.",
@@ -4059,7 +4197,7 @@
     }
   },
   "heardReport": {
-    "title": "How students found us",
+    "title": "Referral Sources",
     "intro": "Answers to \"How did you hear about us?\" from About you and the desk, by when the person answered.",
     "range": "Dates",
     "dates": "{{from}} to {{to}}",
@@ -4165,7 +4303,7 @@
     "changeMentor": "Change mentor",
     "setLevel": "Set level",
     "unlink": "Take the login off this record",
-    "noMentors": "No other active coordinator to choose. Make a coordinator first (Coordinators).",
+    "noMentors": "No other active coordinator to choose. Approve a coordinator first (Coordinators).",
     "mentorLabel": "Mentor",
     "mentorHint": "Their open follow-ups go to the new mentor.",
     "saveMentor": "Save mentor",
@@ -4500,6 +4638,7 @@
       "assessments": "Assessments",
       "events": "Events attended",
       "loans": "Instruments lent",
+      "playground": "Playground games",
       "devices": "Phones and browsers for notifications",
       "notices": "Notices in your inbox",
       "replies": "Your replies",
@@ -4527,6 +4666,7 @@
     "consentRevoked": "withdrawn {{date}}",
     "visitsLine": "{{count}}, first {{first}}, last {{last}}",
     "callsLine": "{{count}}, last {{last}}",
+    "playgroundLine": "{{count}} rounds, last {{last}} · {{weeks}} weekly summaries · {{ratings}} ratings",
     "yes": "Yes",
     "no": "No",
     "processors": {
@@ -4592,7 +4732,13 @@
       "open_loan": "An instrument is still lent to this student. Take it back first.",
       "not_pending": "This is a staff sign-in: the owner removes it in the SQL editor (OPERATIONS \"Staff who leave\").",
       "not_yourself": "You cannot erase your own sign-in.",
-      "has_student_record": "This sign-in is on a student record: erase the record instead."
+      "has_student_record": "This sign-in is on a student record: erase the record instead.",
+      "second_approval_needed": "Another facilitator must approve this erasure first.",
+      "approver_cannot_erase": "You approved this erasure, so another facilitator carries it out.",
+      "not_erasure": "Only an erasure request is approved this way.",
+      "already_approved": "This erasure is already approved.",
+      "identity_invalid": "Choose how the person asking was checked.",
+      "not_the_recorder": "You recorded or asked for this request, so another facilitator approves it."
     },
     "languages": {
       "en": "English",
@@ -4680,6 +4826,22 @@
         "what": "The record, its history and the sign-in are deleted, and the audit log copies blanked. Only the roll number, the date, your note and this request's reference stay. This cannot be undone. Take back any lent instrument first.",
         "button": "Erase everything"
       }
+    },
+    "approval": {
+      "title": "Approval by a second facilitator",
+      "what": "An erasure needs two facilitators: one checks who is asking and approves it here, another then carries it out.",
+      "checkLabel": "How was the person asking checked?",
+      "checks": {
+        "own_login": "Asked from their own signed-in app",
+        "id_seen": "ID seen at the desk (theirs, or the parent's for a child)",
+        "registered_email": "Came from the email address the class has for them",
+        "phone_callback": "Called back on the phone number the class has for them"
+      },
+      "button": "Approve the erasure",
+      "done": "Approved. Another facilitator can now carry out the erasure.",
+      "line": "Approved by {{name}} on {{date}} · {{check}}",
+      "youRecorded": "You recorded or asked for this request, so another facilitator approves it.",
+      "youApproved": "You approved this erasure, so another facilitator carries it out."
     },
     "confirmLabel": "Type {{expected}} to confirm",
     "confirmHintRoll": "The person's roll number, exactly.",
@@ -4859,7 +5021,7 @@
     "notEnabled": "Sign-in codes are not switched on for this app. Tell the facilitator.",
     "wasReset": "Your sign-in code was reset. Sign out, sign in again and set up a new one in My profile.",
     "lostTitle": "Lost or changed your phone?",
-    "lostBody": "A coordinator asks the facilitator to reset the code (Set-up → Sign-in codes), then signs in with the password and sets up a new one. The facilitator asks another facilitator, or the person who looks after the app."
+    "lostBody": "A coordinator asks the facilitator to reset the code (Security & Audits → Sign-in Security), then signs in with the password and sets up a new one. The facilitator asks another facilitator, or the person who looks after the app."
   },
   "myCode": {
     "title": "Sign-in code",
@@ -4895,7 +5057,7 @@
     "contactHidden": "Parent's phone and email: shown after your sign-in code"
   },
   "staffCodes": {
-    "title": "Sign-in codes",
+    "title": "Sign-in Security",
     "intro": "Who has set up a sign-in code. Once everyone has, switch codes on: parents' details, consents, call notes and the change history then need a sign-in that gave the code.",
     "switchTitle": "Ask for codes",
     "switchHint": "Can be switched on only when every facilitator and coordinator below has a code, and you signed in with yours.",
@@ -4926,7 +5088,7 @@
     "resetInDashboard": "The app may not remove codes on this server. The person who looks after the app removes it in Supabase (Authentication → Users)."
   },
   "appErrors": {
-    "title": "App errors",
+    "title": "App Diagnostics",
     "intro": "What broke in the app on phones and on the web, newest first, kept 30 days. The log never says who it happened to: only the error, the screen, the app version and staff or student. Tell the person who looks after the app about anything that repeats.",
     "missing": "The error log is not set up on the server yet.",
     "none": "No errors in the last 30 days.",
@@ -4992,5 +5154,61 @@
     "body_other": "{{count}} practice entries or check-ins on this phone have not reached the class yet (no internet). Signing out now deletes them.",
     "stay": "Stay signed in",
     "anyway": "Sign out anyway"
+  },
+  "playEngine": {
+    "shell": {
+      "exit": "Exit",
+      "exitHint": "Leave {{game}}. Your answers so far are kept.",
+      "progress": "Challenge {{n}} of {{total}}",
+      "testSounds": "TEST sounds",
+      "testSoundsHint": "These are the app's practice sounds, not your teacher's recordings yet.",
+      "review": "Review",
+      "reviewHint": "You met this one before. It comes back to help you remember.",
+      "reviewPractice": "Review practice — new exercises come as your facilitator adds them."
+    },
+    "instructions": {
+      "title": "How to play",
+      "readAgain": "Read again",
+      "start": "Start",
+      "step": "Step {{step}}"
+    },
+    "cards": {
+      "rightCard": "The answer",
+      "yourChoice": "Your choice",
+      "hear": "Hear {{label}}"
+    },
+    "feedback": {
+      "right": "That's it!",
+      "notYet": "Not yet — listen again",
+      "answer": "The answer: {{answer}}",
+      "listenAgain": "Listen again",
+      "tryAgain": "Try again",
+      "next": "Next",
+      "finish": "See how it went"
+    },
+    "summary": {
+      "found": "You found {{right}} of {{total}}.",
+      "done": "Round finished. Well done for practising!",
+      "closePairs": "These were close: {{pairs}}. Practise them on your khol?",
+      "waiting_one": "{{count}} round is kept on this phone and will be sent when you are online.",
+      "waiting_other": "{{count}} rounds are kept on this phone and will be sent when you are online.",
+      "khol": "Now play it on your khol.",
+      "harder": "Ready to try a harder one?",
+      "easier": "Shall we make it a little easier?",
+      "playAgain": "Play again",
+      "back": "Back to Playground"
+    },
+    "errors": {
+      "notAllowed": "Only signed-in students and staff of the class can use the Playground.",
+      "approvalGuruOnly": "Only the head facilitator approves, retires or publishes Playground content.",
+      "placeholdersNotAllowed": "TEST placeholder content cannot be published here. Retire it first.",
+      "bolNotApproved": "Approve every bol this exercise uses in the bol dictionary first.",
+      "assetNotApproved": "Approve the recordings this exercise uses first.",
+      "assetFileMissing": "The sound file is not uploaded yet.",
+      "assetLicence": "Add the credit (CC BY) or where the signed permission is kept before approving.",
+      "contentInvalid": "Please check the entry: it does not follow the bol notation or the rules for this item.",
+      "contentNotFound": "This item no longer exists. Pull down to refresh.",
+      "roundLimit": "That is a lot of practice for one day! Rest your ears and come back tomorrow."
+    }
   }
 }

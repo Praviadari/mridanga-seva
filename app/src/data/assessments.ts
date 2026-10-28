@@ -50,6 +50,21 @@ export type AssignmentStatus = (typeof ASSIGNMENT_STATUSES)[number];
 /** Statuses in which the student still has to send something; Remind reaches only these. */
 export const OPEN_STATUSES: readonly AssignmentStatus[] = ['assigned', 'seen', 'redo'];
 
+/**
+ * What the student sees (0064, #686-#688): Assigned (not seen or seen), Submitted, Under review (a staff member opened
+ * the newest recording to review it), Reviewed, Redo requested. Mapped from the stored status and the newest
+ * recording's review_started_at; nothing new is stored per status.
+ */
+export const STUDENT_STATUSES = ['assigned', 'submitted', 'under_review', 'reviewed', 'redo'] as const;
+export type StudentStatus = (typeof STUDENT_STATUSES)[number];
+
+/** The student's status from the stored one and when the newest recording's review began (null = not yet). */
+export function studentStatusOf(status: AssignmentStatus, reviewStartedAt: string | null): StudentStatus {
+  if (status === 'assigned' || status === 'seen') return 'assigned';
+  if (status === 'submitted') return reviewStartedAt ? 'under_review' : 'submitted';
+  return status;
+}
+
 /** One line of a rubric: what is scored and its top score. */
 export type RubricLine = { criterion: string; max: number };
 
@@ -610,6 +625,8 @@ export type Submission = {
   fileRemovedAt: string | null;
   /** The reviewer's spoken comment (C14, slice 4; deleted with the recording). */
   voiceNote: MediaFile | null;
+  /** When a staff member opened it to review it (0064); null = not yet. */
+  reviewStartedAt: string | null;
 };
 
 type SubmissionRow = {
@@ -628,10 +645,11 @@ type SubmissionRow = {
   send_level_up: boolean;
   file_removed_at: string | null;
   voice_note: unknown;
+  review_started_at: string | null;
 };
 
 const SUBMISSION_COLUMNS =
-  'id, file, link, note, submitted_at, reviewed_by, reviewed_at, outcome, scores, score, score_max, comment, send_level_up, file_removed_at, voice_note';
+  'id, file, link, note, submitted_at, reviewed_by, reviewed_at, outcome, scores, score, score_max, comment, send_level_up, file_removed_at, voice_note, review_started_at';
 
 function toSubmission(row: SubmissionRow, names: Map<string, string>): Submission {
   return {
@@ -651,6 +669,7 @@ function toSubmission(row: SubmissionRow, names: Map<string, string>): Submissio
     sendLevelUp: row.send_level_up,
     fileRemovedAt: row.file_removed_at,
     voiceNote: parseMediaFile(row.voice_note),
+    reviewStartedAt: row.review_started_at ?? null,
   };
 }
 
@@ -708,6 +727,14 @@ export async function fetchAssignment(assignmentId: number, asStaff: boolean): P
     submissions: (subs.data as SubmissionRow[]).map((s) => toSubmission(s, names)),
     student: tracker.data ? toTrackerRow(tracker.data as TrackerDbRow) : null,
   };
+}
+
+/**
+ * C14: tells the student their newest recording is under review (0064, #686). Once per recording; the database
+ * ignores a reviewed or older one and the reviewer's own work. Failing changes nothing for the review.
+ */
+export async function startReview(submissionId: number): Promise<void> {
+  await supabase.rpc('start_submission_review', { p_submission: submissionId });
 }
 
 /** S7: tells the coordinator the student opened it. True when saved. */
@@ -810,6 +837,8 @@ export async function reviewSubmission(submissionId: number, myId: string, form:
 export type MyAssessmentItem = {
   assignmentId: number;
   status: AssignmentStatus;
+  /** What the student sees (0064). */
+  studentStatus: StudentStatus;
   title: string;
   kind: AssessmentKind;
   levelUp: boolean;
@@ -820,7 +849,7 @@ export type MyAssessmentItem = {
 export async function fetchMyAssessments(): Promise<MyAssessmentItem[] | null> {
   const { data, error } = await supabase
     .from('assessment_assignments')
-    .select('id, status, assessments(title, kind, level_up), assessment_releases(due_on)')
+    .select('id, status, assessments(title, kind, level_up), assessment_releases(due_on), assessment_submissions(submitted_at, review_started_at)')
     .order('id', { ascending: false });
   if (error) return null;
   type Row = {
@@ -828,12 +857,16 @@ export async function fetchMyAssessments(): Promise<MyAssessmentItem[] | null> {
     status: AssignmentStatus;
     assessments: { title: string; kind: AssessmentKind; level_up: boolean } | null;
     assessment_releases: { due_on: string } | null;
+    assessment_submissions: { submitted_at: string; review_started_at: string | null }[] | null;
   };
+  const newestStart = (subs: Row['assessment_submissions']) =>
+    [...(subs ?? [])].sort((a, b) => b.submitted_at.localeCompare(a.submitted_at))[0]?.review_started_at ?? null;
   const items = (data as unknown as Row[]).flatMap((row) =>
     row.assessments && row.assessment_releases
       ? [{
           assignmentId: row.id,
           status: row.status,
+          studentStatus: studentStatusOf(row.status, newestStart(row.assessment_submissions)),
           title: row.assessments.title,
           kind: row.assessments.kind,
           levelUp: row.assessments.level_up,

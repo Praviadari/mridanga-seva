@@ -264,12 +264,64 @@ export async function actOnRequest(id: string, action: RequestAction, confirm: s
   return { result: data as ActionResult };
 }
 
+// ---------------------------------------------------------------- erasure by two people (0066, #712)
+
+/** How the person asking for an erasure was checked, in the order the screen offers them. */
+export const IDENTITY_CHECKS = ['own_login', 'id_seen', 'registered_email', 'phone_callback'] as const;
+export type IdentityCheck = (typeof IDENTITY_CHECKS)[number];
+
+/** Who filed or recorded a request, and the first Guru's approval of an erasure (null until approved). */
+export type ErasureApproval = {
+  madeBy: string | null;
+  approved: { by: string; name: string | null; at: string; check: IdentityCheck } | null;
+};
+
+/** The checks that fit a request: "own login" only for one the person filed in the app themselves. */
+export function identityChecksFor(request: Pick<DataRequest, 'source' | 'person'>, madeBy: string | null): IdentityCheck[] {
+  const own = request.source === 'app' && madeBy !== null && madeBy === request.person?.profileId;
+  return IDENTITY_CHECKS.filter((c) => c !== 'own_login' || own);
+}
+
+/** The approval state of one request. 'not_set_up' before 0066 (one Guru then carries an erasure out); null = could not load. */
+export async function fetchErasureApproval(id: string): Promise<ErasureApproval | 'not_set_up' | null> {
+  const { data, error } = await supabase
+    .from('data_requests')
+    .select('made_by, approved_by, approved_at, identity_check, approver:profiles!data_requests_approved_by_fkey(full_name)')
+    .eq('id', id)
+    .maybeSingle();
+  if (error) return error.code === '42703' || error.code === 'PGRST200' || isMissing(error.code) ? 'not_set_up' : null;
+  if (!data) return null;
+  const row = data as unknown as {
+    made_by: string | null;
+    approved_by: string | null;
+    approved_at: string | null;
+    identity_check: IdentityCheck | null;
+    approver: { full_name: string } | null;
+  };
+  return {
+    madeBy: row.made_by,
+    approved:
+      row.approved_by && row.approved_at && row.identity_check
+        ? { by: row.approved_by, name: row.approver?.full_name ?? null, at: row.approved_at, check: row.identity_check }
+        : null,
+  };
+}
+
+/** The first Guru approves an open erasure request, saying how the person asking was checked. */
+export async function approveErasure(id: string, check: IdentityCheck | null): Promise<{ errorKey?: ParseKeys }> {
+  if (!check) return { errorKey: 'dataRights.errors.identity_invalid' };
+  const { error } = await supabase.rpc('approve_data_erasure', { p_id: id, p_identity: check });
+  return error ? { errorKey: requestErrorKey(error.message, error.code) } : {};
+}
+
 const KNOWN = [
   'kind_invalid', 'field_required', 'field_too_long', 'text_required', 'text_too_long', 'parent_asks', 'no_record',
   'no_photo_consent', 'already_open', 'too_many_requests', 'request_not_found', 'not_open', 'source_invalid',
   'asked_by_invalid', 'person_not_found', 'status_invalid', 'answer_required', 'use_the_action', 'action_invalid',
   'action_not_for_kind', 'confirm_mismatch', 'reason_required', 'reason_too_long', 'person_gone', 'open_loan',
   'not_pending', 'not_yourself', 'has_student_record',
+  // 0066 (#712): erasure by two people
+  'second_approval_needed', 'approver_cannot_erase', 'not_erasure', 'already_approved', 'identity_invalid', 'not_the_recorder',
 ] as const;
 
 /** Turns a database error into a translation key. */
@@ -340,6 +392,13 @@ export type MyDataSummary = {
   assessments?: number;
   events?: number;
   loans?: { issued_at: string; due_on: string | null; returned_at: string | null }[];
+  /** Since 0068 (#770); absent on a database without it. */
+  playground?: {
+    settings: Record<string, unknown> | null;
+    rounds: { count: number; first: string | null; last: string | null; games: Record<string, number> };
+    weeks: { week: string; skill: string; rounds: number; opportunities: number; correct: number | null }[];
+    ratings: { skill: string; rating: number; note: string | null; rated_at: string }[];
+  };
 };
 
 /** The signed-in person's summary. null = could not load; 'not_set_up' before 0059 has run. */

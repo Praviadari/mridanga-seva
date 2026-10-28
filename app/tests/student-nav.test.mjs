@@ -97,7 +97,7 @@ test('the home: compact band with the bell, the slim Daily Mission, the ring siz
   const home = src('app/student/(tabs)/index.tsx');
   // The initials on the band open the Me tab (Praveen 28-10-2026); the tab switch is the home's, inside the tabs (R4-01).
   assert.match(home, /<HomeHeader name=\{name\} student onMe=\{\(\) => router\.navigate\('\/student\/me'\)\} \/>/);
-  // The ring under the Daily Mission, in place of the cards (#680).
+  // The ring under the Daily Mission, in place of the cards (#771).
   assert.match(home, /<TodayPracticeCard today=\{today\} slim \/>/);
   assert.match(home, /<ModuleRing modules=\{ring\} maxSize=\{ringMax\} \/>/);
   assert.match(home, /\['qr', 'lessons', 'assessments', 'growth', 'ishtagoshti', 'events', 'about'\]/);

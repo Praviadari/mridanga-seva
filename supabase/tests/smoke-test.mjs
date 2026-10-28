@@ -98,6 +98,20 @@ const supabaseImitation = `
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()
   );
+  -- Supabase Auth's sessions and refresh tokens (0066 ends them when a login is switched off); user_id of a
+  -- refresh token is text there too.
+  create table auth.sessions (
+    id uuid primary key default gen_random_uuid(),
+    user_id uuid not null references auth.users (id) on delete cascade,
+    created_at timestamptz not null default now()
+  );
+  create table auth.refresh_tokens (
+    id bigint generated always as identity primary key,
+    token text,
+    user_id text,
+    revoked boolean default false,
+    session_id uuid references auth.sessions (id) on delete cascade
+  );
   create schema cron;
   -- pg_cron's job table, so the test net can check every scheduled command (D14-12); a job is
   -- never run here. Scheduling a name again replaces its job, as in pg_cron.
@@ -143,7 +157,7 @@ process.on('uncaughtException', (error) => {
 // D14-10: every check is counted, and the run fails when fewer (or more) checks ran than expected,
 // so a block skipped by a renamed migration or a commented-out section cannot pass unseen.
 // Adding or removing checks? Run the suite and set this to the new total it prints.
-const EXPECTED_CHECKS = 2289; // 0063 parent page: +32; 0062 web push: +33; 0061 staff sign-in codes and the error log: +53; 0060 privacy notice 1.0: +35; 0059 data rights: +56; 0058 weekly parent email: +64; 0057 practice while waiting: +24; 0056 practice extras: +35; 0055 learn more links: +23; 0054 after-launch forms: +49; 0053 staff own record: +55; 0052 more practice: +56; 0051 child's sign-up at home: +80; 0050 staff dashboard: +15; 0049 launch clean-up: +30; 0048 withdrawn records and leaks: +50; 0047 form rules: +109; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
+const EXPECTED_CHECKS = 2437; // 0068 my data with the Playground: +4; 0065 Rhythm Playground engine: +67; 0067 facilitator wording: +5; 0066 facilitator safeguards: +40 (0059/0026/0025/0049 checks adjusted for #710/#713); 0064 learn screens: +32; 0063 parent page: +32; 0062 web push: +33; 0061 staff sign-in codes and the error log: +53; 0060 privacy notice 1.0: +35; 0059 data rights: +56; 0058 weekly parent email: +64; 0057 practice while waiting: +24; 0056 practice extras: +35; 0055 learn more links: +23; 0054 after-launch forms: +49; 0053 staff own record: +55; 0052 more practice: +56; 0051 child's sign-up at home: +80; 0050 staff dashboard: +15; 0049 launch clean-up: +30; 0048 withdrawn records and leaks: +50; 0047 form rules: +109; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
 let failures = 0;
 let passes = 0;
 
@@ -2728,8 +2742,11 @@ const big = await record(coordinator2, 'expense', repair, 250000, { bill: await 
 check('an expense over Rs 2,000 waits and does not count yet', (await entryOf(big)).status === 'waiting' && (await balanceAs(guru)) === 800000);
 check('... the Guru is told', (await fundOutboxFor(guru, big)).some((r) => r.title === 'Rs 2500 · Instrument repair or purchase'
   && /^An entry by .* needs your approval\.$/.test(r.body)));
-await refusesWith('the maker cannot approve their own entry', 'own_entry', () => asApp('authenticated', coordinator2,
-  'select decide_fund_entry($1, true)', [big]));
+// Since 0066 (#710) a self-approval is refused with { refused } (and logged) instead of an error.
+const decideAs = async (userId, id, approve, note = null) => (await asApp('authenticated', userId,
+  'select decide_fund_entry($1, $2, $3) as r', [id, approve, note]))[0].r;
+check('the maker cannot approve their own entry', (await decideAs(coordinator2, big, true))?.refused === 'own_entry'
+  && (await entryOf(big)).status === 'waiting');
 await refusesWith('a coordinator who is not treasurer cannot approve', 'not_allowed', () => asApp('authenticated', coordinator, 'select decide_fund_entry($1, true)', [big]));
 await asApp('authenticated', guru, 'select decide_fund_entry($1, true)', [big]);
 check('the Guru approves it; now it counts', (await entryOf(big)).status === 'approved' && (await entryOf(big)).decided_by === guru
@@ -2737,13 +2754,14 @@ check('the Guru approves it; now it counts', (await entryOf(big)).status === 'ap
 check('... and the treasurer is told', (await fundOutboxFor(coordinator2, big)).some((r) => r.body === 'Your entry was approved.'));
 await refusesWith('a decision is made once', 'already_decided', () => asApp('authenticated', guru, 'select decide_fund_entry($1, false, $2)', [big, 'No']));
 const guruBig = await record(guru, 'expense', prasadam, 300000, { bill: await uploadBill(guru) });
-await refusesWith('the Guru cannot approve the Guru\'s own entry', 'own_entry', () => asApp('authenticated', guru, 'select decide_fund_entry($1, true)', [guruBig]));
+check('the Guru cannot approve the Guru\'s own entry', (await decideAs(guru, guruBig, true))?.refused === 'own_entry'
+  && (await entryOf(guruBig)).status === 'waiting');
 check('... the treasurer is told instead', (await fundOutboxFor(coordinator2, guruBig)).length === 1 && (await fundOutboxFor(guru, guruBig)).length === 0);
 await asApp('authenticated', coordinator2, 'select decide_fund_entry($1, true)', [guruBig]);
 check('... and approves it', (await entryOf(guruBig)).status === 'approved' && (await balanceAs(guru)) === 250000);
 const treasurerBig = await record(coordinator2, 'expense', melaCat, 400000, { bill: await uploadBill(coordinator2) });
-await refusesWith('a treasurer cannot approve another treasurer\'s or own entry', 'own_entry', () => asApp('authenticated', coordinator2,
-  'select decide_fund_entry($1, true)', [treasurerBig]));
+check('a treasurer cannot approve another treasurer\'s or own entry', (await decideAs(coordinator2, treasurerBig, true))?.refused === 'own_entry'
+  && (await entryOf(treasurerBig)).status === 'waiting');
 await refusesWith('declining needs a reason', 'reason_required', () => asApp('authenticated', guru, 'select decide_fund_entry($1, false, $2)', [treasurerBig, '  ']));
 await asApp('authenticated', guru, 'select decide_fund_entry($1, false, $2)', [treasurerBig, ' Get a second quote. ']);
 check('the Guru declines with a reason; it never counts', (await entryOf(treasurerBig)).status === 'declined'
@@ -2968,11 +2986,13 @@ check('... nor read her record', (await asApp('authenticated', minorLogin, 'sele
 await refusesWith('a withdrawal is recorded once', 'already_withdrawn', () => asApp('authenticated', guru, 'select withdraw_consent($1)', [minor.id]));
 
 // D4-03: erasure. Afterwards nothing in any table, nor in audit_log, holds the child's data.
-await refusesWith('a coordinator cannot erase a student', 'not_allowed', () => asApp('authenticated', coordinator, `select erase_student($1, 'x')`, [minor.id]));
-await refusesWith('an erasure needs a reason', 'reason_required', () => asApp('authenticated', guru, `select erase_student($1, ' ')`, [minor.id]));
+// Since 0066 (#713) the app reaches erase_student only through a request two Gurus handled (act_on_data_request,
+// the "0066" block); the SQL editor still runs it directly, as here.
+await refusesWith('a coordinator cannot erase a student', 'permission denied for function erase_student', () => asApp('authenticated', coordinator, `select erase_student($1, 'x')`, [minor.id]));
+await refusesWith('an erasure needs a reason', 'reason_required', () => asOwner(`select erase_student('${minor.id}', ' ')`));
 const [{ qr_token: minorQr }] = await asOwner(`select qr_token from students where id = '${minor.id}'`);
-const [{ r: erased }] = await asApp('authenticated', guru, `select erase_student($1, 'parent asked', 'REQ-1') as r`, [minor.id]);
-check('the Guru erases the student and her login', erased.roll_no === minor.roll_no && erased.login_deleted === true
+const [{ r: erased }] = await asOwner(`select erase_student('${minor.id}', 'parent asked', 'REQ-1') as r`);
+check('the owner (SQL editor) erases the student and her login', erased.roll_no === minor.roll_no && erased.login_deleted === true
   && erased.audit_rows_redacted > 0, JSON.stringify(erased));
 const needles = [minor.id, minorLogin, minorQr, 'sec.minor@example.com', 'Sec Minor Child', 'sec.parent@example.com', 'Sec Parent'];
 const tables = (await asOwner(`select c.relname from pg_class c where c.relnamespace = 'public'::regnamespace and c.relkind = 'r'`)).map((r) => r.relname);
@@ -2994,7 +3014,7 @@ const loaner = await register(coordinator, { p_full_name: 'Sec Borrower', p_dob:
 const loanItem = (await addItem(guru, 'Sec khol')).id;
 await issue(coordinator, loanItem, loaner.id, null, 'good');
 await refusesWith('an erasure waits until a lent instrument is back', 'open_loan', () =>
-  asApp('authenticated', guru, `select erase_student($1, 'parent asked')`, [loaner.id]));
+  asOwner(`select erase_student('${loaner.id}', 'parent asked')`));
 // The owner in the SQL editor (no signed-in user) may record a withdrawal and erase too.
 await asOwner(`select set_config('request.jwt.claim.sub', '', false)`);
 check('the owner (SQL editor) records a withdrawal and erases an adult', (await asOwner(
@@ -3057,7 +3077,7 @@ for (const f of internal) {
 }
 check('grant sweep: internal functions are closed to signed-in people', openInternal.length === 0, openInternal.join(' '));
 check('... while the app functions stay open to them', (await asOwner(`select bool_and(has_function_privilege('authenticated', f, 'execute')) as ok
-  from unnest(array['erase_student(uuid,text,text)', 'withdraw_consent(uuid,text)', 'unlink_student_login(uuid)', 'scan_qr(uuid,text,jsonb)',
+  from unnest(array['withdraw_consent(uuid,text)', 'unlink_student_login(uuid)', 'scan_qr(uuid,text,jsonb)',
     'toggle_visit(uuid,visit_method,text,jsonb)', 'register_student(text,date,text,text,text,text,smallint,uuid,text,text,text,text,text,boolean,boolean,uuid,text)',
     'is_staff()', 'my_role()', 'get_guardians(uuid)', 'get_consents(uuid)', 'get_call_notes(uuid,integer)',
     'get_audit_log(text,uuid,text,timestamptz,bigint,integer)']) f`))[0].ok === true);
@@ -3826,7 +3846,7 @@ check('the nightly purge removes only rows older than 400 days', purged === 1 &&
 // Erasure leaves no student id in the log; the rows (who, when, what) stay.
 const alRowsBefore = (await asOwner(`select count(*)::int as n from access_log where student_id = '${alMinor.id}'`))[0].n;
 const alTotal = await logRows();
-await asApp('authenticated', guru, `select erase_student($1, 'parent asked', 'REQ-AL') as r`, [alMinor.id]);
+await asOwner(`select erase_student('${alMinor.id}', 'parent asked', 'REQ-AL') as r`);
 check('erasure blanks the student\'s id in access_log and keeps the rows', alRowsBefore >= 4
   && (await asOwner(`select count(*)::int as n from access_log where student_id = '${alMinor.id}'`))[0].n === 0
   && (await logRows()) === alTotal, `${alRowsBefore}`);
@@ -4124,7 +4144,7 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
     'check_inventory_item(bigint,text,text)', 'check_out_all(smallint)', 'class_report(date,date,uuid)',
     'clean_audience(text,smallint,bigint)', 'coordinator_dashboard()', 'decide_fund_entry(bigint,boolean,text)',
     'decide_material_suggestion(bigint,boolean,text)', 'decide_promotion(bigint,text,text,date)',
-    'delete_practice(bigint)', 'erase_student(uuid,text,text)', 'event_counts(bigint[])', 'event_people_list(bigint)',
+    'delete_practice(bigint)', 'event_counts(bigint[])', 'event_people_list(bigint)',
     'event_student_list(bigint,boolean)', 'event_visible_to(bigint,uuid)', 'fund_balance()',
     'fund_bill_deletable(text)', 'fund_bill_readable(text)', 'fund_bill_uploadable(text)',
     'give_promotion_feedback(bigint,text,text)', 'guru_dashboard()', 'has_class_role()', 'ig_audio_path_ok(text)',
@@ -4176,8 +4196,7 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
     'clean_person_name(text,integer)', 'person_name_symbols()', 'default_home_centre()', 'possible_duplicates(text,date,text)',
     // 0048: the caller's own audience (polls rule, #288; audience_profiles closed); the desk's notice for an adult (#290)
     'in_audience(text,smallint,bigint,uuid)', 'record_desk_notice(uuid,text)',
-    // 0049: the Guru erases a waiting sign-up (privacy_caller_ok inside)
-    'erase_login(uuid,text,text)',
+    // 0049's erase_login: since 0066 (#713) only through act_on_data_request or the SQL editor, so not listed
     // 0050: the staff homes' numbers (staff only inside)
     'staff_dashboard()',
     // 0051: a child's sign-up at home (the child's own request; the consent page; Accept for a child, staff only inside)
@@ -4212,6 +4231,14 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
     'save_web_push(text,text,text)', 'remove_web_push(text)',
     // 0063: the parent page's switch and numbers (staff and the Guru checked inside); the page itself is service role only
     'parent_view_overview()', 'set_parent_view(boolean)',
+    // 0064: the lesson-audio path check for the Storage rules; Under review (staff checked inside)
+    'material_audio_path_ok(text)', 'start_submission_review(bigint)',
+    // 0065: the Rhythm Playground (roles checked inside; the three play_audio_* run as the reader in the Storage rules)
+    'playground_pack(integer)', 'my_playground_state()', 'play_set_surprise(boolean)', 'record_round(jsonb)',
+    'play_set_status(text,text,text)', 'publish_playground(text)', 'staff_playground_progress(uuid)', 'staff_playground_class(smallint,bigint)',
+    'play_audio_readable(text)', 'play_audio_uploadable(text)', 'play_audio_deletable(text)',
+    // 0066: the first of the two Gurus approves an erasure (is_guru inside)
+    'approve_data_erasure(uuid,text)', 'import_all_or_none(jsonb,boolean)',
   ];
   const runnableBy = async (role) => (await asOwner(`select p.oid::regprocedure::text as f from pg_proc p
     where p.pronamespace = 'public'::regnamespace
@@ -4341,8 +4368,8 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
       const { col } = baseTables.find((t) => t.rel === rel);
       // 0058: parent_digest_enabled is written only through set_parent_digest (#534), staff_mfa_required only through
       // set_staff_mfa_required (0061, #582), parent_view_enabled only through set_parent_view (0063, #646), so a direct
-      // update of any of them is refused.
-      const only = rel === 'settings' ? " where key not in ('parent_digest_enabled', 'staff_mfa_required', 'parent_view_enabled')" : '';
+      // update of any of them is refused; the Playground's settings (0065, #720) only in the SQL editor.
+      const only = rel === 'settings' ? " where key not in ('parent_digest_enabled', 'staff_mfa_required', 'parent_view_enabled') and key not like 'playground%'" : '';
       const r = await tryAs('authenticated', tn[who], `update public.${rel} set ${col} = ${col}${only} returning 1`);
       if (!(r.rows > 0)) positive.push(`${who} ${rel}: ${r.error ?? '0 rows'}`);
     }
@@ -5855,7 +5882,7 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
 
   // S3-02: a recording Ram uploaded and never submitted.
   const ramUnsent = await objectAt(ramLogin, 'm4a', 4096, '3 days');
-  const [{ r: erased49 }] = await asApp('authenticated', guru, `select erase_student($1, 'asked by email', 'REQ-49') as r`, [ram.id]);
+  const [{ r: erased49 }] = await asOwner(`select erase_student('${ram.id}', 'asked by email', 'REQ-49') as r`);
   check('S3-02: erasure lists the recordings in the child\'s folder that were never submitted', erased49.files.includes(ramUnsent),
     JSON.stringify(erased49.files));
   check('S2-06: erasing ram.49@ leaves the audit trail of sriram.49@ whole', (await fullAuditRows(sriram.id)) === sriramRows && sriramRows > 0,
@@ -5935,9 +5962,13 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   await asApp('authenticated', ann, 'select save_about_me($1::jsonb)', [JSON.stringify({ occupation: 'working' })]);
   const joann = await signUpWith('joann.49@example.com', { full_name: 'Joann Fortynine', centre_id: centre49 });
   const joannRows = await fullAuditRows(joann);
-  const erase = (who, id, reason = 'asked by email') => asApp('authenticated', who, `select erase_login($1, $2, 'REQ-49L') as r`, [id, reason]);
-  await refusesWith('S4-06: a coordinator cannot erase a sign-up', 'not_allowed', () => erase(coordinator, ann));
-  await refusesWith('S4-06: nor the sign-up itself (only the Guru)', 'not_allowed', () => erase(ann, ann));
+  // Since 0066 (#713) the app reaches erase_login only through a request two Gurus handled; here the SQL editor runs it
+  // (`guru` stands for that path), app users are refused before the function starts.
+  const erase = async (who, id, reason = 'asked by email') => who === guru
+    ? (await db.query(`select erase_login($1, $2, 'REQ-49L') as r`, [id, reason])).rows
+    : asApp('authenticated', who, `select erase_login($1, $2, 'REQ-49L') as r`, [id, reason]);
+  await refusesWith('S4-06: a coordinator cannot erase a sign-up', 'permission denied for function erase_login', () => erase(coordinator, ann));
+  await refusesWith('S4-06: nor the sign-up itself (nor the Guru alone, #713)', 'permission denied for function erase_login', () => erase(ann, ann));
   await refusesWith('S4-06: nor anon', 'permission denied for function erase_login', () =>
     asApp('anon', null, `select erase_login($1, 'x')`, [ann]));
   await refusesWith('S4-06: a reason is needed', 'reason_required', () => erase(guru, ann, ' '));
@@ -6609,7 +6640,7 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   await refusesWith('0053 #320: consent on a coordinator\'s own record is not withdrawn while the login is on it', 'staff_login_linked', () =>
     asApp('authenticated', guru, `select withdraw_consent($1, 'asked')`, [recA.id]));
   await refusesWith('0053 #320: ... nor is it erased', 'staff_login_linked', () =>
-    asApp('authenticated', guru, `select erase_student($1, 'asked')`, [recA.id]));
+    asOwner(`select erase_student('${recA.id}', 'asked')`));
   await refusesWith('0053 #320: ... nor deleted in the dashboard', 'staff_login_linked', () =>
     asOwner(`delete from students where id = '${recA.id}'`));
   check('0053 #320: ... the login stays on', (await asOwner(`select active from profiles where id = '${asha}'`))[0].active === true);
@@ -7329,7 +7360,7 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   check('0058: withdrawal: the waiting digest is not sent and ends as not_eligible', afterWithdraw.claimed === 0 && sent58.length === 1
     && (await rows58()).at(-1).outcome === 'not_eligible', JSON.stringify(await rows58()));
   await asOwner(`insert into parent_digests (student_id, guardian_id, week_start, again) values ('${sib.id}', (select id from guardians where student_id = '${sib.id}'), '${week}', true)`);
-  await asApp('authenticated', guru, `select erase_student($1, 'parent asked', 'REQ-58')`, [sib.id]);
+  await asOwner(`select erase_student('${sib.id}', 'parent asked', 'REQ-58')`);
   check('0058: erasure: the child\'s digests go with the record', (await rows58(sib.id)).length === 0);
 
   // Switching off ends waiting rows; an expired one is not sent; 30 days kept.
@@ -7474,7 +7505,12 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   await refusesWith('0059: at most 5 requests a day', 'too_many_requests', () => file(daraLogin, 'erasure'));
 
   // Erasure (c): the Guru erases with the roll number; the tombstone carries the reference; the request stays bare.
+  // Since 0066 (#712) another Guru approves an erasure first (the "0066" block checks the rule itself).
+  const guruB59 = await signUp('guru.b59@example.com', true);
+  await asOwner(`update profiles set role = 'guru' where id = '${guruB59}'`);
+  const approve59 = (id, how) => asApp('authenticated', guruB59, 'select approve_data_erasure($1, $2)', [id, how]);
   const gone = await file(ekaLogin, 'erasure', null, 'Please delete everything about me.');
+  await approve59(gone.id, 'own_login');
   const erased59 = await act(guru, gone.id, 'erase', eka.roll_no, 'Asked in the app');
   const bare = await row(gone.id);
   check('0059 #555: the Guru erases a student from the request (erase_student)', erased59.roll_no === eka.roll_no && erased59.login_deleted === true
@@ -7489,6 +7525,7 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
     && (await row(ekaAsk.id)).profile_id === null);
   await refusesWith('0059: a request whose person is gone cannot be acted on', 'person_gone', async () => {
     const [{ id }] = await asOwner(`insert into data_requests (kind, source) values ('erasure', 'email') returning id`);
+    await approve59(id, 'registered_email');
     return act(guru, id, 'erase', 'x');
   });
   await answer(guru, ekaAsk.id, 'refused', 'The person was erased at their request.');
@@ -7509,6 +7546,7 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   // A waiting login (no record), asked by email: erase_login, confirmed with its email.
   const waiting59 = await signUp('wait.59@example.com', true);
   const waitAsk = await asApp('authenticated', guru, `select record_data_request($1, 'erasure', 'email', 'self', null, null) as r`, ['Wait.59@Example.com']);
+  await approve59(waitAsk[0].r.id, 'registered_email');
   await refusesWith('0059: a login without a record is confirmed with its email', 'confirm_mismatch', () => act(guru, waitAsk[0].r.id, 'erase', 'MS-2026-0001'));
   const waitGone = await act(guru, waitAsk[0].r.id, 'erase', 'wait.59@example.com', 'Asked by email');
   check('0059 #555: ... and erased with erase_login', waitGone.login_deleted === true && (await row(waitAsk[0].r.id)).action === 'erase_login'
@@ -7544,6 +7582,7 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   try { await db.exec(file59); } catch (e) { again59 = String(e.message); }
   check('0059: a second run changes nothing', again59 === '' && JSON.stringify(await counts59()) === JSON.stringify(before59),
     `${again59} ${JSON.stringify(before59)}`);
+  await asOwner(`update profiles set active = false where id = '${guruB59}'`); // later blocks count the Gurus
 }
 
 // ---------------------------------------------------------------- 0060 privacy notice 1.0 (DECISIONS #571-#579)
@@ -8132,7 +8171,7 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   const [{ id: gSib }] = await asOwner(`select id from guardians where student_id = '${sib.id}'`);
   await asApp('authenticated', coordinator, `select set_guardian_digest($1, true, '1.0')`, [gSib]);
   check('0063: the sibling\'s parent sees only the sibling', (await view(gSib)).student_name === 'Radha Sibling Sixtythree');
-  await asApp('authenticated', guru, `select erase_student($1, 'parent asked', 'REQ-63')`, [sib.id]);
+  await asOwner(`select erase_student('${sib.id}', 'parent asked', 'REQ-63')`);
   check('0063: erasure: the guardian row is gone, the link opens nothing, the access log keeps no id',
     (await view(gSib)).result === 'not_available'
     && (await one(`select count(*)::int as n from access_log where student_id = '${sib.id}'`)).n === 0);
@@ -8144,6 +8183,616 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   let again63 = '';
   try { await db.exec(file63); } catch (e) { again63 = String(e.message); }
   check('0063 can run again and changes no row', again63 === '' && JSON.stringify(await count63()) === JSON.stringify(before63), again63);
+}
+
+// ---------------------------------------------------------------- 0064 learn screens (DECISIONS #680-#689)
+// Event details for students, a lesson video's audio and notes, and "Under review" on a student's recording.
+{
+  const file64 = readFileSync(new URL('migrations/0064_learn_screens.sql', supabaseDir), 'utf8');
+  const one = async (sql) => (await asOwner(sql))[0];
+
+  // Event details (#681): optional, checked, shown to those the event is for.
+  const ev64 = (fields) => asApp('authenticated', coordinator, `insert into events (title, starts_at, place, audience, reporting_at, rehearsal,
+    dress_code, coordinator_id, attendee_role, maps_url) values ('Ratha Yatra Sixtyfour', now() + interval '5 days', 'Abids temple', 'all',
+    now() + interval '5 days' - ($1 || ' minutes')::interval, $2, $3, $4, $5, $6) returning *`,
+    [String(fields.reportBefore ?? 60), fields.rehearsal ?? null, fields.dress ?? null, fields.contact ?? null, fields.role ?? null,
+     fields.maps ?? null]).then((r) => r[0]);
+  const full = await ev64({ rehearsal: '  Sat 18:00, temple hall ', dress: ' Dhoti-kurta; bring your own mridanga ', contact: coordinator2,
+    role: ' Kirtan accompaniment ', maps: 'https://maps.app.goo.gl/abc123' });
+  check('0064 #681: staff save an event with every detail, trimmed', full.rehearsal === 'Sat 18:00, temple hall'
+    && full.dress_code === 'Dhoti-kurta; bring your own mridanga' && full.attendee_role === 'Kirtan accompaniment'
+    && full.coordinator_id === coordinator2 && full.maps_url === 'https://maps.app.goo.gl/abc123' && full.reporting_at !== null, JSON.stringify(full));
+  const plain = (await asApp('authenticated', coordinator, `insert into events (title, starts_at, place, audience)
+    values ('Plain Sixtyfour', now() + interval '6 days', 'Hall', 'all') returning *`))[0];
+  check('0064 #681: every detail is optional (an event as before)', plain.reporting_at === null && plain.dress_code === null
+    && plain.coordinator_id === null && plain.maps_url === null);
+  await refusesWith('0064 #681: reporting after the start is refused', 'reporting_invalid', () => ev64({ reportBefore: -10 }));
+  await refusesWith('0064 #681: ... and more than 12 hours before it', 'reporting_invalid', () => ev64({ reportBefore: 13 * 60 }));
+  await refusesWith('0064 #681: a maps link is https', 'maps_link_invalid', () => ev64({ maps: 'http://maps.example.com/x' }));
+  await refusesWith('0064 #681: the contact is a staff member, not a student', 'coordinator_invalid', () => ev64({ contact: arjun }));
+  await refusesWith('0064 #681: the dress code is at most 200 characters', 'dress_code_too_long', () => ev64({ dress: 'x'.repeat(201) }));
+  await refusesWith('0064 #681: a later start that leaves reporting 12 hours early is refused', 'reporting_invalid', () => asApp('authenticated',
+    coordinator, `update events set starts_at = starts_at + interval '1 day' where id = $1`, [full.id]));
+  await asApp('authenticated', coordinator, `update events set title = 'Ratha Yatra 64' where id = $1`, [full.id]);
+  check('0064 #681: an edit of other fields keeps the details', (await one(`select dress_code, reporting_at is not null as r from events
+    where id = ${full.id}`)).r === true);
+  const seen64 = await asApp('authenticated', arjun, 'select dress_code, coordinator_id, maps_url from events where id = $1', [full.id]);
+  check('0064 #681: a student the event is for reads its details', seen64[0]?.dress_code === 'Dhoti-kurta; bring your own mridanga'
+    && seen64[0]?.coordinator_id === coordinator2, JSON.stringify(seen64));
+
+  // Lesson audio and notes (#683, #684): beside a lesson video, a private file read through the material's rules.
+  const [mb64] = await asOwner(`select allowed_mime_types, file_size_limit from storage.buckets where id = 'material-files'`);
+  check('0064 #683: material-files takes audio, still 10 MB and still PDFs and photos', mb64.allowed_mime_types.includes('audio/mpeg')
+    && mb64.allowed_mime_types.includes('application/pdf') && Number(mb64.file_size_limit) === 10485760, JSON.stringify(mb64));
+  const lesson64 = (userId, fields) => asApp('authenticated', userId, `insert into materials (title, kind, url, storage_path, file_name, file_size,
+    level_id, audio_path, audio_name, audio_size, notes) values ($1, $2, $3, $4, $5, $6, 1, $7, $8, $9, $10) returning *`,
+    [fields.title ?? 'Lesson Sixtyfour', fields.kind ?? 'youtube', fields.kind && fields.kind !== 'youtube' ? null : 'https://youtu.be/dQw4w9WgXcQ',
+     fields.path ?? null, fields.name ?? null, fields.size ?? null, fields.audio ?? null, fields.audioName ?? (fields.audio ? 'Tala.mp3' : null),
+     fields.audio ? 1 : null, fields.notes ?? null]).then((r) => r[0]);
+  const audio1 = await filePath(guru, 'mp3');
+  await uploadMaterial(guru, audio1, 2000000);
+  const withAudio = await lesson64(guru, { audio: audio1, audioName: ' Tala slow.mp3 ', notes: '  Dha Ge Na Ti — count 1 to 8.  ' });
+  check('0064 #683: the Guru adds a lesson video with audio and notes; the size from Storage', Number(withAudio.audio_size) === 2000000
+    && withAudio.audio_name === 'Tala slow.mp3' && withAudio.notes === 'Dha Ge Na Ti — count 1 to 8.', JSON.stringify(withAudio));
+  await refusesWith('0064 #683: audio that is not in Storage is refused', 'lesson_audio_missing', async () => lesson64(guru, { audio: await filePath(guru, 'mp3') }));
+  const coordAudio = await filePath(coordinator, 'mp3');
+  await uploadMaterial(coordinator, coordAudio);
+  await refusesWith('0064 #683: ... and audio from another folder', 'lesson_audio_not_yours', () => lesson64(guru, { audio: coordAudio }));
+  await refusesWith('0064 #683: an audio path needs an audio ending', 'lesson_audio_invalid', async () => lesson64(guru, { audio: await filePath(guru, 'pdf') }));
+  await refusesWith('0064 #683: a file with another ending cannot be uploaded as audio', 'new row violates row-level security policy for table "objects"',
+    async () => uploadMaterial(guru, await filePath(guru, 'exe')));
+  const pdf64 = await filePath(guru, 'pdf');
+  await uploadMaterial(guru, pdf64);
+  await refusesWith('0064 #684: audio and notes go with a lesson video only', 'lesson_extras_video_only', () =>
+    lesson64(guru, { kind: 'pdf', path: pdf64, name: 'Notes.pdf', size: 1, notes: 'Read this' }));
+  await refusesWith('0064 #684: notes are at most 4000 characters', 'notes_too_long', () => lesson64(guru, { notes: 'n'.repeat(4001) }));
+  check('0064 #683: a student opens the audio of a lesson they may see', await canOpenMaterial(arjun, audio1));
+  const loose = await filePath(guru, 'm4a');
+  await uploadMaterial(guru, loose);
+  check('0064 #683: ... but not an audio file no lesson lists', !(await canOpenMaterial(arjun, loose)));
+  await refusesWith('0064 #683: a listed audio file cannot be uploaded again (no swap)', 'new row violates row-level security policy for table "objects"',
+    () => uploadMaterial(guru, audio1));
+  await asApp('authenticated', guru, `update materials set audio_path = $2, audio_name = 'Tala new.m4a', audio_size = 1 where id = $1`, [withAudio.id, loose]);
+  check('0064 #683: the Guru changes a lesson\'s audio later; the old file is no longer readable', await canOpenMaterial(arjun, loose)
+    && !(await canOpenMaterial(arjun, audio1)));
+  check('0064 #683: a coordinator cannot change a lesson\'s audio or notes (the Guru\'s, as before)', (await asApp('authenticated', coordinator,
+    `update materials set notes = 'x' where id = $1 returning id`, [withAudio.id])).length === 0);
+  await asApp('authenticated', guru, `update materials set audio_path = null where id = $1`, [withAudio.id]);
+  check('0064 #683: removing the audio clears its name and size; the notes stay', JSON.stringify(await one(`select audio_name, audio_size, notes
+    from materials where id = ${withAudio.id}`)) === JSON.stringify({ audio_name: null, audio_size: null, notes: 'Dha Ge Na Ti — count 1 to 8.' }));
+  check('0064: lessons saved before 0064 read as before (no audio, no notes)', (await one(`select count(*)::int as n from materials
+    where id < ${withAudio.id} and (audio_path is not null or notes is not null)`)).n === 0);
+
+  // "Under review" (#686): set once when staff open a recording waiting for its review; nothing else changes.
+  const a64 = await createAssessment(guru, { title: 'Under review Sixtyfour', sent: true });
+  await release(coordinator, a64.id, [arjunStudent]);
+  const [{ id: asg64 }] = await asOwner(`select id from assessment_assignments where assessment_id = ${a64.id}`);
+  const s64 = await submit(arjun, asg64, null, 'https://youtu.be/dQw4w9WgXcQ');
+  const startAs = (who, id) => asApp('authenticated', who, 'select start_submission_review($1)', [id]);
+  const started = async () => (await asApp('authenticated', arjun, 'select review_started_at from assessment_submissions where id = $1', [s64]))[0]
+    ?.review_started_at ?? null;
+  check('0064 #686: a new recording is Submitted, not yet under review', (await started()) === null);
+  await refusesWith('0064 #686: a student cannot mark a recording under review', 'not_allowed', () => startAs(arjun, s64));
+  await refusesWith('0064 #686: an unknown recording', 'submission_not_found', () => startAs(coordinator, 0));
+  await startAs(coordinator, s64);
+  const first64 = await started();
+  check('0064 #686: a coordinator opening it marks it under review; the student reads that; the status stays submitted', first64 !== null
+    && (await one(`select status from assessment_assignments where id = ${asg64}`)).status === 'submitted');
+  await startAs(coordinator2, s64);
+  check('0064 #686: a second opening keeps the first time', String(await started()) === String(first64));
+  await asApp('authenticated', coordinator, 'select review_submission($1, $2::int[], $3, $4)', [s64, [4, 5], 'Good', 'accepted']);
+  await startAs(coordinator, s64);
+  check('0064 #686: the review works as before and keeps the time; opening a reviewed one changes nothing',
+    (await one(`select status from assessment_assignments where id = ${asg64}`)).status === 'reviewed' && String(await started()) === String(first64));
+
+  // A second run of the file changes nothing.
+  const count64 = async () => one(`select (select count(*) from materials where notes is not null)::int as m,
+    (select count(*) from events where dress_code is not null)::int as e, (select array_length(allowed_mime_types, 1) from storage.buckets
+    where id = 'material-files') as b`);
+  const before64 = await count64();
+  let again64 = '';
+  try { await db.exec(file64); } catch (e) { again64 = String(e.message); }
+  check('0064 can run again and changes no row', again64 === '' && JSON.stringify(await count64()) === JSON.stringify(before64), again64);
+}
+
+// ---------------------------------------------------------------- 0065 Rhythm Playground engine (DECISIONS #720-#729)
+// Content approval and publishing, the pack, rounds re-marked by the server, row-level security, the TEST seed,
+// retention (180 days → weekly summaries; unreviewed game recordings after 60 days).
+{
+  const file65 = readFileSync(new URL('migrations/0065_playground.sql', supabaseDir), 'utf8');
+  const seed65 = readFileSync(new URL('seed/playground_test.sql', supabaseDir), 'utf8');
+  const one = async (sql) => (await asOwner(sql))[0];
+  const setting = async (key) => (await one(`select value from settings where key = '${key}'`))?.value;
+  const pack = async (who, have = 0) => (await asApp('authenticated', who, 'select playground_pack($1) as p', [have]))[0].p;
+
+  check('0065: the Playground is off, placeholders are not allowed, the label numbers are there (§12.2)',
+    (await setting('playground_enabled')) === false && (await setting('playground_allow_placeholders')) === false
+    && (await setting('playground_labels')).steadyItems === 20 && (await setting('playground_labels')).timingMedianMs === 60);
+  await refusesWith('0065 #720: the Guru cannot switch placeholders on from the app (SQL editor only)', 'setting_unknown', () =>
+    asApp('authenticated', guru, `update settings set value = 'true' where key = 'playground_allow_placeholders'`));
+  check('0065: nothing published yet: the pack is null', (await pack(arjun)) === null);
+  await refusesWith('0065: anon cannot read the pack', 'permission denied for function playground_pack', () => asApp('anon', null, 'select playground_pack(0)'));
+
+  // Content: coordinators write drafts; only the Guru approves (#720).
+  const bol = (who, id, status = 'draft', extra = {}) => asApp('authenticated', who, `insert into play_bols (id, written, head, level_id, status,
+    placeholder, sounds_like) values ($1, $2, 'dayan', 1, $3, $4, $5) returning *`, [id, extra.written ?? id, status, extra.placeholder ?? false,
+    extra.soundsLike ?? []]).then((r) => r[0]);
+  const draft = await bol(coordinator, 'tha', 'draft', { written: ' thā ' });
+  check('0065 #720: a coordinator adds a draft bol, trimmed, revision 1, with the author', draft.written === 'thā' && draft.revision === 1
+    && draft.created_by === coordinator && draft.published_in === null);
+  await refusesWith('0065 #720: a coordinator cannot add an approved bol', 'approval_guru_only', () => bol(coordinator, 'dhe', 'approved'));
+  await asApp('authenticated', coordinator, `update play_bols set status = 'in_review', published_in = 7, revision = 9 where id = 'tha'`);
+  check('0065 #720: ... sends it for review; published_in and revision cannot be written by hand',
+    JSON.stringify(await one(`select status, published_in, revision from play_bols where id = 'tha'`)) === JSON.stringify({ status: 'in_review', published_in: null, revision: 1 }));
+  await refusesWith('0065 #720: a coordinator cannot approve', 'approval_guru_only', () =>
+    asApp('authenticated', coordinator, `select play_set_status('bol', 'tha', 'approved')`));
+  await asApp('authenticated', guru, `select play_set_status('bol', 'tha', 'approved')`);
+  check('0065 #720: the Guru approves; the approver and time are kept', (await one(`select status, approved_by, approved_at is not null as at
+    from play_bols where id = 'tha'`)).approved_by === guru);
+  await refusesWith('0065: a bol has a written form of at most 12 characters', 'bol_invalid', () => bol(coordinator, 'dho', 'draft', { written: 'x'.repeat(13) }));
+  await refusesWith('0065: an unknown status kind is refused', 'kind_invalid', () => asApp('authenticated', guru, `select play_set_status('song', '1', 'approved')`));
+
+  const template = (who, game, steps, status = 'draft') => asApp('authenticated', who, `insert into play_templates (game, skill, response_mode,
+    level_min, level_max, steps, status) values ($1, 'listen.stroke', 'choose', 1, 3, $2, $3) returning *`, [game, steps, status]).then((r) => r[0]);
+  await refusesWith('0065: a template has 1-20 steps', 'template_invalid', () => template(coordinator, 'sound_detective', '[]'));
+  await refusesWith('0065: ... each with its step number once', 'template_invalid', () => template(coordinator, 'sound_detective', '[{"step":1},{"step":1}]'));
+  const t65 = await template(guru, 'sound_detective', '[{"step":1,"choices":2},{"step":2,"choices":3}]', 'approved');
+  const exercise = (who, seq, status = 'draft', extra = {}) => asApp('authenticated', who, `insert into play_exercises (game, template_id,
+    level_id, skills, sequence, status, placeholder, bpm_min, bpm_max) values ($1, $2, $3, '{listen.stroke}', $4, $5, $6, $7, $8) returning *`,
+    [extra.game ?? 'sound_detective', extra.game ? null : t65.id, extra.level ?? 1, seq, status, extra.placeholder ?? false,
+     extra.bpmMin ?? null, extra.bpmMax ?? null]).then((r) => r[0]);
+  await refusesWith('0065 #722: an exercise is written in the notation (dictionary ids, - or 1-4 bols a beat)', 'exercise_invalid', () =>
+    exercise(coordinator, ['Tā!']));
+  await refusesWith('0065 #722: ... at most 4 bols in a beat', 'exercise_invalid', () => exercise(coordinator, ['ta.na.ta.na.ta']));
+  await refusesWith('0065 #723: an exercise with a bol the dictionary has not approved cannot be approved', 'exercise_bol_not_approved', () =>
+    exercise(guru, ['tha', 'xyz'], 'approved'));
+  const ex65 = await exercise(guru, ['tha'], 'approved');
+  const drafted = await exercise(coordinator, ['tha', 'tha']);
+
+  // Publishing (#720): the Guru; a version per publish; the pack is null while unchanged.
+  await refusesWith('0065 #720: a coordinator cannot publish', 'not_allowed', () => asApp('authenticated', coordinator, 'select publish_playground(null)'));
+  const pub1 = (await asApp('authenticated', guru, `select publish_playground('First') as r`))[0].r;
+  const p1 = await pack(arjun);
+  check('0065 #728: a student gets the published pack: the approved bol and exercise, not the draft', pub1.version === 1 && p1.version === 1
+    && p1.placeholders === false && p1.bols.some((b) => b.id === 'tha') && p1.exercises.length === 1 && p1.exercises[0].id === ex65.id
+    && p1.templates.length === 1 && p1.labels.steadyShare === 0.8, JSON.stringify(pub1));
+  check('0065 #728: ... and null when the phone has this version', (await pack(arjun, 1)) === null);
+  await asApp('authenticated', coordinator, `update play_exercises set bpm_min = 60 where id = $1`, [ex65.id]);
+  check('0065 #720: editing an approved exercise sends it back to review with revision 2, out of the published set',
+    JSON.stringify(await one(`select status, revision, published_in, first_published_in from play_exercises where id = ${ex65.id}`))
+      === JSON.stringify({ status: 'in_review', revision: 2, published_in: null, first_published_in: 1 }));
+  check('0065: a student reads approved, published, non-placeholder content only (direct read)',
+    (await asApp('authenticated', arjun, 'select id from play_exercises')).length === 0
+    && (await asApp('authenticated', arjun, `select id from play_bols where id = 'tha'`)).length === 1);
+  check('0065: staff read every row, drafts included', (await asApp('authenticated', coordinator, 'select id from play_exercises')).length === 2);
+  await refusesWith('0065: a student cannot add content', 'new row violates row-level security policy for table "play_bols"', () => bol(arjun, 'dhe'));
+  await bol(guru, 'zzz', 'approved', { placeholder: true });
+  await refusesWith('0065 #720 §19.3: publish refuses placeholder content while placeholders are not allowed', 'placeholders_not_allowed', () =>
+    asApp('authenticated', guru, 'select publish_playground(null)'));
+  await asApp('authenticated', guru, `select play_set_status('bol', 'zzz', 'retired')`);
+  await asApp('authenticated', guru, `select play_set_status('exercise', $1, 'approved')`, [String(ex65.id)]);
+  check('0065: retired, the placeholder is no obstacle; the re-approved exercise is in version 2',
+    (await asApp('authenticated', guru, 'select publish_playground(null) as r'))[0].r.version === 2
+    && (await pack(arjun, 1)).exercises.some((e) => e.id === ex65.id && e.revision === 2));
+  check('0065: a coordinator deletes their own draft never published; not the published one',
+    (await asApp('authenticated', coordinator, 'delete from play_exercises where id = $1 returning id', [drafted.id])).length === 1
+    && (await asApp('authenticated', coordinator, 'delete from play_exercises where id = $1 returning id', [ex65.id])).length === 0);
+
+  // The TEST seed (§19.3): refuses LIVE, publishes placeholders on TEST, and a second run adds nothing.
+  await db.exec(seed65);
+  const p2 = await pack(arjun);
+  check('0065 §19.3: the TEST seed switches placeholders on and publishes Prji\'s first set te re khe ta: 4 bols, 4 templates, 30 exercises',
+    (await setting('playground_allow_placeholders')) === true && (await setting('playground_enabled')) === true && p2.placeholders === true
+    && p2.version === 3 && p2.exercises.filter((e) => e.placeholder).length === 30 && p2.templates.length === 5
+    && p2.bols.filter((b) => b.placeholder).map((b) => b.id).sort().join() === 'khe,re,ta,te', `v${p2.version} ${p2.exercises.length} ${p2.templates.length} ${p2.bols.length}`);
+  await db.exec(seed65);
+  check('0065 §19.3: ... a second run adds and publishes nothing', (await one('select max(version) as v from play_publications')).v === 3
+    && (await one('select count(*)::int as n from play_exercises where placeholder')).n === 30);
+  check('0065 §19.3: the seed refuses a project without seed.sql\'s example students (LIVE)', seed65.includes(`'arjun.rao@example.com'`)
+    && seed65.indexOf('playground_test.sql refused') < seed65.indexOf('begin;'));
+
+  // Rounds (#721): the server re-marks every recognition answer; idempotent; content and limits checked.
+  const exId = async (game, seq) => (await one(`select id from play_exercises where game = '${game}' and placeholder and sequence = '${seq}'`)).id;
+  const [ta, te, khe] = [await exId('sound_detective', '{ta}'), await exId('sound_detective', '{te}'), await exId('sound_detective', '{khe}')];
+  await bol(guru, 'khee', 'approved', { soundsLike: ['khe'] }); // a sounds-alike spelling, approved in the dictionary
+  const round = (items, extra = {}) => ({ id: extra.id ?? randomUUID(), game: extra.game ?? 'sound_detective', skill: extra.skill ?? 'listen.stroke',
+    mode: 'play', step: 2, seed: 12345, content_version: 3, started_at: extra.started ?? new Date(Date.now() - 120000).toISOString(),
+    finished_at: new Date().toISOString(), device: 'web', items, ...(extra.timing ? { timing: extra.timing } : {}) });
+  const record = (who, r) => asApp('authenticated', who, 'select record_round($1) as r', [r]).then((x) => x[0].r);
+  const r1 = round([{ e: ta, a: 'ta', ok: false, rp: 1, ms: 2100 }, { e: te, a: 'ta', ok: true }, { e: khe, a: 'khee', ok: false }]);
+  const saved1 = await record(arjun, r1);
+  check('0065 #721 #723: a changed "ok" does not count: the server marks ta right, te answered ta wrong, khe = khee (sounds alike) right',
+    saved1.result === 'saved' && saved1.n_correct === 2 && saved1.items.map((i) => i.ok).join() === 'true,false,true'
+    && saved1.items[0].r === 1 && saved1.items[0].rp === 1, JSON.stringify(saved1));
+  const again = await record(arjun, r1);
+  check('0065 #721: the same round again: duplicate, still one row', again.result === 'duplicate'
+    && (await one(`select count(*)::int as n from play_rounds where id = '${r1.id}'`)).n === 1);
+  await refusesWith('0065 #721: another student cannot reuse the id', 'round_id_taken', () => record(meera, r1));
+  await refusesWith('0065 #721: a draft never published is refused', 'round_content_unknown', async () =>
+    record(arjun, round([{ e: (await exercise(coordinator, ['tha'])).id, a: 'tha' }])));
+  await refusesWith('0065 #721: an exercise of another game is refused', 'round_content_unknown', () =>
+    record(arjun, round([{ e: ta, a: 'ta' }], { game: 'missing_beat', skill: 'listen.phrase' })));
+  await refusesWith('0065 #721: more than 40 items', 'round_invalid', () => record(arjun, round(Array.from({ length: 41 }, () => ({ e: ta, a: 'ta' })))));
+  await refusesWith('0065 #721: a round started more than 14 days ago', 'round_invalid', () =>
+    record(arjun, round([{ e: ta, a: 'ta' }], { started: new Date(Date.now() - 15 * 86400000).toISOString() })));
+  await refusesWith('0065 #721: an unknown skill', 'round_invalid', () => record(arjun, round([{ e: ta, a: 'ta' }], { skill: 'listen.everything' })));
+  const mb = await exId('missing_beat', '{te,re,khe,ta}');
+  const mbRound = await record(arjun, round([{ e: mb, a: 'khee', q: { gap: [2] } }, { e: mb, a: 'ta', q: { gap: [1] } }, { e: mb, a: 'ta', q: { gap: [9] } }],
+    { game: 'missing_beat', skill: 'listen.phrase' }));
+  check('0065 #723: Missing Beat: the gap\'s bol is the answer (khe = khee sounds alike; re is not ta); a gap outside the beats is never right',
+    mbRound.items.map((i) => i.ok).join() === 'true,false,false', JSON.stringify(mbRound.items));
+  const td = await exId('tempo_detective', '{te,re,khe,ta}');
+  const tdRound = await record(arjun, round([{ e: td, a: 'faster', q: { bpm: [60, 75] } }, { e: td, a: 'same', q: { bpm: [70, 63] } }],
+    { game: 'tempo_detective', skill: 'listen.tempo' }));
+  check('0065 #723: Tempo Detective: faster / slower from the two tempos played', tdRound.items.map((i) => i.ok).join() === 'true,false');
+  await refusesWith('0065 DYN-03: a tempo outside the exercise\'s range is refused', 'round_invalid', () =>
+    record(arjun, round([{ e: td, a: 'faster', q: { bpm: [60, 120] } }], { game: 'tempo_detective', skill: 'listen.tempo' })));
+  await refusesWith('0065: anon cannot save a round', 'permission denied for function record_round', () => asApp('anon', null, 'select record_round($1)', [r1]));
+  await refusesWith('0065: a staff login without its own record cannot save a round', 'not_allowed', () => record(coordinator2, round([{ e: ta, a: 'ta' }])));
+  const timed = await record(arjun, round([{ e: ta, a: 'ta' }], { timing: { median_ms: -12.4, spread_ms: 34, calibrated: true, offset_ms: 180 } }));
+  const tm = (await one(`select timing from play_rounds where id = '${timed.id}'`)).timing;
+  check('0065: timing is kept rounded (calibrated phones only count for labels)', tm.median_ms === -12 && tm.spread_ms === 34 && tm.calibrated === true
+    && tm.offset_ms === 180, JSON.stringify(tm));
+
+  // Row-level security on rounds, settings, assignments, ratings.
+  check('0065: a student reads only their own rounds; staff read all',
+    (await asApp('authenticated', meera, 'select id from play_rounds')).length === 0
+    && (await asApp('authenticated', arjun, 'select id from play_rounds')).length === 4
+    && (await asApp('authenticated', coordinator, 'select id from play_rounds')).length === 4);
+  await refusesWith('0065: a student cannot change a saved round', 'permission denied for table play_rounds', () =>
+    asApp('authenticated', arjun, `update play_rounds set n_correct = 3 where id = $1`, [r1.id]));
+  await refusesWith('0065: ... nor add one directly', 'permission denied for table play_rounds', () =>
+    asApp('authenticated', arjun, `insert into play_rounds (id, student_id, game, skill, mode, step, seed, content_version, started_at, items, n_items)
+      values (gen_random_uuid(), $1, 'echo', 'rhythm.recall', 'play', 1, 1, 1, now(), '[]', 1)`, [arjunStudent]));
+  await asApp('authenticated', coordinator, `insert into play_assignments (game, student_id, step_max, note) values ('sound_detective', $1, 2, ' Practise the close pairs ')`, [arjunStudent]);
+  await asApp('authenticated', coordinator, `insert into play_assignments (game, level_id) values ('missing_beat', 3)`);
+  await asApp('authenticated', arjun, 'select play_set_surprise(false)');
+  const st = (await asApp('authenticated', arjun, 'select my_playground_state() as s'))[0].s;
+  check('0065: the student\'s state: level, own and level assignments, Surprise me off, 30 days of rounds',
+    st.level_id === 3 && st.assignments.length === 2 && st.assignments.some((a) => a.note === 'Practise the close pairs' && a.step_max === 2) && st.settings.surprise === false
+    && st.rounds.length === 4 && st.rounds[0].items.length >= 1, JSON.stringify(st).slice(0, 300));
+  const stMeera = (await asApp('authenticated', meera, 'select my_playground_state() as s'))[0].s;
+  check('0065: ... another student of the level gets the level\'s assignment and none of Arjun\'s', stMeera.assignments.length === 1
+    && stMeera.assignments[0].game === 'missing_beat' && stMeera.rounds.length === 0 && stMeera.settings === null, JSON.stringify(stMeera).slice(0, 400));
+  check('0065: a student reads no assignment or settings row directly', (await asApp('authenticated', arjun, 'select 1 from play_assignments')).length === 0
+    && (await asApp('authenticated', arjun, 'select 1 from play_student_settings')).length === 0);
+  await refusesWith('0065: a student cannot read another\'s progress (staff function)', 'not_allowed', () =>
+    asApp('authenticated', arjun, 'select staff_playground_progress($1)', [meeraStudent]));
+  await asApp('authenticated', coordinator, `insert into play_ratings (student_id, skill, rating, note) values ($1, 'vocal.call_response', 2, ' Clear entry ')`, [arjunStudent]);
+  const prog = (await asApp('authenticated', coordinator, 'select staff_playground_progress($1) as p', [arjunStudent]))[0].p;
+  check('0065 #727: staff see a student\'s rounds, ratings (with the rater\'s name) and weekly summaries', prog.rounds.length === 4
+    && prog.ratings.length === 1 && prog.ratings[0].note === 'Clear entry' && prog.ratings[0].rated_by_name !== null && Array.isArray(prog.weeks));
+  check('0065: a student reads their own rating, not another\'s', (await asApp('authenticated', arjun, 'select 1 from play_ratings')).length === 1
+    && (await asApp('authenticated', meera, 'select 1 from play_ratings')).length === 0);
+  await refusesWith('0065: a rating is 0-3', 'new row for relation "play_ratings" violates check constraint "play_ratings_rating_check"', () =>
+    asApp('authenticated', coordinator, `insert into play_ratings (student_id, skill, rating) values ($1, 'kirtan.entry', 4)`, [arjunStudent]));
+  const cls = (await asApp('authenticated', coordinator, 'select staff_playground_class(3::smallint, null) as c'))[0].c;
+  check('0065: Class progress: the level\'s students with their rounds', cls.some((s) => s.student_id === arjunStudent && s.rounds.length === 4)
+    && cls.some((s) => s.student_id === meeraStudent && s.rounds.length === 0) && cls.every((s) => s.level_id === 3), JSON.stringify(cls).slice(0, 400));
+  await refusesWith('0065: Class progress needs a level or a group', 'filter_required', () =>
+    asApp('authenticated', coordinator, 'select staff_playground_class(null, null)'));
+
+  // Sound files (bucket playground-audio): staff upload as <kind>/<uuid>.<ext>; approving needs the file.
+  const audioName = `stroke/${randomUUID()}.wav`;
+  await refusesWith('0065: a sound file needs the <kind>/<uuid>.<ext> name', 'new row violates row-level security policy for table "objects"', () =>
+    asApp('authenticated', coordinator, `insert into storage.objects (bucket_id, name, owner) values ('playground-audio', 'tabla.wav', auth.uid())`));
+  await refusesWith('0065: a student cannot upload one', 'new row violates row-level security policy for table "objects"', () =>
+    asApp('authenticated', arjun, `insert into storage.objects (bucket_id, name, owner) values ('playground-audio', $1, auth.uid())`, [audioName]));
+  await refusesWith('0065: approving a sound needs its file in Storage', 'asset_file_missing', () => asApp('authenticated', guru,
+    `insert into play_assets (kind, path, licence, status) values ('stroke', $1, 'own', 'approved')`, [audioName]));
+  await asApp('authenticated', coordinator, `insert into storage.objects (bucket_id, name, owner) values ('playground-audio', $1, auth.uid())`, [audioName]);
+  await refusesWith('0065: a CC BY sound needs its credit to be approved', 'asset_licence_incomplete', () => asApp('authenticated', guru,
+    `insert into play_assets (kind, path, licence, status) values ('stroke', $1, 'cc_by', 'approved')`, [audioName]));
+  const asset = (await asApp('authenticated', guru, `insert into play_assets (kind, path, licence, performer, status) values ('stroke', $1, 'own',
+    'Prji', 'approved') returning id`, [audioName]))[0];
+  const canRead = async (who) => (await asApp('authenticated', who, `select 1 from storage.objects where bucket_id = 'playground-audio' and name = $1`, [audioName])).length === 1;
+  check('0065: a student cannot open a sound before it is published; staff can', !(await canRead(arjun)) && (await canRead(coordinator)));
+  await asApp('authenticated', guru, 'select publish_playground(null)');
+  check('0065: ... published, the student opens it; staff cannot delete an approved sound',
+    (await canRead(arjun)) && (await asApp('authenticated', coordinator, `delete from storage.objects where bucket_id = 'playground-audio' and name = $1 returning 1`, [audioName])).length === 0
+    && asset.id > 0);
+
+  // Retention (§13.4, #729): rounds over 180 days → weekly summaries; unreviewed game recordings after 60 days.
+  await asOwner(`insert into play_rounds (id, student_id, game, skill, mode, step, seed, content_version, started_at, items, n_items, n_correct)
+    values (gen_random_uuid(), '${arjunStudent}', 'sound_detective', 'listen.stroke', 'play', 1, 1, 1, now() - interval '200 days', '[{"e":1}]', 6, 5),
+           (gen_random_uuid(), '${arjunStudent}', 'sound_detective', 'listen.stroke', 'play', 1, 2, 1, now() - interval '200 days', '[{"e":1}]', 4, 1)`);
+  const folded = (await one('select playground_daily() as n')).n;
+  check('0065 #729: the nightly job folds rounds older than 180 days into one weekly summary and deletes them; recent rounds stay',
+    folded === 2 && (await one(`select count(*)::int as n from play_rounds where started_at < now() - interval '180 days'`)).n === 0
+    && JSON.stringify(await one(`select opportunities, correct, rounds from play_skill_weeks where student_id = '${arjunStudent}'`))
+      === JSON.stringify({ opportunities: 10, correct: 6, rounds: 2 })
+    && (await one(`select count(*)::int as n from play_rounds where student_id = '${arjunStudent}'`)).n === 4);
+  check('0065 #729: the job is scheduled daily after the retention job', (await one(`select schedule, command from cron.job where jobname = 'mridanga-playground'`))
+    ?.command === 'select playground_daily()');
+  const a65 = await createAssessment(guru, { title: 'Echo take Sixtyfive', sent: true });
+  await asOwner(`update assessments set playground_game = 'echo' where id = ${a65.id}`);
+  await release(coordinator, a65.id, [arjunStudent]);
+  const [{ id: asg65 }] = await asOwner(`select id from assessment_assignments where assessment_id = ${a65.id}`);
+  const s65 = await submit(arjun, asg65, null, 'https://youtu.be/dQw4w9WgXcQ');
+  const expired = async (id) => (await one(`select submission_file_expired(${id}, null, false) as x`)).x;
+  check('0065 #729: an unreviewed game recording is kept for 60 days', (await expired(s65)) === false);
+  await asOwner(`update assessment_submissions set submitted_at = now() - interval '61 days' where id = ${s65}`);
+  const aOld = await createAssessment(guru, { title: 'Ordinary Sixtyfive', sent: true });
+  await release(coordinator, aOld.id, [arjunStudent]);
+  const [{ id: asgOld }] = await asOwner(`select id from assessment_assignments where assessment_id = ${aOld.id}`);
+  const sOld = await submit(arjun, asgOld, null, 'https://youtu.be/dQw4w9WgXcQ');
+  await asOwner(`update assessment_submissions set submitted_at = now() - interval '61 days' where id = ${sOld}`);
+  check('0065 #729: ... and then removed; an ordinary unreviewed recording is kept as before', (await expired(s65)) === true && (await expired(sOld)) === false);
+  check('0065 §13.4: every student table goes with the record (on delete cascade)', (await one(`select count(*)::int as n from pg_constraint
+    where contype = 'f' and confrelid = 'students'::regclass and confdeltype = 'c'
+      and conrelid::regclass::text in ('play_rounds', 'play_skill_weeks', 'play_ratings', 'play_student_settings', 'play_assignments')`)).n === 5);
+
+  // A second run of the file changes nothing.
+  const count65 = async () => one(`select (select count(*) from play_exercises)::int as e, (select count(*) from play_rounds)::int as r,
+    (select max(version) from play_publications) as v, (select value from settings where key = 'playground_allow_placeholders') as ph,
+    (select count(*) from cron.job where jobname = 'mridanga-playground')::int as j`);
+  const before65 = await count65();
+  let again65 = '';
+  try { await db.exec(file65); } catch (e) { again65 = String(e.message); }
+  check('0065 can run again and changes no row', again65 === '' && JSON.stringify(await count65()) === JSON.stringify(before65), again65);
+}
+// ---------------------------------------------------------------- 0066 facilitator safeguards (DECISIONS #710-#719)
+// The P0 rows of Sarvesh's Facilitator Module review (27-10-2026, §8): FUND-01 nobody decides their own fund entry (a
+// table rule; a refused try is logged), FUND-02 a reversal after a month's report leaves the month alone, PRIV-01 an
+// erasure needs two Gurus and records how the person asking was checked, STU-01/02 an import all or none and a dry run
+// that keeps nothing, AUTH-02 a switched-off login loses its sessions, AUD-02 the error log keeps no name or number.
+{
+  const file66 = readFileSync(new URL('migrations/0066_facilitator_p0.sql', supabaseDir), 'utf8');
+  // Earlier blocks ran 0049, 0059 and 0061 again (their erase grants, act_on_data_request, log_client_error): 0066 again.
+  await db.exec(file66);
+  const one66 = async (sql, params) => (await db.query(sql, params)).rows[0];
+
+  // FUND-01 (#710): the maker, or a treasurer for a coordinator's entry, is refused with { refused } and logged.
+  await asApp('authenticated', guru, 'update profiles set is_treasurer = true where id = any ($1)', [[coordinator, coordinator2]]);
+  const cat66 = (await asOwner(`select id from fund_categories where code = 'instruments'`))[0].id;
+  const bill66 = `${coordinator2}/${await newId()}.jpg`;
+  await asApp('authenticated', coordinator2, `insert into storage.objects (bucket_id, name, owner, metadata) values ('fund-bills', $1, auth.uid(), $2)`,
+    [bill66, JSON.stringify({ size: 2048, mimetype: 'image/jpeg' })]);
+  const today66 = (await asOwner('select today_ist()::text as d'))[0].d;
+  const [{ id: big66 }] = await asApp('authenticated', coordinator2,
+    `select record_fund_entry('expense', $1::smallint, $2::date, 300000, 'Drum maker', null, null, $3, 'Bill.jpg') as id`, [cat66, today66, bill66]);
+  const decide66 = async (who, approve = true, note = null) =>
+    (await asApp('authenticated', who, 'select decide_fund_entry($1, $2, $3) as r', [big66, approve, note]))[0].r;
+  const refusedRows = async () => (await asOwner(`select changed_by, new_row from audit_log
+    where table_name = 'fund_entries' and row_id = '${big66}' and action = 'REFUSED' order by id`));
+  check('0066 FUND-01: the treasurer cannot approve their own entry: refused, the entry still waits',
+    (await decide66(coordinator2))?.refused === 'own_entry' && (await one66(`select status from fund_entries where id = $1`, [big66])).status === 'waiting');
+  check('0066 FUND-01: ... and the try is in the change log (who, which entry, what was tried)', await (async () => {
+    const rows = await refusedRows();
+    return rows.length === 1 && rows[0].changed_by === coordinator2 && rows[0].new_row.refused === 'own_entry' && rows[0].new_row.tried === 'approve';
+  })(), JSON.stringify(await refusedRows()));
+  check('0066 FUND-01: another treasurer may not decide a coordinator\'s entry either (only the Guru): refused and logged',
+    (await decide66(coordinator, false, 'No'))?.refused === 'not_approver' && (await refusedRows()).length === 2
+    && (await refusedRows())[1].changed_by === coordinator);
+  check('0066 FUND-01: the Guru reads the refusals on Change log (get_audit_log, action REFUSED)', (await asApp('authenticated', guru,
+    `select row_id from get_audit_log('fund_entries', null, 'REFUSED')`)).filter((r) => r.row_id === String(big66)).length === 2);
+  await refusesWith('0066 FUND-01: a login that keeps no fund is still refused outright', 'not_allowed', () =>
+    asApp('authenticated', late, 'select decide_fund_entry($1, true)', [big66]));
+  await refusesWith('0066 FUND-01: the table itself refuses a decision by the maker, even from the dashboard',
+    'new row for relation "fund_entries" violates check constraint "fund_entries_not_own_decision"', async () => {
+      await db.exec('begin');
+      try {
+        await db.query(`select set_config('mridanga.fund_deciding', 'on', true)`);
+        await db.query(`update fund_entries set status = 'approved', decided_by = created_by, decided_at = now() where id = $1`, [big66]);
+      } finally {
+        await db.exec('rollback');
+      }
+    });
+  const approved66 = await decide66(guru);
+  check('0066 FUND-01: the Guru approves it: { status }, decided by the Guru', approved66?.status === 'approved'
+    && (await one66(`select decided_by from fund_entries where id = $1`, [big66])).decided_by === guru, JSON.stringify(approved66));
+
+  // FUND-02: an income of last month, reversed this month after the month's report.
+  const lastMonth = (await asOwner(`select (date_trunc('month', today_ist()) - interval '1 month')::date::text as d`))[0].d;
+  const [{ id: old66 }] = await asApp('authenticated', coordinator2,
+    `select record_fund_entry('income', (select id from fund_categories where code = 'donation'), $1::date, 120000, 'Old donor') as id`, [lastMonth]);
+  const monthTotal = async (from) => Number((await asApp('authenticated', coordinator, `select coalesce(sum(case direction when 'income'
+    then amount_paise else -amount_paise end), 0)::bigint as t from fund_entries where status = 'approved'
+    and on_date >= $1::date and on_date < ($1::date + interval '1 month')`, [from]))[0].t);
+  const reportBefore = await monthTotal(lastMonth);
+  const original = await one66('select * from fund_entries where id = $1', [old66]);
+  const balanceBefore = Number((await asApp('authenticated', guru, 'select fund_balance() as b'))[0].b);
+  const [{ id: rev66 }] = await asApp('authenticated', coordinator2, 'select reverse_fund_entry($1, $2) as id', [old66, 'Cheque bounced']);
+  const rev = await one66('select * from fund_entries where id = $1', [rev66]);
+  check('0066 FUND-02: the reversal is a new entry dated today, linked to the original, the amount negative',
+    rev.reverses_id === old66 && rev.on_date.toISOString?.().slice(0, 10) !== lastMonth && Number(rev.amount_paise) === -120000
+    && rev.status === 'approved', JSON.stringify(rev));
+  check('0066 FUND-02: the original stays as it was', JSON.stringify(await one66('select * from fund_entries where id = $1', [old66]))
+    === JSON.stringify(original));
+  check('0066 FUND-02: last month\'s report is unchanged; the balance reconciles (original + reversal = 0)',
+    (await monthTotal(lastMonth)) === reportBefore
+    && Number((await asApp('authenticated', guru, 'select fund_balance() as b'))[0].b) === balanceBefore - 120000);
+  await asApp('authenticated', guru, 'update profiles set is_treasurer = false where id = any ($1)', [[coordinator, coordinator2]]);
+
+  // PRIV-01 (#712, #713): an erasure by two Gurus; the identity check and both people recorded.
+  const guruB = await signUp('guru.b66@example.com', true);
+  await asOwner(`update profiles set role = 'guru' where id = '${guruB}'`);
+  const doraLogin = await signUp('dora.66@example.com', true);
+  const dora = await register(coordinator, { p_full_name: 'Dora Sixtysix', p_dob: '1991-02-03', p_email: 'dora.66@example.com' });
+  const [{ r: ask66 }] = await asApp('authenticated', doraLogin, `select file_data_request('erasure', null, 'Please forget me.') as r`);
+  const approve = (who, id, how) => asApp('authenticated', who, 'select approve_data_erasure($1, $2)', [id, how]);
+  const act66 = async (who, id, confirm, note = 'Asked in the app') =>
+    (await asApp('authenticated', who, `select act_on_data_request($1, 'erase', $2, $3) as r`, [id, confirm, note]))[0].r;
+  const req66 = (id) => one66('select * from data_requests where id = $1', [id]);
+  await refusesWith('0066 PRIV-01: one Guru alone cannot erase: another Guru approves first', 'second_approval_needed', () =>
+    act66(guru, ask66.id, dora.roll_no));
+  await refusesWith('0066 PRIV-01: a coordinator cannot approve an erasure', 'not_allowed', () => approve(coordinator, ask66.id, 'own_login'));
+  await refusesWith('0066 PRIV-01: the identity check is one of the four', 'identity_invalid', () => approve(guru, ask66.id, 'aadhaar 1234'));
+  await approve(guru, ask66.id, 'own_login');
+  const approved = await req66(ask66.id);
+  check('0066 PRIV-01: the approval records who, when and how the person asking was checked', approved.approved_by === guru
+    && approved.approved_at !== null && approved.identity_check === 'own_login' && approved.status === 'open', JSON.stringify(approved));
+  await refusesWith('0066 PRIV-01: approved once', 'already_approved', () => approve(guruB, ask66.id, 'own_login'));
+  await refusesWith('0066 PRIV-01: the approver does not also carry it out', 'approver_cannot_erase', () => act66(guru, ask66.id, dora.roll_no));
+  await refusesWith('0066 #713: the Guru cannot call erase_student directly from the app', 'permission denied for function erase_student', () =>
+    asApp('authenticated', guruB, `select erase_student($1, 'x')`, [dora.id]));
+  await refusesWith('0066 #713: ... nor erase_login', 'permission denied for function erase_login', () =>
+    asApp('authenticated', guruB, `select erase_login($1, 'x')`, [doraLogin]));
+  const done66 = await act66(guruB, ask66.id, dora.roll_no);
+  const after = await req66(ask66.id);
+  check('0066 PRIV-01: the second Guru carries it out: the record and login are gone', done66.roll_no === dora.roll_no
+    && done66.login_deleted === true && (await one66('select count(*)::int as n from students where id = $1', [dora.id])).n === 0, JSON.stringify(done66));
+  check('0066 PRIV-01: ... the bare request keeps both people, the times and the identity check, not the text',
+    after.status === 'done' && after.action === 'erase_student' && after.approved_by === guru && after.closed_by === guruB
+    && after.identity_check === 'own_login' && after.approved_at !== null && after.closed_at !== null && after.body === null
+    && after.profile_id === null, JSON.stringify(after));
+  // A parent's request for a child, recorded at the desk: the recorder is not the approver; own_login does not fit.
+  const kid66 = await register(coordinator, { p_full_name: 'Kavi Sixtysix', p_dob: childDob, p_guardian_name: 'Kavi Parent',
+    p_guardian_phone: '9000066066', p_guardian_relation: 'father', p_id_type_checked: 'aadhaar', p_photo_consent: false, p_written_consent: true });
+  const [{ r: desk66 }] = await asApp('authenticated', guru, `select record_data_request($1, 'erasure', 'desk', 'parent', null, 'Father asked at the desk.') as r`,
+    [kid66.roll_no]);
+  await refusesWith('0066 PRIV-01: the Guru who recorded a desk request does not approve it', 'not_the_recorder', () => approve(guru, desk66.id, 'id_seen'));
+  await refusesWith('0066 PRIV-01: own_login only fits a request filed from the person\'s own login', 'identity_invalid', () =>
+    approve(guruB, desk66.id, 'own_login'));
+  await approve(guruB, desk66.id, 'id_seen');
+  const kidGone = await act66(guru, desk66.id, kid66.roll_no, 'Father asked; his ID seen');
+  const deskAfter = await req66(desk66.id);
+  check('0066 PRIV-01: ... approved by one Guru (ID seen), carried out by the other', kidGone.roll_no === kid66.roll_no
+    && deskAfter.approved_by === guruB && deskAfter.closed_by === guru && deskAfter.identity_check === 'id_seen', JSON.stringify(deskAfter));
+  await refusesWith('0066 PRIV-01: an approval is whole (who, when and how, together)', /violates check constraint "data_requests_approval_whole"/, () =>
+    asOwner(`update data_requests set approved_by = '${guru}', approved_at = now(), identity_check = null where id = '${desk66.id}'`));
+  await refusesWith('0066 PRIV-01: only an erasure request is approved', 'not_erasure', async () => {
+    const [{ roll_no: arjunRoll }] = await asOwner(`select roll_no from students where profile_id = '${arjun}'`);
+    const [{ r }] = await asApp('authenticated', guru, `select record_data_request($1, 'access', 'desk', 'self', null, 'A copy.') as r`, [arjunRoll]);
+    return approve(guruB, r.id, 'id_seen');
+  });
+
+  // STU-01/02 (#714): all or none, and a dry run that keeps nothing (roll numbers included).
+  const rows66 = [
+    { line: 2, full_name: 'Ira Sixtysix', dob: '1990-04-05', phone: '+91 90000 66001' },
+    { line: 3, full_name: 'Jai Sixtysix', dob: '1989-06-07', email: 'jai.66@example.com' },
+    { line: 4, full_name: 'Kid Sixtysix', dob: childDob },
+    { line: 5, full_name: 'Ira Sixtysix', dob: '1990-04-05' },
+  ];
+  const whole = async (rows, dry = false) =>
+    (await asApp('authenticated', guru, 'select import_all_or_none($1, $2) as r', [JSON.stringify(rows), dry]))[0].r;
+  const studentsNow = async () => (await one66(`select (select count(*) from students)::int as s, (select coalesce(max(last), 0) from roll_counters)::int as roll`));
+  const before66 = await studentsNow();
+  // One word per row: ok, held or the error (jsonb orders an object's keys its own way).
+  const shape = (rows) => rows.map((r) => `${r.line}:${r.ok ? 'ok' : r.held ? 'held' : r.error}`).join(' ');
+  const dry = await whole(rows66, true);
+  check('0066 STU-01: the dry run says per row what the database would do: good rows ok, an under-18 row and a repeat refused',
+    shape(dry) === '2:ok 3:ok 4:minor_use_form 5:duplicate_student', JSON.stringify(dry));
+  check('0066 STU-01: ... and keeps nothing, not even a roll number', JSON.stringify(await studentsNow()) === JSON.stringify(before66),
+    JSON.stringify(await studentsNow()));
+  const held = await whole(rows66);
+  check('0066 STU-02: all or none with a refused row saves nothing; the good rows are held back',
+    shape(held) === '2:held 3:held 4:minor_use_form 5:duplicate_student'
+    && JSON.stringify(await studentsNow()) === JSON.stringify(before66), JSON.stringify(held));
+  const saved66 = await whole(rows66.slice(0, 2));
+  check('0066 STU-02: all or none with good rows saves every one, with roll numbers', saved66.length === 2
+    && saved66.every((r) => /^MS-\d{4}-\d{4}$/.test(r.roll_no) && r.id) && (await studentsNow()).s === before66.s + 2, JSON.stringify(saved66));
+  await refusesWith('0066 STU-02: a coordinator cannot import', 'not_allowed', () =>
+    asApp('authenticated', coordinator, 'select import_all_or_none($1)', [JSON.stringify(rows66.slice(0, 1))]));
+  await refusesWith('0066 STU-02: at most 500 rows at once', 'too_many_rows', () => whole(Array.from({ length: 501 }, (_, i) => ({ line: i + 2 })), true));
+
+  // AUTH-02 (#715): switching a login off ends its sessions and refresh tokens, nobody else's.
+  const off66 = await signUp('coord.off66@example.com', true);
+  await asOwner(`update profiles set role = 'coordinator' where id = '${off66}'`);
+  const sessionFor = async (id) => {
+    const [{ id: sid }] = await asOwner(`insert into auth.sessions (user_id) values ('${id}') returning id`);
+    await asOwner(`insert into auth.refresh_tokens (token, user_id, session_id) values ('t-${sid}', '${id}', '${sid}')`);
+  };
+  await sessionFor(off66);
+  await sessionFor(off66);
+  await sessionFor(coordinator2);
+  const sessionsOf = async (id) => (await one66(`select (select count(*) from auth.sessions where user_id = $1)::int
+    + (select count(*) from auth.refresh_tokens where user_id = $1::text)::int as n`, [id])).n;
+  check('0066 AUTH-02: (state) the coordinator is signed in on two devices', (await sessionsOf(off66)) === 4);
+  await asApp('authenticated', guru, 'update profiles set active = false where id = $1', [off66]);
+  check('0066 AUTH-02: switched off: every session and refresh token of theirs is gone at once', (await sessionsOf(off66)) === 0);
+  check('0066 AUTH-02: ... nobody else\'s', (await sessionsOf(coordinator2)) === 2);
+  await asApp('authenticated', guru, 'update profiles set active = true where id = $1', [off66]);
+  check('0066 AUTH-02: switching on again changes no other login', (await sessionsOf(coordinator2)) === 2
+    && (await one66('select active from profiles where id = $1', [off66])).active === true);
+  await asOwner(`delete from auth.sessions where user_id = '${coordinator2}'`);
+
+  // AUD-02 (#716): only an error class name is kept.
+  const names66 = await one66(`select client_error_name('TypeError') as a, client_error_name('AuthApiError') as b, client_error_name('NonError') as c,
+    client_error_name('Priyanka') as d, client_error_name('Error9876543210') as e, client_error_name('eyJhbGciOiJIUzI1NiJ9') as f,
+    client_error_name('priya_example_com') as g, client_error_name('ReferenceError') as h`);
+  check('0066 AUD-02: error class names are kept; a name, a phone, a token or an email-like word becomes Error', JSON.stringify(names66)
+    === JSON.stringify({ a: 'TypeError', b: 'AuthApiError', c: 'NonError', d: 'Error', e: 'Error', f: 'Error', g: 'Error', h: 'ReferenceError' }),
+    JSON.stringify(names66));
+  const reporter66 = await signUp('reporter.66@example.com', true);
+  await asApp('authenticated', reporter66, `select log_client_error('crash', 'Priyanka9876543210', '/staff/fund', 'web-test+abc6666', 'web')`);
+  const kept66 = await asOwner(`select error_name from client_errors where app_version = 'web-test+abc6666'`);
+  check('0066 AUD-02: a report naming a person is stored as Error', kept66.length === 1 && kept66[0].error_name === 'Error', JSON.stringify(kept66));
+  check('0066 AUD-02: nothing in the error log holds a person\'s name, email or phone', (await one66(`select count(*)::int as n from client_errors
+    where error_name ~ '[0-9]{5}' or error_name ~* 'priya|@' or screen ~ '[0-9]{5}'`)).n === 0);
+
+  // Who may run what, and a second run.
+  check('0066: the new functions are for signed-in people (roles checked inside), never anon; the name rule is internal', (await one66(`select
+    has_function_privilege('authenticated', 'approve_data_erasure(uuid,text)', 'execute')
+    and has_function_privilege('authenticated', 'import_all_or_none(jsonb,boolean)', 'execute')
+    and not has_function_privilege('anon', 'approve_data_erasure(uuid,text)', 'execute')
+    and not has_function_privilege('anon', 'import_all_or_none(jsonb,boolean)', 'execute')
+    and not has_function_privilege('anon', 'decide_fund_entry(bigint,boolean,text)', 'execute')
+    and not has_function_privilege('authenticated', 'client_error_name(text)', 'execute')
+    and not has_function_privilege('authenticated', 'end_switched_off_sessions()', 'execute') as ok`)).ok === true);
+  const state66 = async () => one66(`select (select count(*) from fund_entries)::int as f, (select count(*) from data_requests)::int as d,
+    (select count(*) from students)::int as s, (select count(*) from pg_trigger where tgname = 'profiles_end_sessions')::int as t,
+    (select count(*) from pg_constraint where conname in ('fund_entries_not_own_decision', 'data_requests_approval_whole'))::int as c`);
+  const beforeAgain = await state66();
+  let again66 = '';
+  try { await db.exec(file66); } catch (e) { again66 = String(e.message); }
+  check('0066 can run again and changes no row', again66 === '' && JSON.stringify(await state66()) === JSON.stringify(beforeAgain),
+    `${again66} ${JSON.stringify(beforeAgain)}`);
+  await asOwner(`update profiles set active = false where id = '${guruB}'`);
+}
+
+// ---------------------------------------------------------------- 0067 facilitator wording (DECISIONS #706)
+// No "Guru" in the Telugu and Hindi notice lines; English and the helpers' privileges as before.
+{
+  const file67 = readFileSync(new URL('migrations/0067_facilitator_wording.sql', supabaseDir), 'utf8');
+  const one = async (sql) => (await asOwner(sql))[0];
+  const guruLines = async () => (await one(`select count(*)::int as n
+      from (values ('asked'), ('ready'), ('more'), ('promoted'), ('promoted_staff'), ('not_yet')) k(kind), (values ('te'), ('hi')) l(lang)
+     where promotion_push_line(kind, lang) ~ '(గురు|गुरु)' or team_push_line('approved', lang, 'x') ~ '(గురు|गुरु)'`)).n;
+  check('0067 #706: no Telugu or Hindi notice line says Guru', (await guruLines()) === 0);
+  const named = await one(`select promotion_push_line('more', 'te') as te, promotion_push_line('not_yet', 'hi') as hi,
+    team_push_line('approved', 'te') as team_te, team_push_line('approved', 'hi') as team_hi`);
+  check('0067 #706: the lines name the facilitator (ఫెసిలిటేటర్ / फ़ैसिलिटेटर)', named.te.includes('ఫెసిలిటేటర్') && named.hi.includes('फ़ैसिलिटेटर')
+    && named.team_te.includes('ఫెసిలిటేటర్') && named.team_hi.includes('फ़ैसिलिटेटर'), JSON.stringify(named));
+  const en67 = await one(`select promotion_push_line('more', 'en') as more, team_push_line('approved', 'en') as approved,
+    team_push_line('duty', 'te', 'Sat 18:00') as duty`);
+  check('0067: English and the other lines are as before', en67.more === 'The facilitator asks for more feedback.'
+    && en67.approved === 'The facilitator added your suggestion to the lessons.' && en67.duty === 'రేపు మీకు డ్యూటీ ఉంది: Sat 18:00', JSON.stringify(en67));
+  const grants67 = await one(`select has_function_privilege('authenticated', 'promotion_push_line(text, text)', 'execute') as promo,
+    has_function_privilege('authenticated', 'team_push_line(text, text, text)', 'execute') as team`);
+  check('0067: the two helpers stay internal (no execute for logins)', grants67.promo === false && grants67.team === false, JSON.stringify(grants67));
+  let again67 = '';
+  try { await db.exec(file67); } catch (e) { again67 = String(e.message); }
+  check('0067 can run again', again67 === '' && (await guruLines()) === 0, again67);
+}
+
+// ---------------------------------------------------------------- 0068 my data with the Playground (DECISIONS #770)
+// The person's data summary (0059) lists the Rhythm Playground: settings, rounds, weekly summaries, ratings.
+{
+  const file68 = readFileSync(new URL('migrations/0068_my_data_playground.sql', supabaseDir), 'utf8');
+  await db.exec(file68); // the 0059 block ran 0059 again, which put back the summary without the Playground
+  const sid = (await asOwner(`select id from students where profile_id = '${arjun}'`))[0].id;
+  await asOwner(`insert into play_student_settings (student_id, surprise) values ('${sid}', false)
+    on conflict (student_id) do update set surprise = false`);
+  await asOwner(`insert into play_rounds (id, student_id, game, skill, mode, step, seed, content_version, started_at, items, n_items, n_correct)
+    values (gen_random_uuid(), '${sid}', 'sound_detective', 'listen.stroke', 'play', 1, 68, 1, now(), '[]', 4, 3)`);
+  await asOwner(`insert into play_skill_weeks (student_id, week, skill, opportunities, correct, rounds)
+    values ('${sid}', '2026-01-05', 'listen.stroke', 12, 9, 3) on conflict do nothing`);
+  await asOwner(`insert into play_ratings (student_id, skill, rating, note) values ('${sid}', 'listen.stroke', 2, 'Steady te and re (0068)')`);
+  const rounds68 = (await asOwner(`select count(*)::int as n from play_rounds where student_id = '${sid}'`))[0].n;
+  const mine = async () => (await asApp('authenticated', arjun, 'select my_data_summary() as r'))[0].r;
+  const pg = (await mine()).playground;
+  check('0068 #770: the summary counts every Playground round of the student, by game',
+    pg?.rounds?.count === rounds68 && Object.values(pg.rounds.games).reduce((a, b) => a + b, 0) === rounds68
+    && pg.rounds.games.sound_detective >= 1, JSON.stringify(pg?.rounds));
+  check('0068 #770: ... with the settings, the weekly summaries and the facilitator\'s ratings',
+    pg.settings?.surprise === false && !('student_id' in pg.settings) && pg.weeks.some((w) => w.week === '2026-01-05' && w.correct === 9)
+    && pg.ratings.some((r) => r.note === 'Steady te and re (0068)' && r.rating === 2), JSON.stringify(pg).slice(0, 300));
+  check('0068 #770: a staff member without a record gets no Playground part', !('playground' in (await asApp('authenticated', coordinator,
+    'select my_data_summary() as r'))[0].r));
+  let again68 = '';
+  try { await db.exec(file68); } catch (e) { again68 = String(e.message); }
+  check('0068 can run again', again68 === '' && (await mine()).playground?.rounds?.count === rounds68, again68);
 }
 // ---------------------------------------------------------------- row-level security
 const seen =await asApp('authenticated', arjun, 'select full_name from students');

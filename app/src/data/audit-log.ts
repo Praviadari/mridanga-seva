@@ -42,7 +42,8 @@ export const AUDITED_TABLES = [
 ] as const;
 export type AuditedTable = (typeof AUDITED_TABLES)[number];
 
-export type AuditAction = 'INSERT' | 'UPDATE' | 'DELETE';
+/** REFUSED: a refused try written by a function, e.g. approving one's own fund entry (0066, #710). */
+export type AuditAction = 'INSERT' | 'UPDATE' | 'DELETE' | 'REFUSED';
 
 /** One audit_log row. */
 export type AuditEntry = {

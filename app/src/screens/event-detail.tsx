@@ -2,7 +2,8 @@
 // who made it; Going / Maybe / Not going for those it is for, until it starts; Add to calendar;
 // the counts. A student also sees their part (performer) and "You came". Staff also get the names
 // by answer, Remind, Performers, Attendance (from the event day), and — the author or the Guru —
-// Edit, Cancel (with a reason) and Delete (only while nobody answered).
+// Edit, Cancel (with a reason) and Delete (only while nobody answered). The optional details (0064, #681) answer
+// where, when, what to bring and whom to contact: reporting time, rehearsal, dress code, role, contact, Open map.
 // Routes: student/events/[id].tsx, staff/events/[id].tsx. Data: src/data/events.ts (0022).
 
 import { router, Stack, useFocusEffect } from 'expo-router';
@@ -43,6 +44,7 @@ import {
   type EventResponse,
 } from '@/data/events';
 import { audienceName } from '@/i18n/labels';
+import { localTime } from '@/lib/dates';
 import { googleCalendarLink, shareCalendarFile } from '@/lib/calendar-file';
 import { RefreshFailed } from '@/components/refresh-failed';
 import { useKeptLoad } from '@/lib/kept-load';
@@ -117,8 +119,20 @@ export function EventDetailScreen({ id, area }: { id: number; area: 'student' | 
     else await load();
   }
 
+  // 0064 (#681): the details for those taking part, in the card and in the calendar entry. A performer's own part
+  // (set on Performers) is shown below; the role here is everyone's.
+  const contactName = e.coordinatorId ? names.staff.get(e.coordinatorId) : undefined;
+  const details = [
+    ...(e.reportingAt ? [{ icon: 'time' as const, text: t('events.detail.reportBy', { time: localTime(e.reportingAt) }) }] : []),
+    ...(e.rehearsal ? [{ icon: 'practice' as const, text: t('events.detail.rehearsal', { text: e.rehearsal }) }] : []),
+    ...(e.dressCode ? [{ icon: 'person' as const, text: t('events.detail.dressCode', { text: e.dressCode }) }] : []),
+    ...(e.attendeeRole ? [{ icon: 'performer' as const, text: t('events.detail.role', { text: e.attendeeRole }) }] : []),
+    ...(contactName ? [{ icon: 'calls' as const, text: t('events.detail.contact', { name: contactName }) }] : []),
+  ];
+
   async function addToCalendar(how: 'file' | 'google') {
-    const cal = { id: e.id, title: e.title, description: e.description, location: where, startsAt: e.startsAt, endsAt: e.endsAt };
+    const description = [e.description, ...details.map((d) => d.text), ...(e.mapsUrl ? [e.mapsUrl] : [])].filter(Boolean).join('\n');
+    const cal = { id: e.id, title: e.title, description, location: where, startsAt: e.startsAt, endsAt: e.endsAt };
     if (how === 'google') {
       await Linking.openURL(googleCalendarLink(cal));
       return;
@@ -188,8 +202,12 @@ export function EventDetailScreen({ id, area }: { id: number; area: 'student' | 
             }),
           },
           ...(authorName ? [{ icon: 'person' as const, text: t('events.detail.createdBy', { name: authorName }) }] : []),
+          ...details,
         ]}
       />
+      {e.mapsUrl && !cancelled ? (
+        <Button variant="link" icon="location" label={t('events.detail.openMap')} onPress={() => void Linking.openURL(e.mapsUrl ?? '')} />
+      ) : null}
 
       {counts.myPart ? (
         <Notice tone="success" title={t('events.detail.yourPart', { part: counts.myPart })}>

@@ -330,3 +330,9 @@ The privacy texts of 0034 (`signUp.privacyNotice`, `signUp.under18`, `register.p
   and the weekly email's `view` line in `supabase/functions/notify-parents/digest.ts`; Telugu and Hindi are drafts. Words to
   check first: "parent page" తల్లిదండ్రుల పేజీ / अभिभावक पेज, "Stop" ఆపండి / बंद करें, "streak" వరుసగా … రోజులు /
   लगातार … दिन, "goal's minutes" లక్ష్య నిమిషాలు / लक्ष्य के मिनट; the notice lines in #649.
+- **Learn screens** (branch `learn-screens`, migration 0064, [DECISIONS.md #680-#689](DECISIONS.md), 27 Oct 2026): new keys
+  `events.form.detailsTitle` … `mapsUrlHint`, `events.detail.reportBy` … `openMap`, six `events.errors`, `materials.lessonExtras*`,
+  `materials.audio*`, `materials.lessonNotes*`, three `materials.errors`, `lessonPlayer.tabs.*`, `lessonPlayer.progressNote`,
+  `assessments.studentStatus.*`, `assessments.submit.receipt` / `underReview`; `events.form.where` now "Venue" (వేదిక / स्थान).
+  Telugu and Hindi are drafts. Words to check first: "Under review" సమీక్షలో ఉంది / समीक्षा में, "Redo requested" మళ్ళీ చేయమని
+  అడిగారు / फिर से करने को कहा, "receipt" రసీదు / रसीद, "reporting time" హాజరు కావలసిన సమయం / पहुँचने का समय, "dress code" దుస్తులు / पोशाक.

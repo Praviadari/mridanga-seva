@@ -1,4 +1,4 @@
-// S1 Student home, since 27-10-2026 (docs/DECISIONS.md #673, #674, #680; Sarvesh Prji's student spec, section 2):
+// S1 Student home, since 27-10-2026 (docs/DECISIONS.md #673, #674, #771; Sarvesh Prji's student spec, section 2):
 // the compact devotional band (components/home-header.tsx: the initials opening Me, name, motto, "Hare Krishna, name"
 // and the Updates bell with its count), then Today's Practice first, slim (components/today-practice-card.tsx: what
 // to practise, today's progress, Start / Continue), and under it the ring of #240 (components/module-ring.tsx): My
@@ -269,7 +269,7 @@ export default function StudentHomeScreen() {
               <TodayPracticeCard today={today} slim />
             </View>
           ) : null}
-          {/* The ring of #240 back under the Daily Mission, in place of the cards (#680). Unseen until it is
+          {/* The ring of #240 back under the Daily Mission, in place of the cards (#771). Unseen until it is
               measured, so it does not show at full size first and then shrink. */}
           <View
             ref={ringBox}

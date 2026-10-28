@@ -2058,6 +2058,7 @@ and the helpers `my_role`, `is_guru`, `is_staff`,
 | `mridanga-data-requests` | 21:00 UTC = 02:30 IST | `data_requests_daily()` — reminds the Gurus of a data request due within 3 days; blanks a closed request's text after a year, deletes it after two (0059) |
 | `mridanga-retention` | 21:15 UTC = 02:45 IST | `retention_daily()` — erases a record 30 days after its consent was withdrawn and a student two years after leaving (`erase_student`), a sign-up never registered after 180 days (`erase_login`; not an Ishtagoshti reader or a child's sign-up); forgets phones unused 90 days; deletes change-log rows over two years; an erasure refused (an open loan) is skipped and tried the next night (0060) |
 | `mridanga-client-errors-purge` | 01:55 UTC = 07:25 IST | `purge_client_errors()` — deletes app errors not seen for 30 days and rate-limit rows older than two days (0061) |
+| `mridanga-playground` | 21:30 UTC = 03:00 IST | `playground_daily()` — folds Rhythm Playground rounds older than 180 days into weekly per-skill summaries and deletes them (0065) |
 
 ## Who can see what
 
@@ -2165,3 +2166,119 @@ After it passes, still run a new migration on a test project before the live one
 rows, then every later file in order, each run twice, compared with a fresh build
 ([GO_LIVE_CHECKLIST.md](GO_LIVE_CHECKLIST.md), [DECISIONS.md #233](DECISIONS.md)). A new migration must be
 added to the checklist's table first.
+
+## Learn screens (0064)
+
+Event details for students, a lesson video's audio and notes (one lesson screen with Video / Audio / Notes tabs), and
+"Under review" for a student's recording. [DECISIONS.md #680-#689](DECISIONS.md) (the Guru's student-module specification,
+27-10-2026). Every new column is empty on existing rows, which read as before; no policy changes.
+
+| Object | What |
+|---|---|
+| `events.reporting_at` | When those taking part arrive: at or before `starts_at`, at most 12 hours before (checked when it or the start changes) |
+| `events.rehearsal`, `dress_code`, `attendee_role` | Free text, trimmed, at most 200 / 200 / 120 characters; empty = null. `attendee_role` is everyone's; a performer's own part stays in `event_performers.part` |
+| `events.coordinator_id` | The staff member students contact (an active coordinator or the Guru when set or changed); students see the name through `staff_names` |
+| `events.maps_url` | An https link, no spaces, at most 500 characters |
+| `guard_event_details()` | Trigger `events_details_guard` (before insert/update, runs before `events_guard`); errors `reporting_invalid`, `rehearsal_too_long`, `dress_code_too_long`, `attendee_role_too_long`, `maps_link_invalid`, `coordinator_invalid`. Column rights: insert and update of the six columns for signed-in people (row-level security as 0022) |
+| `materials.audio_path`, `audio_name`, `audio_size` | A lesson video's (kind `youtube` or `video`) audio in the private bucket `material-files` (`<login>/<uuid>.<mp3\|m4a\|aac\|wav\|ogg\|webm>`, `material_audio_path_ok`), 10 MB; size from Storage. May be added, changed or removed on an existing lesson (the uploader's own file, in Storage) |
+| `materials.notes` | A lesson video's notes, at most 4000 characters (the Notes tab) |
+| `guard_material()` | 0020's rules plus the audio and notes: `lesson_extras_video_only`, `lesson_audio_invalid`, `lesson_audio_not_yours`, `lesson_audio_missing`, `notes_too_long` |
+| `material_file_readable / uploadable / deletable` | As before, with `audio_path` counted as a file the material lists; the bucket now takes audio types |
+| `assessment_submissions.review_started_at` | When a staff member first opened the recording to review it; the student sees Under review |
+| `start_submission_review(submission)` | Staff: sets it once on the newest recording of an assignment that waits for its review (not one's own); anything else is left as it is, no error. Errors `not_allowed`, `submission_not_found` |
+
+The student's assessment status (app only, `studentStatusOf`): `assigned`/`seen` → Assigned; `submitted` → Submitted, or
+Under review once `review_started_at` is set on the newest recording; `reviewed` → Reviewed; `redo` → Redo requested. The
+receipt is the recording's id and `submitted_at`.
+
+No new job (16). Tests: section "0064 learn screens" in `supabase/tests/smoke-test.mjs` (32 checks) and
+`app/tests/learn-screens.test.mjs`.
+
+## Rhythm Playground (0065)
+
+The engine of the 14 practice games ([DECISIONS.md #720-#729](DECISIONS.md); design in
+[RHYTHM_PLAYGROUND.md](RHYTHM_PLAYGROUND.md) §8-§9). Content is approved by the Guru (Prji's login) and published as
+numbered versions; rounds are made on the phone from the published pack and saved one row each. Nothing existing
+changes except `submission_file_expired` (one rule added) and a new column `assessments.playground_game`.
+
+| Object | What |
+|---|---|
+| Settings `playground_enabled`, `playground_pilot_group`, `playground_allow_placeholders`, `playground_labels` | Off / null / **off** / the label numbers of §12.2. Not in `guard_setting`: changed only in the SQL editor. `playground_allow_placeholders` is **TEST only**: on LIVE it stays false, so placeholder rows can never be published or shown |
+| `play_bols` | The approved bol dictionary: `id` = plain form (`dha`), `written` (`dhā`), head, technique, first level, `sounds_like` (one card), `close_pairs` (hard distractors), optional stroke recording |
+| `play_assets` | Sound files: `path` = `<kind>/<uuid>.<wav\|m4a\|mp3>` in the private bucket `playground-audio` (15 MB, audio types) or a `bundled_key`; licence, performer, credit, permission reference. Approving needs the file in Storage and the licence's details |
+| `play_templates` | A game's rule for a skill and level range: `steps` (`[{"step":1,"choices":2,...}]`) and `params` (`roundLen`, `reviewShare`, `gunaByLevel`) |
+| `play_exercises` | The exercise bank: game, level, skills, `sequence` (beats `-` or 1-4 ids joined by `.`), vibhags, `answer`, `distractors`, recorded prompts, BPM range, guna, a syllabus item it needs. Approving needs every bol approved in the dictionary and every prompt approved |
+| Content columns (all four) | `status` draft → in_review → approved / retired, `placeholder`, `revision`, `published_in` (the version showing this revision; null = not shown), `first_published_in` (never cleared: rounds played offline stay valid), approver, author. Trigger `guard_play_status`: coordinators move draft ↔ in_review; only the Guru approves, retires or withdraws (`approval_guru_only`); editing an approved row → in_review, revision + 1, unpublished; publication columns only through `publish_playground` |
+| `play_publications` | One row per publish: version, who, note, counts |
+| `play_assignments` | A game (or one skill of it) for a level, a group or one student, with step limits and days. Staff only; students get theirs through `my_playground_state` |
+| `play_student_settings` | Surprise me (the student's `play_set_surprise`), relaxed timing, one level up, step limits per game. Staff write |
+| `play_rounds` | One row per round, written only by `record_round`: game, skill, mode, level, step, seed, content version, times, `items` (`[{e,r,q,a,ok,rp,ms,rv,tr}]`, at most 40), right answers, `timing` (`median_ms`, `spread_ms`, `calibrated`, `offset_ms`), device. A student reads their own; staff all; nobody updates or deletes (the job and the erasure aside) |
+| `play_skill_weeks` | Weekly per-skill summaries of rounds older than 180 days (opportunities, right, rounds, calibrated timing). Kept while the record exists |
+| `play_ratings` | A facilitator's 0-3 rating of a skill, with a note and the recording it was judged from; a student reads their own; nobody rates their own record (`refuse_own_record`) |
+| `assessments.playground_game` | Marks an assessment that carries recordings sent from a game: unreviewed ones are removed 60 days after sending |
+
+**Functions** (roles checked inside): `playground_pack(p_have_version)` — the published pack (bols, assets, templates,
+exercises, placeholders flag, label numbers), or null when the caller has that version; students and staff.
+`my_playground_state()` — the student's level, ticked items, groups, settings, current assignments and rounds of 30
+days. `play_set_surprise(on)`. `record_round(round jsonb)` — checks and saves one round: re-marks Sound Detective,
+Missing Beat, Rhythm Builder, Tempo Detective and Sound Explorer answers (`play_expected`, `play_same_answer`; a changed
+`ok` does not count); idempotent by id (`duplicate`); errors `round_invalid`, `round_content_unknown`, `round_id_taken`,
+`round_limit` (200 a day), `student_withdrawn`, `not_allowed`. `play_set_status(kind, id, status)` — staff to/from
+review, the Guru approves/retires. `publish_playground(note)` — the Guru; `placeholders_not_allowed` unless the TEST
+setting is on. `staff_playground_progress(student)` — state + weekly summaries + ratings. `staff_playground_class(level,
+group)` — students (not withdrawn) with their rounds of 30 days (`filter_required`). Storage rules:
+`play_audio_readable` (staff any; a student only a file of an approved, published asset), `play_audio_uploadable`
+(staff, the path shape, a path no asset lists yet), `play_audio_deletable` (staff, a file no approved or once-published
+asset lists).
+
+Job `mridanga-playground` 21:30 UTC = 03:00 IST: `playground_daily()` folds rounds older than 180 days into
+`play_skill_weeks` and deletes them. Jobs: 17. Every student table cascades with `students`, so erasure and the
+retention job remove Playground data with the record.
+
+**TEST seed** `supabase/seed/playground_test.sql` (never LIVE; it refuses a project without seed.sql's example
+students): switches placeholders and the Playground on, adds Prji's first set of 4 placeholder bols **te | re | khe |
+ta** (#722), 4 templates and 30 exercises written only with them (Sound Detective, Missing Beat, Rhythm Builder, Tempo
+Detective), retires any other placeholder bols and their exercises, and publishes when something changed. Safe to run
+twice. On TEST 28-10-2026: version 1 (an earlier 14-bol set), then version 2 (the four).
+
+Tests: section "0065 Rhythm Playground engine" in `supabase/tests/smoke-test.mjs` (67 checks) and
+`app/tests/playground-engine.test.mjs` (the engine, DYN-01..08).
+
+## Facilitator safeguards (0066)
+
+Sarvesh's Facilitator Module review (27-10-2026, §8 test matrix, P0 rows); [DECISIONS.md #710-#719](DECISIONS.md).
+
+| Object | What |
+|---|---|
+| `fund_entries_not_own_decision` (check) | An approved or declined entry was decided by someone other than its maker (FUND-01) |
+| `decide_fund_entry(entry, approve, note)` | Returns `{ status }`; the maker (`own_entry`) or a treasurer for a coordinator's entry (`not_approver`) gets `{ refused }`, and the try is an `audit_log` row with action `REFUSED` (Change log shows it) |
+| `data_requests.identity_check` | How the person asking for an erasure was checked: `own_login`, `id_seen`, `registered_email`, `phone_callback` (a code, never a document number) |
+| `data_requests.approved_by / approved_at` | The first of the two Gurus; `closed_by` is the second (`data_requests_approval_whole`: who, when and how together) |
+| `approve_data_erasure(id, identity)` | A Guru approves an open erasure (not the Guru who recorded it): `not_erasure`, `already_approved`, `identity_invalid`, `not_the_recorder` |
+| `act_on_data_request` | As 0059; an erasure needs the approval and another Guru: `second_approval_needed`, `approver_cannot_erase` |
+| `erase_student` / `erase_login` | No longer executable by `authenticated` (#713): only through `act_on_data_request`, the retention jobs or the SQL editor |
+| `import_all_or_none(rows, dry_run)` | Runs `import_students` in a step undone when a row is refused (good rows come back `held`) or always for a dry run (`ok` / `error` per row); roll numbers of an undone step are not used up |
+| `profiles_end_sessions` / `end_switched_off_sessions()` | A login switched off (`active` true → false) has its `auth.sessions` and `auth.refresh_tokens` deleted (AUTH-02) |
+| `client_error_name(name)` / `log_client_error` | The log keeps an error name only when it reads as an error class (`…Error`, `…Exception`, `NonError`), else `Error` (AUD-02) |
+
+Unchanged and already in place (evidence in NOTES_facilitator_p0.md): reversals (FUND-02, 0026), the mentees-first rule
+and forgotten phones on switch-off (0014, 0039), the level-up lock (`decide_promotion` locks the nomination and the
+student; one open nomination per student, 0017). No new job (16). Tests: section "0066 facilitator safeguards" in
+`supabase/tests/smoke-test.mjs` (40 checks) and `app/tests/facilitator-p0.test.mjs`.
+
+## Facilitator wording (0067)
+
+`0067_facilitator_wording.sql` ([DECISIONS.md #706](DECISIONS.md)) replaces the two text helpers that write the line
+under a notice's title, `promotion_push_line(kind, lang)` (0017) and `team_push_line(kind, lang, extra)` (0023), with the
+same lines except four Telugu and Hindi ones: the facilitator is ఫెసిలిటేటర్ గారు / फ़ैसिलिटेटर, never గురువుగారు /
+गुरुजी. English, the privileges (internal: no execute for logins) and every stored row are unchanged; notices already
+queued keep their text. The role's value stays `guru` everywhere. Smoke test: 5 checks (no te/hi line says Guru, the
+new words, English as before, still internal, runs twice).
+
+## My data with the Playground (0068)
+
+`my_data_summary` (0059) replaced with the same body plus `playground` for a person with a student record:
+`settings` (the row of `play_student_settings` without keys), `rounds` (`count`, `first`, `last`, `games` = rounds per
+game; raw rounds are kept 180 days, 0065), `weeks` (the weekly skill summaries: week, skill, rounds, opportunities,
+correct), `ratings` (skill, 0-3, note, date). The My data page and its copy show it under Activity
+([DECISIONS.md #770](DECISIONS.md)). Needs 0065. Smoke test: section "0068 my data with the Playground" (4 checks).

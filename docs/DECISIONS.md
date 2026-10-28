@@ -8308,7 +8308,476 @@ second (spec section 11).
 (My practice log), Weekly Practice (Practice of the week), My Practice Goal (This week), My Details (About you), Privacy
 & Data (My data and rights). Telugu and Hindi wait for the native review (NOTES_student_nav.md lists them).
 
-## 680. The student home: the ring back under the Daily Mission — 28 Oct 2026
+## 680. Learn screens from the Guru's student-module specification — 27 Oct 2026
+
+**Status: branch `learn-screens` (the lead's brief of 27 Oct 2026; Praveen agreed the three items with Sarvesh Prabhu
+the same day). Migration 0064, JS-only app (fingerprint 23dc7e4a unchanged).**
+
+**Context.** Sarvesh Prabhu's "Student module change specification" (27-10-2026, 16 pages) asks, among much else, for
+event details, one lesson screen with Video / Audio / Notes, and clear assessment statuses (§4 rows p.8, p.13, p.15,
+§10.4). Its pictures are AI concepts, not designs. The PDF on `\\fileserver02` was not reachable from the worker's PC on
+27-10-2026; this was built from the lead's summary of those rows. **Decision.** Three changes inside the event, lesson
+and assessment screens and their staff forms (#681-#688); student navigation, Home and the icon set are another
+worker's (`student-nav`) and are not touched. Kartāl and harmonium stay Phase 2.
+
+## 681. Event details for those taking part — 27 Oct 2026
+
+**Decision.** Six optional columns on `events`: reporting time (`reporting_at`, the same day on the form, at or before the
+start, at most 12 hours before), rehearsal (free text: day, time, place), dress code and what to bring, the role of those
+taking part, the staff member to contact (`coordinator_id`, an active coordinator or the Guru), and an https maps link.
+Staff set them in a "For those taking part" section of C16; students see them on the event card (S11) — "Report by
+17:30", "Rehearsal: …", "Wear and bring: …", "Role: …", "Questions: ask …" — with Open the map, and the calendar entry
+carries them. **Venue** is the existing centre and/or place (0022), now headed "Venue" on the form: no second venue
+field. A performer's own part (Performers, 0022) still shows as "Your part"; the role here is everyone's. **RSVP:**
+events have no answer deadline — answers close when the event starts (0022, unchanged); a separate deadline was not
+added. Changing only a detail tells nobody (as before, only a new time or place is told). Checked by a trigger of its
+own (`guard_event_details`), so 0022's guard is untouched.
+
+## 682. No new personal data; the privacy notice needs no new line — 27 Oct 2026
+
+**Decision.** Event details are class logistics, not data about a student. The contact is a staff member's **name**,
+which students already see on events ("Created by") and announcements; no phone number or email is shown (a student
+asks in class or through the coordinator's usual channel). Lesson audio and notes are teaching material. The
+assessment receipt and "Under review" show times the database already kept (`submitted_at`) or a staff action on a
+recording (`review_started_at`). **The privacy notice needs no new line.**
+
+## 683. A lesson's audio and notes live on the lesson's own row — 27 Oct 2026
+
+**Decision.** A lesson is one material row of kind `youtube` or `video` (0013, 0020); its audio (`audio_path`, name,
+size) and notes (`notes`, at most 4000 characters) are columns on that row, not a new table, so every lesson list, the
+suggestion flow (C18) and the Guru's edit form keep working with no other change. The audio file is in the private
+bucket `material-files` (10 MB, as PDFs and photos; the bucket now takes audio types), played through a signed link
+that works for an hour, never stored in a table row. Unlike a PDF or photo, a lesson's audio may be added, replaced or
+removed later; the app removes the old file after the row is saved. The Storage rules count `audio_path` as a file the
+material lists (read by those who may read the lesson; a listed file cannot be uploaded again). Notes are plain text;
+notation PDFs stay separate materials.
+
+## 684. One lesson screen: tabs only for what the lesson has — 27 Oct 2026
+
+**Decision.** The lesson player (V3) shows Video / Audio / Notes chips only for the formats the lesson has, in that
+order, and no tab bar when it has only the video — never an empty tab. The video is the first tab. The audio's signed
+link is made and its player created only when the Audio tab is first opened; leaving a tab pauses what it plays;
+nothing plays by itself. A lesson card names the extra formats on its kind line ("YouTube video · Audio · Notes"): one
+card, one screen. The Audio tab has Play / Pause, back and forward 5 s, the time and 0.75x / 1x.
+
+## 685. Watching is not mastery — 27 Oct 2026
+
+**Decision.** Progress stays at lesson (syllabus-item) level and is ticked by the teacher (C9, `student_progress`).
+Opening, watching or listening records nothing; the lesson screen says "Your teacher ticks a lesson as learnt in class;
+watching or listening here does not."
+
+## 686. Student assessment statuses: Assigned, Submitted, Under review, Reviewed, Redo requested — 27 Oct 2026
+
+**Decision.** Students see five statuses mapped from what is stored: `assigned` and `seen` → Assigned; `submitted` →
+Submitted; `submitted` with the newest recording's `review_started_at` set → **Under review**; `reviewed` → Reviewed;
+`redo` → Redo requested. Staff keep their tracker words (Not seen / Seen / Submitted / Reviewed / Redo): the coordinators
+need to know who has opened it. "Under review" needed one fact the data did not hold: `assessment_submissions.
+review_started_at`, set once by `start_submission_review` when a staff member opens C14 on the newest recording waiting
+for its review (never on their own work). No status value was added or rewritten, so every existing assignment reads
+as before (null = Submitted). **Option considered:** "Under review" = an accepted level-up waiting for the Guru's
+decision; rejected — it would never appear for ordinary assessments.
+
+## 687. A receipt for every recording sent — 27 Oct 2026
+
+**Decision.** Each recording on S7 shows "Receipt no. <id> · received <day> at <time>": the submission's id and the
+database's `submitted_at` (not the phone's clock). After Send the success notice carries the same line. No new data.
+
+## 688. Teachers see only authorised records, as before — 27 Oct 2026
+
+**Decision.** No policy changes. `start_submission_review` is staff-only (security definer), touches only
+`review_started_at` on one recording and is logged by the existing audit trigger; students cannot call it.
+
+## 689. Left out on purpose — 27 Oct 2026
+
+**Decision.** Not in this change: the Beginner lessons list of a waiting login (its offline copy keeps title and link
+only; its lesson screen still shows the tabs); a staff "Under review" column on the tracker; Notes as rich text or PDF;
+a contact's phone on events. Telugu and Hindi strings are drafts for the native review (docs/TRANSLATIONS.md).
+
+## 690. Rhythm Playground: design answered on the real stack, for Prji's sign-off — 28 Oct 2026
+
+**Status: design only (branch `claude/playground-design-504412`); no app code, no migration file.** Prji's master
+prompt and the Rhythm Playground spec v3.0 assume React.js + Java Spring Boot; the app is Expo SDK 57 + Supabase.
+**Decision.** docs/RHYTHM_PLAYGROUND.md answers the prompt's deliverables 1-17 and "first task" steps 1-7 against the
+real code, with a two-page plain-English summary for Prji, the 12-point card for all 14 games (what exists vs what is
+new), and every statement marked Confirmed / Proposed / Assumption / Needs approval. Nothing is built until Prji
+approves the design (prompt §20: architecture first, then one beginner proof of concept).
+
+## 691. One bol notation for every game; the bol dictionary lives in the database — 28 Oct 2026
+
+**Decision.** All Playground content uses the taal notation of migration 0018 (beats of '-' or 1-4 bols joined by '.',
+bols matched in plain form, guna/tempo/vibhags as separate fields). lib/bols.ts keeps the stroke anatomy for the
+drawings; a new table `play_bols` (migration 0065, design) says which bols Prji has approved, at which level, with
+which recording, which sound alike and which are close pairs. A bol not approved there never appears in a generated
+challenge. **Why.** The practice tools already share this notation; a second one would split the content.
+
+## 692. Playground placement: one entry on the Practice tab, existing addresses kept — 28 Oct 2026
+
+**Decision (proposal).** One "Rhythm Playground" card on the student Practice tab replaces the Games tiles; inside:
+Listening, Rhythm, Voice, Kīrtan, Surprise me, My Playground progress, circular icons, unreleased games dimmed "Coming
+soon". The tap pad, "Which bol?" and Echo me become Tap the Beat, Sound Detective and Echo Challenge at their present
+addresses. Daily Sādhana Quest is the Daily Mission card (#673) with 2-3 Playground lines, not a second daily plan. No
+separate Home icon while Home is the card layout; if the ring version returns, a circle links to the same screen.
+Facilitators: Teaching → Rhythm Playground, plus a section on the Student profile.
+
+## 693. The engine: seeded generation on the phone, checked by the server — 28 Oct 2026
+
+**Decision (proposal; migration 0065 drafted in the design document only).** Tables `play_assets`, `play_bols`,
+`play_templates`, `play_exercises`, `play_publications`, `play_assignments`, `play_student_settings`, `play_rounds`,
+`play_skill_weeks`, `play_ratings`, bucket `playground-audio`. Rounds are generated on the phone from the published
+pack with a seed (works offline, replayable for QA); curriculum guard (approved, published, level, approved bols,
+ticked prerequisite, sounds present, BPM/guna in range), repeat guard (never back-to-back, recent exclusion, spaced
+review 1/3/7 days labelled Review), low-content "Review practice", rules-based adaptive offers. `record_round`
+recomputes correctness, refuses unpublished content and is idempotent. One row per round, not per question (free-tier
+size). Only the head facilitator login approves and publishes; placeholders can never be published on LIVE.
+
+## 694. Recognition and performance kept apart; recordings for review go through assessments — 28 Oct 2026
+
+**Decision (proposal).** Results are recognition (quiz accuracy with sample size), measured performance (tap timing,
+only on calibrated phones) or performance judged by a facilitator (0-3 rubric). Labels Exploring / Practising / Steady
+/ Ready for Review with starting thresholds Prji may change after the pilot; "Ready for Review" asks for a class check.
+"Send to my facilitator" reuses the assessment flow (an assessment marked `playground_game`), so review, receipt and the
+30-days-after-review deletion already exist.
+
+## 695. Audio: what works now, what needs research, what needs a new APK — 28 Oct 2026
+
+**Decision.** Phases 1-3 are JavaScript only (fingerprint 23dc7e4a): recorded strokes through khol-samples, phrases
+rendered at exact times (phone loop file, web audio clock), recorded clips, tap timing with calibration, recording with
+permission at the moment of use. Research without a new APK: a web pitch line, the WebView microphone route on Android,
+clip slow-down with pitch kept. A new APK only for native microphone analysis on Android (Phase 4), after a spike and
+validation, bundled with another planned APK. Microphone off by default; no audio leaves the phone without "Send".
+
+## 696. Playground retention and the free-tier numbers — 28 Oct 2026
+
+**Decision.** As the lead decided 28-10: rounds 180 days, then folded into weekly per-skill summaries kept while the
+account exists and deleted with it; sent takes deleted 30 days after review, 60 days if never reviewed (nightly
+`playground_daily`), at most 2 open Playground takes per student, takes ≤ 90 s. Estimates: database ≈ 25 MB of rounds
+for 200 students plus ≈ 15 MB of summaries a year (limit 500 MB); content audio ≈ 25 MB in Storage, takes ≤ 200 MB
+worst case for 100 students (limit 1 GB shared). The lead checks current LIVE Storage use before Phase 3.
+
+## 697. The content gate and TEST placeholders — 28 Oct 2026
+
+**Decision.** No game reaches students before Prji approves 30-50 prompts across the first four games, the bol
+dictionary, the real taals (the three in the app are placeholders), tempo ranges and guna per level, and his 9 stroke
+recordings; kīrtan clips need each performer's written permission. Until then work and tests use synthesised strokes
+shown as "TEST sounds" and placeholder rows that `publish_playground` refuses unless a TEST-only setting is on.
+Recordings: own or written permission; CC BY with credit; NC or unknown licences not used (#473).
+
+## 698. Build in five packages; Sound Detective is the proof of concept — 28 Oct 2026
+
+**Decision (proposal; the lead allocates numbers).** W1 engine + shell (migration 0065), W2 student Playground +
+listening games, W3 facilitator content manager, W4 rhythm games + Daily Quest, W5 voice, kīrtan, instruments and
+microphone research. W1 first; W2-W4 in parallel; W5 last. All but W5's real content can start before the recordings.
+First proof of concept: Sound Detective (beginner), end to end, because it needs only the 9 strokes, upgrades a game
+students know at the same address and exercises the whole engine without timing or microphone uncertainty.
+
+## 699. Open for Prji and Praveen — 28 Oct 2026
+
+**Open.** The guna convention (1/2/4/8 or the app's 1/2/3/4) and guna 8; the four unverified bol mappings (tin,
+kha/khe, ge/gi, dhi); whether Voice Companion / Vocal Sādhana Studio and the two kīrtan games share one engine each;
+whether Playground time counts towards the weekly practice goal (suggested: no); the pilot group's members; label
+thresholds; the privacy-notice line for game results and the consent form for recordings sent from games; who owns
+accessibility QA and go/no-go. DECISIONS #720 onwards are free for the build packages.
+
+## 700. The facilitator's Home is eleven modules — 28 Oct 2026
+
+**Context.** Sarvesh Prji's "Facilitator Module 360° review" (27 Oct 2026, locked by the product owner): 11 circular
+module icons on the facilitator's Home, an inverted tree (Home → module → feature), no "More" menu.
+**Decision.** The facilitator's Home (G1, role value `guru`) shows, under the band (wordmark, motto, menu button, bell),
+the Needs attention strip (#702) and eleven circles in this order: Admin · Coordinators · Students · Teaching ·
+Inventory · Media · Events & Seva · Funds · Reports · Security & Audits · Settings, then "Did you know?". A phone shows
+three to a row, 3 + 3 + 3 + 2 with the last two centred, each label under its circle, wrapping (never cut); a wide
+window shows up to six to a row in the same order; when three cells would be narrower than a label needs (320 px at
+large text, the browser at 200 %) two or one (`gridColumns`, lib/facilitator-modules.ts). The ring of eight of #350
+leaves the facilitator's Home; the coordinator home (C1) keeps its ring and menu (task 4: only the unused `guru` and
+`promotionsWaiting` props went from its `<StaffModules>` call). JS only, no new APK.
+
+## 701. Module landing screens on one route; every way in moved, no screen moved — 28 Oct 2026
+
+**Decision.** A circle opens `/staff/modules/<key>` (`app/staff/modules/[key].tsx`): the module's sections (the spec's
+submodules) with rows, each opening a screen that already existed at its own address; Back returns to the module,
+Back again to Home. A row that is a bottom tab with a copy for screens on top uses that copy (Check-in →
+`/staff/mark-attendance`, Students → `/staff/class-list`, Follow-ups → `/staff/calls`, R4-01); Updates and Ishtagoshti,
+which have none, are opened in the tabs with `router.navigate` (no second copy of the tabs; Back there goes Home, #359).
+On a wide web window a one-line "Home › Module" stands above the sections. The tree is plain data
+(lib/facilitator-modules.ts, labels checked by tsc as i18n keys); docs/SCREENS.md "Facilitator modules" has the
+old → new map. **Why one route.** Eleven near-identical files would be eleven places to keep in step; an unknown key
+says so.
+
+## 702. Needs attention: the Today boxes, folded with one tap — 28 Oct 2026
+
+**Decision.** The overview of SOP p.3 stays as a small strip, not a second menu: a heading button "Needs attention"
+(amber when anything waits, the To do total shown while folded) over the three Today boxes of #351 (in class now, this
+week, to do → To do). Open by default; folding is remembered on the device (local storage, no personal data). Teaching
+keeps the Level-ups count the old ring had. The bell opens Notifications as before.
+
+## 703. Media is "Coming soon"; Inventory is live — 28 Oct 2026
+
+**Decision.** Lead decision 28-10: a module with nothing built is dimmed with "Coming soon" under its name, is not a
+button (read as "Media, Coming soon", disabled) and has no screens; its address says Coming soon. Only Media is so: no
+media library exists (announcement and lesson files belong to their screens). Inventory is built (instruments C19,
+scan, stocktake, labels) and opens; its Phase 2 parts (maintenance, vendors, transport) are not shown at all rather than
+as empty screens.
+
+## 704. Modules are filtered by role; hiding is never the guard — 28 Oct 2026
+
+**Decision.** Each module and row names the staff roles that may open it. Admin, Coordinators and Security & Audits are
+the facilitator's; so are the rows All students, Import students, Referral Sources and Class settings. A coordinator who
+types a module's address sees the "Only the facilitator uses this page" notice or the rows left for them. Every screen
+keeps its own role check and row-level security refuses the data, as before; no policy changed. Today only the
+facilitator's Home shows the modules, so the filter matters for typed addresses; it is ready for a coordinator Home in
+modules later.
+
+## 705. One tree: the side menu lists the modules; the tabs stay — 28 Oct 2026
+
+**Decision.** The facilitator's side menu (from every tab's header) lists the same modules in the same order, each
+opening its landing screen; Media is left out of the menu (nothing to open). Notifications and My profile are in
+Settings → Personal and stay on the bell and the person card. The bottom tabs (Home, Check-in, Students, Follow-ups,
+Updates) stay: they are shared with the coordinators and are the daily shortcuts; in the tree each of their screens has
+its one module. Every destination of the old ring, menu and tabs is in exactly one module (tests/facilitator-home.test.mjs).
+
+## 706. No "Guru" anywhere a person reads it; the internal name stays — 28 Oct 2026
+
+**Context.** The SOP review: "never use Guru in user-facing screens, emails, notifications, error messages,
+documentation or role display". **Decision.** Amends #40 and #664 for Telugu and Hindi: the role is ఫెసిలిటేటర్ /
+फ़ैसिलिटेटर (the words of the website and the translation glossary), with గారు after it in Telugu where the sentence had
+గురువుగారు (149 te and 143 hi strings); where English says "your teacher(s)" Telugu says ఉపాధ్యాయులు and Hindi शिक्षक.
+గురు / गुरु as Thursday (duty weekdays, the duty-hours example) stay. Past What's new entries and the website's app and
+classes pages (en/te/hi) changed too. The database writes two te/hi notice lines with గురువుగారు / गुरुजी, so
+migration **0067** replaces `promotion_push_line` and `team_push_line` with those four lines changed (English and
+privileges unchanged; no table, policy or row). **Kept on purpose:** the role's value `guru` and every table, column,
+function (`guru_ids`, `guru_read` ...), file and route name and the screen codes G1-G16 (#40: renaming means a migration
+on both projects for nothing anyone sees); code comments; the privacy notice's gloss "facilitator (Guru)" in 0060 and on
+the website's privacy pages, which is versioned legal text (drop it in the next notice version); docs/print/sop-guru
+and docs/guide, which the app does not link (re-render as "Facilitator Guide" with the new Home's screenshots: follow-up).
+Telugu and Hindi are drafts for the native review.
+
+## 707. The spec's plain relabels — 28 Oct 2026
+
+**Decision.** Applied where it is a word only: Set-up → Administration, Class fund → Funds, Change history → Audit
+History, App errors → App Diagnostics, How students found us → Referral Sources, Sign-in codes → Sign-in Security, Make a
+coordinator → Approve coordinator (en/te/hi; the sentences naming the old menu path follow). Not applied: All students →
+Students (the module is Students; the database list keeps "All students" so a module and its row do not share a name);
+Mentees → Assigned students and Level-ups → Level Advancement (the spec allows both to stay); Switch off → Deactivate
+access and Delete this record → Delete duplicate record (the coordinator-disable and erasure screens belong to the
+facilitator-p0 work, #710-#719); Ishtagoshti keeps its name, "(Śloka Study)" added on its Teaching row.
+
+## 708. Module colours keep the five families — 28 Oct 2026
+
+**Decision.** No palette change (lead decision 28-10: indigo #22307A + gold #FFC845 header). The circles use the families
+of #368: green Coordinators and Students, purple Teaching, teal Inventory and Funds (as their screens), orange Media and
+Events & Seva, blue Reports; Admin, Security & Audits and Settings are set-up, saffron. Pink and indigo stay unused.
+
+## 709. Left out on purpose — 28 Oct 2026
+
+**Decision.** Not in this change: a coordinator Home in modules (task 4: unchanged); search across modules (UAT-NAV-09);
+breadcrumbs beyond the one line on a wide web window; three instruments, Media library, Inventory maintenance and
+vendors (Phase 2 in the spec); the website upload of the en/te/hi app and classes pages (with the next website release);
+re-rendering the facilitator SOP PDF. No new personal data and no privacy-notice change.
+
+## 710. Nobody decides their own fund entry, and a refused try is logged — 28 Oct 2026
+
+**Decision.** Sarvesh's Facilitator Module review (27-10-2026, FUND-01: "blocked and logged"). `decide_fund_entry`
+already refused the maker (#80) but only inside the function, and the refusal left no trace (a raised error undoes
+any log row in the same call). Now (0066): a table rule `fund_entries_not_own_decision` (an approved or declined entry
+was decided by someone other than its maker, whatever writes it), and `decide_fund_entry` returns `{ status }` or
+`{ refused: own_entry | not_approver }` instead of raising for those two, writing an `audit_log` row with action
+`REFUSED` (who, which entry, approve or decline). The Guru sees them on Change log (filter "Refused try"). Other
+refusals (not a fund keeper, already decided, no reason) still raise. **Older app:** it ignores the answer, so a refused
+self-approval looks done there, but nothing changes in the ledger; the app has never offered Approve on one's own entry.
+
+## 711. A reversal after a month's report changes nothing in that month — 28 Oct 2026
+
+**Decision.** FUND-02 was already true (#80): entries are never changed or deleted; a reversal is a new entry dated
+the day it is made, linked by `reverses_id`, so a closed month's total stays and the balance reconciles. 0066 adds the
+proof (smoke: a last-month income reversed this month: the month's total, the original row and the balance) and no
+code.
+
+## 712. An erasure takes two Gurus; how the person asking was checked is recorded — 28 Oct 2026
+
+**Decision.** PRIV-01 ("dual authorization for erasure, verified requester"). `approve_data_erasure` (the first Guru)
+records `identity_check` — `own_login` (filed from the person's own signed-in app; only then), `id_seen` (the person's,
+or for a child the parent's, ID seen at the desk), `registered_email`, `phone_callback` — with `approved_by` and
+`approved_at`; a code only, never a document number (as at Accept). The Guru who recorded a desk request (`made_by`)
+does not approve it. `act_on_data_request` then erases only an approved request and never by the approver, so two
+different staff members always take part; both, the times and the check stay on the bare request after the erasure.
+**Considered:** a coordinator as second approver — rejected for now: coordinators do not read data requests (#554).
+With one active Guru login the owner erases in the SQL editor (OPERATIONS "Erasure request"), as before.
+
+## 713. The app cannot erase without the request — 28 Oct 2026
+
+**Decision.** `erase_student` and `erase_login` lose `execute` for `authenticated`: a Guru calling them straight from
+the API would skip #712. They still run through `act_on_data_request` (security definer), the retention jobs (0060)
+and the SQL editor. `withdraw_consent` and the photo withdrawal stay one-person (reversible in effect; not erasure).
+
+## 714. An import can be all or none, and checked with the database first — 28 Oct 2026
+
+**Decision.** STU-01/02. The preview (every row checked before anything is saved), duplicates (in the file and against
+saved records), under-18 rows refused to the parent's form and undo were already there (#46, #326). Added:
+`import_all_or_none(rows, dry_run)` runs `import_students` inside a step that is undone when any row is refused (the
+good rows come back `held`) or always for a dry run; so "Check with the class database" shows what the database would
+refuse before anything is written, and roll numbers are not used up. The Guru chooses **Partial** (each good row on its
+own, as before) or **All or none** (only for a file without problems, at most 500 rows); the result says which. The rows
+with problems download as a CSV — the file's own columns plus "Problem" — to fix in Excel and import again (before and
+after the import). `import_students` itself is unchanged, so older apps keep working.
+
+## 715. A login switched off is signed out — 28 Oct 2026
+
+**Decision.** AUTH-02. Mentees must already be moved first (`has_mentees`, 0014) and phones and browsers were already
+forgotten (0039); every rule already refused a switched-off login. Now its Supabase Auth sessions and refresh tokens
+are deleted in the same step (trigger `profiles_end_sessions`), so the next token refresh fails and the app signs out;
+the access token it still holds (at most an hour) opens nothing. Proved on TEST's real Auth tables in a rolled-back
+transaction (a coordinator's 15 sessions and 43 refresh tokens → 0). Switching on again does not restore sessions: the
+person signs in again.
+
+## 716. The error log keeps only error class names — 28 Oct 2026
+
+**Decision.** AUD-02. The log already held no message, id or address (#585). An error's *name* could still be anything
+a library set (a person's name, a number, a token). The app now sends a name only when it reads as an error class
+(a capital, letters only, ending in Error or Exception), else "Error"; the database applies the same rule
+(`client_error_name`), so an older app cannot store one either.
+
+## 717. Level-up decisions were already conflict-safe — 28 Oct 2026
+
+**Decision.** LEVEL-01 ("two reviewers decide at once → one result"). `decide_promotion` (0017) locks the nomination
+(`for update`), refuses a decided one (`nomination_closed`), locks the student and refuses `level_changed`; one open
+nomination per student (`promotion_one_open`). The second of two simultaneous Gurus waits for the first and is then
+refused. No change; the smoke test covers the second decision (PGlite has one connection, so not the wait itself).
+
+## 718. New words say "facilitator" — 28 Oct 2026
+
+**Decision.** The new English strings (approval, import modes) say "facilitator", never "Guru" (Sarvesh's review;
+the wider relabel is facilitator-home's, #700-#709). Telugu and Hindi are drafts for the native review
+(docs/TRANSLATIONS.md). The privacy notice needs no new line: no new personal data (the identity check is a code).
+
+## 719. Left for later — 28 Oct 2026
+
+**Decision.** Not in 0066: a reason and approver for a manual level change (SOP p.8), coordinators scoped by centre
+(AUTH-03: one class today), export logging (EXPORT-01), a TEST two-session walk of LEVEL-01. Listed in
+NOTES_facilitator_p0.md.
+
+## 720. Playground content: coordinators write drafts, only the Guru approves and publishes — 28 Oct 2026
+
+**Decision (W1, migration 0065).** The four content tables (`play_bols`, `play_assets`, `play_templates`,
+`play_exercises`) are written directly by staff under row-level security, like `taals` and `practice_links`, instead of
+the design's `play_save_*` functions: one trigger per table checks the content, and one shared trigger
+(`guard_play_status`) owns status, revision and publication. Coordinators move rows between draft and in_review; only
+the Guru (or the SQL editor) approves, retires or takes a row out of approved/retired (`approval_guru_only`); editing
+an approved row sends it back to in_review with revision + 1 and out of the published set; `published_in` and
+`first_published_in` are set only inside `publish_playground` (a session flag the app cannot set: the trigger also
+checks that it runs as the owner). `publish_playground` gives every approved, unpublished row one new version number
+and refuses placeholder rows unless the TEST-only setting `playground_allow_placeholders` is on. The four Playground
+settings are not in `guard_setting`, so the app cannot change them: placeholders and the Playground switch are set in
+the SQL editor only. Students read approved, published, non-placeholder rows directly; the app reads the pack through
+`playground_pack` (which honours the TEST setting). A change reaches phones with the next publish (the pack is cached
+by version). Deleting: only a draft never published, by the Guru or its author.
+
+**Prji, 28 Oct 2026 (relayed by Praveen; design D1):** the design is approved as a **preliminary version** — build it,
+Prji tries it on TEST, then it is refined. Hence rules and thresholds stay data, not code: label numbers in the setting
+`playground_labels`, steps and round length in `play_templates`, tempo ranges and guna on each exercise.
+
+## 721. Rounds: one row each, saved by `record_round`, idempotent by the phone's id — 28 Oct 2026
+
+**Decision.** A round is made on the phone with a seed (`hash32(student|game|day|round of the day)`, mulberry32) and
+saved as one `play_rounds` row with short item keys (e, r, q, a, ok, rp, ms, rv, tr) and a `skill` column (one
+template = one skill per round; the labels count per skill). `record_round` takes rounds started in the last 14 days,
+1-40 items, each of an exercise of the round's game that has been published at least once in a version up to the
+round's (so an offline round survives a later edit) and is not a placeholder unless TEST allows it; the revision played
+is kept when it is not newer than today's. The same id again answers `duplicate` and changes nothing; another student's
+id is `round_id_taken`; at most 200 rounds a day; a withdrawn record is refused. Students never update or delete rounds.
+
+## 722. The Playground notation: dictionary ids in the taal shape — 28 Oct 2026
+
+**Decision.** Exercises are written with the dictionary's ids (plain forms, a-z, 1-10 letters): a beat is `-` or 1-4 ids
+joined with `.`, as `guard_taal`; answers and distractors are the same beats joined by spaces (`te.re ka`). The class's
+spelling is the dictionary's `written`, used for display only. Two answers sound the same when every bol matches the
+other's or is in its `sounds_like` list (either way round, not transitive), the same rule in `lib/playground/notation.ts`
+and the database's `play_same_answer`.
+
+**Prji, 28 Oct 2026 (design D2):** the first dictionary is the four bīja strokes of the seed mantra **te | re | khe | ta**
+("khe" is the spelling). The TEST seed approves only these four (still `placeholder = true` until his recordings exist)
+and writes every exercise with them; tin, kha, ge/gi, dhi and the other bols stay out of the first pack. A TEST project
+seeded earlier with 14 bols gets the others and their exercises retired (TEST pack version 2, 28-10-2026). With four
+bols Sound Detective has four items, so its rounds show "Review practice" (#724) until more bols are approved.
+
+## 723. The curriculum guard and the checks, on the phone and again on the server — 28 Oct 2026
+
+**Decision.** `lib/playground/eligibility.ts` applies §8.5 rules 1-5 and 7 (levels compared by id, as the practice
+tools do; one level up with `level_up_ok`; a bol must be in the pack and taught at or below that level and soundable —
+an approved recording or a stroke `lib/bols.ts` knows). The challenge check drops a challenge whose answer is not among
+the cards, whose cards sound alike, whose gap is a rest, whose tempo is outside the range or whose guna is not allowed;
+a drop is reported to App errors as `PlayCheck_<reason>_e<exercise>_t<template>_v<version>` (kind `unhandled`, screen
+`/student/playground`) — never the student, seed or answer. The server re-marks Sound Detective, Missing Beat, Rhythm
+Builder, Tempo Detective and Sound Explorer answers from the exercise and the saved question (`play_expected`); a
+changed `ok` does not count; Tempo Detective tempos outside the range refuse the round. Timing and self-check items keep
+the phone's mark.
+
+## 724. Repeat guard, spaced review and the low-content fallback as specified — 28 Oct 2026
+
+**Decision.** §8.6-§8.7 implemented in `lib/playground/repeat-guard.ts`: never back-to-back (also across the previous
+round), recent exclusion K = min(8, pool − round length), fresh items (3+ days) three times as likely, assigned skills
+twice, review boxes 1/3/7 days (a right review moves on, a wrong one starts again; three right reviews end it), at most
+a third of a round review and labelled; low content below max(6, 2 × round length) repeats items without making any up.
+`pickDailyGames` gives the Daily Mission / Surprise me no skill twice in a row and not yesterday's set. History = this
+phone's rounds (30 days, kept in local storage) merged with the server's last 30 days.
+
+## 725. The generator only selects and transforms — 28 Oct 2026
+
+**Decision.** `lib/playground/generator.ts` builds Sound Detective (single bols with distractors from the exercise's
+list, close pairs at the close-pair step, the other head at step 1; phrases with distractors from the exercise or other
+eligible phrases of the same length — never a new phrase), Missing Beat (1-2 gaps on non-rest beats; single-beat cards),
+Rhythm Builder (the sequence's tiles plus extra tiles that sound like none of them), Tempo Detective (two tempos inside
+the range, rounded so the second never leaves it; a range too narrow for the step drops the challenge) and Sound
+Explorer (instrument cards). Other games get the approved sequence at an approved tempo and guna, no cards; W4/W5 add
+their transforms. Rounds are 4-8 (template `roundLen`, default 6; the Daily Mission may ask for fewer).
+
+## 726. Adaptive offers are advice only; the facilitator's limits win — 28 Oct 2026
+
+**Decision.** `stepAdvice` offers harder after 2 rounds in a row at the step with ≥ 80 % right and ≤ 1 replay per item,
+easier after 2 below 50 %, nothing for mixed results; after 14 days away it starts one step lower; by hand the student
+picks any step up to the highest reached; the facilitator's minimum and maximum (student settings and assignment, the
+narrower) always win; timing games offer nothing on an uncalibrated phone. Correctness and replays only, never speed.
+
+## 727. Labels worked out in the app from rounds; numbers in a setting — 28 Oct 2026
+
+**Decision.** `lib/playground/labels.ts` gives Exploring / Practising / Steady / Ready for Review per skill (§12.2),
+recognition and timing separately; timing counts only rounds measured on a calibrated phone, so an uncalibrated phone
+never shows a timing label above Exploring (DYN-08). The thresholds are the setting `playground_labels` (sent with the
+pack; missing numbers fall back to the defaults) so Prji changes them without an app update. Staff get rounds through
+`staff_playground_progress` / `staff_playground_class` and use the same code, so the student and the facilitator see
+the same label. `play_ratings` (0-3, a staff member never rates their own record) hold the judged skills.
+
+## 728. Offline: pack cache and round queue; shared shell components — 28 Oct 2026
+
+**Decision.** The pack is cached in local storage by version (`playground_pack(p_have_version)` answers null while it
+is unchanged); finished or left rounds wait in their own queue (not lib/offline-queue.ts, whose kinds are fixed) and are
+sent oldest first while their login is signed in, one sending at a time; saved and refused rounds leave, rounds older
+than 14 days are dropped. Sign-out deletes the queue, the history and the pack (lib/device-traces.ts). The five shell
+components (`GameShell`, `ChoiceCards`, `FeedbackPanel`, `RoundSummary`, `InstructionsPreview`) use kind words only
+("That's it!", "Not yet — listen again"), icon + word for every result, targets ≥ 48 dp (cards ≥ 88), no animation,
+screen-reader labels and one announcement per result; their strings are `playEngine.*` (te/hi drafts for review).
+
+## 729. Retention: 180-day fold, 60-day unreviewed game recordings — 28 Oct 2026
+
+**Decision.** Job `mridanga-playground` (`playground_daily`, 21:30 UTC = 03:00 IST, after `mridanga-retention`) folds
+rounds older than 180 days into `play_skill_weeks` (Monday weeks, India time; opportunities, right answers, rounds, the
+calibrated timing averages) and deletes them. Every student table cascades with the record, so `erase_student` and the
+retention job of 0060 remove Playground data with the person. Recordings sent from a game: `submission_file_expired` is
+replaced with 0017's rules plus "never reviewed and sent 60+ days ago, when its assessment has `playground_game`"; the
+existing clean-up chain deletes the file. Not in 0065 (W5, with the send wiring): the cap of 2 open takes per student
+and the 90-second limit (#696). `my_data_summary` (0059) does not list Playground data yet — a follow-up for the lead.
+
+## 770. My data lists the Playground (0068) — 28 Oct 2026
+
+**Context.** W1's 0065 added student data (game settings, rounds, weekly skill summaries, ratings) that the person's
+data summary (0059, #550) did not show: a gap in the right to know what the class holds (DPDP Act s.11), flagged by W1.
+
+**Decision.** A separate migration 0068 replaces `my_data_summary` with a `playground` part (counts and dates of rounds
+by game rather than every round's items — the rounds are many and hold only taps and answers; weekly summaries and
+ratings in full). Separate from 0065 because 0065 is already on TEST; 0068 goes to LIVE right after 0065, with the
+Playground release. Erasure already removes the rows (`on delete cascade` from `students`). Migration numbers: W5 takes
+0069 if it needs one (0070/0071 stay face).
+
+## 771. The student home: the ring back under the Daily Mission — 28 Oct 2026
 
 **Decision.** The team (Sarvesh Prji) and Praveen 28-10-2026, after comparing both homes on the phone. Amends #674: under
 the band and a slimmer Daily Mission card (one row and a thin progress bar), the ring of #240 (My QR, Lessons,

@@ -11,3 +11,8 @@ export const AppState = {
   currentState: 'active',
   addEventListener: () => ({ remove: () => undefined }),
 };
+
+// src/data/materials.ts opens a lesson link with Linking (never called in the tests; learn-screens, 0064).
+export const Linking = {
+  openURL: async () => undefined,
+};

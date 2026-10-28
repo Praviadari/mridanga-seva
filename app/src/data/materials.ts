@@ -5,11 +5,15 @@
 // 10 MB each, picked and uploaded the same way as announcement files
 // (src/data/announcement-files.ts). The database checks everything again: the link, the file,
 // who may add, open and delete (migration 0013_syllabus_materials.sql, docs/DECISIONS.md #44).
+// A lesson video (YouTube or the team's own file) may carry an audio file and notes beside it (migration 0064,
+// #683-#685): one lesson screen with Video / Audio / Notes tabs. The audio is in the same private bucket, played
+// through a signed link that works for an hour.
 //
 // Students read the approved materials up to their own level (row-level security, policy
 // `visible` in 0001). Only the Guru adds, edits and removes materials; coordinators
 // suggest them (C18, data/suggestions.ts, migration 0023), and the lists here show approved ones.
 
+import * as Crypto from 'expo-crypto';
 import * as WebBrowser from 'expo-web-browser';
 import { Linking } from 'react-native';
 
@@ -17,6 +21,7 @@ import type { LessonSource } from '@/lib/lesson-player-html';
 import { supabase } from '@/lib/supabase';
 
 import { forgetUploads, insertOnce, uploadOnce } from './create-once';
+import { bodyOf, endingFor, pickRecordingFiles, type PickedMedia } from './assessment-files';
 import {
   pickPdfs,
   pickPhotos,
@@ -37,6 +42,19 @@ export const MAX_MATERIAL_BYTES = 10 * 1024 * 1024;
 export const MATERIAL_TITLE_MAX = 120;
 /** Longest note under a material, as in the database. */
 export const MATERIAL_NOTE_MAX = 1000;
+/** Longest notes of a lesson (its Notes tab), as in the database (0064). */
+export const LESSON_NOTES_MAX = 4000;
+/** Largest audio file of a lesson: 10 MB, the bucket's limit. */
+export const MAX_LESSON_AUDIO_BYTES = MAX_MATERIAL_BYTES;
+/** The audio endings the bucket takes and the type sent with each (as sloka recitations). */
+const AUDIO_TYPES: Record<string, string> = {
+  mp3: 'audio/mpeg',
+  m4a: 'audio/mp4',
+  aac: 'audio/aac',
+  wav: 'audio/wav',
+  ogg: 'audio/ogg',
+  webm: 'audio/webm',
+};
 
 const LIMIT: PickLimit = { maxBytes: MAX_MATERIAL_BYTES, tooBigKey: 'materials.errors.tooBig' };
 
@@ -64,6 +82,12 @@ export type Material = {
   approved: boolean;
   /** A video file: camera angles side by side (1-4, V2); 1 for every other kind (migration 0020). */
   panes: number;
+  /** A lesson video's audio file in the bucket, its name and size (0064); null = none. */
+  audioPath: string | null;
+  audioName: string | null;
+  audioSize: number | null;
+  /** A lesson video's notes (its Notes tab, 0064); null = none. */
+  notes: string | null;
 };
 
 type MaterialRow = {
@@ -79,9 +103,14 @@ type MaterialRow = {
   item_id: number | null;
   approved_by: string | null;
   panes: number | null;
+  audio_path: string | null;
+  audio_name: string | null;
+  audio_size: number | null;
+  notes: string | null;
 };
 
-const COLUMNS = 'id, title, kind, url, storage_path, file_name, file_size, body, level_id, item_id, approved_by, panes';
+const COLUMNS =
+  'id, title, kind, url, storage_path, file_name, file_size, body, level_id, item_id, approved_by, panes, audio_path, audio_name, audio_size, notes';
 
 function toMaterial(row: MaterialRow): Material | null {
   // Audio is not offered yet; a row added in the dashboard is skipped rather than shown broken.
@@ -99,7 +128,22 @@ function toMaterial(row: MaterialRow): Material | null {
     itemId: row.item_id,
     approved: row.approved_by !== null,
     panes: row.panes ?? 1,
+    audioPath: row.audio_path ?? null,
+    audioName: row.audio_name ?? null,
+    audioSize: row.audio_size ?? null,
+    notes: row.notes ?? null,
   };
+}
+
+/** The formats of a lesson, in tab order; only those it has (#684: never an empty tab). A lesson video has Video. */
+export type LessonFormat = 'video' | 'audio' | 'notes';
+export function lessonFormats(material: Pick<Material, 'kind' | 'url' | 'audioPath' | 'notes'>): LessonFormat[] {
+  const video = (material.kind === 'youtube' || material.kind === 'video') && !!material.url;
+  return [
+    ...(video ? (['video'] as const) : []),
+    ...(material.audioPath ? (['audio'] as const) : []),
+    ...(material.notes ? (['notes'] as const) : []),
+  ];
 }
 
 /**
@@ -185,10 +229,16 @@ export type MaterialForm = {
   file: PickedFile | null;
   /** C18: a coordinator's reason for suggesting it, for the Guru (Phase 2 slice 8). */
   reason?: string;
+  /** A lesson video's notes (0064); empty = none. */
+  lessonNotes: string;
+  /** A lesson video's audio picked now (replaces a saved one); null = keep or none. */
+  audio: PickedMedia | null;
+  /** Editing: drop the saved audio. */
+  removeAudio: boolean;
 };
 
 /** Problems with the form, as translation keys per field. Empty = fine. */
-export type MaterialFormErrors = Partial<Record<'title' | 'link' | 'file' | 'note', MessageKey>>;
+export type MaterialFormErrors = Partial<Record<'title' | 'link' | 'file' | 'note' | 'lessonNotes', MessageKey>>;
 
 /** Checks the form before saving; the database checks the same. `isNew` = adding, not editing. */
 export function checkMaterialForm(form: MaterialForm, isNew: boolean): MaterialFormErrors {
@@ -200,7 +250,51 @@ export function checkMaterialForm(form: MaterialForm, isNew: boolean): MaterialF
   if (form.kind === 'video' && !videoLinkOk(form.link)) errors.link = 'materials.errors.videoLinkInvalid';
   if (isNew && (form.kind === 'pdf' || form.kind === 'image') && !form.file) errors.file = 'materials.errors.fileRequired';
   if (form.note.trim().length > MATERIAL_NOTE_MAX) errors.note = 'materials.errors.noteTooLong';
+  if (isLessonKind(form.kind) && form.lessonNotes.trim().length > LESSON_NOTES_MAX) errors.lessonNotes = 'materials.errors.notesTooLong';
   return errors;
+}
+
+/** A lesson video: the kinds that may carry audio and notes (0064). */
+export function isLessonKind(kind: MaterialKind): boolean {
+  return kind === 'youtube' || kind === 'video';
+}
+
+/** Opens the file chooser for one audio file for a lesson (at most 10 MB). */
+export async function pickLessonAudio(): Promise<{ file?: PickedMedia; errorKey?: MessageKey }> {
+  const result = await pickRecordingFiles(1);
+  const picked = result.files[0];
+  if (!picked) return { errorKey: result.errorKey };
+  const ending = endingFor(picked.name, picked.mimeType);
+  const mime = ending ? AUDIO_TYPES[ending] : undefined;
+  if (!ending || !mime) return { errorKey: 'materials.errors.notAudio' };
+  if (picked.size > MAX_LESSON_AUDIO_BYTES) return { errorKey: 'materials.errors.tooBig' };
+  return { file: { ...picked, ending, mimeType: mime, kind: 'audio' } };
+}
+
+/** Uploads a lesson's audio into the signed-in person's folder. Returns where it is, or null when it failed. */
+async function uploadLessonAudio(myId: string, file: PickedMedia): Promise<{ path: string; name: string; size: number } | null> {
+  const path = `${myId}/${Crypto.randomUUID().toLowerCase()}.${file.ending}`;
+  try {
+    const { error } = await supabase.storage
+      .from(MATERIALS_BUCKET)
+      .upload(path, await bodyOf(file), { contentType: file.mimeType, upsert: false });
+    return error ? null : { path, name: file.name, size: file.size };
+  } catch {
+    return null;
+  }
+}
+
+/** The columns of a lesson's audio and notes as the form holds them; udio = the file uploaded now, if any. */
+function lessonColumns(form: MaterialForm, audio: { path: string; name: string; size: number } | null) {
+  if (!isLessonKind(form.kind)) return {};
+  return {
+    notes: form.lessonNotes.trim() || null,
+    ...(audio
+      ? { audio_path: audio.path, audio_name: audio.name, audio_size: audio.size }
+      : form.removeAudio
+        ? { audio_path: null, audio_name: null, audio_size: null }
+        : {}),
+  };
 }
 
 /** Opens the photo library or file chooser for one photo or PDF of at most 10 MB. */
@@ -219,6 +313,13 @@ export type SaveOutcome = { id?: number; errorKey?: MessageKey };
  */
 export async function addMaterial(myId: string, form: MaterialForm, requestId: string): Promise<SaveOutcome> {
   let file: { path: string; name: string; size: number } | null = null;
+  // 0064: a lesson's audio goes up first too; the same request id keeps Save-again from uploading it twice.
+  let audio: { path: string; name: string; size: number } | null = null;
+  if (isLessonKind(form.kind) && form.audio) {
+    const picked = form.audio;
+    audio = await uploadOnce(requestId, `audio:${picked.key}`, () => uploadLessonAudio(myId, picked));
+    if (!audio) return { errorKey: 'materials.errors.uploadFailed' };
+  }
   if (form.kind === 'pdf' || form.kind === 'image') {
     const picked = form.file;
     if (!picked) return { errorKey: 'materials.errors.fileRequired' };
@@ -244,12 +345,14 @@ export async function addMaterial(myId: string, form: MaterialForm, requestId: s
       level_id: form.levelId,
       item_id: form.itemId,
       suggest_reason: form.reason?.trim() || null,
+      ...lessonColumns(form, audio),
     },
     requestId,
   );
   if ('error' in saved) {
     if (!isNetworkError(saved.error.message)) {
       if (file) await removeFiles([file.path], MATERIALS_BUCKET);
+      if (audio) await removeFiles([audio.path], MATERIALS_BUCKET);
       forgetUploads(requestId);
     }
     return { errorKey: materialErrorKey(saved.error.message, saved.error.code) };
@@ -258,8 +361,17 @@ export async function addMaterial(myId: string, form: MaterialForm, requestId: s
   return { id: saved.id };
 }
 
-/** Saves a changed title, link, note, level or item. The file and kind stay as they are. */
-export async function updateMaterial(id: number, form: MaterialForm): Promise<SaveOutcome> {
+/**
+ * Saves a changed title, link, note, level or item, and a lesson's notes and audio (0064). The file and kind stay as
+ * they are. A new audio file is uploaded first; once saved, the audio it replaces (or that was removed) is deleted.
+ */
+export async function updateMaterial(original: Material, form: MaterialForm, myId: string): Promise<SaveOutcome> {
+  const id = original.id;
+  let audio: { path: string; name: string; size: number } | null = null;
+  if (isLessonKind(form.kind) && form.audio) {
+    audio = await uploadLessonAudio(myId, form.audio);
+    if (!audio) return { errorKey: 'materials.errors.uploadFailed' };
+  }
   const { data, error } = await supabase
     .from('materials')
     .update({
@@ -269,11 +381,17 @@ export async function updateMaterial(id: number, form: MaterialForm): Promise<Sa
       body: form.note.trim() || null,
       level_id: form.levelId,
       item_id: form.itemId,
+      ...lessonColumns(form, audio),
     })
     .eq('id', id)
     .select('id');
-  if (error) return { errorKey: materialErrorKey(error.message, error.code) };
-  return data.length === 0 ? { errorKey: 'materials.errors.gone' } : { id };
+  if (error || data.length === 0) {
+    if (audio && !(error && isNetworkError(error.message))) await removeFiles([audio.path], MATERIALS_BUCKET);
+    return { errorKey: error ? materialErrorKey(error.message, error.code) : 'materials.errors.gone' };
+  }
+  // The old audio is no longer listed: remove it (a failure only leaves an unread file behind).
+  if (original.audioPath && (audio || form.removeAudio)) await removeFiles([original.audioPath], MATERIALS_BUCKET);
+  return { id };
 }
 
 /**
@@ -281,7 +399,8 @@ export async function updateMaterial(id: number, form: MaterialForm): Promise<Sa
  * file is left in Storage without its material.
  */
 export async function deleteMaterial(material: Material): Promise<{ errorKey?: MessageKey }> {
-  if (material.storagePath && !(await removeFiles([material.storagePath], MATERIALS_BUCKET))) {
+  const files = [...(material.storagePath ? [material.storagePath] : []), ...(material.audioPath ? [material.audioPath] : [])];
+  if (files.length > 0 && !(await removeFiles(files, MATERIALS_BUCKET))) {
     return { errorKey: 'materials.errors.removeFailed' };
   }
   const { error } = await supabase.from('materials').delete().eq('id', material.id);
@@ -313,6 +432,11 @@ export async function openMaterial(material: Material): Promise<boolean> {
   return false;
 }
 
+/** A link to play a lesson's audio that works for an hour; null when it could not be made (usually no internet). */
+export async function lessonAudioLink(path: string): Promise<string | null> {
+  return (await signedLinks([path], MATERIALS_BUCKET)).get(path) ?? null;
+}
+
 /** Signed links for the photos among `materials`, to show them small (by storage path). */
 export async function photoLinks(materials: readonly Material[]): Promise<Map<string, string>> {
   const paths = materials.flatMap((m) => (m.kind === 'image' && m.storagePath ? [m.storagePath] : []));
@@ -327,6 +451,8 @@ function materialErrorKey(message: string, code: string | undefined): MessageKey
   if (message === 'youtube_link_invalid') return 'materials.errors.linkInvalid';
   if (message === 'video_link_invalid') return 'materials.errors.videoLinkInvalid';
   if (message === 'panes_invalid') return 'materials.errors.panesInvalid';
+  if (message === 'notes_too_long') return 'materials.errors.notesTooLong';
+  if (message.startsWith('lesson_audio_') || message === 'lesson_extras_video_only') return 'materials.errors.audioRefused';
   if (message.startsWith('material_file_')) return 'materials.errors.uploadFailed';
   if (message === 'reason_too_long') return 'suggestions.errors.reason_too_long';
   if (message === 'too_many_suggestions') return 'suggestions.errors.too_many_suggestions';
