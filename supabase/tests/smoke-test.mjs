@@ -157,7 +157,7 @@ process.on('uncaughtException', (error) => {
 // D14-10: every check is counted, and the run fails when fewer (or more) checks ran than expected,
 // so a block skipped by a renamed migration or a commented-out section cannot pass unseen.
 // Adding or removing checks? Run the suite and set this to the new total it prints.
-const EXPECTED_CHECKS = 2433; // 0065 Rhythm Playground engine: +67; 0067 facilitator wording: +5; 0066 facilitator safeguards: +40 (0059/0026/0025/0049 checks adjusted for #710/#713); 0064 learn screens: +32; 0063 parent page: +32; 0062 web push: +33; 0061 staff sign-in codes and the error log: +53; 0060 privacy notice 1.0: +35; 0059 data rights: +56; 0058 weekly parent email: +64; 0057 practice while waiting: +24; 0056 practice extras: +35; 0055 learn more links: +23; 0054 after-launch forms: +49; 0053 staff own record: +55; 0052 more practice: +56; 0051 child's sign-up at home: +80; 0050 staff dashboard: +15; 0049 launch clean-up: +30; 0048 withdrawn records and leaks: +50; 0047 form rules: +109; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
+const EXPECTED_CHECKS = 2437; // 0068 my data with the Playground: +4; 0065 Rhythm Playground engine: +67; 0067 facilitator wording: +5; 0066 facilitator safeguards: +40 (0059/0026/0025/0049 checks adjusted for #710/#713); 0064 learn screens: +32; 0063 parent page: +32; 0062 web push: +33; 0061 staff sign-in codes and the error log: +53; 0060 privacy notice 1.0: +35; 0059 data rights: +56; 0058 weekly parent email: +64; 0057 practice while waiting: +24; 0056 practice extras: +35; 0055 learn more links: +23; 0054 after-launch forms: +49; 0053 staff own record: +55; 0052 more practice: +56; 0051 child's sign-up at home: +80; 0050 staff dashboard: +15; 0049 launch clean-up: +30; 0048 withdrawn records and leaks: +50; 0047 form rules: +109; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
 let failures = 0;
 let passes = 0;
 
@@ -8764,6 +8764,35 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   let again67 = '';
   try { await db.exec(file67); } catch (e) { again67 = String(e.message); }
   check('0067 can run again', again67 === '' && (await guruLines()) === 0, again67);
+}
+
+// ---------------------------------------------------------------- 0068 my data with the Playground (DECISIONS #770)
+// The person's data summary (0059) lists the Rhythm Playground: settings, rounds, weekly summaries, ratings.
+{
+  const file68 = readFileSync(new URL('migrations/0068_my_data_playground.sql', supabaseDir), 'utf8');
+  await db.exec(file68); // the 0059 block ran 0059 again, which put back the summary without the Playground
+  const sid = (await asOwner(`select id from students where profile_id = '${arjun}'`))[0].id;
+  await asOwner(`insert into play_student_settings (student_id, surprise) values ('${sid}', false)
+    on conflict (student_id) do update set surprise = false`);
+  await asOwner(`insert into play_rounds (id, student_id, game, skill, mode, step, seed, content_version, started_at, items, n_items, n_correct)
+    values (gen_random_uuid(), '${sid}', 'sound_detective', 'listen.stroke', 'play', 1, 68, 1, now(), '[]', 4, 3)`);
+  await asOwner(`insert into play_skill_weeks (student_id, week, skill, opportunities, correct, rounds)
+    values ('${sid}', '2026-01-05', 'listen.stroke', 12, 9, 3) on conflict do nothing`);
+  await asOwner(`insert into play_ratings (student_id, skill, rating, note) values ('${sid}', 'listen.stroke', 2, 'Steady te and re (0068)')`);
+  const rounds68 = (await asOwner(`select count(*)::int as n from play_rounds where student_id = '${sid}'`))[0].n;
+  const mine = async () => (await asApp('authenticated', arjun, 'select my_data_summary() as r'))[0].r;
+  const pg = (await mine()).playground;
+  check('0068 #770: the summary counts every Playground round of the student, by game',
+    pg?.rounds?.count === rounds68 && Object.values(pg.rounds.games).reduce((a, b) => a + b, 0) === rounds68
+    && pg.rounds.games.sound_detective >= 1, JSON.stringify(pg?.rounds));
+  check('0068 #770: ... with the settings, the weekly summaries and the facilitator\'s ratings',
+    pg.settings?.surprise === false && !('student_id' in pg.settings) && pg.weeks.some((w) => w.week === '2026-01-05' && w.correct === 9)
+    && pg.ratings.some((r) => r.note === 'Steady te and re (0068)' && r.rating === 2), JSON.stringify(pg).slice(0, 300));
+  check('0068 #770: a staff member without a record gets no Playground part', !('playground' in (await asApp('authenticated', coordinator,
+    'select my_data_summary() as r'))[0].r));
+  let again68 = '';
+  try { await db.exec(file68); } catch (e) { again68 = String(e.message); }
+  check('0068 can run again', again68 === '' && (await mine()).playground?.rounds?.count === rounds68, again68);
 }
 // ---------------------------------------------------------------- row-level security
 const seen =await asApp('authenticated', arjun, 'select full_name from students');

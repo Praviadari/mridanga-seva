@@ -392,6 +392,13 @@ export type MyDataSummary = {
   assessments?: number;
   events?: number;
   loans?: { issued_at: string; due_on: string | null; returned_at: string | null }[];
+  /** Since 0068 (#770); absent on a database without it. */
+  playground?: {
+    settings: Record<string, unknown> | null;
+    rounds: { count: number; first: string | null; last: string | null; games: Record<string, number> };
+    weeks: { week: string; skill: string; rounds: number; opportunities: number; correct: number | null }[];
+    ratings: { skill: string; rating: number; note: string | null; rated_at: string }[];
+  };
 };
 
 /** The signed-in person's summary. null = could not load; 'not_set_up' before 0059 has run. */

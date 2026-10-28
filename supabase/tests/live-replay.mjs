@@ -79,7 +79,9 @@ const GO_LIVE = ['0013', '0014', '0015', '0016', '0017', '0018', '0019', '0020',
   // run, sessions ended on switch-off, error names without data (#710-#719).
   '0066',
   // No Guru in the Telugu and Hindi notice lines (#706).
-  '0067'];
+  '0067',
+  // A person's data summary includes the Rhythm Playground (#770).
+  '0068'];
 
 let failures = 0;
 let passes = 0;

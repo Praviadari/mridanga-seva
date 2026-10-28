@@ -8765,3 +8765,14 @@ retention job of 0060 remove Playground data with the person. Recordings sent fr
 replaced with 0017's rules plus "never reviewed and sent 60+ days ago, when its assessment has `playground_game`"; the
 existing clean-up chain deletes the file. Not in 0065 (W5, with the send wiring): the cap of 2 open takes per student
 and the 90-second limit (#696). `my_data_summary` (0059) does not list Playground data yet — a follow-up for the lead.
+
+## 770. My data lists the Playground (0068) — 28 Oct 2026
+
+**Context.** W1's 0065 added student data (game settings, rounds, weekly skill summaries, ratings) that the person's
+data summary (0059, #550) did not show: a gap in the right to know what the class holds (DPDP Act s.11), flagged by W1.
+
+**Decision.** A separate migration 0068 replaces `my_data_summary` with a `playground` part (counts and dates of rounds
+by game rather than every round's items — the rounds are many and hold only taps and answers; weekly summaries and
+ratings in full). Separate from 0065 because 0065 is already on TEST; 0068 goes to LIVE right after 0065, with the
+Playground release. Erasure already removes the rows (`on delete cascade` from `students`). Migration numbers: W5 takes
+0069 if it needs one (0070/0071 stay face).

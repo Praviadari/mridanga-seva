@@ -4638,6 +4638,7 @@
       "assessments": "Assessments",
       "events": "Events attended",
       "loans": "Instruments lent",
+      "playground": "Playground games",
       "devices": "Phones and browsers for notifications",
       "notices": "Notices in your inbox",
       "replies": "Your replies",
@@ -4665,6 +4666,7 @@
     "consentRevoked": "withdrawn {{date}}",
     "visitsLine": "{{count}}, first {{first}}, last {{last}}",
     "callsLine": "{{count}}, last {{last}}",
+    "playgroundLine": "{{count}} rounds, last {{last}} · {{weeks}} weekly summaries · {{ratings}} ratings",
     "yes": "Yes",
     "no": "No",
     "processors": {

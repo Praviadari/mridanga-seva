@@ -4638,6 +4638,7 @@
       "assessments": "అసెస్‌మెంట్‌లు",
       "events": "హాజరైన కార్యక్రమాలు",
       "loans": "ఇచ్చిన వాద్యాలు",
+      "playground": "ప్లేగ్రౌండ్ ఆటలు",
       "devices": "నోటిఫికేషన్‌ల ఫోన్‌లు, బ్రౌజర్‌లు",
       "notices": "ఇన్‌బాక్స్‌లో నోటీసులు",
       "replies": "మీ జవాబులు",
@@ -4665,6 +4666,7 @@
     "consentRevoked": "{{date}} న ఉపసంహరించారు",
     "visitsLine": "{{count}}, మొదట {{first}}, చివర {{last}}",
     "callsLine": "{{count}}, చివర {{last}}",
+    "playgroundLine": "{{count}} రౌండ్లు, చివర {{last}} · {{weeks}} వారపు సారాంశాలు · {{ratings}} రేటింగ్‌లు",
     "yes": "అవును",
     "no": "లేదు",
     "processors": {
