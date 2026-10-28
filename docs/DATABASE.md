@@ -2058,6 +2058,7 @@ and the helpers `my_role`, `is_guru`, `is_staff`,
 | `mridanga-data-requests` | 21:00 UTC = 02:30 IST | `data_requests_daily()` — reminds the Gurus of a data request due within 3 days; blanks a closed request's text after a year, deletes it after two (0059) |
 | `mridanga-retention` | 21:15 UTC = 02:45 IST | `retention_daily()` — erases a record 30 days after its consent was withdrawn and a student two years after leaving (`erase_student`), a sign-up never registered after 180 days (`erase_login`; not an Ishtagoshti reader or a child's sign-up); forgets phones unused 90 days; deletes change-log rows over two years; an erasure refused (an open loan) is skipped and tried the next night (0060) |
 | `mridanga-client-errors-purge` | 01:55 UTC = 07:25 IST | `purge_client_errors()` — deletes app errors not seen for 30 days and rate-limit rows older than two days (0061) |
+| `mridanga-playground` | 21:30 UTC = 03:00 IST | `playground_daily()` — folds Rhythm Playground rounds older than 180 days into weekly per-skill summaries and deletes them (0065) |
 
 ## Who can see what
 
@@ -2192,6 +2193,56 @@ receipt is the recording's id and `submitted_at`.
 
 No new job (16). Tests: section "0064 learn screens" in `supabase/tests/smoke-test.mjs` (32 checks) and
 `app/tests/learn-screens.test.mjs`.
+
+## Rhythm Playground (0065)
+
+The engine of the 14 practice games ([DECISIONS.md #720-#729](DECISIONS.md); design in
+[RHYTHM_PLAYGROUND.md](RHYTHM_PLAYGROUND.md) §8-§9). Content is approved by the Guru (Prji's login) and published as
+numbered versions; rounds are made on the phone from the published pack and saved one row each. Nothing existing
+changes except `submission_file_expired` (one rule added) and a new column `assessments.playground_game`.
+
+| Object | What |
+|---|---|
+| Settings `playground_enabled`, `playground_pilot_group`, `playground_allow_placeholders`, `playground_labels` | Off / null / **off** / the label numbers of §12.2. Not in `guard_setting`: changed only in the SQL editor. `playground_allow_placeholders` is **TEST only**: on LIVE it stays false, so placeholder rows can never be published or shown |
+| `play_bols` | The approved bol dictionary: `id` = plain form (`dha`), `written` (`dhā`), head, technique, first level, `sounds_like` (one card), `close_pairs` (hard distractors), optional stroke recording |
+| `play_assets` | Sound files: `path` = `<kind>/<uuid>.<wav\|m4a\|mp3>` in the private bucket `playground-audio` (15 MB, audio types) or a `bundled_key`; licence, performer, credit, permission reference. Approving needs the file in Storage and the licence's details |
+| `play_templates` | A game's rule for a skill and level range: `steps` (`[{"step":1,"choices":2,...}]`) and `params` (`roundLen`, `reviewShare`, `gunaByLevel`) |
+| `play_exercises` | The exercise bank: game, level, skills, `sequence` (beats `-` or 1-4 ids joined by `.`), vibhags, `answer`, `distractors`, recorded prompts, BPM range, guna, a syllabus item it needs. Approving needs every bol approved in the dictionary and every prompt approved |
+| Content columns (all four) | `status` draft → in_review → approved / retired, `placeholder`, `revision`, `published_in` (the version showing this revision; null = not shown), `first_published_in` (never cleared: rounds played offline stay valid), approver, author. Trigger `guard_play_status`: coordinators move draft ↔ in_review; only the Guru approves, retires or withdraws (`approval_guru_only`); editing an approved row → in_review, revision + 1, unpublished; publication columns only through `publish_playground` |
+| `play_publications` | One row per publish: version, who, note, counts |
+| `play_assignments` | A game (or one skill of it) for a level, a group or one student, with step limits and days. Staff only; students get theirs through `my_playground_state` |
+| `play_student_settings` | Surprise me (the student's `play_set_surprise`), relaxed timing, one level up, step limits per game. Staff write |
+| `play_rounds` | One row per round, written only by `record_round`: game, skill, mode, level, step, seed, content version, times, `items` (`[{e,r,q,a,ok,rp,ms,rv,tr}]`, at most 40), right answers, `timing` (`median_ms`, `spread_ms`, `calibrated`, `offset_ms`), device. A student reads their own; staff all; nobody updates or deletes (the job and the erasure aside) |
+| `play_skill_weeks` | Weekly per-skill summaries of rounds older than 180 days (opportunities, right, rounds, calibrated timing). Kept while the record exists |
+| `play_ratings` | A facilitator's 0-3 rating of a skill, with a note and the recording it was judged from; a student reads their own; nobody rates their own record (`refuse_own_record`) |
+| `assessments.playground_game` | Marks an assessment that carries recordings sent from a game: unreviewed ones are removed 60 days after sending |
+
+**Functions** (roles checked inside): `playground_pack(p_have_version)` — the published pack (bols, assets, templates,
+exercises, placeholders flag, label numbers), or null when the caller has that version; students and staff.
+`my_playground_state()` — the student's level, ticked items, groups, settings, current assignments and rounds of 30
+days. `play_set_surprise(on)`. `record_round(round jsonb)` — checks and saves one round: re-marks Sound Detective,
+Missing Beat, Rhythm Builder, Tempo Detective and Sound Explorer answers (`play_expected`, `play_same_answer`; a changed
+`ok` does not count); idempotent by id (`duplicate`); errors `round_invalid`, `round_content_unknown`, `round_id_taken`,
+`round_limit` (200 a day), `student_withdrawn`, `not_allowed`. `play_set_status(kind, id, status)` — staff to/from
+review, the Guru approves/retires. `publish_playground(note)` — the Guru; `placeholders_not_allowed` unless the TEST
+setting is on. `staff_playground_progress(student)` — state + weekly summaries + ratings. `staff_playground_class(level,
+group)` — students (not withdrawn) with their rounds of 30 days (`filter_required`). Storage rules:
+`play_audio_readable` (staff any; a student only a file of an approved, published asset), `play_audio_uploadable`
+(staff, the path shape, a path no asset lists yet), `play_audio_deletable` (staff, a file no approved or once-published
+asset lists).
+
+Job `mridanga-playground` 21:30 UTC = 03:00 IST: `playground_daily()` folds rounds older than 180 days into
+`play_skill_weeks` and deletes them. Jobs: 17. Every student table cascades with `students`, so erasure and the
+retention job remove Playground data with the record.
+
+**TEST seed** `supabase/seed/playground_test.sql` (never LIVE; it refuses a project without seed.sql's example
+students): switches placeholders and the Playground on, adds Prji's first set of 4 placeholder bols **te | re | khe |
+ta** (#722), 4 templates and 30 exercises written only with them (Sound Detective, Missing Beat, Rhythm Builder, Tempo
+Detective), retires any other placeholder bols and their exercises, and publishes when something changed. Safe to run
+twice. On TEST 28-10-2026: version 1 (an earlier 14-bol set), then version 2 (the four).
+
+Tests: section "0065 Rhythm Playground engine" in `supabase/tests/smoke-test.mjs` (67 checks) and
+`app/tests/playground-engine.test.mjs` (the engine, DYN-01..08).
 
 ## Facilitator safeguards (0066)
 
