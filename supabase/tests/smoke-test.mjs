@@ -8348,26 +8348,27 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   // The TEST seed (§19.3): refuses LIVE, publishes placeholders on TEST, and a second run adds nothing.
   await db.exec(seed65);
   const p2 = await pack(arjun);
-  check('0065 §19.3: the TEST seed switches placeholders on and publishes 14 bols, 4 templates, 38 exercises',
+  check('0065 §19.3: the TEST seed switches placeholders on and publishes Prji\'s first set te re khe ta: 4 bols, 4 templates, 30 exercises',
     (await setting('playground_allow_placeholders')) === true && (await setting('playground_enabled')) === true && p2.placeholders === true
-    && p2.version === 3 && p2.exercises.filter((e) => e.placeholder).length === 38 && p2.templates.length === 5
-    && p2.bols.filter((b) => b.placeholder).length === 14, `v${p2.version} ${p2.exercises.length} ${p2.templates.length} ${p2.bols.length}`);
+    && p2.version === 3 && p2.exercises.filter((e) => e.placeholder).length === 30 && p2.templates.length === 5
+    && p2.bols.filter((b) => b.placeholder).map((b) => b.id).sort().join() === 'khe,re,ta,te', `v${p2.version} ${p2.exercises.length} ${p2.templates.length} ${p2.bols.length}`);
   await db.exec(seed65);
   check('0065 §19.3: ... a second run adds and publishes nothing', (await one('select max(version) as v from play_publications')).v === 3
-    && (await one('select count(*)::int as n from play_exercises where placeholder')).n === 38);
+    && (await one('select count(*)::int as n from play_exercises where placeholder')).n === 30);
   check('0065 §19.3: the seed refuses a project without seed.sql\'s example students (LIVE)', seed65.includes(`'arjun.rao@example.com'`)
     && seed65.indexOf('playground_test.sql refused') < seed65.indexOf('begin;'));
 
   // Rounds (#721): the server re-marks every recognition answer; idempotent; content and limits checked.
   const exId = async (game, seq) => (await one(`select id from play_exercises where game = '${game}' and placeholder and sequence = '${seq}'`)).id;
-  const [ta, na, ka] = [await exId('sound_detective', '{ta}'), await exId('sound_detective', '{na}'), await exId('sound_detective', '{ka}')];
+  const [ta, te, khe] = [await exId('sound_detective', '{ta}'), await exId('sound_detective', '{te}'), await exId('sound_detective', '{khe}')];
+  await bol(guru, 'khee', 'approved', { soundsLike: ['khe'] }); // a sounds-alike spelling, approved in the dictionary
   const round = (items, extra = {}) => ({ id: extra.id ?? randomUUID(), game: extra.game ?? 'sound_detective', skill: extra.skill ?? 'listen.stroke',
     mode: 'play', step: 2, seed: 12345, content_version: 3, started_at: extra.started ?? new Date(Date.now() - 120000).toISOString(),
     finished_at: new Date().toISOString(), device: 'web', items, ...(extra.timing ? { timing: extra.timing } : {}) });
   const record = (who, r) => asApp('authenticated', who, 'select record_round($1) as r', [r]).then((x) => x[0].r);
-  const r1 = round([{ e: ta, a: 'ta', ok: false, rp: 1, ms: 2100 }, { e: na, a: 'ta', ok: true }, { e: ka, a: 'ke', ok: false }]);
+  const r1 = round([{ e: ta, a: 'ta', ok: false, rp: 1, ms: 2100 }, { e: te, a: 'ta', ok: true }, { e: khe, a: 'khee', ok: false }]);
   const saved1 = await record(arjun, r1);
-  check('0065 #721 #723: a changed "ok" does not count: the server marks ta right, na wrong, ka = ke (sounds alike) right',
+  check('0065 #721 #723: a changed "ok" does not count: the server marks ta right, te answered ta wrong, khe = khee (sounds alike) right',
     saved1.result === 'saved' && saved1.n_correct === 2 && saved1.items.map((i) => i.ok).join() === 'true,false,true'
     && saved1.items[0].r === 1 && saved1.items[0].rp === 1, JSON.stringify(saved1));
   const again = await record(arjun, r1);
@@ -8382,12 +8383,12 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   await refusesWith('0065 #721: a round started more than 14 days ago', 'round_invalid', () =>
     record(arjun, round([{ e: ta, a: 'ta' }], { started: new Date(Date.now() - 15 * 86400000).toISOString() })));
   await refusesWith('0065 #721: an unknown skill', 'round_invalid', () => record(arjun, round([{ e: ta, a: 'ta' }], { skill: 'listen.everything' })));
-  const mb = await exId('missing_beat', '{te,re,ka,ta}');
-  const mbRound = await record(arjun, round([{ e: mb, a: 'ka', q: { gap: [2] } }, { e: mb, a: 'ra', q: { gap: [1] } }, { e: mb, a: 'ta', q: { gap: [9] } }],
+  const mb = await exId('missing_beat', '{te,re,khe,ta}');
+  const mbRound = await record(arjun, round([{ e: mb, a: 'khee', q: { gap: [2] } }, { e: mb, a: 'ta', q: { gap: [1] } }, { e: mb, a: 'ta', q: { gap: [9] } }],
     { game: 'missing_beat', skill: 'listen.phrase' }));
-  check('0065 #723: Missing Beat: the gap\'s bol is the answer (re = ra sounds alike); a gap outside the beats is never right',
-    mbRound.items.map((i) => i.ok).join() === 'true,true,false', JSON.stringify(mbRound.items));
-  const td = await exId('tempo_detective', '{ta,na,ta,na}');
+  check('0065 #723: Missing Beat: the gap\'s bol is the answer (khe = khee sounds alike; re is not ta); a gap outside the beats is never right',
+    mbRound.items.map((i) => i.ok).join() === 'true,false,false', JSON.stringify(mbRound.items));
+  const td = await exId('tempo_detective', '{te,re,khe,ta}');
   const tdRound = await record(arjun, round([{ e: td, a: 'faster', q: { bpm: [60, 75] } }, { e: td, a: 'same', q: { bpm: [70, 63] } }],
     { game: 'tempo_detective', skill: 'listen.tempo' }));
   check('0065 #723: Tempo Detective: faster / slower from the two tempos played', tdRound.items.map((i) => i.ok).join() === 'true,false');
