@@ -8818,7 +8818,12 @@ Recognition counts the first pick only (a second-try right is practice). `screen
 games in W1's shared components (GameShell, InstructionsPreview, ChoiceCards, FeedbackPanel, RoundSummary) with the
 step choice; `screens/playground/playground-data.ts` is the one file that calls W1's data module. W1 does not keep the
 student's state on the phone, so W2 keeps the last one (`lib/playground-games/state-cache.ts`, wiped at sign-out) and
-the games open offline from the cached pack. Dropped challenges are reported (`reportDroppedChallenges`).
+the games open offline from the cached pack; "offline" means the state could not be read (the pack loader also says
+`fromCache` when the version is unchanged). Dropped challenges are reported (`reportDroppedChallenges`). Found in the
+TEST walk: `syncRounds` (W1, round-queue.ts) on an empty queue runs to its `finally` before `sending` is assigned, so
+`sending` keeps a finished promise and every later sync returns `{saved: 0}` without sending; W2 syncs on opening only
+when this login has rounds waiting. The fix belongs in round-queue.ts (clear `sending` after the assignment, e.g.
+`.finally(() => { sending = null; })` on the promise) — for W1/the lead.
 ## 737. Prji's first pack: the bīja strokes te | re | khe | ta; the design is a preliminary version — 28 Oct 2026
 
 **Decision (Prji, relayed by Praveen through the lead on 28-10).** The Playground design is approved as a

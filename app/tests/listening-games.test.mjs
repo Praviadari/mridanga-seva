@@ -374,6 +374,13 @@ test('Practice tab: one large Rhythm Playground card in place of the game tiles;
   assert.match(src('app/staff/which-bol.tsx'), /<WhichBol \/>/);
 });
 
+test('loading: the state is the online signal; a sync on opening only when rounds wait (round-queue sending bug)', () => {
+  const data = src('screens/playground/playground-data.ts');
+  assert.ok(data.includes('const offline = !fetched.state;'));
+  assert.ok(data.includes('queuedRounds().some((q) => q.profileId === profileId)) void syncPlayground'));
+  assert.ok(src('lib/device-traces.ts').includes('forgetPlayState();'));
+});
+
 test('progress: label words with an icon, recognition and performance apart, unknown skills left out, the khol line', () => {
   assert.deepEqual(cat.labelView('steady'), { key: 'playground.label.steady', icon: 'tick' });
   assert.equal(cat.skillKey('listen.stroke'), 'playground.skill.listen_stroke');

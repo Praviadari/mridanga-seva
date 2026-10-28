@@ -6,7 +6,7 @@
 
 import { fetchMyPlayState, loadPlaygroundPack, saveRound as queueRound, syncPlayground } from '@/data/playground';
 import { keepPlayState, keptPlayState } from '@/lib/playground-games/state-cache';
-import { mergeRounds, recentRounds } from '@/lib/playground/round-queue';
+import { mergeRounds, queuedRounds, recentRounds } from '@/lib/playground/round-queue';
 import type { PlayedRound, PlayPack, StudentPlayState } from '@/lib/playground/types';
 
 /** What a Playground screen starts from. `pack` or `state` null: the Playground is not on for this student yet. */
@@ -28,8 +28,11 @@ export async function loadPlayground(profileId: string): Promise<PlaygroundLoad>
   let state = fetched.state;
   if (state) keepPlayState(profileId, state);
   else state = keptPlayState(profileId);
-  const offline = packLoad.fromCache || !fetched.state;
-  if (fetched.state) void syncPlayground(profileId).catch(() => undefined);
+  // The state is the online signal: the pack loader also says fromCache when the server's version is unchanged.
+  const offline = !fetched.state;
+  // Only when this login has rounds waiting: a sync of an empty queue leaves round-queue.ts's `sending` set to its
+  // finished report, and every later sync (a finished round) would return that report without sending (#736).
+  if (fetched.state && queuedRounds().some((q) => q.profileId === profileId)) void syncPlayground(profileId).catch(() => undefined);
   return {
     pack: packLoad.pack,
     state,
