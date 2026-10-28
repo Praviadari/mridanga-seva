@@ -11,12 +11,14 @@
 // components/profile-button.tsx, #240).
 
 import { useTranslation } from 'react-i18next';
-import { Platform, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { spacing, useTheme } from '@/theme/use-theme';
 
 import { AppText } from './app-text';
+import { Icon } from './icon';
 import { InboxBell } from './inbox-bell';
+import { Initials } from './list-row';
 import { MenuButton } from './side-menu';
 import { ProfileButton } from './profile-button';
 import { SaffronBand } from './saffron-band';
@@ -35,13 +37,16 @@ export type HomeHeaderProps = {
   menu?: boolean;
   /**
    * The student home since #672: the band made compact (no rule, the greeting closer), the Updates bell on the right
-   * and nothing on the left (My profile is in the Me tab), so Today's Practice comes higher on the phone.
+   * and the student's initials on the left, opening the Me tab (Praveen 28-10-2026: an empty corner looked like
+   * something missing), so Today's Practice comes higher on the phone.
    */
   student?: boolean;
+  /** The student's initials on the left: what a tap does (the home opens its Me tab; the band cannot, R4-01). */
+  onMe?: () => void;
 };
 
 /** The home's header band with the app's name and the greeting. */
-export function HomeHeader({ name, role, menu, student }: HomeHeaderProps) {
+export function HomeHeader({ name, role, menu, student, onMe }: HomeHeaderProps) {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const { width } = useWindowDimensions();
@@ -51,7 +56,7 @@ export function HomeHeader({ name, role, menu, student }: HomeHeaderProps) {
   return (
     <SaffronBand>
       <View style={styles.row}>
-        <View style={styles.side}>{menu ? <MenuButton place="band" /> : student ? null : <ProfileButton />}</View>
+        <View style={styles.side}>{menu ? <MenuButton place="band" /> : student ? <MeButton name={name} onPress={onMe} /> : <ProfileButton />}</View>
         <View style={styles.brand}>
           {/* As wide as the space between the buttons, and smaller rather than cut at large text (#372). The web
               cannot shrink a text to fit, so there it is smaller on a narrow window and takes a second line rather
@@ -102,7 +107,34 @@ export function HomeHeader({ name, role, menu, student }: HomeHeaderProps) {
   );
 }
 
+/** The student's initials on the band, a way to the Me tab (QR, attendance, details, sign out); a person until the name is known. */
+function MeButton({ name, onPress }: { name: string | undefined; onPress?: () => void }) {
+  const { t } = useTranslation();
+  const { colors } = useTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={t('tabs.me')}
+      hitSlop={8}
+      onPress={onPress}
+      style={({ pressed }) => [styles.me, { borderColor: colors.headerGold }, pressed && styles.pressed]}>
+      {name ? <Initials name={name} size={36} onBand /> : <Icon name="profile" size={24} color={colors.onHeader} />}
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
+  me: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pressed: {
+    opacity: 0.7,
+  },
   row: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -95,7 +95,8 @@ test('My QR, Updates and Śloka Study keep their addresses as screens on top of 
 
 test('the home: compact band with the bell, Śloka Study across the row, the secondary cards', () => {
   const home = src('app/student/(tabs)/index.tsx');
-  assert.match(home, /<HomeHeader name=\{name\} student \/>/);
+  // The initials on the band open the Me tab (Praveen 28-10-2026); the tab switch is the home's, inside the tabs (R4-01).
+  assert.match(home, /<HomeHeader name=\{name\} student onMe=\{\(\) => router\.navigate\('\/student\/me'\)\} \/>/);
   assert.match(home, /<ShortcutTiles shortcuts=\{sloka\} wide \/>/);
   for (const route of ['/student/progress', '/student/assessments', '/student/my-qr', '/student/events', '/student/practice-log', '/student/ishtagoshti']) {
     assert.ok(home.includes(`'${route}'`), route);
@@ -103,7 +104,8 @@ test('the home: compact band with the bell, Śloka Study across the row, the sec
   assert.doesNotMatch(home, /ModuleRing/);
   const header = src('components/home-header.tsx');
   assert.match(header, /student \? <UpdatesBell place="band" \/> : <InboxBell \/>/);
-  assert.match(header, /student \? null : <ProfileButton \/>/);
+  assert.match(header, /student \? <MeButton name=\{name\} onPress=\{onMe\} \/> : <ProfileButton \/>/);
+  assert.match(header, /<Initials name=\{name\} size=\{36\} onBand \/>/);
   assert.match(src('components/updates-bell.tsx'), /router\.push\('\/student\/announcements'\)/);
 });
 
