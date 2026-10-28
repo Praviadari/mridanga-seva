@@ -190,7 +190,7 @@ export default function StudentHomeScreen() {
   ];
 
   return (
-    <Screen wide compact header={<HomeHeader name={name} student />} onRefresh={() => load(true)}>
+    <Screen wide compact header={<HomeHeader name={name} student onMe={() => router.navigate('/student/me')} />} onRefresh={() => load(true)}>
       <UpdateNotice />
       <PushNotice place="home" />
       <PrivacyNoticeCard />
