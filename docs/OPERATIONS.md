@@ -644,6 +644,7 @@ to `app/dist/`. Always use this command, not a bare `npx expo export`, because
 
 | Date | Site | Commit | Built (UTC) | By |
 |---|---|---|---|---|
+| 28-10-2026 | test (Facilitator P0 safeguards: own fund entry refused + logged, two-person erasure, import dry run / all or none / error CSV, sign-out on switch-off, error-log names only; 0066 on TEST; Playground design doc) | 71ef86d (main; entry-dcb57ccd…; deployment 42d8ed9f) | 2026-10-28T08:08:54Z | Claude (wrangler, Praveen's login) |
 | 28-10-2026 | test (home header app name whole on a web window < 360 px, #672; version.txt + sw.js load) | 8fcd01c (main; entry-70be3f89…; deployment a5de9cc6) | 2026-10-28T04:47:20Z | Claude (wrangler, Praveen's login) |
 | 28-10-2026 | test (student tabs and cards at 200 %, event details, lesson Video/Audio/Notes, assessment statuses; 0064 on TEST; sw.js 30 files all load) | 50e7fd1 (main; entry-db9ad23c…; deployment 1122e435) | 2026-10-28T04:08:38Z | Claude (wrangler, Praveen's login) |
 | 27-10-2026 | test (parent page /parent, 0063 on TEST, notify-parents from the parent-view branch = same code; switch off) | e9b26ef (main; entry-59f76576…; deployment 73b2324e) | 2026-10-27T13:20:06Z | Claude (wrangler, Praveen's login) |
