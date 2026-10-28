@@ -644,6 +644,7 @@ to `app/dist/`. Always use this command, not a bare `npx expo export`, because
 
 | Date | Site | Commit | Built (UTC) | By |
 |---|---|---|---|---|
+| 28-10-2026 | test (Playground W4: Tap the Beat rounds, Echo bank calls, Tāla Cycle Master, Rhythm Switching, Surprise me, Daily Sādhana Quest; 0069 playground_game column grant; first download 2722 KB) | 7ecb606 (main; entry-396d6e30…; deployment 35ec5614) | 2026-10-28T15:57:13Z | Claude (wrangler, Praveen's login) |
 | 28-10-2026 | test (Playground W5: Sound Explorer, Voice Companion, Vocal Sādhana Studio, Kīrtan Companion, Kīrtan Sync; game takes to the facilitator, 0069; first download 2714 KB) | 29450e0 (main; entry-3b2122fb…; deployment aa842d15) | 2026-10-28T15:22:32Z | Claude (wrangler, Praveen's login) |
 | 28-10-2026 | test (Playground W3: facilitator content manager under Teaching, approval and publish, assignments, class progress, Student profile section; first download 2709 KB) | e2e36c0 (main; entry-9578a426…; deployment 249093aa) | 2026-10-28T13:04:37Z | Claude (wrangler, Praveen's login) |
 | 28-10-2026 | test (ring Student Home picked by the team: slim Daily Mission card + module ring, #771; first download 2696 KB) | b2e9841 (main; entry-fb996714…; deployment 99def0c0) | 2026-10-28T11:26:31Z | Claude (wrangler, Praveen's login) |
