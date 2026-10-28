@@ -428,10 +428,22 @@ export async function recordEntry(
   return { id: Number(data) };
 }
 
-/** Approves (approve true) or declines a waiting entry; a decline needs a reason. */
+/**
+ * Approves (approve true) or declines a waiting entry; a decline needs a reason. Since 0066 (#710) the database
+ * answers { status }, or { refused: own_entry | not_approver } for a decision that is not the caller's (logged in the
+ * change log); before 0066 it answered nothing and raised own_entry.
+ */
 export async function decideEntry(id: number, approve: boolean, note: string): Promise<{ errorKey?: ParseKeys }> {
-  const { error } = await supabase.rpc('decide_fund_entry', { p_entry: id, p_approve: approve, p_note: note.trim() || null });
-  return error ? { errorKey: fundErrorKey(error.message, error.code) } : {};
+  const { data, error } = await supabase.rpc('decide_fund_entry', { p_entry: id, p_approve: approve, p_note: note.trim() || null });
+  if (error) return { errorKey: fundErrorKey(error.message, error.code) };
+  return decisionRefusal(data);
+}
+
+/** The error key of a refused decision ({ refused } since 0066), or nothing when the decision was made. */
+export function decisionRefusal(data: unknown): { errorKey?: ParseKeys } {
+  const refused = (data as { refused?: unknown } | null)?.refused;
+  if (refused === undefined || refused === null) return {};
+  return { errorKey: refused === 'own_entry' ? 'fund.errors.own_entry' : 'fund.errors.not_allowed' };
 }
 
 /** The maker takes back their own waiting entry. */

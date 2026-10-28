@@ -8,11 +8,16 @@ import type { RunningVersion } from './app-update';
 /** Reports sent in one run of the app, at most. */
 export const RUN_LIMIT = 20;
 
-/** The error's name when it is a plain identifier (TypeError, AbortError, AuthApiError); else Error or NonError. */
+/**
+ * The error's name when it reads as an error class (TypeError, AbortError, AuthApiError: a capital, letters only,
+ * ending in Error or Exception); any other name becomes Error, so a person's name, a number or a token set as an
+ * error's name never leaves the phone (AUD-02, #716; the database applies the same rule, client_error_name in 0066).
+ * Not an error at all: NonError.
+ */
 export function errorName(error: unknown): string {
   if (!(error instanceof Error) && !(typeof error === 'object' && error !== null && 'name' in error)) return 'NonError';
   const name = String((error as { name?: unknown }).name ?? '');
-  return /^[A-Za-z][A-Za-z0-9_]{0,59}$/.test(name) ? name : 'Error';
+  return /^[A-Z][A-Za-z]{0,50}(Error|Exception)$/.test(name) ? name : 'Error';
 }
 
 /**

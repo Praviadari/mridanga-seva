@@ -8392,3 +8392,84 @@ database's `submitted_at` (not the phone's clock). After Send the success notice
 **Decision.** Not in this change: the Beginner lessons list of a waiting login (its offline copy keeps title and link
 only; its lesson screen still shows the tabs); a staff "Under review" column on the tracker; Notes as rich text or PDF;
 a contact's phone on events. Telugu and Hindi strings are drafts for the native review (docs/TRANSLATIONS.md).
+
+## 710. Nobody decides their own fund entry, and a refused try is logged — 28 Oct 2026
+
+**Decision.** Sarvesh's Facilitator Module review (27-10-2026, FUND-01: "blocked and logged"). `decide_fund_entry`
+already refused the maker (#80) but only inside the function, and the refusal left no trace (a raised error undoes
+any log row in the same call). Now (0066): a table rule `fund_entries_not_own_decision` (an approved or declined entry
+was decided by someone other than its maker, whatever writes it), and `decide_fund_entry` returns `{ status }` or
+`{ refused: own_entry | not_approver }` instead of raising for those two, writing an `audit_log` row with action
+`REFUSED` (who, which entry, approve or decline). The Guru sees them on Change log (filter "Refused try"). Other
+refusals (not a fund keeper, already decided, no reason) still raise. **Older app:** it ignores the answer, so a refused
+self-approval looks done there, but nothing changes in the ledger; the app has never offered Approve on one's own entry.
+
+## 711. A reversal after a month's report changes nothing in that month — 28 Oct 2026
+
+**Decision.** FUND-02 was already true (#80): entries are never changed or deleted; a reversal is a new entry dated
+the day it is made, linked by `reverses_id`, so a closed month's total stays and the balance reconciles. 0066 adds the
+proof (smoke: a last-month income reversed this month: the month's total, the original row and the balance) and no
+code.
+
+## 712. An erasure takes two Gurus; how the person asking was checked is recorded — 28 Oct 2026
+
+**Decision.** PRIV-01 ("dual authorization for erasure, verified requester"). `approve_data_erasure` (the first Guru)
+records `identity_check` — `own_login` (filed from the person's own signed-in app; only then), `id_seen` (the person's,
+or for a child the parent's, ID seen at the desk), `registered_email`, `phone_callback` — with `approved_by` and
+`approved_at`; a code only, never a document number (as at Accept). The Guru who recorded a desk request (`made_by`)
+does not approve it. `act_on_data_request` then erases only an approved request and never by the approver, so two
+different staff members always take part; both, the times and the check stay on the bare request after the erasure.
+**Considered:** a coordinator as second approver — rejected for now: coordinators do not read data requests (#554).
+With one active Guru login the owner erases in the SQL editor (OPERATIONS "Erasure request"), as before.
+
+## 713. The app cannot erase without the request — 28 Oct 2026
+
+**Decision.** `erase_student` and `erase_login` lose `execute` for `authenticated`: a Guru calling them straight from
+the API would skip #712. They still run through `act_on_data_request` (security definer), the retention jobs (0060)
+and the SQL editor. `withdraw_consent` and the photo withdrawal stay one-person (reversible in effect; not erasure).
+
+## 714. An import can be all or none, and checked with the database first — 28 Oct 2026
+
+**Decision.** STU-01/02. The preview (every row checked before anything is saved), duplicates (in the file and against
+saved records), under-18 rows refused to the parent's form and undo were already there (#46, #326). Added:
+`import_all_or_none(rows, dry_run)` runs `import_students` inside a step that is undone when any row is refused (the
+good rows come back `held`) or always for a dry run; so "Check with the class database" shows what the database would
+refuse before anything is written, and roll numbers are not used up. The Guru chooses **Partial** (each good row on its
+own, as before) or **All or none** (only for a file without problems, at most 500 rows); the result says which. The rows
+with problems download as a CSV — the file's own columns plus "Problem" — to fix in Excel and import again (before and
+after the import). `import_students` itself is unchanged, so older apps keep working.
+
+## 715. A login switched off is signed out — 28 Oct 2026
+
+**Decision.** AUTH-02. Mentees must already be moved first (`has_mentees`, 0014) and phones and browsers were already
+forgotten (0039); every rule already refused a switched-off login. Now its Supabase Auth sessions and refresh tokens
+are deleted in the same step (trigger `profiles_end_sessions`), so the next token refresh fails and the app signs out;
+the access token it still holds (at most an hour) opens nothing. Proved on TEST's real Auth tables in a rolled-back
+transaction (a coordinator's 15 sessions and 43 refresh tokens → 0). Switching on again does not restore sessions: the
+person signs in again.
+
+## 716. The error log keeps only error class names — 28 Oct 2026
+
+**Decision.** AUD-02. The log already held no message, id or address (#585). An error's *name* could still be anything
+a library set (a person's name, a number, a token). The app now sends a name only when it reads as an error class
+(a capital, letters only, ending in Error or Exception), else "Error"; the database applies the same rule
+(`client_error_name`), so an older app cannot store one either.
+
+## 717. Level-up decisions were already conflict-safe — 28 Oct 2026
+
+**Decision.** LEVEL-01 ("two reviewers decide at once → one result"). `decide_promotion` (0017) locks the nomination
+(`for update`), refuses a decided one (`nomination_closed`), locks the student and refuses `level_changed`; one open
+nomination per student (`promotion_one_open`). The second of two simultaneous Gurus waits for the first and is then
+refused. No change; the smoke test covers the second decision (PGlite has one connection, so not the wait itself).
+
+## 718. New words say "facilitator" — 28 Oct 2026
+
+**Decision.** The new English strings (approval, import modes) say "facilitator", never "Guru" (Sarvesh's review;
+the wider relabel is facilitator-home's, #700-#709). Telugu and Hindi are drafts for the native review
+(docs/TRANSLATIONS.md). The privacy notice needs no new line: no new personal data (the identity check is a code).
+
+## 719. Left for later — 28 Oct 2026
+
+**Decision.** Not in 0066: a reason and approver for a manual level change (SOP p.8), coordinators scoped by centre
+(AUTH-03: one class today), export logging (EXPORT-01), a TEST two-session walk of LEVEL-01. Listed in
+NOTES_facilitator_p0.md.

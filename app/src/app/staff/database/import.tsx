@@ -6,6 +6,9 @@
 // Since #326 (audit R3-04, R3-07, R2-13): rows a dropped connection did not send are counted with "Import
 // the rest"; an import can be undone (its records nothing hangs on are deleted), right after it or from
 // the list of the last 30 days' imports.
+// Since 0066 (#714, Facilitator review STU-01/02): the good rows can be checked with the database first (a dry run that
+// keeps nothing), the rows with problems saved as a CSV to fix in Excel, and the save is chosen: Partial (each good row
+// on its own) or All or none (every row or nothing).
 
 import { Stack, useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
@@ -22,26 +25,35 @@ import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import {
   checkRows,
+  checkWithDatabase,
   fetchExistingStudents,
   fetchRecentImports,
   guessColumns,
   IMPORT_FIELDS,
+  importAllOrNone,
   importRows,
   importToday,
   pickSheet,
+  problemCsvRows,
+  problemFileName,
   REQUIRED_FIELDS,
   undoImport,
+  WHOLE_MAX,
   type KeptRecord,
   type RecentImport,
   type ColumnMap,
   type ExistingStudents,
   type ImportField,
+  type ImportMode,
   type ImportResult,
   type PreviewRow,
+  type RowProblem,
 } from '@/data/student-import';
 import { levelName } from '@/i18n/labels';
+import { toCsv } from '@/lib/csv';
 import { formatDate, formatDateTime } from '@/lib/dates';
 import { goBackOr } from '@/lib/go-back';
+import { CSV_WAYS, downloadCsv, saveCsvToFolder, shareCsv, type CsvResult } from '@/lib/save-csv';
 import type { SheetRows } from '@/lib/sheet-reader';
 import { spacing, useTheme } from '@/theme/use-theme';
 import { useRequestId } from '@/lib/use-request-id';
@@ -69,6 +81,12 @@ export default function ImportScreen() {
   // One id per chosen file, sent with every row, so the import can be undone (#326).
   const { requestId: importId, renew: newImport } = useRequestId();
   const [recent, setRecent] = useState<RecentImport[] | null | undefined>(undefined);
+  // The database's dry run (0066): the problem it would give per line, and what to say about it.
+  const [dbProblems, setDbProblems] = useState<Map<number, RowProblem> | null>(null);
+  const [dbNote, setDbNote] = useState<{ tone: 'success' | 'error' | 'info'; text: string } | null>(null);
+  const [mode, setMode] = useState<ImportMode>('partial');
+  const [doneMode, setDoneMode] = useState<ImportMode>('partial');
+  const [csvMessage, setCsvMessage] = useState<{ tone: 'success' | 'error'; text: string } | null>(null);
 
   const loadRecent = useCallback(async () => {
     setRecent(await fetchRecentImports());
@@ -79,13 +97,19 @@ export default function ImportScreen() {
     }, [loadRecent]),
   );
 
-  const preview = useMemo<PreviewRow[]>(
-    () => (sheet ? checkRows(sheet.rows, columns, sheet.existing, importToday()) : []),
-    [sheet, columns],
-  );
+  const preview = useMemo<PreviewRow[]>(() => {
+    const rows = sheet ? checkRows(sheet.rows, columns, sheet.existing, importToday()) : [];
+    if (!dbProblems) return rows;
+    return rows.map((r) => {
+      const p = dbProblems.get(r.line);
+      return p && !r.problems.includes(p) ? { ...r, problems: [...r.problems, p] } : r;
+    });
+  }, [sheet, columns, dbProblems]);
   const good = preview.filter((r) => r.problems.length === 0);
   const bad = preview.filter((r) => r.problems.length > 0);
   const missingRequired = REQUIRED_FIELDS.filter((f) => columns[f] === undefined);
+  // All or none only for a file without problems that fits one call.
+  const wholeAllowed = bad.length === 0 && good.length <= WHOLE_MAX;
 
   if (profile?.role !== 'guru') return <GuruOnly title={t('importStudents.title')} />;
 
@@ -94,6 +118,7 @@ export default function ImportScreen() {
     setErrorKey(null);
     setResults(null);
     setNotSent(0);
+    forgetCheck();
     newImport();
     const picked = await pickSheet();
     if (picked && 'errorKey' in picked) {
@@ -116,14 +141,44 @@ export default function ImportScreen() {
     setShowing('problems');
   }
 
+  /** The dry run is for one file and one column match: forgotten when either changes. */
+  function forgetCheck() {
+    setDbProblems(null);
+    setDbNote(null);
+    setCsvMessage(null);
+  }
+
+  async function runCheck() {
+    setBusy(true);
+    setDbNote(null);
+    const found = await checkWithDatabase(good);
+    setBusy(false);
+    if (found === 'not_set_up') {
+      setDbNote({ tone: 'info', text: t('importStudents.dbCheckNotSetUp') });
+      return;
+    }
+    if (!(found instanceof Map)) {
+      setDbNote({ tone: 'error', text: t(found.errorKey as never) });
+      return;
+    }
+    setDbNote(
+      found.size === 0
+        ? { tone: 'success', text: t('importStudents.dbCheckOk', { count: good.length }) }
+        : { tone: 'error', text: t('importStudents.dbCheckFound', { count: found.size }) },
+    );
+    setDbProblems(new Map([...(dbProblems ?? []), ...found]));
+  }
+
   async function runImport() {
     setBusy(true);
     setErrorKey(null);
-    const outcome = await importRows(good, importId());
+    const whole = mode === 'all' && wholeAllowed;
+    const outcome = whole ? await importAllOrNone(good, importId()) : await importRows(good, importId());
     setBusy(false);
     setAsking(false);
+    setDoneMode(whole ? 'all' : 'partial');
     setResults(outcome.results);
-    setNotSent(good.length - outcome.results.length);
+    setNotSent(whole ? (outcome.errorKey ? good.length : 0) : good.length - outcome.results.length);
     if (outcome.errorKey) setErrorKey(outcome.errorKey);
     void loadRecent();
   }
@@ -140,6 +195,7 @@ export default function ImportScreen() {
       return;
     }
     setSheet({ ...sheet, existing });
+    forgetCheck();
     setResults(null);
     setNotSent(0);
     setShowing('good');
@@ -159,6 +215,33 @@ export default function ImportScreen() {
       .join(' · ');
   const saved = results?.filter((r) => r.rollNo) ?? [];
   const refused = results?.filter((r) => r.problem) ?? [];
+  const held = results?.filter((r) => r.held) ?? [];
+
+  /** The rows with problems as a CSV file (STU-01): the file's own cells plus a Problem column. */
+  async function exportProblems(way: 'download' | 'folder' | 'share', lines: Map<number, string[]>) {
+    if (!sheet) return;
+    const text = toCsv(problemCsvRows(sheet.rows, lines, t('importStudents.problemColumn')));
+    const name = problemFileName(sheet.fileName);
+    const result: CsvResult =
+      way === 'folder' ? await saveCsvToFolder(name, text) : way === 'share' ? await shareCsv(name, text) : await downloadCsv(name, text);
+    if (result === 'saved') setCsvMessage({ tone: 'success', text: t(way === 'share' ? 'reports.shared' : 'reports.saved', { name }) });
+    else if (result === 'failed') setCsvMessage({ tone: 'error', text: t('reports.exportFailed') });
+  }
+
+  const problemsCsv = (lines: Map<number, string[]>) => (
+    <Section icon="download" title={t('importStudents.problemsCsvTitle')} description={t('importStudents.problemsCsvHint')}>
+      {CSV_WAYS.includes('download') ? (
+        <Button variant="secondary" icon="download" label={t('reports.download')} onPress={() => void exportProblems('download', lines)} />
+      ) : null}
+      {CSV_WAYS.includes('folder') ? (
+        <Button variant="secondary" icon="download" label={t('reports.saveToFolder')} onPress={() => void exportProblems('folder', lines)} />
+      ) : null}
+      {CSV_WAYS.includes('share') ? (
+        <Button variant="secondary" icon="share" label={t('reports.share')} onPress={() => void exportProblems('share', lines)} />
+      ) : null}
+      {csvMessage ? <Notice tone={csvMessage.tone}>{csvMessage.text}</Notice> : null}
+    </Section>
+  );
 
   return (
     <Screen underHeader>
@@ -202,7 +285,10 @@ export default function ImportScreen() {
                   ...headings.map((_, index) => ({ value: index, label: columnLabel(index) })),
                 ]}
                 value={columns[field] ?? -1}
-                onChange={(index) => setColumns(withColumn(columns, field, index))}
+                onChange={(index) => {
+                  forgetCheck();
+                  setColumns(withColumn(columns, field, index));
+                }}
               />
             ))}
             {missingRequired.length > 0 ? (
@@ -247,15 +333,43 @@ export default function ImportScreen() {
                 </AppText>
               ) : null}
               {bad.length > 0 ? <AppText tone="muted">{t('importStudents.fixHint')}</AppText> : null}
+              {good.length > 0 ? (
+                <>
+                  <AppText variant="small" tone="muted">
+                    {t('importStudents.dbCheckHint')}
+                  </AppText>
+                  <Button variant="secondary" icon="check" label={t('importStudents.dbCheck')} loading={busy && !asking} disabled={busy} onPress={() => void runCheck()} />
+                </>
+              ) : null}
+              {dbNote ? <Notice tone={dbNote.tone}>{dbNote.text}</Notice> : null}
             </Section>
           ) : null}
+
+          {missingRequired.length === 0 && bad.length > 0
+            ? problemsCsv(new Map(bad.map((r) => [r.line, r.problems.map((p) => t(`importErrors.${p}`))])))
+            : null}
 
           {missingRequired.length === 0 && good.length > 0 ? (
             asking ? (
               <>
                 <Notice tone="info" title={t('importStudents.askTitle', { count: good.length })} announced>
-                  {t('importStudents.askBody')}
+                  {mode === 'all' && wholeAllowed ? t('importStudents.modeAll') : t('importStudents.askBody')}
                 </Notice>
+                {wholeAllowed ? (
+                  <ChoiceGroup<ImportMode>
+                    label={t('importStudents.modeLabel')}
+                    choices={[
+                      { value: 'partial', label: t('importStudents.modePartial') },
+                      { value: 'all', label: t('importStudents.modeAll') },
+                    ]}
+                    value={mode}
+                    onChange={setMode}
+                  />
+                ) : (
+                  <AppText variant="small" tone="muted">
+                    {t('importStudents.modeAllNeedsClean')}
+                  </AppText>
+                )}
                 <Button icon="send" label={t('importStudents.importButton', { count: good.length })} loading={busy} onPress={() => void runImport()} />
                 <Button variant="link" label={t('syllabusEditor.cancel')} onPress={() => setAsking(false)} />
               </>
@@ -269,6 +383,11 @@ export default function ImportScreen() {
       {results ? (
         <Section icon="check" title={t('importStudents.doneTitle')}>
           <Notice tone={errorKey || notSent > 0 ? 'error' : refused.length === 0 ? 'success' : 'info'}>
+            {doneMode === 'partial'
+              ? t('importStudents.donePartial')
+              : refused.length > 0
+                ? t('importStudents.doneAllNone', { count: refused.length })
+                : t('importStudents.doneAllSaved')}{' '}
             {t('importStudents.doneLine', { saved: saved.length, refused: refused.length })}
           </Notice>
           {errorKey ? <Notice tone="error">{t(errorKey as never)}</Notice> : null}
@@ -283,6 +402,12 @@ export default function ImportScreen() {
               {t('importStudents.line', { line: r.line })} · {t(`importErrors.${r.problem ?? 'row_failed'}`)}
             </AppText>
           ))}
+          {held.slice(0, PREVIEW_ROWS).map((r) => (
+            <AppText key={`h${r.line}`} variant="small" tone="muted">
+              {t('importStudents.heldLine', { line: r.line })}
+            </AppText>
+          ))}
+          {refused.length > 0 ? problemsCsv(new Map(refused.map((r) => [r.line, [t(`importErrors.${r.problem ?? 'row_failed'}`)]]))) : null}
           {saved.slice(0, PREVIEW_ROWS).map((r) => (
             <AppText key={`s${r.line}`} variant="small">
               {t('importStudents.savedLine', { line: r.line, roll: r.rollNo })}
