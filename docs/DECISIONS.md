@@ -8845,6 +8845,94 @@ the four mappings Prji still confirms, §16.2 D2) and tā is dayan, so all four 
 "Review practice", and Rhythm Builder adds no extra tile when no fifth bol exists (tested in
 app/tests/listening-games.test.mjs).
 
+## 740. Facilitator Playground under Teaching → Rhythm Playground — 28 Oct 2026
+
+**Decision (package W3).** One row "Rhythm Playground" in the Teaching module's Practice section
+(`lib/facilitator-modules.ts`) opens `/staff/playground`: where the content stands (the version students have, what
+waits for approval, how many changes the next publish brings) and the rows Content library, Waiting for approval,
+Publish (head facilitator only), Assignments, Class progress, Recordings to review (the existing Assessments list,
+#694). Every screen is open to both staff roles; the database decides (0065). The word "Guru" is never shown: the
+approver is "the head facilitator" in en/te/hi (the role value stays `guru`). The Playground settings (on/off, pilot
+group, label thresholds) stay SQL-editor only as 0065 made them (`guard_setting`); the screen says so in one line.
+
+## 741. Content library: four tabs, status words, pool sizes — 28 Oct 2026
+
+**Decision.** Bols · Sounds · Exercises · Templates (segmented, the tab in the address), each row with Draft /
+Waiting for approval / Approved / Retired, its revision, "not published yet" for an approved row outside the pack and
+"TEST placeholder"; retired rows last. The Exercises tab shows per game and level the approved and waiting counts
+and "enough for variety" against max(6, 2 × round length) (§8.7), so thin pools are visible.
+
+## 742. Editors write drafts straight into the tables; 0065's triggers keep the rules — 28 Oct 2026
+
+**Decision.** The bol, sound, template and exercise editors insert and update `play_bols`, `play_assets`,
+`play_templates`, `play_exercises` directly (staff RLS; no save RPCs): the triggers already check the notation,
+approval, revision + 1 when an approved row changes, and who may change status. Each editor waits for the content
+and then mounts its form once (keyed by the row's `updated_at`), so a status change reloads the saved values. A bol's
+id is typed once (the plain form, a-z) and then fixed. Every row the app inserts has `placeholder = false`
+(§19.3): placeholders come only from the TEST seed, so nothing the app saves can block a LIVE publish (tested).
+
+## 743. Sounds: the file is chosen once; licence details before approval — 28 Oct 2026
+
+**Decision.** Upload a sound = kind, then an m4a/mp3/wav file of at most 15 MB (the existing document picker of
+assessments, renamed into `<kind>/<random uuid>.<ending>` as 0065's storage rule asks) or, for a stroke, a stroke the
+app carries (`bundled_key`); then licence, performer, where the signed permission is kept, the CC BY credit, the
+recorded tempo, instruments. The row is written after the upload; if it is refused the file is removed again. The
+file of a sound is never replaced (a new recording is a new sound; old rounds stay explainable). Play uses a signed
+link of an hour. Not done: measuring length and loudness on upload (§10.1) — `duration_ms` stays empty for now.
+
+## 744. Templates are typed as JSON — 28 Oct 2026
+
+**Decision.** A template = game, skill, answer mode, level range, steps and params. Steps and params are JSON text
+fields with the known keys listed under them (choices, len, grid, gaps, closePairs, otherHead, extraTiles,
+tempoDiff, same; roundLen, reviewShare, gunaByLevel), checked as 0065 does (1-20 steps, each a distinct whole step).
+**Why:** a game needs one or two templates, written once by whoever sets the game up; a form per key would freeze
+the keys the game packages are still adding. A new template of a listening game starts from the TEST seed's steps.
+
+## 745. Exercises: the class's spelling in, dictionary ids stored; preview of five generated variants — 28 Oct 2026
+
+**Decision.** The pattern is typed as the class writes it ("Te.Re khe tā -", `notation.ts plainBeat`) or copied from a
+taal, shown on the beat grid; the answer is asked only where it can differ from the pattern (Sound Detective's bols,
+Rhythm Builder's order, Sound Explorer's instruments; 0065 `play_expected`); distractors one per line; tempo range;
+guna 1/2/3/4/8; recorded prompts; attribution. The editor warns which bols are not approved yet. **Preview generated
+variants** (§10.1, DYN-06): W1's `generateRound` on a pack of this exercise alone (as the form stands, unsaved), every
+non-retired bol and its template, at a chosen step, with five fixed seeds (101…505) so two facilitators see the same
+samples; each sample in words (plays, silent place, second tempo, cards, answer) or why the check dropped it. Kept to
+one skill per exercise in the form (the table allows up to 5). Not in the form yet: the prerequisite syllabus item.
+
+## 746. Approval: the editor is the approval screen — 28 Oct 2026
+
+**Decision.** "Waiting for approval" lists every `in_review` row, bols first (an exercise needs its bols approved),
+oldest first; a row opens its editor, whose Approval section shows the buttons the login may use: coordinators Send
+for approval / Take back to draft; the head facilitator Approve, Send back to draft, Retire, Bring back as a draft;
+Delete for a draft never published (its author or the head facilitator, asked twice) — `play_set_status` and the
+triggers check it again. **Not done:** "send back with a note" (`play_set_status` has no note; it needs a migration —
+proposed 0069 if Prji wants it) and "Flag a problem" by a coordinator on an approved item (the trigger refuses a
+coordinator moving an approved row; also 0069 material).
+
+## 747. Publish shows what the next version changes — 28 Oct 2026
+
+**Decision.** Head facilitator only (others see the existing "only the facilitator" notice). The version students
+have and its note; New in the next version (approved, never published), Changed (approved, a new revision), Leaving at
+the next publish (published before, now retired or back in review, changed since the last publish — phones keep them
+until the next version); the pool sizes; a TEST-placeholder warning; a note (≤ 300); Publish (disabled with nothing
+to publish). The database refuses placeholders on LIVE (`placeholders_not_allowed`).
+
+## 748. Assignments: level, group, or one student from the profile — 28 Oct 2026
+
+**Decision.** Game, optional skill, for a level or an active group (or one student when opened from that student's
+profile), optional lowest/highest step, due day none / 1 / 2 / 4 weeks (no date field), a note. The list shows running
+and coming assignments (no due day, or due today or later) with End (deletes the row, asks twice). Any staff login.
+
+## 749. Class progress and the Student profile's Playground section — 28 Oct 2026
+
+**Decision.** Class progress: a level or a group; per student the label of each skill (W1's `labels.ts` on the 30 days
+of rounds from `staff_playground_class`, with the published pack's label rules and templates) with its sample size
+and the last day played; students with a "Ready for Review" first, then the longest without practice (never played
+first), then by name — never by score. A row opens the Student profile. The profile's "Rhythm Playground" section
+(after Practice): the same labels, the assigned games, the facilitators' ratings (`staff_playground_progress`), and —
+not on the facilitator's own record (0053) — Rate a skill (performance skills only, 0-3: not yet / beginning / nearly
+there / shown, a note; `play_ratings`) and Assign a game. Rubric words are drafts for Prji (§18.2 item 6).
+
 ## 770. My data lists the Playground (0068) — 28 Oct 2026
 
 **Context.** W1's 0065 added student data (game settings, rounds, weekly skill summaries, ratings) that the person's
