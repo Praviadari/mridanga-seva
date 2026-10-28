@@ -71,7 +71,9 @@ const GO_LIVE = ['0013', '0014', '0015', '0016', '0017', '0018', '0019', '0020',
   // The read-only parent page from the weekly email's link, service role only (#640-#649).
   '0063',
   // Event details, lesson audio and notes, Under review on a recording (#680-#689).
-  '0064'];
+  '0064',
+  // The Rhythm Playground engine: content, publishing, rounds, retention (#720-#729).
+  '0065'];
 
 let failures = 0;
 let passes = 0;
@@ -321,8 +323,8 @@ const row = (name) => verify.find((r) => r.check_name === name);
 const expectOk = ['last migration', 'migrations missing', 'tables without row-level security',
   'anon table rights', 'anon function rights', 'update/delete without where', 'roll numbers missing'];
 for (const name of expectOk) check(`verification SQL: "${name}" is ok on the replayed LIVE`, row(name)?.ok === true, JSON.stringify(row(name)));
-check('verification SQL: "scheduled jobs" counts the sixteen jobs of 0001-0062 (0062 adds none)',
-  row('scheduled jobs')?.found === '16 of 16', JSON.stringify(row('scheduled jobs')));
+check('verification SQL: "scheduled jobs" counts the seventeen jobs of 0001-0065 (0065 adds mridanga-playground)',
+  row('scheduled jobs')?.found === '17 of 17', JSON.stringify(row('scheduled jobs')));
 check('verification SQL: Vault and pg_net are reported missing here (PGlite has neither), not hidden',
   row('vault secrets')?.ok === false && row('pg_net')?.ok === false);
 check('verification SQL: the three sample logins confirmed at sign-up are flagged (what auto-confirm would leave)',
