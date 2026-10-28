@@ -1,6 +1,7 @@
 // The student home's secondary cards under Today's Practice (docs/DECISIONS.md #674; Sarvesh Prji's student spec,
 // section 2): two to a row, one to a row when the phone's text is large or the window narrow, each a coloured circle (module tones, #368)
-// with its name and, when something waits, a count said in its accessible name ("Assessments, 2 to do"). A wide
+// with its name and, when something waits, a count on the circle's corner, said in its accessible name ("Assessments, 2
+// to do"; on the corner, not after the name, so "Assessments" keeps its line in a half card, 28-10 walk). A wide
 // tile across the row for the one shortcut that must stand out (Śloka Study).
 
 import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
@@ -46,7 +47,16 @@ export function ShortcutTiles({ shortcuts, wide }: ShortcutTilesProps) {
             accessibilityLabel={[s.label, s.detail, waiting ? s.badgeSpoken : null].filter(Boolean).join(', ')}
             onPress={s.onPress}
             style={({ pressed }) => [styles.tile, cardLook(colors), full ? styles.full : styles.half, pressed && styles.pressed]}>
-            <IconBadge name={s.icon} tone={s.tone} solid size={full ? 44 : 40} />
+            <View>
+              <IconBadge name={s.icon} tone={s.tone} solid size={full ? 44 : 40} />
+              {waiting ? (
+                <View style={[styles.badge, { backgroundColor: colors.danger, borderColor: colors.surface }]}>
+                  <AppText variant="small" maxFontSizeMultiplier={1.3} style={[styles.count, { color: colors.onHeader }]}>
+                    {(s.badge ?? 0) > 99 ? '99+' : String(s.badge)}
+                  </AppText>
+                </View>
+              ) : null}
+            </View>
             <View style={styles.words}>
               <AppText variant="label" numberOfLines={2}>
                 {s.label}
@@ -57,15 +67,7 @@ export function ShortcutTiles({ shortcuts, wide }: ShortcutTilesProps) {
                 </AppText>
               ) : null}
             </View>
-            {waiting ? (
-              <View style={[styles.badge, { backgroundColor: colors.danger }]}>
-                <AppText variant="small" maxFontSizeMultiplier={1.3} style={[styles.count, { color: colors.onHeader }]}>
-                  {(s.badge ?? 0) > 99 ? '99+' : String(s.badge)}
-                </AppText>
-              </View>
-            ) : full ? (
-              <Icon name="chevron" size={20} color={colors.textMuted} />
-            ) : null}
+            {full ? <Icon name="chevron" size={20} color={colors.textMuted} /> : null}
           </Pressable>
         );
       })}
@@ -98,9 +100,13 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   badge: {
+    position: 'absolute',
+    top: -6,
+    right: -8,
     minWidth: 24,
     minHeight: 24,
     borderRadius: 12,
+    borderWidth: 2,
     paddingHorizontal: 5,
     alignItems: 'center',
     justifyContent: 'center',
