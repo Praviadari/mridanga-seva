@@ -74,7 +74,9 @@ const GO_LIVE = ['0013', '0014', '0015', '0016', '0017', '0018', '0019', '0020',
   '0064',
   // The facilitator's P0 safeguards: no self-approval in the fund, erasure by two Gurus, import all or none and a dry
   // run, sessions ended on switch-off, error names without data (#710-#719). 0065 is reserved for the Playground engine.
-  '0066'];
+  '0066',
+  // No Guru in the Telugu and Hindi notice lines (#706).
+  '0067'];
 
 let failures = 0;
 let passes = 0;

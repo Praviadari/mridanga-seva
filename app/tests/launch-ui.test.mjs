@@ -29,7 +29,7 @@ function fnText(text, name) {
 
 // ---------------------------------------------------------------- #350 side menu, #351 homes
 
-test('every screen the old staff homes offered is still offered: a tab, a circle, a Today box or the side menu', () => {
+test('every screen the old staff homes offered is still offered: a tab, a circle, a Today box, the side menu or a module', () => {
   // The old ring and rows (#240, #241) and Running the class (admin-links.tsx), as of 7fb2a44.
   const old = [
     '/staff/overview', '/staff/follow-ups-by-coordinator', '/staff/promotion', '/staff/here-now', '/staff/new-joiners',
@@ -38,19 +38,19 @@ test('every screen the old staff homes offered is still offered: a tab, a circle
     '/staff/coordinators', '/staff/database', '/staff/settings', '/staff/centres', '/staff/audit-log', '/staff/options',
     '/staff/heard-about', '/staff/register', '/staff/profile', '/staff/notifications',
   ];
-  const offered = shortcuts + today;
+  // Since the 11-module Home (#700) the facilitator's ways in are the module tree (tests/facilitator-home.test.mjs).
+  const offered = shortcuts + today + src('lib/facilitator-modules.ts');
   for (const path of old) assert.ok(offered.includes(`'${path}'`), `${path} is offered nowhere`);
   // The bottom tabs stay: Home, Check-in, Students, Follow-ups, News.
   const tabs = src('app/staff/(tabs)/_layout.tsx');
   for (const name of ['index', 'attendance', 'students', 'follow-up', 'announcements']) assert.match(tabs, new RegExp(`name="${name}"`));
 });
 
-test('each staff home has eight circles, none repeating a tab, the Guru and the coordinator their own', () => {
+test('the coordinator home has eight circles (plus Me), none repeating a tab; the facilitator has the modules (#700)', () => {
   const ring = fnText(shortcuts, 'StaffModules');
-  const [guru, coordinator] = ring.split(/\n\s+: \[/);
-  const count = (text) => (text.match(/key: '|shared\.\w+,|\bregister,/g) ?? []).length;
-  assert.equal(count(guru.slice(guru.indexOf('guru\n'))), 8, 'Guru ring');
-  assert.equal(count(coordinator.slice(0, coordinator.indexOf(']'))), 8, 'coordinator ring');
+  const count = (text) => (text.match(/key: '/g) ?? []).length;
+  // Me (0053) and the eight.
+  assert.equal(count(ring), 9, 'coordinator ring');
   // No second row of small circles any more (#241's rows went to the side menu).
   assert.doesNotMatch(ring, /more=/);
   // No circle repeats a bottom tab, and the home has no second Check-in (Praveen 14-10-2026).
@@ -60,9 +60,8 @@ test('each staff home has eight circles, none repeating a tab, the Guru and the 
   assert.doesNotMatch(today, /<Button/);
   // The middle Today box is a number only: Overview is a circle, Check-in a tab.
   assert.doesNotMatch(today, /href: '\/staff\/(overview|mark-attendance)'/);
-  assert.match(fnText(shortcuts, 'staffMenuGroups'), /href: '\/staff\/follow-ups-by-coordinator'/);
+  assert.match(src('lib/facilitator-modules.ts'), /href: '\/staff\/follow-ups-by-coordinator'/);
 });
-
 test('the side menu never opens a tab screen as a second copy (R4-01) and lists only stack screens', () => {
   const groups = fnText(shortcuts, 'staffMenuGroups');
   for (const tab of ['/staff/attendance', '/staff/students', '/staff/follow-up', '/staff/announcements', '/staff']) {
@@ -71,8 +70,8 @@ test('the side menu never opens a tab screen as a second copy (R4-01) and lists 
   assert.match(fnText(shortcuts, 'openMenuItem'), /router\.push\(item\.href\)/);
 });
 
-test('the Guru reaches Sign-in codes and App errors from the Set-up menu (no other screen links them)', () => {
-  const groups = fnText(shortcuts, 'staffMenuGroups');
+test('the facilitator reaches Sign-in Security and App Diagnostics from Security & Audits (#700)', () => {
+  const groups = src('lib/facilitator-modules.ts');
   assert.match(groups, /href: '\/staff\/sign-in-codes'/);
   assert.match(groups, /href: '\/staff\/app-errors'/);
 });
@@ -119,7 +118,7 @@ test('Waiting for you is one amber Today box with the total, opening its own scr
     assert.match(text, /<Screen wide compact/);
     assert.match(text, /<HomeHeader menu /);
     // "Did you know?" under the ring, as on the student home (Praveen 14-10-2026).
-    assert.match(text, /<StaffModules [^\n]*\/>\n[^\n]*\n\s*<FactCard \/>/);
+    assert.match(text, /<(StaffModules|FacilitatorModules) [^\n]*\/>\n[^\n]*\n\s*<FactCard \/>/);
   }
   assert.match(src('app/student/(tabs)/index.tsx'), /<Screen wide compact/);
 });
@@ -177,7 +176,8 @@ test('the names members found confusing are renamed in English, and every new ke
     'home.today.scan': 'Scan to check in',
     'home.waiting.title': 'To do',
     'duty.title': 'Seva roster',
-    'auditLog.title': 'Change history',
+    // Audit History since the Facilitator SOP review (#707).
+    'auditLog.title': 'Audit History',
     'options.title': 'Form choices',
     'database.title': 'All students',
     'syllabusEditor.module': 'Lessons',

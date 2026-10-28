@@ -1,9 +1,10 @@
-// G1 Guru home since the launch UI (14-10-2026, docs/DECISIONS.md #350-#353; was the simple home #240): the band with
-// the menu button (components/side-menu.tsx), then the Today boxes (components/staff-today.tsx),
-// then a ring of eight filled circles (components/staff-shortcuts.tsx). It fits one screen (#351): what waits for the
-// Guru is a count on its circle and the amber To do box (staff/waiting.tsx). Behind the circles: the numbers on
-// Overview (GuruOverview below, staff/overview.tsx); in the side menu the overdue and escalated follow-ups per
-// coordinator (GuruFollowUps below, staff/follow-ups-by-coordinator.tsx). Set-up screens are in the side menu. Only
+// G1 the facilitator's Home (role value 'guru', #40) since the 11-module Home (28-10-2026, docs/DECISIONS.md #700-#703;
+// Facilitator SOP 360° review, locked; was the launch UI's ring of eight, #350-#353): the band with the menu button
+// (components/side-menu.tsx) and the bell, the "Needs attention" strip with the Today boxes (components/staff-today.tsx),
+// then the eleven module circles (components/facilitator-modules.tsx), each opening its landing screen. What waits
+// for the facilitator is the amber To do box (staff/waiting.tsx) and the Level-ups count on Teaching. Behind the
+// modules: the numbers on Overview (GuruOverview below, staff/overview.tsx, in Reports) and the overdue and escalated
+// follow-ups per coordinator (GuruFollowUps below, staff/follow-ups-by-coordinator.tsx, in Coordinators). Only
 // notices stay: "A new version is ready", notifications off (#305), could not load. Numbers: staff_dashboard() through
 // src/data/home.ts. It loads again each time it comes back into view.
 
@@ -15,6 +16,7 @@ import { useAuth } from '@/auth/auth-provider';
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { EmptyState } from '@/components/empty-state';
+import { FacilitatorModules, NeedsAttention } from '@/components/facilitator-modules';
 import { FactCard } from '@/components/fact-card';
 import { HomeHeader } from '@/components/home-header';
 import { ListRow } from '@/components/list-row';
@@ -23,14 +25,11 @@ import { ProgressBar } from '@/components/progress-bar';
 import { PromotionHomeCard } from '@/components/promotion-parts';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
-import { StaffModules } from '@/components/staff-shortcuts';
-import { StaffToday } from '@/components/staff-today';
 import { StatGrid, StatTile } from '@/components/stat-tile';
 import { PrivacyNoticeCard } from '@/components/privacy-notice-card';
 import { PushNotice } from '@/components/push-notice';
 import { UpdateNotice } from '@/components/update-notice';
 import { fetchStaffDashboard, type GuruDashboard, type StaffDashboard } from '@/data/home';
-import { hasOwnRecord } from '@/data/my-student';
 import { levelName, statusName } from '@/i18n/labels';
 import { formatDate } from '@/lib/dates';
 import { useReloadOnResume } from '@/lib/reload-on-resume';
@@ -47,15 +46,10 @@ export function GuruHome() {
   const name = profile?.full_name.trim();
   // undefined = loading, null = could not load.
   const [board, setBoard] = useState<StaffDashboard | null | undefined>(undefined);
-  // The Guru's own student record (0053, #316, #319): Me on the ring.
-  const [me, setMe] = useState(false);
-  const myId = profile?.id ?? '';
 
   const load = useCallback(async () => {
-    const [loaded, own] = await Promise.all([fetchStaffDashboard(true), hasOwnRecord(myId)]);
-    setBoard(loaded);
-    setMe(own);
-  }, [myId]);
+    setBoard(await fetchStaffDashboard(true));
+  }, []);
 
   // F9 / R4-04 (#327): back after a while (a phone that slept), the screen loads again.
   useReloadOnResume(load);
@@ -78,9 +72,9 @@ export function GuruHome() {
           <Button variant="secondary" icon="refresh" label={t('common.tryAgain')} onPress={() => void load()} />
         </>
       ) : null}
-      {board === null ? null : <StaffToday guru board={board} />}
-      <StaffModules guru promotionsWaiting={board ? board.promotions : 0} me={me} />
-      {/* Under the ring, as on the student home (#242; Praveen 14-10-2026): a fact about the mṛdaṅga a day. */}
+      {board === null ? null : <NeedsAttention board={board} />}
+      <FacilitatorModules role={profile?.role} promotionsWaiting={board ? board.promotions : 0} />
+      {/* Under the modules, as on the student home (#242; Praveen 14-10-2026): a fact about the mṛdaṅga a day. */}
       <FactCard />
     </Screen>
   );
