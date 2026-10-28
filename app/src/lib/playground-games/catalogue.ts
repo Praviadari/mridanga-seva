@@ -15,6 +15,11 @@ export type GameRoute =
   | '/student/playground/missing-beat'
   | '/student/playground/tempo-detective'
   | '/student/playground/rhythm-builder'
+  | '/student/playground/sound-explorer'
+  | '/student/playground/voice-companion'
+  | '/student/playground/vocal-studio'
+  | '/student/playground/kirtan-companion'
+  | '/student/playground/kirtan-sync'
   | '/student/tap-pad'
   | '/student/echo-me';
 
@@ -29,7 +34,7 @@ export const PLAYGROUND_GROUPS: readonly { group: PlayGroup; games: readonly Gam
       { game: 'sound_detective', icon: 'listen', route: '/student/which-bol' },
       { game: 'missing_beat', icon: 'search', route: '/student/playground/missing-beat' },
       { game: 'tempo_detective', icon: 'time', route: '/student/playground/tempo-detective' },
-      { game: 'sound_explorer', icon: 'instruments', route: null },
+      { game: 'sound_explorer', icon: 'instruments', route: '/student/playground/sound-explorer' },
     ],
   },
   {
@@ -45,15 +50,15 @@ export const PLAYGROUND_GROUPS: readonly { group: PlayGroup; games: readonly Gam
   {
     group: 'voice',
     games: [
-      { game: 'voice_companion', icon: 'record', route: null },
-      { game: 'vocal_studio', icon: 'performer', route: null },
+      { game: 'voice_companion', icon: 'record', route: '/student/playground/voice-companion' },
+      { game: 'vocal_studio', icon: 'performer', route: '/student/playground/vocal-studio' },
     ],
   },
   {
     group: 'kirtan',
     games: [
-      { game: 'kirtan_companion', icon: 'drum', route: null },
-      { game: 'kirtan_sync', icon: 'events', route: null },
+      { game: 'kirtan_companion', icon: 'drum', route: '/student/playground/kirtan-companion' },
+      { game: 'kirtan_sync', icon: 'events', route: '/student/playground/kirtan-sync' },
     ],
   },
 ];
@@ -121,6 +126,10 @@ export function gameForSkill(skill: SkillId): GameTile | null {
         ? 'tempo_detective'
         : skill === 'rhythm.sequence'
           ? 'rhythm_builder'
-          : null;
+          : skill === 'listen.instrument'
+            ? 'sound_explorer'
+            : skill === 'kirtan.entry'
+              ? 'kirtan_companion'
+              : null;
   return allTiles().find((t) => t.game === game && t.route) ?? null;
 }

@@ -39,6 +39,9 @@ export const SCORE_TOP_MAX = 10;
 /** Types of assessment, as stored in assessments.kind. */
 export const ASSESSMENT_KINDS = ['playing', 'singing', 'theory', 'other'] as const;
 export type AssessmentKind = (typeof ASSESSMENT_KINDS)[number];
+/** The Rhythm Playground games a student can send a recording from (docs/RHYTHM_PLAYGROUND.md §10.4, #766). */
+export const PLAYGROUND_SEND_GAMES = ['voice_companion', 'vocal_studio', 'kirtan_sync'] as const;
+export type PlaygroundSendGame = (typeof PLAYGROUND_SEND_GAMES)[number];
 
 /**
  * Where a student is with an assessment: assigned (Not seen), seen, submitted (waiting for the
@@ -83,6 +86,8 @@ export type Assessment = {
   createdAt: string;
   /** When the Guru sent it to the coordinators; null = draft (only the Guru sees it). */
   sentAt: string | null;
+  /** The Rhythm Playground game whose recordings it takes ("Send to my facilitator", 0065/0069); null = none. */
+  playgroundGame: PlaygroundSendGame | null;
 };
 
 /** How many students have it in each state (view assessment_summary). */
@@ -101,9 +106,10 @@ type AssessmentRow = {
   created_by: string | null;
   created_at: string;
   sent_at: string | null;
+  playground_game: string | null;
 };
 
-const ASSESSMENT_COLUMNS = 'id, title, instructions, kind, level_id, level_up, rubric, media, media_link, created_by, created_at, sent_at';
+const ASSESSMENT_COLUMNS = 'id, title, instructions, kind, level_id, level_up, rubric, media, media_link, created_by, created_at, sent_at, playground_game';
 
 /** Reads assessments.rubric, keeping only well-formed lines. */
 function parseRubric(value: unknown): RubricLine[] {
@@ -129,6 +135,7 @@ function toAssessment(row: AssessmentRow): Assessment {
     createdBy: row.created_by,
     createdAt: row.created_at,
     sentAt: row.sent_at,
+    playgroundGame: (PLAYGROUND_SEND_GAMES as readonly string[]).includes(row.playground_game ?? '') ? (row.playground_game as PlaygroundSendGame) : null,
   };
 }
 
@@ -144,7 +151,7 @@ const KNOWN_CODES = [
   'assessment_released', 'assessment_not_found', 'students_required', 'due_required', 'due_past', 'due_too_far',
   'notes_too_long', 'nothing_to_assign', 'not_open', 'recording_required', 'note_too_long', 'submission_not_found',
   'already_reviewed', 'outcome_required', 'scores_invalid', 'comment_required', 'comment_too_long',
-  'level_up_not_allowed',
+  'level_up_not_allowed', 'playground_takes_full', 'playground_take_too_long', 'playground_game_invalid',
 ] as const;
 
 function errorKeyOf(message: string | undefined): MessageKey {
@@ -326,6 +333,8 @@ export type AssessmentForm = {
   kind: AssessmentKind;
   levelId: number | null;
   levelUp: boolean;
+  /** A Playground game's recordings (sent from the game); null = an ordinary assessment. */
+  playgroundGame: PlaygroundSendGame | null;
   rubric: RubricField[];
   /** Files already saved on the assessment that stay (editing only). */
   kept: MediaFile[];
@@ -342,6 +351,7 @@ export function emptyAssessmentForm(defaultLines: string[]): AssessmentForm {
     kind: 'playing',
     levelId: null,
     levelUp: false,
+    playgroundGame: null,
     rubric: defaultLines.map((criterion, i) => ({ key: `line-${i}`, criterion, max: '5' })),
     kept: [],
     files: [],
@@ -357,6 +367,7 @@ export function formFromAssessment(a: Assessment): AssessmentForm {
     kind: a.kind,
     levelId: a.levelId,
     levelUp: a.levelUp,
+    playgroundGame: a.playgroundGame,
     rubric: a.rubric.map((line, i) => ({ key: `line-${i}`, criterion: line.criterion, max: String(line.max) })),
     kept: a.media,
     files: [],
@@ -424,6 +435,7 @@ export async function createAssessment(
       kind: form.kind,
       level_id: form.levelId,
       level_up: form.levelUp,
+      playground_game: form.playgroundGame,
       rubric: rubricOf(form),
       media,
       media_link: form.link.trim() || null,
@@ -472,6 +484,7 @@ export async function updateAssessment(
     change.kind = form.kind;
     change.level_id = form.levelId;
     change.level_up = form.levelUp;
+    change.playground_game = form.playgroundGame;
     change.rubric = rubricOf(form);
   }
   const newPaths = uploaded.media.map((m) => m.path);

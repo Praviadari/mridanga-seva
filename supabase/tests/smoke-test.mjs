@@ -157,7 +157,7 @@ process.on('uncaughtException', (error) => {
 // D14-10: every check is counted, and the run fails when fewer (or more) checks ran than expected,
 // so a block skipped by a renamed migration or a commented-out section cannot pass unseen.
 // Adding or removing checks? Run the suite and set this to the new total it prints.
-const EXPECTED_CHECKS = 2437; // 0068 my data with the Playground: +4; 0065 Rhythm Playground engine: +67; 0067 facilitator wording: +5; 0066 facilitator safeguards: +40 (0059/0026/0025/0049 checks adjusted for #710/#713); 0064 learn screens: +32; 0063 parent page: +32; 0062 web push: +33; 0061 staff sign-in codes and the error log: +53; 0060 privacy notice 1.0: +35; 0059 data rights: +56; 0058 weekly parent email: +64; 0057 practice while waiting: +24; 0056 practice extras: +35; 0055 learn more links: +23; 0054 after-launch forms: +49; 0053 staff own record: +55; 0052 more practice: +56; 0051 child's sign-up at home: +80; 0050 staff dashboard: +15; 0049 launch clean-up: +30; 0048 withdrawn records and leaks: +50; 0047 form rules: +109; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
+const EXPECTED_CHECKS = 2446; // 0069 game recordings and the W5 TEST seed: +9; 0068 my data with the Playground: +4; 0065 Rhythm Playground engine: +67; 0067 facilitator wording: +5; 0066 facilitator safeguards: +40 (0059/0026/0025/0049 checks adjusted for #710/#713); 0064 learn screens: +32; 0063 parent page: +32; 0062 web push: +33; 0061 staff sign-in codes and the error log: +53; 0060 privacy notice 1.0: +35; 0059 data rights: +56; 0058 weekly parent email: +64; 0057 practice while waiting: +24; 0056 practice extras: +35; 0055 learn more links: +23; 0054 after-launch forms: +49; 0053 staff own record: +55; 0052 more practice: +56; 0051 child's sign-up at home: +80; 0050 staff dashboard: +15; 0049 launch clean-up: +30; 0048 withdrawn records and leaks: +50; 0047 form rules: +109; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
 let failures = 0;
 let passes = 0;
 
@@ -8793,6 +8793,75 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   let again68 = '';
   try { await db.exec(file68); } catch (e) { again68 = String(e.message); }
   check('0068 can run again', again68 === '' && (await mine()).playground?.rounds?.count === rounds68, again68);
+}
+// ---------------------------------------------------------------- 0069 game recordings (DECISIONS #766, #696)
+// "Send to my facilitator" from a game reuses assessments: at most 2 game recordings wait for review per student; a
+// game recording is audio of at most 2.5 MB (the app stops at 90 s); assessments.playground_game is a game id. Every
+// other assessment works as before.
+{
+  const file69 = readFileSync(new URL('migrations/0069_playground_takes.sql', supabaseDir), 'utf8');
+  const one = async (sql) => (await asOwner(sql))[0];
+  const a69 = [];
+  for (const n of [1, 2, 3]) {
+    const a = await createAssessment(guru, { title: `Voice take Sixtynine ${n}`, sent: true });
+    await asOwner(`update assessments set playground_game = 'voice_companion' where id = ${a.id}`);
+    await release(coordinator, a.id, [arjunStudent]);
+    a69.push((await asOwner(`select id from assessment_assignments where assessment_id = ${a.id}`))[0].id);
+  }
+  const ord69 = await createAssessment(guru, { title: 'Ordinary Sixtynine', sent: true });
+  await release(coordinator, ord69.id, [arjunStudent]);
+  const [{ id: asgOrd69 }] = await asOwner(`select id from assessment_assignments where assessment_id = ${ord69.id}`);
+  await refusesWith('0069 #766: an assessment\'s Playground game is a game id', 'playground_game_invalid', () =>
+    asOwner(`update assessments set playground_game = 'karaoke' where id = ${ord69.id}`));
+  // Earlier blocks' game takes of Arjun are taken as reviewed, so the count starts at 0.
+  await asOwner(`update assessment_submissions s set reviewed_at = now() from assessment_assignments g, assessments a
+    where g.id = s.assignment_id and a.id = g.assessment_id and g.student_id = '${arjunStudent}' and a.playground_game is not null and s.reviewed_at is null`);
+  const take69 = async (size) => {
+    const path = await filePath(arjun, 'm4a');
+    await aUpload(arjun, path, size);
+    return { path, name: 'take.m4a', kind: 'audio', size };
+  };
+  await refusesWith('0069 #696: a game recording over 2.5 MB (longer than 90 s) is refused', 'playground_take_too_long',
+    async () => submit(arjun, a69[0], await take69(3000000)));
+  const s1 = await submit(arjun, a69[0], await take69(1100000));
+  const s2 = await submit(arjun, a69[1], await take69(1400000));
+  await refusesWith('0069 #696: a third game recording waiting for review is refused', 'playground_takes_full',
+    async () => submit(arjun, a69[2], await take69(900000)));
+  const sOrd = await submit(arjun, asgOrd69, await take69(3000000));
+  check('0069: ... while an ordinary assessment still takes a long recording, and the two game takes were saved',
+    sOrd > 0 && s1 > 0 && s2 > 0 && (await one(`select status from assessment_assignments where id = ${a69[2]}`)).status === 'assigned');
+  await asOwner(`update assessment_submissions set reviewed_at = now() where id = ${s1}`);
+  const s3 = await submit(arjun, a69[2], await take69(900000));
+  check('0069 #696: once the facilitator has reviewed one, the next game recording is accepted', s3 > 0);
+  // The W5 TEST seed (#761): generated sounds, the five games' templates and exercises; a second run adds nothing.
+  const seed69 = readFileSync(new URL('seed/playground_w5_test.sql', supabaseDir), 'utf8');
+  await db.exec(seed69);
+  const pack69 = (await asApp('authenticated', arjun, 'select playground_pack(0) as p'))[0].p;
+  const w5 = ['sound_explorer', 'voice_companion', 'vocal_studio', 'kirtan_companion', 'kirtan_sync'];
+  const byGame = Object.fromEntries(w5.map((g) => [g, pack69.exercises.filter((e) => e.game === g).length]));
+  const v69 = (await one('select max(version) as v from play_publications')).v;
+  check('0069 #761: the W5 TEST seed publishes generated sounds and 23 exercises for the five games; the kirtan grids are there',
+    JSON.stringify(byGame) === JSON.stringify({ sound_explorer: 6, voice_companion: 7, vocal_studio: 6, kirtan_companion: 2, kirtan_sync: 2 })
+    && w5.every((g) => pack69.templates.some((t) => t.game === g))
+    && pack69.assets.some((a) => a.bundled_key === 'synth:kirtan:slow' && a.beat_grid?.entries_ms?.[0] === 16000), JSON.stringify(byGame));
+  await db.exec(seed69);
+  check('0069 #761: ... a second run publishes nothing', (await one('select max(version) as v from play_publications')).v === v69
+    && seed69.indexOf('playground_w5_test.sql refused') < seed69.indexOf('begin;'));
+  const seEx = (await one(`select e.id, e.revision from play_exercises e join play_assets a on a.id = e.prompt_assets[1]
+    where e.game = 'sound_explorer' and a.bundled_key = 'synth:instrument:kartal+mridanga'`));
+  const vcEx = (await one(`select id, revision from play_exercises where game = 'voice_companion' and placeholder order by id limit 1`));
+  const round69 = (game, skill, items) => asApp('authenticated', arjun, 'select record_round($1::jsonb) as r', [JSON.stringify({
+    id: randomUUID(), game, skill, mode: 'play', step: 1, seed: 69, content_version: v69,
+    started_at: new Date(Date.now() - 60000).toISOString(), finished_at: new Date().toISOString(), items, device: 'web' })]).then((r) => r[0].r);
+  const se69 = await round69('sound_explorer', 'listen.instrument', [{ e: seEx.id, r: seEx.revision, a: 'mridanga kartal', ok: false }]);
+  const vc69 = await round69('voice_companion', 'vocal.pitch', [{ e: vcEx.id, r: vcEx.revision, a: 'yes' }]);
+  check('0069 #760/#763: an ensemble answer is marked as a set by the server; a voice self-check is saved with no right or wrong',
+    se69.n_correct === 1 && se69.items[0].ok === true && vc69.result === 'saved' && vc69.n_correct === null && !('ok' in vc69.items[0]),
+    JSON.stringify([se69, vc69]).slice(0, 300));
+  let again69 = '';
+  try { await db.exec(file69); } catch (e) { again69 = String(e.message); }
+  check('0069 can run again', again69 === '' && (await one(`select count(*)::int as n from pg_trigger
+    where tgname in ('playground_submission_guard', 'assessment_playground_game_guard') and not tgisinternal`)).n === 2, again69);
 }
 // ---------------------------------------------------------------- row-level security
 const seen =await asApp('authenticated', arjun, 'select full_name from students');

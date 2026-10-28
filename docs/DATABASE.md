@@ -2282,3 +2282,15 @@ new words, English as before, still internal, runs twice).
 game; raw rounds are kept 180 days, 0065), `weeks` (the weekly skill summaries: week, skill, rounds, opportunities,
 correct), `ratings` (skill, 0-3, note, date). The My data page and its copy show it under Activity
 ([DECISIONS.md #770](DECISIONS.md)). Needs 0065. Smoke test: section "0068 my data with the Playground" (4 checks).
+
+## Recordings sent from a game (0069)
+
+Two triggers, no new table or function: `assessment_playground_game_guard` (before insert or update of
+`assessments.playground_game`: a game id or null, else `playground_game_invalid`) and `playground_submission_guard`
+(before insert on `assessment_submissions`, only for an assessment with `playground_game`: the file must be audio of
+at most 2.5 MB, else `playground_take_too_long`; the student may have at most 2 game submissions not reviewed and not
+removed, else `playground_takes_full`). `submit_assessment` (0016) is unchanged and raises these through the trigger.
+The app sets `playground_game` in the assessment form and stops game takes at 90 s
+([DECISIONS.md #766](DECISIONS.md)). Needs 0065. Also: `play_assets.bundled_key` may name a sound the app generates (`synth:tone:0,2`, `synth:instrument:kartal+mridanga`,
+`synth:kirtan:slow`; lib/playground/tones.ts, #761) besides a bundled stroke key. TEST content for the five W5 games:
+`supabase/seed/playground_w5_test.sql`. Smoke test: section "0069 game recordings" (9 checks, with the W5 seed).

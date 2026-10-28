@@ -2130,7 +2130,9 @@
       "link": "Link (optional)",
       "linkHint": "For example an unlisted YouTube video. Starts with https://",
       "send": "Send to coordinators",
-      "saveDraft": "Save as draft"
+      "saveDraft": "Save as draft",
+      "playgroundGame": "Recordings from a Playground game",
+      "playgroundNone": "None"
     },
     "detail": {
       "title": "Assessment",
@@ -2287,7 +2289,10 @@
       "scores_invalid": "Give a score for every line, within its top score.",
       "comment_required": "Write a comment or record a voice note so the student knows what to change.",
       "comment_too_long": "The comment is at most 2000 characters.",
-      "level_up_not_allowed": "Only an accepted level-up assessment can be sent to the facilitator."
+      "level_up_not_allowed": "Only an accepted level-up assessment can be sent to the facilitator.",
+      "playground_takes_full": "Two of your game recordings are already waiting for review. Send this one after your facilitator listens.",
+      "playground_take_too_long": "A recording from a game can be at most 90 seconds.",
+      "playground_game_invalid": "Choose a Playground game that takes recordings."
     },
     "edit": {
       "title": "Edit assessment",
@@ -5145,6 +5150,161 @@
       "kirtan_entry": "Joining a kīrtan at the right place",
       "kirtan_keep": "Keeping the kīrtan’s beat",
       "kirtan_recover": "Finding the beat again"
+    },
+    "practice": {
+      "finish": "Finish",
+      "next": "Next",
+      "nextHint": "Answer the question above, then go on.",
+      "summaryTitle": "Well practised",
+      "kholLine": "Playing on your khol is checked by your facilitator in class.",
+      "again": "Practise again",
+      "back": "Back to the Playground",
+      "yes": "Yes",
+      "notSure": "Not sure"
+    },
+    "mic": {
+      "offIntro": "The microphone is off. You can practise without it.",
+      "turnOn": "Use the microphone (optional)",
+      "title": "Microphone on",
+      "privacy": "Your take stays on this phone. Nothing is sent unless you tap Send. Up to {{seconds}} seconds.",
+      "takeLength": "Your take: {{time}}",
+      "hearReference": "Hear the reference",
+      "playMine": "Play mine",
+      "delete": "Delete my take",
+      "turnOff": "Turn the microphone off",
+      "takesFull": "{{max}} of your recordings are waiting for your facilitator. You can send another after they listen.",
+      "sendTo": "Send to my facilitator: {{title}} ({{date}})",
+      "send": "Send to my facilitator"
+    },
+    "pitch": {
+      "title": "Pitch line (TEST, approximate)",
+      "intro": "Listens on this device only, while it is on. It is a rough guide, not a mark; your ear and your facilitator decide.",
+      "listening": "Microphone on — listening",
+      "word": {
+        "higher": "A little higher than the note",
+        "lower": "A little lower than the note",
+        "close": "Close to the note",
+        "quiet": "Too quiet to hear",
+        "unclear": "Listening…"
+      },
+      "stop": "Stop the pitch line",
+      "start": "Show the pitch line",
+      "refused": "The microphone could not be used here. You can practise without it."
+    },
+    "voice": {
+      "range": "My voice",
+      "ranges": {
+        "child": "Child",
+        "higher": "Higher voice",
+        "lower": "Lower voice"
+      },
+      "hold": "Hold the note for",
+      "seconds": "{{n}} s",
+      "drone": "Soft drone under the note",
+      "health": "Sing gently. Stop if your throat feels tired."
+    },
+    "vc": {
+      "instructions": "Listen to the note. Sing it softly on 'aa'. Stop whenever you like.",
+      "summary": "Notes practised: {{n}}. You felt you matched: {{yes}}.",
+      "phrase": "A short phrase of {{n}} notes",
+      "oneNote": "One note, {{seconds}} seconds",
+      "listen": "Listen to the note",
+      "sing": "Now sing it softly on 'aa'.",
+      "matched": "Did you match it?",
+      "listenAgain": "Listen again, then sing a little closer."
+    },
+    "vs": {
+      "instructions": "Five ways to practise with your voice. Comfortable, gentle — stop any time.",
+      "summary": "Activities practised: {{n}}.",
+      "activity": {
+        "pitch": "Pitch Match",
+        "steady": "Steady Note",
+        "bol": "Bol Pronunciation",
+        "chant": "Rhythmic Chanting",
+        "call": "Call & Response"
+      },
+      "help": {
+        "pitch": "Hear the notes, then sing them back softly.",
+        "steady": "Hear the note, then hold it gently for {{seconds}} seconds. Only the time counts.",
+        "bol": "Hear the bol, then say it clearly (padhant).",
+        "chant": "Recite the bols with the beat.",
+        "call": "Hear the call, then sing the answer."
+      },
+      "listen": {
+        "pitch": "Listen to the notes",
+        "steady": "Listen to the note",
+        "bol": "Hear the bol",
+        "chant": "Hear the bols with the beat",
+        "call": "Hear the call"
+      },
+      "holdStart": "Start the {{seconds}}-second timer",
+      "holdDone": "Time! Rest your voice.",
+      "holdCount": "{{n}} of {{of}} seconds",
+      "check": {
+        "pitch": "Did you match it?",
+        "steady": "Was it comfortable to hold?",
+        "bol": "Did yours sound like it?",
+        "chant": "Did you stay with the beat?",
+        "call": "Did your answer come in time?"
+      }
+    },
+    "kc": {
+      "instructions": "Listen to the singer. Tap the beat if you like.",
+      "instructions2": "Tap \"The khol starts here\" when you think the khol should start.",
+      "summary": "Entries found: {{found}} of {{total}}.",
+      "hints": {
+        "all": "Beat numbers are shown.",
+        "sam": "Only sam is shown.",
+        "none": "No hints — listen for the cycle."
+      },
+      "noEntryTap": "You did not tap where the khol starts. Listen again and try.",
+      "found": "Yes — the khol starts there.",
+      "early": "The khol starts {{seconds}} s later. Hear it again.",
+      "late": "The khol starts {{seconds}} s earlier. Hear it again.",
+      "hearEntry": "Hear where the khol starts",
+      "pulseTuned": "Your beat taps: {{taps}}, {{median}} ms from the beat on average, spread {{spread}} ms (practice only).",
+      "pulseUntuned": "Your beat taps: {{taps}}. Tune this phone on the tap pad to see their timing.",
+      "skip": "Go on without an answer"
+    },
+    "ks": {
+      "instructions": "Play with the singer: come in at the right place and keep the laya.",
+      "instructions2": "Use headphones when you record, so only your khol is heard.",
+      "summary": "Parts practised: {{n}}. Your facilitator listens to the recordings you send.",
+      "stage": {
+        "respond": "Respond",
+        "accompany": "Accompany",
+        "recover": "Recover"
+      },
+      "stageHelp": {
+        "respond": "From where the khol starts, tap the beat with the singer.",
+        "accompany": "Play on your khol with the clip: keep the laya, play softly, stay through the pauses.",
+        "recover": "Play along; if you lose the beat, wait for sam and come back in without rushing."
+      },
+      "selfCheck": "Did you stay with the singer?",
+      "micHint": "Record your khol with the clip (headphones on). Up to 90 seconds; nothing is sent unless you tap Send."
+    },
+    "kirtan": {
+      "sam": "Sam",
+      "samBeat": "X (sam)",
+      "cycle": "Cycle {{n}}",
+      "noClip": "This clip cannot be played yet.",
+      "tapBeat": "Tap the beat",
+      "entryTapped": "Tapped — tap again to move it",
+      "tapEntry": "The khol starts here",
+      "stop": "Stop",
+      "play": "Play the kīrtan",
+      "notTuned": "This phone is not tuned: tap timing is shown only after \"Tune to this phone\" on the tap pad."
+    },
+    "se": {
+      "instructions": "Which instrument do you hear? When several play together, tick every one you hear.",
+      "pickAll": "Tick every instrument you hear, then Check",
+      "pick": "Which instrument is it?",
+      "check": "Check"
+    },
+    "instrument": {
+      "mridanga": "Mṛdaṅga (khol)",
+      "kartal": "Kartāl",
+      "harmonium": "Harmonium"
     }
   },
   "echo": {

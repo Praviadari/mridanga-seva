@@ -82,8 +82,8 @@ export function checkChallenge(
   }
   if (new Set(keys).size !== keys.length) return 'duplicate_card';
   if (ch.choices.length < 2) return 'too_few_choices';
-  // Missing Beat with two gaps: the answer is one card per gap.
-  const parts = ch.game === 'missing_beat' ? keyBeats(ch.answer) : [ch.answer];
+  // Missing Beat with two gaps: the answer is one card per gap; Sound Explorer with instruments together: one card each (#760).
+  const parts = ch.game === 'missing_beat' || ch.game === 'sound_explorer' ? keyBeats(ch.answer) : [ch.answer];
   for (const part of parts) if (!keys.includes(part)) return 'answer_missing';
   for (const key of keys) {
     if (parts.includes(key)) continue;

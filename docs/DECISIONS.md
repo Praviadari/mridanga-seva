@@ -8855,3 +8855,80 @@ by game rather than every round's items — the rounds are many and hold only ta
 ratings in full). Separate from 0065 because 0065 is already on TEST; 0068 goes to LIVE right after 0065, with the
 Playground release. Erasure already removes the rows (`on delete cascade` from `students`). Migration numbers: W5 takes
 0069 if it needs one (0070/0071 stay face).
+
+## 760. Sound Explorer: instruments as a set, ensembles checked per card — 28 Oct 2026
+
+**Context.** W1's engine already makes Sound Explorer rounds (cards from the pack's instrument names) and `record_round`
+re-marks them as a set, but the challenge check took the whole answer ("harmonium kartal") as one card, so every
+"two together" challenge was dropped.
+
+**Decision.** `check.ts` splits a Sound Explorer answer into one card per instrument, as Missing Beat does for two gaps.
+One instrument: tap a card; several: tick every one heard, then Check. Names always in words (no colour or picture
+alone); a card is heard alone only when the pack has a clip of that instrument alone.
+
+## 761. TEST sounds for the voice, kīrtan and instrument games are generated, not downloaded — 28 Oct 2026
+
+**Context.** W5 needs instrument, kīrtan and voice clips before Prji's recordings; the rule is team recordings only,
+never internet downloads, and none were recorded yet.
+
+**Decision.** `lib/playground/tones.ts` makes them by arithmetic, like the practice sounds: reference notes on "aa" and a
+drone from a tonic (these stay — no recording is needed for reference tones), and TEST stand-ins for mṛdaṅga strokes,
+kartāl, a harmonium-like reed and a short "TEST kīrtan" (sung line, kartāl, khol joining at the third sam). A TEST
+sound is a `play_assets` row with no file and `bundled_key = 'synth:…'`; a recorded clip has a path instead and
+replaces it with no code change. The TEST kīrtan's annotated grid is exact by construction, so the alignment test
+(§7.7 acceptance, 20 ms) runs in `npm test`; real clips still need it checked on phones.
+
+## 762. One clip player on the player's own clock; one sound at a time — 28 Oct 2026
+
+**Decision.** `lib/playground/clip-player(.web).ts`: phones play a signed link or a generated WAV (written once to the
+cache) with expo-audio and read `currentTime`; browsers use Web Audio and subtract the reported output delay. Taps
+are read on that clock minus the phone's "Tune to this phone" delay (#470), as the tap pad does. Starting a clip stops
+any other Playground clip. Slower playback keeps the pitch (`shouldCorrectPitch`), but no Kīrtan game uses a slowed
+clip until it is heard on real Android phones (§7.14) — slow and medium versions are separate clips.
+
+## 763. Voice games record the student's own check, never a grade — 28 Oct 2026
+
+**Decision.** Voice Companion and Vocal Sādhana Studio save each challenge with `a` = "yes" / "not_sure" (or the stage
+done) and **no `ok`**: singing is judged by a person (§12.1), the app gives the `vocal.*` skills no label, and the
+facilitator rates sent takes 0-3. Vocal Studio's activity comes from the exercise's skill (`vocal.pitch` Pitch Match,
+`vocal.steady` Steady Note — time only, `vocal.bol_recite` Bol Pronunciation, or Rhythmic Chanting for 3+ beats,
+`vocal.call_response` Call & Response). Voice ranges child / higher / lower use TEST tonics (C4, G♯3, C♯3) until Prji
+sets the allowed tonics. Health line on every voice screen; feedback never mentions loudness, height or "good voice".
+
+## 764. The pitch line is a browser-only TEST research feature — 28 Oct 2026
+
+**Decision.** `lib/pitch.web.ts` + `lib/pitch-estimate.ts` (YIN on the device; nothing recorded or sent) show "a little
+higher / lower / close" with "approximate" wording, only in a build that talks to the TEST project and only after the
+student turns it on. Nothing it says is stored. `lib/pitch.ts` (phones) says "not available": expo-audio gives no
+live samples. Before it may say more, compare it with Prji's judgement on 10+ real voices (§11.2). Android routes:
+docs/PLAYGROUND_MIC_SPIKE.md (#767).
+
+## 765. Kīrtan Companion is stage A; Kīrtan Synchronization is B-D — 28 Oct 2026
+
+**Decision.** Kīrtan Companion: play the clip, tap the beat (practice), tap "The khol starts here"; found = within half
+a beat of an annotated entry (`lib/playground/beat-grid.ts`), saved as recognition (`ok` from the phone — the server
+has no clip clock to recheck it); hints by step: every beat → sam only → none. Kīrtan Synchronization: step 1 Respond
+(tap the beat from the entry; the round's timing is `calibrated` only on a tuned phone), steps 2-3 Accompany and
+Recover on the real khol with the clip, the student's own check, and an optional recording sent to the facilitator.
+The app never grades live playing.
+
+## 766. "Send to my facilitator" from a game: assessments, 2 waiting, 90 seconds (0069) — 28 Oct 2026
+
+**Context.** §10.4 (#694) reuses assessments; 0065 added `assessments.playground_game` and the 60-day removal of
+unreviewed game takes; #696 (cap of 2 open takes, 90 s) was left to W5.
+
+**Decision.** The assessment form gets "Recordings from a Playground game" (Voice Companion, Vocal Sādhana Studio,
+Kīrtan Synchronization). In those games the microphone is off until the student turns it on; a take stays in the
+screen until "Send to my facilitator", which appears only when such an assessment is open and fewer than 2 game takes
+wait for review; it keeps the take on the phone and opens the assessment's send screen with it attached (as Record
+myself). Takes stop at 90 s. Migration 0069 makes it the rule: a third waiting game take is refused
+(`playground_takes_full`), and a game take must be audio of at most 2.5 MB (`playground_take_too_long`; 90 s is
+≈ 1.1 MB on a phone, ≈ 1.5 MB in a browser); `playground_game` must be a game id. A trigger, not a new
+`submit_assessment`, so other assessments are untouched.
+
+## 767. Android microphone and pitch: no new APK for Phase 3 — 28 Oct 2026
+
+**Decision.** From the spike (docs/PLAYGROUND_MIC_SPIKE.md): recording and playback keep using expo-audio (in the APK);
+a live pitch line on Android would go through the existing WebView first (a 1-day device test on the TEST APK, no
+build), and only if that fails through native code bundled with the next planned APK (the face APK), with Praveen's
+go. No APK is built for W5.
