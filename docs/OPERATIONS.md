@@ -231,6 +231,12 @@ and again three days before its answer-by date.
    only its type and dates. Then do the steps below that the app cannot: tell the coordinators (withdrawal), answer
    a withdrawn person by phone or email (their sign-in is off), and **add the roll number, the date and the `DR-`
    reference to the private erasure register** (Backups → Restoring, step 5: a restore would bring the person back).
+   **Erasure needs two people (0066, #712):** first another Guru opens the request, chooses how the person asking was
+   checked (own signed-in app / ID seen at the desk / the email the class has / call-back on the phone the class has)
+   and taps Approve the erasure; the Guru who recorded a desk request does not approve it. Then a Guru other than the
+   approver carries it out as above. With only one active Guru login, the owner runs `erase_student` / `erase_login`
+   in the SQL editor (section "Erasure request") and notes the second person in the request's answer. The app can no
+   longer call `erase_student` / `erase_login` directly (#713).
 4. A staff login without a student record cannot be erased here (`not_pending`): use "Staff who leave".
 5. An open loan stops an erasure: take the lent instrument back and record the return first.
 

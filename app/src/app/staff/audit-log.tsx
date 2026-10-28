@@ -146,6 +146,7 @@ export default function AuditLogScreen() {
               { value: 'INSERT', label: t('auditLog.actions.INSERT') },
               { value: 'UPDATE', label: t('auditLog.actions.UPDATE') },
               { value: 'DELETE', label: t('auditLog.actions.DELETE') },
+              { value: 'REFUSED', label: t('auditLog.actions.REFUSED') },
             ]}
             value={filters.action}
             onChange={(action) => change({ action: action as AuditFilters['action'] })}

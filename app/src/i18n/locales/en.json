@@ -1562,6 +1562,27 @@
     "undoKept_one": "{{count}} record was kept:",
     "undoKept_other": "{{count}} records were kept:",
     "keptLine": "{{roll}} · {{name}}: {{reason}}",
+    "dbCheck": "Check with the class database (nothing is saved)",
+    "dbCheckHint": "The database tries the good rows exactly as an import would, then undoes it. Rows it would refuse move to Problems.",
+    "dbCheckOk_one": "Checked: the database takes the {{count}} good row.",
+    "dbCheckOk_other": "Checked: the database takes all {{count}} good rows.",
+    "dbCheckFound_one": "The database would refuse {{count}} row: it is now under Problems.",
+    "dbCheckFound_other": "The database would refuse {{count}} rows: they are now under Problems.",
+    "dbCheckNotSetUp": "This check needs the latest database update; the rows are still checked when they are imported.",
+    "problemsCsvTitle": "The rows with problems as a file",
+    "problemsCsvHint": "Your own columns plus a Problem column. Fix the rows in Excel and import that file.",
+    "problemColumn": "Problem",
+    "modeLabel": "How to save",
+    "modePartial": "Partial: save each good row; rows with problems stay out",
+    "modeAll": "All or none: save only if the database takes every row",
+    "modeAllNeedsClean": "All or none is for a file without problems, of at most 500 rows.",
+    "wholeTooMany": "All or none takes at most 500 rows at once.",
+    "wholeNotSetUp": "All or none needs the latest database update. Use Partial for now.",
+    "donePartial": "Partial import: each good row was saved on its own; rows with problems were left out.",
+    "doneAllSaved": "All or none: every row was saved.",
+    "doneAllNone_one": "All or none: nothing was saved, because the database refused {{count}} row. Fix it and import the file again.",
+    "doneAllNone_other": "All or none: nothing was saved, because the database refused {{count}} rows. Fix them and import the file again.",
+    "heldLine": "Row {{line}} · good, not saved (all or none)",
     "undoNotFound": "Nothing of this import is left to undo.",
     "recentTitle": "Imports of the last 30 days",
     "recentHint": "A wrong file or a wrong column match can be undone here.",
@@ -1792,7 +1813,8 @@
     "actions": {
       "INSERT": "Added",
       "UPDATE": "Changed",
-      "DELETE": "Deleted"
+      "DELETE": "Deleted",
+      "REFUSED": "Refused try"
     },
     "tables": {
       "students": "Student",
@@ -4649,7 +4671,13 @@
       "open_loan": "An instrument is still lent to this student. Take it back first.",
       "not_pending": "This is a staff sign-in: the owner removes it in the SQL editor (OPERATIONS \"Staff who leave\").",
       "not_yourself": "You cannot erase your own sign-in.",
-      "has_student_record": "This sign-in is on a student record: erase the record instead."
+      "has_student_record": "This sign-in is on a student record: erase the record instead.",
+      "second_approval_needed": "Another facilitator must approve this erasure first.",
+      "approver_cannot_erase": "You approved this erasure, so another facilitator carries it out.",
+      "not_erasure": "Only an erasure request is approved this way.",
+      "already_approved": "This erasure is already approved.",
+      "identity_invalid": "Choose how the person asking was checked.",
+      "not_the_recorder": "You recorded or asked for this request, so another facilitator approves it."
     },
     "languages": {
       "en": "English",
@@ -4737,6 +4765,22 @@
         "what": "The record, its history and the sign-in are deleted, and the audit log copies blanked. Only the roll number, the date, your note and this request's reference stay. This cannot be undone. Take back any lent instrument first.",
         "button": "Erase everything"
       }
+    },
+    "approval": {
+      "title": "Approval by a second facilitator",
+      "what": "An erasure needs two facilitators: one checks who is asking and approves it here, another then carries it out.",
+      "checkLabel": "How was the person asking checked?",
+      "checks": {
+        "own_login": "Asked from their own signed-in app",
+        "id_seen": "ID seen at the desk (theirs, or the parent's for a child)",
+        "registered_email": "Came from the email address the class has for them",
+        "phone_callback": "Called back on the phone number the class has for them"
+      },
+      "button": "Approve the erasure",
+      "done": "Approved. Another facilitator can now carry out the erasure.",
+      "line": "Approved by {{name}} on {{date}} · {{check}}",
+      "youRecorded": "You recorded or asked for this request, so another facilitator approves it.",
+      "youApproved": "You approved this erasure, so another facilitator carries it out."
     },
     "confirmLabel": "Type {{expected}} to confirm",
     "confirmHintRoll": "The person's roll number, exactly.",

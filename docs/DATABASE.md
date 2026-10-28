@@ -2192,3 +2192,25 @@ receipt is the recording's id and `submitted_at`.
 
 No new job (16). Tests: section "0064 learn screens" in `supabase/tests/smoke-test.mjs` (32 checks) and
 `app/tests/learn-screens.test.mjs`.
+
+## Facilitator safeguards (0066)
+
+Sarvesh's Facilitator Module review (27-10-2026, §8 test matrix, P0 rows); [DECISIONS.md #710-#719](DECISIONS.md).
+
+| Object | What |
+|---|---|
+| `fund_entries_not_own_decision` (check) | An approved or declined entry was decided by someone other than its maker (FUND-01) |
+| `decide_fund_entry(entry, approve, note)` | Returns `{ status }`; the maker (`own_entry`) or a treasurer for a coordinator's entry (`not_approver`) gets `{ refused }`, and the try is an `audit_log` row with action `REFUSED` (Change log shows it) |
+| `data_requests.identity_check` | How the person asking for an erasure was checked: `own_login`, `id_seen`, `registered_email`, `phone_callback` (a code, never a document number) |
+| `data_requests.approved_by / approved_at` | The first of the two Gurus; `closed_by` is the second (`data_requests_approval_whole`: who, when and how together) |
+| `approve_data_erasure(id, identity)` | A Guru approves an open erasure (not the Guru who recorded it): `not_erasure`, `already_approved`, `identity_invalid`, `not_the_recorder` |
+| `act_on_data_request` | As 0059; an erasure needs the approval and another Guru: `second_approval_needed`, `approver_cannot_erase` |
+| `erase_student` / `erase_login` | No longer executable by `authenticated` (#713): only through `act_on_data_request`, the retention jobs or the SQL editor |
+| `import_all_or_none(rows, dry_run)` | Runs `import_students` in a step undone when a row is refused (good rows come back `held`) or always for a dry run (`ok` / `error` per row); roll numbers of an undone step are not used up |
+| `profiles_end_sessions` / `end_switched_off_sessions()` | A login switched off (`active` true → false) has its `auth.sessions` and `auth.refresh_tokens` deleted (AUTH-02) |
+| `client_error_name(name)` / `log_client_error` | The log keeps an error name only when it reads as an error class (`…Error`, `…Exception`, `NonError`), else `Error` (AUD-02) |
+
+Unchanged and already in place (evidence in NOTES_facilitator_p0.md): reversals (FUND-02, 0026), the mentees-first rule
+and forgotten phones on switch-off (0014, 0039), the level-up lock (`decide_promotion` locks the nomination and the
+student; one open nomination per student, 0017). No new job (16). Tests: section "0066 facilitator safeguards" in
+`supabase/tests/smoke-test.mjs` (40 checks) and `app/tests/facilitator-p0.test.mjs`.
