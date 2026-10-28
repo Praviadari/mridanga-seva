@@ -4850,6 +4850,225 @@
     "noBest": "लगातार सही का आपका सर्वश्रेष्ठ इसी फ़ोन पर रहता है।",
     "tooFew": "इस स्तर के लिए तीन से कम बोल हैं। फ़ैसिलिटेटर ताल जोड़ते हैं।"
   },
+  "playground": {
+    "title": "Rhythm Playground",
+    "entryDetail": "छोटे सुनने और ताल के खेल — अपनी गति से",
+    "intro": "आपके कान और ताल की समझ के लिए छोटे खेल। एक-दो राउंड खेलें, फिर अपने खोल पर अभ्यास करें।",
+    "testSounds": "TEST ध्वनियाँ",
+    "testSoundsHint": "ये ऐप की अभ्यास ध्वनियाँ हैं, अभी आपके फ़ैसिलिटेटर की रिकॉर्डिंग नहीं।",
+    "comingSoon": "जल्द आ रहा है",
+    "comingSoonSaid": "{{name}}, जल्द आ रहा है",
+    "group": {
+      "listening": "सुनना",
+      "rhythm": "ताल",
+      "voice": "स्वर",
+      "kirtan": "कीर्तन"
+    },
+    "surprise": "कुछ नया दिखाओ",
+    "surpriseDetail": "तीन खेलों का एक मिला-जुला राउंड",
+    "progressLink": "मेरी Playground प्रगति",
+    "progressDetail": "आपका सुनना कैसे बढ़ रहा है",
+    "game": {
+      "sound_detective": {
+        "name": "Sound Detective",
+        "detail": "Which bol did you hear?"
+      },
+      "missing_beat": {
+        "name": "Missing Beat",
+        "detail": "Find the bol that is missing"
+      },
+      "tempo_detective": {
+        "name": "Tempo Detective",
+        "detail": "Faster, slower or the same?"
+      },
+      "sound_explorer": {
+        "name": "Sound Explorer",
+        "detail": "Which instrument is playing?"
+      },
+      "tap_the_beat": {
+        "name": "Tap the Beat",
+        "detail": "Keep a steady beat on the pads"
+      },
+      "echo": {
+        "name": "Echo Challenge",
+        "detail": "Listen, then play it back"
+      },
+      "rhythm_builder": {
+        "name": "Rhythm Builder",
+        "detail": "Build the pattern you heard"
+      },
+      "tala_cycle": {
+        "name": "Tāla Cycle Master",
+        "detail": "Follow the cycle back to sam"
+      },
+      "rhythm_switching": {
+        "name": "Rhythm Switching",
+        "detail": "Keep the beat as the speed inside changes"
+      },
+      "voice_companion": {
+        "name": "Voice Companion",
+        "detail": "Hear a note and sing it gently"
+      },
+      "vocal_studio": {
+        "name": "Vocal Sādhana Studio",
+        "detail": "Pitch, steady notes and bol recitation"
+      },
+      "kirtan_companion": {
+        "name": "Kīrtan Companion",
+        "detail": "Find where the khol joins the kīrtan"
+      },
+      "kirtan_sync": {
+        "name": "Kīrtan Synchronization",
+        "detail": "Play along with a kīrtan"
+      },
+      "daily_quest": {
+        "name": "Daily Sādhana Quest",
+        "detail": "Short games on your Daily Mission"
+      }
+    },
+    "khol": "अब इसे अपने खोल पर बजाइए।",
+    "feedback": {
+      "right": "यही है!",
+      "again": "अभी नहीं — फिर से सुनिए।",
+      "shown": "यह {{answer}} था। एक बार और सुनिए।"
+    },
+    "round": {
+      "instructions": "कैसे खेलें",
+      "hearInstructions": "कैसे खेलें, दिखाइए",
+      "start": "राउंड शुरू करें",
+      "hearAgain": "फिर से सुनें",
+      "next": "अगला",
+      "finish": "देखें कैसा रहा",
+      "step": "चरण",
+      "stepChoice": "चरण {{n}}",
+      "review": "दोहराव",
+      "reviewSaid": "दोहराव: यह आप पहले देख चुके हैं",
+      "reviewPractice": "दोहराव अभ्यास — फ़ैसिलिटेटर के जोड़ने पर नए अभ्यास आएँगे।",
+      "itemOf": "{{total}} में से {{n}}",
+      "back": "Playground पर वापस",
+      "noContent": "आपके स्तर के लिए अभी अभ्यास नहीं हैं। आपके फ़ैसिलिटेटर इन्हें जोड़ते हैं।",
+      "notReady": "Playground अभी तैयार नहीं है। आपके फ़ैसिलिटेटर इसे चालू करते हैं।",
+      "loading": "खेल तैयार हो रहे हैं…",
+      "offline": "इंटरनेट नहीं: इस फ़ोन पर रखे खेलों से खेल रहे हैं। आपके राउंड बाद में भेजे जाएँगे।",
+      "waiting_one": "{{count}} राउंड भेजा जाना बाकी है।",
+      "waiting_other": "{{count}} राउंड भेजे जाने बाकी हैं।",
+      "soundFailed": "यहाँ कोई ध्वनि नहीं चल सकी। आवाज़ जाँचें, फिर \"फिर से सुनें\" दबाएँ।",
+      "warmUp": "फिर से स्वागत! वॉर्म-अप के लिए एक चरण नीचे से शुरू करते हैं।"
+    },
+    "summary": {
+      "title": "राउंड पूरा",
+      "recognised": "पहली कोशिश में आपने {{total}} में से {{correct}} पहचाने।",
+      "close": "{{a}} और {{b}} मिलते-जुलते लगे — इनका अभ्यास करें?",
+      "review_one": "{{count}} दोहराव था।",
+      "review_other": "{{count}} दोहराव थे।",
+      "again": "एक और राउंड खेलें",
+      "harder": "थोड़ा कठिन चरण आज़माएँ?",
+      "easier": "थोड़ा आसान कर दें?",
+      "goStep": "चरण {{n}} पर जाएँ",
+      "stay": "इसी चरण पर रहें",
+      "saved": "आपका राउंड रखा गया है।"
+    },
+    "sd": {
+      "instructions": "सुनिए। आपने कौन-सा बोल सुना? कार्ड दबाइए। जितनी बार चाहें फिर से सुन सकते हैं।",
+      "pick": "आपने कौन-सा सुना?",
+      "compare": "तुलना के लिए कोई भी कार्ड दबाकर सुनें।",
+      "rounds": "राउंड",
+      "freePlay": "खुला खेल",
+      "freePlayHint": "खुला खेल: आपके स्तर के तालों के बोल, राउंड नहीं रखे जाते।",
+      "hands": {
+        "right": "दायाँ हाथ",
+        "left": "बायाँ हाथ",
+        "both": "दोनों हाथ"
+      },
+      "cardSaid": "{{bols}}, {{hands}}",
+      "cardRight": "{{bols}}: यही",
+      "cardMine": "{{bols}}: आपका चुनाव",
+      "thisOne": "यही",
+      "yourPick": "आपका चुनाव"
+    },
+    "mb": {
+      "instructions": "पैटर्न सुनिए। एक बोल गायब है (एक शांत “?”)। कौन-सा?",
+      "pick": "कौन-सा बोल गायब है?",
+      "pickPlace": "स्थान {{n}} पर कौन-सा बोल गायब है?",
+      "gridHidden": "ध्यान से सुनिए: इस चरण में पैटर्न नहीं दिखाया जाता।",
+      "hearWhole": "पूरा पैटर्न सुनें",
+      "place": "स्थान {{n}}: {{bol}}",
+      "placeGap": "स्थान {{n}}: गायब"
+    },
+    "rb": {
+      "instructions": "सुनिए। बोलों को सुने हुए क्रम में रखिए: एक बोल दबाइए, फिर उसका स्थान दबाइए।",
+      "tiles": "बोल",
+      "places": "स्थान",
+      "chosen": "{{bol}} चुना: अब उसका स्थान दबाइए।",
+      "playMine": "मेरा सुनाओ",
+      "check": "जाँचें",
+      "placeSaid": "स्थान {{n}}: {{bol}}",
+      "placeEmpty": "स्थान {{n}}: खाली",
+      "placeRest": "स्थान {{n}}: विराम",
+      "tileSaid": "{{bol}}",
+      "tileUsed": "{{bol}}, रखा गया",
+      "hearPart": "स्थान {{n}} फिर से सुनें",
+      "again": "अभी नहीं — “सुनें” वाले स्थान अलग सुनाई देते हैं। उन्हें फिर से सुनिए।",
+      "marks": "विभाग चिह्न"
+    },
+    "td": {
+      "instructions": "दोनों सुनिए। क्या दूसरा तेज़ था, धीमा था, या वैसा ही?",
+      "hearBoth": "A, फिर B सुनें",
+      "hearA": "A सुनें",
+      "hearB": "B सुनें",
+      "faster": "तेज़",
+      "slower": "धीमा",
+      "same": "वैसा ही",
+      "picture": "हर बिंदु एक बीट है। पास-पास बिंदु = तेज़।",
+      "rowSaid": "{{name}}: प्रति मिनट {{bpm}} बीट"
+    },
+    "progress": {
+      "title": "मेरी Playground प्रगति",
+      "intro": "अब तक आपके खेल क्या दिखाते हैं। यह दूसरे विद्यार्थियों को नहीं दिखता।",
+      "recognition": "सुनकर पहचानना (खेल)",
+      "performance": "बजाना (टाइमिंग, और आपके फ़ैसिलिटेटर की जाँच)",
+      "khol": "आपके खोल वादन की जाँच आपके फ़ैसिलिटेटर कक्षा में करते हैं।",
+      "none": "अपनी प्रगति यहाँ देखने के लिए किसी खेल का एक राउंड खेलें।",
+      "correct": "पिछले हफ़्तों में {{total}} में से {{correct}} सही",
+      "rounds_one": "{{count}} राउंड मापा गया",
+      "rounds_other": "{{count}} राउंड मापे गए",
+      "trend": {
+        "more": "2 हफ़्ते पहले से ज़्यादा सही",
+        "same": "2 हफ़्ते पहले जैसा",
+        "fewer": "2 हफ़्ते पहले से कम — सुनते रहिए"
+      },
+      "last": "आख़िरी अभ्यास {{date}}",
+      "calibrated": "ट्यून किए फ़ोन पर टाइमिंग मापी गई",
+      "notCalibrated": "केवल अभ्यास: Tap the Beat में अपना फ़ोन ट्यून करें",
+      "practise": "इसका अभ्यास करें"
+    },
+    "label": {
+      "exploring": "खोज रहे हैं",
+      "practising": "अभ्यास कर रहे हैं",
+      "steady": "स्थिर",
+      "ready_for_review": "जाँच के लिए तैयार"
+    },
+    "skill": {
+      "listen_stroke": "सुनकर स्ट्रोक पहचानना",
+      "listen_phrase": "सुनकर छोटे वाक्यांश पहचानना",
+      "listen_tempo": "लय की गति का बदलाव सुनना",
+      "listen_instrument": "सुनकर वाद्य पहचानना",
+      "listen_kirtan": "कीर्तन के साथ चलना",
+      "rhythm_pulse": "स्थिर ताल रखना",
+      "rhythm_matra": "मात्राएँ गिनना",
+      "rhythm_cycle_sam": "आवर्तन में सम पहचानना",
+      "rhythm_guna": "गुण बदले, ताल स्थिर रहे",
+      "rhythm_sequence": "बोलों को क्रम में रखना",
+      "rhythm_recall": "पैटर्न याद रखना",
+      "vocal_pitch": "स्वर मिलाना",
+      "vocal_steady": "स्वर स्थिर रखना",
+      "vocal_bol_recite": "बोलों का पाठ",
+      "vocal_call_response": "पुकार और उत्तर",
+      "kirtan_entry": "कीर्तन में सही जगह जुड़ना",
+      "kirtan_keep": "कीर्तन की ताल रखना",
+      "kirtan_recover": "ताल फिर से पकड़ना"
+    }
+  },
   "echo": {
     "title": "मेरी गूँज",
     "tile": "सुनें, फिर वापस बजाएँ",

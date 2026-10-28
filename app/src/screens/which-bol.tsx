@@ -2,7 +2,8 @@
 // (or a phrase of 2-4 bols) and the student picks it from three cards, each with the hands that play it (the drawings
 // of #404); after the answer every card can be heard, to compare. The bols are those of the chosen level's taals
 // (lib/ear-quiz.ts); the student's own level is chosen first. A gentle "in a row" count and the best of it on this
-// phone; no time limit, no score for anyone else. Routes: student/which-bol.tsx, staff/which-bol.tsx.
+// phone; no time limit, no score for anyone else. Routes: staff/which-bol.tsx; for students it is Sound Detective's
+// Free play (student/which-bol.tsx, docs/DECISIONS.md #731), which keeps nothing either.
 
 import { Stack, useFocusEffect } from 'expo-router';
 import type { TFunction } from 'i18next';
@@ -42,8 +43,19 @@ import { radius, spacing, useTheme } from '@/theme/use-theme';
 const PHRASE_BPM = 84;
 const BOL_BPM = 60;
 
-/** The quiz. */
+/** The quiz on its own screen (the facilitators' route). */
 export function WhichBol() {
+  const { t } = useTranslation();
+  return (
+    <Screen underHeader>
+      <Stack.Screen options={{ title: t('whichBol.title') }} />
+      <WhichBolQuiz />
+    </Screen>
+  );
+}
+
+/** The quiz itself: Sound Detective's Free play (screens/playground/sound-detective.tsx) and the facilitators' screen. */
+export function WhichBolQuiz() {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const { profile } = useAuth();
@@ -134,8 +146,7 @@ export function WhichBol() {
   const right = question && picked !== null && picked === question.answer.key;
 
   return (
-    <Screen underHeader>
-      <Stack.Screen options={{ title: t('whichBol.title') }} />
+    <>
       <AppText tone="muted">{t('whichBol.intro')}</AppText>
 
       <ChoiceGroup<number>
@@ -192,7 +203,7 @@ export function WhichBol() {
           </AppText>
         </View>
       </Section>
-    </Screen>
+    </>
   );
 }
 
