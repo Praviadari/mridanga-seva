@@ -638,6 +638,7 @@ to `app/dist/`. Always use this command, not a bare `npx expo export`, because
 
 | Date | Site | Commit | Built (UTC) | By |
 |---|---|---|---|---|
+| 28-10-2026 | test (student tabs and cards at 200 %, event details, lesson Video/Audio/Notes, assessment statuses; 0064 on TEST; sw.js 30 files all load) | 50e7fd1 (main; entry-db9ad23c…; deployment 1122e435) | 2026-10-28T04:08:38Z | Claude (wrangler, Praveen's login) |
 | 27-10-2026 | test (parent page /parent, 0063 on TEST, notify-parents from the parent-view branch = same code; switch off) | e9b26ef (main; entry-59f76576…; deployment 73b2324e) | 2026-10-27T13:20:06Z | Claude (wrangler, Praveen's login) |
 | 27-10-2026 | test (web entry diet: first download 2,658 KB, student area 404 KB later, __common folded into area files) | de0baee (main; entry-25707c2f…; deployment 5c1ee880) | 2026-10-27T13:06:19Z | Claude (wrangler, Praveen's login) |
 | 27-10-2026 | test (sign-in polish: reset link keeps the new-password step, forgot-password copy, one-minute message; uptime workflow) | a79e6ae (main; entry-70cec0ea…; deployment e0ad1730) | 2026-10-27T11:17:28Z | Claude (wrangler, Praveen's login) |
