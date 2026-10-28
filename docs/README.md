@@ -16,6 +16,7 @@ maintainer can understand it without asking anyone.
 | [translation-review/](translation-review/te-hi-review.xlsx) | The sheet native speakers use to review the Telugu and Hindi drafts |
 | [I18N.md](I18N.md) | Every India-only or single-language assumption, what was fixed, and what waits for other countries |
 | [KHOL_RECORDINGS.md](KHOL_RECORDINGS.md) | What the Guru records so the practice tools play the class's own khol |
+| [RHYTHM_PLAYGROUND.md](RHYTHM_PLAYGROUND.md) | The Rhythm Playground design (14 practice games, the content engine, audio, privacy, build plan) for Prji's sign-off — a proposal, not built yet |
 | [DECISIONS.md](DECISIONS.md) | Why things are the way they are — every important decision, with its reason |
 | [GLOSSARY.md](GLOSSARY.md) | What a word means: mridanga terms (bol, taal, dayan) and app terms (visit, mentor, irregular) |
 | [OPERATIONS.md](OPERATIONS.md) | How to set up, run, back up and hand over the live system; publishing an update and the upload log |
