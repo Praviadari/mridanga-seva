@@ -17,6 +17,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { useAuth } from '@/auth/auth-provider';
 import type { TodayPractice } from '@/lib/today-practice';
+import { studentAreaReady } from '@/lib/web-areas';
 import type { QuestLineTo } from '@/screens/playground/daily-quest-load';
 import { cardLook, spacing, useTheme } from '@/theme/use-theme';
 
@@ -117,7 +118,9 @@ function useDailyQuest(): QuestLineTo[] | null {
     useCallback(() => {
       let live = true;
       if (profile?.role !== 'student') return undefined;
-      void import('@/screens/playground/daily-quest-load')
+      // On the web the quest's code needs the student screens' file first (#650).
+      void studentAreaReady()
+        .then(() => import('@/screens/playground/daily-quest-load'))
         .then((m) => m.loadDailyQuest(profileId))
         .then((next) => {
           if (live) setLines(next);
