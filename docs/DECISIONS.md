@@ -8307,3 +8307,11 @@ second (spec section 11).
 **Decision.** English only, keys kept: Updates (News), Śloka Study (Slokas), My Learning (My progress), Practice History
 (My practice log), Weekly Practice (Practice of the week), My Practice Goal (This week), My Details (About you), Privacy
 & Data (My data and rights). Telugu and Hindi wait for the native review (NOTES_student_nav.md lists them).
+
+## 680. The student home: the ring back under the Daily Mission — 28 Oct 2026
+
+**Decision.** The team (Sarvesh Prji) and Praveen 28-10-2026, after comparing both homes on the phone. Amends #674: under
+the band and a slimmer Daily Mission card (one row and a thin progress bar), the ring of #240 (My QR, Lessons,
+Assessments with its count, My Growth, Śloka Study, Events & polls and, while unfinished, My Details) takes the cards'
+place. The ring is sized to the room left above the tabs so the home never scrolls; the fact of the day stays only while
+the ring can still be 300 px with it. ShortcutTiles stays for the Practice tab's games.

@@ -1,9 +1,10 @@
-// S1 Student home, since 27-10-2026 (docs/DECISIONS.md #673, #674; Sarvesh Prji's student spec, section 2; amends
-// the ring of #240): the compact devotional band (components/home-header.tsx: name, motto, "Hare Krishna, name" and
-// the Updates bell with its count), then Today's Practice first (components/today-practice-card.tsx: what to
-// practise, guna, minutes, today's progress, one big Start / Continue), the Śloka Study shortcut across the row, and
-// the secondary cards: Lessons, Assessments (how many wait), My QR, Events (polls to vote), My Growth and, while it is
-// not finished, My Details. A fact of the day closes the page (#242). The level strip moved to the Learn tab.
+// S1 Student home, since 27-10-2026 (docs/DECISIONS.md #673, #674, #680; Sarvesh Prji's student spec, section 2):
+// the compact devotional band (components/home-header.tsx: the initials opening Me, name, motto, "Hare Krishna, name"
+// and the Updates bell with its count), then Today's Practice first, slim (components/today-practice-card.tsx: what
+// to practise, today's progress, Start / Continue), and under it the ring of #240 (components/module-ring.tsx): My
+// QR, Lessons, Assessments (how many wait), My Growth, Śloka Study, Events (polls to vote) and, while it is not
+// finished, My Details. The ring takes the room left above the tabs, so the home never scrolls (Praveen 28-10-2026);
+// a fact of the day closes the page (#242) while there is room for it. The level strip moved to the Learn tab.
 // Only notices stay above the cards: "A new version is ready" on the Android app (components/update-notice.tsx),
 // notifications off (components/push-notice.tsx, #305), could not load, and no student record.
 // Numbers: student_home() through src/data/home.ts; Today's Practice: data/today-practice.ts.
@@ -19,7 +20,7 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useWindowDimensions, View } from 'react-native';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import { BottomTabBarHeightContext } from 'expo-router/tabs';
 
 import { useAuth } from '@/auth/auth-provider';
@@ -55,12 +56,12 @@ import { markWelcomeSeen, welcomeDue, welcomeSeen } from '@/lib/welcome';
 /** The path and celebrations are read again at most this often on coming back to the home (pull to refresh: at once). */
 const PATH_EVERY_MS = 2 * 60_000;
 
-/** PREVIEW: the space under the bottom circle for its label, and the fact card's height until measured. */
+/** The space under the bottom circle for its label, and the fact card's height until measured. */
 const LABEL_BELOW = 36;
 const FACT_GUESS = 104;
-/** PREVIEW: the ring keeps the fact of the day only while it can still be this big with it. */
+/** The ring keeps the fact of the day only while it can still be this big with it. */
 const RING_WITH_FACT = 300;
-/** PREVIEW: never smaller than this (a very short window scrolls rather than squeeze the circles together). */
+/** Never smaller than this (a very short window scrolls rather than squeeze the circles together). */
 const RING_MIN = 260;
 
 /** Student home screen. */
@@ -200,7 +201,7 @@ export default function StudentHomeScreen() {
       : []),
   ];
 
-  // PREVIEW: the ring in reading order, families side by side (#368): blue, purple, teal, orange, green.
+  // The ring in reading order, families side by side (#368): blue, purple, teal, orange, green.
   const byKey = new Map([...sloka, ...shortcuts].map((s) => [s.key, s]));
   // The ring sized to the space between the card and the tabs, so the home never scrolls (Praveen 28-10-2026).
   // At least the bar's own 60 px (theme/use-theme.ts): it reads 49, the library's guess, until the bar is measured.
@@ -268,10 +269,12 @@ export default function StudentHomeScreen() {
               <TodayPracticeCard today={today} slim />
             </View>
           ) : null}
-          {/* PREVIEW 28-10-2026 (Praveen): the ring of #240 back under the Daily Mission, in place of the cards. */}
+          {/* The ring of #240 back under the Daily Mission, in place of the cards (#680). Unseen until it is
+              measured, so it does not show at full size first and then shrink. */}
           <View
             ref={ringBox}
-            onLayout={measureRing}>
+            onLayout={measureRing}
+            style={ringTop === null && styles.unmeasured}>
             <ModuleRing modules={ring} maxSize={ringMax} />
           </View>
           {withFact ? (
@@ -284,3 +287,9 @@ export default function StudentHomeScreen() {
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  unmeasured: {
+    opacity: 0,
+  },
+});
