@@ -5936,7 +5936,7 @@
       "exitHint": "Leave {{game}}. Your answers so far are kept.",
       "progress": "Challenge {{n}} of {{total}}",
       "testSounds": "TEST sounds",
-      "testSoundsHint": "These are the app's practice sounds, not your teacher's recordings yet.",
+      "testSoundsHint": "These are the app's practice sounds, not your facilitator's recordings yet.",
       "review": "Review",
       "reviewHint": "You met this one before. It comes back to help you remember.",
       "reviewPractice": "Review practice — new exercises come as your facilitator adds them."
