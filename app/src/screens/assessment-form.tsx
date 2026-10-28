@@ -37,6 +37,8 @@ import {
 } from '@/data/assessment-files';
 import {
   ASSESSMENT_KINDS,
+  PLAYGROUND_SEND_GAMES,
+  type PlaygroundSendGame,
   checkAssessmentForm,
   createAssessment,
   CRITERION_MAX,
@@ -239,6 +241,15 @@ function FormBody({ header, editing }: { header: ReactNode; editing: Editing | n
               label={t('assessments.compose.levelUpLabel')}
               checked={form.levelUp}
               onChange={(levelUp) => update({ levelUp })}
+            />
+            <ChoiceGroup<PlaygroundSendGame | 'none'>
+              label={t('assessments.compose.playgroundGame')}
+              choices={[
+                { value: 'none', label: t('assessments.compose.playgroundNone') },
+                ...PLAYGROUND_SEND_GAMES.map((game) => ({ value: game, label: t(`playground.game.${game}.name`) })),
+              ]}
+              value={form.playgroundGame ?? 'none'}
+              onChange={(game) => update({ playgroundGame: game === 'none' ? null : game })}
             />
           </>
         )}

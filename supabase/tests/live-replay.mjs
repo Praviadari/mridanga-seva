@@ -81,7 +81,9 @@ const GO_LIVE = ['0013', '0014', '0015', '0016', '0017', '0018', '0019', '0020',
   // No Guru in the Telugu and Hindi notice lines (#706).
   '0067',
   // A person's data summary includes the Rhythm Playground (#770).
-  '0068'];
+  '0068',
+  // Game recordings: at most 2 waiting for review, audio of at most 90 s (#766, #696).
+  '0069'];
 
 let failures = 0;
 let passes = 0;
