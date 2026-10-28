@@ -29,7 +29,8 @@ import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
 import { PrivacyNoticeCard } from '@/components/privacy-notice-card';
 import { PushNotice } from '@/components/push-notice';
-import { ShortcutTiles, type Shortcut } from '@/components/shortcut-tiles';
+import { ModuleRing } from '@/components/module-ring';
+import type { Shortcut } from '@/components/shortcut-tiles';
 import { TodayPracticeCard } from '@/components/today-practice-card';
 import { UpdateNotice } from '@/components/update-notice';
 import { WelcomeCard } from '@/components/welcome-card';
@@ -189,6 +190,10 @@ export default function StudentHomeScreen() {
       : []),
   ];
 
+  // PREVIEW: the ring in reading order, families side by side (#368): blue, purple, teal, orange, green.
+  const byKey = new Map([...sloka, ...shortcuts].map((s) => [s.key, s]));
+  const ring = ['qr', 'lessons', 'assessments', 'growth', 'ishtagoshti', 'events', 'about'].flatMap((k) => byKey.get(k) ?? []);
+
   return (
     <Screen wide compact header={<HomeHeader name={name} student />} onRefresh={() => load(true)}>
       <UpdateNotice />
@@ -230,8 +235,8 @@ export default function StudentHomeScreen() {
         <>
           {/* Shown while loading too: Start opens the practice tools, which load on their own. */}
           {home !== 'not_found' ? <TodayPracticeCard today={today} /> : null}
-          <ShortcutTiles shortcuts={sloka} wide />
-          <ShortcutTiles shortcuts={shortcuts} />
+          {/* PREVIEW 28-10-2026 (Praveen): the ring of #240 back under the Daily Mission, in place of the cards. */}
+          <ModuleRing modules={ring} />
           <FactCard />
         </>
       )}
