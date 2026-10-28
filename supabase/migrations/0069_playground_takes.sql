@@ -49,7 +49,9 @@ begin
     from assessment_assignments g join assessments a on a.id = g.assessment_id
    where g.id = new.assignment_id;
   if v_game is null then return new; end if;
-  if new.file is not null and (coalesce(new.file ->> 'kind', '') <> 'audio'
+  -- A browser take is the app's own "recording.webm", which the bucket stores as 'video' by its ending (#383): audio.
+  if new.file is not null and (not (coalesce(new.file ->> 'kind', '') = 'audio'
+         or (new.file ->> 'kind' = 'video' and btrim(coalesce(new.file ->> 'name', '')) ~* '^recording\.webm$'))
        or coalesce((new.file ->> 'size')::bigint, 0) > 2621440) then
     raise exception 'playground_take_too_long' using detail = 'A game recording is audio of at most 90 seconds (2.5 MB).';
   end if;

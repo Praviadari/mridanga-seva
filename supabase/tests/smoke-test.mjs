@@ -157,7 +157,7 @@ process.on('uncaughtException', (error) => {
 // D14-10: every check is counted, and the run fails when fewer (or more) checks ran than expected,
 // so a block skipped by a renamed migration or a commented-out section cannot pass unseen.
 // Adding or removing checks? Run the suite and set this to the new total it prints.
-const EXPECTED_CHECKS = 2449; // W4 rhythm rounds: +2; 0069 game recordings and the W5 TEST seed: +10; 0068 my data with the Playground: +4; 0065 Rhythm Playground engine: +67; 0067 facilitator wording: +5; 0066 facilitator safeguards: +40 (0059/0026/0025/0049 checks adjusted for #710/#713); 0064 learn screens: +32; 0063 parent page: +32; 0062 web push: +33; 0061 staff sign-in codes and the error log: +53; 0060 privacy notice 1.0: +35; 0059 data rights: +56; 0058 weekly parent email: +64; 0057 practice while waiting: +24; 0056 practice extras: +35; 0055 learn more links: +23; 0054 after-launch forms: +49; 0053 staff own record: +55; 0052 more practice: +56; 0051 child's sign-up at home: +80; 0050 staff dashboard: +15; 0049 launch clean-up: +30; 0048 withdrawn records and leaks: +50; 0047 form rules: +109; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
+const EXPECTED_CHECKS = 2450; // W4 rhythm rounds: +2; 0069 game recordings and the W5 TEST seed: +11; 0068 my data with the Playground: +4; 0065 Rhythm Playground engine: +67; 0067 facilitator wording: +5; 0066 facilitator safeguards: +40 (0059/0026/0025/0049 checks adjusted for #710/#713); 0064 learn screens: +32; 0063 parent page: +32; 0062 web push: +33; 0061 staff sign-in codes and the error log: +53; 0060 privacy notice 1.0: +35; 0059 data rights: +56; 0058 weekly parent email: +64; 0057 practice while waiting: +24; 0056 practice extras: +35; 0055 learn more links: +23; 0054 after-launch forms: +49; 0053 staff own record: +55; 0052 more practice: +56; 0051 child's sign-up at home: +80; 0050 staff dashboard: +15; 0049 launch clean-up: +30; 0048 withdrawn records and leaks: +50; 0047 form rules: +109; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
 let failures = 0;
 let passes = 0;
 
@@ -8833,15 +8833,18 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   // Earlier blocks' game takes of Arjun are taken as reviewed, so the count starts at 0.
   await asOwner(`update assessment_submissions s set reviewed_at = now() from assessment_assignments g, assessments a
     where g.id = s.assignment_id and a.id = g.assessment_id and g.student_id = '${arjunStudent}' and a.playground_game is not null and s.reviewed_at is null`);
-  const take69 = async (size) => {
-    const path = await filePath(arjun, 'm4a');
+  const take69 = async (size, ending = 'm4a', name = 'take.m4a', kind = 'audio') => {
+    const path = await filePath(arjun, ending);
     await aUpload(arjun, path, size);
-    return { path, name: 'take.m4a', kind: 'audio', size };
+    return { path, name, kind, size };
   };
   await refusesWith('0069 #696: a game recording over 2.5 MB (longer than 90 s) is refused', 'playground_take_too_long',
     async () => submit(arjun, a69[0], await take69(3000000)));
   const s1 = await submit(arjun, a69[0], await take69(1100000));
-  const s2 = await submit(arjun, a69[1], await take69(1400000));
+  await refusesWith('0069 #696: a video file is not a game recording', 'playground_take_too_long',
+    async () => submit(arjun, a69[1], await take69(900000, 'mp4', 'clip.mp4', 'video')));
+  // A browser take is the app's recording.webm, which the bucket stores as 'video' (#383): it counts as audio.
+  const s2 = await submit(arjun, a69[1], await take69(1400000, 'webm', 'recording.webm', 'video'));
   await refusesWith('0069 #696: a third game recording waiting for review is refused', 'playground_takes_full',
     async () => submit(arjun, a69[2], await take69(900000)));
   const sOrd = await submit(arjun, asgOrd69, await take69(3000000));
