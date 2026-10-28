@@ -8855,3 +8855,11 @@ by game rather than every round's items — the rounds are many and hold only ta
 ratings in full). Separate from 0065 because 0065 is already on TEST; 0068 goes to LIVE right after 0065, with the
 Playground release. Erasure already removes the rows (`on delete cascade` from `students`). Migration numbers: W5 takes
 0069 if it needs one (0070/0071 stay face).
+
+## 771. The student home: the ring back under the Daily Mission — 28 Oct 2026
+
+**Decision.** The team (Sarvesh Prji) and Praveen 28-10-2026, after comparing both homes on the phone. Amends #674: under
+the band and a slimmer Daily Mission card (one row and a thin progress bar), the ring of #240 (My QR, Lessons,
+Assessments with its count, My Growth, Śloka Study, Events & polls and, while unfinished, My Details) takes the cards'
+place. The ring is sized to the room left above the tabs so the home never scrolls; the fact of the day stays only while
+the ring can still be 300 px with it. ShortcutTiles stays for the Practice tab's games.
