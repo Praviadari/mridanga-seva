@@ -120,6 +120,61 @@ export function taalPattern(bols: readonly string[], laya: Laya = 1): Pattern {
   return { beats: bols.length, events, key: `taal:${bols.join(' ')}${laya > 1 ? `:x${laya}` : ''}` };
 }
 
+/** One section of a guna switch (#751): `cycles` cycles of the pattern at `guna` written beats a beat. */
+export type GunaSection = { guna: number; cycles: number };
+
+/** Where each section of a guna switch sits in the loop, beats. */
+export type GunaSectionPlace = GunaSection & { start: number; length: number };
+
+/**
+ * Rhythm Switching (#751): the sections one after the other in one loop, the pulse the same in all — a cycle is always
+ * `bols.length` beats, only the strokes inside a beat change (guna 1, 2, 3, 4 or 8; at guna g beat b holds written
+ * beats b·g … b·g + g − 1, as taalPattern's layakari). The beats are never written into the bols (§8.1).
+ */
+export function gunaSections(bols: readonly string[], sections: readonly GunaSection[]): { pattern: Pattern; places: GunaSectionPlace[] } {
+  const n = bols.length;
+  const written = readTaal(bols);
+  const events: PatternEvent[] = [];
+  const places: GunaSectionPlace[] = [];
+  let at = 0;
+  for (const s of sections) {
+    const guna = Math.max(1, Math.round(s.guna));
+    const cycles = Math.max(1, Math.round(s.cycles));
+    places.push({ guna, cycles, start: at, length: cycles * n });
+    for (let c = 0; c < cycles; c++) {
+      for (let beat = 0; beat < n; beat++) {
+        let part = 0;
+        for (let j = 0; j < guna; j++) {
+          const from = (beat * guna + j) % n;
+          const group = written[from];
+          const width = 1 / (guna * group.length);
+          group.forEach((bol, k) => {
+            const start = at + c * n + beat + j / guna + k * width;
+            for (const stroke of bol.strokes) events.push({ at: start + (stroke.delay ?? 0) * width, beat, part, sound: stroke.sound });
+            part++;
+          });
+        }
+      }
+    }
+    at += cycles * n;
+  }
+  events.sort((a, b) => a.at - b.at);
+  const key = `guna:${bols.join(' ')}:${sections.map((s) => `${s.guna}x${s.cycles}`).join(',')}`;
+  return { pattern: { beats: at, events, key }, places };
+}
+
+/** The section of a guna switch at loop beat `beat`, or null outside. */
+export function sectionAt(places: readonly GunaSectionPlace[], beat: number): GunaSectionPlace | null {
+  return places.find((p) => beat >= p.start && beat < p.start + p.length) ?? null;
+}
+
+/** Clicks on chosen beats (a quiet pulse under a pattern), as a layer-free event list, for a loop of `beats`. */
+export function pulseClicks(beats: number, every = 1): PatternEvent[] {
+  const events: PatternEvent[] = [];
+  for (let beat = 0; beat < beats; beat += every) events.push({ at: beat, beat, part: 0, sound: beat === 0 ? 'accent' : 'click' });
+  return events;
+}
+
 /**
  * The kartal layer (#492) under a taal: a ringing (open) kartal on the first beat of each vibhag, a short closed one on
  * every other beat; on the beats, also at dugun to chaugun. A plain time-keeping pattern until the Guru gives the

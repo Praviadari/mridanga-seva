@@ -5100,6 +5100,87 @@
       "picture": "Each dot is a beat. Dots closer together = faster.",
       "rowSaid": "{{name}}: {{bpm}} beats a minute"
     },
+    "rhythm": {
+      "view": "Play",
+      "rounds": "Rounds",
+      "freePlay": "Free play",
+      "practiceOnly": "Practice only: this phone is not tuned yet, so no timing is judged. Tune it once with \"Tune to this phone\".",
+      "tempo": "{{bpm}} beats a minute",
+      "startRun": "Start",
+      "silent": "Silent — keep going",
+      "tapped": "You tapped {{n}} of {{of}} beats.",
+      "tappedSam": "You tapped {{n}} of {{of}} sams.",
+      "lineSaid": "A line of your taps: dots above the line came early, below came late, rings were not tapped.",
+      "verdict": {
+        "steady": "Steady",
+        "rushed": "A little rushed",
+        "slow": "A little slow"
+      },
+      "skip": "Next one",
+      "tap": {
+        "instructions": "Tap the big circle on every click.",
+        "instructions2": "Then the clicks get quieter — keep going, the beat goes on.",
+        "pad": "Tap"
+      },
+      "echo": {
+        "instructions": "Listen. Then play it back in the same time.",
+        "onPads": "Answer on the pads: the left pad for the left hand (bāyā), the right pad for the right hand (dāyā).",
+        "onKhol": "Answer on your khol, then say if it sounded the same.",
+        "wait": "Wait…",
+        "sameOrder": "Same strokes, same order!",
+        "notSameOrder": "Not the same order yet — listen again",
+        "hands": "Call: {{call}}. You: {{you}}.",
+        "left": "left",
+        "right": "right",
+        "hearCall": "Hear the call again",
+        "sameQuestion": "Did it sound the same? Listen to both.",
+        "selfYes": "Yes, the same",
+        "selfUnsure": "Not sure"
+      },
+      "tala": {
+        "instructions": {
+          "restart": "Listen. The sound starts part-way through the cycle. Tap the place where it comes back to sam.",
+          "count": "Listen and count the beats from sam. How many times does the cycle come round?",
+          "sam": "One cycle plays, then it goes on in silence. Keep counting and tap the big circle on every sam — the silent ones too."
+        },
+        "instructionsCount": "Count from 1 at sam.",
+        "restartAsk": "Where did the cycle start again?",
+        "countAsk": "The cycle has {{n}} beats. How many cycles did you hear?",
+        "matra": "Beat {{n}}",
+        "cycles_one": "{{count}} cycle",
+        "cycles_other": "{{count}} cycles",
+        "cyclesAnswer_one": "{{count}} cycle = {{matras}} beats",
+        "cyclesAnswer_other": "{{count}} cycles = {{matras}} beats",
+        "samAsk_one": "Tap every sam. After each cycle, {{count}} cycle goes on in silence.",
+        "samAsk_other": "Tap every sam. After each cycle, {{count}} cycles go on in silence.",
+        "samPad": "Sam",
+        "placeAnswer": "Place {{n}}",
+        "placeSaid": "Place {{n}} {{bol}}"
+      },
+      "switch": {
+        "instructions": {
+          "name": "Listen to two parts. The beat stays the same; the strokes inside it change.",
+          "tap": "The beat stays the same. The strokes get faster inside it. Tap the beat — not the strokes."
+        },
+        "laya8": "Aṭhgun 8×",
+        "nameAsk": "How many strokes in each beat in the second part?",
+        "first": "First part",
+        "second": "Second part",
+        "order": "This time: {{order}}",
+        "pad": "Beat",
+        "sectionLine": "{{guna}}: {{how}}",
+        "nothing": "This exercise has no other guna for your level at this tempo yet."
+      },
+      "surprise": {
+        "intro": "Three short games, chosen for you. Play them in any order.",
+        "one": "One challenge",
+        "done": "Played",
+        "allDone": "All three played. Well done!",
+        "another": "Another surprise",
+        "offNow": "Surprise me is off.",
+        "switch": "Offer Surprise me"
+      }
+    },
     "progress": {
       "title": "My Playground progress",
       "intro": "What your games show so far. Nothing here is shared with other students.",
@@ -5313,7 +5394,14 @@
     "progress": "{{done}} of {{total}} minutes today",
     "start": "Start",
     "continue": "Continue",
-    "more": "Done for today. Practise more"
+    "more": "Done for today. Practise more",
+    "questTitle": "Today in the Playground",
+    "questListen": "Listen",
+    "questRhythm": "Rhythm",
+    "questLine": "{{group}} · {{name}} · {{minutes}} min",
+    "questSaid": "{{group}}: {{name}}, {{minutes}} minutes. Opens the game.",
+    "questDoneSaid": "{{group}}: {{name}}, played today.",
+    "questDone": "Done"
   },
   "learnTab": {
     "level": "My Level",

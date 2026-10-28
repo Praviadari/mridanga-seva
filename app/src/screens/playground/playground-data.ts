@@ -4,7 +4,7 @@
 // last 30 days, saved and on the phone, merged, so the repeat guard, review and labels work offline. A finished round
 // goes into the phone's queue first and is sent when online; a lost answer never saves it twice.
 
-import { fetchMyPlayState, loadPlaygroundPack, saveRound as queueRound, syncPlayground } from '@/data/playground';
+import { fetchMyPlayState, loadPlaygroundPack, saveRound as queueRound, setMySurprise, syncPlayground } from '@/data/playground';
 import { keepPlayState, keptPlayState } from '@/lib/playground-games/state-cache';
 import { mergeRounds, queuedRounds, recentRounds } from '@/lib/playground/round-queue';
 import type { PlayedRound, PlayPack, StudentPlayState } from '@/lib/playground/types';
@@ -47,4 +47,9 @@ export async function saveRound(profileId: string, round: PlayedRound): Promise<
   if (!profileId) return [round];
   await queueRound(profileId, round).catch(() => undefined);
   return recentRounds(profileId);
+}
+
+/** The student switches Surprise me on or off (the one Playground setting a student changes, #755); an error key or null. */
+export function setSurprise(on: boolean) {
+  return setMySurprise(on);
 }

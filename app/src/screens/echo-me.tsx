@@ -5,7 +5,14 @@
 // the best kept on this phone. With Record myself (components/record-myself.tsx) the drum answers are recorded with
 // the calls and heard back against them; the takes stay on the phone (#283). Routes: student/echo-me.tsx,
 // staff/echo-me.tsx.
+//
+// For students it is also Echo Challenge, a Rhythm Playground game (docs/RHYTHM_PLAYGROUND.md §7.3; #752): Rounds =
+// calls from the approved exercise bank (2-8 beats), each answered in a window exactly as long as the call (after one
+// silent cycle at the recall step), with or without soft clicks. Pad answers are graded on the order of the strokes
+// (which pad, in turn) and, on a tuned phone, their timing; answers on the khol are the student's own check ("Did it
+// sound the same?") and are not scored by the app. Free play is the call and response above.
 
+import type { TFunction } from 'i18next';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { Stack, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -25,15 +32,18 @@ import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { fetchTaals, type Taal, type TaalList } from '@/data/practice';
 import type { SoundId } from '@/lib/bols';
-import { echoPlace, echoPlan } from '@/lib/echo';
+import { echoCall, echoPlace, echoPlan, gradeEcho, inAnswer, type EchoGrade } from '@/lib/echo';
 import { applySoundChoice } from '@/lib/khol-samples';
 import type { RecordingSetting } from '@/lib/my-recordings';
-import { createPadSound } from '@/lib/pad-sound';
-import { createPracticePlayer } from '@/lib/practice-audio';
-import { countInClicks } from '@/lib/practice-pattern';
+import { createPadSound, type PadSound } from '@/lib/pad-sound';
+import { createPracticePlayer, type PracticePlayer } from '@/lib/practice-audio';
+import { countInClicks, taalPattern } from '@/lib/practice-pattern';
 import type { PadHand } from '@/lib/tap-grading';
 import { usePlayhead } from '@/lib/use-playhead';
 import { useTapGame } from '@/lib/use-tap-game';
+import { BeatRow, RhythmFrame, TapLine } from '@/screens/playground/rhythm-parts';
+import { useRhythmRound, type RhythmRound } from '@/screens/playground/use-rhythm-round';
+import { oncePattern, useTimedRun } from '@/screens/playground/use-timed-run';
 import { radius, spacing, useTheme } from '@/theme/use-theme';
 
 type AnswerOn = 'drum' | 'pads';
@@ -41,8 +51,167 @@ type AnswerOn = 'drum' | 'pads';
 /** The pad's sound for a tap near no stroke of the answer. */
 const PLAIN_TAP: Record<PadHand, SoundId> = { left: 'ga', right: 'ta' };
 
-/** Echo me. */
-export function EchoMe() {
+/** Echo me. `rounds`: the student's Echo Challenge, with Playground rounds and the free call and response. */
+export function EchoMe({ rounds = false }: { rounds?: boolean }) {
+  const { t } = useTranslation();
+  if (rounds) return <EchoGame />;
+  return (
+    <Screen underHeader wide>
+      <Stack.Screen options={{ title: t('echo.title') }} />
+      <EchoMePlay />
+    </Screen>
+  );
+}
+
+type Tab = 'rounds' | 'free';
+
+/** Echo Challenge: calls from the exercise bank, or the free call and response. */
+function EchoGame() {
+  const { t } = useTranslation();
+  const game = useRhythmRound('echo');
+  const [player] = useState(createPracticePlayer);
+  const [padSound] = useState(createPadSound);
+  useEffect(
+    () => () => {
+      player.dispose();
+      padSound.dispose();
+    },
+    [player, padSound],
+  );
+  useEffect(() => {
+    void applySoundChoice();
+  }, []);
+  const [view, setView] = useState<Tab>('rounds');
+  const [answerOn, setAnswerOn] = useState<AnswerOn>('pads');
+  const roundsOn = game.phase !== 'off' && game.phase !== 'empty';
+  const shown: Tab = roundsOn ? view : 'free';
+  const top =
+    roundsOn && game.phase !== 'playing' ? (
+      <>
+        <ChoiceGroup<Tab>
+          segmented
+          label={t('playground.rhythm.view')}
+          value={shown}
+          onChange={setView}
+          choices={[
+            { value: 'rounds', label: t('playground.rhythm.rounds') },
+            { value: 'free', label: t('playground.rhythm.freePlay') },
+          ]}
+        />
+        {shown === 'rounds' ? (
+          <ChoiceGroup<AnswerOn>
+            segmented
+            label={t('echo.answerOn')}
+            value={answerOn}
+            onChange={setAnswerOn}
+            choices={[
+              { value: 'pads', label: t('echo.onPads') },
+              { value: 'drum', label: t('echo.onDrum') },
+            ]}
+          />
+        ) : null}
+      </>
+    ) : null;
+  return (
+    <RhythmFrame
+      game={game}
+      title={t('playground.game.echo.name')}
+      instructions={[t('playground.rhythm.echo.instructions'), t(answerOn === 'pads' ? 'playground.rhythm.echo.onPads' : 'playground.rhythm.echo.onKhol')]}
+      icon="loop"
+      top={top}
+      onExit={() => player.stop()}
+      replace={shown === 'free' ? <EchoMePlay /> : undefined}
+    >
+      {game.challenge ? (
+        <EchoCallChallenge key={`${game.round?.recipe.seed}:${game.at}`} game={game} player={player} padSound={padSound} answerOn={answerOn} />
+      ) : null}
+    </RhythmFrame>
+  );
+}
+
+/** One call: Start, listen, answer in the window of the same length, then how it went. */
+function EchoCallChallenge({ game, player, padSound, answerOn }: { game: RhythmRound; player: PracticePlayer; padSound: PadSound; answerOn: AnswerOn }) {
+  const { t } = useTranslation();
+  const { colors } = useTheme();
+  const beats = useMemo(() => game.challenge?.prompt.beats ?? [], [game.challenge]);
+  const bpm = game.challenge?.prompt.bpm ?? 60;
+  const clicks = game.stepParams.clicks !== false;
+  const delay = typeof game.stepParams.delay === 'number' ? game.stepParams.delay : game.stepParams.delay === true ? 1 : 0;
+  const call = useMemo(() => echoCall(beats, clicks, delay), [beats, clicks, delay]);
+  const timed = useTimedRun(player);
+  const [grade, setGrade] = useState<EchoGrade | null>(null);
+  const [heard, setHeard] = useState(false);
+
+  const start = async () => {
+    if (!call) return;
+    setGrade(null);
+    if (answerOn === 'pads') await padSound.prepare([...new Set([...call.answers.map((h) => h.sound), ...Object.values(PLAIN_TAP)])]);
+    void timed.run(oncePattern(call.pattern), bpm, countInClicks('metronome', Math.min(4, beats.length), []), (taps) => {
+      setHeard(true);
+      if (answerOn !== 'pads') return;
+      const g = gradeEcho(call, taps, bpm);
+      setGrade(g);
+      game.ran({ given: g.given || '-', ok: g.orderOk, errorsMs: g.errorsMs.filter((e): e is number => e !== null) });
+    });
+  };
+  const hearCall = () => void player.playOnce(taalPattern([...beats]), bpm);
+  const tapPad = (hand: PadHand) => {
+    padSound.play(PLAIN_TAP[hand]);
+    timed.tap(hand);
+  };
+
+  const beat = timed.beat;
+  const place = beat === null || !call ? null : beat < call.length ? 'call' : inAnswer(call, beat) ? 'answer' : 'wait';
+  const cells = beats.map((b) => (b === '-' ? '–' : b.replace(/\./g, ' ')));
+  return (
+    <>
+      <AppText tone="muted">{t('playground.rhythm.tempo', { bpm })}</AppText>
+      {timed.failed ? <Notice tone="error">{t('playground.round.soundFailed')}</Notice> : null}
+      {!game.done && !(heard && answerOn === 'drum') ? (
+        <Button size="large" icon={timed.running ? 'pause' : 'play'} label={t(timed.running ? 'practice.stop' : 'playground.rhythm.startRun')} onPress={timed.running ? timed.stop : () => void start()} />
+      ) : null}
+      {timed.running ? (
+        <View
+          style={[styles.now, { backgroundColor: place === 'answer' ? colors.primarySoft : colors.surfaceSunken, borderColor: place === 'answer' ? colors.accent : colors.cardBorder }]}
+          accessible
+          accessibilityLiveRegion="polite"
+        >
+          <AppText variant="title" style={styles.centre}>
+            {place === null ? t('practice.countingIn') : place === 'call' ? t('echo.listen') : place === 'answer' ? t('echo.yourTurn') : t('playground.rhythm.echo.wait')}
+          </AppText>
+        </View>
+      ) : null}
+      <BeatRow cells={place === 'answer' || place === 'wait' ? cells.map(() => '•') : cells} current={place === 'call' && beat !== null ? beat : place === 'answer' && beat !== null && call ? beat - call.answerStart : null} />
+      {answerOn === 'pads' && !game.done ? <TapPads onTap={tapPad} guide={{ left: null, right: null }} fresh={false} feedback={{ left: null, right: null }} /> : null}
+      {grade ? (
+        <View style={styles.result} accessible accessibilityLiveRegion="polite">
+          <AppText variant="title">{t(grade.orderOk ? 'playground.rhythm.echo.sameOrder' : 'playground.rhythm.echo.notSameOrder')}</AppText>
+          <AppText>{t('playground.rhythm.echo.hands', { call: handsText(grade.expected, t), you: grade.given ? handsText(grade.given, t) : '—' })}</AppText>
+          {game.tuned ? <TapLine errorsMs={grade.errorsMs} /> : <AppText variant="small" tone="muted">{t('playground.rhythm.practiceOnly')}</AppText>}
+          <Button variant="secondary" icon="listen" label={t('playground.rhythm.echo.hearCall')} onPress={hearCall} />
+        </View>
+      ) : null}
+      {heard && answerOn === 'drum' && !game.done ? (
+        <View style={styles.result}>
+          <AppText variant="subtitle">{t('playground.rhythm.echo.sameQuestion')}</AppText>
+          <Button variant="secondary" icon="listen" label={t('playground.rhythm.echo.hearCall')} onPress={hearCall} />
+          <Button icon="tick" label={t('playground.rhythm.echo.selfYes')} onPress={() => game.ran({ given: 'self:yes', ok: null })} />
+          <Button variant="secondary" label={t('playground.rhythm.echo.selfUnsure')} onPress={() => game.ran({ given: 'self:unsure', ok: null })} />
+        </View>
+      ) : null}
+    </>
+  );
+}
+
+/** "R L R" in words for the screen ("right right left"). */
+function handsText(hands: string, t: TFunction): string {
+  return hands
+    .split(' ')
+    .map((h) => (h === 'L' ? t('playground.rhythm.echo.left') : t('playground.rhythm.echo.right')))
+    .join(' · ');
+}
+/** The free call and response (Free play for students; the whole screen for facilitators). */
+function EchoMePlay() {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const { profile } = useAuth();
@@ -163,8 +332,7 @@ export function EchoMe() {
   };
 
   return (
-    <Screen underHeader wide>
-      <Stack.Screen options={{ title: t('echo.title') }} />
+    <>
       <AppText tone="muted">{t('echo.intro')}</AppText>
 
       {soundFailed ? (
@@ -218,7 +386,7 @@ export function EchoMe() {
         </AppText>
       </View>
       <RecordMyself kind="echo" setting={recordSetting} startSound={() => (plan ? startPlan(plan, bpm, 0) : Promise.resolve(false))} startSoundOf={startSoundOf} stopSound={stopSound} />
-    </Screen>
+    </>
   );
 }
 
@@ -308,6 +476,10 @@ const styles = StyleSheet.create({
     borderRadius: radius,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  result: {
+    gap: spacing.sm,
+    alignItems: 'center',
   },
   recordNote: {
     borderTopWidth: 1,

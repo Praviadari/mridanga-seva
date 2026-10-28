@@ -35,7 +35,8 @@ export function PlaygroundHome() {
       <ListRow
         leading="play"
         title={t('playground.surprise')}
-        details={[t('playground.surpriseDetail'), t('playground.comingSoon')]}
+        details={[t('playground.surpriseDetail')]}
+        onPress={() => router.push('/student/playground/surprise')}
       />
       {PLAYGROUND_GROUPS.map(({ group, games }) => (
         <Section key={group} title={t(`playground.group.${group}`)}>

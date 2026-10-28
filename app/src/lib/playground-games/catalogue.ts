@@ -16,7 +16,9 @@ export type GameRoute =
   | '/student/playground/tempo-detective'
   | '/student/playground/rhythm-builder'
   | '/student/tap-pad'
-  | '/student/echo-me';
+  | '/student/echo-me'
+  | '/student/playground/tala-cycle'
+  | '/student/playground/rhythm-switching';
 
 /** A game on the home: its icon (components/icon.tsx) and its address, or null while it is coming. */
 export type GameTile = { game: GameId; icon: 'listen' | 'search' | 'time' | 'instruments' | 'tap' | 'loop' | 'taal' | 'refresh' | 'level' | 'record' | 'performer' | 'drum' | 'events'; route: GameRoute | null };
@@ -38,8 +40,8 @@ export const PLAYGROUND_GROUPS: readonly { group: PlayGroup; games: readonly Gam
       { game: 'tap_the_beat', icon: 'tap', route: '/student/tap-pad' },
       { game: 'echo', icon: 'loop', route: '/student/echo-me' },
       { game: 'rhythm_builder', icon: 'taal', route: '/student/playground/rhythm-builder' },
-      { game: 'tala_cycle', icon: 'refresh', route: null },
-      { game: 'rhythm_switching', icon: 'level', route: null },
+      { game: 'tala_cycle', icon: 'refresh', route: '/student/playground/tala-cycle' },
+      { game: 'rhythm_switching', icon: 'level', route: '/student/playground/rhythm-switching' },
     ],
   },
   {
@@ -121,6 +123,14 @@ export function gameForSkill(skill: SkillId): GameTile | null {
         ? 'tempo_detective'
         : skill === 'rhythm.sequence'
           ? 'rhythm_builder'
-          : null;
+          : skill === 'rhythm.pulse' || skill === 'rhythm.matra'
+            ? 'tap_the_beat'
+            : skill === 'rhythm.recall'
+              ? 'echo'
+              : skill === 'rhythm.cycle_sam'
+                ? 'tala_cycle'
+                : skill === 'rhythm.guna'
+                  ? 'rhythm_switching'
+                  : null;
   return allTiles().find((t) => t.game === game && t.route) ?? null;
 }

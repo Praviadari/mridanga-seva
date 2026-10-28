@@ -342,7 +342,7 @@ test('home: 13 games in four groups (the Daily Quest is the Daily Mission card);
   assert.equal(tiles.length, 13);
   assert.deepEqual(cat.PLAYGROUND_GROUPS.map((g) => g.group), ['listening', 'rhythm', 'voice', 'kirtan']);
   const built = tiles.filter((t) => t.route).map((t) => t.game).sort();
-  assert.deepEqual(built, ['echo', 'missing_beat', 'rhythm_builder', 'sound_detective', 'tap_the_beat', 'tempo_detective']);
+  assert.deepEqual(built, ['echo', 'missing_beat', 'rhythm_builder', 'rhythm_switching', 'sound_detective', 'tala_cycle', 'tap_the_beat', 'tempo_detective']);
   const routes = tiles.filter((t) => t.route).map((t) => t.route);
   assert.equal(new Set(routes).size, routes.length);
   // Old addresses kept: Sound Detective is "Which bol?"'s, Tap the Beat the tap pad's, Echo Challenge Echo me's.
