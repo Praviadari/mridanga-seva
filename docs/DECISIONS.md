@@ -8671,6 +8671,10 @@ the SQL editor only. Students read approved, published, non-placeholder rows dir
 `playground_pack` (which honours the TEST setting). A change reaches phones with the next publish (the pack is cached
 by version). Deleting: only a draft never published, by the Guru or its author.
 
+**Prji, 28 Oct 2026 (relayed by Praveen; design D1):** the design is approved as a **preliminary version** — build it,
+Prji tries it on TEST, then it is refined. Hence rules and thresholds stay data, not code: label numbers in the setting
+`playground_labels`, steps and round length in `play_templates`, tempo ranges and guna on each exercise.
+
 ## 721. Rounds: one row each, saved by `record_round`, idempotent by the phone's id — 28 Oct 2026
 
 **Decision.** A round is made on the phone with a seed (`hash32(student|game|day|round of the day)`, mulberry32) and
@@ -8688,6 +8692,12 @@ joined with `.`, as `guard_taal`; answers and distractors are the same beats joi
 spelling is the dictionary's `written`, used for display only. Two answers sound the same when every bol matches the
 other's or is in its `sounds_like` list (either way round, not transitive), the same rule in `lib/playground/notation.ts`
 and the database's `play_same_answer`.
+
+**Prji, 28 Oct 2026 (design D2):** the first dictionary is the four bīja strokes of the seed mantra **te | re | khe | ta**
+("khe" is the spelling). The TEST seed approves only these four (still `placeholder = true` until his recordings exist)
+and writes every exercise with them; tin, kha, ge/gi, dhi and the other bols stay out of the first pack. A TEST project
+seeded earlier with 14 bols gets the others and their exercises retired (TEST pack version 2, 28-10-2026). With four
+bols Sound Detective has four items, so its rounds show "Review practice" (#724) until more bols are approved.
 
 ## 723. The curriculum guard and the checks, on the phone and again on the server — 28 Oct 2026
 
@@ -8834,3 +8844,14 @@ change for it: in the app te and re are dayan strokes (re sounds as ra), khe is 
 the four mappings Prji still confirms, §16.2 D2) and tā is dayan, so all four play; with only four items a round shows
 "Review practice", and Rhythm Builder adds no extra tile when no fifth bol exists (tested in
 app/tests/listening-games.test.mjs).
+
+## 770. My data lists the Playground (0068) — 28 Oct 2026
+
+**Context.** W1's 0065 added student data (game settings, rounds, weekly skill summaries, ratings) that the person's
+data summary (0059, #550) did not show: a gap in the right to know what the class holds (DPDP Act s.11), flagged by W1.
+
+**Decision.** A separate migration 0068 replaces `my_data_summary` with a `playground` part (counts and dates of rounds
+by game rather than every round's items — the rounds are many and hold only taps and answers; weekly summaries and
+ratings in full). Separate from 0065 because 0065 is already on TEST; 0068 goes to LIVE right after 0065, with the
+Playground release. Erasure already removes the rows (`on delete cascade` from `students`). Migration numbers: W5 takes
+0069 if it needs one (0070/0071 stay face).

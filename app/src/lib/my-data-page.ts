@@ -151,6 +151,15 @@ export function summarySections(t: TFunction, s: MyDataSummary, fmt: DateFormat,
   if (s.assessments !== undefined) activity.push({ label: t('dataRights.fields.assessments'), value: String(s.assessments) });
   if (s.events !== undefined) activity.push({ label: t('dataRights.fields.events'), value: String(s.events) });
   if (s.loans) activity.push({ label: t('dataRights.fields.loans'), value: String(s.loans.length) });
+  if (s.playground) {
+    const pg = s.playground;
+    activity.push({
+      label: t('dataRights.fields.playground'),
+      value: pg.rounds.count || pg.weeks.length || pg.ratings.length
+        ? t('dataRights.playgroundLine', { count: pg.rounds.count, last: pg.rounds.last ? day(pg.rounds.last) : '-', weeks: pg.weeks.length, ratings: pg.ratings.length })
+        : '0',
+    });
+  }
   activity.push(
     { label: t('dataRights.fields.devices'), value: String(s.devices) },
     { label: t('dataRights.fields.notices'), value: String(s.notices) },

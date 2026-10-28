@@ -2236,8 +2236,10 @@ Job `mridanga-playground` 21:30 UTC = 03:00 IST: `playground_daily()` folds roun
 retention job remove Playground data with the record.
 
 **TEST seed** `supabase/seed/playground_test.sql` (never LIVE; it refuses a project without seed.sql's example
-students): switches placeholders and the Playground on, adds 14 placeholder bols, 4 templates and 38 exercises (Sound
-Detective, Missing Beat, Rhythm Builder, Tempo Detective) and publishes them. Applied to TEST on 28-10-2026 (version 1).
+students): switches placeholders and the Playground on, adds Prji's first set of 4 placeholder bols **te | re | khe |
+ta** (#722), 4 templates and 30 exercises written only with them (Sound Detective, Missing Beat, Rhythm Builder, Tempo
+Detective), retires any other placeholder bols and their exercises, and publishes when something changed. Safe to run
+twice. On TEST 28-10-2026: version 1 (an earlier 14-bol set), then version 2 (the four).
 
 Tests: section "0065 Rhythm Playground engine" in `supabase/tests/smoke-test.mjs` (67 checks) and
 `app/tests/playground-engine.test.mjs` (the engine, DYN-01..08).
@@ -2272,3 +2274,11 @@ same lines except four Telugu and Hindi ones: the facilitator is ఫెసిల
 गुरुजी. English, the privileges (internal: no execute for logins) and every stored row are unchanged; notices already
 queued keep their text. The role's value stays `guru` everywhere. Smoke test: 5 checks (no te/hi line says Guru, the
 new words, English as before, still internal, runs twice).
+
+## My data with the Playground (0068)
+
+`my_data_summary` (0059) replaced with the same body plus `playground` for a person with a student record:
+`settings` (the row of `play_student_settings` without keys), `rounds` (`count`, `first`, `last`, `games` = rounds per
+game; raw rounds are kept 180 days, 0065), `weeks` (the weekly skill summaries: week, skill, rounds, opportunities,
+correct), `ratings` (skill, 0-3, note, date). The My data page and its copy show it under Activity
+([DECISIONS.md #770](DECISIONS.md)). Needs 0065. Smoke test: section "0068 my data with the Playground" (4 checks).

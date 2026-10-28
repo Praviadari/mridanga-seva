@@ -72,13 +72,16 @@ const GO_LIVE = ['0013', '0014', '0015', '0016', '0017', '0018', '0019', '0020',
   '0063',
   // Event details, lesson audio and notes, Under review on a recording (#680-#689).
   '0064',
-  // The Rhythm Playground engine: content, publishing, rounds, retention (#720-#729).
+  // The Rhythm Playground engine: content, publishing, rounds, retention (#720-#729). LIVE may run 0066/0067 first
+  // (GO_LIVE M0066 row says what part A shows until 0065 runs).
   '0065',
   // The facilitator's P0 safeguards: no self-approval in the fund, erasure by two Gurus, import all or none and a dry
   // run, sessions ended on switch-off, error names without data (#710-#719).
   '0066',
   // No Guru in the Telugu and Hindi notice lines (#706).
-  '0067'];
+  '0067',
+  // A person's data summary includes the Rhythm Playground (#770).
+  '0068'];
 
 let failures = 0;
 let passes = 0;

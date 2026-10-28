@@ -4638,6 +4638,7 @@
       "assessments": "मूल्यांकन",
       "events": "शामिल हुए कार्यक्रम",
       "loans": "दिए गए वाद्य",
+      "playground": "प्लेग्राउंड खेल",
       "devices": "सूचनाओं वाले फ़ोन और ब्राउज़र",
       "notices": "इनबॉक्स की सूचनाएँ",
       "replies": "आपके उत्तर",
@@ -4665,6 +4666,7 @@
     "consentRevoked": "{{date}} को वापस ली",
     "visitsLine": "{{count}}, पहली {{first}}, अंतिम {{last}}",
     "callsLine": "{{count}}, अंतिम {{last}}",
+    "playgroundLine": "{{count}} राउंड, अंतिम {{last}} · {{weeks}} साप्ताहिक सारांश · {{ratings}} रेटिंग",
     "yes": "हाँ",
     "no": "नहीं",
     "processors": {

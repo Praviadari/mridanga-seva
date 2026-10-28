@@ -157,7 +157,7 @@ process.on('uncaughtException', (error) => {
 // D14-10: every check is counted, and the run fails when fewer (or more) checks ran than expected,
 // so a block skipped by a renamed migration or a commented-out section cannot pass unseen.
 // Adding or removing checks? Run the suite and set this to the new total it prints.
-const EXPECTED_CHECKS = 2433; // 0067 facilitator wording: +5; 0066 facilitator safeguards: +40 (0059/0026/0025/0049 checks adjusted for #710/#713); 0065 Rhythm Playground engine: +67; 0064 learn screens: +32; 0063 parent page: +32; 0062 web push: +33; 0061 staff sign-in codes and the error log: +53; 0060 privacy notice 1.0: +35; 0059 data rights: +56; 0058 weekly parent email: +64; 0057 practice while waiting: +24; 0056 practice extras: +35; 0055 learn more links: +23; 0054 after-launch forms: +49; 0053 staff own record: +55; 0052 more practice: +56; 0051 child's sign-up at home: +80; 0050 staff dashboard: +15; 0049 launch clean-up: +30; 0048 withdrawn records and leaks: +50; 0047 form rules: +109; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
+const EXPECTED_CHECKS = 2437; // 0068 my data with the Playground: +4; 0065 Rhythm Playground engine: +67; 0067 facilitator wording: +5; 0066 facilitator safeguards: +40 (0059/0026/0025/0049 checks adjusted for #710/#713); 0064 learn screens: +32; 0063 parent page: +32; 0062 web push: +33; 0061 staff sign-in codes and the error log: +53; 0060 privacy notice 1.0: +35; 0059 data rights: +56; 0058 weekly parent email: +64; 0057 practice while waiting: +24; 0056 practice extras: +35; 0055 learn more links: +23; 0054 after-launch forms: +49; 0053 staff own record: +55; 0052 more practice: +56; 0051 child's sign-up at home: +80; 0050 staff dashboard: +15; 0049 launch clean-up: +30; 0048 withdrawn records and leaks: +50; 0047 form rules: +109; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
 let failures = 0;
 let passes = 0;
 
@@ -8381,26 +8381,27 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   // The TEST seed (§19.3): refuses LIVE, publishes placeholders on TEST, and a second run adds nothing.
   await db.exec(seed65);
   const p2 = await pack(arjun);
-  check('0065 §19.3: the TEST seed switches placeholders on and publishes 14 bols, 4 templates, 38 exercises',
+  check('0065 §19.3: the TEST seed switches placeholders on and publishes Prji\'s first set te re khe ta: 4 bols, 4 templates, 30 exercises',
     (await setting('playground_allow_placeholders')) === true && (await setting('playground_enabled')) === true && p2.placeholders === true
-    && p2.version === 3 && p2.exercises.filter((e) => e.placeholder).length === 38 && p2.templates.length === 5
-    && p2.bols.filter((b) => b.placeholder).length === 14, `v${p2.version} ${p2.exercises.length} ${p2.templates.length} ${p2.bols.length}`);
+    && p2.version === 3 && p2.exercises.filter((e) => e.placeholder).length === 30 && p2.templates.length === 5
+    && p2.bols.filter((b) => b.placeholder).map((b) => b.id).sort().join() === 'khe,re,ta,te', `v${p2.version} ${p2.exercises.length} ${p2.templates.length} ${p2.bols.length}`);
   await db.exec(seed65);
   check('0065 §19.3: ... a second run adds and publishes nothing', (await one('select max(version) as v from play_publications')).v === 3
-    && (await one('select count(*)::int as n from play_exercises where placeholder')).n === 38);
+    && (await one('select count(*)::int as n from play_exercises where placeholder')).n === 30);
   check('0065 §19.3: the seed refuses a project without seed.sql\'s example students (LIVE)', seed65.includes(`'arjun.rao@example.com'`)
     && seed65.indexOf('playground_test.sql refused') < seed65.indexOf('begin;'));
 
   // Rounds (#721): the server re-marks every recognition answer; idempotent; content and limits checked.
   const exId = async (game, seq) => (await one(`select id from play_exercises where game = '${game}' and placeholder and sequence = '${seq}'`)).id;
-  const [ta, na, ka] = [await exId('sound_detective', '{ta}'), await exId('sound_detective', '{na}'), await exId('sound_detective', '{ka}')];
+  const [ta, te, khe] = [await exId('sound_detective', '{ta}'), await exId('sound_detective', '{te}'), await exId('sound_detective', '{khe}')];
+  await bol(guru, 'khee', 'approved', { soundsLike: ['khe'] }); // a sounds-alike spelling, approved in the dictionary
   const round = (items, extra = {}) => ({ id: extra.id ?? randomUUID(), game: extra.game ?? 'sound_detective', skill: extra.skill ?? 'listen.stroke',
     mode: 'play', step: 2, seed: 12345, content_version: 3, started_at: extra.started ?? new Date(Date.now() - 120000).toISOString(),
     finished_at: new Date().toISOString(), device: 'web', items, ...(extra.timing ? { timing: extra.timing } : {}) });
   const record = (who, r) => asApp('authenticated', who, 'select record_round($1) as r', [r]).then((x) => x[0].r);
-  const r1 = round([{ e: ta, a: 'ta', ok: false, rp: 1, ms: 2100 }, { e: na, a: 'ta', ok: true }, { e: ka, a: 'ke', ok: false }]);
+  const r1 = round([{ e: ta, a: 'ta', ok: false, rp: 1, ms: 2100 }, { e: te, a: 'ta', ok: true }, { e: khe, a: 'khee', ok: false }]);
   const saved1 = await record(arjun, r1);
-  check('0065 #721 #723: a changed "ok" does not count: the server marks ta right, na wrong, ka = ke (sounds alike) right',
+  check('0065 #721 #723: a changed "ok" does not count: the server marks ta right, te answered ta wrong, khe = khee (sounds alike) right',
     saved1.result === 'saved' && saved1.n_correct === 2 && saved1.items.map((i) => i.ok).join() === 'true,false,true'
     && saved1.items[0].r === 1 && saved1.items[0].rp === 1, JSON.stringify(saved1));
   const again = await record(arjun, r1);
@@ -8415,12 +8416,12 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   await refusesWith('0065 #721: a round started more than 14 days ago', 'round_invalid', () =>
     record(arjun, round([{ e: ta, a: 'ta' }], { started: new Date(Date.now() - 15 * 86400000).toISOString() })));
   await refusesWith('0065 #721: an unknown skill', 'round_invalid', () => record(arjun, round([{ e: ta, a: 'ta' }], { skill: 'listen.everything' })));
-  const mb = await exId('missing_beat', '{te,re,ka,ta}');
-  const mbRound = await record(arjun, round([{ e: mb, a: 'ka', q: { gap: [2] } }, { e: mb, a: 'ra', q: { gap: [1] } }, { e: mb, a: 'ta', q: { gap: [9] } }],
+  const mb = await exId('missing_beat', '{te,re,khe,ta}');
+  const mbRound = await record(arjun, round([{ e: mb, a: 'khee', q: { gap: [2] } }, { e: mb, a: 'ta', q: { gap: [1] } }, { e: mb, a: 'ta', q: { gap: [9] } }],
     { game: 'missing_beat', skill: 'listen.phrase' }));
-  check('0065 #723: Missing Beat: the gap\'s bol is the answer (re = ra sounds alike); a gap outside the beats is never right',
-    mbRound.items.map((i) => i.ok).join() === 'true,true,false', JSON.stringify(mbRound.items));
-  const td = await exId('tempo_detective', '{ta,na,ta,na}');
+  check('0065 #723: Missing Beat: the gap\'s bol is the answer (khe = khee sounds alike; re is not ta); a gap outside the beats is never right',
+    mbRound.items.map((i) => i.ok).join() === 'true,false,false', JSON.stringify(mbRound.items));
+  const td = await exId('tempo_detective', '{te,re,khe,ta}');
   const tdRound = await record(arjun, round([{ e: td, a: 'faster', q: { bpm: [60, 75] } }, { e: td, a: 'same', q: { bpm: [70, 63] } }],
     { game: 'tempo_detective', skill: 'listen.tempo' }));
   check('0065 #723: Tempo Detective: faster / slower from the two tempos played', tdRound.items.map((i) => i.ok).join() === 'true,false');
@@ -8530,7 +8531,6 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   try { await db.exec(file65); } catch (e) { again65 = String(e.message); }
   check('0065 can run again and changes no row', again65 === '' && JSON.stringify(await count65()) === JSON.stringify(before65), again65);
 }
-
 // ---------------------------------------------------------------- 0066 facilitator safeguards (DECISIONS #710-#719)
 // The P0 rows of Sarvesh's Facilitator Module review (27-10-2026, §8): FUND-01 nobody decides their own fund entry (a
 // table rule; a refused try is logged), FUND-02 a reversal after a month's report leaves the month alone, PRIV-01 an
@@ -8764,6 +8764,35 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   let again67 = '';
   try { await db.exec(file67); } catch (e) { again67 = String(e.message); }
   check('0067 can run again', again67 === '' && (await guruLines()) === 0, again67);
+}
+
+// ---------------------------------------------------------------- 0068 my data with the Playground (DECISIONS #770)
+// The person's data summary (0059) lists the Rhythm Playground: settings, rounds, weekly summaries, ratings.
+{
+  const file68 = readFileSync(new URL('migrations/0068_my_data_playground.sql', supabaseDir), 'utf8');
+  await db.exec(file68); // the 0059 block ran 0059 again, which put back the summary without the Playground
+  const sid = (await asOwner(`select id from students where profile_id = '${arjun}'`))[0].id;
+  await asOwner(`insert into play_student_settings (student_id, surprise) values ('${sid}', false)
+    on conflict (student_id) do update set surprise = false`);
+  await asOwner(`insert into play_rounds (id, student_id, game, skill, mode, step, seed, content_version, started_at, items, n_items, n_correct)
+    values (gen_random_uuid(), '${sid}', 'sound_detective', 'listen.stroke', 'play', 1, 68, 1, now(), '[]', 4, 3)`);
+  await asOwner(`insert into play_skill_weeks (student_id, week, skill, opportunities, correct, rounds)
+    values ('${sid}', '2026-01-05', 'listen.stroke', 12, 9, 3) on conflict do nothing`);
+  await asOwner(`insert into play_ratings (student_id, skill, rating, note) values ('${sid}', 'listen.stroke', 2, 'Steady te and re (0068)')`);
+  const rounds68 = (await asOwner(`select count(*)::int as n from play_rounds where student_id = '${sid}'`))[0].n;
+  const mine = async () => (await asApp('authenticated', arjun, 'select my_data_summary() as r'))[0].r;
+  const pg = (await mine()).playground;
+  check('0068 #770: the summary counts every Playground round of the student, by game',
+    pg?.rounds?.count === rounds68 && Object.values(pg.rounds.games).reduce((a, b) => a + b, 0) === rounds68
+    && pg.rounds.games.sound_detective >= 1, JSON.stringify(pg?.rounds));
+  check('0068 #770: ... with the settings, the weekly summaries and the facilitator\'s ratings',
+    pg.settings?.surprise === false && !('student_id' in pg.settings) && pg.weeks.some((w) => w.week === '2026-01-05' && w.correct === 9)
+    && pg.ratings.some((r) => r.note === 'Steady te and re (0068)' && r.rating === 2), JSON.stringify(pg).slice(0, 300));
+  check('0068 #770: a staff member without a record gets no Playground part', !('playground' in (await asApp('authenticated', coordinator,
+    'select my_data_summary() as r'))[0].r));
+  let again68 = '';
+  try { await db.exec(file68); } catch (e) { again68 = String(e.message); }
+  check('0068 can run again', again68 === '' && (await mine()).playground?.rounds?.count === rounds68, again68);
 }
 // ---------------------------------------------------------------- row-level security
 const seen =await asApp('authenticated', arjun, 'select full_name from students');
