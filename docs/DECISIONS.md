@@ -8392,3 +8392,88 @@ database's `submitted_at` (not the phone's clock). After Send the success notice
 **Decision.** Not in this change: the Beginner lessons list of a waiting login (its offline copy keeps title and link
 only; its lesson screen still shows the tabs); a staff "Under review" column on the tracker; Notes as rich text or PDF;
 a contact's phone on events. Telugu and Hindi strings are drafts for the native review (docs/TRANSLATIONS.md).
+
+## 690. Rhythm Playground: design answered on the real stack, for Prji's sign-off — 28 Oct 2026
+
+**Status: design only (branch `claude/playground-design-504412`); no app code, no migration file.** Prji's master
+prompt and the Rhythm Playground spec v3.0 assume React.js + Java Spring Boot; the app is Expo SDK 57 + Supabase.
+**Decision.** docs/RHYTHM_PLAYGROUND.md answers the prompt's deliverables 1-17 and "first task" steps 1-7 against the
+real code, with a two-page plain-English summary for Prji, the 12-point card for all 14 games (what exists vs what is
+new), and every statement marked Confirmed / Proposed / Assumption / Needs approval. Nothing is built until Prji
+approves the design (prompt §20: architecture first, then one beginner proof of concept).
+
+## 691. One bol notation for every game; the bol dictionary lives in the database — 28 Oct 2026
+
+**Decision.** All Playground content uses the taal notation of migration 0018 (beats of '-' or 1-4 bols joined by '.',
+bols matched in plain form, guna/tempo/vibhags as separate fields). lib/bols.ts keeps the stroke anatomy for the
+drawings; a new table `play_bols` (migration 0065, design) says which bols Prji has approved, at which level, with
+which recording, which sound alike and which are close pairs. A bol not approved there never appears in a generated
+challenge. **Why.** The practice tools already share this notation; a second one would split the content.
+
+## 692. Playground placement: one entry on the Practice tab, existing addresses kept — 28 Oct 2026
+
+**Decision (proposal).** One "Rhythm Playground" card on the student Practice tab replaces the Games tiles; inside:
+Listening, Rhythm, Voice, Kīrtan, Surprise me, My Playground progress, circular icons, unreleased games dimmed "Coming
+soon". The tap pad, "Which bol?" and Echo me become Tap the Beat, Sound Detective and Echo Challenge at their present
+addresses. Daily Sādhana Quest is the Daily Mission card (#673) with 2-3 Playground lines, not a second daily plan. No
+separate Home icon while Home is the card layout; if the ring version returns, a circle links to the same screen.
+Facilitators: Teaching → Rhythm Playground, plus a section on the Student profile.
+
+## 693. The engine: seeded generation on the phone, checked by the server — 28 Oct 2026
+
+**Decision (proposal; migration 0065 drafted in the design document only).** Tables `play_assets`, `play_bols`,
+`play_templates`, `play_exercises`, `play_publications`, `play_assignments`, `play_student_settings`, `play_rounds`,
+`play_skill_weeks`, `play_ratings`, bucket `playground-audio`. Rounds are generated on the phone from the published
+pack with a seed (works offline, replayable for QA); curriculum guard (approved, published, level, approved bols,
+ticked prerequisite, sounds present, BPM/guna in range), repeat guard (never back-to-back, recent exclusion, spaced
+review 1/3/7 days labelled Review), low-content "Review practice", rules-based adaptive offers. `record_round`
+recomputes correctness, refuses unpublished content and is idempotent. One row per round, not per question (free-tier
+size). Only the head facilitator login approves and publishes; placeholders can never be published on LIVE.
+
+## 694. Recognition and performance kept apart; recordings for review go through assessments — 28 Oct 2026
+
+**Decision (proposal).** Results are recognition (quiz accuracy with sample size), measured performance (tap timing,
+only on calibrated phones) or performance judged by a facilitator (0-3 rubric). Labels Exploring / Practising / Steady
+/ Ready for Review with starting thresholds Prji may change after the pilot; "Ready for Review" asks for a class check.
+"Send to my facilitator" reuses the assessment flow (an assessment marked `playground_game`), so review, receipt and the
+30-days-after-review deletion already exist.
+
+## 695. Audio: what works now, what needs research, what needs a new APK — 28 Oct 2026
+
+**Decision.** Phases 1-3 are JavaScript only (fingerprint 23dc7e4a): recorded strokes through khol-samples, phrases
+rendered at exact times (phone loop file, web audio clock), recorded clips, tap timing with calibration, recording with
+permission at the moment of use. Research without a new APK: a web pitch line, the WebView microphone route on Android,
+clip slow-down with pitch kept. A new APK only for native microphone analysis on Android (Phase 4), after a spike and
+validation, bundled with another planned APK. Microphone off by default; no audio leaves the phone without "Send".
+
+## 696. Playground retention and the free-tier numbers — 28 Oct 2026
+
+**Decision.** As the lead decided 28-10: rounds 180 days, then folded into weekly per-skill summaries kept while the
+account exists and deleted with it; sent takes deleted 30 days after review, 60 days if never reviewed (nightly
+`playground_daily`), at most 2 open Playground takes per student, takes ≤ 90 s. Estimates: database ≈ 25 MB of rounds
+for 200 students plus ≈ 15 MB of summaries a year (limit 500 MB); content audio ≈ 25 MB in Storage, takes ≤ 200 MB
+worst case for 100 students (limit 1 GB shared). The lead checks current LIVE Storage use before Phase 3.
+
+## 697. The content gate and TEST placeholders — 28 Oct 2026
+
+**Decision.** No game reaches students before Prji approves 30-50 prompts across the first four games, the bol
+dictionary, the real taals (the three in the app are placeholders), tempo ranges and guna per level, and his 9 stroke
+recordings; kīrtan clips need each performer's written permission. Until then work and tests use synthesised strokes
+shown as "TEST sounds" and placeholder rows that `publish_playground` refuses unless a TEST-only setting is on.
+Recordings: own or written permission; CC BY with credit; NC or unknown licences not used (#473).
+
+## 698. Build in five packages; Sound Detective is the proof of concept — 28 Oct 2026
+
+**Decision (proposal; the lead allocates numbers).** W1 engine + shell (migration 0065), W2 student Playground +
+listening games, W3 facilitator content manager, W4 rhythm games + Daily Quest, W5 voice, kīrtan, instruments and
+microphone research. W1 first; W2-W4 in parallel; W5 last. All but W5's real content can start before the recordings.
+First proof of concept: Sound Detective (beginner), end to end, because it needs only the 9 strokes, upgrades a game
+students know at the same address and exercises the whole engine without timing or microphone uncertainty.
+
+## 699. Open for Prji and Praveen — 28 Oct 2026
+
+**Open.** The guna convention (1/2/4/8 or the app's 1/2/3/4) and guna 8; the four unverified bol mappings (tin,
+kha/khe, ge/gi, dhi); whether Voice Companion / Vocal Sādhana Studio and the two kīrtan games share one engine each;
+whether Playground time counts towards the weekly practice goal (suggested: no); the pilot group's members; label
+thresholds; the privacy-notice line for game results and the consent form for recordings sent from games; who owns
+accessibility QA and go/no-go. DECISIONS #720 onwards are free for the build packages.
