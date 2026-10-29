@@ -12,7 +12,7 @@ import { topStep } from '@/lib/playground/generator';
 import { skillProgress } from '@/lib/playground/labels';
 import { roundSeed } from '@/lib/playground/rng';
 import type { GameId, RoundMode, SkillId } from '@/lib/playground/types';
-import { QUEST_DAYS, questLines, type QuestLine, type QuestOption } from '@/lib/today-practice';
+import { QUEST_DAYS, questLines, questRankRounds, type QuestLine, type QuestOption } from '@/lib/today-practice';
 
 import { loadPlayground, type PlaygroundLoad } from './playground-data';
 
@@ -49,7 +49,7 @@ export function dailyQuest(load: PlaygroundLoad, today: string): QuestLineTo[] |
   if (games.length === 0) return null;
   const tops: Partial<Record<SkillId, number>> = {};
   for (const g of games) tops[g.skill] = Math.max(tops[g.skill] ?? 1, topStep(templateFor(pack, g.game, state.levelId)));
-  const progress = skillProgress(load.rounds, pack.labels, tops, load.at);
+  const progress = skillProgress(questRankRounds(load.rounds, today), pack.labels, tops, load.at);
   const assigned = state.assignments.filter((a) => a.fromDay <= today && (a.dueDay === null || a.dueDay >= today)).map((a) => a.game);
   const options: QuestOption[] = games.map((g) => {
     const p = progress.find((x) => x.skill === g.skill);

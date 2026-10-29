@@ -10,6 +10,7 @@
 
 import type { PlanItem } from '@/data/practice';
 
+import { localDate } from './dates';
 import { makeRng } from './playground/rng';
 import type { GameId, ProgressLabel, SkillId } from './playground/types';
 import type { PracticeDay, PracticeGoal } from './practice-goal';
@@ -170,6 +171,14 @@ export function questLines(input: {
 
 /** Days of seeds questLines looks back over. */
 export const QUEST_DAYS = 7;
+
+/**
+ * The rounds the quest ranks skills by: those of earlier days. A quest game played today makes its skill less weak;
+ * ranked with today's rounds it would leave today's card instead of showing ticked.
+ */
+export function questRankRounds<T extends { startedAt: string }>(rounds: readonly T[], today: string): T[] {
+  return rounds.filter((r) => localDate(r.startedAt) < today);
+}
 /** Today's Practice from the plan, the goal and the days practised. */
 export function todayPractice(input: TodayInput): TodayPractice {
   const topics = usable(input.items, input.taalNames, input.lessonTitles);

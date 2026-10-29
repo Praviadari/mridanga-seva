@@ -223,6 +223,10 @@ const quest = (day, options = OPTIONS, count = 2, done = []) =>
     seeds: Array.from({ length: today.QUEST_DAYS }, (_, i) => roundSeed('student-1', 'daily_quest', addDays(day, i - today.QUEST_DAYS + 1), 0)),
     doneToday: done,
   });
+test('quest: skills are ranked on earlier days\' rounds, so a game played today stays on the card, ticked', () => {
+  const rounds = [{ startedAt: '2026-10-28T10:00:00Z' }, { startedAt: '2026-10-29T04:00:00Z' }, { startedAt: '2026-10-29T12:00:00Z' }];
+  assert.deepEqual(today.questRankRounds(rounds, '2026-10-29'), [rounds[0]]);
+});
 test('quest: one listening and one rhythm line, about two minutes each', () => {
   for (const day of days) {
     const lines = quest(day);
