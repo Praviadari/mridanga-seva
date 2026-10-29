@@ -157,7 +157,7 @@ process.on('uncaughtException', (error) => {
 // D14-10: every check is counted, and the run fails when fewer (or more) checks ran than expected,
 // so a block skipped by a renamed migration or a commented-out section cannot pass unseen.
 // Adding or removing checks? Run the suite and set this to the new total it prints.
-const EXPECTED_CHECKS = 2450; // W4 rhythm rounds: +2; 0069 game recordings and the W5 TEST seed: +11; 0068 my data with the Playground: +4; 0065 Rhythm Playground engine: +67; 0067 facilitator wording: +5; 0066 facilitator safeguards: +40 (0059/0026/0025/0049 checks adjusted for #710/#713); 0064 learn screens: +32; 0063 parent page: +32; 0062 web push: +33; 0061 staff sign-in codes and the error log: +53; 0060 privacy notice 1.0: +35; 0059 data rights: +56; 0058 weekly parent email: +64; 0057 practice while waiting: +24; 0056 practice extras: +35; 0055 learn more links: +23; 0054 after-launch forms: +49; 0053 staff own record: +55; 0052 more practice: +56; 0051 child's sign-up at home: +80; 0050 staff dashboard: +15; 0049 launch clean-up: +30; 0048 withdrawn records and leaks: +50; 0047 form rules: +109; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
+const EXPECTED_CHECKS = 2460; // 0072 syllabus sections, guna 1/2/4/8 and the team's syllabus seed: +10; W4 rhythm rounds: +2; 0069 game recordings and the W5 TEST seed: +11; 0068 my data with the Playground: +4; 0065 Rhythm Playground engine: +67; 0067 facilitator wording: +5; 0066 facilitator safeguards: +40 (0059/0026/0025/0049 checks adjusted for #710/#713); 0064 learn screens: +32; 0063 parent page: +32; 0062 web push: +33; 0061 staff sign-in codes and the error log: +53; 0060 privacy notice 1.0: +35; 0059 data rights: +56; 0058 weekly parent email: +64; 0057 practice while waiting: +24; 0056 practice extras: +35; 0055 learn more links: +23; 0054 after-launch forms: +49; 0053 staff own record: +55; 0052 more practice: +56; 0051 child's sign-up at home: +80; 0050 staff dashboard: +15; 0049 launch clean-up: +30; 0048 withdrawn records and leaks: +50; 0047 form rules: +109; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
 let failures = 0;
 let passes = 0;
 
@@ -8882,6 +8882,75 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   try { await db.exec(file69); } catch (e) { again69 = String(e.message); }
   check('0069 can run again', again69 === '' && (await one(`select count(*)::int as n from pg_trigger
     where tgname in ('playground_submission_guard', 'assessment_playground_game_guard') and not tgisinternal`)).n === 2, again69);
+}
+// ---------------------------------------------------------------- 0072 sections in the syllabus (DECISIONS #773)
+// An item may name its section (a heading over items in teaching order). Written by the Guru through the app's own
+// insert and update (0065 once missed a column grant that owner-only checks could not see), read by everyone.
+{
+  const file72 = readFileSync(new URL('migrations/0072_syllabus_sections.sql', supabaseDir), 'utf8');
+  const one = async (sql) => (await asOwner(sql))[0];
+  const [added72] = await asApp('authenticated', guru,
+    `insert into syllabus_items (level_id, title, description, section, request_id)
+     values (2, 'Seventy-two finger mantra', 'Te Ta Ta', $1, gen_random_uuid()) returning id, section, sort`,
+    ['  Section 1:  Core Practice –\n Hand Practice  ']);
+  check('0072 #773: the Guru adds an item with its section as the editor sends it; spaces are collapsed',
+    added72?.section === 'Section 1: Core Practice – Hand Practice' && added72.sort > 0, JSON.stringify(added72));
+  const moved72 = await asApp('authenticated', guru,
+    `update syllabus_items set title = 'Seventy-two finger mantra', description = 'Te Ta Ta', section = $1 where id = ${added72.id} returning section`, ['   ']);
+  check('0072 #773: ... and an empty section saves as none', moved72.length === 1 && moved72[0].section === null, JSON.stringify(moved72));
+  await refusesWith('0072 #773: a section is at most 100 characters', 'section_too_long', () =>
+    asApp('authenticated', guru, `update syllabus_items set section = $1 where id = ${added72.id}`, ['x'.repeat(101)]));
+  const byCoord72 = await asApp('authenticated', coordinator,
+    `update syllabus_items set section = 'Coordinator section' where id = ${added72.id} returning id`);
+  check('0072 #773: a coordinator cannot set a section (the editor is the Guru\'s)', byCoord72.length === 0
+    && (await one(`select section from syllabus_items where id = ${added72.id}`)).section === null);
+  await asApp('authenticated', guru, `update syllabus_items set section = 'Section 2: Temple Seva' where id = ${added72.id}`);
+  check('0072 #773: a student reads the section of an item',
+    (await asApp('authenticated', arjun, `select section from syllabus_items where id = ${added72.id}`))[0]?.section === 'Section 2: Temple Seva');
+  await asOwner(`insert into student_progress (student_id, item_id) values ('${arjunStudent}', ${added72.id})`);
+  await asApp('authenticated', guru, `update syllabus_items set section = 'Section 1: Core Practice' where id = ${added72.id}`);
+  check('0072 #773: changing the section keeps the item\'s ticks',
+    (await one(`select count(*)::int as n from student_progress where item_id = ${added72.id}`)).n === 1);
+  let again72 = '';
+  try { await db.exec(file72); } catch (e) { again72 = String(e.message); }
+  check('0072 can run again', again72 === '' && (await one(`select section from syllabus_items where id = ${added72.id}`)).section === 'Section 1: Core Practice', again72);
+  await asOwner(`delete from student_progress where item_id = ${added72.id}`);
+  await asOwner(`delete from syllabus_items where id = ${added72.id}`);
+  // #774: the class's guna is 1/2/4/8. A TEST project seeded with guna 3 in Rhythm Switching is brought in line by
+  // the next run of the Playground TEST seed, and its rows stay approved (none added twice).
+  const rs74 = await one(`select id from play_exercises where placeholder and game = 'rhythm_switching' order by id limit 1`);
+  await asOwner(`update play_exercises set guna = '{1,2,3,4,8}' where id = ${rs74.id}`);
+  await asOwner(`update play_exercises set status = 'approved' where id = ${rs74.id}`);
+  await asOwner(`update play_templates set params = jsonb_set(params, '{gunaByLevel,3}', '[1,2,3,4,8]') where placeholder and game = 'rhythm_switching'`);
+  await asOwner(`update play_templates set status = 'approved' where placeholder and game = 'rhythm_switching'`);
+  const rsCount74 = (await one(`select count(*)::int as n from play_exercises where game = 'rhythm_switching' and status = 'approved'`)).n;
+  await db.exec(readFileSync(new URL('seed/playground_test.sql', supabaseDir), 'utf8'));
+  const rs74after = await one(`select
+      (select count(*)::int from play_exercises where game = 'rhythm_switching' and status = 'approved') as n,
+      (select count(*)::int from play_exercises where game = 'rhythm_switching' and 3 = any(guna)) as with3,
+      (select params -> 'gunaByLevel' -> '3' from play_templates where placeholder and game = 'rhythm_switching' and status = 'approved') as g3`);
+  check('0072 #774: the Playground TEST seed takes guna 3 out of Rhythm Switching; its rows stay approved, none added twice',
+    rs74after.n === rsCount74 && rs74after.with3 === 0 && JSON.stringify(rs74after.g3) === '[1,2,4,8]', JSON.stringify(rs74after));
+  // #775: the team's syllabus TEST seed: seed.sql's examples retired (ticks kept), the 10 Beginner items in order, the
+  // Intermediate draft under its two sections; a second run adds nothing. No PDF is uploaded here, so no material.
+  const seed75 = readFileSync(new URL('seed/syllabus_beginner_test.sql', supabaseDir), 'utf8');
+  const ticks75 = (await one(`select count(*)::int as n from student_progress`)).n;
+  await db.exec(seed75);
+  const items75 = await asApp('authenticated', arjun,
+    `select level_id, title, section, retired_at is not null as retired from syllabus_items order by level_id, sort`);
+  const inUse75 = (level) => items75.filter((i) => i.level_id === level && !i.retired);
+  const beginner75 = inUse75(1).map((i) => i.title).filter((t) => /^(Lesson \d|Bonus)/.test(t));
+  const inter75 = inUse75(2).filter((i) => i.section);
+  check('0072 #775: the TEST seed retires the examples and adds the team\'s 10 Beginner items in order and the Intermediate in two sections',
+    beginner75.length === 10 && beginner75[0] === 'Lesson 1: Varnas' && beginner75[8].startsWith('Lesson 9') && beginner75[9] === 'Bonus Hand Practice Mantras'
+    && inter75.length === 12 && inter75.slice(0, 10).every((i) => i.section.startsWith('Section 1: Core Practice'))
+    && inter75.slice(10).every((i) => i.section.startsWith('Section 2: Temple Seva'))
+    && !items75.some((i) => !i.retired && ['Holding the mridanga', 'Kaherva taal'].includes(i.title))
+    && (await one(`select count(*)::int as n from student_progress`)).n === ticks75, JSON.stringify(beginner75));
+  const count75 = (await one(`select count(*)::int as n from syllabus_items`)).n;
+  await db.exec(seed75);
+  check('0072 #775: ... a second run adds nothing', (await one(`select count(*)::int as n from syllabus_items`)).n === count75
+    && seed75.indexOf('syllabus_beginner_test.sql refused') < seed75.indexOf('begin;'));
 }
 // ---------------------------------------------------------------- row-level security
 const seen =await asApp('authenticated', arjun, 'select full_name from students');

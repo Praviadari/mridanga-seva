@@ -22,6 +22,8 @@ export type SyllabusEntry = {
   sort: number;
   title: string;
   description: string | null;
+  /** The item's section heading (#773, 0072), or null: lib/syllabus-sections.ts groups by it. */
+  section: string | null;
   /** 'YYYY-MM-DD' the student showed it in class, or null while not ticked. */
   doneOn: string | null;
   /** Profile id of the coordinator or Guru who ticked it. */
@@ -56,7 +58,7 @@ export async function fetchStudentSyllabus(studentId: string): Promise<StudentSy
     supabase.from('students').select('id, full_name, roll_no, level_id').eq('id', studentId).maybeSingle(),
     supabase
       .from('syllabus_items')
-      .select('id, level_id, sort, title, description, retired_at')
+      .select('id, level_id, sort, title, description, section, retired_at')
       .order('level_id')
       .order('sort'),
     supabase.from('student_progress').select('item_id, done_on, ticked_by, remark').eq('student_id', studentId),
@@ -79,6 +81,7 @@ export async function fetchStudentSyllabus(studentId: string): Promise<StudentSy
         sort: number;
         title: string;
         description: string | null;
+        section: string | null;
         retired_at: string | null;
       }[]
     ).flatMap((item) => {
@@ -91,6 +94,7 @@ export async function fetchStudentSyllabus(studentId: string): Promise<StudentSy
           sort: item.sort,
           title: item.title,
           description: item.description,
+          section: item.section,
           doneOn: tick?.done_on ?? null,
           tickedBy: tick?.ticked_by ?? null,
           remark: tick?.remark ?? null,

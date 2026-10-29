@@ -5,10 +5,10 @@
 // level is ticked the screen says so; moving up a level stays the Guru's decision.
 // Unticking asks once more on the screen (a pop-up does not work in the web version); the audit
 // log keeps the old tick (docs/DECISIONS.md #22). Opened from the student profile (C8).
-// Data: src/data/syllabus.ts.
+// Data: src/data/syllabus.ts. A level whose items name a section shows a heading where the section changes (#773).
 
 import { Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { Fragment, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { AppText } from '@/components/app-text';
@@ -21,6 +21,7 @@ import { ProgressBar } from '@/components/progress-bar';
 import { RouteIdGuard } from '@/components/route-id-guard';
 import { Screen } from '@/components/screen';
 import { SyllabusItemCard } from '@/components/syllabus-item-card';
+import { SyllabusSectionHeading } from '@/components/syllabus-section-heading';
 import { TextField } from '@/components/text-field';
 import { ScreenIntro } from '@/components/more-text';
 import { fetchStaff } from '@/data/student-overview';
@@ -37,6 +38,7 @@ import {
 } from '@/data/syllabus';
 import { levelName } from '@/i18n/labels';
 import { formatDate } from '@/lib/dates';
+import { cleanSection, hasSections } from '@/lib/syllabus-sections';
 
 /** What the screen loaded: the syllabus and the staff names for "ticked by". */
 type Loaded = { syllabus: StudentSyllabus; staffNames: Map<string, string> };
@@ -181,81 +183,84 @@ function SyllabusTickOffScreenContent() {
         <Notice tone="success">{t('syllabus.allDone', { level: levelName(t, shownLevel) })}</Notice>
       ) : null}
 
-      {items.map((item) => {
+      {items.map((item, i) => {
         const isOpen = open?.itemId === item.id ? open.mode : null;
         const cardMessage = message?.itemId === item.id ? message : null;
+        const heading = hasSections(items) && (i === 0 || cleanSection(items[i - 1].section) !== cleanSection(item.section));
         return (
-          <SyllabusItemCard
-            key={item.id}
-            position={item.retired ? 0 : inUse.indexOf(item) + 1}
-            title={item.retired ? `${item.title} · ${t('progress.retired')}` : item.title}
-            description={item.description}
-            done={!!item.doneOn}
-            doneLine={
-              item.doneOn
-                ? t('syllabus.tickedOn', { date: formatDate(item.doneOn), name: tickedBy(item) })
-                : undefined
-            }
-            remark={item.remark ? t('syllabus.remarkLine', { remark: item.remark }) : null}
-            busy={busyItem === item.id}
-            onToggle={() => onToggle(item)}>
-            {cardMessage ? <Notice tone={cardMessage.tone}>{t(cardMessage.key)}</Notice> : null}
-
-            {isOpen === 'untick' ? (
-              <>
-                <Notice tone="info" title={t('syllabus.untickTitle', { item: item.title })} announced>
-                  {t('syllabus.untickBody')}
-                </Notice>
+          <Fragment key={item.id}>
+            {heading ? <SyllabusSectionHeading section={cleanSection(item.section)} /> : null}
+            <SyllabusItemCard
+              position={item.retired ? 0 : inUse.indexOf(item) + 1}
+              title={item.retired ? `${item.title} · ${t('progress.retired')}` : item.title}
+              description={item.description}
+              done={!!item.doneOn}
+              doneLine={
+                item.doneOn
+                  ? t('syllabus.tickedOn', { date: formatDate(item.doneOn), name: tickedBy(item) })
+                  : undefined
+              }
+              remark={item.remark ? t('syllabus.remarkLine', { remark: item.remark }) : null}
+              busy={busyItem === item.id}
+              onToggle={() => onToggle(item)}>
+              {cardMessage ? <Notice tone={cardMessage.tone}>{t(cardMessage.key)}</Notice> : null}
+  
+              {isOpen === 'untick' ? (
+                <>
+                  <Notice tone="info" title={t('syllabus.untickTitle', { item: item.title })} announced>
+                    {t('syllabus.untickBody')}
+                  </Notice>
+                  <Button
+                    variant="secondary"
+                    label={t('syllabus.untickYes')}
+                    loading={busyItem === item.id}
+                    onPress={() => void change(item.id, () => untickItem(student.id, item.id))}
+                  />
+                  <Button variant="link" label={t('syllabus.cancel')} onPress={() => setOpen(null)} />
+                </>
+              ) : null}
+  
+              {isOpen === 'remark' ? (
+                <>
+                  <TextField
+                    label={t('syllabus.remark')}
+                    hint={t('syllabus.remarkHint', { max: REMARK_MAX_LENGTH })}
+                    value={remarkText}
+                    onChangeText={setRemarkText}
+                    maxLength={REMARK_MAX_LENGTH}
+                    multiline
+                    numberOfLines={3}
+                    style={{ minHeight: 72, textAlignVertical: 'top' }}
+                  />
+                  {/* A ticked item gets its remark replaced; an unticked one is ticked with it. */}
+                  <Button
+                    label={item.doneOn ? t('syllabus.saveRemark') : t('syllabus.tickWithRemark')}
+                    loading={busyItem === item.id}
+                    onPress={() =>
+                      void (item.doneOn
+                        ? change(item.id, () => saveRemark(student.id, item.id, remarkText), 'syllabus.remarkSaved')
+                        : change(item.id, () => tickItem(student.id, item.id, remarkText)))
+                    }
+                  />
+                  <Button variant="link" label={t('syllabus.cancel')} onPress={() => setOpen(null)} />
+                </>
+              ) : null}
+  
+              {isOpen === null ? (
                 <Button
-                  variant="secondary"
-                  label={t('syllabus.untickYes')}
-                  loading={busyItem === item.id}
-                  onPress={() => void change(item.id, () => untickItem(student.id, item.id))}
-                />
-                <Button variant="link" label={t('syllabus.cancel')} onPress={() => setOpen(null)} />
-              </>
-            ) : null}
-
-            {isOpen === 'remark' ? (
-              <>
-                <TextField
-                  label={t('syllabus.remark')}
-                  hint={t('syllabus.remarkHint', { max: REMARK_MAX_LENGTH })}
-                  value={remarkText}
-                  onChangeText={setRemarkText}
-                  maxLength={REMARK_MAX_LENGTH}
-                  multiline
-                  numberOfLines={3}
-                  style={{ minHeight: 72, textAlignVertical: 'top' }}
-                />
-                {/* A ticked item gets its remark replaced; an unticked one is ticked with it. */}
-                <Button
-                  label={item.doneOn ? t('syllabus.saveRemark') : t('syllabus.tickWithRemark')}
-                  loading={busyItem === item.id}
-                  onPress={() =>
-                    void (item.doneOn
-                      ? change(item.id, () => saveRemark(student.id, item.id, remarkText), 'syllabus.remarkSaved')
-                      : change(item.id, () => tickItem(student.id, item.id, remarkText)))
+                  variant="link"
+                  label={
+                    !item.doneOn
+                      ? t('syllabus.tickWithRemarkOpen')
+                      : item.remark
+                        ? t('syllabus.editRemark')
+                        : t('syllabus.addRemark')
                   }
+                  onPress={() => openRemark(item)}
                 />
-                <Button variant="link" label={t('syllabus.cancel')} onPress={() => setOpen(null)} />
-              </>
-            ) : null}
-
-            {isOpen === null ? (
-              <Button
-                variant="link"
-                label={
-                  !item.doneOn
-                    ? t('syllabus.tickWithRemarkOpen')
-                    : item.remark
-                      ? t('syllabus.editRemark')
-                      : t('syllabus.addRemark')
-                }
-                onPress={() => openRemark(item)}
-              />
-            ) : null}
-          </SyllabusItemCard>
+              ) : null}
+            </SyllabusItemCard>
+          </Fragment>
         );
       })}
     </Screen>

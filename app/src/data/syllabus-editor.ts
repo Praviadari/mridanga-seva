@@ -11,12 +11,16 @@
 import { LEVEL_IDS } from '@/i18n/labels';
 import { supabase } from '@/lib/supabase';
 
+import { cleanSection, SECTION_MAX } from '@/lib/syllabus-sections';
+
 import { insertOnce } from './create-once';
 import { fallbackErrorKey, type MessageKey } from './errors';
 
 /** Longest title and description, as in the database. */
 export const ITEM_TITLE_MAX = 120;
 export const ITEM_DESCRIPTION_MAX = 1000;
+/** Longest section heading, as in the database (0072, #773). */
+export { SECTION_MAX };
 
 /** The levels, in order (i18n/labels.ts, with their names). */
 export { LEVEL_IDS };
@@ -28,6 +32,8 @@ export type EditorItem = {
   sort: number;
   title: string;
   description: string | null;
+  /** Its section heading (#773), or null. */
+  section: string | null;
   /** ISO time it was retired, or null while it is taught. */
   retiredAt: string | null;
   /** How many students have it ticked. */
@@ -45,7 +51,7 @@ export type LevelSyllabus = { levelId: number; items: EditorItem[]; retired: Edi
  */
 export async function fetchSyllabusByLevel(): Promise<LevelSyllabus[] | null> {
   const [items, counts] = await Promise.all([
-    supabase.from('syllabus_items').select('id, level_id, sort, title, description, retired_at').order('level_id').order('sort'),
+    supabase.from('syllabus_items').select('id, level_id, sort, title, description, section, retired_at').order('level_id').order('sort'),
     supabase.rpc('syllabus_item_counts'),
   ]);
   if (items.error || counts.error) return null;
@@ -59,6 +65,7 @@ export async function fetchSyllabusByLevel(): Promise<LevelSyllabus[] | null> {
       sort: number;
       title: string;
       description: string | null;
+      section: string | null;
       retired_at: string | null;
     }[]
   ).map(
@@ -68,6 +75,7 @@ export async function fetchSyllabusByLevel(): Promise<LevelSyllabus[] | null> {
       sort: row.sort,
       title: row.title,
       description: row.description,
+      section: row.section,
       retiredAt: row.retired_at,
       ticks: byItem.get(row.id)?.ticks ?? 0,
       materials: byItem.get(row.id)?.materials ?? 0,
@@ -84,32 +92,34 @@ export async function fetchSyllabusByLevel(): Promise<LevelSyllabus[] | null> {
 export type EditOutcome = { errorKey?: MessageKey; id?: number };
 
 /** Problems with the item form, per field. Empty = fine. */
-export type ItemFormErrors = Partial<Record<'title' | 'description', MessageKey>>;
+export type ItemFormErrors = Partial<Record<'title' | 'description' | 'section', MessageKey>>;
 
 /** Checks an item before saving; the database checks the same. */
-export function checkItemForm(title: string, description: string): ItemFormErrors {
+export function checkItemForm(title: string, description: string, section = ''): ItemFormErrors {
   const errors: ItemFormErrors = {};
   if (!title.trim()) errors.title = 'syllabusEditor.errors.titleRequired';
   else if (title.trim().length > ITEM_TITLE_MAX) errors.title = 'syllabusEditor.errors.titleTooLong';
   if (description.trim().length > ITEM_DESCRIPTION_MAX) errors.description = 'syllabusEditor.errors.descriptionTooLong';
+  if ((cleanSection(section) ?? '').length > SECTION_MAX) errors.section = 'syllabusEditor.errors.sectionTooLong';
   return errors;
 }
 
 /**
- * Adds an item at the end of a level (the database gives it the next place). `requestId` is the open
- * form's (#322): Add again after a lost answer returns the first item.
+ * Adds an item at the end of a level (the database gives it the next place), in `section` (empty = none, #773).
+ * `requestId` is the open form's (#322): Add again after a lost answer returns the first item.
  */
-export async function addItem(levelId: number, title: string, description: string, requestId: string): Promise<EditOutcome> {
-  const saved = await insertOnce('syllabus_items', { level_id: levelId, title: title.trim(), description: description.trim() || null }, requestId);
+export async function addItem(levelId: number, title: string, description: string, section: string, requestId: string): Promise<EditOutcome> {
+  const row = { level_id: levelId, title: title.trim(), description: description.trim() || null, section: cleanSection(section) };
+  const saved = await insertOnce('syllabus_items', row, requestId);
   return 'error' in saved ? { errorKey: editorErrorKey(saved.error.message, saved.error.code) } : { id: saved.id };
 }
 
-/** Saves a changed title and description. Ticks stay as they are. */
-export async function saveItem(id: number, title: string, description: string): Promise<EditOutcome> {
+/** Saves a changed title, description and section. Ticks stay as they are. */
+export async function saveItem(id: number, title: string, description: string, section: string): Promise<EditOutcome> {
   return updated(
     await supabase
       .from('syllabus_items')
-      .update({ title: title.trim(), description: description.trim() || null })
+      .update({ title: title.trim(), description: description.trim() || null, section: cleanSection(section) })
       .eq('id', id)
       .select('id'),
   );
@@ -151,6 +161,7 @@ function editorErrorKey(message: string, code: string | undefined): MessageKey {
   if (message === 'title_required') return 'syllabusEditor.errors.titleRequired';
   if (message === 'title_too_long') return 'syllabusEditor.errors.titleTooLong';
   if (message === 'description_too_long') return 'syllabusEditor.errors.descriptionTooLong';
+  if (message === 'section_too_long') return 'syllabusEditor.errors.sectionTooLong';
   if (message === 'item_has_ticks') return 'syllabusEditor.errors.hasTicks';
   if (message === 'item_has_materials') return 'syllabusEditor.errors.hasMaterials';
   if (message === 'not_allowed' || code === '42501') return 'syllabusEditor.errors.notAllowed';
