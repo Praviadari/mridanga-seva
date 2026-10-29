@@ -35,6 +35,7 @@ function fill(html, lang) {
     noticeDate: time(config.privacyNotice.date, lang),
     noticeVersion: esc(config.privacyNotice.version),
     apkUrl: esc(config.app.apkUrl),
+    apkSha256: esc(config.app.apkSha256),
     appWebUrl: esc(config.app.webUrl),
     sourceUrl: esc(config.sourceUrl),
   };

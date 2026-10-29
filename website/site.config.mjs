@@ -48,12 +48,12 @@ export default {
     /** false shows the web app as "coming soon" without a link. */
     webLive: true,
     /**
-     * Android APK: the production build's page on expo.dev (90c6d1cd, versionCode 12, fingerprint 23dc7e4a,
-     * 16-10-2026; GO_LIVE_CHECKLIST E7). EAS deletes the build on 30-10-2026: before then, replace this with
-     * the shared Drive folder "Mridanga Seva APKs" link (OPERATIONS "Each build").
+     * Android APK: the production build 90c6d1cd (versionCode 12, fingerprint 23dc7e4a, 16-10-2026; GO_LIVE_CHECKLIST
+     * E7) as a GitHub Release asset (tag android-1.0.0), since EAS deletes its own copy on 30-10-2026. The SHA-256 is
+     * shown on the Get the app page so anyone can check the file. A new APK = a new release, then both values here.
      */
-    apkUrl:
-      'https://expo.dev/accounts/mridanga-seva/projects/mridanga-seva/builds/90c6d1cd-7d56-4840-8a35-55acef76c407',
+    apkUrl: 'https://github.com/Praviadari/mridanga-seva/releases/download/android-1.0.0/mridanga-seva-1.0.0.apk',
+    apkSha256: 'aec19a5208a274da850a390083d1c641226ff2538cccb6784cf7c3a316fb7e96',
     /** Google Play listing; null until there is one. */
     playStoreUrl: null,
   },
