@@ -334,6 +334,7 @@ without ever losing a tick. Levels stay fixed (Beginner, Intermediate, Advanced)
 | Rule | Error code |
 |---|---|
 | Title trimmed, 1 to 120 characters; description at most 1000, empty becomes none | `title_required`, `title_too_long`, `description_too_long` |
+| `section` (0072, [#773](DECISIONS.md)): optional heading over items that sit together in teaching order; trimmed, inner spaces collapsed, empty becomes none, at most 100 characters. The app shows a heading where it changes | `section_too_long` |
 | A new item without `sort` goes to the end of its level (after retired ones) | — |
 | `retired_at` set = retired: no longer taught, cannot be ticked, not counted in `student_home()`; the ticks stay | `item_retired` (on a tick) |
 | An item with ticks cannot be deleted (not even from the dashboard, where the cascade would take the ticks) or moved to another level | `item_has_ticks` |
@@ -2296,3 +2297,13 @@ The app sets `playground_game` in the assessment form and stops game takes at 90
 ([DECISIONS.md #766](DECISIONS.md)). Needs 0065. Also: `play_assets.bundled_key` may name a sound the app generates (`synth:tone:0,2`, `synth:instrument:kartal+mridanga`,
 `synth:kirtan:slow`; lib/playground/tones.ts, #761) besides a bundled stroke key. TEST content for the five W5 games:
 `supabase/seed/playground_w5_test.sql`. Smoke test: section "0069 game recordings" (9 checks, with the W5 seed).
+
+## Sections in the syllabus (0072)
+
+`syllabus_items.section` (text, optional) and `guard_syllabus_item` replaced with the same rules plus the section
+(trimmed, inner spaces and line breaks one space, empty = none, at most 100 characters, `section_too_long`). No new
+table, function or right: the column is written and read like `title` (table rights + row-level security
+`guru_write` / `read_all`). A section is a heading over items in teaching order; nothing else points at it
+([DECISIONS.md #773](DECISIONS.md)). TEST content: `supabase/seed/syllabus_beginner_test.sql` (the team's Beginner
+lessons and Intermediate draft, #775). Smoke test: section "0072 sections in the syllabus" (10 checks, with guna
+1/2/4/8 in the Playground TEST seed, #774, and the syllabus TEST seed).

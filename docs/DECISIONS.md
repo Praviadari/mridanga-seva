@@ -9107,3 +9107,58 @@ Mission card (#771) keeps its one row: the Daily Sādhana Quest lines (#754) sho
 so the home still never scrolls and the ring keeps its size. (2) W4's small edits in W1/W2 files (use-game-round.ts
 reads ?mode/&len, the Surprise row on the Playground home, setSurprise, catalogue routes, the built-games test list,
 W1's seed counts in the smoke test) stay: W1 and W2 are merged and archived, and the app and smoke tests cover them.
+
+## 773. Sections in the syllabus: a heading on the item, not a table (0072) — 29 Oct 2026
+
+**Context.** The team's mail of 29-10-2026 proposes teaching Intermediate in sections ("Section 1: Core Practice – Hand
+Practice, Mantras, Tāla, Mātrās", "Section 2: Temple Seva – Ārati Mantras, Kīrtana Mantras"); Praveen: build the
+sections now. `syllabus_items` (0001, #44) was a flat list per level.
+
+**Decision.** Migration 0072 adds an optional `syllabus_items.section` text (trimmed, inner spaces collapsed, at most
+100 characters, `section_too_long`). A section is only a heading over items that sit together in teaching order: My
+progress (S4, also Me > My progress), the Guru's level page (G4) and the tick-off screen (C9) show a heading wherever
+the section changes, and nothing when a level has no sections (as before); a level with sections shows items without
+one under "Other lessons". Items placed out of order show their section twice, so the Guru sees it and moves them
+together. The item editor has a "Section (optional)" field, links to pick one of the level's sections, and a new item
+starts in the section of the level's last item (it goes to the end). Numbers stay one count per level.
+**Why not a `syllabus_sections` table:** ticks (`student_progress`), materials, the Playground's `requires_item` and the
+parent page point at items by id and stay untouched; a heading needs no id, order or rights of its own, and renaming a
+section is editing its items. If sections later need their own text or order, a table can be added and filled from the
+distinct values. Rights: `syllabus_items` has table rights and row-level security only (no column grants), so the
+column is written like the title (Guru) and read like it (class); the smoke test writes it as the Guru through the
+app's own insert and update (lesson of 0065/0069).
+
+## 774. The class's guna is 1/2/4/8; no guna 3 anywhere (closes D3) — 29 Oct 2026
+
+**Context.** Prji's open decision D3 (docs/RHYTHM_PLAYGROUND.md G5): the spec said guna 1/2/4/8, the app's layakari was
+1/2/3/4 (#491) and Rhythm Switching's TEST data allowed 1/2/3/4/8 (#751). The team's Beginner Lesson 3 teaches
+"1 Guna – Vilambit, 2 Guna – Madhya, 4 Guna – Drut, 8 Guna – Ati Drut"; Praveen said yes on 29-10-2026.
+
+**Decision.** The class's guna is 1, 2, 4, 8. The taal player's layakari choice is Barabar 1×, Dugun 2×, Chaugun 4×,
+Aṭhgun 8× (`LAYAS`; a recording saved earlier with tigun still plays back); the facilitator's exercise editor offers
+1/2/4/8 (a row holding 3 drops it on the next save); the Playground TEST seed's Rhythm Switching is level 1 [1,2],
+level 2 [1,2,4], level 3 [1,2,4,8], its exercises {1,2,4,8}, and a TEST project seeded before is corrected and
+re-approved by the next run (done on TEST 29-10-2026: pack v5). The database check on `play_exercises.guna` still
+accepts 3 (no migration needed; nothing offers it). Tempo per level (D4) stays open.
+
+## 775. The team's lessons on TEST: their words, their pages attached — 29 Oct 2026
+
+**Decision.** `supabase/seed/syllabus_beginner_test.sql` (TEST only, refuses LIVE, safe to run twice) retires seed.sql's
+example items (ticks kept), adds the 9 Beginner lessons and "Bonus Hand Practice Mantras" with the bols as text, and
+the Intermediate draft V1 under the team's two sections (Section 2's two titles have no lessons yet). Only obvious typos
+were fixed (NOTES_syllabus.md lists them); spellings the team may prefer otherwise are questions in docs/NOTATION.md.
+Where the notation symbols matter, the team's PDF pages are attached as approved PDF materials (Lessons 1-4, the
+Intermediate notations, the whole Beginner notes for the level), uploaded to `material-files` under a TEST Guru's
+folder. LIVE gets the syllabus from the Guru in the app once the team confirms the text and the key.
+
+## 776. One notation key: a draft for the team, no app change until confirmed — 29 Oct 2026
+
+**Context.** Praveen: notation "the best way as per Krishna seva" — the team's and Prji's authority. The two documents
+differ (te/ta told apart only by an underline that app text cannot show; ta I vs ||||; ge ▲ vs ●; jha vs Dha for ga +
+ta; Prabhupāda's ki/gi/ti/ta).
+
+**Decision.** docs/NOTATION.md proposes one plain-text-safe key, row by row with the reason, marked DRAFT for Sarvesh
+Prji and the team: bols as words; right-hand marks as capital I's per finger; a closed stroke in square brackets instead
+of an underline; one mark per stroke (ge ▲); `+` together; `|` vibhāg, `||` end, `–` silent. It invents no bol names:
+where the documents disagree it asks. The app's notation stays as it is until the team answers; then the key goes into
+the lessons' notes and, if wanted, the Playground's bol cards.
