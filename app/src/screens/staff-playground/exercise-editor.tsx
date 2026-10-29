@@ -30,7 +30,8 @@ import { GAME_IDS, SKILL_IDS, type Challenge, type GameId, type SkillId } from '
 import { canEdit, previewRounds, PREVIEW_SEEDS, readBeats, readBpm, readDistractors, readDivisions, templateOf } from './content-rules';
 import { gameName, skillName, StatusPanel, useAdminContent } from './parts';
 
-const GUNAS = [1, 2, 3, 4, 8] as const;
+/** The class's guna (team Beginner Lesson 3: Vilambit, Madhya, Drut, Ati Drut; #774 closes D3). No 3. */
+const GUNAS: readonly number[] = [1, 2, 4, 8];
 /** Games whose answer may differ from the whole pattern (0065 play_expected). */
 const ANSWER_KEY: Partial<Record<GameId, 'bols' | 'order' | 'instruments'>> = { sound_detective: 'bols', rhythm_builder: 'order', sound_explorer: 'instruments' };
 
@@ -86,7 +87,8 @@ function ExerciseForm({ row, content }: { row: AdminExercise | null; content: Ad
   const [distractors, setDistractors] = useState((row?.distractors ?? []).join('\n'));
   const [bpmMin, setBpmMin] = useState(row && row.bpmMin !== null ? String(row.bpmMin) : '');
   const [bpmMax, setBpmMax] = useState(row && row.bpmMax !== null ? String(row.bpmMax) : '');
-  const [guna, setGuna] = useState<number[]>(row?.guna ?? [1]);
+  // A row from before #774 may hold guna 3: it is not offered, so it is left out here and dropped on the next save.
+  const [guna, setGuna] = useState<number[]>((row?.guna ?? [1]).filter((g) => GUNAS.includes(g)));
   const [promptAssets, setPromptAssets] = useState<number[]>(row?.promptAssets ?? []);
   const [attribution, setAttribution] = useState(row?.attribution ?? '');
   const [taals, setTaals] = useState<Taal[]>([]);

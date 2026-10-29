@@ -53,13 +53,14 @@ export function readTaal(bols: readonly string[]): Bol[][] {
 }
 
 /**
- * Layakari (#491): 1 = barabar (one written beat a beat), 2 = dugun, 3 = tigun, 4 = chaugun: so many written beats in
- * each beat of the cycle, the theka going round 2, 3 or 4 times in one cycle while sam and the vibhags stay.
+ * Layakari (#491): 1 = barabar (one written beat a beat), 2 = dugun, 4 = chaugun, 8 = aṭhgun: so many written beats in
+ * each beat of the cycle, the theka going round 2, 4 or 8 times in one cycle while sam and the vibhags stay. 3 (tigun)
+ * is kept only so a recording made with it before #774 still plays back.
  */
-export type Laya = 1 | 2 | 3 | 4;
+export type Laya = 1 | 2 | 3 | 4 | 8;
 
-/** The layakari choices, in order. */
-export const LAYAS: readonly Laya[] = [1, 2, 3, 4];
+/** The layakari choices, in order: the class's guna 1/2/4/8 (Vilambit, Madhya, Drut, Ati Drut; #774). */
+export const LAYAS: readonly Laya[] = [1, 2, 4, 8];
 
 /** One written beat inside a beat of the cycle, at layakari: which written beat and its bols. */
 export type LayaGroup = { from: number; bols: Bol[] };

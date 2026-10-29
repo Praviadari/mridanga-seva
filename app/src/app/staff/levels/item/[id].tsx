@@ -4,7 +4,8 @@
 // Ticks always survive (docs/DECISIONS.md #44): editing keeps them; an item with ticks or
 // materials can only be retired, never deleted; delete is offered only for an item nobody has
 // ticked and no material points to. Retire and delete ask first. Coordinators see the item
-// read-only.
+// read-only. An item may name its section (#773, 0072): typed, or picked from the level's sections; a new item starts
+// in the section of the level's last item, since it goes to the end.
 
 import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
@@ -32,6 +33,7 @@ import {
   ITEM_DESCRIPTION_MAX,
   ITEM_TITLE_MAX,
   restoreItem,
+  SECTION_MAX,
   retireItem,
   saveItem,
   type EditorItem,
@@ -39,10 +41,20 @@ import {
   type ItemFormErrors,
 } from '@/data/syllabus-editor';
 import { levelName } from '@/i18n/labels';
+import { cleanSection, sectionNames } from '@/lib/syllabus-sections';
 import { spacing } from '@/theme/use-theme';
 import { useRequestId } from '@/lib/use-request-id';
 
-type Loaded = { item: EditorItem | null; levelId: number; position: number; materials: Material[] };
+type Loaded = {
+  item: EditorItem | null;
+  levelId: number;
+  position: number;
+  materials: Material[];
+  /** The level's sections in teaching order (#773), to pick from. */
+  sections: string[];
+  /** For a new item: the section of the level's last item in use, or ''. */
+  newSection: string;
+};
 
 /** Add or edit one syllabus item. */
 function SyllabusItemScreenContent() {
@@ -56,6 +68,7 @@ function SyllabusItemScreenContent() {
   const [loaded, setLoaded] = useState<Loaded | 'not_found' | null | undefined>(undefined);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [section, setSection] = useState('');
   // #322: one id for a new item, so Add again after a lost answer adds it once.
   const { requestId } = useRequestId();
   const [errors, setErrors] = useState<ItemFormErrors>({});
@@ -72,7 +85,18 @@ function SyllabusItemScreenContent() {
     if (isNew) {
       const levelId = Number(params.level);
       const level = levels.find((l) => l.levelId === levelId);
-      setLoaded(level ? { item: null, levelId, position: level.items.length + 1, materials: [] } : 'not_found');
+      setLoaded(
+        level
+          ? {
+              item: null,
+              levelId,
+              position: level.items.length + 1,
+              materials: [],
+              sections: sectionNames(level.items),
+              newSection: level.items[level.items.length - 1]?.section ?? '',
+            }
+          : 'not_found',
+      );
       return;
     }
     for (const level of levels) {
@@ -84,7 +108,14 @@ function SyllabusItemScreenContent() {
         setLoaded(null);
         return;
       }
-      setLoaded({ item, levelId: level.levelId, position: index + 1, materials: materials.filter((m) => m.itemId === item.id) });
+      setLoaded({
+        item,
+        levelId: level.levelId,
+        position: index + 1,
+        materials: materials.filter((m) => m.itemId === item.id),
+        sections: sectionNames(level.items),
+        newSection: '',
+      });
       return;
     }
     setLoaded('not_found');
@@ -93,10 +124,11 @@ function SyllabusItemScreenContent() {
   // The form is filled once, when the item first loads; later reloads (after adding a lesson)
   // keep what the Guru is typing.
   const [filled, setFilled] = useState(false);
-  if (!filled && loaded && loaded !== 'not_found' && loaded.item) {
+  if (!filled && loaded && loaded !== 'not_found') {
     setFilled(true);
-    setTitle(loaded.item.title);
-    setDescription(loaded.item.description ?? '');
+    setTitle(loaded.item?.title ?? '');
+    setDescription(loaded.item?.description ?? '');
+    setSection(loaded.item ? (loaded.item.section ?? '') : loaded.newSection);
   }
 
   useFocusEffect(
@@ -125,7 +157,8 @@ function SyllabusItemScreenContent() {
     );
   }
 
-  const { item, levelId, position, materials } = loaded;
+  const { item, levelId, position, materials, sections } = loaded;
+  const others = sections.filter((name) => name !== cleanSection(section));
   const retired = item?.retiredAt != null;
   const canDelete = item !== null && item.ticks === 0 && item.materials === 0;
 
@@ -144,17 +177,17 @@ function SyllabusItemScreenContent() {
   }
 
   async function save() {
-    const found = checkItemForm(title, description);
+    const found = checkItemForm(title, description, section);
     setErrors(found);
     if (Object.keys(found).length > 0) return;
     if (isNew) {
-      const outcome = await run('save', () => addItem(levelId, title, description, requestId()), t('syllabusEditor.added'));
+      const outcome = await run('save', () => addItem(levelId, title, description, section, requestId()), t('syllabusEditor.added'));
       // Opens the new item, where the Guru can add its lessons straight away.
       if (outcome.id) router.replace({ pathname: '/staff/levels/item/[id]', params: { id: String(outcome.id) } });
       return;
     }
     if (item) {
-      await run('save', () => saveItem(item.id, title, description), t('syllabusEditor.saved'));
+      await run('save', () => saveItem(item.id, title, description, section), t('syllabusEditor.saved'));
       await load();
     }
   }
@@ -203,6 +236,21 @@ function SyllabusItemScreenContent() {
             counter={ITEM_DESCRIPTION_MAX}
             error={errors.description ? t(errors.description) : undefined}
           />
+          <TextField
+            label={t('syllabusEditor.sectionLabel')}
+            hint={t('syllabusEditor.sectionHint', { max: SECTION_MAX })}
+            value={section}
+            onChangeText={setSection}
+            maxLength={SECTION_MAX + 20}
+            error={errors.section ? t(errors.section) : undefined}
+          />
+          {others.length > 0 ? (
+            <View style={styles.row}>
+              {others.map((name) => (
+                <Button key={name} variant="link" label={t('syllabusEditor.sectionUse', { section: name })} onPress={() => setSection(name)} />
+              ))}
+            </View>
+          ) : null}
           {item && item.ticks > 0 ? <AppText variant="small" tone="muted">{t('syllabusEditor.ticksKept', { count: item.ticks })}</AppText> : null}
           {/* P1-11 (#323): a refusal beside the button, not above the form. */}
           {message?.tone === 'error' ? <Notice tone="error">{message.text}</Notice> : null}
@@ -216,6 +264,7 @@ function SyllabusItemScreenContent() {
         </Section>
       ) : item ? (
         <Section icon="syllabus" title={item.title}>
+          {item.section ? <AppText tone="muted">{t('syllabusEditor.sectionLine', { section: item.section })}</AppText> : null}
           {item.description ? <AppText>{item.description}</AppText> : null}
           <AppText tone="muted">{t('syllabusEditor.itemCounts', { ticks: item.ticks, materials: item.materials })}</AppText>
         </Section>

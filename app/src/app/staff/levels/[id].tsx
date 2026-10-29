@@ -2,7 +2,8 @@
 // whole level, and the retired items. The Guru moves items up and down here, adds items and
 // lessons, and opens an item (levels/item/[id].tsx) to edit, retire or delete it. Coordinators
 // see the same page without the buttons that change something. Every rule is checked again by
-// the database (migration 0013, docs/DECISIONS.md #44).
+// the database (migration 0013, docs/DECISIONS.md #44). Items that name a section are shown under its heading, in teaching
+// order (#773, 0072); moving an item up or down may carry it past a heading, and its section stays its own.
 
 import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
@@ -20,9 +21,11 @@ import { Notice } from '@/components/notice';
 import { RouteIdGuard } from '@/components/route-id-guard';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
+import { SyllabusSectionHeading } from '@/components/syllabus-section-heading';
 import { fetchMaterials, type Material } from '@/data/materials';
 import { fetchSyllabusByLevel, moveItem, restoreItem, type EditOutcome, type LevelSyllabus } from '@/data/syllabus-editor';
 import { levelName } from '@/i18n/labels';
+import { hasSections, sectionRuns } from '@/lib/syllabus-sections';
 import { spacing } from '@/theme/use-theme';
 
 type Loaded = { level: LevelSyllabus; materials: Material[] };
@@ -87,6 +90,8 @@ function LevelScreenContent() {
 
   const { level, materials } = loaded;
   const levelWide = materials.filter((m) => m.itemId === null);
+  // Headings only when the level has sections (#773).
+  const sectioned = hasSections(level.items);
   const openItem = (itemId: number) =>
     router.push({ pathname: '/staff/levels/item/[id]', params: { id: String(itemId) } });
   const editMaterial = (materialId: number) =>
@@ -102,36 +107,44 @@ function LevelScreenContent() {
         title={t('syllabusEditor.itemsTitle')}
         description={isGuru ? t('syllabusEditor.itemsHintGuru') : t('syllabusEditor.itemsHint')}>
         {level.items.length === 0 ? <AppText tone="muted">{t('syllabusEditor.noItems')}</AppText> : null}
-        {level.items.map((item, index) => (
-          <View key={item.id} style={styles.item}>
-            <ListRow
-              leading="syllabus"
-              title={`${index + 1}. ${item.title}`}
-              details={[
-                ...(item.description ? [item.description] : []),
-                t('syllabusEditor.itemCounts', { ticks: item.ticks, materials: item.materials }),
-              ]}
-              onPress={() => openItem(item.id)}
-            />
-            {isGuru ? (
-              <View style={styles.moves}>
-                <Button
-                  variant="link"
-                  icon="up"
-                  label={t('syllabusEditor.moveUp')}
-                  disabled={index === 0 || busy !== null}
-                  loading={busy === item.id}
-                  onPress={() => void change(item.id, () => moveItem(item.id, true))}
-                />
-                <Button
-                  variant="link"
-                  icon="down"
-                  label={t('syllabusEditor.moveDown')}
-                  disabled={index === level.items.length - 1 || busy !== null}
-                  onPress={() => void change(item.id, () => moveItem(item.id, false))}
-                />
-              </View>
-            ) : null}
+        {sectionRuns(level.items).map((run, r) => (
+          <View key={`${r}:${run.section ?? ''}`} style={styles.item}>
+            {sectioned ? <SyllabusSectionHeading section={run.section} /> : null}
+            {run.items.map((item) => {
+              const index = level.items.indexOf(item);
+              return (
+                <View key={item.id} style={styles.item}>
+                  <ListRow
+                    leading="syllabus"
+                    title={`${index + 1}. ${item.title}`}
+                    details={[
+                      ...(item.description ? [item.description] : []),
+                      t('syllabusEditor.itemCounts', { ticks: item.ticks, materials: item.materials }),
+                    ]}
+                    onPress={() => openItem(item.id)}
+                  />
+                  {isGuru ? (
+                    <View style={styles.moves}>
+                      <Button
+                        variant="link"
+                        icon="up"
+                        label={t('syllabusEditor.moveUp')}
+                        disabled={index === 0 || busy !== null}
+                        loading={busy === item.id}
+                        onPress={() => void change(item.id, () => moveItem(item.id, true))}
+                      />
+                      <Button
+                        variant="link"
+                        icon="down"
+                        label={t('syllabusEditor.moveDown')}
+                        disabled={index === level.items.length - 1 || busy !== null}
+                        onPress={() => void change(item.id, () => moveItem(item.id, false))}
+                      />
+                    </View>
+                  ) : null}
+                </View>
+              );
+            })}
           </View>
         ))}
         {isGuru ? (

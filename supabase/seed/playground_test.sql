@@ -32,6 +32,7 @@ declare
   v_sd bigint; v_mb bigint; v_rb bigint; v_td bigint;
   v_tb bigint; v_ec bigint; v_tc bigint; v_rs bigint; v_div smallint[]; v_guna smallint[];
   v_seq text[];
+  v_ids bigint[];
   v_game text; v_tpl bigint; v_skill text; v_lo int; v_hi int; v_list jsonb; v_item jsonb;
 begin
   -- 1. The dictionary: the four, approved placeholders (written as the class writes them).
@@ -97,8 +98,9 @@ begin
   end if;
 
   -- 3b. The rhythm games (W4, DECISIONS #750-#755): the steps say what each game asks; the guna per level, the
-  -- approved switch orders and the tempo caps per guna are DATA for Prji's D3/D4 (these are TEST defaults only:
-  -- Beginner 1-2, Intermediate 1-2-4, Advanced 1-2-3-4-8; guna 4 up to 90 bpm, guna 8 up to 60).
+  -- approved switch orders and the tempo caps per guna are DATA for Prji's D4 (these are TEST defaults only:
+  -- Beginner 1-2, Intermediate 1-2-4, Advanced 1-2-4-8; guna 4 up to 90 bpm, guna 8 up to 60). The class's guna is
+  -- 1/2/4/8 (Vilambit, Madhya, Drut, Ati Drut: the team's Beginner Lesson 3; DECISIONS #774 closes D3): no 3.
   select id into v_tb from play_templates where placeholder and game = 'tap_the_beat' order by id limit 1;
   if v_tb is null then
     insert into play_templates (game, skill, response_mode, level_min, level_max, steps, params, status, placeholder, approved_at)
@@ -131,10 +133,30 @@ begin
     insert into play_templates (game, skill, response_mode, level_min, level_max, steps, params, status, placeholder, approved_at)
     values ('rhythm_switching', 'rhythm.guna', 'tap', 1, 3,
             '[{"step":1,"ask":"name"},{"step":2,"ask":"tap","cue":true},{"step":3,"ask":"tap","cue":false}]',
-            '{"roundLen":4,"gunaByLevel":{"1":[1,2],"2":[1,2,4],"3":[1,2,3,4,8]},"orders":[[1,2,1],[1,2,4,1],[1,2,4,2,1],[1,2,4,8,1]],"gunaBpmMax":{"4":90,"8":60},"cyclesPerSection":2}',
+            '{"roundLen":4,"gunaByLevel":{"1":[1,2],"2":[1,2,4],"3":[1,2,4,8]},"orders":[[1,2,1],[1,2,4,1],[1,2,4,2,1],[1,2,4,8,1]],"gunaBpmMax":{"4":90,"8":60},"cyclesPerSection":2}',
             'approved', true, now())
     returning id into v_rs;
     v_changed := v_changed + 1;
+  end if;
+  -- 3c. A TEST project seeded before #774 has guna 3 in Rhythm Switching: taken out, and the edited rows (sent back
+  -- to in_review with revision + 1 by guard_play_status) approved again, so the next publish carries them.
+  with u as (
+    update play_templates set params = jsonb_set(params, '{gunaByLevel,3}', '[1,2,4,8]')
+     where placeholder and game = 'rhythm_switching' and params -> 'gunaByLevel' -> '3' @> '3'
+    returning id)
+  select array_agg(id) into v_ids from u;
+  if v_ids is not null then
+    update play_templates set status = 'approved' where id = any(v_ids) and status = 'in_review';
+    v_changed := v_changed + cardinality(v_ids);
+  end if;
+  with u as (
+    update play_exercises set guna = array_remove(guna, 3::smallint)
+     where placeholder and game = 'rhythm_switching' and 3 = any(guna)
+    returning id)
+  select array_agg(id) into v_ids from u;
+  if v_ids is not null then
+    update play_exercises set status = 'approved' where id = any(v_ids) and status = 'in_review';
+    v_changed := v_changed + cardinality(v_ids);
   end if;
   -- 4. Exercises, only te / re / khe / ta; each added once (beats: '-' a rest, te.re two half-beats).
   for v_game, v_tpl, v_skill, v_lo, v_hi, v_list in values
@@ -175,7 +197,7 @@ begin
      '[{"s":["te","re","khe","ta"]}, {"s":["ta","khe","te","re"]}, {"s":["khe","ta","khe","ta"]}, {"s":["te","re","te","re"]},
        {"s":["ta","ta","khe","khe"]}]'::jsonb)
   loop
-    v_guna := case when v_game = 'rhythm_switching' then '{1,2,3,4,8}'::smallint[] else '{1}'::smallint[] end;
+    v_guna := case when v_game = 'rhythm_switching' then '{1,2,4,8}'::smallint[] else '{1}'::smallint[] end;
     for v_item in select value from jsonb_array_elements(v_list) loop
       v_seq := array(select jsonb_array_elements_text(v_item -> 's'));
       v_div := case when v_item ? 'd' then array(select (jsonb_array_elements_text(v_item -> 'd'))::smallint) end;

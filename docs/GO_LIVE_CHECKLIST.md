@@ -118,7 +118,8 @@ with m(migration, present) as (values
   ('0066', exists (select 1 from pg_proc where proname = 'approve_data_erasure' and pronamespace = 'public'::regnamespace)),
   ('0067', exists (select 1 from pg_proc where proname = 'team_push_line' and pronamespace = 'public'::regnamespace and prosrc like '%ఫెసిలిటేటర్%')),
   ('0068', exists (select 1 from pg_proc where proname = 'my_data_summary' and pronamespace = 'public'::regnamespace and prosrc like '%play_rounds%')),
-  ('0069', exists (select 1 from pg_trigger where tgname = 'playground_submission_guard' and not tgisinternal))
+  ('0069', exists (select 1 from pg_trigger where tgname = 'playground_submission_guard' and not tgisinternal)),
+  ('0072', exists (select 1 from pg_attribute where attrelid = 'public.syllabus_items'::regclass and attname = 'section' and not attisdropped))
 )
 select migration, case when present then 'yes' else 'no' end as present from m
 union all
@@ -130,7 +131,7 @@ select 'MISSING', coalesce((select string_agg(a.migration, ' ' order by a.migrat
 order by 1;
 ```
 
-## B. Migrations 0013-0069, one file per run
+## B. Migrations 0013-0072, one file per run
 
 For each row: GitHub main → `supabase/migrations/<file>` → **Copy raw file** → LIVE → SQL Editor →
 New query → paste → check the project → **Run** → then paste the probe again (or keep it in a second
@@ -204,7 +205,8 @@ a second paste. So pasting a file twice by mistake is harmless; still, never do 
 | M0067 | `0067_facilitator_wording.sql` (branch `claude/facilitator-home-221f89`) | Praveen · dashboard | No rows; probe `0067`, `MISSING` `none`; verification row 3 `16 of 17` while 0065 waits, `17 of 17` after it (no new job) | **No Guru in the Telugu and Hindi notices** ([#706](DECISIONS.md), Facilitator SOP 360° review 27-10-2026): **`promotion_push_line` and `team_push_line` replaced** with the same lines except four te/hi ones (ఫెసిలిటేటర్ గారు / फ़ैसिलिटेटर instead of గురువుగారు / गुरुजी); English unchanged; privileges unchanged. No table, policy or stored row changes; queued notices keep their text. Safe to run twice. Any time after 0064 (independent of 0066); best with the OTA whose te/hi strings say ఫెసిలిటేటర్ |
 | M0068 | `0068_my_data_playground.sql` (main) | Praveen · dashboard | No rows; probe `0068`, `MISSING` `none`; verification row 3 `17 of 17` (no new job) | **My data lists the Playground** ([#770](DECISIONS.md)): **`my_data_summary` replaced** with the same body plus a `playground` part for a student (game settings, round counts by game, weekly summaries, the facilitator's ratings). Rights, logging and errors unchanged; changes no stored row. Safe to run twice. **Needs 0065** (run it right after 0065, with the Playground release) |
 | M0069 | `0069_playground_takes.sql` (main) | Praveen · dashboard | No rows; probe `0069`, `MISSING` `none`; verification row 3 `17 of 17` (no new job) | **Recordings sent from a game** ([#766](DECISIONS.md), #696): two triggers — `assessments.playground_game` must be a game id; a submission to a game's assessment is refused when the student already has **2 game recordings waiting for review** (`playground_takes_full`) or the file is not audio / over **2.5 MB** (`playground_take_too_long`; the app stops game takes at 90 s). `play_assets.bundled_key` may also be `synth:tone|instrument|kirtan:…` (sounds the app generates, #761). `submit_assessment` is not replaced; other assessments unchanged. Changes no stored row. Safe to run twice. **Needs 0065** (run with the Playground release) |
-**A file newer than 0069 on main:** the replay's first check fails until this table lists it. Add it
+| M0072 | `0072_syllabus_sections.sql` (branch `claude/syllabus-sections`) | Praveen · dashboard | No rows; probe `0072`, `MISSING` `none`; verification row 3 unchanged (no new job) | **Sections in the syllabus** ([#773](DECISIONS.md)): `syllabus_items` gets the optional column `section` (a heading over items in teaching order; null = no section, as before) and **`guard_syllabus_item` replaced** with the same rules plus the section (trimmed, spaces collapsed, at most 100 characters, `section_too_long`). Rights unchanged (table rights + row-level security: the Guru writes, the class reads). Changes no stored row. Safe to run twice. Independent of the Playground (0065-0069); 0070/0071 are the face branch's and may be missing. **Before** the OTA whose syllabus editor sends `section` (a newer app on a database without 0072 cannot load the syllabus) |
+**A file newer than 0072 on main:** the replay's first check fails until this table lists it. Add it
 here, with its own steps, then run it last.
 
 **0049 (launch clean-up)** is on TEST but not on main on 15 Oct 2026. It joins this table when branch
@@ -357,7 +359,8 @@ with m(migration, present) as (values
   ('0066', exists (select 1 from pg_proc where proname = 'approve_data_erasure' and pronamespace = 'public'::regnamespace)),
   ('0067', exists (select 1 from pg_proc where proname = 'team_push_line' and pronamespace = 'public'::regnamespace and prosrc like '%ఫెసిలిటేటర్%')),
   ('0068', exists (select 1 from pg_proc where proname = 'my_data_summary' and pronamespace = 'public'::regnamespace and prosrc like '%play_rounds%')),
-  ('0069', exists (select 1 from pg_trigger where tgname = 'playground_submission_guard' and not tgisinternal))
+  ('0069', exists (select 1 from pg_trigger where tgname = 'playground_submission_guard' and not tgisinternal)),
+  ('0072', exists (select 1 from pg_attribute where attrelid = 'public.syllabus_items'::regclass and attname = 'section' and not attisdropped))
 ),
 last_in_order as (select coalesce(max(a.migration), 'before 0010') as v from m a
   where a.present and not exists (select 1 from m b where b.migration <= a.migration and not b.present)),
@@ -369,7 +372,7 @@ jobs(name) as (values ('mridanga-status-refresh'), ('mridanga-close-visits'), ('
   ('mridanga-parent-digests'), ('mridanga-data-requests'), ('mridanga-retention'), ('mridanga-client-errors-purge'),
   ('mridanga-playground')),
 checks(sort, check_name, ok, found, expected) as (
-  select 1, 'last migration', (select v from last_in_order) = '0069', (select v from last_in_order), '0069'
+  select 1, 'last migration', (select v from last_in_order) = '0072', (select v from last_in_order), '0072'
   union all select 2, 'migrations missing', (select v from missing) = 'none', (select v from missing), 'none'
   union all select 3, 'scheduled jobs',
     (select count(*) from jobs j join cron.job c on c.jobname = j.name and c.active) = 17,

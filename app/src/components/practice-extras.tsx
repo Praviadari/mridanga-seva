@@ -1,6 +1,6 @@
 // Practice extras on S5 Practice tools (docs/DECISIONS.md #490-#492; the milestones are in practice-parts.tsx):
 // - SilentFields: silent bars / cycles, the inner-time trainer: play N, then M without sound, round again (#490).
-// - LayaChoice: layakari, barabar / dugun / tigun / chaugun in the taal player (#491).
+// - LayaChoice: layakari, barabar / dugun / chaugun / aṭhgun in the taal player (#491; the class's guna 1/2/4/8, #774).
 // - KartalFields: the kartal layer under the taal, with its own volume (#492).
 
 import { useTranslation } from 'react-i18next';
@@ -66,9 +66,10 @@ const LAYA_KEY = {
   2: 'practiceExtras.laya2',
   3: 'practiceExtras.laya3',
   4: 'practiceExtras.laya4',
+  8: 'playground.rhythm.switch.laya8',
 } as const;
 
-/** Layakari (#491): barabar 1×, dugun 2×, tigun 3×, chaugun 4×. */
+/** Layakari (#491, #774): barabar 1×, dugun 2×, chaugun 4×, aṭhgun 8×. */
 export function LayaChoice({ value, onChange }: { value: Laya; onChange: (laya: Laya) => void }) {
   const { t } = useTranslation();
   return (

@@ -165,7 +165,7 @@ login; recordings for review go through assessments.
 | G2 **Approved bol dictionary**: the app's stroke map has 4 unverified mappings (tin, kha/khe, ge/gi, dhi — `lib/bols.ts`) | Wrong stroke names would teach wrong technique | Prji | Release |
 | G3 **Recordings**: 9 single strokes (docs/KHOL_RECORDINGS.md), phrases, kīrtan clips, instruments, voice prompts | Spec requires authentic sound | Prji | Release |
 | G4 **Tempo range and guna per level** (e.g. Beginner 60-80 bpm, guna 1-2) | Generator must not exceed approved BPM/guna (DYN-03) | Prji | Release |
-| G5 What **"guna"** means in this class: spec says 1/2/4/8; the app's layakari is 1/2/3/4 (barabar, dugun, tigun, chaugun) | Rhythm Switching must use the class's convention | Prji | Rhythm Switching |
+| G5 What **"guna"** means in this class: spec says 1/2/4/8; the app's layakari is 1/2/3/4 (barabar, dugun, tigun, chaugun) | Rhythm Switching must use the class's convention | Prji | **Closed 29-10-2026: 1/2/4/8, #774** |
 | G6 **Kīrtan clip rights**: performers' written permission, lyrics status, where they may be used | Licensing (spec §26) | Prji + Praveen | Kīrtan games |
 | G7 **Tonic (Sa) choices** and comfortable ranges for children/adults | Vocal games (spec §6) | Prji | Voice games |
 | G8 **Rubric wording** (0-3) for kīrtan entry, chant clarity, rhythm sample | Facilitator review (spec §30) | Prji | Phase 3 |
@@ -1287,7 +1287,7 @@ a crash on a cheap Android phone; a game with no exit; a back-to-back repeat whi
 |---|---|---|---|
 | D1 | Approve this design (placement, engine, labels, phases) | Prji | — |
 | D2 | Approve the bol dictionary incl. the 4 unverified mappings | Prji | — |
-| D3 | The class's guna convention (1/2/4/8 vs 1/2/3/4; when guna 8) | Prji | Follow the class |
+| D3 | The class's guna convention (1/2/4/8 vs 1/2/3/4; when guna 8) | Prji | **Closed 29-10-2026: 1/2/4/8** (team Beginner Lesson 3, Praveen's yes; DECISIONS #774) |
 | D4 | Tempo range and guna per level | Prji | Beginner 60-80 bpm, guna 1-2, to be set by Prji |
 | D5 | Voice Companion and Vocal Sādhana Studio share one engine (beginner entry + full studio); same for the two kīrtan games | Prji | Yes |
 | D6 | Pilot group members (8-12 beginners, consent for minors) | Prji | Create a group "Playground pilot" |

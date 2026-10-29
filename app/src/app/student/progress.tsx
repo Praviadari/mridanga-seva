@@ -7,7 +7,8 @@
 // the whole level come first. An item the facilitator retired shows only when it was ticked, and
 // does not count (docs/DECISIONS.md #44).
 // Also Me > My progress in the staff app, for a staff member's own record (0053, #319; staff/me/progress.tsx).
-// Since 24-10-2026 the bar is the level path (components/level-path-view.tsx, #620).
+// Since 24-10-2026 the bar is the level path (components/level-path-view.tsx, #620). Since 29-10-2026 a level whose items name a
+// section shows a heading over each section, in teaching order (#773, lib/syllabus-sections.ts); no sections = as before.
 
 import { router, Stack, useFocusEffect, usePathname } from 'expo-router';
 import { useCallback } from 'react';
@@ -26,11 +27,13 @@ import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
+import { SyllabusSectionHeading } from '@/components/syllabus-section-heading';
 import { fetchMyProgress, type MyProgress } from '@/data/syllabus';
 import { LEVEL_IDS, levelName } from '@/i18n/labels';
 import { formatDate } from '@/lib/dates';
 import { levelPath } from '@/lib/level-path';
 import { ownAreaOf } from '@/lib/own-area';
+import { hasSections, sectionRuns } from '@/lib/syllabus-sections';
 import { spacing } from '@/theme/use-theme';
 import { RefreshFailed } from '@/components/refresh-failed';
 import { useKeptLoad } from '@/lib/kept-load';
@@ -84,6 +87,8 @@ export default function MyProgressScreen() {
   const levelWide = loaded.materials.filter((m) => m.itemId === null);
   // Numbered in teaching order among the items in use (retired ones carry no number).
   const inUse = loaded.items.filter((item) => !item.retired);
+  // Headings only when the level has sections (#773); items without one then show under "Other lessons".
+  const sectioned = hasSections(loaded.items);
 
   return (
     <Screen underHeader onRefresh={load}>
@@ -111,26 +116,31 @@ export default function MyProgressScreen() {
       ) : null}
 
       {loaded.items.length === 0 ? <EmptyState icon="syllabus" title={t('profile.noSyllabus')} /> : null}
-      {loaded.items.map((item) => {
-        const lessons = loaded.materials.filter((m) => m.itemId === item.id);
-        return (
-          <View key={item.id} style={styles.item}>
-            <ListRow
-              leading={item.doneOn ? 'check' : 'syllabus'}
-              highlighted={item.doneOn !== null}
-              title={item.retired ? item.title : `${inUse.indexOf(item) + 1}. ${item.title}`}
-              details={[
-                ...(item.description ? [item.description] : []),
-                item.doneOn ? t('progress.doneOn', { date: formatDate(item.doneOn) }) : t('progress.notYet'),
-                ...(item.retired ? [t('progress.retired')] : []),
-              ]}
-            />
-            {lessons.map((material) => (
-              <MaterialRow key={material.id} material={material} />
-            ))}
-          </View>
-        );
-      })}
+      {sectionRuns(loaded.items).map((run, r) => (
+        <View key={`${r}:${run.section ?? ''}`} style={styles.item}>
+          {sectioned ? <SyllabusSectionHeading section={run.section} /> : null}
+          {run.items.map((item) => {
+            const lessons = loaded.materials.filter((m) => m.itemId === item.id);
+            return (
+              <View key={item.id} style={styles.item}>
+                <ListRow
+                  leading={item.doneOn ? 'check' : 'syllabus'}
+                  highlighted={item.doneOn !== null}
+                  title={item.retired ? item.title : `${inUse.indexOf(item) + 1}. ${item.title}`}
+                  details={[
+                    ...(item.description ? [item.description] : []),
+                    item.doneOn ? t('progress.doneOn', { date: formatDate(item.doneOn) }) : t('progress.notYet'),
+                    ...(item.retired ? [t('progress.retired')] : []),
+                  ]}
+                />
+                {lessons.map((material) => (
+                  <MaterialRow key={material.id} material={material} />
+                ))}
+              </View>
+            );
+          })}
+        </View>
+      ))}
     </Screen>
   );
 }

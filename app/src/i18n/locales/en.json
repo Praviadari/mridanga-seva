@@ -828,7 +828,8 @@
     "allDone": "Every item of {{level}} is ticked. Moving up a level is the facilitator's decision.",
     "remarkLine": "Remark: {{remark}}",
     "tickWithRemarkOpen": "Tick with a remark",
-    "tickWithRemark": "Tick and save the remark"
+    "tickWithRemark": "Tick and save the remark",
+    "noSection": "Other lessons"
   },
   "followUp": {
     "title": "Follow-ups",
@@ -1265,8 +1266,13 @@
       "descriptionTooLong": "The description is too long (at most 1000 characters).",
       "hasTicks": "Students have this item ticked, so it cannot be deleted or moved to another level. Retire it instead.",
       "hasMaterials": "Lessons point to this item. Remove them first, or retire the item.",
-      "notAllowed": "Only the facilitator can change the syllabus."
-    }
+      "notAllowed": "Only the facilitator can change the syllabus.",
+      "sectionTooLong": "The section is too long (at most 100 characters)."
+    },
+    "sectionLabel": "Section (optional)",
+    "sectionHint": "A heading over items taught together, e.g. \"Section 1: Core Practice\". Up to {{max}} characters; empty = no section.",
+    "sectionUse": "Use \"{{section}}\"",
+    "sectionLine": "Section: {{section}}"
   },
   "materials": {
     "kinds": {
@@ -2704,7 +2710,7 @@
     "laya2": "Dugun 2×",
     "laya3": "Tigun 3×",
     "laya4": "Chaugun 4×",
-    "layaHint": "Dugun, tigun and chaugun play the bols 2, 3 or 4 times as fast over the same cycle; sam stays where it is.",
+    "layaHint": "Dugun, chaugun and aṭhgun play the bols 2, 4 or 8 times as fast over the same cycle; sam stays where it is.",
     "layaNow_one": "{{count}} written beat in each beat.",
     "layaNow_other": "{{count}} written beats in each beat: the theka goes round {{count}} times in one cycle.",
     "kartal": "Kartal under the taal",
