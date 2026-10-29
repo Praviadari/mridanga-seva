@@ -644,6 +644,7 @@ to `app/dist/`. Always use this command, not a bare `npx expo export`, because
 
 | Date | Site | Commit | Built (UTC) | By |
 |---|---|---|---|---|
+| 29-10-2026 | test (W6 syllabus: sections (0072), Beginner lessons + Intermediate sections TEST seed, guna 1/2/4/8; also on walk alias; first download 2722 KB) | 97705e1 (main; entry-e8b207b7…; deployment be1c5826) | 2026-10-29 | Claude (wrangler, Praveen's login) |
 | 29-10-2026 | test (Daily Quest: lines stay put for the day, a played game shows Done; also on walk.mridanga-seva-test.pages.dev, deployment ddd88079; first download 2722 KB) | 27cf2ed (main; entry-b7a0e042…; deployment 666d7d7e) | 2026-10-29 | Claude (wrangler, Praveen's login) |
 | 28-10-2026 | test (web: Daily Quest waits for the student area file — a direct load of the Practice tab crashed; also on the stable walk alias walk.mridanga-seva-test.pages.dev, deployment e35f9d7f; first download 2722 KB) | ff54c21 (main; entry-0b8bd82d…; deployment 7cf7573d) | 2026-10-28 | Claude (wrangler, Praveen's login) |
 | 28-10-2026 | test (0069 fixes from the W5 walk: assessment form saves with a Playground game, browser game takes accepted; en hint wording; first download 2722 KB) | 3f24b96 (main; entry-74d1bd9b…; deployment 8a83e11c) | 2026-10-28T16:14:10Z | Claude (wrangler, Praveen's login) |
