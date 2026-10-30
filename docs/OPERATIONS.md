@@ -644,6 +644,7 @@ to `app/dist/`. Always use this command, not a bare `npx expo export`, because
 
 | Date | Site | Commit | Built (UTC) | By |
 |---|---|---|---|---|
+| 30-10-2026 | website (Get the app: APK from the GitHub Release android-1.0.0, SHA-256 aec19a52…; draft build, `npm test` + `--external` OK; release asset checked: 42687775 bytes, SHA matches) | bf48859 (main; mridangaseva-site deployment 7e8bf81b) | 2026-10-30 | Claude (wrangler, Praveen's login) |
 | 30-10-2026 | test (heading font with lining figures, #337 update; also on walk alias) | 891ea63 (main; entry-bd3873c6…; deployment fc80d119, walk 29afdf2c) | 2026-10-30 | Claude (wrangler, Praveen's login) |
 | 30-10-2026 | test (student profile: syllabus numbered by place, section headings; also on walk alias; first download 2722 KB) | a7cb575 (main; entry-b4e3400f…; deployment 0a3be42a, walk deb895eb) | 2026-10-30 | Claude (wrangler, Praveen's login) |
 | 29-10-2026 | test (W6 syllabus: sections (0072), Beginner lessons + Intermediate sections TEST seed, guna 1/2/4/8; also on walk alias; first download 2722 KB) | 97705e1 (main; entry-e8b207b7…; deployment be1c5826) | 2026-10-29 | Claude (wrangler, Praveen's login) |
