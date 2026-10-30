@@ -7,8 +7,16 @@
 
 import { estimatePitch, frameLevel, type PitchEstimate } from './pitch-estimate';
 
-/** The TEST Supabase project's ref (as lib/asset-link.ts): only a TEST build offers the pitch line. */
-const TEST_PROJECT_REF = 'fhuqykssenuhczdqbafu';
+/**
+ * Only the TEST web site (its deployments and the walk alias) and a local dev server offer the pitch line. Decided by
+ * the page's address, not the TEST project's ref: the LIVE build must not contain that ref (scripts/export-web.mjs
+ * refuses it, 30-10-2026).
+ */
+function onTestSite(): boolean {
+  if (typeof window === 'undefined') return false;
+  const host = window.location.hostname;
+  return host === 'mridanga-seva-test.pages.dev' || host.endsWith('.mridanga-seva-test.pages.dev') || host === 'localhost' || host === '127.0.0.1' || host === '[::1]';
+}
 
 /** One reading: the pitch (null when nothing clear) and the level (0-1), for "too quiet" and "noisy" hints. */
 export type PitchFrame = { estimate: PitchEstimate | null; level: number };
@@ -20,7 +28,7 @@ type WithWebkit = typeof globalThis & { webkitAudioContext?: typeof AudioContext
 
 /** True when this build may offer the pitch line (TEST switch) and the browser can give live microphone samples. */
 export function pitchLineAvailable(): boolean {
-  if (!(process.env.EXPO_PUBLIC_SUPABASE_URL ?? '').includes(TEST_PROJECT_REF)) return false;
+  if (!onTestSite()) return false;
   const g = globalThis as WithWebkit;
   return typeof navigator !== 'undefined' && Boolean(navigator.mediaDevices?.getUserMedia) && Boolean(g.AudioContext ?? g.webkitAudioContext);
 }
