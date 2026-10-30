@@ -151,13 +151,13 @@ export function summarySections(t: TFunction, s: MyDataSummary, fmt: DateFormat,
   if (s.assessments !== undefined) activity.push({ label: t('dataRights.fields.assessments'), value: String(s.assessments) });
   if (s.events !== undefined) activity.push({ label: t('dataRights.fields.events'), value: String(s.events) });
   if (s.loans) activity.push({ label: t('dataRights.fields.loans'), value: String(s.loans.length) });
-  if (s.playground) {
-    const pg = s.playground;
+  // Only when something is held (#781): 0068 always answers the key, and while the Playground is off a line about it
+  // would name a part of the app the student cannot see.
+  const pg = s.playground;
+  if (pg && (pg.rounds.count || pg.weeks.length || pg.ratings.length)) {
     activity.push({
       label: t('dataRights.fields.playground'),
-      value: pg.rounds.count || pg.weeks.length || pg.ratings.length
-        ? t('dataRights.playgroundLine', { count: pg.rounds.count, last: pg.rounds.last ? day(pg.rounds.last) : '-', weeks: pg.weeks.length, ratings: pg.ratings.length })
-        : '0',
+      value: t('dataRights.playgroundLine', { count: pg.rounds.count, last: pg.rounds.last ? day(pg.rounds.last) : '-', weeks: pg.weeks.length, ratings: pg.ratings.length }),
     });
   }
   activity.push(

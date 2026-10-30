@@ -7,7 +7,8 @@
 // "All visits by month" opens S9 Attendance history for this student (staff/visits/[id]).
 // Under each guardian of a minor: whether they get the attendance emails (check-out only by default,
 // 0044), with the switch (0043).
-// After the practice: the Rhythm Playground (labels, ratings; screens/staff-playground/student-panel.tsx, #749).
+// After the practice: the Rhythm Playground (labels, ratings; screens/staff-playground/student-panel.tsx, #749), while it is
+// on for the signed-in staff login (#781).
 // At the end: print the student's QR card, or (the Guru) replace a lost one (0045, P3-1).
 // Under the details, for the Guru: choose the mentor, set the level and joining date, take a wrong login off
 // (components/guru-student-tools.tsx, docs/DECISIONS.md #302).
@@ -30,6 +31,7 @@ import { HeldItemsPanel } from '@/components/held-items';
 import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
 import { PersonHeader } from '@/components/person-header';
+import { usePlaygroundOn } from '@/components/playground-only';
 import { PlaygroundPanel } from '@/screens/staff-playground/student-panel';
 import { PracticePanel } from '@/components/practice-parts';
 import { PrivateHiddenNotice } from '@/components/private-hidden-notice';
@@ -68,6 +70,7 @@ function StudentProfileScreenContent() {
   const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { profile: signedIn } = useAuth();
+  const playgroundOn = usePlaygroundOn();
   // undefined = loading, null = could not load, 'not_found' = no such student.
   const [loaded, setLoaded, refreshFailed] = useKeptLoad<Loaded | 'not_found' | null | undefined>();
   const [marking, setMarking] = useState(false);
@@ -375,8 +378,8 @@ function StudentProfileScreenContent() {
       <PromotionPanel studentId={student.id} />
       {/* Phase 2 slice 3 (docs/DECISIONS.md #54): the student's weekly practice. */}
       <PracticePanel studentId={student.id} />
-      {/* Rhythm Playground (docs/DECISIONS.md #749): skill labels, ratings, Rate a skill, Assign a game. */}
-      <PlaygroundPanel studentId={student.id} studentName={student.fullName} ownRecord={ownRecord} />
+      {/* Rhythm Playground (docs/DECISIONS.md #749): skill labels, ratings, Rate a skill, Assign a game; #781: if on. */}
+      {playgroundOn ? <PlaygroundPanel studentId={student.id} studentName={student.fullName} ownRecord={ownRecord} /> : null}
 
       {/* Phase 2 slice 8 (C19): items on loan. */}
       <HeldItemsPanel by={{ studentId: student.id }} openable />

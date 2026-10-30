@@ -2204,7 +2204,7 @@ changes except `submission_file_expired` (one rule added) and a new column `asse
 
 | Object | What |
 |---|---|
-| Settings `playground_enabled`, `playground_pilot_group`, `playground_allow_placeholders`, `playground_labels` | Off / null / **off** / the label numbers of §12.2. Not in `guard_setting`: changed only in the SQL editor. `playground_allow_placeholders` is **TEST only**: on LIVE it stays false, so placeholder rows can never be published or shown |
+| Settings `playground_enabled`, `playground_pilot_group`, `playground_allow_placeholders`, `playground_labels` | Off / null / **off** / the label numbers of §12.2. Not in `guard_setting`: changed only in the SQL editor. The first two are read by the app only (lib/playground-switch.ts, DECISIONS #781): off hides every way into the Playground; a pilot group id limits it to that group's students. `playground_allow_placeholders` is **TEST only**: on LIVE it stays false, so placeholder rows can never be published or shown |
 | `play_bols` | The approved bol dictionary: `id` = plain form (`dha`), `written` (`dhā`), head, technique, first level, `sounds_like` (one card), `close_pairs` (hard distractors), optional stroke recording |
 | `play_assets` | Sound files: `path` = `<kind>/<uuid>.<wav\|m4a\|mp3>` in the private bucket `playground-audio` (15 MB, audio types) or a `bundled_key`; licence, performer, credit, permission reference. Approving needs the file in Storage and the licence's details |
 | `play_templates` | A game's rule for a skill and level range: `steps` (`[{"step":1,"choices":2,...}]`) and `params` (`roundLen`, `reviewShare`, `gunaByLevel`) |

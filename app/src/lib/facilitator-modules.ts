@@ -55,6 +55,11 @@ export type ModuleRow = {
   roles?: readonly StaffRole[];
   /** Shown only when the login has its own student record (0053, #316). */
   ownRecord?: boolean;
+  /**
+   * A Rhythm Playground screen: shown only while the Playground is on for this login (#781; the Guru always, to load
+   * content before launch; a coordinator only while it is on).
+   */
+  playground?: boolean;
 };
 
 /** A section of a landing screen (the spec's submodule). */
@@ -168,7 +173,7 @@ export const FACILITATOR_MODULES: readonly FacilitatorModule[] = [
         rows: [
           { key: 'practice', icon: 'practice', label: 'practice.module', href: '/staff/practice' },
           // Rhythm Playground content, approval, assignments and class progress (docs/DECISIONS.md #740).
-          { key: 'playground', icon: 'listen', label: 'staffPlayground.title', href: '/staff/playground' },
+          { key: 'playground', icon: 'listen', label: 'staffPlayground.title', href: '/staff/playground', playground: true },
         ],
       },
       {
@@ -311,12 +316,17 @@ export function moduleAllowed(module: FacilitatorModule, role: string | undefine
   return module.roles.some((r) => r === role);
 }
 
-/** The sections of a module this login may see: rows filtered by role and own record; empty sections left out. */
-export function visibleSections(module: FacilitatorModule, role: string | undefined, ownRecord: boolean): ModuleSection[] {
+/**
+ * The sections of a module this login may see: rows filtered by role, own record and the Playground switch (playgroundOn:
+ * components/playground-only.tsx usePlaygroundOn); empty sections left out.
+ */
+export function visibleSections(module: FacilitatorModule, role: string | undefined, ownRecord: boolean, playgroundOn: boolean): ModuleSection[] {
   return module.sections
     .map((section) => ({
       ...section,
-      rows: section.rows.filter((row) => (!row.roles || row.roles.some((r) => r === role)) && (!row.ownRecord || ownRecord)),
+      rows: section.rows.filter(
+        (row) => (!row.roles || row.roles.some((r) => r === role)) && (!row.ownRecord || ownRecord) && (!row.playground || playgroundOn),
+      ),
     }))
     .filter((section) => section.rows.length > 0);
 }

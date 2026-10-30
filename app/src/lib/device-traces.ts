@@ -22,7 +22,7 @@
 //   subscription itself ends with the service worker.
 // - the Rhythm Playground's rounds waiting to be sent and its 30-day history on this phone, and the cached pack
 //   (lib/playground/round-queue.ts, pack-cache.ts; #728), and the student's last Playground state (lib/playground-games/
-//   state-cache.ts; #736).
+//   state-cache.ts; #736), and whether the Playground was on for this login (lib/playground-switch.ts, #781).
 
 import { Directory, Paths } from 'expo-file-system';
 import { Image } from 'expo-image';
@@ -37,6 +37,7 @@ import { forgetPlayBests } from '@/lib/play-bests';
 import { forgetPack } from '@/lib/playground/pack-cache';
 import { forgetPlayground } from '@/lib/playground/round-queue';
 import { forgetPlayState } from '@/lib/playground-games/state-cache';
+import { forgetPlaygroundSwitch } from '@/lib/playground-switch';
 import { forgetPracticeReminders } from '@/lib/practice-reminder';
 import { dismissNotifications } from '@/lib/push';
 import { forgetWebPushNote } from '@/lib/web-push';
@@ -56,6 +57,7 @@ export async function clearDeviceTraces(): Promise<void> {
   forgetPlayground();
   forgetPack();
   forgetPlayState();
+  forgetPlaygroundSwitch();
   forgetWebPushNote();
   await forgetMyRecordings();
   await Promise.all([
