@@ -35,6 +35,8 @@ export type HomeHeaderProps = {
   role?: string;
   /** Staff homes: the side menu's button (components/side-menu.tsx) on the left, in place of My profile (#350). */
   menu?: boolean;
+  /** Staff homes: the To do total, a count on the menu button, whose menu opens with the Today boxes (#778). */
+  toDo?: number;
   /**
    * The student home since #672: the band made compact (no rule, the greeting closer), the Updates bell on the right
    * and the student's initials on the left, opening the Me tab (Praveen 28-10-2026: an empty corner looked like
@@ -46,7 +48,7 @@ export type HomeHeaderProps = {
 };
 
 /** The home's header band with the app's name and the greeting. */
-export function HomeHeader({ name, role, menu, student, onMe }: HomeHeaderProps) {
+export function HomeHeader({ name, role, menu, toDo, student, onMe }: HomeHeaderProps) {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const { width } = useWindowDimensions();
@@ -56,7 +58,7 @@ export function HomeHeader({ name, role, menu, student, onMe }: HomeHeaderProps)
   return (
     <SaffronBand>
       <View style={styles.row}>
-        <View style={styles.side}>{menu ? <MenuButton place="band" /> : student ? <MeButton name={name} onPress={onMe} /> : <ProfileButton />}</View>
+        <View style={styles.side}>{menu ? <MenuButton place="band" count={toDo} /> : student ? <MeButton name={name} onPress={onMe} /> : <ProfileButton />}</View>
         <View style={styles.brand}>
           {/* As wide as the space between the buttons, and smaller rather than cut at large text (#372). The web
               cannot shrink a text to fit, so there it is smaller on a narrow window and takes a second line rather

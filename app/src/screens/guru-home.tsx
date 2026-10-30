@@ -1,8 +1,12 @@
-// G1 the facilitator's Home (role value 'guru', #40) since the 11-module Home (28-10-2026, docs/DECISIONS.md #700-#703;
-// Facilitator SOP 360° review, locked; was the launch UI's ring of eight, #350-#353): the band with the menu button
-// (components/side-menu.tsx) and the bell, the "Needs attention" strip with the Today boxes (components/staff-today.tsx),
-// then the eleven module circles (components/facilitator-modules.tsx), each opening its landing screen. What waits
-// for the facilitator is the amber To do box (staff/waiting.tsx) and the Level-ups count on Teaching. Behind the
+// G1 the facilitator's Home (role value 'guru', #40) since the ring homes (Praveen 30-10-2026, docs/DECISIONS.md
+// #777-#779: every home a ring, no scrolling, the rest in the side menu; was the 11-module grid of #700-#703): the band
+// with the menu button (components/side-menu.tsx, carrying the To do total) and the bell, then a ring of eight of the
+// eleven modules (Teaching, Coordinators, Students, Events & Seva, Reports, Funds, Inventory, Admin;
+// components/staff-shortcuts.tsx FacilitatorRing), each opening its landing screen, sized to the room above the tabs
+// (components/home-ring.tsx), and the fact of the day while there is room. Media, Security & Audits and Settings are in
+// the side menu, under its Today boxes (components/staff-today.tsx, which left the home). What waits is a red count on
+// its circle (Level-ups, recordings and suggestions on Teaching; follow-ups on Coordinators; sign-ups on Students; fund
+// entries on Funds) and one amber To do line while anything waits (ToDoLine, opening staff/waiting.tsx). Behind the
 // modules: the numbers on Overview (GuruOverview below, staff/overview.tsx, in Reports) and the overdue and escalated
 // follow-ups per coordinator (GuruFollowUps below, staff/follow-ups-by-coordinator.tsx, in Coordinators). Only
 // notices stay: "A new version is ready", notifications off (#305), could not load. Numbers: staff_dashboard() through
@@ -16,8 +20,6 @@ import { useAuth } from '@/auth/auth-provider';
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { EmptyState } from '@/components/empty-state';
-import { FacilitatorModules, NeedsAttention } from '@/components/facilitator-modules';
-import { FactCard } from '@/components/fact-card';
 import { HomeHeader } from '@/components/home-header';
 import { ListRow } from '@/components/list-row';
 import { Notice } from '@/components/notice';
@@ -25,6 +27,8 @@ import { ProgressBar } from '@/components/progress-bar';
 import { PromotionHomeCard } from '@/components/promotion-parts';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
+import { FacilitatorRing } from '@/components/staff-shortcuts';
+import { ToDoLine, waitingTotal } from '@/components/staff-today';
 import { StatGrid, StatTile } from '@/components/stat-tile';
 import { PrivacyNoticeCard } from '@/components/privacy-notice-card';
 import { PushNotice } from '@/components/push-notice';
@@ -60,7 +64,11 @@ export function GuruHome() {
   );
 
   return (
-    <Screen wide compact header={<HomeHeader menu name={name} role={t('roles.guru')} />} onRefresh={load}>
+    <Screen
+      wide
+      compact
+      header={<HomeHeader menu toDo={board ? waitingTotal(board) : undefined} name={name} role={t('roles.guru')} />}
+      onRefresh={load}>
       <UpdateNotice />
       <PushNotice place="home" />
       <PrivacyNoticeCard />
@@ -72,10 +80,9 @@ export function GuruHome() {
           <Button variant="secondary" icon="refresh" label={t('common.tryAgain')} onPress={() => void load()} />
         </>
       ) : null}
-      {board === null ? null : <NeedsAttention board={board} />}
-      <FacilitatorModules role={profile?.role} promotionsWaiting={board ? board.promotions : 0} />
-      {/* Under the modules, as on the student home (#242; Praveen 14-10-2026): a fact about the mṛdaṅga a day. */}
-      <FactCard />
+      <ToDoLine board={board} />
+      {/* The ring of eight filling the room above the tabs, the fact of the day under it while there is room (#777). */}
+      <FacilitatorRing board={board} />
     </Screen>
   );
 }

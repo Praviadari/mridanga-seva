@@ -1,14 +1,16 @@
 // The facilitator's module tree (Sarvesh Prji's Facilitator SOP 360° review, 27-10-2026, locked; docs/DECISIONS.md
-// #700-#709): eleven modules on the facilitator's Home in this order, each opening its own landing screen
-// (app/staff/modules/[key].tsx) with short sections, and each row of a section opening a screen that already
-// existed, at its old address. Only the way in moved; no screen moved or was copied (#701). Every screen the
-// facilitator's old ring, side menu and tabs offered is in exactly one module (docs/SCREENS.md "Facilitator
-// modules", tests/facilitator-home.test.mjs).
+// #700-#709): eleven modules, each opening its own landing screen (app/staff/modules/[key].tsx) with short sections,
+// and each row of a section opening a screen that already existed, at its old address. Only the way in moved; no
+// screen moved or was copied (#701). Every screen the facilitator's old ring, side menu and tabs offered is in exactly
+// one module (docs/SCREENS.md "Facilitator modules", tests/facilitator-home.test.mjs). Since the ring Home (Praveen
+// 30-10-2026, #777, #778) eight of them are the ring on Home (FACILITATOR_RING) and the other three are in the side
+// menu (FACILITATOR_MENU); each module is offered in one of the two, never both.
 //
 // `roles` hides a module or a row from a login that cannot use it (a coordinator who types the address). Hiding is
 // never the guard: each screen checks the role again and row-level security refuses the data (#704).
 // Colours are the five families of #368 (lib/module-tone.ts); Admin, Security & Audits and Settings are set-up, saffron.
-// A module with `soon` has nothing built yet: dimmed on Home, "Coming soon", not a button (lead decision 28-10-2026).
+// A module with `soon` has nothing built yet: dimmed in the side menu, "Coming soon", not a button (lead decision
+// 28-10-2026; on Home until #778).
 // Labels are i18n keys (checked by tsc), so this file stays plain data that the tests read.
 
 import type { Href } from 'expo-router';
@@ -325,12 +327,12 @@ export function moduleHrefs(): string[] {
 }
 
 /**
- * Columns of the Home grid: three on a phone (the spec), more on a wide window; fewer only when three cells would be
- * narrower than a label needs (a 320 px screen at large text, or the browser zoomed to 200 %).
+ * The eight modules on the facilitator's Home ring (Praveen 30-10-2026, #777), from the top, clockwise; the families of
+ * #368 sit side by side (green people, teal seva).
  */
-export function gridColumns(width: number, fontScale: number): number {
-  const minCell = 92 * Math.max(1, fontScale);
-  if (width >= 600) return Math.max(3, Math.min(6, Math.floor(width / 140)));
-  if (width / 3 >= minCell) return 3;
-  return width / 2 >= minCell ? 2 : 1;
-}
+export const FACILITATOR_RING = ['teaching', 'coordinators', 'students', 'events', 'reports', 'funds', 'inventory', 'admin'] as const satisfies readonly FacilitatorModuleKey[];
+
+/** The other modules, in the side menu (#778): Media (Coming soon), Security & Audits, Settings, in the approved order. */
+export const FACILITATOR_MENU: readonly FacilitatorModuleKey[] = FACILITATOR_MODULE_KEYS.filter(
+  (key) => !(FACILITATOR_RING as readonly string[]).includes(key),
+);

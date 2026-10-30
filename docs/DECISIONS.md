@@ -9162,3 +9162,54 @@ Prji and the team: bols as words; right-hand marks as capital I's per finger; a 
 of an underline; one mark per stroke (ge ▲); `+` together; `|` vibhāg, `||` end, `–` silent. It invents no bol names:
 where the documents disagree it asks. The app's notation stays as it is until the team answers; then the key goes into
 the lessons' notes and, if wanted, the Playground's bol cards.
+
+## 777. Ring homes: the facilitator's Home is a ring of eight; both staff homes never scroll — 30 Oct 2026
+
+**Context.** Praveen 30-10-2026: every home a ring with no scrolling, the important things on the ring, everything else
+in the side menu. The student home already was (#771); the facilitator's Home (#700) showed the Needs attention strip
+and eleven circles and scrolled; the coordinator home (#350, #351) showed the Today boxes over its ring of eight.
+
+**Decision.** Praveen agreed the facilitator's ring on 30-10-2026: Teaching, Coordinators, Students, Events & Seva,
+Reports, Funds, Inventory, Admin (in that order from the top, clockwise; `FACILITATOR_RING` in
+lib/facilitator-modules.ts), each opening its landing screen as before (#701). Media (Coming soon), Security & Audits
+and Settings are the side menu's Modules group (`FACILITATOR_MENU`), Media there as a dimmed line that is not a button
+(#703 kept); each of the eleven modules is offered in exactly one of the two (tests). The coordinator keeps its eight
+circles. Both homes now show only the band, the notices (app update, notifications off, could not load, privacy
+notice), the ring and, while there is room, the fact of the day. The ring is sized like the student home's, but by
+layout rather than by measuring where it starts: components/home-ring.tsx is a box that takes the height the column has
+left (Screen `compact` lets the column fill the screen) and draws the ring over itself, so its height never depends on
+the ring; a notice that appears later shrinks the box and the ring, on the web too. Same limits as #771 (fact only
+while the ring can be 300 px with it, never under 260 px). At large text the ring is the tile grid, which may scroll.
+What waits is a red count on its circle, from the same numbers as the To do total: Teaching = level-ups + recordings
+to review + suggestions (Level-ups was its count before), Coordinators = overdue or escalated follow-ups, Students =
+sign-ups at the desk, Funds = entries to approve; on the coordinator's ring Welcome desk = sign-ups, Assessments =
+recordings. Data requests have no circle (Security & Audits is in the menu); they count in the To do total. Amends
+#700, #702, #705; the 11-circle grid (components/facilitator-modules.tsx, `gridColumns`) and the folding strip are
+removed. JS only, no migration, fingerprint unchanged.
+
+**Why the layout box.** The student home measures the ring's place on the screen; on the web a view hears only of its
+own size changing, so a notice appearing above (web push, privacy notice) would leave the ring too big and the page
+scrolling. A box that takes the room left is told every change.
+
+## 778. The Today boxes: the first group of the side menu; To do one tap from the home — 30 Oct 2026
+
+**Decision.** The three Today boxes (in class now → In class now; check-ins today, or this week for the facilitator, a
+number; the To do total → To do) leave both homes for the top of the side menu, under the person's card, headed
+"Today"; the menu reads the numbers (staff_dashboard, one request) each time it opens, shows "–" while loading and
+leaves the group out when they cannot load; a box closes the menu before opening its list. On the home: the menu button
+on the band carries the To do total as a red count (its name says "Open the menu, 3 to do"), and while anything waits
+an amber line "3 things wait for you ›" stands above the ring and opens To do (staff/waiting.tsx) in one tap; nothing
+when nothing waits, so the ring keeps the room. The tab screens' menu button has no count (it would need a request per
+tab). **Why the menu, not a screen of its own:** the numbers are one tap from every tab with no new route; a screen
+would be a second To do. **Why the amber line:** To do must stay one tap from the home (Praveen's ask, the lead's
+brief) and the band has room for one button per side only (#352: the name stays on the centre line); a line shown only
+while something waits costs the ring nothing on a quiet day. New strings: menu.groups.today, home.today.toDoLine
+(en/te/hi); the strip's three strings are removed.
+
+## 779. One place per screen across tabs, ring and side menu — 30 Oct 2026
+
+**Decision.** As #350 for the coordinator, now for the facilitator again: the bottom tabs, the home ring and the side
+menu each offer a screen once. The facilitator's menu no longer lists the ring's modules (amends #705: it listed all
+eleven); from a tab, the ring's modules are one tap away on Home. Shortcuts outside the three stay as before: the bell
+(Notifications, also Settings → Personal), the person's card (My profile) and the Today boxes and amber line, which are
+summaries opening lists already in the tree. Checked by tests/launch-ui.test.mjs and tests/facilitator-home.test.mjs.
