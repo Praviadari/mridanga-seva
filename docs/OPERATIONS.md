@@ -644,6 +644,7 @@ to `app/dist/`. Always use this command, not a bare `npx expo export`, because
 
 | Date | Site | Commit | Built (UTC) | By |
 |---|---|---|---|---|
+| 30-10-2026 | test (#781: Playground switch, the app honours playground_enabled / playground_pilot_group; TEST flag back on; also on walk alias) | b3fccf9 (main; entry-e61f39f7…; deployment 0aabd3c5, walk a2411958) | 2026-10-30 | Claude (wrangler, Praveen's login) |
 | 30-10-2026 | test (te Events circle one line on the 360 px coordinator ring; What's new draft for the next LIVE update; also on walk alias) | 4a1ac4a (main; entry-f588c015…; deployment 87ffab2c, walk d0467bc7) | 2026-10-30 | Claude (wrangler, Praveen's login) |
 | 30-10-2026 | test (#780: coordinator ring of eight, Me in the side menu; staff tabs keep room for te/hi second lines; also on walk alias) | 9447696 (main; entry-658857c6…; deployment 6f77b92c, walk ffc8b1b0) | 2026-10-30 | Claude (wrangler, Praveen's login) |
 | 30-10-2026 | test (ring homes: facilitator + coordinator one-screen rings, Today boxes in the side menu, #777-#779; also on walk alias; first download 2737 KB) | 0491603 (main; entry-1b73c72d…; deployment 53cb77c6, walk 42363bd2) | 2026-10-30 | Claude (wrangler, Praveen's login) |
