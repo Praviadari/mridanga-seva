@@ -1,11 +1,14 @@
-// C1 Coordinator home since the launch UI (14-10-2026, docs/DECISIONS.md #350-#353; was the simple home #240): the
-// band with the menu button (components/side-menu.tsx), the Today boxes (components/staff-today.tsx),
-// then a ring of eight filled circles (components/staff-shortcuts.tsx); it fits one screen (#351). Behind the circles and
-// the menu: the numbers on Overview (CoordinatorOverview below, staff/overview.tsx), the newcomers (NewJoinersList below,
-// staff/new-joiners.tsx), level-ups on C22/C23. What waits is a count on its circle and the amber To do box
-// (staff/waiting.tsx). Check-in, Students, Follow-ups and News are the tabs. Only notices stay: app update,
-// notifications off (#305), could not load. Numbers: staff_dashboard() (one request) through src/data/home.ts. It loads
-// again each time it comes back into view.
+// C1 Coordinator home since the launch UI (14-10-2026, docs/DECISIONS.md #350-#353; was the simple home #240) and the
+// ring homes (Praveen 30-10-2026, #777-#779): the band with the menu button (components/side-menu.tsx, carrying the
+// To do total), then a ring of eight filled circles (components/staff-shortcuts.tsx) sized to the room above the tabs
+// (components/home-ring.tsx), so the home never scrolls, and the fact of the day while there is room. The Today boxes
+// (components/staff-today.tsx) left the home for the top of the side menu (#778). Behind the circles and the menu: the
+// numbers on Overview (CoordinatorOverview below, staff/overview.tsx), the newcomers (NewJoinersList below,
+// staff/new-joiners.tsx), level-ups on C22/C23. What waits is a red count on its circle (sign-ups on Welcome desk,
+// recordings on Assessments) and one amber To do line while anything waits (ToDoLine, opening staff/waiting.tsx).
+// Check-in, Students, Follow-ups and News are the tabs. Only notices stay: app update, notifications off (#305), could
+// not load. Numbers: staff_dashboard() (one request) through src/data/home.ts. It loads again each time it comes back
+// into view.
 
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
@@ -14,7 +17,6 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/auth/auth-provider';
 import { Button } from '@/components/button';
 import { EmptyState } from '@/components/empty-state';
-import { FactCard } from '@/components/fact-card';
 import { HomeHeader } from '@/components/home-header';
 import { ListRow } from '@/components/list-row';
 import { Notice } from '@/components/notice';
@@ -22,7 +24,7 @@ import { PromotionHomeCard } from '@/components/promotion-parts';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { StaffModules } from '@/components/staff-shortcuts';
-import { StaffToday } from '@/components/staff-today';
+import { ToDoLine, waitingTotal } from '@/components/staff-today';
 import { StatGrid, StatTile } from '@/components/stat-tile';
 import { PrivacyNoticeCard } from '@/components/privacy-notice-card';
 import { PushNotice } from '@/components/push-notice';
@@ -58,7 +60,11 @@ export function CoordinatorHome() {
   );
 
   return (
-    <Screen wide compact header={<HomeHeader menu name={name} role={t('roles.coordinator')} />} onRefresh={load}>
+    <Screen
+      wide
+      compact
+      header={<HomeHeader menu toDo={board ? waitingTotal(board) : undefined} name={name} role={t('roles.coordinator')} />}
+      onRefresh={load}>
       <UpdateNotice />
       <PushNotice place="home" />
       <PrivacyNoticeCard />
@@ -70,10 +76,9 @@ export function CoordinatorHome() {
           <Button variant="secondary" icon="refresh" label={t('common.tryAgain')} onPress={() => void load()} />
         </>
       ) : null}
-      {board === null ? null : <StaffToday guru={false} board={board} />}
-      <StaffModules me={me} />
-      {/* Under the ring, as on the student home (#242; Praveen 14-10-2026): a fact about the mṛdaṅga a day. */}
-      <FactCard />
+      <ToDoLine board={board} />
+      {/* The ring filling the room above the tabs, the fact of the day under it while there is room (#777). */}
+      <StaffModules me={me} board={board} />
     </Screen>
   );
 }

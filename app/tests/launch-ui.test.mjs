@@ -77,7 +77,8 @@ test('the facilitator reaches Sign-in Security and App Diagnostics from Security
 });
 
 test('the side menu is reachable and closable for everyone: label, Back/Escape, modal focus, 48 dp rows', () => {
-  assert.match(menu, /accessibilityLabel=\{t\('menu\.open'\)\}/);
+  // With the To do total on the home band's button, its name says it too (#778).
+  assert.match(menu, /accessibilityLabel=\{shown === null \? t\('menu\.open'\) : `\$\{t\('menu\.open'\)\}, \$\{t\('home\.badges\.toDo'/);
   assert.match(menu, /accessibilityLabel=\{t\('menu\.close'\)\}/);
   // Android Back and the web's Escape both reach Modal's onRequestClose.
   assert.match(menu, /<Modal[^>]*onRequestClose=\{onClose\}/);
@@ -97,7 +98,7 @@ test('the side menu is reachable and closable for everyone: label, Back/Escape, 
   assert.doesNotMatch(fnText(shortcuts, 'staffMenuGroups'), /'\/staff\/profile'/);
   for (const lang of ['en', 'te', 'hi']) assert.ok(get(locale(lang), 'menu.viewProfile'), `${lang} menu.viewProfile`);
   // The menu button sits in the home band and in every tab's header bar.
-  assert.match(src('components/home-header.tsx'), /<MenuButton place="band" \/>/);
+  assert.match(src('components/home-header.tsx'), /<MenuButton place="band" count=\{toDo\} \/>/);
   assert.match(src('app/staff/(tabs)/_layout.tsx'), /headerLeft: menuButton/);
 });
 
@@ -115,12 +116,60 @@ test('Waiting for you is one amber Today box with the total, opening its own scr
   for (const home of ['screens/guru-home.tsx', 'screens/coordinator-home.tsx']) {
     const text = src(home);
     assert.doesNotMatch(text, /<WaitingForYou/, `${home} still lists the rows`);
-    assert.match(text, /<Screen wide compact/);
-    assert.match(text, /<HomeHeader menu /);
-    // "Did you know?" under the ring, as on the student home (Praveen 14-10-2026).
-    assert.match(text, /<(StaffModules|FacilitatorModules) [^\n]*\/>\n[^\n]*\n\s*<FactCard \/>/);
+    assert.match(text, /<Screen\n\s+wide\n\s+compact\n/);
+    // The band's menu button carries the To do total (#778).
+    assert.match(text, /<HomeHeader menu toDo=\{board \? waitingTotal\(board\) : undefined\} /);
+    // Ring homes (#777, #778): no Today boxes on the home, the amber To do line, then the ring; "Did you know?" is drawn
+    // by the ring itself while there is room (home-ring.tsx).
+    assert.doesNotMatch(text, /<StaffToday|<NeedsAttention|<FactCard/, home);
+    assert.match(text, /<ToDoLine board=\{board\} \/>\n[^\n]*\n\s*<(StaffModules me=\{me\}|FacilitatorRing) board=\{board\} \/>\n\s*<\/Screen>/, home);
   }
   assert.match(src('app/student/(tabs)/index.tsx'), /<Screen wide compact/);
+});
+
+test('ring homes (#777): both staff rings fill the room above the tabs; the home never scrolls (Praveen 30-10-2026)', () => {
+  assert.match(fnText(shortcuts, 'StaffModules'), /return <HomeRing modules=\{\[\.\.\.own, \.\.\.ring\]\} \/>;/);
+  assert.match(fnText(shortcuts, 'FacilitatorRing'), /return <HomeRing modules=\{modules\} \/>;/);
+  const ring = src('components/home-ring.tsx');
+  // The box takes what the column has left (Screen compact lets the column fill the screen) and its own measured
+  // height sizes the ring; the ring is drawn over the box, so the box never grows with it.
+  assert.match(ring, /room: \{\n\s+flexGrow: 1,\n\s+flexBasis: 0,/);
+  assert.match(ring, /over: \{\n\s+position: 'absolute',/);
+  assert.match(ring, /<ModuleRing modules=\{modules\} maxSize=\{ringMax\} \/>/);
+  assert.match(ring, /withFact \? \(/);
+  // At large text the grid of tiles scrolls rather than cut a name.
+  assert.match(ring, /if \(asGrid\) \{/);
+  assert.match(src('components/module-ring.tsx'), /export function useRingAsGrid\(count: number\)/);
+  assert.match(src('components/screen.tsx'), /compactColumn: \{\n\s+gap: spacing\.sm,\n\s+flexGrow: 1,/);
+});
+
+test('ring homes (#778): the Today boxes are the side menu\'s first group; To do stays one tap from the home', () => {
+  // The menu reads the numbers when it opens and closes before a box opens its list.
+  assert.match(menu, /fetchStaffDashboard\(guru\)/);
+  assert.match(menu, /<StaffToday guru=\{guru\} board=\{board\} onOpen=\{onClose\} \/>/);
+  assert.ok(menu.indexOf("t('menu.groups.today')") < menu.indexOf('groups.map('), 'Today comes first');
+  assert.match(fnText(today, 'TodayChip'), /onOpen\?\.\(\);\n\s+router\.push\(href\);/);
+  // The home's amber line opens To do in one tap, shown only while something waits.
+  const line = fnText(today, 'ToDoLine');
+  assert.match(line, /if \(waiting === 0\) return null;/);
+  assert.match(line, /router\.push\('\/staff\/waiting'\)/);
+  for (const lang of ['en', 'te', 'hi']) {
+    for (const key of ['menu.groups.today', 'home.today.toDoLine_one', 'home.today.toDoLine_other']) {
+      assert.ok(get(locale(lang), key), `${lang} ${key}`);
+    }
+    if (lang !== 'en') assert.notEqual(get(locale(lang), 'home.today.toDoLine_other'), get(locale('en'), 'home.today.toDoLine_other'));
+  }
+});
+
+test('ring homes: every coordinator screen is offered once across tabs, ring and side menu', () => {
+  const hrefs = (text) => [...text.matchAll(/'(\/staff\/[a-z-/]+)'/g)].map((m) => m[1]);
+  const ring = hrefs(fnText(shortcuts, 'StaffModules'));
+  const groups = fnText(shortcuts, 'staffMenuGroups');
+  const coordinatorMenu = hrefs(groups.slice(groups.indexOf('return [\n    {\n      key: \'class\'')));
+  const tabs = ['/staff/attendance', '/staff/students', '/staff/follow-up', '/staff/announcements'];
+  const all = [...ring, ...coordinatorMenu, ...tabs];
+  assert.equal(new Set(all).size, all.length, `offered twice: ${all.filter((h, i) => all.indexOf(h) !== i)}`);
+  assert.equal(ring.length, 9, 'Me and the eight');
 });
 
 // ---------------------------------------------------------------- #352 #355 the website look
@@ -153,7 +202,7 @@ test("a screen takes its module's circle colour; homes, set-up and unknown scree
   assert.equal(moduleToneFor(['sign-in']), undefined);
   // The ring colour and the module's screens agree.
   for (const [key, path] of [['instruments', 'inventory'], ['events', 'events'], ['assessments', 'assessments'], ['duty', 'duty']]) {
-    const tone = new RegExp(`key: '${key}', icon: '[a-zA-Z]+', tone: '(\\w+)'`).exec(shortcuts)?.[1];
+    const tone = new RegExp(`key: '${key}',\\s+icon: '[a-zA-Z]+',\\s+tone: '(\\w+)'`).exec(shortcuts)?.[1];
     assert.equal(moduleToneFor(['staff', path]), tone, key);
   }
   // The side menu lists every module, so its icons stay saffron.

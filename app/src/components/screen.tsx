@@ -39,7 +39,7 @@ export type ScreenProps = PropsWithChildren<{
    * its own reload). The spinner stays until the returned promise settles.
    */
   onRefresh?: () => Promise<unknown> | void;
-  /** Less space above and below the content: the staff homes, which fit one phone screen without scrolling (#351). */
+  /** Less space above and below the content, the column filling the screen: the homes, which never scroll (#351, #777). */
   compact?: boolean;
 }>;
 
@@ -132,9 +132,11 @@ const styles = StyleSheet.create({
   compact: {
     paddingVertical: spacing.sm,
   },
-  // The homes' blocks (Today, ring, fact) sit closer, so the fact card fits a 360 x 760 phone too.
+  // The homes' blocks (notices, ring, fact) sit closer, so the fact card fits a 360 x 760 phone too; the column fills the
+  // screen, so the staff homes' ring can take the room that is left (components/home-ring.tsx, #777).
   compactColumn: {
     gap: spacing.sm,
+    flexGrow: 1,
   },
   column: {
     width: '100%',

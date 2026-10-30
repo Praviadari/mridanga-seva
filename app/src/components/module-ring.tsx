@@ -93,11 +93,17 @@ const MAX_ON_RING = 10;
 /** Below this window width the labels would overlap, so the grid is used. */
 const MIN_WIDTH = 340;
 
+/** Are this many modules shown as the grid of tiles here (large text, a very narrow window, too many)? */
+export function useRingAsGrid(count: number): boolean {
+  const { width } = useWindowDimensions();
+  const largeText = useLargeText();
+  return largeText || width < MIN_WIDTH || count > MAX_ON_RING;
+}
+
 /** The staff home's modules, as a ring (or a grid when the text is large). */
 export function ModuleRing({ title, modules, more = [], maxSize }: ModuleRingProps) {
   const { width } = useWindowDimensions();
-  const largeText = useLargeText();
-  const asGrid = largeText || width < MIN_WIDTH || modules.length > MAX_ON_RING;
+  const asGrid = useRingAsGrid(modules.length);
   return (
     <View style={styles.block}>
       {title ? <AppText variant="subtitle">{title}</AppText> : null}

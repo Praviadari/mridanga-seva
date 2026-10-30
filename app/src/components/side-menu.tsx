@@ -1,6 +1,9 @@
 // The staff side menu (launch UI, docs/DECISIONS.md #350): the menu button at the left of the staff home
 // header and of the tab screens' header bars opens a sheet from the left with every staff screen that is
 // neither a bottom tab nor a circle on the home, in groups (components/staff-shortcuts.tsx staffMenuGroups).
+// Since the ring homes (Praveen 30-10-2026, #778) the Today boxes (components/staff-today.tsx) are its first group:
+// in class now, check-ins today (this week for the facilitator) and the To do total, read when the menu opens. On the
+// home band the button carries the To do total as a count. Media, not built yet, is a dimmed Coming soon line.
 // Plain React Native (Modal + Animated), no drawer package, so it reaches installed phones as an update.
 //
 // Closing: the close button, a tap beside the sheet, Android Back (Modal onRequestClose) and Escape on the web
@@ -26,12 +29,15 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAuth } from '@/auth/auth-provider';
+import { fetchStaffDashboard, type StaffDashboard } from '@/data/home';
+import { badgeText } from '@/lib/module-badge';
 import { spacing, useTheme } from '@/theme/use-theme';
 
 import { AppText } from './app-text';
 import { Icon, IconBadge } from './icon';
 import { Initials } from './list-row';
 import { openMenuItem, openMyProfile, staffMenuGroups, type MenuItem } from './staff-shortcuts';
+import { StaffToday } from './staff-today';
 
 /** Widest the sheet gets; on a phone it leaves a strip of the screen beside it to tap. */
 const SHEET_MAX = 340;
@@ -40,10 +46,12 @@ const SHEET_MAX = 340;
 export type MenuButtonProps = {
   /** 'band' = on the home's header band (round, outlined); 'bar' = in a header bar (plain, like Back). */
   place: 'band' | 'bar';
+  /** The To do total, shown on the button (the home band, #778); left out or 0: no count. */
+  count?: number;
 };
 
 /** The button that opens the side menu, with the menu itself. */
-export function MenuButton({ place }: MenuButtonProps) {
+export function MenuButton({ place, count }: MenuButtonProps) {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const [open, setOpen] = useState(false);
@@ -58,12 +66,13 @@ export function MenuButton({ place }: MenuButtonProps) {
     }
   };
 
+  const shown = badgeText(count);
   return (
     <>
       <Pressable
         ref={button}
         accessibilityRole="button"
-        accessibilityLabel={t('menu.open')}
+        accessibilityLabel={shown === null ? t('menu.open') : `${t('menu.open')}, ${t('home.badges.toDo', { count: count ?? 0 })}`}
         aria-expanded={open}
         hitSlop={8}
         onPress={() => setOpen(true)}
@@ -73,6 +82,17 @@ export function MenuButton({ place }: MenuButtonProps) {
           pressed && styles.pressed,
         ]}>
         <Icon name="menu" size={26} color={colors.onHeader} />
+        {shown !== null ? (
+          // Said in the button's name, so the mark itself is not read again; red as the counts on the circles.
+          <View
+            importantForAccessibility="no-hide-descendants"
+            accessibilityElementsHidden
+            style={[styles.countMark, { backgroundColor: colors.danger, borderColor: colors.onHeader }]}>
+            <AppText variant="small" maxFontSizeMultiplier={1.2} style={[styles.countText, { color: colors.onPrimary }]}>
+              {shown}
+            </AppText>
+          </View>
+        ) : null}
       </Pressable>
       {open ? <SideMenu onClose={close} /> : null}
     </>
@@ -90,8 +110,20 @@ function SideMenu({ onClose }: { onClose: () => void }) {
   const { width } = useWindowDimensions();
   const pathname = usePathname();
   const sheetWidth = Math.min(SHEET_MAX, Math.round(width * 0.86));
-  const groups = staffMenuGroups(profile?.role === 'guru', t);
+  const guru = profile?.role === 'guru';
+  const groups = staffMenuGroups(guru, t);
   const heading = useRef<ViewType>(null);
+  // The Today numbers (#778), read each time the menu opens; undefined = loading ("–"), null = could not load.
+  const [board, setBoard] = useState<StaffDashboard | null | undefined>(undefined);
+  useEffect(() => {
+    let cancelled = false;
+    void fetchStaffDashboard(guru).then((loaded) => {
+      if (!cancelled) setBoard(loaded);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [guru]);
 
   // Slides in from the left on a phone (none with reduced motion); on the web it simply appears, because
   // react-native-web waits for an animation's end, which a background tab never fires (select-field.tsx).
@@ -177,12 +209,44 @@ function SideMenu({ onClose }: { onClose: () => void }) {
             </Pressable>
           </View>
           <ScrollView contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + spacing.lg }]}>
+            {/* Today first (#778): the boxes that left the home, each opening its list. Not shown when the numbers
+                could not load (the home says so). */}
+            {board === null ? null : (
+              <View style={styles.group}>
+                <AppText accessibilityRole="header" aria-level={2} variant="small" style={[styles.eyebrow, latin && styles.eyebrowLatin, { color: colors.primary }]}>
+                  {t('menu.groups.today')}
+                </AppText>
+                <View style={styles.today}>
+                  <StaffToday guru={guru} board={board} onOpen={onClose} />
+                </View>
+              </View>
+            )}
             {groups.map((group) => (
               <View key={group.key} style={styles.group}>
                 <AppText accessibilityRole="header" aria-level={2} variant="small" style={[styles.eyebrow, latin && styles.eyebrowLatin, { color: colors.primary }]}>
                   {group.title}
                 </AppText>
                 {group.items.map((item) => {
+                  if (item.soon) {
+                    // Nothing to open yet (#703): read as "Media, Coming soon", not a button.
+                    return (
+                      <View
+                        key={item.key}
+                        accessible
+                        accessibilityLabel={`${item.label}, ${t('comingSoon.title')}`}
+                        aria-disabled
+                        accessibilityState={{ disabled: true }}
+                        style={[styles.row, styles.soon]}>
+                        <IconBadge name={item.icon} size={36} plain />
+                        <AppText variant="label" style={styles.rowLabel}>
+                          {item.label}
+                        </AppText>
+                        <AppText variant="small" tone="muted">
+                          {t('comingSoon.title')}
+                        </AppText>
+                      </View>
+                    );
+                  }
                   const here = typeof item.href === 'string' && pathname === item.href;
                   return (
                     <Pressable
@@ -314,6 +378,29 @@ const styles = StyleSheet.create({
   },
   rowLabel: {
     flex: 1,
+  },
+  soon: {
+    opacity: 0.55,
+  },
+  today: {
+    paddingHorizontal: spacing.md,
+  },
+  countMark: {
+    position: 'absolute',
+    right: -8,
+    top: -6,
+    minWidth: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    paddingHorizontal: 3,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  countText: {
+    fontWeight: '700',
+    lineHeight: 15,
+    fontSize: 12,
   },
   mantra: {
     marginTop: spacing.lg,

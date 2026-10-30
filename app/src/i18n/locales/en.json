@@ -296,7 +296,9 @@
       "cameThisWeek_other": "this week",
       "waiting_one": "to do",
       "waiting_other": "to do",
-      "scan": "Scan to check in"
+      "scan": "Scan to check in",
+      "toDoLine_one": "{{count}} thing waits for you",
+      "toDoLine_other": "{{count}} things wait for you"
     },
     "waiting": {
       "title": "To do",
@@ -333,7 +335,8 @@
       "reports": "Reports",
       "setup": "Administration",
       "me": "You",
-      "modules": "Modules"
+      "modules": "Modules",
+      "today": "Today"
     }
   },
   "facilitatorHome": {
@@ -387,9 +390,6 @@
       "ledger": "Balance and entries",
       "me": "My own student page"
     },
-    "needsAttention": "Needs attention",
-    "showAttention": "Show what needs attention",
-    "hideAttention": "Hide what needs attention",
     "soonBody": "This module is not built yet. It will open here once it is ready.",
     "notFound": "There is no such module. Go back to Home and choose one there.",
     "crumb": "{{home}} › {{module}}"

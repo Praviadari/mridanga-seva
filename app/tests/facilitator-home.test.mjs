@@ -1,6 +1,7 @@
-// Unit tests for the facilitator's 11-module Home (docs/DECISIONS.md #700-#709; Facilitator SOP 360° review,
-// 27-10-2026): the approved order, the grid of three, the module tree (every old way in moved to exactly one module,
-// every row an existing screen), the role filter, the plain relabels, and no "Guru" in any en/te/hi user string.
+// Unit tests for the facilitator's eleven modules (docs/DECISIONS.md #700-#709; Facilitator SOP 360° review,
+// 27-10-2026): the approved order, the ring of eight on Home and the three in the side menu (#777, #778), the module
+// tree (every old way in moved to exactly one module, every row an existing screen), the role filter, the plain
+// relabels, and no "Guru" in any en/te/hi user string.
 // Run from app/: npm test.
 
 import { test } from 'node:test';
@@ -13,7 +14,7 @@ const src = (path) => readFileSync(new URL(`../src/${path}`, import.meta.url), '
 const locale = (lang) => JSON.parse(src(`i18n/locales/${lang}.json`));
 const get = (obj, key) => key.split('.').reduce((o, p) => o?.[p], obj);
 const tree = await import('../src/lib/facilitator-modules.ts');
-const { FACILITATOR_MODULES, FACILITATOR_MODULE_KEYS, facilitatorModule, gridColumns, moduleAllowed, moduleHrefs, visibleSections } = tree;
+const { FACILITATOR_MENU, FACILITATOR_MODULES, FACILITATOR_MODULE_KEYS, FACILITATOR_RING, facilitatorModule, moduleAllowed, moduleHrefs, visibleSections } = tree;
 
 /** Every string of a locale with its key. */
 function strings(obj, prefix = '', out = []) {
@@ -25,7 +26,7 @@ function strings(obj, prefix = '', out = []) {
   return out;
 }
 
-test('Home has the eleven modules in the approved order, with the approved English names', () => {
+test('the tree has the eleven modules in the approved order, with the approved English names', () => {
   const order = ['admin', 'coordinators', 'students', 'teaching', 'inventory', 'media', 'events', 'funds', 'reports', 'security', 'settings'];
   assert.deepEqual([...FACILITATOR_MODULE_KEYS], order);
   assert.deepEqual(FACILITATOR_MODULES.map((m) => m.key), order);
@@ -45,23 +46,18 @@ test('Home has the eleven modules in the approved order, with the approved Engli
   }
 });
 
-test('a phone shows three to a row, 3 + 3 + 3 + 2 with the last two centred; narrow or zoomed screens fewer, never cut', () => {
-  const rows = (columns) => Array.from({ length: Math.ceil(11 / columns) }, (_, i) => Math.min(columns, 11 - i * columns));
-  // 360 px and 320 px phones (16 px page sides): three columns.
-  assert.equal(gridColumns(360 - 32, 1), 3);
-  assert.equal(gridColumns(320 - 32, 1), 3);
-  assert.deepEqual(rows(gridColumns(328, 1)), [3, 3, 3, 2]);
-  // Large text on a 320 px phone, or the browser at 200 % (a 360 px phone is then 180 px wide): fewer columns.
-  assert.ok(gridColumns(288, 1.3) < 3);
-  assert.ok(gridColumns(148, 1) <= 1);
-  // A laptop: same order in a wider grid.
-  const wide = gridColumns(1200, 1);
-  assert.ok(wide >= 3 && wide <= 6, String(wide));
-  const grid = src('components/facilitator-modules.tsx');
-  assert.match(grid, /grid: \{\n\s+flexDirection: 'row',\n\s+flexWrap: 'wrap',\n[^}]*justifyContent: 'center'/);
-  assert.match(grid, /width=\{`\$\{100 \/ columns\}%`\}/);
-  // Labels wrap: no numberOfLines, so a long Telugu or Hindi name takes another line instead of "…".
-  assert.doesNotMatch(fnBody(grid, 'ModuleCircle'), /numberOfLines/);
+test('ring homes (#777): eight modules on the Home ring, the other three in the side menu, each module in one place', () => {
+  // Praveen 30-10-2026, in this order from the top, clockwise.
+  assert.deepEqual([...FACILITATOR_RING], ['teaching', 'coordinators', 'students', 'events', 'reports', 'funds', 'inventory', 'admin']);
+  assert.deepEqual([...FACILITATOR_MENU], ['media', 'security', 'settings']);
+  const both = [...FACILITATOR_RING, ...FACILITATOR_MENU];
+  assert.equal(new Set(both).size, both.length, 'a module is on the ring and in the menu');
+  assert.deepEqual([...both].sort(), [...FACILITATOR_MODULE_KEYS].sort(), 'a module is in neither');
+  // Nothing on the ring is Coming soon; every ring module is the facilitator's to open.
+  for (const key of FACILITATOR_RING) {
+    const m = facilitatorModule(key);
+    assert.ok(m && !m.soon && moduleAllowed(m, 'guru'), key);
+  }
 });
 
 /** The text of a function in a source file, to the next top-level function. */
@@ -72,27 +68,33 @@ function fnBody(text, name) {
   return next < 0 ? text.slice(start) : text.slice(start, start + 1 + next);
 }
 
-test('the facilitator Home: band and bell kept, Needs attention strip, the eleven circles, no old ring', () => {
+test('the facilitator Home: band and bell kept, the To do line, the ring of eight with counts, no grid or strip', () => {
   const home = src('screens/guru-home.tsx');
   assert.match(home, /<HomeHeader menu /);
-  assert.match(home, /<NeedsAttention board=\{board\} \/>/);
-  assert.match(home, /<FacilitatorModules role=\{profile\?\.role\} promotionsWaiting=/);
-  assert.doesNotMatch(home, /<StaffModules/);
+  assert.match(home, /<ToDoLine board=\{board\} \/>/);
+  assert.match(home, /<FacilitatorRing board=\{board\} \/>/);
+  assert.doesNotMatch(home, /<StaffModules|<NeedsAttention|<FacilitatorModules|<StaffToday/);
+  assert.ok(!existsSync(new URL('../src/components/facilitator-modules.tsx', import.meta.url)), 'the 11-circle grid is gone');
   assert.match(src('components/home-header.tsx'), /<InboxBell \/>/);
-  // The strip folds away with one tap, remembered on this device, and holds the Today boxes (not a second menu).
-  const strip = fnBody(src('components/facilitator-modules.tsx'), 'NeedsAttention');
-  assert.match(strip, /aria-expanded=\{open\}/);
-  assert.match(strip, /writeLocal\(FOLDED_KEY/);
-  assert.match(strip, /<StaffToday guru board=\{board\} \/>/);
-  assert.doesNotMatch(strip, /router\./);
+  // Each circle opens its landing screen; what waits behind it is a red count on it (Level-ups on Teaching, as before).
+  const shortcuts = src('components/staff-shortcuts.tsx');
+  const ring = fnBody(shortcuts, 'FacilitatorRing');
+  assert.match(ring, /FACILITATOR_RING\.flatMap/);
+  assert.match(ring, /router\.push\(\{ pathname: '\/staff\/modules\/\[key\]', params: \{ key \} \}\)/);
+  const counts = fnBody(shortcuts, 'facilitatorRingCounts');
+  assert.match(counts, /teaching: board\.promotions \+ board\.toReview \+ board\.suggestions,/);
+  assert.match(counts, /coordinators: board\.callsDue,/);
+  assert.match(counts, /students: board\.signupsWaiting,/);
+  assert.match(counts, /funds: board\.fundToApprove,/);
 });
 
-test('a module not built yet (Media) is dimmed Coming soon, not a button, with no fake screens', () => {
+test('a module not built yet (Media) is dimmed Coming soon in the side menu, not a button, with no fake screens', () => {
   const soon = FACILITATOR_MODULES.filter((m) => m.soon);
   assert.deepEqual(soon.map((m) => m.key), ['media']);
   assert.equal(soon[0].sections.length, 0);
-  const circle = fnBody(src('components/facilitator-modules.tsx'), 'ModuleCircle');
-  const soonPart = circle.slice(circle.indexOf('if (module.soon)'), circle.indexOf('return (\n    <View role="listitem"'));
+  assert.match(fnBody(src('components/staff-shortcuts.tsx'), 'staffMenuGroups'), /soon: m\.soon,/);
+  const menu = src('components/side-menu.tsx');
+  const soonPart = menu.slice(menu.indexOf('if (item.soon) {'), menu.indexOf('const here = '));
   assert.doesNotMatch(soonPart, /Pressable|onPress/);
   assert.match(soonPart, /accessibilityState=\{\{ disabled: true \}\}/);
   assert.match(soonPart, /t\('comingSoon\.title'\)/);
@@ -158,23 +160,24 @@ test('every module, section and row name exists in en, te and hi', () => {
       for (const r of s.rows) keys.add(r.label);
     }
   }
-  for (const key of ['facilitatorHome.needsAttention', 'facilitatorHome.showAttention', 'facilitatorHome.hideAttention', 'facilitatorHome.soonBody', 'facilitatorHome.notFound', 'menu.groups.modules']) keys.add(key);
+  for (const key of ['facilitatorHome.soonBody', 'facilitatorHome.notFound', 'menu.groups.modules', 'menu.groups.today']) keys.add(key);
   for (const lang of ['en', 'te', 'hi']) {
     const dict = locale(lang);
     for (const key of keys) assert.ok(typeof get(dict, key) === 'string' && get(dict, key).length > 0, `${lang} ${key}`);
   }
 });
 
-test('the side menu: the facilitator gets the same modules; a coordinator keeps the old groups', () => {
+test('the side menu: the facilitator gets the three modules not on the ring; a coordinator keeps the old groups', () => {
   const shortcuts = src('components/staff-shortcuts.tsx');
   const groups = fnBody(shortcuts, 'staffMenuGroups');
-  assert.match(groups, /FACILITATOR_MODULES\.filter\(\(m\) => !m\.soon && m\.roles\.includes\('guru'\)\)/);
+  assert.match(groups, /FACILITATOR_MENU\.flatMap\(\(key\) => facilitatorModule\(key\) \?\? \[\]\)/);
+  assert.doesNotMatch(groups, /FACILITATOR_MODULES|FACILITATOR_RING/);
   assert.match(groups, /href: \{ pathname: '\/staff\/modules\/\[key\]', params: \{ key: m\.key \} \}/);
   // The coordinator's ring and menu are as before (#350, #351).
   for (const path of ['/staff/overview', '/staff/groups', '/staff/promotion', '/staff/practice', '/staff/suggestions', '/staff/fund', '/staff/reports', '/staff/notifications']) {
     assert.ok(groups.includes(`'${path}'`), path);
   }
-  assert.match(src('screens/coordinator-home.tsx'), /<StaffModules me=\{me\} \/>/);
+  assert.match(src('screens/coordinator-home.tsx'), /<StaffModules me=\{me\} board=\{board\} \/>/);
 });
 
 test('the spec\'s plain relabels (terminology map)', () => {

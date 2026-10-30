@@ -1,10 +1,11 @@
-// What the coordinator and Guru homes show between the header and the circles (audit phase 5 U1-01, U1-08, U4-01;
-// docs/DECISIONS.md #339, #340; since the launch UI #351): three Today boxes on one line (in class now; check-ins
-// today, or this week for the Guru; the "to do" total, amber when anything waits, opening staff/waiting.tsx). The
-// big Scan button left the home (Praveen 14-10-2026: Check-in was there twice; the Check-in tab is one tap and starts
-// with Scan to check in). WaitingForYou (one row per thing that waits,
-// most urgent first) is the To do screen's list. Numbers from staff_dashboard() (src/data/home.ts), loaded by the home.
-// While loading the numbers show "–", never 0.
+// The staff's Today numbers (audit phase 5 U1-01, U1-08, U4-01; docs/DECISIONS.md #339, #340, #351): three Today
+// boxes on one line (in class now; check-ins today, or this week for the facilitator; the "to do" total, amber when
+// anything waits, opening staff/waiting.tsx). Since the ring homes (Praveen 30-10-2026, #777, #778) they are the
+// "Today" group at the top of the side menu (components/side-menu.tsx), no longer on the home; the home keeps one
+// amber To do line (ToDoLine below) while anything waits, so To do stays one tap from the home. The big Scan button
+// left the home earlier (Praveen 14-10-2026: Check-in was there twice; the Check-in tab is one tap and starts with
+// Scan to check in). WaitingForYou (one row per thing that waits, most urgent first) is the To do screen's list.
+// Numbers from staff_dashboard() (src/data/home.ts). While loading the numbers show "–", never 0.
 
 import { router, type Href } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -21,12 +22,14 @@ import { ListRow } from './list-row';
 /** Props for StaffToday. */
 export type StaffTodayProps = {
   guru: boolean;
-  /** undefined = loading, null = could not load (the home shows its own notice). */
+  /** undefined = loading, null = could not load. */
   board: StaffDashboard | null | undefined;
+  /** Called before a box opens its screen (the side menu closes itself). */
+  onOpen?: () => void;
 };
 
-/** The Today line: three boxes above the ring (#351). */
-export function StaffToday({ guru, board }: StaffTodayProps) {
+/** The Today line: three boxes, at the top of the side menu since #778. */
+export function StaffToday({ guru, board, onOpen }: StaffTodayProps) {
   const { t } = useTranslation();
   const value = (n: number | undefined) => (board ? n : undefined);
   const waiting = board ? waitingTotal(board) : undefined;
@@ -61,7 +64,7 @@ export function StaffToday({ guru, board }: StaffTodayProps) {
     <View style={styles.block}>
       <View style={styles.chips}>
         {today.map((item) => (
-          <TodayChip key={item.key} item={item} />
+          <TodayChip key={item.key} item={item} onOpen={onOpen} />
         ))}
       </View>
     </View>
@@ -76,8 +79,37 @@ export function waitingTotal(board: StaffDashboard): number {
   return board.signupsWaiting + board.callsDue + board.promotions + board.fundToApprove + board.toReview + board.suggestions + board.dataRequests;
 }
 
+/**
+ * The home's one line about what waits (#778): amber, "3 things wait for you ›", opening To do (staff/waiting.tsx);
+ * nothing at all while loading, when it could not load or when nothing waits, so the ring keeps the room.
+ */
+export function ToDoLine({ board }: { board: StaffDashboard | null | undefined }) {
+  const { t } = useTranslation();
+  const { colors } = useTheme();
+  const waiting = board ? waitingTotal(board) : 0;
+  if (waiting === 0) return null;
+  const label = t('home.today.toDoLine', { count: waiting });
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={() => router.push('/staff/waiting')}
+      style={({ pressed }) => [
+        styles.line,
+        { backgroundColor: colors.warningSurface, borderColor: colors.warningBorder },
+        pressed && styles.pressed,
+      ]}>
+      <Icon name="todo" size={18} color={colors.warning} />
+      <AppText variant="label" style={styles.lineText}>
+        {label}
+      </AppText>
+      <Icon name="chevron" size={18} color={colors.warning} />
+    </Pressable>
+  );
+}
+
 /** One number of the Today line: a button to its list, or (no `href`) a number to read. */
-function TodayChip({ item }: { item: TodayItem }) {
+function TodayChip({ item, onOpen }: { item: TodayItem; onOpen?: () => void }) {
   const { colors } = useTheme();
   const shown = item.count === undefined ? '–' : String(item.count);
   // A box like the website's facts (#351): the number big, its icon, the words under it.
@@ -107,7 +139,10 @@ function TodayChip({ item }: { item: TodayItem }) {
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`${shown} ${item.label}`}
-      onPress={() => router.push(href)}
+      onPress={() => {
+        onOpen?.();
+        router.push(href);
+      }}
       style={({ pressed }) => [
         styles.chip,
         item.attention
@@ -226,6 +261,19 @@ const styles = StyleSheet.create({
   },
   chipLabel: {
     lineHeight: 18,
+  },
+  line: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    minHeight: 48,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderWidth: 1,
+    borderRadius: radii.lg,
+  },
+  lineText: {
+    flex: 1,
   },
   waiting: {
     gap: spacing.sm,
