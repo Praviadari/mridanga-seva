@@ -2,10 +2,10 @@
   "_comment": "What's new (My profile > What's new, docs/DECISIONS.md #406). Newest first. Add an entry before every production update (docs/OPERATIONS.md 'Publishing an update'). date: the day it is published (YYYY-MM-DD); null = not yet published, shown as 'Coming in the next update'. kind: 'installed' for an APK, 'update' for an update. id: the APK's build id or the update id the version line shows (first 8 characters), once known. notes: 3-8 plain lines in en, te and hi, the same number in each; te/hi are drafts for native review.",
   "releases": [
     {
-      "_comment": "Next production update from main (LIVE DB 0063-0069 + 0072, lead decision 30-10-2026). No Playground lines: it stays off on LIVE. Set date and id when published.",
+      "_comment": "Production update group e89758d2 (commit 6972d46, 30-10-2026); 01a18dc8 is its Android update id. LIVE DB 0063-0072. No Playground lines: it stays off on LIVE.",
       "version": "1.0.0",
       "kind": "update",
-      "id": null,
+      "id": "01a18dc8",
       "date": "2026-10-30",
       "notes": {
         "en": [
