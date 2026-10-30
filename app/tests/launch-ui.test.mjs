@@ -46,11 +46,11 @@ test('every screen the old staff homes offered is still offered: a tab, a circle
   for (const name of ['index', 'attendance', 'students', 'follow-up', 'announcements']) assert.match(tabs, new RegExp(`name="${name}"`));
 });
 
-test('the coordinator home has eight circles (plus Me), none repeating a tab; the facilitator has the modules (#700)', () => {
+test('the coordinator home has eight circles, none repeating a tab; the facilitator has the modules (#700)', () => {
   const ring = fnText(shortcuts, 'StaffModules');
   const count = (text) => (text.match(/key: '/g) ?? []).length;
-  // Me (0053) and the eight.
-  assert.equal(count(ring), 9, 'coordinator ring');
+  // The eight; Me (0053) is in the side menu since #780.
+  assert.equal(count(ring), 8, 'coordinator ring');
   // No second row of small circles any more (#241's rows went to the side menu).
   assert.doesNotMatch(ring, /more=/);
   // No circle repeats a bottom tab, and the home has no second Check-in (Praveen 14-10-2026).
@@ -122,13 +122,18 @@ test('Waiting for you is one amber Today box with the total, opening its own scr
     // Ring homes (#777, #778): no Today boxes on the home, the amber To do line, then the ring; "Did you know?" is drawn
     // by the ring itself while there is room (home-ring.tsx).
     assert.doesNotMatch(text, /<StaffToday|<NeedsAttention|<FactCard/, home);
-    assert.match(text, /<ToDoLine board=\{board\} \/>\n[^\n]*\n\s*<(StaffModules me=\{me\}|FacilitatorRing) board=\{board\} \/>\n\s*<\/Screen>/, home);
+    assert.match(text, /<ToDoLine board=\{board\} \/>\n[^\n]*\n\s*<(StaffModules|FacilitatorRing) board=\{board\} \/>\n\s*<\/Screen>/, home);
   }
   assert.match(src('app/student/(tabs)/index.tsx'), /<Screen wide compact/);
 });
 
 test('ring homes (#777): both staff rings fill the room above the tabs; the home never scrolls (Praveen 30-10-2026)', () => {
-  assert.match(fnText(shortcuts, 'StaffModules'), /return <HomeRing modules=\{\[\.\.\.own, \.\.\.ring\]\} \/>;/);
+  // Eight on both rings: the coordinator's Me is in the side menu's Me group (#780).
+  assert.match(fnText(shortcuts, 'StaffModules'), /return <HomeRing modules=\{ring\} \/>;/);
+  assert.doesNotMatch(fnText(shortcuts, 'StaffModules'), /'\/staff\/me'/);
+  assert.match(fnText(shortcuts, 'staffMenuGroups'), /\.\.\.\(me \? \[\{ key: 'me', icon: 'person', label: t\('me\.title'\), href: '\/staff\/me' \}/);
+  // Staff tabs keep room for a second line of Telugu / Hindi names on a phone, as the student tabs (#780).
+  assert.match(src('app/staff/(tabs)/_layout.tsx'), /const twoLines = !sidebar && i18n\.language !== 'en' && width \/ 5 < 100;/);
   assert.match(fnText(shortcuts, 'FacilitatorRing'), /return <HomeRing modules=\{modules\} \/>;/);
   const ring = src('components/home-ring.tsx');
   // The box takes what the column has left (Screen compact lets the column fill the screen) and its own measured
@@ -169,7 +174,8 @@ test('ring homes: every coordinator screen is offered once across tabs, ring and
   const tabs = ['/staff/attendance', '/staff/students', '/staff/follow-up', '/staff/announcements'];
   const all = [...ring, ...coordinatorMenu, ...tabs];
   assert.equal(new Set(all).size, all.length, `offered twice: ${all.filter((h, i) => all.indexOf(h) !== i)}`);
-  assert.equal(ring.length, 9, 'Me and the eight');
+  assert.equal(ring.length, 8, 'the eight');
+  assert.ok(coordinatorMenu.includes('/staff/me'), 'Me in the side menu (#780)');
 });
 
 // ---------------------------------------------------------------- #352 #355 the website look

@@ -41,14 +41,13 @@ export function CoordinatorHome() {
   const name = profile?.full_name.trim();
   // undefined = loading, null = could not load.
   const [board, setBoard] = useState<StaffDashboard | null | undefined>(undefined);
-  // The coordinator's own student record (0053, #316, #319): Me on the ring.
-  const [me, setMe] = useState(false);
   const myId = profile?.id ?? '';
 
   const load = useCallback(async () => {
-    const [loaded, own] = await Promise.all([fetchStaffDashboard(false), hasOwnRecord(myId)]);
+    // The own student record (0053) is still read here: it keeps the My QR card saved on the phone for Me, which is
+    // in the side menu since #780.
+    const [loaded] = await Promise.all([fetchStaffDashboard(false), hasOwnRecord(myId)]);
     setBoard(loaded);
-    setMe(own);
   }, [myId]);
 
   // F9 / R4-04 (#327): back after a while (a phone that slept), the screen loads again.
@@ -78,7 +77,7 @@ export function CoordinatorHome() {
       ) : null}
       <ToDoLine board={board} />
       {/* The ring filling the room above the tabs, the fact of the day under it while there is room (#777). */}
-      <StaffModules me={me} board={board} />
+      <StaffModules board={board} />
     </Screen>
   );
 }

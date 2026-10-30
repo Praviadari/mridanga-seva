@@ -9221,3 +9221,15 @@ menu each offer a screen once. The facilitator's menu no longer lists the ring's
 eleven); from a tab, the ring's modules are one tap away on Home. Shortcuts outside the three stay as before: the bell
 (Notifications, also Settings → Personal), the person's card (My profile) and the Today boxes and amber line, which are
 summaries opening lists already in the tree. Checked by tests/launch-ui.test.mjs and tests/facilitator-home.test.mjs.
+
+## 780. Coordinator ring of eight (Me to the side menu); staff tabs keep room for Telugu/Hindi second lines — 30 Oct 2026
+
+**Context.** Praveen 30-10-2026: "the facilitator and coordinator ring of 8". The ring-homes walk found two things that
+broke "no scrolling" or crowded in Telugu: the coordinator ring held nine circles when the login has an own student
+record (Me, #316), and at 360 px its Telugu labels ran into each other; the staff tab names "ఫాలో-అప్‌లు" and
+"విద్యార్థులు" took two lines in a bar sized for one, so the label stuck out 10 px and every staff tab scrolled.
+
+**Decision.** The coordinator ring is always eight; Me (staff/me) is the first line of the side menu's Me group for a
+coordinator with an own record (the menu reads hasOwnRecord when it opens; the home still reads it so the My QR card
+stays saved for offline). The staff tabs on a phone keep room for a second line in te/hi when a tab's slot is under
+100 px, as the student tabs already did (#670). Checked by tests/launch-ui.test.mjs and tests/facilitator-home.test.mjs.

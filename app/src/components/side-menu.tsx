@@ -30,6 +30,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAuth } from '@/auth/auth-provider';
 import { fetchStaffDashboard, type StaffDashboard } from '@/data/home';
+import { hasOwnRecord } from '@/data/my-student';
 import { badgeText } from '@/lib/module-badge';
 import { spacing, useTheme } from '@/theme/use-theme';
 
@@ -111,7 +112,10 @@ function SideMenu({ onClose }: { onClose: () => void }) {
   const pathname = usePathname();
   const sheetWidth = Math.min(SHEET_MAX, Math.round(width * 0.86));
   const guru = profile?.role === 'guru';
-  const groups = staffMenuGroups(guru, t);
+  const myId = profile?.id ?? '';
+  // A coordinator with an own student record (0053) finds Me here, not on the ring (#780).
+  const [own, setOwn] = useState(false);
+  const groups = staffMenuGroups(guru, t, own);
   const heading = useRef<ViewType>(null);
   // The Today numbers (#778), read each time the menu opens; undefined = loading ("–"), null = could not load.
   const [board, setBoard] = useState<StaffDashboard | null | undefined>(undefined);
@@ -120,10 +124,15 @@ function SideMenu({ onClose }: { onClose: () => void }) {
     void fetchStaffDashboard(guru).then((loaded) => {
       if (!cancelled) setBoard(loaded);
     });
+    if (!guru) {
+      void hasOwnRecord(myId).then((found) => {
+        if (!cancelled) setOwn(found);
+      });
+    }
     return () => {
       cancelled = true;
     };
-  }, [guru]);
+  }, [guru, myId]);
 
   // Slides in from the left on a phone (none with reduced motion); on the web it simply appears, because
   // react-native-web waits for an animation's end, which a background tab never fires (select-field.tsx).

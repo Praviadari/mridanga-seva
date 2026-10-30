@@ -31,11 +31,16 @@ function menuButton() {
 
 /** Tab navigator for the staff home and the four screens used most. */
 export default function StaffTabsLayout() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { colors } = useTheme();
   const titleFont = useHeadingFont();
   const { width, fontScale } = useWindowDimensions();
-  const tabs = tabsScreenOptions(colors, width >= SIDEBAR_FROM, fontScale, titleFont);
+  const sidebar = width >= SIDEBAR_FROM;
+  // As on the student tabs (#670): on a phone the Telugu and Hindi names take two lines ("ఫాలో-అప్‌లు" even at 412 px),
+  // so the bar keeps room for the second line as for large text; without it the label stuck out 10 px under the
+  // window and every staff tab scrolled (ring homes walk, 30-10-2026).
+  const twoLines = !sidebar && i18n.language !== 'en' && width / 5 < 100;
+  const tabs = tabsScreenOptions(colors, sidebar, twoLines ? Math.max(fontScale, 1.15) : fontScale, titleFont);
 
   return (
     <Tabs

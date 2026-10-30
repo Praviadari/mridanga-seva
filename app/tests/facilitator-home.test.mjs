@@ -177,7 +177,9 @@ test('the side menu: the facilitator gets the three modules not on the ring; a c
   for (const path of ['/staff/overview', '/staff/groups', '/staff/promotion', '/staff/practice', '/staff/suggestions', '/staff/fund', '/staff/reports', '/staff/notifications']) {
     assert.ok(groups.includes(`'${path}'`), path);
   }
-  assert.match(src('screens/coordinator-home.tsx'), /<StaffModules me=\{me\} board=\{board\} \/>/);
+  assert.match(src('screens/coordinator-home.tsx'), /<StaffModules board=\{board\} \/>/);
+  // Me (0053) for a coordinator with an own record: the side menu's Me group (#780).
+  assert.match(src('components/side-menu.tsx'), /const groups = staffMenuGroups\(guru, t, own\);/);
 });
 
 test('the spec\'s plain relabels (terminology map)', () => {

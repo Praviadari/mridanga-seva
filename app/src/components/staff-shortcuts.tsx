@@ -16,10 +16,10 @@
 // holds the other three: Media (Coming soon), Security & Audits, Settings (#777, amends #700, #705).
 // Coordinator ring (StaffModules below): Welcome desk, Newcomers, Instruments (drums lent at class), Seva roster,
 // Assessments, Lessons, Events & polls, Ishtagoshti.
-// Me (0053, docs/DECISIONS.md #316, #319) comes first on the coordinator's ring when the facilitator has linked the
-// person's login to their own student record: My QR, My progress, My attendance and Practice as a student sees them
-// (staff/me). Hidden otherwise. The ring then holds nine (module-ring.tsx draws nine smaller). The facilitator's Me is
-// in Settings → Personal.
+// Me (0053, docs/DECISIONS.md #316, #319), when the facilitator has linked the person's login to their own student
+// record: My QR, My progress, My attendance and Practice as a student sees them (staff/me). For a coordinator it is
+// the first line of the side menu's Me group since #780 (it was a ninth circle, whose Telugu labels crowded at 360 px);
+// hidden without an own record. The facilitator's Me is in Settings → Personal.
 
 import { router, type Href } from 'expo-router';
 import type { TFunction } from 'i18next';
@@ -70,20 +70,15 @@ export function FacilitatorRing({ board }: { board: StaffDashboard | null | unde
 
 /** Props for StaffModules. */
 export type StaffModulesProps = {
-  /** The login has its own student record (0053): show Me. */
-  me?: boolean;
   /** The home's numbers, for the counts on the circles; undefined while loading, null when they could not load. */
   board?: StaffDashboard | null;
 };
 
-/** The ring of the coordinator home (the facilitator's is FacilitatorRing above). */
-export function StaffModules({ me = false, board }: StaffModulesProps) {
+/** The ring of the coordinator home (the facilitator's is FacilitatorRing above): always eight (#780). */
+export function StaffModules({ board }: StaffModulesProps) {
   const { t } = useTranslation();
   const signups = board?.signupsWaiting ?? 0;
   const toReview = board?.toReview ?? 0;
-  // Me first, only with an own record (0053): green, people, as About you; on the ring it sits beside the green
-  // Welcome desk.
-  const own: Module[] = [...(me ? [{ key: 'me', icon: 'person', tone: 'green', label: t('me.title'), onPress: () => router.push('/staff/me') } satisfies Module] : [])];
   // Colour by family (UI audit fix 9, docs/DECISIONS.md #368; lib/module-tone.ts), and the circles of a family side by
   // side, so the ring reads as a few coloured arcs: green people, teal seva, purple learning, orange community.
   const ring: Module[] = [
@@ -118,7 +113,7 @@ export function StaffModules({ me = false, board }: StaffModulesProps) {
     // On a phone the Ishtagoshti tab does not fit the bottom bar; this opens the tab itself.
     { key: 'ishtagoshti', icon: 'ishtagoshti', tone: 'orange', label: t('ishtagoshti.title'), onPress: () => router.push('/staff/ishtagoshti') },
   ];
-  return <HomeRing modules={[...own, ...ring]} />;
+  return <HomeRing modules={ring} />;
 }
 /** One line of the side menu. */
 export type MenuItem = {
@@ -141,7 +136,7 @@ export type MenuGroup = { key: string; title: string; items: MenuItem[] };
  * bottom tab nor a circle on their home. The menu opens them with router.push (only stack screens here, never a tab:
  * R4-01).
  */
-export function staffMenuGroups(guru: boolean, t: TFunction): MenuGroup[] {
+export function staffMenuGroups(guru: boolean, t: TFunction, me = false): MenuGroup[] {
   if (guru) {
     return [
       {
@@ -191,7 +186,11 @@ export function staffMenuGroups(guru: boolean, t: TFunction): MenuGroup[] {
     {
       key: 'me',
       title: t('menu.groups.me'),
-      items: [{ key: 'notifications', icon: 'bell', label: t('inbox.title'), href: '/staff/notifications' }],
+      items: [
+        // Me (0053) with an own student record: here since #780, so the ring keeps eight circles.
+        ...(me ? [{ key: 'me', icon: 'person', label: t('me.title'), href: '/staff/me' } satisfies MenuItem] : []),
+        { key: 'notifications', icon: 'bell', label: t('inbox.title'), href: '/staff/notifications' },
+      ],
     },
   ];
 }

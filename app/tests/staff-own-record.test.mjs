@@ -61,12 +61,12 @@ test('Me has the student\'s circles and reuses the student screens, no copies', 
   assert.match(me, /void keepMyCardSaved\(myId\)/, 'My QR is saved on the phone from Me too');
 });
 
-test('the Me circle is on the staff homes only when the login has its own record', () => {
+test('Me is in the coordinator side menu only when the login has its own record (#780; was a ring circle)', () => {
   const shortcuts = src('components/staff-shortcuts.tsx');
-  assert.match(shortcuts, /\.\.\.\(me \? \[\{ key: 'me'.*router\.push\('\/staff\/me'\)/s);
+  assert.match(shortcuts, /\.\.\.\(me \? \[\{ key: 'me'.*href: '\/staff\/me'/s);
   assert.match(shortcuts, /me = false/, 'hidden by default');
   assert.match(src('screens/coordinator-home.tsx'), /hasOwnRecord\(myId\)/);
-  assert.match(src('screens/coordinator-home.tsx'), /me=\{me\}/);
+  assert.match(src('components/side-menu.tsx'), /void hasOwnRecord\(myId\)\.then\(\(found\) => \{\n\s+if \(!cancelled\) setOwn\(found\);/);
   // The facilitator (#700): Me is a row of Settings → Personal, shown only with an own record.
   assert.match(src('lib/facilitator-modules.ts'), /\{ key: 'me', icon: 'person', label: 'facilitatorHome\.rows\.me', href: '\/staff\/me', ownRecord: true \}/);
   assert.match(src('app/staff/modules/[key].tsx'), /void hasOwnRecord\(myId\)\.then/);
