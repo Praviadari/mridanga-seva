@@ -644,6 +644,7 @@ to `app/dist/`. Always use this command, not a bare `npx expo export`, because
 
 | Date | Site | Commit | Built (UTC) | By |
 |---|---|---|---|---|
+| 30-10-2026 | test (heading font with lining figures, #337 update; also on walk alias) | 891ea63 (main; entry-bd3873c6…; deployment fc80d119, walk 29afdf2c) | 2026-10-30 | Claude (wrangler, Praveen's login) |
 | 30-10-2026 | test (student profile: syllabus numbered by place, section headings; also on walk alias; first download 2722 KB) | a7cb575 (main; entry-b4e3400f…; deployment 0a3be42a, walk deb895eb) | 2026-10-30 | Claude (wrangler, Praveen's login) |
 | 29-10-2026 | test (W6 syllabus: sections (0072), Beginner lessons + Intermediate sections TEST seed, guna 1/2/4/8; also on walk alias; first download 2722 KB) | 97705e1 (main; entry-e8b207b7…; deployment be1c5826) | 2026-10-29 | Claude (wrangler, Praveen's login) |
 | 29-10-2026 | test (Daily Quest: lines stay put for the day, a played game shows Done; also on walk.mridanga-seva-test.pages.dev, deployment ddd88079; first download 2722 KB) | 27cf2ed (main; entry-b7a0e042…; deployment 666d7d7e) | 2026-10-29 | Claude (wrangler, Praveen's login) |
