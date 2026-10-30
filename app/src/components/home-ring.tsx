@@ -37,8 +37,9 @@ export function HomeRing({ modules }: { modules: readonly Module[] }) {
       </>
     );
   }
-  const withFact = room === null || room - factHeight - spacing.sm - LABEL_BELOW >= RING_WITH_FACT;
-  const ringMax = room === null ? undefined : Math.max(RING_MIN, room - LABEL_BELOW - (withFact ? factHeight + spacing.sm : 0));
+  // Not before the room is known: an unseen fact card would still make the page scroll for a moment.
+  const withFact = room !== null && room - factHeight - spacing.sm - LABEL_BELOW >= RING_WITH_FACT;
+  const ringMax = room === null ? RING_MIN : Math.max(RING_MIN, room - LABEL_BELOW - (withFact ? factHeight + spacing.sm : 0));
   return (
     <View
       style={styles.room}

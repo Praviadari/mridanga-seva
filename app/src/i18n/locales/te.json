@@ -297,8 +297,8 @@
       "waiting_one": "పనులు",
       "waiting_other": "పనులు",
       "scan": "స్కాన్ చేసి చెక్-ఇన్",
-      "toDoLine_one": "మీ కోసం {{count}} పని వేచి ఉంది",
-      "toDoLine_other": "మీ కోసం {{count}} పనులు వేచి ఉన్నాయి"
+      "toDoLine_one": "{{count}} పని వేచి ఉంది",
+      "toDoLine_other": "{{count}} పనులు వేచి ఉన్నాయి"
     },
     "waiting": {
       "title": "చేయవలసినవి",
