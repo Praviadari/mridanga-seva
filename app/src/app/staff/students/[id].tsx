@@ -39,6 +39,7 @@ import { RouteIdGuard } from '@/components/route-id-guard';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { StudentDetailsPanel } from '@/components/student-details-panel';
+import { SyllabusSectionHeading } from '@/components/syllabus-section-heading';
 import { VisitResultNotice } from '@/components/visit-result-notice';
 import { markVisit, type MarkOutcome } from '@/data/attendance';
 import { fetchStaff, type StaffMember } from '@/data/student-overview';
@@ -55,6 +56,7 @@ import {
 import { locationForCheckIn } from '@/lib/attendance-location';
 import { ageOn, localDate, formatDate, formatDateTime, localTime, todayLocal } from '@/lib/dates';
 import { goBackOr } from '@/lib/go-back';
+import { cleanSection, hasSections } from '@/lib/syllabus-sections';
 import { RefreshFailed } from '@/components/refresh-failed';
 import { useKeptLoad } from '@/lib/kept-load';
 
@@ -325,19 +327,27 @@ function StudentProfileScreenContent() {
         title={t('profile.syllabusSection', { level: levelName(t, student.levelId) })}
         description={t('profile.syllabusDone', { done: doneCount, total: profile.progress.length })}>
         {profile.progress.length === 0 ? <AppText tone="muted">{t('profile.noSyllabus')}</AppText> : null}
-        {profile.progress.map((item) => (
-          // The tick or circle is for the eye; the words say it for screen readers and translators (D8-13).
-          <AppText key={item.id} tone={item.doneOn ? 'default' : 'muted'}>
-            <AppText aria-hidden tone={item.doneOn ? 'default' : 'muted'}>
-              {item.doneOn ? '✓ ' : '○ '}
-            </AppText>
-            {`${item.sort}. ${item.title}`}
-            {item.doneOn
-              ? ` · ${t('profile.tickedOn', { date: formatDate(item.doneOn) })}`
-              : ` · ${t('profile.notTicked')}`}
-            {item.remark ? ` · ${item.remark}` : ''}
-          </AppText>
-        ))}
+        {profile.progress.map((item, i, items) => {
+          // Numbered by place among the items in use, as on Mark progress (sort keeps gaps of retired items).
+          const heading =
+            hasSections(items) && (i === 0 || cleanSection(items[i - 1].section) !== cleanSection(item.section));
+          return (
+            <Fragment key={item.id}>
+              {heading ? <SyllabusSectionHeading section={cleanSection(item.section)} /> : null}
+              {/* The tick or circle is for the eye; the words say it for screen readers and translators (D8-13). */}
+              <AppText tone={item.doneOn ? 'default' : 'muted'}>
+                <AppText aria-hidden tone={item.doneOn ? 'default' : 'muted'}>
+                  {item.doneOn ? '✓ ' : '○ '}
+                </AppText>
+                {`${i + 1}. ${item.title}`}
+                {item.doneOn
+                  ? ` · ${t('profile.tickedOn', { date: formatDate(item.doneOn) })}`
+                  : ` · ${t('profile.notTicked')}`}
+                {item.remark ? ` · ${item.remark}` : ''}
+              </AppText>
+            </Fragment>
+          );
+        })}
         {ownRecord ? null : (
           <Button
             variant="secondary"

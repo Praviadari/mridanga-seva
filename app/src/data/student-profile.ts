@@ -36,7 +36,14 @@ export type StudentDetails = StudentSummary & {
 export type VisitEntry = { id: number; checkIn: string; checkOut: string | null; method: string };
 
 /** One syllabus item of the student's level, with the day it was ticked, if it was. */
-export type ProgressItem = { id: number; sort: number; title: string; doneOn: string | null; remark: string | null };
+export type ProgressItem = {
+  id: number;
+  sort: number;
+  title: string;
+  section: string | null;
+  doneOn: string | null;
+  remark: string | null;
+};
 
 /** One follow-up call, newest first in the profile. */
 export type CallEntry = {
@@ -183,7 +190,7 @@ export async function fetchStudentProfile(studentId: string): Promise<StudentPro
   // retired are left out (their ticks stay; C9 still lists the ticked ones).
   const items = await supabase
     .from('syllabus_items')
-    .select('id, sort, title')
+    .select('id, sort, title, section')
     .eq('level_id', summary.levelId)
     .is('retired_at', null)
     .order('sort');
@@ -210,7 +217,7 @@ export async function fetchStudentProfile(studentId: string): Promise<StudentPro
     ),
     totalVisits: total.count ?? 0,
     visitsLast30Days: recent.count ?? 0,
-    progress: (items.data as { id: number; sort: number; title: string }[]).map((item) => ({
+    progress: (items.data as { id: number; sort: number; title: string; section: string | null }[]).map((item) => ({
       ...item,
       doneOn: ticked.get(item.id)?.done_on ?? null,
       remark: ticked.get(item.id)?.remark ?? null,
