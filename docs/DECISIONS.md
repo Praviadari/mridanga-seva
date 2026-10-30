@@ -5889,6 +5889,14 @@ sans. Header bars stay sans. The italic was left out (not needed for headings).
 
 **Consequences.** A heading shows in sans for a moment on the very first start after the update.
 
+**Update 30-10-2026 (Praveen's yes): lining figures by default.** The old file drew Garamond old-style figures, whose
+'1' looks like a small capital I ("Level I"); it had no `lnum` to switch on. The file was rebuilt from Google Fonts'
+`ofl/cormorantgaramond/CormorantGaramond[wght].ttf` (OFL): fontTools instancer at wght 600, the cmap of 0-9 pointed at
+the `lnum` glyphs (`one.lf` …), subset to exactly the old file's code points and features (calt ccmp dnom frac liga
+locl numr; kern mark mkmk), the old name table kept. Same metrics (upm 1000, ascent 924/-287, win 1097/283), 160 KB.
+Still loaded at run time: web + update, no APK. `frac`/`numr` still start from the old-style digit glyphs, so a typed
+fraction would not form in a heading (headings have none).
+
 ## 338. "Needs attention" amber, and the open tab told by shape — 13 Oct 2026
 
 **Status: branch `after-launch-design`.**
