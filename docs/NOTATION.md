@@ -17,6 +17,22 @@ Decisions behind it: docs/DECISIONS.md #776 (this draft), #774 (guna 1/2/4/8, al
    = ▲ in Beginner, ● in Intermediate, the same mark as `khe`).
 3. **The bar `|` means two things**: a stroke (`||||` = ta) and the vibhāg line in a bol line (`tere kheta | tere`).
 
+## Team's first answer (30-10-2026)
+
+From the team via Praveen (mail "Photo", 30-10-2026 17:10, two pictures):
+- Brackets for a closed stroke "also work" (`te` = `[III]`, `ri` = `[I]`, `ti` = `[II]`).
+- **Their own proposal:** fingers as capital I's plus **C** (closed) or **O** (open): `IIIIC` four fingers closed,
+  `IIIIO` four fingers open, `IC` index finger closed, `IO` index finger open.
+- **The technique depends on the mantra, not only the bol or the level:** `te` is normally `IIIIC` (Beginner), but in
+  some Intermediate mantras `IC` (index finger). So one bol can have several marks; each mantra line shows its own.
+- The team sends the Beginner notes with complete notation by Sunday 01-11-2026.
+
+**Lead's advice (30-10):** take the team's C/O letters instead of brackets (they say open as well as closed, read
+aloud well, and are the team's own); one scheme only. Always capital I, never the digit 1 (the mail's `ri = [1]`).
+Marks then belong to each mantra/lesson line (lesson notes are plain text: works today, no app change); the Playground
+bol dictionary keeps one default mark per bol until a game needs per-mantra marks. Still open: `ti` II or III, `re` vs
+`ri`, `jha` vs `dha`, `ge` ▲, left-hand marks `●` `O`, the spellings below.
+
 ## The rule proposed
 
 - **Bols are written as words** (`te re khe ta`, `tere kheta`): this is how the app already writes them (Rhythm

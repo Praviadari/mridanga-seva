@@ -2,6 +2,42 @@
   "_comment": "What's new (My profile > What's new, docs/DECISIONS.md #406). Newest first. Add an entry before every production update (docs/OPERATIONS.md 'Publishing an update'). date: the day it is published (YYYY-MM-DD); null = not yet published, shown as 'Coming in the next update'. kind: 'installed' for an APK, 'update' for an update. id: the APK's build id or the update id the version line shows (first 8 characters), once known. notes: 3-8 plain lines in en, te and hi, the same number in each; te/hi are drafts for native review.",
   "releases": [
     {
+      "_comment": "Next production update from main (LIVE DB 0063-0069 + 0072, lead decision 30-10-2026). No Playground lines: it stays off on LIVE. Set date and id when published.",
+      "version": "1.0.0",
+      "kind": "update",
+      "id": null,
+      "date": null,
+      "notes": {
+        "en": [
+          "New homes on one screen: students, facilitators and coordinators find their main tasks on a ring; the rest is in the side menu.",
+          "Lessons have tabs and can carry an audio recording; the syllabus can be grouped into sections.",
+          "Events show the reporting time, rehearsal, dress code, coordinator and a map link.",
+          "A recording you sent for assessment shows Under review once a facilitator opens it.",
+          "The taal player's speeds follow the class: barabar, dugun, chaugun and aṭhgun (1, 2, 4, 8).",
+          "Safer records: nobody approves their own fund entry, and erasing a student's data needs a second approval.",
+          "Telugu and Hindi notices say facilitator; numbers in headings are easier to read."
+        ],
+        "te": [
+          "ఒకే స్క్రీన్‌పై కొత్త హోమ్: విద్యార్థులు, ఫెసిలిటేటర్లు, సమన్వయకర్తలు తమ ముఖ్య పనులను ఒక వలయంపై చూస్తారు; మిగతావి పక్క మెనూలో.",
+          "పాఠాలకు ట్యాబ్‌లు ఉన్నాయి, ఆడియో రికార్డింగ్ జతచేయవచ్చు; పాఠ్యప్రణాళికను విభాగాలుగా విభజించవచ్చు.",
+          "కార్యక్రమాలు హాజరు కావాల్సిన సమయం, రిహార్సల్, దుస్తుల నియమం, సమన్వయకర్త, మ్యాప్ లింక్ చూపిస్తాయి.",
+          "అంచనా కోసం మీరు పంపిన రికార్డింగ్‌ను ఫెసిలిటేటర్ తెరిచినప్పుడు 'పరిశీలనలో ఉంది' అని చూపుతుంది.",
+          "తాళ ప్లేయర్ వేగాలు తరగతి పద్ధతిలోనే: బరాబర్, దుగున్, చౌగున్, అఠ్‌గున్ (1, 2, 4, 8).",
+          "మరింత సురక్షిత రికార్డులు: తమ సొంత నిధి నమోదును ఎవరూ ఆమోదించలేరు; విద్యార్థి డేటా తొలగింపుకు రెండో ఆమోదం కావాలి.",
+          "తెలుగు, హిందీ నోటీసుల్లో 'ఫెసిలిటేటర్' అని ఉంటుంది; శీర్షికల్లోని అంకెలు సులభంగా చదవవచ్చు."
+        ],
+        "hi": [
+          "एक ही स्क्रीन पर नया होम: विद्यार्थी, फ़ैसिलिटेटर और समन्वयक अपने मुख्य काम एक घेरे पर पाते हैं; बाकी साइड मेनू में।",
+          "पाठों में टैब हैं और उनमें ऑडियो रिकॉर्डिंग जोड़ी जा सकती है; पाठ्यक्रम को खंडों में बाँटा जा सकता है।",
+          "कार्यक्रम पहुँचने का समय, रिहर्सल, ड्रेस कोड, समन्वयक और मैप लिंक दिखाते हैं।",
+          "मूल्यांकन के लिए भेजी गई आपकी रिकॉर्डिंग फ़ैसिलिटेटर के खोलने पर 'समीक्षा में' दिखती है।",
+          "ताल प्लेयर की गतियाँ कक्षा के अनुसार: बराबर, दुगुन, चौगुन और अठगुन (1, 2, 4, 8)।",
+          "सुरक्षित रिकॉर्ड: कोई अपनी ही निधि प्रविष्टि स्वीकृत नहीं कर सकता, और विद्यार्थी का डेटा मिटाने के लिए दूसरी स्वीकृति चाहिए।",
+          "तेलुगु और हिंदी सूचनाओं में 'फ़ैसिलिटेटर' लिखा है; शीर्षकों के अंक पढ़ने में आसान हैं।"
+        ]
+      }
+    },
+    {
       "_comment": "Next production update (lead-test merged into main 24-10-2026): privacy notice 1.0, staff sign-in codes, offline queues, lighter web, level path, web notifications. Set date and id when published.",
       "version": "1.0.0",
       "kind": "update",
