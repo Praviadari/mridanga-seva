@@ -7,8 +7,8 @@
 //
 // Under the khol line, the Daily Sādhana Quest (docs/RHYTHM_PLAYGROUND.md §7.10; docs/DECISIONS.md #754): 2-4 short
 // Playground games for today, each a line "Listen · Missing Beat · 2 min" that opens the game with a ready round and
-// is ticked when played. The khol stays first. Shown only for a student the Playground is on for; its code is loaded
-// when the card is shown (a separate download on the web, #650). A skipped day loses nothing and says nothing.
+// is ticked when played. The khol stays first. Shown only for a student the Playground is on for (#781); its code is
+// loaded when the card is shown (a separate download on the web, #650). A skipped day loses nothing and says nothing.
 
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
@@ -24,6 +24,7 @@ import { cardLook, spacing, useTheme } from '@/theme/use-theme';
 import { AppText } from './app-text';
 import { Button } from './button';
 import { Icon, IconBadge } from './icon';
+import { usePlaygroundOn } from './playground-only';
 import { ProgressBar } from './progress-bar';
 
 /** Props for TodayPracticeCard. */
@@ -113,11 +114,13 @@ export function TodayPracticeCard({ today, slim }: TodayPracticeCardProps) {
 function useDailyQuest(): QuestLineTo[] | null {
   const { profile } = useAuth();
   const profileId = profile?.id ?? '';
+  // Off for this student (#781): no quest, and its code is not even loaded.
+  const on = usePlaygroundOn();
   const [lines, setLines] = useState<QuestLineTo[] | null>(null);
   useFocusEffect(
     useCallback(() => {
       let live = true;
-      if (profile?.role !== 'student') return undefined;
+      if (profile?.role !== 'student' || !on) return undefined;
       // On the web the quest's code needs the student screens' file first (#650).
       void studentAreaReady()
         .then(() => import('@/screens/playground/daily-quest-load'))
@@ -129,9 +132,9 @@ function useDailyQuest(): QuestLineTo[] | null {
       return () => {
         live = false;
       };
-    }, [profileId, profile?.role]),
+    }, [profileId, profile?.role, on]),
   );
-  return lines;
+  return on ? lines : null;
 }
 
 /** The quest's lines: "Today in the Playground", each game a button, ticked when done. */

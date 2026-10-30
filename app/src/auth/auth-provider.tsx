@@ -34,6 +34,7 @@ import { applyProfileLanguage, currentLanguage, hasUnsavedChoice, markLanguageSa
 import { loadClassLocale } from '@/lib/class-locale';
 import { clearDeviceTraces } from '@/lib/device-traces';
 import { dropOtherOwnersDrafts, purgeExpiredDrafts } from '@/lib/form-drafts';
+import { loadPlaygroundSwitch } from '@/lib/playground-switch';
 import {
   setRefusedListener,
   storedLoginUserId,
@@ -191,6 +192,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
     // The centre's time zone and country for dates and amounts (docs/I18N.md); kept from the last
     // start until it arrives, India before the first.
     void loadClassLocale();
+    // Is the Rhythm Playground on for this login (#781)? Kept from the last start until it arrives, off before the first.
+    void loadPlaygroundSwitch(userId);
     return () => {
       cancelled = true;
     };

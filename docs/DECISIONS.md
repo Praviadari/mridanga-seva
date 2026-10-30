@@ -9233,3 +9233,35 @@ record (Me, #316), and at 360 px its Telugu labels ran into each other; the staf
 coordinator with an own record (the menu reads hasOwnRecord when it opens; the home still reads it so the My QR card
 stays saved for offline). The staff tabs on a phone keep room for a second line in te/hi when a tab's slot is under
 100 px, as the student tabs already did (#670). Checked by tests/launch-ui.test.mjs and tests/facilitator-home.test.mjs.
+
+## 781. The app honours the Playground switch (playground_enabled, playground_pilot_group); no migration — 30 Oct 2026
+
+**Context.** 0065 seeded `playground_enabled` false (and `playground_pilot_group` null) so the Playground would stay
+hidden on LIVE until Prji's go, but nothing read either setting: no SQL function, no app code. The Practice tab's
+Playground card, the Daily Quest, the staff Teaching row and every game address showed whatever the setting said. The
+next LIVE release goes from main (0063-0072), so this had to hold before Praveen's "publish". Lead decision 30-10-2026.
+
+**Decision.** An app-side switch, no migration (lib/playground-switch.ts, components/playground-only.tsx):
+- The app reads both settings (students may read `settings`) at start and whenever the profile is read again (with the
+  centre's locale, auth-provider), and, when a pilot group is set and the Playground is on, whether the login has its
+  own `group_members` row in that group while the group is active. The answer is kept on the device for that login, so
+  a start without internet behaves as the last one did; never read (the first start on a device, another login) counts
+  as off. Forgotten at sign-out (device traces).
+- **Students:** on with no pilot group = every student; on with a group id = only that group's members; off = no
+  Playground card on Practice, no Daily Quest (its code is not even loaded), every `/student/playground/*` address
+  sends back to the Practice tab. Tap pad, Which bol? and Echo me (Play and learn, at their old addresses) are their
+  plain pre-Playground tools again: play-along, the ear quiz, call and response — what LIVE has today.
+- **Staff:** the Guru always sees the staff Playground (Teaching row, `/staff/playground/*`, a student's Playground
+  panel), so Prji can load and approve content before launch; a coordinator sees it only while it is on (pilot group
+  or not); otherwise the row and panel are left out and the addresses send back to the Teaching module. The assessment
+  form offers "Recordings from a Playground game" only while it is on (or when the assessment already names a game).
+- **My data** shows the Playground line only when something is held (rounds, weekly summaries or ratings): 0068 always
+  answers the key, and a "0" line would name a part of the app the student cannot see.
+- Hiding is not the guard: the server still serves the pack and saves rounds for a student who reaches them (no new
+  refusal; row-level security still decides what each login reads). The switch module holds no Playground code, so
+  the student home's first download is unchanged (#650).
+
+**Why app-side.** A migration would add a LIVE run step on the eve of the release and gate server functions the
+offline queue depends on; the settings are already readable and SQL-editor-only, the control 0065 chose.
+To launch: set `playground_enabled` true (and optionally `playground_pilot_group` to a group id) in the SQL editor;
+phones pick it up at the next start or return to the app. Checked by tests/playground-switch.test.mjs.

@@ -200,6 +200,9 @@ Rhythm Playground, student side (package W2, [DECISIONS.md #730-#736](DECISIONS.
 [RHYTHM_PLAYGROUND.md](RHYTHM_PLAYGROUND.md) §6.1, §7, §12.4). No migration of its own (W1's 0065), JavaScript only. One
 large "Rhythm Playground" card on the Practice tab replaces the Games tiles; the tap pad and Echo me are reached from
 inside it, at their old addresses. Every screen shows a "TEST sounds" badge while no recording is approved.
+All of it follows the switch (`playground_enabled`, `playground_pilot_group`; [DECISIONS.md #781](DECISIONS.md)): while
+it is off for a student there is no card and no Daily Quest, the `/student/playground/*` addresses send back to the
+Practice tab, and tap pad, Which bol? and Echo me are their plain tools again.
 
 | # | Screen | Who | Status | Code |
 |---|---|---|---|---|
@@ -213,7 +216,8 @@ inside it, at their old addresses. Every screen shows a "TEST sounds" badge whil
 Rhythm Playground, facilitator side (package W3, [DECISIONS.md #740-#749](DECISIONS.md), design
 [RHYTHM_PLAYGROUND.md](RHYTHM_PLAYGROUND.md) §6.2, §10, §12). No migration of its own (W1's 0065), JavaScript only.
 Opened from Teaching → Practice → "Rhythm Playground". Coordinators write drafts; only the head facilitator (role
-`guru`, never named so on screen) approves, retires and publishes.
+`guru`, never named so on screen) approves, retires and publishes. While the Playground is switched off (#781) only the
+head facilitator sees the row, these screens and the profile section; a coordinator's addresses send back to Teaching.
 
 | # | Screen | Who | Status | Code |
 |---|---|---|---|---|

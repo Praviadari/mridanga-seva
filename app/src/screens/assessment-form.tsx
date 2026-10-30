@@ -7,7 +7,8 @@
 // is first given to students (then they are shown, not editable). Coordinators who open these
 // addresses see a note instead. Shown by app/staff/assessments/new.tsx and edit/[id].tsx.
 // Data: src/data/assessments.ts, files src/data/assessment-files.ts; the database checks it all
-// again (migrations 0016, docs/DECISIONS.md #52, #53).
+// again (migrations 0016, docs/DECISIONS.md #52, #53). "Recordings from a Playground game" (0069) is offered only while the
+// Playground is switched on, or when the assessment already names a game (#781).
 
 import { router, Stack, useFocusEffect } from 'expo-router';
 import { useCallback, useState, type ReactNode } from 'react';
@@ -56,6 +57,7 @@ import {
 } from '@/data/assessments';
 import { fileSizeText, LEVEL_IDS, levelName } from '@/i18n/labels';
 import { spacing, useTheme } from '@/theme/use-theme';
+import { usePlaygroundSwitch } from '@/lib/playground-switch';
 import { useRequestId } from '@/lib/use-request-id';
 import { useFormChanged, useLeaveGuard } from '@/lib/use-leave-guard';
 
@@ -135,6 +137,7 @@ function FormBody({ header, editing }: { header: ReactNode; editing: Editing | n
       : emptyAssessmentForm([t('assessments.rubricDefault1'), t('assessments.rubricDefault2'), t('assessments.rubricDefault3')]),
   );
   const [errors, setErrors] = useState<AssessmentFormErrors>({});
+  const offerGames = usePlaygroundSwitch(myId).enabled || form.playgroundGame !== null;
   const [serverError, setServerError] = useState<string | null>(null);
   const [saving, setSaving] = useState<'send' | 'draft' | 'edit' | null>(null);
   const [picking, setPicking] = useState(false);
@@ -242,15 +245,17 @@ function FormBody({ header, editing }: { header: ReactNode; editing: Editing | n
               checked={form.levelUp}
               onChange={(levelUp) => update({ levelUp })}
             />
-            <ChoiceGroup<PlaygroundSendGame | 'none'>
-              label={t('assessments.compose.playgroundGame')}
-              choices={[
-                { value: 'none', label: t('assessments.compose.playgroundNone') },
-                ...PLAYGROUND_SEND_GAMES.map((game) => ({ value: game, label: t(`playground.game.${game}.name`) })),
-              ]}
-              value={form.playgroundGame ?? 'none'}
-              onChange={(game) => update({ playgroundGame: game === 'none' ? null : game })}
-            />
+            {offerGames ? (
+              <ChoiceGroup<PlaygroundSendGame | 'none'>
+                label={t('assessments.compose.playgroundGame')}
+                choices={[
+                  { value: 'none', label: t('assessments.compose.playgroundNone') },
+                  ...PLAYGROUND_SEND_GAMES.map((game) => ({ value: game, label: t(`playground.game.${game}.name`) })),
+                ]}
+                value={form.playgroundGame ?? 'none'}
+                onChange={(game) => update({ playgroundGame: game === 'none' ? null : game })}
+              />
+            ) : null}
           </>
         )}
       </Section>

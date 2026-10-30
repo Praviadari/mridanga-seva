@@ -3,7 +3,8 @@
 // at their own addresses (lib/facilitator-modules.ts); Back returns here, and Back again to Home. A row that is a
 // bottom tab goes back to the tabs and selects it (R4-01). Rows and modules a role may not use are left out; that
 // is not the guard (each screen checks the role, row-level security refuses the data). An address with an unknown
-// module says so; a module not built yet (Media) says Coming soon, with nothing to tap.
+// module says so; a module not built yet (Media) says Coming soon, with nothing to tap. The Playground row follows the
+// Playground switch (#781).
 
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -16,6 +17,7 @@ import { Columns } from '@/components/columns';
 import { GuruOnly } from '@/components/guru-only';
 import { ListRow } from '@/components/list-row';
 import { Notice } from '@/components/notice';
+import { usePlaygroundOn } from '@/components/playground-only';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { hasOwnRecord } from '@/data/my-student';
@@ -33,6 +35,7 @@ export default function ModuleScreen() {
   const { t } = useTranslation();
   const { profile } = useAuth();
   const wide = useWide();
+  const playgroundOn = usePlaygroundOn();
   const { key } = useLocalSearchParams<{ key: string }>();
   const module = facilitatorModule(key);
   // Me (0053) shows only with an own student record; asked only where the module has such a row.
@@ -75,7 +78,7 @@ export default function ModuleScreen() {
           {t('facilitatorHome.soonBody')}
         </Notice>
       ) : (
-        visibleSections(module, profile?.role, ownRecord).map((section) => (
+        visibleSections(module, profile?.role, ownRecord, playgroundOn).map((section) => (
           <Section key={section.key} title={t(section.title)}>
             <Columns>
               {section.rows.map((row) => (

@@ -4,7 +4,8 @@
 // and one large Rhythm Playground card in place of the game tiles (#730): the tap pad, Which bol? (now Sound Detective)
 // and Echo me are inside it, at the same addresses. Its address is /student/my-practice: /student/practice stays the
 // practice tools, which the daily reminder and the What's new entries open (lib/practice-reminder.ts). A tab of the
-// first web download, so it holds only cards; the tools load from the student area (#650).
+// first web download, so it holds only cards; the tools load from the student area (#650). The Playground card shows only
+// while the Playground is on for this student (#781).
 
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
@@ -12,6 +13,7 @@ import { useTranslation } from 'react-i18next';
 
 import { useAuth } from '@/auth/auth-provider';
 import { ListRow } from '@/components/list-row';
+import { usePlaygroundOn } from '@/components/playground-only';
 import { Screen } from '@/components/screen';
 import { ShortcutTiles, type Shortcut } from '@/components/shortcut-tiles';
 import { TodayPracticeCard } from '@/components/today-practice-card';
@@ -30,6 +32,7 @@ export default function StudentPracticeTab() {
   const [plan, setPlan] = useState<TodayPlan | null>(null);
   const [practice, setPractice] = useState<PracticeDays | null>(null);
   const beginLoad = useLatestLoad();
+  const playgroundOn = usePlaygroundOn();
 
   const load = useCallback(async () => {
     const isNewest = beginLoad();
@@ -84,7 +87,7 @@ export default function StudentPracticeTab() {
         onPress={toTools}
       />
       <ListRow leading="time" title={t('practiceLog.title')} onPress={() => router.push('/student/practice-log')} />
-      <ShortcutTiles wide shortcuts={playground} />
+      {playgroundOn ? <ShortcutTiles wide shortcuts={playground} /> : null}
     </Screen>
   );
 }
