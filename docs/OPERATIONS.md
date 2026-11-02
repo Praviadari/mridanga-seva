@@ -644,6 +644,7 @@ to `app/dist/`. Always use this command, not a bare `npx expo export`, because
 
 | Date | Site | Commit | Built (UTC) | By |
 |---|---|---|---|---|
+| 02-11-2026 | test (real khol: the class's first recordings te/ta/ra/ka/ga, #790; also on walk alias) | a56452c (main; entry-6ab4e804…; deployment 5c2e3b70, walk 5c7341e6) | 2026-11-02T14:07:16Z | Claude (wrangler, Praveen's login) |
 | 02-11-2026 | test (Study Material: lessons fold open, chapter screen Video/Audio/Notes, Continue learning, #785-#789; also on walk alias) | 585f516 (main; entry-4fa06bdc…; deployment 7e9acf49, walk df4ae243) | 2026-11-02T12:43:10Z | Claude (wrangler, Praveen's login) |
 | 02-11-2026 | test (notation C/O key: TEST syllabus + Sound Detective cards, #782-#784; also on walk alias) | 58f4dae (main; entry-7669ab7e…; deployment c4fa5905, walk 432f4d49) | 2026-11-02T08:46:38Z | Claude (wrangler, Praveen's login) |
 | 30-10-2026 | test (same code as the LIVE release: pitch line by TEST site address 6972d46, What's new id 01a18dc8; also on walk alias) | 53f8035 (main; entry-a4f1437b…; deployment 1d792a9f, walk e6931b07) | 2026-10-30T17:12:31Z | Claude (wrangler, Praveen's login) |
