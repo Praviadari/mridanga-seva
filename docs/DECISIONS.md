@@ -8610,6 +8610,26 @@ The path and the celebrations show the student data they already see on My progr
 the only thing new kept on the phone is the list of event keys already shown (item ids, milestone names, level-history
 row ids), never sent anywhere and deleted with the app's data. DECISIONS #624-#629 stay free.
 
+## 630. ML Kit from Google Play services, not inside the APK — 26 Oct 2026
+
+**Status: not adopted (Praveen, 27 Oct 2026: speed first, the app must install and work on any Android phone; size is
+not the problem). The plugin is kept in commit bcc92dd, to bring back if the app moves to the Play Store, where the
+models come with the install.** What was prepared: expo-camera's QR scan and the face detector use the "bundled" ML Kit: its own native library and
+models in the APK for both ABIs (arm64 alone: libbarhopper_v3.so 2.1 MB, libface_detector_v2_jni.so 3.4 MB; models
+2.6 MB). **Decision (if the phone test passes).** `plugins/with-mlkit-play-services.js` swaps them in the app's Gradle
+build for Google's Play services twins (same API, model kept once per phone by Play services) and asks for the models
+in the manifest. About −10 MB. The cost: until Play services has the model, a scan fails ("waiting for the module to
+be downloaded"); for an APK installed outside the Play Store it may come only at first use. Play services is already
+needed (Play Integrity, push). Test: fresh install, QR scan and face scan at once with internet, then offline.
+
+## 631. Face models end in .bin — 26 Oct 2026
+
+**Status: adopted with the 08-11-2026 production APK (branch claude/app-size-native, merged with face scan); the
+face-scan fingerprint unchanged by it.** The Android build never compresses a
+`.tflite` file, so SFace (9.9 MB) sat in the APK at full size. **Decision.** The three models end in `.bin`
+(byte-identical, README hashes unchanged); Metro's assetExts gets `bin`. About −1.9 MB APK. Nothing else changes:
+fast-tflite reads the copied file whatever its name (#436).
+
 ## 640. A read-only parent page, opened from the weekly email — 27 Oct 2026
 
 **Status: branch `parent-view` (re-score of 26 Oct 2026, gap 10: Parents 4.5/10, the lowest dimension; the lead's brief

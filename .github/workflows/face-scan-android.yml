@@ -12,7 +12,8 @@ name: Phase 3 APK (face-scan)
 
 on:
   push:
-    branches: [face-scan]
+    # claude/app-size-native: native size cuts measured before they reach face-scan (NOTES_app_size.md).
+    branches: [face-scan, claude/app-size-native]
   workflow_dispatch:
 
 permissions:
@@ -76,6 +77,9 @@ jobs:
           echo "::notice title=APK size (bytes)::$(stat -c %s "$APK")"
           echo "::notice title=arm64 libs (compressed bytes, name)::$(grep -E 'lib/arm64-v8a/' apk-list.txt | awk '{print $3, $8}' | sort -n -r | head -45 | esc)"
           echo "::notice title=models, bundle, dex (size, compressed, name)::$(grep -E '\.tflite|index.android.bundle|classes[0-9]*\.dex' apk-list.txt | awk '{print $1, $3, $8}' | esc)"
+          # NOTES_app_size.md: the APK by part (compressed bytes in the APK, then on the phone), so a size cut shows where it went.
+          echo "::notice title=APK by part (compressed, uncompressed, files, part)::$(awk 'NF==8 && $1 ~ /^[0-9]+$/ { n=$8; p = n ~ /^lib\// ? substr(n, 1, index(substr(n, 5), "/") + 3) : n ~ /^classes[0-9]*\.dex$/ ? "dex" : n ~ /^res\// ? (n ~ /\.tflite$/ ? "res .tflite" : "res") : n ~ /^assets\// ? (n ~ /index\.android\.bundle$/ ? "js bundle" : n ~ /\.tflite$/ ? "assets .tflite" : "assets other") : n == "resources.arsc" ? n : "other"; c[p] += $3; u[p] += $1; k[p]++ } END { for (p in c) print c[p], u[p], k[p], p }' apk-list.txt | sort -n -r | esc)"
+          echo "::notice title=armeabi-v7a libs (compressed bytes, name)::$(grep -E 'lib/armeabi-v7a/' apk-list.txt | awk '{print $3, $8}' | sort -n -r | head -45 | esc)"
           # #435: a native library whose NEEDED library is missing makes the app close at start (the first facetest APK,
           # 24-10-2026: libNitroTflite needs libtensorflowlite_gpu_jni.so, which app.json had left out). Every NEEDED entry
           # of every arm64 .so must be in the APK or be a public Android system library (the NDK sysroot's list).
