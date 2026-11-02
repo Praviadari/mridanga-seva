@@ -24,6 +24,7 @@
 // - The screen stays on while the sound plays.
 // - This week against the weekly goal (students; their own goal or the class's), and the daily practice reminder
 //   (Android app).
+// - The morning wake-up alarm with the class's khol (everyone, Android app; components/wake-alarm-fold.tsx, #791).
 // Play and learn (#470-#474; components/play-and-learn.tsx): tiles to the tap pad, Which bol?, Echo me and Learn more.
 // Practice extras (#490-#495; components/practice-extras.tsx, practice-feeling.tsx):
 // - Silent bars / cycles (metronome and taal player): play N, then M without sound, round again; the beat stays lit.
@@ -64,6 +65,7 @@ import { PracticeTimerLine } from '@/components/practice-timer-line';
 import { Screen } from '@/components/screen';
 import { Section } from '@/components/section';
 import { TwoHeadView } from '@/components/two-head-view';
+import { WakeAlarmFold } from '@/components/wake-alarm-fold';
 import {
   fetchMyPracticePlan,
   fetchPracticeDays,
@@ -101,9 +103,13 @@ import {
 import { notePractisedToday, refreshReminder } from '@/lib/practice-reminder';
 import { setPracticeTimerTaal, startPracticeTimer } from '@/lib/practice-timer';
 import { usePlayhead } from '@/lib/use-playhead';
+import { refreshWakeAlarm } from '@/lib/wake-alarm';
 import { radius, spacing, useTheme } from '@/theme/use-theme';
 
 type Mode = 'metronome' | 'taal';
+
+/** The Practice tools a tap on the wake-up alarm opens, by area (data/notifications.ts isNoticeScreen). */
+const PRACTICE_PATH = { student: '/student/practice', staff: '/staff/practice', me: '/staff/me/practice', waiting: '/waiting/practice' };
 
 /** Props for PracticeTools. */
 export type PracticeToolsProps = {
@@ -189,14 +195,15 @@ export function PracticeTools({ area }: PracticeToolsProps) {
     if (found) await loadGoal(found.studentId);
   }, [isStudent, profileId, loadGoal]);
 
-  // Load on focus (the Guru may have edited a taal, the teachers the plan); the reminder's next days are scheduled
-  // again; stop the sound when the screen is left.
+  // Load on focus (the Guru may have edited a taal, the teachers the plan); the reminder's next days and the wake-up
+  // alarm are scheduled again; stop the sound when the screen is left.
   useFocusEffect(
     useCallback(() => {
       void loadTaals();
       void loadMine();
       void loadMantras();
       if (isStudent) void refreshReminder(profileId);
+      if (profileId) void refreshWakeAlarm(profileId);
       return () => {
         player.stop();
         setPlaying(false);
@@ -599,6 +606,7 @@ export function PracticeTools({ area }: PracticeToolsProps) {
         </Section>
       ) : null}
       {isStudent ? <ReminderFold profileId={profileId} /> : null}
+      {profileId ? <WakeAlarmFold profileId={profileId} url={PRACTICE_PATH[area]} /> : null}
 
       {isStudent ? (
         <Button variant="link" icon="time" label={t('practiceLog.open')} onPress={() => router.push(area === 'me' ? '/staff/me/practice-log' : '/student/practice-log')} />

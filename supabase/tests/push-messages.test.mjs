@@ -42,7 +42,7 @@ const [message] = toMessages([{ announcement_id: 3, title: 'Kirtan', body: 'Sund
 check('a message goes to the phone, with the title, text and screen to open',
   message.to === 'ExponentPushToken[x]' && message.title === 'Kirtan' && message.body === 'Sunday 17:00'
   && message.data.url === '/student/announcements/3' && message.data.announcementId === 3, JSON.stringify(message));
-check('... on the announcements channel, high priority', message.channelId === CHANNEL_ID && CHANNEL_ID === 'announcements'
+check('... on the khol announcements channel (#794), high priority', message.channelId === CHANNEL_ID && CHANNEL_ID === 'announcements-khol'
   && message.priority === 'high');
 
 const split = batches(Array.from({ length: 250 }, (_, i) => i));

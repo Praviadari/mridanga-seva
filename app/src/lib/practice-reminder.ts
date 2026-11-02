@@ -14,14 +14,17 @@ import i18n from '@/i18n';
 
 import { localMoment, todayLocal } from './dates';
 import { readLocal, removeLocal, writeLocal } from './local-storage';
-import { notifications } from './push';
+import { notifications, NOTIFY_SOUND, renameOldChannel } from './push';
 import { reminderDays, type ReminderTime } from './reminder-days';
 
 export { REMINDER_TIMES, type ReminderTime } from './reminder-days';
 
 const KEY = 'practiceReminder';
 const PRACTISED_KEY = 'practisedToday';
-const CHANNEL_ID = 'practice';
+// With the khol sound since #794 (a channel's sound is fixed at creation, so a new id); the old "practice" channel
+// stays on phones that had it, renamed.
+const CHANNEL_ID = 'practice-khol';
+const OLD_CHANNEL_ID = 'practice';
 const KIND = 'practiceReminder';
 
 type Saved = { profileId: string; time: ReminderTime };
@@ -73,7 +76,9 @@ async function schedule(profileId: string, time: ReminderTime): Promise<'on' | '
     await module.setNotificationChannelAsync(CHANNEL_ID, {
       name: i18n.t('practice.reminderChannel'),
       importance: module.AndroidImportance.DEFAULT,
+      sound: NOTIFY_SOUND,
     });
+    await renameOldChannel(module, OLD_CHANNEL_ID, i18n.t('practice.reminderChannelOld'));
     const current = await module.getPermissionsAsync();
     let status = current.status;
     if (status !== 'granted' && current.canAskAgain) status = (await module.requestPermissionsAsync()).status;
