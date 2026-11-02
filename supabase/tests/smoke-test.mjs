@@ -9366,7 +9366,8 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   await consent60(coordinator, a60.id);
   await enrolFully(a60);
   const chE = await issue60();
-  await asApp('authenticated', guru, `select erase_student($1, 'parent asked')`, [a60.id]);
+  // Since 0066 (#713) the app reaches erase_student only through a request two Gurus handled: the owner here.
+  await asOwner(`select erase_student('${a60.id}', 'parent asked')`);
   check('0070 #299: erase_student removes the enrolments and challenges with the record',
     (await rows60(a60.id)).length === 0 && (await asOwner(`select count(*)::int as n from integrity_challenges where challenge = '${chE.challenge}'`))[0].n === 0);
 
