@@ -904,7 +904,7 @@ npx eas-cli build -p android --profile preview
 ```
 
 - Build from a clean, committed `main`: the APK's fingerprint (see "Updating the Android app")
-  is computed from what is uploaded, and later updates must match it.
+  is computed from what is uploaded, and later updates must match it. (Exception: a preview APK to try native work from its own branch, as "Wake-up alarm: phone test".)
 - **The settings guard** ([DECISIONS.md #256](DECISIONS.md)): before `npm install`, EAS runs
   `app/scripts/eas-build-guard.mjs` (the `eas-build-pre-install` script). It stops the build unless
   the profile's EAS environment has a publishable key and the URL of that profile's project
@@ -1528,6 +1528,75 @@ from there, sign in, My profile → Turn on notifications); in Safari itself My 
 switch on again, `select cron.schedule('mridanga-push', '* * * * *', 'select send_due_push()');`:
 announcements published meanwhile are then sent if they are less than a day old, the older ones
 never.
+
+## Notification sounds
+
+Since the khol sounds ([DECISIONS.md #791-#796](DECISIONS.md)) the Android app has these notification channels. A
+channel's sound is fixed when Android creates it, so **a new sound needs a new channel id and a new APK**, never an
+OTA. Old channels are kept (renamed "… (earlier sound)" where a phone has them), never deleted.
+
+| Channel id | Name in the phone's settings | Sound | Made by | Sent by |
+|---|---|---|---|---|
+| `announcements-khol` | Announcements | `khol_notify.wav` (1.9 s) | `app/src/lib/push.ts` at push registration | `notify-announcements` (`messages.ts` CHANNEL_ID); app.json `defaultChannel` |
+| `practice-khol` | Practice reminder | `khol_notify.wav` | `app/src/lib/practice-reminder.ts` (#402) | the phone itself |
+| `wake-alarm-khol` | Wake-up alarm | `khol_wake.wav` (27 s), alarm audio usage, max importance | `app/src/lib/wake-alarm.ts` | the phone itself |
+| `announcements`, `practice` | … (earlier sound) | the phone's usual sound | APKs before #794 | the old function, until it is deployed |
+
+The sounds are made from the class's khol recordings (`app/assets/sounds/khol/`, #790) by
+`node scripts/make-khol-alarm-sounds.mjs` (from `app/`; the same output on every run) into
+`app/assets/sounds/notification/`, and the expo-notifications plugin's `sounds` in `app/app.json` copies them into the
+APK's `res/raw`. File names: lowercase letters, digits and `_` only.
+
+**Deploying the sender:** `notify-announcements` sends with `announcements-khol` only from the commit of #794. Deploy it
+to TEST once the preview APK from that branch is on the test phone, and to LIVE together with the production APK. An
+APK from before #794 shows such a notice on a fallback channel with the usual sound (it still arrives).
+
+**A kartal sound later** (the team is asked for a recording): put the cut WAV (22.05 kHz 16-bit mono, as #790) in
+`app/assets/sounds/khol/`, add it to `STROKES` and to a phrase in the script (or a new `kartal_notify.wav`), run the
+script, add the file to app.json `sounds`, and give each channel that should use it a **new id** (e.g.
+`announcements-kartal`; change `CHANNEL_ID` in `push.ts` and in `messages.ts`, keep the old one renamed). That is a
+native change: new fingerprint, new APK, and the function deployed with it, as above.
+
+## Wake-up alarm: phone test
+
+The wake-up alarm and the khol sounds (#791-#796) are native: they need an APK built from branch
+`claude/wake-alarm-5455a3`, which **must not be merged to main before the 08-11 production APK** (its fingerprint
+4bba2bc8 differs from LIVE's 23dc7e4a). Praveen builds a **preview** APK from the branch first:
+
+1. Connect the PC to the **phone hotspot** (the office network blocks EAS uploads).
+2. Open PowerShell in the branch's folder. If the worktree is gone, make one:
+   `git -C C:\Users\praveen.a\Mridanga_Seva_App worktree add C:\Users\praveen.a\wake-alarm-build claude/wake-alarm-5455a3`
+   (after `git fetch` if the branch was pushed), then `cd C:\Users\praveen.a\wake-alarm-build\app`.
+   Otherwise `cd C:\Users\praveen.a\Mridanga_Seva_App\.claude\worktrees\youthful-cartwright-bdbb31\app`.
+3. Put git on the path for this window: `$env:Path = "$env:LOCALAPPDATA\Programs\Git\cmd;$env:Path"` and check
+   `git status` says *nothing to commit, working tree clean* on `claude/wake-alarm-5455a3`.
+4. `npm ci`, then `npx expo-updates runtimeversion:resolve --platform android` must print
+   `4bba2bc846871bd1d74c7e3ffd87214b138e7c90` at the start (any other value: stop and tell the lead).
+5. `npx eas-cli build --profile preview --platform android`. The log must show `eas-build-guard: profile preview →
+   project fhuqyk…` (TEST). It installs on the test phone over the old preview APK; sign in again as the TEST student.
+6. Note the build id, fingerprint and SHA-256 in the APK log above (profile preview, branch commit).
+
+**Test on the phone** (TEST login; write down the phone model and Android version):
+
+- [ ] Practice tools → **Wake-up alarm**: tick *Wake me with the khol*, time = now **+2 minutes**, today ticked, Snooze
+  5 → **Save alarm**: the notifications question (first time), then "It rings next on … at …".
+- [ ] **Open "Alarms & reminders"** opens the setting (or the app's settings page); turn it on for Mridanga Seva.
+- [ ] Phone on **silent** (ringer off), screen off: at the minute the khol plays for about 27 s and the alarm shows on
+  the lock screen with **Stop** and **Snooze 5 min**. (If silent mode mutes it, note the phone; that is the key check.)
+- [ ] **Stop** silences it at once; the notification goes; nothing rings 5 minutes later.
+- [ ] Set +2 min again; **Snooze**: silent at once; rings again after 5 minutes ("Time to get up").
+- [ ] Repeat Stop and Snooze with the app **swiped away** from recent apps (the background task).
+- [ ] **Tap** the alarm itself: it stops and Practice tools opens.
+- [ ] **Locked screen**: the alarm shows and the buttons work without unlocking (or after unlocking, note which).
+- [ ] **After a reboot**: set +5 min, restart the phone, do not open the app: it still rings.
+- [ ] **Battery saver** on: it still rings (note any delay).
+- [ ] An **announcement** from TEST (after the function is deployed to TEST) plays the short khol; the practice
+  reminder (#402) at its time plays the short khol. Settings → Apps → Mridanga Seva → Notifications lists
+  "Announcements", "Practice reminder", "Wake-up alarm" and the "(earlier sound)" ones.
+- [ ] **Sign out**: the alarm is gone (nothing rings at its time); sign in again: the fold is off.
+- [ ] Turn the alarm **off** and Save: nothing rings.
+
+Report to the lead: each line ok / not ok, the phone model and Android version.
 
 ## Parent codes by email (Ishtagoshti, Phase 2)
 

@@ -32,8 +32,16 @@ import { storedLoginUserId, supabase } from './supabase';
 
 type Notifications = typeof NotificationsModule;
 
-/** The Android notification channel; the Edge Function sends with the same id (messages.ts). */
-const CHANNEL_ID = 'announcements';
+/**
+ * The Android notification channel; the Edge Function sends with the same id (messages.ts). Since the khol sound
+ * (#794) it is "announcements-khol": a channel's sound is fixed when Android creates it, so the sound needed a new id.
+ * The old "announcements" stays on phones that had it (renamed, still working for a notice sent with the old id);
+ * app.json's defaultChannel names the new one for a notice whose channel the phone does not have.
+ */
+const CHANNEL_ID = 'announcements-khol';
+const OLD_CHANNEL_ID = 'announcements';
+/** The short khol phrase in res/raw (app.json expo-notifications "sounds", scripts/make-khol-alarm-sounds.mjs). */
+export const NOTIFY_SOUND = 'khol_notify.wav';
 
 /**
  * The token this phone saved for the signed-in person, so sign-out can delete it. Also kept on the
@@ -43,6 +51,22 @@ const CHANNEL_ID = 'announcements';
 let savedToken: string | null = null;
 const PUSH_TOKEN_KEY = 'pushToken';
 
+/**
+ * Gives a channel from before the khol sound (#794) a name that tells it from the new one, where the phone has it;
+ * never creates it. Android keeps the person's own choices for it (on, off, sound).
+ */
+export async function renameOldChannel(module: Notifications, id: string, name: string): Promise<void> {
+  try {
+    const old = await module.getNotificationChannelAsync(id);
+    if (old && old.name !== name) await module.setNotificationChannelAsync(id, { name, importance: old.importance });
+  } catch {
+    // The old channel stays as it was.
+  }
+}
+
+
+/** expo-notifications' DEFAULT_ACTION_IDENTIFIER: a tap on the notification itself, not on one of its buttons. */
+const DEFAULT_ACTION = 'expo.modules.notifications.actions.DEFAULT';
 
 /** Notifications whose tap has been handled, so one tap never opens the screen twice. */
 const handled = new Set<string>();
@@ -114,9 +138,11 @@ void notifications();
 /**
  * The screen a notification asks to open: an announcement, or (Phase 2, migrations 0016, 0017) a
  * student's assessment, a recording to review, a nomination or My progress; never anything else
- * (the inbox's list, data/notifications.ts).
+ * (the inbox's list, data/notifications.ts). Only a tap on the notification opens it: a button (the wake-up alarm's
+ * Stop and Snooze, lib/wake-alarm.ts) opens nothing.
  */
 function screenOf(response: NotificationsModule.NotificationResponse | null): string | null {
+  if (response && response.actionIdentifier !== DEFAULT_ACTION) return null;
   const url = response?.notification.request.content.data?.url;
   return typeof url === 'string' && isNoticeScreen(url) ? url : null;
 }
@@ -154,7 +180,9 @@ async function register(ask: boolean): Promise<void> {
       name: i18n.t('push.channelName'),
       description: i18n.t('push.channelDescription'),
       importance: module.AndroidImportance.HIGH,
+      sound: NOTIFY_SOUND,
     });
+    await renameOldChannel(module, OLD_CHANNEL_ID, i18n.t('push.channelOldName'));
     const current = await module.getPermissionsAsync();
     let status = current.status;
     if (status !== 'granted' && current.canAskAgain && ask) status = (await module.requestPermissionsAsync()).status;

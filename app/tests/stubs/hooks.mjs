@@ -24,6 +24,8 @@ const stubs = {
   '@/lib/practice-reminder': stub('./device-trace-deps.mjs'),
   // ... and the face code in the Keystore (Phase 3 face scan, #310), which loads expo-secure-store.
   '@/face/face-status': stub('./device-trace-deps.mjs'),
+  // ... and the wake-up alarm (#791), which also loads expo-task-manager.
+  '@/lib/wake-alarm': stub('./device-trace-deps.mjs'),
   // src/data/fund.ts and announcement-files.ts (the fund CSV, #325): file pickers and the browser, never called
   // (expo-file-system: the device-traces stand-in above, which has File too).
   'expo-web-browser': stub('./expo-media.mjs'),

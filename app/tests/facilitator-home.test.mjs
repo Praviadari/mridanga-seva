@@ -203,7 +203,7 @@ test('the spec\'s plain relabels (terminology map)', () => {
 
 test('no "Guru" in any English, Telugu or Hindi string the app shows (Thursday is not the role)', () => {
   // గురు / गुरु alone is also Thursday (గురువారం / गुरुवार): the weekday names keep it.
-  const thursday = new Set(['duty.weekdays.4', 'coordinators.dutyPlaceholder']);
+  const thursday = new Set(['duty.weekdays.4', 'coordinators.dutyPlaceholder', 'wakeAlarm.dayLong4']);
   const pattern = { en: /guru/i, te: /గురు/, hi: /गुरु(?!वार)/ };
   for (const lang of ['en', 'te', 'hi']) {
     const found = strings(locale(lang)).filter(([key, value]) => !thursday.has(key) && pattern[lang].test(value));

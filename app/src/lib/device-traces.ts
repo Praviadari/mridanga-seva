@@ -12,7 +12,8 @@
 //   listed to whoever signs in next) and every
 //   recording expo-audio wrote to the cache (assessment answers, voice notes: Audio/ on Android,
 //   ExpoAudio/ on iOS);
-// - the daily practice reminder and its scheduled notifications (lib/practice-reminder.ts, #402);
+// - the daily practice reminder and its scheduled notifications (lib/practice-reminder.ts, #402), and the wake-up
+//   alarm with its weekly rings and a pending snooze (lib/wake-alarm.ts, #791);
 // - "may practise while waiting" and the Beginner lessons list of a waiting login (data/waiting.ts, #510);
 // - on the web, everything the service worker keeps for offline use (lib/offline-shell.web.ts, #513).
 // - the student's own bests in the tap pad, Echo me and Which bol? (lib/play-bests.ts, #470-#472).
@@ -45,6 +46,7 @@ import { forgetPlayState } from '@/lib/playground-games/state-cache';
 import { forgetPlaygroundSwitch } from '@/lib/playground-switch';
 import { forgetPracticeReminders } from '@/lib/practice-reminder';
 import { dismissNotifications } from '@/lib/push';
+import { forgetWakeAlarm } from '@/lib/wake-alarm';
 import { forgetWebPushNote } from '@/lib/web-push';
 
 /**
@@ -69,6 +71,7 @@ export async function clearDeviceTraces(): Promise<void> {
   await Promise.all([
     dismissNotifications(),
     forgetPracticeReminders(),
+    forgetWakeAlarm(),
     forgetOfflineShell(),
     Image.clearMemoryCache().catch(() => false),
     Image.clearDiskCache().catch(() => false),

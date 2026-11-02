@@ -37,8 +37,14 @@ export type PushTicket = {
   details?: { error?: string };
 };
 
-/** The Android notification channel for announcements; the app creates it with the same id. */
-export const CHANNEL_ID = 'announcements';
+/**
+ * The Android notification channel for announcements; the app creates it with the same id. "announcements-khol" since
+ * the khol sound (docs/DECISIONS.md #794): a channel's sound is fixed when Android creates it. An APK from before it
+ * has no such channel and shows the notice on a fallback channel instead (Firebase's default "announcements" from
+ * that APK's app.json, or expo-notifications' own "Miscellaneous"): it still arrives, with the phone's usual sound.
+ * Deploy this only with or after the APK that creates the channel (OPERATIONS "Notification sounds").
+ */
+export const CHANNEL_ID = 'announcements-khol';
 /** Expo accepts at most 100 messages in one request. */
 export const BATCH_SIZE = 100;
 /** Longest text shown under the title; the rest is on the announcement's screen. */

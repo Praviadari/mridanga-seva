@@ -89,8 +89,10 @@ export function isNoticeScreen(url: string): boolean {
     || /^\/staff\/students\/[0-9a-f-]{36}$/.test(url)
     // Data requests (0059, #550): a new or due one for the Guru; an answer for the person.
     || /^\/(staff\/data-requests|(student|staff)\/my-data)$/.test(url)
-    // The daily practice reminder (made on the phone itself, never a server notice; #402).
-    || url === '/student/practice';
+    // The daily practice reminder (made on the phone itself, never a server notice; #402), and the wake-up alarm,
+    // which opens the Practice tools of the area it was set in (#791).
+    || url === '/student/practice'
+    || /^\/(staff|staff\/me|waiting)\/practice$/.test(url);
 }
 
 /** The screen to open for `notice`, or null when this version cannot open it (or not in this area). */

@@ -9992,3 +9992,127 @@ OTA after their yes.**
 **Consequences.** re is faint (the stroke about 7 dB under the others; evened out by `prepareStroke`, which also
 raises its noise): to re-record louder. Open with the team: is ge the same stroke as ga (NOTATION ▲ vs O); a gam
 slide recording.
+
+## 791. A morning wake-up alarm with the class's khol, on Practice tools, Android app — 2 Nov 2026
+
+**Status: branch `claude/wake-alarm-5455a3`, native (new APK); not on main until the 08-11 production APK (#796).**
+
+**Context.** Praveen and Sarvesh Prji asked (02-11-2026) for an alarm in the app that wakes students with the
+mridanga, and for the khol in the app's notifications. The daily practice reminder (#402) offers six fixed times and
+plays the phone's usual sound once.
+
+**Decision.** Practice tools gets a fold **"Wake-up alarm"** for everyone who opens it (students, staff, Me > Practice,
+a login waiting for the desk): *Wake me with the khol*, the **time** (the phone's own clock dialog, any minute, 24-hour),
+the **days** (Monday first, at least one), **Snooze for** 5 / 10 / 15 minutes, and **Save alarm**, which answers "It
+rings next on Tuesday at 05:00". Off until saved; the screen offers 05:00, every day, 10 minutes. Kept per login on
+this device and **removed at every sign-out** (`lib/device-traces.ts`), as #402; nothing is sent to a server. Under it
+the fold says plainly what it can and cannot do (about half a minute of khol at the alarm volume; rings each chosen
+week without the app; some battery savers stop app alarms). The web version says "The wake-up alarm works in the
+Android app." Not added to Me: Practice is one tap away, and one place is easier to explain.
+
+**Why.** A morning cue for practice is what the teachers asked for; the phone's own scheduled notification needs no
+server, no new personal data and no new job (#597). An alarm clock that rings until stopped (a full-screen ringing
+screen and a playing service) is a bigger native piece and was not asked for: the khol phrase is long enough to wake.
+
+**Consequences.** `lib/wake-alarm.ts` (+ `.web.ts`), `lib/wake-alarm-rules.ts` (tested), `components/wake-alarm-fold.tsx`;
+texts `wakeAlarm.*` in en, te/hi drafts for native review (short day names reuse the duty roster's). Needs the phone
+test in docs/OPERATIONS.md "Wake-up alarm: phone test" before production.
+
+## 792. The alarm is a weekly local notification on its own alarm channel; Stop and Snooze work with the app closed — 2 Nov 2026
+
+**Status: as #791.**
+
+**Decision.** One **weekly** expo-notifications trigger per chosen day (Android repeats it by itself and sets it again
+after a restart, so it goes on without the app being opened; every Practice tools visit schedules it again). Channel
+**`wake-alarm-khol`**: sound `khol_wake.wav`, **audio usage ALARM** (the alarm volume, which silent mode does not mute on
+most phones), importance MAX, shown on the lock screen, vibration, "override Do not disturb" requested (Android leaves
+it to the person). The notification has two buttons, **Stop** and **Snooze N min**, which do not open the app: with the
+app closed, Android runs an **expo-task-manager** background task (`lib/wake-alarm-task.ts`, defined in `src/entry.ts`
+before the router starts) that silences it (removes the notification, which stops its sound) and, for Snooze,
+schedules one ring N minutes later (one pending snooze at a time); while the app runs, a listener does the same.
+Stop, or a tap on the alarm (which opens the Practice tools of the area it was set in), drops a pending snooze. A
+button never opens a screen (`lib/push.ts` screenOf now answers only a tap).
+
+**Why.** Weekly triggers avoid #402's "stops after 14 days unopened", which is wrong for an alarm. Buttons that open
+the app would wake the screen and the app for a Snooze; the background task is the expo-notifications way to answer a
+button without the app (Android only).
+
+**Consequences.** New dependency `expo-task-manager` (native). While the task is registered, every push that arrives
+with the app closed starts the app's code for a moment (expo-notifications runs registered tasks for each message), so
+the task is registered only while an alarm is set, and unregistered when it is turned off or at sign-out. If a phone
+blocks the background start, Stop and Snooze do nothing and the sound simply ends after its half minute: the phone
+test checks this with the app swiped away.
+
+## 793. Two notification sounds made from the class's own khol recordings, by a script in the repo — 2 Nov 2026
+
+**Status: as #791.**
+
+**Decision.** `app/scripts/make-khol-alarm-sounds.mjs` (Node, no packages; the same files byte for byte on every run)
+mixes the five #790 strokes into `app/assets/sounds/notification/`: **`khol_wake.wav`** (27.2 s, 1.17 MB: "te re khe
+ta | khe ta te re" at 84 beats a minute, two strokes a beat, ga on each sam and softly on the sixth stroke, nine
+cycles and a closing ga + ta; rising from soft to full over the first 8 seconds; gently saturated so it is loud on a
+small speaker) and **`khol_notify.wav`** (1.9 s, 82 KB: te re khe ta quickly, then ga with ta). 22.05 kHz 16-bit
+mono like the recordings; lowercase names (Android resource names). The expo-notifications plugin's `sounds` copies
+both into the APK's `res/raw` (checked with a prebuild in a temporary copy).
+
+**Why.** The team's own strokes, not a downloaded clip (#790's copyright care); a script makes a re-recorded stroke (re
+is faint) one command away. WAV is what expo-notifications recommends; 1.25 MB in all is 3 % of the 40.7 MB APK.
+
+**Consequences.** **A changed sound needs a new APK and a new channel id** (Android fixes a channel's sound when it is
+created): never an OTA. Kartal later: see OPERATIONS "Notification sounds". Praveen and Prji listen to both files
+before the production APK.
+
+## 794. Announcements and the practice reminder sound the khol, on new channel ids; the old channels stay — 2 Nov 2026
+
+**Status: as #791. The Edge Function change deploys only with or after the APK (#796).**
+
+**Decision.** The app creates **`announcements-khol`** (importance HIGH, `khol_notify.wav`) instead of `announcements`,
+and **`practice-khol`** (DEFAULT, `khol_notify.wav`) instead of `practice` for #402's reminders. The old channels are
+never deleted (a person's own settings for them stay); where a phone has one, it is renamed "… (earlier sound)".
+app.json `defaultChannel` is `announcements-khol`. `notify-announcements` (`messages.ts` CHANNEL_ID) sends with
+`announcements-khol`.
+
+**Why.** Android fixes a channel's sound at creation, and restores a deleted channel with its old settings when the
+same id is created again, so a new sound needs a new id.
+
+**Consequences.** Until every phone has the new APK, an old APK gets the notice on a fallback channel (Firebase's
+default `announcements` from its app.json, or expo-notifications' own "Miscellaneous" while the app is open), with the
+usual sound: it still arrives. Deploy the function to TEST once the preview APK is on the test phone, and to LIVE with
+the production APK. A person who had turned announcements off finds the new channel on: Android cannot carry that
+choice across ids.
+
+## 795. Exact time: "Alarms & reminders" (SCHEDULE_EXACT_ALARM), explained and linked, not USE_EXACT_ALARM — 2 Nov 2026
+
+**Status: as #791.**
+
+**Decision.** app.json `android.permissions` adds `SCHEDULE_EXACT_ALARM` (the prebuilt manifest differs from main's by
+this line and the default channel only). With it expo-notifications sets the alarm exactly
+(`setExactAndAllowWhileIdle`); without it Android may ring some minutes late. Android 12 and 13 grant it at install;
+Android 14 and later do not. The app cannot read whether it is on (expo-notifications has no call for it), so on
+Android 12+ the fold always says why it matters and offers **Open "Alarms & reminders"** (the system page, or the app's
+settings page where the phone has no direct way).
+
+**Why.** The brief asked for the right with an explanation and a link. `USE_EXACT_ALARM` would be granted at install
+on Android 13+, but the Play Store allows it only to alarm-clock and calendar apps (#24: the APK is not on Play now).
+**Lead decision (02-11-2026, release-0811): SCHEDULE_EXACT_ALARM only, no USE_EXACT_ALARM**, so a later move to the
+Play Store stays open without a permission review.
+
+**Consequences.** Reading the right would need a small native module (AlarmManager.canScheduleExactAlarms); left out
+rather than ship native code that cannot be built and tried on this PC.
+
+## 796. Native change → new fingerprint 4bba2bc8: the branch waits for the 08-11 production APK — 2 Nov 2026
+
+**Context.** The LIVE production APK 90c6d1cd has runtime **23dc7e4a**; OTAs from main reach it only while main keeps
+that fingerprint.
+
+**Decision.** This work (the new native module expo-task-manager, the res/raw sounds, a manifest permission, a new
+default channel) changes the Android fingerprint to **`4bba2bc846871bd1d74c7e3ffd87214b138e7c90`** (`npx expo-updates
+runtimeversion:resolve --platform android`, 02-11-2026). **The branch must not merge to main until the 08-11 production
+APK is built from it**: merged earlier, the next OTA from main would carry the new runtime and no longer reach APK
+23dc7e4a. Praveen first builds a **preview APK from the branch** on the phone hotspot (OPERATIONS "Wake-up alarm:
+phone test"); JS-only fixes after that go by preview OTA from the branch. The real-khol OTA (#790) can go to LIVE before.
+
+**Consequences.** Any later native change before the merge changes the fingerprint again: recheck it before the
+production build. **Update 02-11-2026 (release-0811):** merged with face scan and app-size-native on the release branch
+`claude/release-0811-44b0e4` for the 08-11 production APK; 4bba2bc8 is superseded by the release branch's fingerprint
+(docs/RELEASE_08-11.md).
