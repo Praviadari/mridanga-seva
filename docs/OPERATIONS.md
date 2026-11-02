@@ -1559,22 +1559,11 @@ native change: new fingerprint, new APK, and the function deployed with it, as a
 
 ## Wake-up alarm: phone test
 
-The wake-up alarm and the khol sounds (#791-#796) are native: they need an APK built from branch
-`claude/wake-alarm-5455a3`, which **must not be merged to main before the 08-11 production APK** (its fingerprint
-4bba2bc8 differs from LIVE's 23dc7e4a). Praveen builds a **preview** APK from the branch first:
-
-1. Connect the PC to the **phone hotspot** (the office network blocks EAS uploads).
-2. Open PowerShell in the branch's folder. If the worktree is gone, make one:
-   `git -C C:\Users\praveen.a\Mridanga_Seva_App worktree add C:\Users\praveen.a\wake-alarm-build claude/wake-alarm-5455a3`
-   (after `git fetch` if the branch was pushed), then `cd C:\Users\praveen.a\wake-alarm-build\app`.
-   Otherwise `cd C:\Users\praveen.a\Mridanga_Seva_App\.claude\worktrees\youthful-cartwright-bdbb31\app`.
-3. Put git on the path for this window: `$env:Path = "$env:LOCALAPPDATA\Programs\Git\cmd;$env:Path"` and check
-   `git status` says *nothing to commit, working tree clean* on `claude/wake-alarm-5455a3`.
-4. `npm ci`, then `npx expo-updates runtimeversion:resolve --platform android` must print
-   `4bba2bc846871bd1d74c7e3ffd87214b138e7c90` at the start (any other value: stop and tell the lead).
-5. `npx eas-cli build --profile preview --platform android`. The log must show `eas-build-guard: profile preview →
-   project fhuqyk…` (TEST). It installs on the test phone over the old preview APK; sign in again as the TEST student.
-6. Note the build id, fingerprint and SHA-256 in the APK log above (profile preview, branch commit).
+The wake-up alarm and the khol sounds (#791-#796) are native. Since 02-11-2026 they are tested in the **face test app**
+("Mridanga Seva TEST", profile `facetest`) built from the release branch `claude/release-0811-44b0e4` together with
+face scan: build steps in [RELEASE_08-11.md](RELEASE_08-11.md) part 1 (no separate preview APK from the wake-alarm
+branch). The test app has **no push** (#431), so the announcement sound is checked only on the production APK
+(RELEASE_08-11.md part 3); the practice reminder and the alarm are local and work in it.
 
 **Test on the phone** (TEST login; write down the phone model and Android version):
 
