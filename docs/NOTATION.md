@@ -33,6 +33,24 @@ Marks then belong to each mantra/lesson line (lesson notes are plain text: works
 bol dictionary keeps one default mark per bol until a game needs per-mantra marks. Still open: `ti` II or III, `re` vs
 `ri`, `jha` vs `dha`, `ge` ▲, left-hand marks `●` `O`, the spellings below.
 
+## What other teachers write (lead's web research, 02-11-2026)
+
+Praveen spoke with Prji on 01-11: use the most widely recognised way. Findings:
+- **No single world-wide written key for khol hand strokes exists**; the tradition is oral. What every source shares is
+  the **bols as words** (`te re khe ta`): KKSongs Khol Guide (kksongs.org/khol), Art of Kirtan Mridanga 1, Mayapur
+  Mridanga (via the mridang.am format, github.com/krishnized/mridang.am), Bablu Das's Basic Mridanga Handbook.
+- Guides that do write the technique write **hand + fingers + open/closed** as text: 4evatalent Hasta-Sādhana
+  (te = RH 4 closed, ta = RH 4 open, re = RH thumb closed, khe = LH closed); `,` = one after the other, `+` = together.
+  The team's `IIIIC` / `IIIIO` (number of I's = fingers, C/O = closed/open) carries the same facts compactly.
+- **No source uses an underline for a closed stroke.** In Bhatkhande notation (the standard Indian way to write a
+  tāla), a curve under bols means "these bols share one mātrā", so an underline would clash with it.
+- For the tāla line, Bhatkhande's marks are the recognised standard: `X` sam, `0` khālī, `2 3 …` tālī, `|` vibhāg,
+  `–` a silent beat (the team already uses `|` and `–`).
+- Sources disagree on `re` (thumb closed in 4evatalent, thumb open in Bablu Das): the class decides.
+
+**Lead's recommendation (02-11):** C/O letters as the team proposed (not brackets, not underline, not images); bols
+stay words; Bhatkhande marks for tāla lines; a thumb = `T` (`TC`, `TO`) if the class writes thumb strokes.
+
 ## The rule proposed
 
 - **Bols are written as words** (`te re khe ta`, `tere kheta`): this is how the app already writes them (Rhythm
