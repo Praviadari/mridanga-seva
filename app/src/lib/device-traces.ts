@@ -23,6 +23,7 @@
 // - the Rhythm Playground's rounds waiting to be sent and its 30-day history on this phone, and the cached pack
 //   (lib/playground/round-queue.ts, pack-cache.ts; #728), and the student's last Playground state (lib/playground-games/
 //   state-cache.ts; #736), and whether the Playground was on for this login (lib/playground-switch.ts, #781).
+// - the chapter the student opened last, for Continue learning (lib/last-chapter.ts, #787).
 
 import { Directory, Paths } from 'expo-file-system';
 import { Image } from 'expo-image';
@@ -32,6 +33,7 @@ import { clearSavedCard } from '@/data/my-student';
 import { forgetWaitingPractice } from '@/data/waiting-store';
 import { forgetMyRecordings } from '@/lib/my-recordings';
 import { forgetOfflineQueue } from '@/lib/offline-queue';
+import { forgetLastChapter } from '@/lib/last-chapter';
 import { forgetOfflineShell } from '@/lib/offline-shell';
 import { forgetPlayBests } from '@/lib/play-bests';
 import { forgetPack } from '@/lib/playground/pack-cache';
@@ -59,6 +61,7 @@ export async function clearDeviceTraces(): Promise<void> {
   forgetPlayState();
   forgetPlaygroundSwitch();
   forgetWebPushNote();
+  forgetLastChapter();
   await forgetMyRecordings();
   await Promise.all([
     dismissNotifications(),

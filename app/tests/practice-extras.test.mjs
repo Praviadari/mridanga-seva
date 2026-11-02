@@ -274,7 +274,9 @@ function addDay(day, n) {
 // ---------------------------------------------------------------- how did it go (#494) and the staff list (#495)
 
 test('how did it go: asked after Stop and save, optional with Skip, and on the typed-in form', () => {
-  const screen = src('screens/practice-tools.tsx');
+  // The timer line moved out of Practice tools for the chapter screen too (#786).
+  const screen = src('components/practice-timer-line.tsx');
+  assert.match(src('screens/practice-tools.tsx'), /<PracticeTimerLine profileId=\{profileId\} onSaved=\{practiceSaved\} \/>/);
   assert.match(screen, /<FeelingPrompt key=\{asking\.id\} entryId=\{asking\.id\}/);
   assert.match(src('components/practice-feeling.tsx'), /practiceExtras\.feelingSkip/);
   assert.match(src('app/student/practice-log.tsx'), /<FeelingFields feeling=\{feeling\}/);

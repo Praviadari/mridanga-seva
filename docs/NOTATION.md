@@ -5,7 +5,7 @@ capital `I` per finger of the right hand, then **C** (closed) or **O** (open) �
 written as words (`te re khe ta`). The bol names, the strokes and the mantras are the team's and Śrīla Prabhupāda's;
 this page only says **how to write them** so that every level, the app, WhatsApp and a printed page show the same thing.
 
-Decisions: docs/DECISIONS.md #782 (this key), #783 (Playground bol cards), #784 (LIVE syllabus file), #776 (the
+Decisions: docs/DECISIONS.md #782 (this key), #783 (Playground bol cards; #789 Beginner exercises only), #784 (LIVE syllabus file), #776 (the
 first draft), #774 (guna 1/2/4/8).
 
 ## The rule
@@ -61,6 +61,8 @@ finger open sound).
   key under the cards; the staff bol editor shows the bol's default mark and the key. Defaults: te `IIIIC`, ta
   `IIIIO`, re `/`, khe `●`, ga `O`, ge `▲`, jha `O+IIIIO`, tak `●+IIIIO` (app/src/lib/playground/marks.ts). The
   dictionary's `written` stays the spelling (`tā`); TEST's placeholder bols' technique words say the same marks.
+  **Since #789 (2 Nov 2026):** the cards show the marks only for an exercise of the Beginner level (the team: technique
+  follows the chapter, not the bol's spelling); other exercises show the bol and its hand alone.
 - **Not changed:** the practice tools' hand drawings (lib/bols.ts, #404) follow the kksongs khol course (te = middle
   finger closed, ta = index finger at the edge of the syahi): they differ from the class key — see the questions.
 

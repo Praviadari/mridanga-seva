@@ -119,6 +119,15 @@ export function progressBlocks(rows: readonly SkillProgress[]): { recognition: S
   };
 }
 
+/**
+ * The games with an exercise tied to one syllabus item (requires_item), in the home's order: the chapter screen's
+ * "Practise now" (docs/DECISIONS.md #788). Built games only; none = the chapter opens Practice tools instead.
+ */
+export function gamesForItem(exercises: readonly { game: GameId; requiresItem: number | null }[], itemId: number): GameTile[] {
+  const games = new Set(exercises.filter((e) => e.requiresItem === itemId).map((e) => e.game));
+  return allTiles().filter((tile) => tile.route !== null && games.has(tile.game));
+}
+
 /** The game whose round counts for a skill, for "Practise this" from the progress screen (built games only). */
 export function gameForSkill(skill: SkillId): GameTile | null {
   const game: GameId | null =

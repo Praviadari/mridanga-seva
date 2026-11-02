@@ -44,11 +44,12 @@ test('items out of order show their section twice, and items without one get the
 });
 
 test('the lists group by section and the editor sends it', () => {
-  for (const path of ['app/student/progress.tsx', 'app/staff/levels/[id].tsx']) {
-    const s = src(path);
-    assert.match(s, /sectionRuns\(/, path);
-    assert.match(s, /<SyllabusSectionHeading section=\{run\.section\} \/>/, path);
-  }
+  const s = src('app/staff/levels/[id].tsx');
+  assert.match(s, /sectionRuns\(/);
+  assert.match(s, /<SyllabusSectionHeading section=\{run\.section\} \/>/);
+  // My Learning: a section is a lesson folding open its items (#785, lib/study-lessons.ts builds on sectionRuns).
+  assert.match(src('app/student/progress.tsx'), /studyLessons\(progress\.items\)/);
+  assert.match(src('lib/study-lessons.ts'), /sectionRuns\(items\)/);
   assert.match(src('app/staff/syllabus/[id].tsx'), /<SyllabusSectionHeading/);
   const editor = src('data/syllabus-editor.ts');
   assert.match(editor, /select\('id, level_id, sort, title, description, section, retired_at'\)/);

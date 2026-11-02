@@ -1,7 +1,7 @@
 // The Audio tab of a lesson (0064, docs/DECISIONS.md #683-#685): the lesson's own audio file from the private
 // bucket material-files, through a signed link made only when the tab is first opened (#684: nothing loads from a
 // tab nobody opened). Play / Pause, back and forward 5 s, the time, and speed 0.75x / 1x for practising along.
-// Never plays by itself; leaving the tab (or the screen) pauses it.
+// Never plays by itself; leaving the tab (or the screen) pauses it. Repeat plays it round and round (#786).
 // expo-audio, as the recorder's PlayButton (components/audio-recorder.tsx).
 
 import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
@@ -15,6 +15,7 @@ import { spacing } from '@/theme/use-theme';
 
 import { AppText } from './app-text';
 import { Button } from './button';
+import { Checkbox } from './checkbox';
 import { ChoiceGroup } from './choice-group';
 import { Notice } from './notice';
 
@@ -26,8 +27,18 @@ function clock(seconds: number): string {
   return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, '0')}`;
 }
 
-/** The lesson's audio. `active` = its tab is shown; when it turns false the audio pauses. */
-export function LessonAudio({ path, name, active }: { path: string; name: string | null; active: boolean }) {
+/** Props for LessonAudio. */
+export type LessonAudioProps = {
+  path: string;
+  name: string | null;
+  /** Its tab is shown (and, on the chapter screen, no other medium took over); when it turns false the audio pauses. */
+  active: boolean;
+  /** Called when it starts playing, so the screen can pause its other media (the chapter screen, #786). */
+  onPlay?: () => void;
+};
+
+/** The lesson's audio. */
+export function LessonAudio({ path, name, active, onPlay }: LessonAudioProps) {
   const { t } = useTranslation();
   // undefined = making the link, null = could not (usually no internet).
   const [uri, setUri] = useState<string | null | undefined>(undefined);
@@ -55,23 +66,33 @@ export function LessonAudio({ path, name, active }: { path: string; name: string
       </>
     );
   }
-  return <AudioControls uri={uri} name={name} active={active} />;
+  return <AudioControls uri={uri} name={name} active={active} onPlay={onPlay} />;
 }
 
-function AudioControls({ uri, name, active }: { uri: string; name: string | null; active: boolean }) {
+function AudioControls({ uri, name, active, onPlay }: Omit<LessonAudioProps, 'path'> & { uri: string }) {
   const { t } = useTranslation();
   const player = useAudioPlayer(uri);
   const status = useAudioPlayerStatus(player);
   const [speed, setSpeed] = useState(1);
+  const [repeat, setRepeat] = useState(false);
 
   useEffect(() => {
     if (!active) player.pause();
   }, [active, player]);
 
   useEffect(() => {
-    // At the end, back to the start so Play plays it again.
-    if (status.didJustFinish) void player.seekTo(0);
-  }, [status.didJustFinish, player]);
+    if (status.playing) onPlay?.();
+    // Only a start of playing tells the screen; a new onPlay from a re-render does not.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status.playing]);
+
+  useEffect(() => {
+    // At the end, back to the start so Play plays it again; with Repeat on, it plays again at once.
+    if (!status.didJustFinish) return;
+    void player.seekTo(0).then(() => {
+      if (repeat) player.play();
+    });
+  }, [status.didJustFinish, player, repeat]);
 
   const ready = status.isLoaded;
   return (
@@ -102,6 +123,12 @@ function AudioControls({ uri, name, active }: { uri: string; name: string | null
           player.setPlaybackRate(value);
         }}
         choices={SPEEDS.map((s) => ({ value: s, label: `${s}x` }))}
+      />
+      {/* Repeat (#786): the whole audio again and again, to play along without touching the phone. */}
+      <Checkbox
+        label={t('lessonPlayer.repeat')}
+        checked={repeat}
+        onChange={setRepeat}
       />
     </View>
   );

@@ -1190,6 +1190,26 @@
     "levelLessons": "Lessons for {{level}}",
     "retired": "No longer taught"
   },
+  "chapter": {
+    "title": "Chapter",
+    "backToLessons": "Back to the lessons",
+    "notFound": "This chapter is not in your level's lessons.",
+    "comingSoonTitle": "Coming soon",
+    "comingSoon": "Your teachers have not added this to the chapter yet.",
+    "chapterOf": "Chapter {{n}} of {{total}}: {{title}}",
+    "notTicked": "Not yet shown in class",
+    "whichVideo": "Video",
+    "practiceTitle": "Practise this chapter",
+    "loopHint": "Loop a part with A and B on the Video tab, or Repeat the audio.",
+    "practiseNow": "Practise now",
+    "practiseGame": "Practise now: {{game}}",
+    "previous": "Previous: {{title}}",
+    "next": "Next: {{title}}",
+    "nextLesson": "Next lesson: {{title}}",
+    "lastDone": "Last chapter: back to the lessons",
+    "continue": "Continue learning",
+    "doneCount": "{{done}} of {{total}} chapters done"
+  },
   "levelPath": {
     "label": "My path in {{level}}",
     "next": "Next: {{title}}",
@@ -2952,7 +2972,8 @@
       "notes": "Notes"
     },
     "audioLoading": "Getting the audio…",
-    "progressNote": "Your teacher ticks a lesson as learnt in class; watching or listening here does not."
+    "progressNote": "Your teacher ticks a lesson as learnt in class; watching or listening here does not.",
+    "repeat": "Repeat"
   },
   "recording": {
     "record": "Record",
@@ -5909,7 +5930,7 @@
   "learnTab": {
     "level": "My Level",
     "syllabus": "Syllabus and lessons",
-    "syllabusDetail": "Every item of my level with its videos, PDFs and photos",
+    "syllabusDetail": "Lessons and chapters with videos, audio and notes",
     "assessmentsNone": "Nothing to do now",
     "assessmentsOpen_one": "{{count}} to do",
     "assessmentsOpen_other": "{{count}} to do",

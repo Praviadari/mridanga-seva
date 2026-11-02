@@ -178,7 +178,7 @@ test('sign-out deletes the waiting saves and the notice with the other traces', 
 });
 
 test('the screens queue on "no connection" only, and show the count; the root layout sends', () => {
-  const tools = src('screens/practice-tools.tsx');
+  const tools = src('components/practice-timer-line.tsx');
   assert.match(tools, /saved\.errorKey === NETWORK\) \{[\s\S]*?queuePractice\(profileId, requestId\(\), entry\);\s*clearPracticeTimer\(\);/,
     'the timer stops at Stop and its minutes wait');
   assert.match(tools, /<QueuedNotice kind="practice" \/>/);

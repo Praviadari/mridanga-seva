@@ -2,7 +2,8 @@
 // is "Which bol?" (#471) grown up, at the same address (/student/which-bol): Rounds play the engine's seeded rounds of
 // approved bols and phrases (2-4 cards) with two tries, and are saved for the student's progress; Free play is the
 // old quiz on the level's taals (with the hand drawings), kept on the phone only. A card shows the bol as the class
-// writes it, the hand that plays it and the class's mark (lib/playground/marks.ts, #783) with the key under the cards;
+// writes it, the hand that plays it and the class's mark (lib/playground/marks.ts, #783) with the key under the cards —
+// the marks only for a Beginner exercise (#789: technique follows the lesson, not the bol's spelling);
 // its sound is its label. After the answer every card can be heard.
 
 import type { TFunction } from 'i18next';
@@ -16,7 +17,7 @@ import { Notice } from '@/components/notice';
 import { ChoiceCards } from '@/components/playground/choice-cards';
 import { applySoundChoice } from '@/lib/khol-samples';
 import { createPracticePlayer } from '@/lib/practice-audio';
-import { keyMarks } from '@/lib/playground/marks';
+import { exerciseMarks } from '@/lib/playground/marks';
 import { keyBeats, type BolIndex } from '@/lib/playground/notation';
 import type { Challenge, Choice } from '@/lib/playground/types';
 import { beatsPattern, choiceHands, choicePattern, choiceText } from '@/lib/playground-games/listening';
@@ -41,6 +42,8 @@ export function SoundDetective() {
   const [soundFailed, setSoundFailed] = useState(false);
 
   const challenge = game.challenge;
+  // The exercise's level decides whether the cards show the class's marks (#789).
+  const level = challenge ? game.load?.pack?.exercises.find((e) => e.id === challenge.exerciseId)?.levelId : undefined;
   // A new challenge: no pick yet.
   const [pickedFor, setPickedFor] = useState<Challenge | null>(null);
   if (pickedFor !== challenge) {
@@ -118,14 +121,14 @@ export function SoundDetective() {
             choices={challenge.choices.map((choice) => ({
               key: choice.key,
               label: choiceText(choice, game.index),
-              sublabel: [handsWords(t, choice, game.index), keyMarks(choice.key)].filter(Boolean).join(' · '),
+              sublabel: [handsWords(t, choice, game.index), exerciseMarks(choice.key, level)].filter(Boolean).join(' · '),
             }))}
             onChoose={choose}
             chosen={picked}
             rightKey={game.done ? challenge.answer : null}
             onHear={hearCard}
           />
-          {challenge.choices.some((choice) => keyMarks(choice.key)) ? (
+          {challenge.choices.some((choice) => exerciseMarks(choice.key, level)) ? (
             <AppText variant="small" tone="muted">
               {t('playground.sd.marksKey')}
             </AppText>

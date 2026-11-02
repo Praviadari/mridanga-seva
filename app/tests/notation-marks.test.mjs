@@ -41,7 +41,9 @@ test('marks use capital I only, never | or the digit 1', () => {
 
 test('Sound Detective cards show the mark and the key, in every language', () => {
   const sd = src('screens/playground/sound-detective.tsx');
-  assert.match(sd, /keyMarks\(choice\.key\)/);
+  // #789: only for an exercise of the Beginner level (the exercise's level, not the bol alone).
+  assert.match(sd, /exerciseMarks\(choice\.key, level\)/);
+  assert.match(sd, /exercises\.find\(\(e\) => e\.id === challenge\.exerciseId\)\?\.levelId/);
   assert.match(sd, /playground\.sd\.marksKey/);
   assert.match(src('screens/staff-playground/bol-editor.tsx'), /staffPlayground\.bol\.mark/);
   for (const lang of ['en', 'te', 'hi']) {

@@ -1190,6 +1190,26 @@
     "levelLessons": "{{level}} स्तर के पाठ",
     "retired": "अब नहीं पढ़ाया जाता"
   },
+  "chapter": {
+    "title": "अध्याय",
+    "backToLessons": "पाठों पर वापस",
+    "notFound": "यह अध्याय आपके स्तर के पाठों में नहीं है।",
+    "comingSoonTitle": "जल्द आ रहा है",
+    "comingSoon": "आपके शिक्षकों ने इसे अभी इस अध्याय में नहीं जोड़ा है।",
+    "chapterOf": "अध्याय {{n}} / {{total}}: {{title}}",
+    "notTicked": "अभी कक्षा में नहीं दिखाया",
+    "whichVideo": "वीडियो",
+    "practiceTitle": "इस अध्याय का अभ्यास करें",
+    "loopHint": "वीडियो टैब पर A और B से कोई हिस्सा दोहराएँ, या ऑडियो दोहराएँ।",
+    "practiseNow": "अभी अभ्यास करें",
+    "practiseGame": "अभी अभ्यास: {{game}}",
+    "previous": "पिछला: {{title}}",
+    "next": "अगला: {{title}}",
+    "nextLesson": "अगला पाठ: {{title}}",
+    "lastDone": "अंतिम अध्याय: पाठों पर वापस",
+    "continue": "सीखना जारी रखें",
+    "doneCount": "{{total}} में से {{done}} अध्याय पूरे"
+  },
   "levelPath": {
     "label": "{{level}} में मेरा रास्ता",
     "next": "आगे: {{title}}",
@@ -2952,7 +2972,8 @@
       "notes": "नोट्स"
     },
     "audioLoading": "ऑडियो ला रहे हैं…",
-    "progressNote": "पाठ सीखा गया, यह आपके शिक्षक कक्षा में टिक करते हैं; यहाँ देखने या सुनने से नहीं।"
+    "progressNote": "पाठ सीखा गया, यह आपके शिक्षक कक्षा में टिक करते हैं; यहाँ देखने या सुनने से नहीं।",
+    "repeat": "दोहराएँ"
   },
   "recording": {
     "record": "रिकॉर्ड",
@@ -5909,7 +5930,7 @@
   "learnTab": {
     "level": "मेरा स्तर",
     "syllabus": "पाठ्यक्रम और पाठ",
-    "syllabusDetail": "मेरे स्तर का हर विषय, उसके वीडियो, PDF और फ़ोटो के साथ",
+    "syllabusDetail": "वीडियो, ऑडियो और नोट्स के साथ पाठ और अध्याय",
     "assessmentsNone": "अभी कुछ करना नहीं है",
     "assessmentsOpen_one": "{{count}} करना है",
     "assessmentsOpen_other": "{{count}} करने हैं",

@@ -9294,6 +9294,8 @@ A bol without a mark shows none. **Why in the app, not in `play_bols`:** marks a
 for one default per bol; per-mantra marks live in the lesson text. TEST's placeholder bols' technique words say the same
 marks (playground_test.sql; pack v6, every game's count unchanged). The practice tools' hand drawings (#404, kksongs
 model: te middle finger, ta index finger) were left as they are and are a question for the team.
+**Update (2 Nov 2026, #789):** the cards show these marks only for an exercise of the Beginner level; other exercises show
+the bol and its hand alone.
 
 ## 784. LIVE syllabus: one SQL file for the lead's word, never run by a worker — 2 Nov 2026
 
@@ -9304,3 +9306,77 @@ title) is left as it is and named in a notice, so a second run adds nothing and 
 a copy of the TEST seed's step 2 (a test checks they are equal). It ends with a read-back (level, order, section,
 title, length). Praveen pastes it in the LIVE SQL editor on the lead's word; the guard and the body were checked on
 TEST (refused; a rolled-back dry run of the body parsed).
+
+## 785. Study material: a section is a Lesson, its items are Chapters; My Learning folds lessons open — 2 Nov 2026
+
+**Status: branch `claude/study-material-803ec9` (worker study-material for lead chat 22; the team's discussion draft
+"Study Material Navigation & Integrated Practice Studio", 02-11-2026). JS only, no migration.**
+
+**Context.** The team asked for Home → Study Material → level → Lessons 1-9 as fold-open rows → Chapters → one chapter
+screen. Most pieces existed: the syllabus per level in teaching order (S4 My Learning), sections (#773, 0072), lesson
+materials with Video / Audio / Notes (0064). Their draft names a React + Spring Boot stack and a six-tile home: both
+ignored (Expo + Supabase; the ring home #771 stays).
+
+**Decision.** No new table: `lib/study-lessons.ts` reads a level's items as lessons. A section (#773) = a Lesson and
+its items = its Chapters, in teaching order; an item with no section = a lesson of one chapter, whose row opens the
+chapter at once (an arrow, not +). My Learning (student/progress.tsx, also Me > My progress #319) keeps the level path,
+the practice panel and the level's own lessons on top, then the lessons as rows with + / − (components/lesson-fold.tsx:
+56 px tall, role button, aria-expanded), one open at a time, each saying "n of m chapters done" from the ticks (retired
+chapters do not count). A chapter row says shown in class or not and what it has (Video · Audio · Notes). The open
+lesson and the scroll stay because the page stays under the chapter in the stack; coming back from a chapter in another
+lesson (Previous / Next went on) opens that lesson. The per-item list of materials moved into the chapter screen.
+**Why no Lesson/Chapter tables:** sections already give two levels, the Guru edits them in the existing editor, ticks /
+materials / Playground `requires_item` stay on the item, and no LIVE step is needed. The Beginner syllabus has no
+sections yet, so today it shows ten one-chapter lessons; when the team sends chapter lists for Lessons 1-9 the Guru
+gives each lesson's items a section ("Lesson 1: Varnas") and the rows fold open with no build.
+
+## 786. The chapter screen: Video / Audio / Notes in place, practice under every tab, Previous / Next — 2 Nov 2026
+
+**Decision.** screens/chapter.tsx (student/chapter/[id], staff/me/chapter/[id]; id = the syllabus item's, read through
+fetchMyProgress so only the own level's items open). A band under the header never scrolls away: the lesson, "Chapter 2
+of 5: title" (or the item's title for a one-chapter lesson), shown in class or not, and the tabs. **All three tabs
+always**; a tab with nothing says "Coming soon" (the team's rule) — unlike the lesson player, which shows only the
+formats a lesson has (#684). It opens on Video if any, else Audio, else Notes; the tab is kept in the address
+(`?tab=`), so Back from Practise now or a reload finds it. Video = the item's lesson videos (a chooser when several),
+through components/lesson-video-panel.tsx, the lesson player's video and controls moved out of screens/lesson-player.tsx
+(speed, A-B loop, mirror, zoom). Audio = each lesson audio (components/lesson-audio.tsx, now with Repeat). Notes = the
+item's description as the teachers wrote it (C/O marks plain text, docs/NOTATION.md), lesson notes, note materials, and
+the PDFs / photos (open in the browser as before). **Nothing plays by itself; one medium at a time:** whatever starts
+(a video, an audio, recording) becomes the owner and every other medium pauses; a tab left pauses its medium; a video
+or audio mounts only when its tab was first opened. Practice under every tab: Practise now (#788), the practice timer
+(components/practice-timer-line.tsx, moved out of Practice tools unchanged) and Record myself (`kind="chapter"`:
+recorded without a sound, kept on the phone as before). Loop = A-B on the Video tab, Repeat on the Audio tab.
+Previous / Next in teaching order (`router.replace`, so Back stays one step to the lessons); the last chapter of a
+lesson says "Next lesson: …", the last of all "back to the lessons". Read-only like My Learning: playing media proves
+nothing; the teachers tick (C9).
+
+## 787. Continue learning: the last opened chapter, on this device only — 2 Nov 2026
+
+**Decision.** lib/last-chapter.ts keeps {profile, item id, title, lesson} of the chapter opened last, in the device's
+local store. My Learning shows "Continue learning: lesson · chapter" on top while the item is still in the level; the
+Learn tab shows the same row above "Syllabus and lessons" (it reads the note only, so the first web download gains a
+few hundred bytes, no screen code, #650). Another login on the same phone sees nothing; sign-out forgets it
+(lib/device-traces.ts, #186). **Why not the server:** no new personal data or table for a convenience; a second phone
+simply starts at My Learning.
+
+## 788. Practise now: the item's Playground games once it is ticked, else Practice tools — 2 Nov 2026
+
+**Decision.** From a chapter, one tap: when the Playground is on for the student (#781) and the item is ticked, a button
+per built game that has an exercise with `requires_item` = this item (lib/playground-games/catalogue.ts gamesForItem,
+the phone's pack copy at once, a newer one when the server answers); otherwise Practise now opens Practice tools (Me >
+Practice in the own-record area). Back returns to the same chapter and tab (the chapter stays in the stack; the tab is
+in its address). **Why only once ticked:** the engine serves an exercise tied to an item only when that item is ticked
+(lib/playground/eligibility.ts `not_ticked`), so earlier the game would not play the chapter's exercise. **Not done:**
+Practice tools "pre-set" for a chapter — an item names no taal or tempo, so there is nothing to pre-set without
+guessing; the exercise editor sets no `requires_item` either (SQL only today). Both are questions for the team.
+
+## 789. Game cards show the class's marks only for a Beginner exercise (updates #783) — 2 Nov 2026
+
+**Context.** The team's draft: a bol such as "te" is played differently by level or mantra; tie finger guidance to the
+chapter, not to the spelling alone. #783 showed one default mark per bol on every Sound Detective card.
+
+**Decision.** `exerciseMarks(key, levelId)` in lib/playground/marks.ts: the default marks (the Beginner lessons') only
+when the card's exercise is of the Beginner level (`MARKS_LEVEL` 1); any other exercise shows the bol and its hand
+alone, and no key line. The staff bol editor still shows "The class's mark (Beginner)". An exercise cannot carry marks of
+its own yet (no field; would need the team's per-mantra marks and an editor) — left until the team asks.
+**Bols in new displays are separated by spaces, never `|`** (`|` is the vibhāg line); lesson text stays as written.

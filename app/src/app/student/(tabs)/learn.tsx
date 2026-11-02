@@ -1,6 +1,7 @@
 // The Learn tab, "My Learning" (docs/DECISIONS.md #670, #675; Sarvesh Prji's student spec, section 1): My Level with
 // the level path (#620), then the syllabus with its lessons (My Learning, S4), assessments with how many wait (S7),
-// milestones reached (lib/milestones.ts, shown on Practice History) and Learn more (the Guru's links). A tab of the
+// milestones reached (lib/milestones.ts, shown on Practice History) and Learn more (the Guru's links). Continue learning
+// opens the chapter opened last on this device (lib/last-chapter.ts, #787), above the syllabus. A tab of the
 // first web download, so it holds only rows; each opens its screen from the student area (#650). It loads again each
 // time it comes into view.
 
@@ -18,6 +19,7 @@ import { fetchMyOpenAssessmentCount, fetchStudentHome, type StudentHome } from '
 import { fetchMyPath } from '@/data/level-path';
 import { LEVEL_IDS, levelName } from '@/i18n/labels';
 import { todayLocal } from '@/lib/dates';
+import { lastChapter, type LastChapter } from '@/lib/last-chapter';
 import { useLatestLoad } from '@/lib/latest-load';
 import { levelPath, type LevelPath } from '@/lib/level-path';
 import { milestones, type Milestone } from '@/lib/milestones';
@@ -33,9 +35,11 @@ export default function StudentLearnTab() {
   const [path, setPath] = useState<LevelPath | null>(null);
   const [reached, setReached] = useState<Milestone[] | null>(null);
   const [open, setOpen] = useState<number | null>(null);
+  const [last, setLast] = useState<LastChapter | null>(null);
   const beginLoad = useLatestLoad();
 
   const load = useCallback(async () => {
+    setLast(lastChapter(myId));
     const isNewest = beginLoad();
     const [loadedHome, loadedOpen, loadedPath] = await Promise.all([
       fetchStudentHome({ weekStarts: false }),
@@ -69,6 +73,15 @@ export default function StudentLearnTab() {
           <AppText variant="subtitle">{levelName(t, mine.levelId)}</AppText>
           <LevelStrip home={mine} path={path} />
         </View>
+      ) : null}
+      {last ? (
+        <ListRow
+          leading="play"
+          highlight="attention"
+          title={t('chapter.continue')}
+          details={[last.lesson ? `${last.lesson} · ${last.title}` : last.title]}
+          onPress={() => router.push({ pathname: '/student/chapter/[id]', params: { id: String(last.itemId) } })}
+        />
       ) : null}
       <ListRow
         leading="syllabus"

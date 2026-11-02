@@ -76,7 +76,9 @@ test('the screens: details on the event card, tabs on the lesson, statuses and r
   // The tab bar only with two or more formats; the audio mounts only after its tab was opened (#684).
   assert.match(player, /formats\.length > 1 \?/);
   assert.match(player, /audioOpened && material\.audioPath \?/);
-  assert.match(player, /if \(current === 'video' && next !== 'video'\) send\(\{ cmd: 'pause' \}\)/);
+  // Leaving the video pauses it: the panel's `active` (components/lesson-video-panel.tsx, #786).
+  assert.match(player, /<LessonVideoPanel material=\{material\} source=\{source\} active=\{current === 'video'\} \/>/);
+  assert.match(src('components/lesson-video-panel.tsx'), /if \(!active\) frame\.current\?\.send\(\{ cmd: 'pause' \}\);/);
   assert.doesNotMatch(src('components/lesson-audio.tsx'), /\.play\(\)\s*;?\s*\n\s*\}, \[/, 'the audio never plays by itself');
   assert.match(src('components/material-row.tsx'), /lessonFormats\(material\)/);
   const mine = src('app/student/assessments/[id].tsx');

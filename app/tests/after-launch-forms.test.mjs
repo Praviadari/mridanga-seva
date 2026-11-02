@@ -138,7 +138,7 @@ test('every create the audit named sends its request id, and the forms keep one 
   ]) assert.ok(src(file).includes(call), `${file}: ${call}`);
   for (const file of ['app/staff/fund/[id].tsx', 'app/staff/call/[id].tsx', 'screens/event-form.tsx', 'screens/poll-form.tsx',
     'screens/assessment-form.tsx', 'app/staff/materials/[id].tsx', 'app/staff/levels/item/[id].tsx', 'app/staff/ishtagoshti/edit-theme/[id].tsx',
-    'components/reply-box.tsx', 'app/student/practice-log.tsx', 'screens/practice-tools.tsx']) {
+    'components/reply-box.tsx', 'app/student/practice-log.tsx', 'components/practice-timer-line.tsx']) {
     assert.ok(src(file).includes('useRequestId()'), file);
   }
 });

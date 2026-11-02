@@ -40,8 +40,11 @@ const MAX_SECONDS = 10 * 60;
 
 /** Props for RecordMyself. */
 export type RecordMyselfProps = {
-  /** Which takes are listed: Practice tools' (the default) or Echo me's (#472), each where its sound can play. */
-  kind?: 'tools' | 'echo';
+  /**
+   * Which takes are listed: Practice tools' (the default) or Echo me's (#472), each where its sound can play, or the
+   * chapter screen's (#786): recorded without a sound, so no "with the sound" choice there.
+   */
+  kind?: 'tools' | 'echo' | 'chapter';
   /** What is chosen on the screen now (metronome or taal and its tempo); null when nothing can play. */
   setting: RecordingSetting | null;
   /** Starts the chosen sound from its first beat. False when it could not start. */
@@ -49,6 +52,8 @@ export type RecordMyselfProps = {
   /** Starts a recording's sound (switches the screen to it) from its first beat. */
   startSoundOf: (setting: RecordingSetting) => Promise<boolean>;
   stopSound: () => void;
+  /** Called as recording starts, so the screen can pause what it plays (the chapter screen's video and audio). */
+  onRecordStart?: () => void;
 };
 
 /** The words for a setting: "Metronome · 80 a minute" or "Dasapahira · 60 a minute at 75 %". */
@@ -70,7 +75,7 @@ export function useSettingText() {
 }
 
 /** Record, keep and compare one's own playing. */
-export function RecordMyself({ kind = 'tools', setting, startSound, startSoundOf, stopSound }: RecordMyselfProps) {
+export function RecordMyself({ kind = 'tools', setting, startSound, startSoundOf, stopSound, onRecordStart }: RecordMyselfProps) {
   const { t } = useTranslation();
   const settingText = useSettingText();
   const [withSound, setWithSound] = useState(true);
@@ -79,25 +84,33 @@ export function RecordMyself({ kind = 'tools', setting, startSound, startSoundOf
   // The setting of the take being recorded (null when recorded without the sound).
   const [recordingSetting, setRecordingSetting] = useState<RecordingSetting | null>(null);
 
-  const mine = useCallback((r: MyRecording) => (r.setting?.mode === 'echo') === (kind === 'echo'), [kind]);
+  const mine = useCallback(
+    (r: MyRecording) => (kind === 'chapter' ? r.setting === null : (r.setting?.mode === 'echo') === (kind === 'echo')),
+    [kind],
+  );
   useEffect(() => {
     void listMyRecordings().then((all) => setList(all.filter(mine)));
   }, [mine]);
 
   return (
     <Section icon="record" title={t('recordMyself.title')} description={t('recordMyself.intro')}>
-      <Checkbox
-        label={t('recordMyself.withSound', { what: settingText(setting) })}
-        checked={withSound && setting !== null}
-        onChange={setWithSound}
-      />
-      <AppText variant="small" tone="muted">
-        {t('recordMyself.headphones')}
-      </AppText>
+      {kind !== 'chapter' ? (
+        <>
+          <Checkbox
+            label={t('recordMyself.withSound', { what: settingText(setting) })}
+            checked={withSound && setting !== null}
+            onChange={setWithSound}
+          />
+          <AppText variant="small" tone="muted">
+            {t('recordMyself.headphones')}
+          </AppText>
+        </>
+      ) : null}
       <AudioRecorderPanel
         mode="auto"
         maxSeconds={MAX_SECONDS}
         onStart={async () => {
+          onRecordStart?.();
           setProblem(null);
           const used = withSound && setting !== null ? setting : null;
           setRecordingSetting(used);
