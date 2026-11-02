@@ -100,7 +100,8 @@ test('the home: compact band with the bell, the slim Daily Mission, the ring siz
   // The ring under the Daily Mission, in place of the cards (#771).
   assert.match(home, /<TodayPracticeCard today=\{today\} slim \/>/);
   assert.match(home, /<ModuleRing modules=\{ring\} maxSize=\{ringMax\} \/>/);
-  assert.match(home, /\['qr', 'lessons', 'assessments', 'growth', 'ishtagoshti', 'events', 'about'\]/);
+  // Face self-scan (#344): its Check in / Check out circle first, before My QR, while face scan is on.
+  assert.match(home, /\['selfScan', 'qr', 'lessons', 'assessments', 'growth', 'ishtagoshti', 'events', 'about'\]/);
   assert.doesNotMatch(home, /<ShortcutTiles/);
   for (const route of ['/student/progress', '/student/assessments', '/student/my-qr', '/student/events', '/student/practice-log', '/student/ishtagoshti']) {
     assert.ok(home.includes(`'${route}'`), route);

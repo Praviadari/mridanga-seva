@@ -6231,7 +6231,7 @@
       "face_consent_exists": "A face scan consent is already on record.",
       "child_assent_required": "Read the child's part of the form to them; they must say yes themselves. Then tick it.",
       "written_consent_required": "Tick that the signed face scan form is kept.",
-      "notice_version_invalid": "The privacy notice version is not valid. Tell the Guru.",
+      "notice_version_invalid": "The privacy notice version is not valid. Tell the facilitator.",
       "dob_required": "The date of birth is needed first. Add it in the student's details.",
       "minor_needs_guardian": "For a child, pick the parent who signed the form.",
       "minor_needs_id_check": "For a child, pick which ID of the parent you saw.",

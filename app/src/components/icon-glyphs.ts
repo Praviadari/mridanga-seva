@@ -78,6 +78,8 @@ export const GLYPHS = {
   'grid-outline': 62294,
   'hand-left': 62299,
   'hand-left-outline': 62300,
+  'happy': 62305,
+  'happy-outline': 62306,
   'home': 62338,
   'home-outline': 62339,
   'id-card': 62347,

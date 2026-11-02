@@ -13,7 +13,8 @@ name: Phase 3 APK (face-scan)
 on:
   push:
     # claude/app-size-native: native size cuts measured before they reach face-scan (NOTES_app_size.md).
-    branches: [face-scan, claude/app-size-native]
+    # claude/release-0811-44b0e4: face + app-size + wake alarm on main, the 08-11-2026 production APK (RELEASE_08-11.md).
+    branches: [face-scan, claude/app-size-native, claude/release-0811-44b0e4]
   workflow_dispatch:
 
 permissions:
