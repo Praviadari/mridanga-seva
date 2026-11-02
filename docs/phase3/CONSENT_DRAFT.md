@@ -1,6 +1,10 @@
 # Phase 3 — Consent wording drafts (DRAFT v2, 10-10-2026)
 
 > **Drafts for the team and a lawyer — not final, not legal advice.** English is the master text.
+> **Gate 2 (13-10-2026, DECISIONS #295):** the face code is kept on the phone only; the English master
+> says so. The Telugu and Hindi F-P text below still describes a server copy — correct it in the native
+> review (same meaning as the English).
+>
 > **Telugu and Hindi are machine-assisted drafts: NATIVE REVIEW NEEDED** before any use (meaning,
 > tone, and the words for "face code", "consent", "withdraw", "location"). `[ … ]` = to fill in.
 > Each consent is **separate**: never on the same tick as the class data consent (#16) or the photo
@@ -43,9 +47,10 @@ changes.
   takes a few pictures of their face. The phone turns them into a **face code** (a list of numbers;
   this is biometric data) and **deletes the pictures at once**. No photo of your child's face is kept
   for this. A coordinator checks on the spot that it is your child.
-- The face code is kept **encrypted on your child's phone**, and an encrypted copy on the class's
-  server in India (so it can be restored if the app is reinstalled, and so we can prove it is deleted).
-  Nobody can look at it.
+- The face code is kept **only on your child's phone**, encrypted. The class's server keeps **no face
+  code** — only a record that face scan was set up (when, which coordinator confirmed it, until when), so we
+  can prove when it ends. A new phone or a reinstalled app means setting it up again at the desk. Nobody
+  can look at the face code.
 - **At each check-in and check-out**, your child's phone compares the face in front of it **only with
   your child's own face code** — it never searches for anyone else. It also checks that it is a real,
   live face (for example, asking to blink) and that the phone has not been tampered with.

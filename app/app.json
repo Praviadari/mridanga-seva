@@ -8,6 +8,15 @@
     "icon": "./assets/images/icon.png",
     "scheme": "mridangaseva",
     "userInterfaceStyle": "automatic",
+    "ios": {
+      "infoPlist": {
+        "CFBundleAllowMixedLocalizations": true
+      }
+    },
+    "locales": {
+      "te": "./locales/te.json",
+      "hi": "./locales/hi.json"
+    },
     "android": {
       "package": "org.mridangaseva.app",
       "googleServicesFile": "./google-services.json",
@@ -15,7 +24,10 @@
       "blockedPermissions": [
         "android.permission.SYSTEM_ALERT_WINDOW",
         "android.permission.READ_EXTERNAL_STORAGE",
-        "android.permission.WRITE_EXTERNAL_STORAGE"
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.READ_PHONE_STATE",
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT"
       ],
       "adaptiveIcon": {
         "backgroundColor": "#1B1E4B",
@@ -48,7 +60,7 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Mridanga Seva uses the camera to scan students' QR codes for attendance.",
+          "cameraPermission": "Mridanga Seva uses the camera to scan QR codes for attendance and, only if you turn face scan on, for your face scan when you check in or out.",
           "microphonePermission": false,
           "recordAudioAndroid": false
         }
@@ -101,7 +113,13 @@
       "expo-sharing",
       "expo-screen-orientation",
       "expo-asset",
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      [
+        "expo-secure-store",
+        {
+          "faceIDPermission": false
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

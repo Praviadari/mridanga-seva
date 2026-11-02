@@ -22,7 +22,7 @@ import { Section } from '@/components/section';
 import { ScreenIntro } from '@/components/more-text';
 import { fetchVisitHistory, MONTHS_PER_PAGE, type VisitHistory } from '@/data/visits';
 import { formatDuration, monthName } from '@/i18n/labels';
-import { locationFlagText } from '@/i18n/location-flag';
+import { checkOutFlagText, locationFlagText } from '@/i18n/location-flag';
 import { localDate, formatDate, localTime } from '@/lib/dates';
 import { spacing, useTheme } from '@/theme/use-theme';
 
@@ -106,6 +106,8 @@ export function VisitHistoryScreen({ studentId, subtitle, top }: VisitHistoryScr
               })}>
               {month.visits.map((visit) => {
                 const flag = isStaff ? locationFlagText(t, visit.locationCheck, visit.distanceM) : null;
+                // A face self-scan check-out away from the class: saved, and flagged for staff (0071, #347).
+                const outFlag = isStaff ? checkOutFlagText(t, visit.checkOutLocation) : null;
                 return (
                 <View key={visit.id} style={styles.visit}>
                 <AppText>
@@ -122,6 +124,14 @@ export function VisitHistoryScreen({ studentId, subtitle, top }: VisitHistoryScr
                     <Icon name="alert" size={16} color={colors.danger} />
                     <AppText variant="small" tone="danger">
                       {flag}
+                    </AppText>
+                  </View>
+                ) : null}
+                {outFlag ? (
+                  <View style={styles.flag}>
+                    <Icon name="alert" size={16} color={colors.danger} />
+                    <AppText variant="small" tone="danger">
+                      {outFlag}
                     </AppText>
                   </View>
                 ) : null}

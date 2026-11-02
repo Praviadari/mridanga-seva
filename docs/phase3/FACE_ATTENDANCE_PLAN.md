@@ -9,6 +9,11 @@
 > plan that replaces §9 is **[WORK_PLAN.md](WORK_PLAN.md)**. Privacy papers for self-scan (P3-8):
 > [DPIA_DRAFT.md](DPIA_DRAFT.md), [CONSENT_DRAFT.md](CONSENT_DRAFT.md),
 > [PRIVACY_NOTICE_DRAFT.md](PRIVACY_NOTICE_DRAFT.md), [LAWYER_PACK.md](LAWYER_PACK.md).
+>
+> **UPDATE 13-10-2026 — the audit's gates (DECISIONS #295-#300):** Gate 2: the face code stays **on the phone
+> only** — every "server copy", `face_templates` table and Vault key below is history; the server keeps an
+> enrolment record. Gate 1: each self-scan carries a Play Integrity verdict bound to that check-in, checked on the
+> server (no self-scan for anyone if a link-installed APK cannot get one). Face scan has one server switch, off.
 
 **Status:** preparation only. Nothing here is built or decided, except DECISIONS #212 (Praveen,
 09-10-2026: **no live or continuous location tracking at all** — GPS read only at the moment of
@@ -218,7 +223,7 @@ cheap phone cameras is unknown — measure in the pilot (MODEL_OPTIONS §5).
 
 | Item | Where | Form | Who reads |
 |---|---|---|---|
-| Face template | Supabase (Mumbai, ap-south-1 — OPERATIONS) new table `face_templates` (student, model_version, created_at, created_by, expires_at, template **encrypted**) | Bytes, encrypted with a key held in Supabase Vault; decrypted only inside a security-definer function | Only the `kiosk` login and staff of the student's centre, through a logging function (like #146), only to fill the scanner cache |
+| Face template | Supabase (then thought to be Mumbai; the class's server is in Sydney, Australia, ap-southeast-2: DECISIONS #398) new table `face_templates` (student, model_version, created_at, created_by, expires_at, template **encrypted**) | Bytes, encrypted with a key held in Supabase Vault; decrypted only inside a security-definer function | Only the `kiosk` login and staff of the student's centre, through a logging function (like #146), only to fill the scanner cache |
 | Scanner cache | Tablet / staff phone, while the scanner is in use | Encrypted SQLite (expo-sqlite's SQLCipher option — **verify** in SDK 57) or in memory only | The app |
 | Self-scan template | Proposal: the student's **own** template only, on their phone, encrypted with the Android Keystore; plus the server copy for re-install | — | The app |
 | Visit | `visits` as today, `method = 'face'`, plus proposed `match_score` and `liveness_ok` | Numbers only | As today (#70 rules) |

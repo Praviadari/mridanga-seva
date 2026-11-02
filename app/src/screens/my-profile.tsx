@@ -6,6 +6,8 @@
 // the coordinators' record and changes only through them; a student's phone is asked in About you (0036), not here.
 // Shown by two routes: student/profile.tsx (from the ring on S1) and staff/profile.tsx (from "My profile" in the menu).
 // Staff see the referral code they give to people they bring.
+// Face scan (Phase 3, #307-#312): a student's Face scan row and, on a TEST build, staff's developer row —
+// both only while the server's switch is on (components/face-entries.tsx).
 // Data: src/data/my-profile.ts; the check is in the database too (0013, docs/DECISIONS.md #44).
 
 import { router, Stack } from 'expo-router';
@@ -18,6 +20,7 @@ import { AppText } from '@/components/app-text';
 import { AppearancePicker } from '@/components/appearance-picker';
 import { Button } from '@/components/button';
 import { DetailGrid } from '@/components/detail-grid';
+import { FaceDevSection, FaceProfileSection } from '@/components/face-entries';
 import { HeldItemsPanel } from '@/components/held-items';
 import { LanguagePicker } from '@/components/language-picker';
 import { LoadingCards } from '@/components/loading-cards';
@@ -215,6 +218,8 @@ export function MyProfileScreen() {
         </Section>
       ) : null}
 
+      {isStudent && myId ? <FaceProfileSection profileId={myId} /> : null}
+
       {/* What the class holds about me, and my requests (#550). */}
       <Section icon="audit" title={t('dataRights.title')} description={t('dataRights.profileHint')}>
         <Button variant="secondary" icon="audit" label={t('dataRights.open')} onPress={() => router.push(isStudent ? '/student/my-data' : '/staff/my-data')} />
@@ -234,6 +239,8 @@ export function MyProfileScreen() {
           </AppText>
         </Section>
       ) : null}
+
+      {isStaff ? <FaceDevSection /> : null}
 
       {/* Phase 2 slice 8 (C19): instruments I hold now. */}
       {myId ? <HeldItemsPanel by={isStudent ? 'mine' : { profileId: myId }} openable={!isStudent} /> : null}

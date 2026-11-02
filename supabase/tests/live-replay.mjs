@@ -84,6 +84,9 @@ const GO_LIVE = ['0013', '0014', '0015', '0016', '0017', '0018', '0019', '0020',
   '0068',
   // Game recordings: at most 2 waiting for review, audio of at most 90 s (#766, #696).
   '0069',
+  // Phase 3 face scan (#295-#300, #344-#349, #434): server 0070, self-scan 0071 (branch face-scan, merged for the
+  // 08-11-2026 production APK). LIVE runs them AFTER 0072 (step 4b below proves that order ends the same).
+  '0070', '0071',
   // Sections in the syllabus: syllabus_items.section (#773).
   '0072'];
 
@@ -329,14 +332,44 @@ const commentCount = async (db) => (await db.query(`select count(*)::int as n fr
 check('... and the same number of function comments', (await commentCount(fresh)) === (await commentCount(live)),
   `${await commentCount(fresh)} / ${await commentCount(live)}`);
 
+// ---------------------------------------------------------------- 4b. the orders the projects really ran
+// The face files 0070/0071 (#295-#300, #344-#349) did not run in number order anywhere: TEST ran them on 22-10-2026
+// when it was at 0054 (then 0055-0069 and 0072 after them); LIVE ran 0063-0072 on 30-10-2026 and runs 0070, 0071
+// after 0072. Either order must end with the same schema as number order, and on LIVE's the probe must read
+// 0070 then 0072 (LAST IN ORDER) with nothing missing at the end.
+const FACE = ['0070', '0071'];
+const inOrder = (afterNumber) => {
+  const rest = files.filter((f) => !FACE.includes(numberOf(f)));
+  const at = rest.findIndex((f) => numberOf(f) === afterNumber) + 1;
+  return [...rest.slice(0, at), ...files.filter((f) => FACE.includes(numberOf(f))), ...rest.slice(at)];
+};
+for (const [label, after] of [['TEST (0070, 0071 after 0054)', '0054'], ['LIVE (0070, 0071 after 0072)', '0072']]) {
+  const other = await newDb();
+  const probes = [];
+  for (const f of inOrder(after)) {
+    await other.exec(read(f));
+    if (FACE.includes(numberOf(f))) {
+      const rows = (await other.query(probeSql)).rows;
+      probes.push(`${numberOf(f)}: last ${rows.find((r) => r.migration === 'LAST IN ORDER')?.present}, missing ${rows.find((r) => r.migration === 'MISSING')?.present}`);
+    }
+  }
+  const orderDrift = differences(freshPrint, await fingerprint(other, { comments: false }));
+  check(`run in ${label}'s order, the schema is the same as in number order`, orderDrift.length === 0,
+    orderDrift.length ? orderDrift.slice(0, 10).join(', ') : probes.join('; '));
+  if (after === '0072') {
+    check('... and on LIVE the probe reads 0070 / missing 0071 after 0070, then 0072 / none after 0071',
+      probes.join('; ') === '0070: last 0070, missing 0071; 0071: last 0072, missing none', probes.join('; '));
+  }
+}
+
 // ---------------------------------------------------------------- 5. the verification SQL
 const verify = (await live.query(checklistSql('verify'))).rows;
 const row = (name) => verify.find((r) => r.check_name === name);
 const expectOk = ['last migration', 'migrations missing', 'tables without row-level security',
   'anon table rights', 'anon function rights', 'update/delete without where', 'roll numbers missing'];
 for (const name of expectOk) check(`verification SQL: "${name}" is ok on the replayed LIVE`, row(name)?.ok === true, JSON.stringify(row(name)));
-check('verification SQL: "scheduled jobs" counts the seventeen jobs of 0001-0065 (0065 adds mridanga-playground)',
-  row('scheduled jobs')?.found === '17 of 17', JSON.stringify(row('scheduled jobs')));
+check('verification SQL: "scheduled jobs" counts the eighteen jobs of 0001-0070 (0065 adds mridanga-playground, 0070 mridanga-face-housekeeping)',
+  row('scheduled jobs')?.found === '18 of 18', JSON.stringify(row('scheduled jobs')));
 check('verification SQL: Vault and pg_net are reported missing here (PGlite has neither), not hidden',
   row('vault secrets')?.ok === false && row('pg_net')?.ok === false);
 check('verification SQL: the three sample logins confirmed at sign-up are flagged (what auto-confirm would leave)',

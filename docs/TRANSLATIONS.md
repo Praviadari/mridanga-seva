@@ -336,3 +336,20 @@ The privacy texts of 0034 (`signUp.privacyNotice`, `signUp.under18`, `register.p
   `assessments.studentStatus.*`, `assessments.submit.receipt` / `underReview`; `events.form.where` now "Venue" (వేదిక / स्थान).
   Telugu and Hindi are drafts. Words to check first: "Under review" సమీక్షలో ఉంది / समीक्षा में, "Redo requested" మళ్ళీ చేయమని
   అడిగారు / फिर से करने को कहा, "receipt" రసీదు / रसीद, "reporting time" హాజరు కావలసిన సమయం / पहुँचने का समय, "dress code" దుస్తులు / पोशाक.
+- **Face scan** (branch `face-scan`, was `p3-native`; [DECISIONS.md #307-#312](DECISIONS.md), 13 Oct 2026; merged for the 08-11-2026 APK, off on LIVE until switched on):
+  the whole `face.*` group (S15 Face scan, C25 Face scan at the desk, C26 the developer screen, the blink/turn prompts
+  `face.challenge.*`, and `face.errors.*` = every refusal of migration 0070 and of the integrity check) and the iOS camera
+  text in `app/locales/te.json` / `hi.json`; Telugu and Hindi are drafts. Words to check: "face scan" kept as
+  ఫేస్ స్కాన్ / फ़ेस स्कैन (the consent scope says ముఖ గుర్తింపు / चेहरा पहचान — pick one for both), "face code"
+  ఫేస్ కోడ్ / फ़ेस कोड, "consent form" సమ్మతి పత్రం / सहमति फ़ॉर्म, "safety check" (integrity) భద్రతా పరీక్ష / सुरक्षा जाँच,
+  "enrolment" నమోదు / नामांकन, and the child's own "yes" (`face.desk.childAssent`). The developer screen's live numbers are
+  English on purpose.
+- **Face self-scan** (branch `face-scan`, was `p3-selfscan`; [DECISIONS.md #344-#349](DECISIONS.md), 13 Oct 2026; merged for the 08-11-2026 APK,
+  off on LIVE until switched on): `selfScan.*` (S16 Self check-in / check-out: the circle's "Check in" / "Check out", every refusal, the
+  results, "Or ask a coordinator"), `faceCounts.*` (C27 Face scan use), `attendanceLocation.checkOut` /
+  `attendanceLocation.outReason.*` (the flagged check-out in the visit history) and `face.errors.bad_location`; Telugu and
+  Hindi are drafts. Words to check: "Check in" / "Check out" kept as చెక్ ఇన్ / చెక్ అవుట్ and चेक इन / चेक आउट (as
+  spoken at the desk), "phone check (Google Play)" ఫోన్ తనిఖీ / फ़ोन जाँच — the face group above says "safety check"
+  భద్రతా పరీక్ష / सुरक्षा जाँच for the same thing: pick one for both — "made-up location" కల్పిత లొకేషన్ / बनावटी लोकेशन,
+  "live face" సజీవ ముఖం / जीवित चेहरा. The rule names under "Phone check: what failed" (device_integrity …) are
+  English on purpose (they are the server's codes, for the person who sets it up).

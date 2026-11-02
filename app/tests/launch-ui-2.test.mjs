@@ -131,8 +131,9 @@ test('module colours are five families; pink and indigo are gone; each ring keep
   const contiguous = (tones) => tones.every((tone, i) => i === 0 || tone === tones[i - 1] || !tones.slice(0, i).includes(tone));
   const student = src('app/student/(tabs)/index.tsx');
   const studentRing = tonesOf(student.slice(student.indexOf('const shortcuts: Shortcut[] = ['), student.indexOf('];', student.indexOf('const shortcuts: Shortcut[] = ['))));
-  // The home's cards since #674 (the ring of #240 before).
-  assert.deepEqual(studentRing, ['purple', 'purple', 'blue', 'orange', 'teal', 'green']);
+  // The home's cards since #674 (the ring of #240 before); the face self-scan circle (Check in / Check out, #344)
+  // in the door's blue next to My QR.
+  assert.deepEqual(studentRing, ['purple', 'purple', 'blue', 'blue', 'orange', 'teal', 'green']);
   assert.ok(contiguous(studentRing));
   const shortcuts = src('components/staff-shortcuts.tsx');
   // The coordinator ring (#368); the facilitator's eleven modules since #700, each family side by side but Funds (teal,

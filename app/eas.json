@@ -21,6 +21,18 @@
         "buildType": "apk"
       },
       "channel": "production"
+    },
+    "facetest": {
+      "distribution": "internal",
+      "environment": "preview",
+      "autoIncrement": true,
+      "env": {
+        "APP_VARIANT": "facetest"
+      },
+      "android": {
+        "buildType": "apk"
+      },
+      "channel": "facetest"
     }
   }
 }

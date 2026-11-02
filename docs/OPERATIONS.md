@@ -46,6 +46,7 @@ s.16), so a processor abroad is allowed, but it must be recorded and named in th
 | Cloudflare Email Routing + Gmail (Google) | Forwards mail to privacy@, info@ and the class's other addresses to the team's Gmail (privacy@ and info@ → the Guru, Sarvesh; the rest → the maintainer until team leads take them); since 26-10-2026, replacing the planned Zoho Mail (Zoho offered only a paid plan) | Whatever parents write to us: requests, complaints, their contact details | Cloudflare worldwide network; Gmail worldwide | Cloudflare and Google terms |
 | YouTube (Google) | Lesson videos shown in the app | The viewer's IP address and device, and YouTube's own cookies on the web; the app sends it no names | Google's regions | YouTube's terms |
 | Team cloud folder `Mridanga Seva backups` | Keeps the weekly backups (see "Backups") | Encrypted 7z archives only: unreadable without the archive password, which is never stored with them | **[[TEAM]]:** the provider and its region | — |
+| Google Play Integrity (**planned**, Phase 3 face scan, only when face scan is switched on: [#296](DECISIONS.md)) | Decodes the phone's integrity token for each self-scan check-in or check-out (Edge Function `verify-integrity`) | The token: our app's package and signing certificate, the phone's integrity labels, a request hash (SHA-256 of the login id, action, challenge and inside/outside: not readable back), time. **No face data, no location, no name** | Google's regions | [[TEAM]] |
 | GitHub | Source code (public) | None: no personal data is kept in the repository | USA | — |
 
 jsDelivr is no longer one: since brief 13 the web QR reader is served from our own site ([DECISIONS.md #143](DECISIONS.md)).
@@ -844,6 +845,7 @@ build:
 |---|---|---|
 | `preview` | the test Supabase project (settings from the EAS environment `preview`, copied from `app/.env.test` with `env:push` below; `eas.json` `"environment"`) | demos, testers, volunteers |
 | `production` | the live Supabase project (settings from the EAS environment `production`, copied from `app/.env.live` with `env:push`) | the class, from the pilot on |
+| `facetest` (branch `face-scan` only) | the test project, as `preview`; builds "Mridanga Seva TEST" (`org.mridangaseva.app.test`, `APP_VARIANT=facetest`) | adult face-scan testers: "Face scan: the test app" ([#430](DECISIONS.md)) |
 
 Both have the same package name, so a phone holds one or the other: installing one replaces the
 other, and the person signs in again. Each profile is also the **update channel** of the same
@@ -906,7 +908,9 @@ npx eas-cli build -p android --profile preview
 - **The settings guard** ([DECISIONS.md #256](DECISIONS.md)): before `npm install`, EAS runs
   `app/scripts/eas-build-guard.mjs` (the `eas-build-pre-install` script). It stops the build unless
   the profile's EAS environment has a publishable key and the URL of that profile's project
-  (`preview` = test `fhuqyk…`, `production` = live `qeozvv…`, in `app/scripts/lib/supabase-projects.mjs`).
+  (`preview` = test `fhuqyk…`, `production` = live `qeozvv…`, in `app/scripts/lib/supabase-projects.mjs`;
+  on branch `face-scan` also `facetest` = test only, with `APP_VARIANT=facetest`, and the class's profiles only
+  without a variant: `BUILD_PROFILES` in the guard, [#430](DECISIONS.md)).
   The build log shows `eas-build-guard: profile … → project …` before the install of the packages,
   never the key. If it stops: fix the environment with `env:push` (above) and build again.
 - EAS needs `git` in the terminal. If it says *git command not found*, Git is installed but not
@@ -1842,6 +1846,290 @@ when done.
 
 **In an emergency:** switch it off on the screen, or in the SQL editor
 `update settings set value = 'false' where key = 'parent_view_enabled';` (as the owner).
+
+## Face scan: integrity check
+
+**Phase 3 — branch `face-scan` (was `p3-server`), merged with the production APK of 08-11-2026
+([RELEASE_08-11.md](RELEASE_08-11.md)). TEST has run it since 22-10-2026 (class test 24-25 Oct 2026). On LIVE, 0070/0071
+run with that APK and `face_enabled` stays **false** until the facilitator switches face scan on, after the LIVE steps
+below (Cloud key and secrets, the LIVE deploy).** [DECISIONS.md #295-#300](DECISIONS.md); DATABASE.md "Face scan
+(0070)".
+
+Before each self-scan the student's phone gets a challenge from the database, asks Google Play Integrity for a
+token bound to that check-in, and sends it to the Edge Function `verify-integrity`. The function has Google
+decode the token with a **service account**, checks package, signing certificate, request hash, time and
+`MEETS_DEVICE_INTEGRITY`, and gives the phone a one-time pass for the self-scan (120 s). Google charges
+nothing up to 10,000 decodes a day per Cloud project.
+
+**1. Google Cloud project (Praveen, about 15 minutes, ₹0).** **Status 23-10-2026:** the project is the class's existing Firebase project
+`mridanga-seva` (number **805380801184**, in `face-settings.ts`); the Play Integrity API is enabled. Left: steps 3-7
+(the `integrity-decoder-test` service account, its key as the TEST secret, the certificate and package secrets). Use the class's Google account with 2-step
+verification on (audit: every owner account has 2FA and a second owner), not a personal one.
+1. console.cloud.google.com → project picker → **New project** → name `mridanga-seva` → Create. Note the
+   **project number** (Dashboard → Project info): the app sends it with every integrity request (P3-5 puts
+   it in the app's settings; it is not a secret).
+2. **APIs & Services → Library** → search "Google Play Integrity API" → **Enable**.
+3. **IAM & Admin → Service accounts → Create service account**: name `integrity-decoder-test` (one per
+   Supabase project: `-test` now, `-live` later, so a leaked TEST key is deleted alone) → Create and
+   continue → skip the optional role and user steps → Done.
+4. Open it → **Keys → Add key → Create new key → JSON** → a file downloads. It is a password: never in
+   chat, email, git or the app.
+5. Supabase **TEST** (`fhuqykssenuhczdqbafu`) → **Edge Functions → Secrets → Add new secret**:
+   `GOOGLE_SERVICE_ACCOUNT_JSON` = the whole content of that file (open it in Notepad, select all, copy,
+   paste). Save, then **delete the downloaded file** (Shift+Delete). The key now exists only in Supabase and
+   Google.
+6. Same place, `PLAY_INTEGRITY_CERT_SHA256` = the APK's signing-certificate SHA-256: in a terminal in `app\`,
+   `npx eas-cli credentials -p android` → the build profile of the APK the phones have → **SHA256
+   Fingerprint** (with colons is fine; several may be listed, separated by commas). Without it the function
+   answers `not_configured` (it never lets "any certificate" through).
+7. Optional: `PLAY_INTEGRITY_PACKAGE` (default `org.mridangaseva.app`), `PLAY_INTEGRITY_MIN_VERSION_CODE`
+   (the oldest app build accepted).
+
+**2. Database (TEST).** SQL editor: run `0070_face_enrolment.sql` (its final number on main may differ:
+renumbered at the merge into main; it answers a one-row `schedule` table), then this check (read-only):
+```sql
+-- 0070 face scan, server side: verification on TEST (READ-ONLY, selects only). One row.
+select
+  (select value from settings where key = 'face_enabled') = 'false'::jsonb                       as face_off,
+  (select count(*) from settings where key like 'face\_%')::int                                   as face_settings,
+  to_regclass('public.face_enrolments') is not null
+    and not exists (select 1 from information_schema.columns where table_schema = 'public'
+                     and table_name = 'face_enrolments' and column_name ~ 'template|embedding')    as no_face_code,
+  (select relrowsecurity from pg_class where oid = 'public.face_enrolments'::regclass)
+    and not has_table_privilege('authenticated', 'public.face_enrolments', 'SELECT')
+    and not has_table_privilege('authenticated', 'public.integrity_challenges', 'SELECT')        as tables_closed,
+  (select count(*) from pg_trigger where not tgisinternal and tgname in ('consents_face_at_desk', 'consents_revoked_by',
+     'consents_end_face', 'students_end_face', 'profiles_end_face', 'settings_face_model', 'visits_face_guard',
+     'face_enrolments_refuse_withdrawn'))::int                                                    as triggers,
+  exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'visits' and column_name = 'liveness_ok')
+    and not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'visits' and column_name = 'match_score')
+                                                                                                  as visit_columns,
+  has_function_privilege('service_role', 'public.begin_integrity_check(text,uuid,text,text)', 'execute')
+    and not has_function_privilege('authenticated', 'public.begin_integrity_check(text,uuid,text,text)', 'execute')
+    and not has_function_privilege('authenticated', 'public.use_integrity_pass(text,text,text)', 'execute') as edge_only,
+  has_function_privilege('authenticated', 'public.start_face_enrolment(text,text)', 'execute')
+    and not has_function_privilege('anon', 'public.start_face_enrolment(text,text)', 'execute')  as app_functions,
+  (select count(*) from cron.job where jobname = 'mridanga-face-housekeeping' and active)::int   as job,
+  (select count(*) from face_enrolments)::int                                                     as enrolments;
+-- Expected: true | 6 | true | true | 8 | true | true | true | 1 | 0
+```
+Face scan stays **off** (`face_enabled` false) after it.
+
+**3. Deploy the function (TEST ref only; the CLI on Praveen's PC is logged in and really deploys).** From
+the repository folder, on the branch that has the function:
+```bash
+npx supabase@2.118.0 functions deploy verify-integrity --project-ref fhuqykssenuhczdqbafu --use-api
+```
+No `--no-verify-jwt`: the gateway checks the student's sign-in (`supabase/config.toml` says
+`verify_jwt = true`). `functions list` must show `verify-integrity` ACTIVE.
+
+**4. Check it without a phone.** In **Edge Functions → verify-integrity → Logs** after each call:
+- a call with no sign-in → `401` (the gateway);
+- a signed-in call with an empty body → `400 {"ok":false,"reason":"bad_request"}`;
+- with a real challenge (a TEST student login, face switched on for the test, `issue_integrity_challenge`) and
+  a made-up token → `{"ok":false,"reason":"integrity_failed","rule":"decode_failed"}`; the log line says
+  `decode error decode 400` (Google refused the made-up token: the key works) — `decode error token 4xx`
+  instead means the service account could not sign in (key or project wrong). The real pass comes only from
+  a phone with the Phase 3 app (P3-5).
+
+**Switching face scan on or off (SQL editor only; G10 cannot):**
+```sql
+update settings set value = 'true'  where key = 'face_enabled';  -- on: TEST for tests; LIVE only after Praveen's go
+update settings set value = 'false' where key = 'face_enabled';  -- off for everyone at once (enrolments are kept)
+```
+Other face settings, same way: `face_min_age` (18 until the Guru and the lawyer answer), `face_expiry_months_minor`
+(12), `face_expiry_months_adult` (24), `face_score_days` (60), `face_model_version` (changing it ends every
+enrolment made with another model: everyone re-enrols at the desk).
+
+**Counts for staff:** Reports → **Face scan use** (C27, branch `face-scan`; shown while face scan is on): per centre,
+students with face scan and failed face check-ins by reason. In the SQL editor read `face_scan_failures` directly (no
+student ids in it).
+
+**If the service-account key leaks:** Google Cloud → IAM & Admin → Service accounts → `integrity-decoder-…` →
+Keys → delete it; make a new key (step 4) and replace the secret (step 5). A leaked key lets someone decode
+tokens of our package, nothing more; it cannot read the database.
+
+**On LIVE (later):** a second service account `integrity-decoder-live`, its key and the certificate secret in
+the LIVE project, `0070` in the go-live order (GO_LIVE_CHECKLIST row M0070), the same deploy with the LIVE
+ref, Google added to the processor register as a live processor and to the privacy notice (N4, after the
+lawyer), then `face_enabled` true only on Praveen's word.
+
+## Face self-scan: check-in and check-out on the student's phone
+
+**Phase 3 — branch `face-scan` (was `p3-selfscan`), merged with the production APK of 08-11-2026; after "Face scan: integrity
+check" above, same conditions (off on LIVE until the facilitator switches it on).** [DECISIONS.md #344-#349](DECISIONS.md); DATABASE.md "Face self-scan (0071)".
+
+**1. The app learns the Cloud project number.** After step 1 of "Face scan: integrity check": put the project number
+in `app/src/face/face-settings.ts` (`PLAY_INTEGRITY_CLOUD_PROJECT = '123456789012'`, digits only). It is not a secret
+(it is inside every APK). Until then a self-scan stops at "Face check-in is not ready yet. Ask a coordinator."
+
+**2. Database (TEST).** SQL editor: run `0071_face_selfscan.sql` after 0070 (both renumbered at the merge into main; no rows
+answered), then this check (read-only):
+```sql
+-- 0071 face self-scan: verification on TEST (READ-ONLY, selects only). One row.
+select
+  (select value from settings where key = 'face_match_percent') = '55'::jsonb                     as threshold,
+  (select count(*) from information_schema.columns where table_schema = 'public' and table_name = 'visits'
+     and column_name in ('check_out_location', 'check_out_distance_m', 'check_out_method'))::int  as checkout_columns,
+  has_function_privilege('authenticated', 'public.self_scan(text,jsonb,text,text,boolean,real)', 'execute')
+    and has_function_privilege('authenticated', 'public.self_scan_state(text)', 'execute')
+    and not has_function_privilege('anon', 'public.self_scan(text,jsonb,text,text,boolean,real)', 'execute') as app_functions,
+  not has_function_privilege('authenticated', 'public.self_scan_location(jsonb,smallint)', 'execute')
+    and not has_function_privilege('authenticated', 'public.use_integrity_pass(text,text,text)', 'execute') as internal_closed,
+  (select value from settings where key = 'face_enabled') = 'false'::jsonb                        as face_off,
+  (select count(*) from visits where method = 'face' or check_out_method = 'face')::int           as face_visits;
+-- Expected: true | 3 | true | true | true | 0
+```
+The threshold, like every face setting, changes in the SQL editor only:
+`update settings set value = '60' where key = 'face_match_percent';` (30-95; higher = stricter, more "ask a
+coordinator").
+
+**3. Phone walk on the test day (adults only, face_enabled on TEST only for the walk, then off again).** Needs: the
+Phase 3 test APK ("Mridanga Seva TEST", branch face-scan; OPERATIONS "Face scan: the test app") on two phones, the Edge Function deployed with the APK's certificate, the project
+number in the app, a TEST student login enrolled at the desk (S15 + C25), the TEST centre's point and radius set (G9),
+its open hours covering the test time.
+1. Student phone at the class: the home shows **Check in** (first circle). Tap → location allowed → blink/turn → 3
+   pictures → "Checked in at …". Coordinator phone: Who is here now shows the student; the visit's method is face.
+2. Home now shows **Check out**. Within 10 minutes → "You checked in less than 10 minutes ago …" (desk path). After
+   10 minutes, step outside the area (≥ 150 m) → Check out → "Checked out at … after n minutes" + the note "Your phone
+   was not at the class …"; the coordinator's visit history of the student shows "Checked out away from the class:
+   outside the area".
+3. Refusals (each must end with "Or ask a coordinator"): check in from outside the area; with location switched off
+   (no position); with a fake-GPS app (developer options → mock location app) → "made-up location"; outside the open
+   hours (no circle; the page says the hours); flight mode (no internet); another person's face → "did not match"
+   (three such tries → "Three tries did not work today").
+4. Reports → **Face scan use** shows the counts (outside, mocked, no match …), no names.
+5. A minor's parent email on check-out only (dry run, notices on for a test guardian) — only when the Guru and the
+   lawyer have allowed minors (face_min_age stays 18 until then).
+Write the times (location read, scan, integrity, save) and the scores from C26 into SPIKE_RESULT §9.## Face scan: deleting the test face data
+
+**TEST only (`fhuqyk…`, Singapore), never LIVE ([DECISIONS.md #433](DECISIONS.md)).** After the adult face test
+(docs/phase3/ADULT_TEST.md), **within 7 days of the last test day**, every face record of the test goes: on the
+phones and on the TEST server. The signed paper consent forms hold no face data; the desk keeps them as the proof of
+consent (the Guru decides how long; they are not scanned).
+
+**1. Phones (each tester, at the desk).** In "Mridanga Seva TEST": My profile → **Face scan → Turn face scan off**
+(ends the server record and wipes the face code), then uninstall the app (Settings → Apps → Mridanga Seva TEST →
+Uninstall). A phone that is not brought back: its face code stays in that app's Keystore until it is uninstalled,
+but it opens nothing once step 2 has run (the server has no enrolment for it). Note those phones in NOTES_face_scan.md.
+
+**2. TEST server (the lead or Praveen, in the TEST project's SQL editor; check the project name at the top of the
+dashboard first).** One run, all or nothing:
+```sql
+-- face-test-delete: begin
+-- Deletes ALL face data on this project: the adult face test's (TEST only, never LIVE; OPERATIONS.md
+-- "Face scan: deleting the test face data"). Switches face scan off first. Safe to run twice.
+begin;
+update settings set value = 'false' where key = 'face_enabled';
+-- The test's face check-ins and check-outs (attendance on TEST made by the face path) and their match scores.
+delete from visit_face_scores where visit_id is not null;
+delete from visits where method = 'face' or check_out_method = 'face' or liveness_ok is not null;
+-- Enrolment records, integrity challenges and passes, failure counts.
+delete from face_enrolments where id is not null;
+delete from integrity_challenges where challenge is not null;
+delete from face_scan_failures where id is not null;
+-- The face consents recorded at the desk (the signed paper forms stay with the desk).
+delete from consents where scope = 'face';
+-- The audit copies of those visits and consents (written by audit_row, also by the deletes above).
+delete from audit_log
+ where (table_name = 'visits'
+        and ('face' in (new_row ->> 'method', old_row ->> 'method', new_row ->> 'check_out_method', old_row ->> 'check_out_method')
+             or new_row ->> 'liveness_ok' is not null or old_row ->> 'liveness_ok' is not null))
+    or (table_name = 'consents' and 'face' in (new_row ->> 'scope', old_row ->> 'scope'));
+-- Who looked at the desk's enrolment list (staff reads of get_face_enrolments).
+delete from access_log where function_name = 'get_face_enrolments';
+commit;
+-- face-test-delete: end
+```
+Then this check (read-only):
+```sql
+-- face-test-verify: begin
+-- Face test data on this project after the deletion. READ-ONLY (selects only). Expected one row:
+-- false | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0
+select
+  coalesce((select value from settings where key = 'face_enabled') = 'true'::jsonb, false)      as face_on,
+  (select count(*) from face_enrolments)::int                                                   as enrolments,
+  (select count(*) from visit_face_scores)::int                                                 as match_scores,
+  (select count(*) from integrity_challenges)::int                                              as challenges,
+  (select count(*) from face_scan_failures)::int                                                as failures,
+  (select count(*) from consents where scope = 'face')::int                                     as face_consents,
+  (select count(*) from visits where method = 'face' or check_out_method = 'face' or liveness_ok is not null)::int
+                                                                                                as face_visits,
+  (select count(*) from audit_log
+    where (table_name = 'visits'
+           and ('face' in (new_row ->> 'method', old_row ->> 'method', new_row ->> 'check_out_method', old_row ->> 'check_out_method')
+                or new_row ->> 'liveness_ok' is not null or old_row ->> 'liveness_ok' is not null))
+       or (table_name = 'consents' and 'face' in (new_row ->> 'scope', old_row ->> 'scope')))::int
+                                                                                                as audit_copies,
+  (select count(*) from access_log where function_name = 'get_face_enrolments')::int           as access_rows;
+-- face-test-verify: end
+```
+Paste the row into NOTES_face_scan.md with the date. Anything but `false | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0`: stop and
+tell the lead. The smoke test runs both blocks on the replayed database ("face test data deleted"), so a change to the
+face tables that the runbook misses fails there first.
+
+**3. Elsewhere.** No face data leaves the phone or the server: nothing to delete in Brevo (adults get no parent
+emails), EAS or GitHub. Supabase's own backups of TEST (the free plan keeps none) and the Edge Function logs
+(`verify-integrity`: request results, no faces; kept 1 day on the free plan) need nothing.
+
+## Face scan: the test app (Mridanga Seva TEST)
+
+**On main since the face merge (08-11-2026 production APK; [DECISIONS.md #430-#432](DECISIONS.md)).** The build is Praveen's, after the
+lead's go; never a worker's.** "Mridanga Seva TEST" is a separate APK for the face-scan class test: package
+`org.mridangaseva.app.test`, a red TEST band on its icon, the **TEST** Supabase project only (`fhuqyk…`), update
+channel `facetest`, no push notifications, no updates. It installs **next to** the class's app: a tester keeps "Mridanga
+Seva" (LIVE) and signs in to the TEST app with a **TEST** login.
+
+**Free builds.** The Expo free plan gives 15 Android builds a month (NOTES.md, 2026). October 2026 so far (22-10,
+`npx eas-cli build:list --platform android`): **6** (preview ×4 incl. 1 errored on 15-10, preview vc8 15-10,
+production vc12 16-10), so 9 left this month. Each test-app build is one of them; so is a rebuild for a fix.
+
+**Before the first build (once):**
+1. The lead's go on branch `face-scan` at a commit whose checks are green (NOTES_face_scan.md), and the TEST database
+   has the face migrations (`0070`, `0071` on the branch; "Face scan: integrity check" step 2 and "Face self-scan").
+2. The EAS environment `preview` holds the TEST values (the facetest profile uses it): from `app\`,
+   `npx eas-cli env:list --environment preview` shows `EXPO_PUBLIC_SUPABASE_URL` = `https://fhuqyk….supabase.co`.
+   Wrong or missing → `npx eas-cli env:push --environment preview --path .env.test` ("Building the Android app").
+3. A **phone hotspot** (the office network blocks EAS uploads) and Git on the terminal's path ("Building the Android
+   app": the PATH line).
+
+**Build (Praveen, from `app\` in a checkout of `face-scan`, clean and committed, after `npm ci`):**
+```bash
+npx eas-cli build -p android --profile facetest
+```
+- The **first** build asks *Generate a new Android Keystore?* → **Yes**. That makes the test app's own key on EAS.
+  Never choose the class app's keystore, and do not add `--non-interactive` to this first build (it cannot answer).
+- The build log shows `eas-build-guard: profile facetest → project fhuqykssenuhczdqbafu, app variant facetest,
+  publishable key.` before the package install. Anything else stops the build: a LIVE URL, a missing variant.
+- On the build's page: Application identifier `org.mridangaseva.app.test`, channel `facetest`, version code 1 (EAS
+  counts the test app separately).
+
+**After the build:**
+1. `npx eas-cli credentials -p android` → profile `facetest` / `org.mridangaseva.app.test` → copy the **SHA256
+   Fingerprint**. Supabase **TEST** → Edge Functions → Secrets: `PLAY_INTEGRITY_PACKAGE` = `org.mridangaseva.app.test`
+   and `PLAY_INTEGRITY_CERT_SHA256` = that fingerprint (keep the preview key's too, comma-separated, if the preview APK
+   is also tested). TEST only: LIVE never gets the test app's package or key.
+2. Download the APK from the build page; note its SHA-256 (`certutil -hashfile <file>.apk SHA256`) in
+   NOTES_face_scan.md. Share the link **only** with the consenting adult testers ("Face scan: class test with adults").
+3. Face scan stays off until the test day: `face_enabled` true on TEST only for the test ("Face scan: integrity
+   check", Switching).
+
+**JS fixes for testers (an update, no new build; #431 update 24-10-2026):** only while the change is JS-only (the
+facetest fingerprint unchanged). Office cable unplugged, from `app`:
+```powershell
+$env:APP_VARIANT = 'facetest'
+npx eas-cli update --channel facetest --environment preview --platform android --message "what changed"
+Remove-Item Env:APP_VARIANT
+```
+Check the printed `Runtime version` is the installed facetest APK's. Testers close and open the app twice.
+
+**Never:** `APP_VARIANT` on a `preview` or `production` build or update (the guard and `update:*` refuse it); the
+`facetest` profile with the `production` environment; any edit of `eas.json` (this profile included) on `main` without a
+new production APK (#432: `eas.json` is part of the fingerprint; since the face merge the profile is inside the production
+APK's fingerprint, so an edit would block every production update).
+
+**After the test:** testers uninstall "Mridanga Seva TEST" (Settings → Apps → Mridanga Seva TEST → Uninstall): the
+face codes in its Keystore go with it. Then "Face scan: deleting the test face data" for the server side.
 
 ## Files no announcement uses
 

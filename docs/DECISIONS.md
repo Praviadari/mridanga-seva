@@ -5306,6 +5306,158 @@ children without phones must print from the APK before the domain moves.
 published after it. Labels printed on pages.dev keep scanning after the domain move. Phone-only checks:
 NOTES.md (main folder) "13-10-2026 — Weekend app fixes".
 
+## 295. Gate 2: face codes stay on the student's phone; the server keeps an enrolment record only — 13 Oct 2026
+
+**Status: built on branch `face-scan` (was `p3-server`; migration 0070, placeholder number), not merged; face scan stays off.**
+
+**Context.** Audit phase 3 S4F-02 (High) and the lead's binding gates of 12 Oct 2026: WORK_PLAN's P3-2 kept
+a copy of every face code on the server ("template encrypted with a Vault key") and `my_face_template()`
+handed it back for a re-install. A Vault key is readable by the project owner in the SQL editor, so the copy
+was as safe as the dashboard password; a central store of ~200 children's face codes is the most damaging
+thing the class could lose, and the re-install path let anyone with the student's password restore a face
+code without anyone looking.
+
+**Decision.** No face code on the server, ever. `face_enrolments` records who enrolled (student, login),
+which phone (`device_key`, an id the app makes per install), the model, who confirmed it at the desk, when,
+until when, and how it ended. `my_face_template()` is dropped. A new phone, a re-install, expiry or a model
+change means a fresh supervised enrolment at the desk (#297). The phone asks `my_face_enrolment(device_key)`
+at every start online and wipes its code when the answer is "not enrolled". No role reads the table
+directly; staff read through `get_face_enrolments` (logged in `access_log`). Supersedes the storage part of
+#254 (DPIA, notice and consent drafts updated to match).
+
+**Why.** Device-only removes the central biometric store and the restore-by-password path; the desk
+re-enrolment is also the safer identity rule (S4F-03). Proving deletion needs a record, not the template.
+
+**Consequences.** Ended rows stay as the proof (no face data in them) and are deleted after 400 days. A
+lost phone is "remove at the desk" (#298) plus the Keystore protecting what is left on the phone.
+
+## 296. Gate 1 on the server: a single-use challenge, Google's verdict checked by an Edge Function, a one-time pass — 13 Oct 2026
+
+**Status: built on branch `face-scan` (was `p3-server`; 0070 + Edge Function `verify-integrity`), not deployed. The phone
+proof is the P3-0 test day (after 21 Oct 2026); if it fails, there is no self-scan for anyone (#279).**
+
+**Context.** Audit S4F-01 (High): in a self-scan the face match, liveness and location are all computed on
+the student's phone; the server can verify none of them. The only proof is a Play Integrity verdict bound to
+the one check-in, decoded by Google and checked on the server, with our signing certificate pinned. The spike
+(SPIKE_RESULT.md §0, §8; `spike-tools/gate1-server.mjs`) wrote the rules.
+
+**Decision.** (1) `issue_integrity_challenge(action)`: the student's phone gets a single-use challenge
+(32 hex characters), valid 60 s, bound to the login, the student and the action (check_in / check_out);
+only with a current enrolment; at most 10 per 10 minutes. (2) The phone asks Play Integrity for a token
+whose requestHash is the SHA-256 of `mrdg-selfscan-v1|<login>|<action>|<challenge>|<location result>` and
+posts it to the Edge Function `verify-integrity` with its sign-in. (3) The function spends the challenge
+first (`begin_integrity_check`, whatever happens next), has Google decode the token with a service account
+(secret `GOOGLE_SERVICE_ACCOUNT_JSON`), and requires: our package (request and app), the requestHash, a
+request time within the challenge's 60 s (5 s clock skew), a pinned signing certificate
+(`PLAY_INTEGRITY_CERT_SHA256`, one or more; none set = the function refuses to run), optionally a minimum
+versionCode, and `MEETS_DEVICE_INTEGRITY`. (4) `finish_integrity_check` records `pass` or the first failed
+rule; on a pass the phone gets a **one-time pass** (32 random bytes) whose SHA-256 the database keeps for 120
+s. (5) The future self-scan RPC (P3-5) calls `use_integrity_pass(pass, action, location result)`, which only
+the caller's own unspent, unexpired pass for that action and location result satisfies. (6) `method = 'face'`
+and `visits.liveness_ok` can be written only by that path (`face_visit_reserved` for QR scans, the desk and
+the dashboard). Failures are counted per centre and rule without a student id (`face_use_counts`).
+
+**Why an opaque pass, not a signed token.** The database is the only verifier, so a random pass held as a
+hash there is as strong as a signature, is single-use by construction, and needs no signing key shared
+between the function and the database (nothing to rotate, nothing in Vault). The web app cannot get a Play
+Integrity token, so it never gets a pass; the function sends no CORS headers.
+
+**Consequences.** Google Cloud project + service account + key, function secrets and the deploy are
+Praveen's steps (OPERATIONS.md "Face scan: integrity check"), after the test day. Free quota 10,000
+decodes a day per project ≫ the class's need. Licensing and app-recognition verdicts are not used (a
+link-installed APK is UNLICENSED / UNRECOGNIZED_VERSION).
+
+## 297. Enrolment is confirmed at the desk by a coordinator typing a code from the student's phone — 13 Oct 2026
+
+**Status: built on branch `face-scan` (was `p3-server`; 0070); the screens are P3-4.**
+
+**Context.** Audit S4F-03: enrolment and every re-enrolment must be tied, server-side, to a staff member
+who saw the student; WORK_PLAN left the confirmation "to design".
+
+**Decision.** Three calls. `start_face_enrolment(device_key, model)` (the student's phone, after the
+on-device capture with liveness) returns a 6-digit code valid 10 minutes; the server keeps only its SHA-256;
+a new request replaces a waiting one; at most 5 an hour. `approve_face_enrolment(student, code)` (a
+coordinator or the Guru, on their own phone, e.g. from the student's profile): never for their own record;
+a wrong code answers `code_wrong` with the tries left, the fifth ends the request. `enrol_face(request,
+device_key)` (the same phone, within 10 minutes of the confirmation) records the enrolment; the student's
+earlier enrolment on another phone ends (`replaced`). No self-service re-enrolment of any kind.
+
+**Why.** Typing a code shown on the student's phone proves the coordinator had that phone and its owner in
+front of them, needs no camera and no QR scan, and works on every staff phone. The 10-minute windows keep a
+code from being relayed later.
+
+**Consequences.** P3-4 designs the two screens (student: "Face scan" → code; coordinator: "Confirm face
+scan" on the student's profile). `approved_by` and `approved_at` stay on the record.
+
+## 298. Face consent: the adult's own, or the parent's plus the child's own yes; adults first; withdrawal in one tap — 13 Oct 2026
+
+**Status: built on branch `face-scan` (was `p3-server`; 0070). The minimum age is a Guru item (DECISIONS_FOR_GURU item 3) and
+a lawyer question; until both answer, face scan is for adults only.**
+
+**Context.** Audit S4F-05: the consents table had no place for the child's own "yes" or for an adult's face
+consent (adults have no consent rows); DPIA: "the child's own no stops face scan".
+
+**Decision.** `consents` (scope `face`) gains `child_assent`, `assent_read_by` (the staff login that read
+the child their part of the form) and `revoked_by`. `record_face_consent` (staff, at the desk) is the only
+app path (a direct insert is refused, `face_consent_at_desk`): an adult's own signed form; a minor's parent
+(guardian, ID type seen, signed form) **and** the child's yes. Refused under the setting `face_min_age`,
+**18** until the Guru and the lawyer answer (adults first, SQL editor only). `remove_face`: the student's
+one tap (`student_off`) and the desk on the parent's or adult's request (`desk`) end the enrolment **and
+revoke the face consent** (`revoked_by` = who asked; a coordinator may record this withdrawal, unlike other
+consent revocations, which stay the Guru's); `lost_phone` ends the enrolment and keeps the consent. Removal
+always works, also while face scan is switched off and for a withdrawn record. Expiry 12 months for a minor,
+24 for an adult (settings; Guru item, defaults as planned).
+
+**Why.** DPDP s.6(4): withdrawing must be as easy as giving; the child's own "no" must count. A face consent
+recorded outside the desk function would skip the age rule and the assent.
+
+**Consequences.** The paper face consent form (CONSENT_DRAFT F-P/F-A) maps to these fields. The minimum age
+and expiry are changed in the SQL editor only (#300), after the Guru's answer.
+
+## 299. Every way a face enrolment ends, and how long face data is kept — 13 Oct 2026
+
+**Status: built on branch `face-scan` (was `p3-server`; 0070).**
+
+**Context.** Audit S4F-06 and WORK_PLAN P3-2: deletion inside withdrawal, erasure, Left + 30 days, expiry
+and a model change; per-visit match scores are biometric-derived data with no retention.
+
+**Decision.** An enrolment ends (with its reason) when: the face or data consent is revoked or deleted;
+`withdraw_consent` (`withdrawn`); the login is taken off or put on the record (`login_changed`) or switched
+off (`login_off`); the setting `face_model_version` changes (`model_changed`); and nightly
+(`mridanga-face-housekeeping`, 01:55 UTC): expiry, a request not completed within an hour, a student Left
+for 30 days. `erase_student` deletes everything with the record (cascade). A withdrawn record cannot start
+one (`student_withdrawn`). **The match score is not stored on `visits`**: the `audit_visits` trigger copies
+the whole visit row into `audit_log` at every check-out, so a score there would outlive any limit. It goes in
+`visit_face_scores` (no audit trigger), deleted after `face_score_days` (60) — the calibration and pilot
+window; `visits.liveness_ok` and `method = 'face'` stay with the visit. Ended enrolments and failure counts
+are deleted after 400 days, integrity challenges after a day.
+
+**Why.** Each path is a point where the purpose ends; a trigger catches every caller (the app, the
+dashboard, a later function) instead of relying on each one to remember.
+
+**Consequences.** The phone learns of every end at its next start online (#295) and wipes its code.
+`face_score_days` can be lowered after the pilot (SQL editor).
+
+## 300. Face scan has one server switch, off, changed only in the SQL editor — 13 Oct 2026
+
+**Status: built on branch `face-scan` (was `p3-server`; 0070).**
+
+**Context.** Praveen (12 Oct 2026): face scan is developed now but switched on only when fully tested. The
+app must not be able to switch it on, and the switch must stop the whole chain.
+
+**Decision.** Setting `face_enabled`, **false**. While false, every face function that starts or records
+something refuses with `face_off` (face consent, the three enrolment steps, challenges, the Edge Function's
+check, a face visit). Removal (`remove_face`), the phone's status question (`my_face_enrolment`, which also
+reports the switch), the staff counts and the nightly job always work. All `face_*` settings (switch,
+minimum age, expiry months, score days, model version) are changed in the SQL editor only: G10 and any app
+user get `setting_owner_only`.
+
+**Why.** One place to switch face scan off for everyone at once (the lawyer, an incident, a bad model)
+without an app update; and the Guru's G10 cannot switch on by mistake what the lawyer has not cleared.
+
+**Consequences.** Turning it off does not end enrolments (turning it on again needs no re-enrolment).
+OPERATIONS.md "Face scan: integrity check" has the switch's SQL.
+
 ## 301. Back returns to the screen you came from: stack copies of the tab screens — 13 Oct 2026
 
 **Context.** Audit phase 2 R4-01. A screen on top of the tabs (Overview, Follow-ups by coordinator, My
@@ -5407,6 +5559,143 @@ only values that are record ids (UUIDs), at most 300. Nothing else of any query 
 **Why.** A coordinator printing one child's card from the phone must not have to find the child again.
 
 **Consequences.** A remembered push target still keeps no query.
+## 307. The Phase 3 APK's native face packages, trimmed; one new fingerprint — 13 Oct 2026
+
+**Status: built on branch `face-scan` (was `p3-native`; P3-3), not merged; face scan stays off.**
+
+**Context.** The P3-0 spike (SPIKE_RESULT.md on branch `p3-spike`) chose the on-device chain and measured +65.9 MB on the
+APK. P3-3 puts that chain into the class app itself, so the Phase 3 APK can be built on the test day.
+
+**Decision.** Exact versions as the spike proved them: `react-native-vision-camera` 5.2.3 + `-worklets` 5.2.3,
+`react-native-nitro-modules` 0.37.1, `react-native-nitro-image` 0.15.2, `react-native-vision-camera-face-detector` 2.1.0,
+`react-native-fast-tflite` 3.0.1, `@expo/app-integrity` 57.0.2 (unused until the self-scan, P3-5/P3-6, but native, so the
+fingerprint changes only once), `expo-secure-store` ~57.0.4. Models in app/assets/models (SFace int8, MiniFASNet V2 and
+V1SE int8; README with the full SHA-256 of each), Metro `tflite` assets (app/metro.config.js). Trimmed: no SQLCipher
+(expo-sqlite stays plain), LiteRT's GPU delegate library left out (`packagingOptions.exclude`; **undone by #435**: the app closed at start without it), no
+`expo-local-authentication` (the phone's fingerprint is not an attendance factor, audit S4F-10). Both ABIs in one APK
+(arm64-v8a + armeabi-v7a), as the class app ships today. Camera permission text names the face scan (te/hi for iOS in
+app/locales); `allowBackup: false` unchanged; brief 9's `blockedPermissions` kept and three added, which the first Actions build's
+merged manifest showed: `USE_BIOMETRIC` and `USE_FINGERPRINT` (androidx.biometric, pulled in by expo-secure-store; its
+fingerprint lock is not used) and `READ_PHONE_STATE` (implied by a LiteRT library, like the storage permissions brief 9
+blocked); the workflow fails if any blocked permission comes back. Fingerprint **3571a39a** on p3-native (was 40e5832c);
+on branch face-scan (rebuilt on main 22-10-2026) see NOTES_face_scan.md for the current one.
+A branch-only GitHub Actions workflow (.github/workflows/face-scan-android.yml; was p3-native-android.yml) builds the
+release APK on every push to `face-scan`, with its size against main 4b522f9 and the permissions it asks for.
+
+**Why.** Pinned versions: VisionCamera 5 and Nitro move fast and `@expo/app-integrity` is alpha (SPIKE_RESULT §12). The
+trims take off what the class does not use: the first build measured **+53.3 MB** (127,192,669 B vs 73,940,799 B for weekend-app
+421980f, both ABIs; the spike was +65.9 MB). An arm64-only APK would save ≈ 15 MB more
+but shut out old 32-bit phones; decided at P3-7 with the measured size.
+
+**Consequences.** From the merge on, main's updates reach only APKs built with this code (WORK_PLAN P3-3): the branch
+merges right before the Phase 3 APK build, after the phone test day and Praveen's go.
+
+## 308. The face code lives only in the phone's Keystore store; no face scan on the web — 13 Oct 2026
+
+**Status: built on branch `face-scan` (was `p3-native`; P3-4).**
+
+**Context.** Gate 2 (audit S4F-02, #295): the server keeps an enrolment record and never a face code, so the phone's
+copy is the only one. SPIKE_RESULT §7 chose `expo-secure-store` over SQLCipher.
+
+**Decision.** One record per phone and login under `face.v1` in `expo-secure-store` (Android Keystore; iOS
+`WHEN_UNLOCKED_THIS_DEVICE_ONLY`): the login it belongs to, the device key (#309), the model version, the enrolled face
+code and its end date, and a face code waiting for the coordinator with its 6-digit code. A face code is the normalised
+mean of the enrolment pictures' 128 numbers — the pictures' own numbers are not kept, and no picture ever is (the exact
+path's temporary JPEG is deleted in the same call). The web app has no face scan: src/face/face-store.web.ts,
+face-scanner.web.tsx and face-dev-panel.web.tsx stand in, so the native packages never reach the web bundle (a test
+checks the importers); the student's Face scan row is hidden there.
+
+**Why.** The mean is all a 1:1 check needs; keeping less is the DPIA's data minimisation. The web has no Keystore and no
+models.
+
+**Consequences.** A new phone, a re-install or a sign-out means a new supervised enrolment at the desk. The self-scan
+(P3-5) reads the face code from this store.
+
+## 309. The device key: random, per login on one phone, gone with the face code — 13 Oct 2026
+
+**Status: built on branch `face-scan` (was `p3-native`; P3-4).**
+
+**Context.** 0070 ties an enrolment to a `device_key` (16-100 of A-Z a-z 0-9 _ -), "an id the app makes once per
+install" (#297).
+
+**Decision.** 24 random bytes (expo-crypto), base64url, 32 characters, made with the first enrolment of a login on this
+phone and kept in the face record; a re-enrolment on the same phone keeps it; it is deleted with the face code. No
+hardware or Android id is used.
+
+**Why.** A random key says nothing about the phone; tying it to the face record means nothing is left on the phone
+after a wipe, and a key copied off the phone is useless without the face code beside it.
+
+**Consequences.** After a wipe the next enrolment has a new key; the server's old enrolment for the old key stays until
+it is replaced or ends (it holds no face code).
+
+## 310. The wipe rule: asked at every start, at sign-out, and on "Turn face scan off" — 13 Oct 2026
+
+**Status: built on branch `face-scan` (was `p3-native`; P3-4).**
+
+**Context.** Audit S4F-02/03/06: the phone's face code must not outlive the enrolment, the login or the person's no.
+
+**Decision.** At every start of the student area (online), the phone asks `my_face_enrolment(device key)` and applies
+src/face/enrolment.ts `applyWipeRule`: another login's record or another model → everything goes; the enrolled code stays
+only while the server says this phone's enrolment is current; a waiting code stays while the server waits on that
+request, is promoted when the server already enrolled it (the app stopped between `enrol_face` and saving), else goes;
+without an answer nothing is decided, except a waiting code older than an hour. Every sign-out path (own, or a login the
+server ended) wipes it with the other device traces (src/lib/device-traces.ts). "Turn face scan off" calls
+`remove_face` first (the consent ends too, #297) and wipes only when the server has answered — offline it says so and
+keeps both, so the phone and the server never disagree about the student's choice. The Face scan row shows while the
+switch is on, or while this phone still keeps a face code (so it can always be turned off).
+
+**Why.** The server is the record of the person's choice and of the enrolment; the phone follows it, and a sign-out
+on a shared family phone must leave no face code behind.
+
+**Consequences.** Tests: tests/face-enrolment.test.mjs (wipe rule, screen states, record changes). A sign-out leaves the
+server's enrolment until replaced or expired; staff counts (face_use_counts) may count such a student as enrolled.
+
+## 311. The enrolment on the student's phone: the server first, then the scan, then the code — 13 Oct 2026
+
+**Status: built on branch `face-scan` (was `p3-native`; P3-4); thresholds wait for the test day.**
+
+**Context.** #297 fixed the server's three steps (start, the coordinator's code, enrol). The phone decides the order
+around the camera and what makes a good enrolment.
+
+**Decision.** S15 Face scan: "Turn on face scan" calls `start_face_enrolment` before the camera opens, so a missing
+consent, the age rule or a switched-off class is said first (no_face_consent explains how to give consent at the desk).
+Then the camera permission with the class's own words, the blink/turn challenge in a random order (8 s per step; a lost
+or second face fails it, "Try again" with a new order), then 5 pictures (at least 3) on the exact path. Kept only if every
+picture scores as a real face (MiniFASNet ≥ 0.8) and each is close to their mean (cosine ≥ 0.5) — the spike's starting
+values, tuned on the test day and in the pilot. The face code is saved waiting, then the 6-digit code is shown (after
+the scan, so the coordinator watches the scan first); the page asks the server every 4 s and finishes by itself once
+the coordinator has typed it (`enrol_face`). A waiting code survives an app restart (it is in the record with its code).
+A re-enrolment (prompt on the home and the page 30 days before the end) keeps the old face code until the new one is
+confirmed.
+
+**Why.** Telling a refusal before the camera saves the student a pointless scan; the code after the scan ties the
+coordinator's confirmation to the scan they saw.
+
+**Consequences.** A request is 10 minutes on the server: a scan that takes longer means "Start again". At most 5
+requests an hour (too_many_requests).
+
+## 312. The coordinator's desk screen, and a hidden developer screen on TEST builds only — 13 Oct 2026
+
+**Status: built on branch `face-scan` (was `p3-native`; P3-3, P3-4).**
+
+**Context.** The coordinator confirms on their own phone (#297); the desk also records the face consent
+(`record_face_consent`, #298) and turns face scan off for a parent or a lost phone. P3-3 asks for a hidden screen that
+proves detect → embed on a phone.
+
+**Decision.** C25 Face scan at the desk, opened from the student's profile (C8) by a button shown only while the switch
+is on: confirm the code (6 digits; a wrong code says how many tries are left; never one's own record), record the face
+consent once (adult: the signed form; child: the parent who signed, the parent's ID seen and the child's own yes), the
+student's face scan record on request (`get_face_enrolments` writes the read to the access log), and Turn face scan off
+("they say no": the consent ends; "lost or new phone": the consent stays). It needs no camera, so it works on the web
+too. C26 Face scan test: staff only, while the switch is on, and only on a TEST build (a development run or the update
+channel `preview`, never `production`): the models' load time, the live ML Kit numbers, one picture → embedding and
+real-face score with every step's time, cosine to the previous picture; in memory only.
+
+**Why.** The desk works from whatever device the coordinator has; the developer screen must never reach LIVE users.
+
+**Consequences.** Every server refusal is worded (src/data/face.ts `FACE_ERROR_CODES`, en/te/hi; te/hi drafts for native
+review), including the integrity codes the self-scan will use.
+
 ## 313. Attendance by name answers at once; long people lists are drawn 50 at a time — 13 Oct 2026
 
 **Context.** Audit phase 4 P5-04: a tap on a name on Mark attendance waited for the check-in and then for a full
@@ -5970,6 +6259,134 @@ an event's day — This Sunday, Next Sunday (`lib/quick-times.ts`). "Next class 
 left for later.
 
 **Why.** Typing 18-10-2026 on a phone keyboard is the slowest, most error-prone entry (audit U4-05).
+
+## 344. The home's "Check in" / "Check out" circle: only when a self-scan can happen — 13 Oct 2026
+
+**Status: built on branch `face-scan` (was `p3-selfscan`; P3-5); migration 0071 (placeholder number).**
+
+**Context.** WORK_PLAN P3-5: a circle on the student home, only inside the centre's open window; face scan stays off by
+default (#300) and nothing face-related may show while it is off.
+
+**Decision.** The home asks `self_scan_state(device_key)` each time it comes into view, but only on the Android app, only
+while the start check (#310) says face scan is on and this phone keeps a confirmed face code. The answer's `action` is
+`check_in` while the centre is open (opens_at to closes_at, its time zone) and the student is not checked in, `check_out`
+while a visit of today is open (any time, until the closing job closes it), otherwise null (no circle); null too when
+this phone is not the enrolled one or `face_block_reason` names a reason (no consent, too young, left ...). The circle is
+the first in the ring, green, "Check in" / "Check out"; it opens S16. The answer also carries the centre's point and
+radius (the phone needs them for the location result it binds into the integrity token) and the match threshold.
+
+**Why.** Everyone else — web, iPhone, students without face scan, every student while the switch is off — never calls
+the server for it and sees exactly today's home.
+
+**Consequences.** One extra read per home view for enrolled students only. The window shown is the centre's
+`opens_at`-`closes_at`; a closed day (festival) is not known to the server, so the circle shows then too.
+
+## 345. The self-scan: the phone refuses first, the server re-checks everything, a refusal is answered — 13 Oct 2026
+
+**Status: built on branch `face-scan` (was `p3-selfscan`; P3-5); migration 0071 `self_scan`.**
+
+**Context.** WORK_PLAN P3-5 and the binding gates: Gate 1 (Play Integrity per check-in, #296), Gate 2 (face code on the
+phone only, #295), never a guess, the coordinator always offered, 0048's QR re-scan window and withdrawn rule.
+
+**Decision.** On the phone (S16), in order: ONE position (#348) → a check-in goes on only from "inside" → the blink/turn
+challenge + 3 pictures, each a real face, all one face, their mean matching the phone's face code (#348) → a challenge
+(`issue_integrity_challenge`) → a Play Integrity token bound to login, action, challenge and location result → the Edge
+Function `verify-integrity` → a one-time pass → `self_scan(action, position, pass, device_key, liveness_ok, score)`. The
+server then re-checks, in order: caller is a student, face scan on, `face_block_reason` (consent, record, age), the
+location result from the position (`self_scan_location`, the phone's rule letter for letter), the pass (this login,
+action and location result, once — `use_integrity_pass`, 0070), the enrolment of THIS phone, liveness, the score against
+`face_match_percent`, and for a check-in the open hours and "inside". A failed re-check is **answered**
+`{ ok: false, reason }`, not raised, so the pass stays spent and the failure stays counted (`face_scan_failures`, per
+centre, no student id). A check-in is saved with method `face`, `marked_by` = the student, `liveness_ok` true, the
+location result and distance, and the score in `visit_face_scores` (0070: never on `visits`, which audit_log copies). A
+check-out is never refused for the place: saved with its own location result (#347), flagged when not inside; it still
+needs the face match and the pass. 0048 holds: a check-in while in answers `already_in`; a check-out within
+`qr_rescan_minutes` (10) of the check-in answers `too_soon` (the desk can still check out); a repeat within 30 s
+`already_out`; a withdrawn record's login is switched off, so it gets `not_allowed`. An earlier day's open visit is closed
+at that day's closing time first, as at the desk. The parent's check-out email follows from 0043/0044's trigger with no
+change.
+
+**Why.** The phone's answers (liveness, score, mocked) are only as good as the app, which is what the integrity pass
+vouches for; everything the server can see itself (time, place from the position, consent, enrolment) it checks again.
+
+**Consequences.** Error codes raised to the app: `not_allowed`, `action_invalid`, `face_off`, `bad_location` and
+`face_block_reason`'s. The position goes with the call and is never stored (only the result and the distance, as 0024).
+
+## 346. Failed self-scans are counted from the phone too, without a name — 13 Oct 2026
+
+**Status: built on branch `face-scan` (was `p3-selfscan`); migration 0071 `note_self_scan_failure`.**
+
+**Context.** P3-6's staff view counts failed self-scans by reason; most failures (outside, mocked, liveness, no match)
+happen on the phone before the server is asked.
+
+**Decision.** `note_self_scan_failure(reason, detail)`: a student with a current enrolment, face scan on; reasons
+`outside` (detail: inaccurate, no_fix, refused, no_location, no_area, outside), `mocked`, `liveness`, `no_match`; into 0070's
+`face_scan_failures` (centre, reason, detail, time — no student id). At most 200 a centre an hour from phones; beyond that
+the call answers false and counts nothing. The app never waits for it and never shows its errors.
+
+**Why.** Counts only, so nobody who struggles (or said no) is singled out (#213, Guru item 11); the cap keeps one phone
+from flooding the numbers.
+
+**Consequences.** A modified app could add false counts up to the cap; the numbers are a guide for the pilot, not a record.
+
+## 347. A self-scan check-out keeps its own location result — 13 Oct 2026
+
+**Status: built on branch `face-scan` (was `p3-selfscan`); migration 0071 (visits columns), app visit history.**
+
+**Context.** "Check-out: outside = saved and flagged, never blocked" (WORK_PLAN P3-5). `visits.location_check` (0024) is
+the check-in's.
+
+**Decision.** `visits.check_out_location` (inside, outside, refused, no_fix, no_location, no_area, mocked, inaccurate),
+`check_out_distance_m` (inside/outside only) and `check_out_method` (`face` from the self-scan; null otherwise, as before
+0071). App users cannot change them (0024's `guard_visit_location`, widened); `check_out_method = 'face'` is reserved for
+the self-scan path like method `face` (0070's `guard_face_visit`, widened). Staff see a flagged check-out in the visit
+history (S9 for staff): "Checked out away from the class: …". The history reads `select('*')` so it still loads on a
+database without 0071.
+
+**Why.** A student who leaves early from the road is still checked out (the parent's email goes), and the coordinator
+sees it was not at the class.
+
+**Consequences.** Reports (C21/G8) still count check-in flags only; check-out flags are in the history.
+
+## 348. The numbers of the self-scan: one fresh position, 0.55, three pictures, three tries — 13 Oct 2026
+
+**Status: built on branch `face-scan` (was `p3-selfscan`); tuned on the test day and in the pilot (P3-7).**
+
+**Decision.** Location: one `getCurrentPositionAsync` at High accuracy, at the tap, at most 8 s, never a position kept from
+earlier (attendance-location.ts reuses one for a queue at the desk; a self-scan must be where the student is now), never
+in the background, never stored on the phone. Mocked (Android reports it) → refused; accuracy over 100 m or none →
+refused ("inaccurate"); inside = distance ≤ radius + accuracy (0024's allowance). Face: 3 pictures after the challenge,
+each real-face score ≥ 0.8, each within cosine 0.5 of their mean, the mean's cosine with the phone's code ≥ 0.55
+(`MATCH_MIN`; the server's `face_match_percent`, default 55, SQL editor only, is used when stricter and re-checked by
+the server). Three failed tries in a day (challenge failed, no live face, not one face, no match, integrity) → only the
+coordinator's way is offered; kept in memory only, so a restart starts again (the server's 10 challenges per 10 minutes
+still hold). Place and time refusals are not tries: they say "Ask a coordinator" at once.
+
+**Why.** The spike measured same person 0.81 and different people 0.11-0.31 (OpenCV's own line 0.363): 0.55 prefers
+"use your QR card" over a wrong check-in. Abids' radius is the centre's setting (Guru item 4: 100 m).
+
+**Consequences.** All numbers live in `src/face/face-settings.ts` and 0071; the test day measures genuine and impostor
+scores on the phone (C26) before face scan is switched on.
+
+## 349. The Play Integrity call and the staff counts screen (P3-6 app half) — 13 Oct 2026
+
+**Status: built on branch `face-scan` (was `p3-selfscan`); needs the Google Cloud project after the test day.**
+
+**Decision.** `src/face/integrity.ts` (Android only; `integrity.web.ts` stands in, so `@expo/app-integrity` stays out of
+the web bundle): `prepareIntegrityTokenProviderAsync(project number)` once, `requestIntegrityCheckAsync(SHA-256 of the
+request text)`, prepared again and asked once more when the provider has gone stale. The project number is a constant,
+`PLAY_INTEGRITY_CLOUD_PROJECT` in face-settings.ts — empty until Praveen makes the Google Cloud project (OPERATIONS "Face
+scan: integrity check" step 1); while empty, the self-scan says "not ready yet, ask a coordinator" and nothing else
+changes. It is not a secret (it is inside every APK); setting it is a JS change (an OTA). No self-scan on iPhone (no Play
+Integrity; WORK_PLAN §4) or on the web. C27 Face scan use, opened from Reports while the switch is on (web too): per centre
+(a coordinator their own, the Guru all), students with face scan, failed self-scans by reason and the phone-check
+failures by rule, for the last 4 weeks / this month / last month / last 3 months; counts only, nobody named or ranked.
+
+**Why.** One Cloud project serves the spike's Gate 1 and this (p3-server's notes); the counts screen answers "is face scan
+working at the centre?" without making a list of people.
+
+**Consequences.** After the Cloud project exists: one line in face-settings.ts, then the Edge Function's secrets and
+deploy (p3-server's OPERATIONS steps).
 
 ## 350. Staff side menu; eight circles per home — 14 Oct 2026
 
@@ -6852,6 +7269,161 @@ export is not guarded: the live web goes up with the same commit as the producti
 
 **Why.** Praveen wants students and staff to see in the app what each version changed. Notes in the bundle can never
 disagree with the code they describe, and the publish guard makes writing them part of every release.
+
+## 430. "Mridanga Seva TEST": a separate test app for the face-scan class test (APP_VARIANT=facetest) — 22 Oct 2026
+
+**Status: branch `face-scan` (placeholder number, renumbered at the merge into main). Agreed 22-10-2026 (lead chat 12
+with Praveen): the face-scan test runs on its own app so the testers keep the class's app.**
+
+**Decision.** `app/app.config.js` hands `app.json` on unchanged unless `APP_VARIANT` is set. `APP_VARIANT=facetest`
+builds "Mridanga Seva TEST": package `org.mridangaseva.app.test` (installs next to `org.mridangaseva.app`; a phone
+keeps both), link scheme `mridangasevatest` (links for the class's app never open it), the app icon and Android
+adaptive layers with a red **TEST** band (`scripts/make-facetest-icons.mjs` writes `assets/images/facetest/`; the band
+stays inside Android's safe zone). An unknown variant stops the build. EAS profile `facetest` in `eas.json`: an APK,
+its own update channel `facetest`, `env.APP_VARIANT = facetest`, the EAS environment `preview` (the TEST project's URL
+and publishable key). The build guard (`scripts/eas-build-guard.mjs` `BUILD_PROFILES`, #256) maps `facetest` to the
+TEST project `fhuqyk…` only and refuses LIVE; it also refuses `facetest` without its variant, and `preview` /
+`production` with any variant. The hidden face developer screen (#312) also opens on the `facetest` channel.
+
+**Why.** Testers must not lose the class's app (and their sign-in, My QR, practice log) to try face scan, and a test
+build must never reach LIVE data. A second package id is the only way Android keeps two copies; the red band and the
+name stop a tester mixing them up at the door.
+
+**Consequences.** The test app has its own signing key on EAS (made at its first build, never the class app's), so
+`verify-integrity` on TEST needs that key's SHA-256 and `PLAY_INTEGRITY_PACKAGE=org.mridangaseva.app.test`
+(OPERATIONS.md "Face scan: the test app"). Each test-app build is one of the free plan's Android builds.
+
+## 431. The test app has no push notifications and no updates — 22 Oct 2026
+
+**Update 24 Oct 2026 (Praveen: "updates are the best thing to do, builds have limits"):** the test app DOES take updates on
+its own channel `facetest`, published with eas-cli directly (publish-update.mjs still refuses `APP_VARIANT`): from `app`,
+`$env:APP_VARIANT='facetest'`, then `npx eas-cli update --channel facetest --environment preview --platform android -m "…"`,
+then `Remove-Item Env:APP_VARIANT`. The runtime printed must be the facetest APK's (fde0a96f for build 560780b7). First one:
+group 635d2322 (the #436 fix). No push notifications still holds.
+
+**Status: branch `face-scan` (placeholder number).**
+
+**Decision.** `APP_VARIANT=facetest` leaves out `google-services.json` (it names only `org.mridangaseva.app`, and
+Google's build step refuses a package it does not list), so the test app gets no push notifications; the app already
+handles a refused push registration quietly (#305). `npm run update:preview` / `update:production` refuse to run while
+`APP_VARIANT` is set (the update would carry the test app's fingerprint and reach none of the channel's APKs), and
+there is no `update:facetest`: a fix for the testers is a new `facetest` build.
+
+**Why.** Push and over-the-air updates for a second package need a Firebase app, FCM credentials and an EAS
+environment of their own: set-up the short adult test does not need. Keeping both out keeps the class's own push and
+update paths exactly as they are.
+
+## 432. eas.json is part of the fingerprint: the facetest profile stays on the branch — 22 Oct 2026
+
+**Status: measured 22-10-2026 on a clean checkout of main 4b522f9 (@expo/fingerprint 0.20.13).**
+
+**Decision.** Expo's fingerprint hashes the whole `eas.json` (source "easBuild"; no source skip leaves it out).
+Measured: main = **23dc7e4a**; main + `app.config.js` = **23dc7e4a**, with `expo config --type public` byte-identical
+(the introspected config differs only in `_internal.dynamicConfigPath`, which is not shipped); main + `app.config.js` +
+the `facetest` profile = **cf8dc1e9**. So `app.config.js` could go to main at any time, but the `facetest` profile must
+not reach main before the production APK that carries face scan (that APK has a new fingerprint anyway). The branch's
+own fingerprints (with and without the variant) are in NOTES_face_scan.md.
+
+**Why.** A changed fingerprint on main would stop every production update from reaching today's phones (fp 23dc7e4a).
+
+**Consequences.** From the face merge on, `eas.json` with the `facetest` profile is part of the production fingerprint
+like the rest of the file: any later edit of it, this profile included, means a new production APK. If the test app is
+no longer wanted by then, drop the profile at the merge, before that APK is built.
+
+## 433. The face test: consenting adults, the test app, TEST only, all face data deleted within 7 days — 22 Oct 2026
+
+**Status: branch `face-scan` (placeholder number). Agreed 22-10-2026 (lead chat 12 with Praveen); no lawyer, the DPDP
+Act and Rules followed strictly (as #399).**
+
+**Decision.** The first real use of face scan is a class test with **adult volunteers only** (18+, `face_min_age` 18),
+on "Mridanga Seva TEST" (#430) and the TEST project (Singapore), with TEST student logins: never the class's app, LIVE
+or a minor. Each tester signs a separate written consent (docs/phase3/ADULT_TEST.md §1, en master, te/hi drafts for
+native review) that names what is kept and where (face code on the phone only; enrolment record, check-in results and
+match scores on the TEST server outside India; a Google Play check), the purpose, the test's dates, deletion within 7
+days, the rights and the Data Protection Board. `face_enabled` is true on TEST only during a session. Within **7 days
+of the last session** every face record goes: on the phones (Turn face scan off, uninstall) and on TEST by one SQL run
+with a read-only verify row (OPERATIONS.md "Face scan: deleting the test face data"); the smoke test runs that SQL as
+written. Minors only after ADULT_TEST.md §3: the adult test passed and deleted, the Guru's minimum age (item 3),
+written verifiable parent consent with the child's own yes, the papers final, and only in the class's own app after
+the face production APK.
+
+**Why.** A test proves what the spike measured only on phones and faces of the class, and adults can consent for
+themselves. Biometric data kept for a test is kept no longer than the test needs (DPDP s.8(7)): the test data has no
+use once the results are counted.
+
+## 434. A coordinator's own record uses face scan through the self-scan only — 22 Oct 2026
+
+**Status: branch `face-scan` (placeholder number), after main took staff own record (0053, #316-#321) on 22-10-2026.**
+
+**Decision.** A staff login linked to its own student record (0053) gets face scan like a student, under Me: the
+"Check in" / "Check out" circle first in Me's ring (blue, the door's family) and the Face scan row below it, opening
+`/staff/me/self-scan` and `/staff/me/face-scan` (the student's S16 and S15, as Me's other screens are, #319). Every
+step another person does for a student is done by a colleague here too: the face consent (`record_face_consent` on
+one's own record answers `own_record`, 0070) and the desk confirmation (`approve_face_enrolment` already refused one's
+own). The visit itself is the person's own act, so 0071 replaces 0053's `refuse_own_record` with one more way through:
+a visits insert or update while `app.face_visit` is on, which only `self_scan` sets, for its own transaction, after
+its checks (integrity pass, this phone's colleague-confirmed enrolment, place, hours, face). Every other way of
+recording one's own visit (name, QR, Mark attendance, edits) stays `own_record`. S16's "Open My QR" opens the own
+area's copy. The app shows `own_record` with the shared words (common.ownRecord).
+
+**Why.** "Coordinators are students too" (#316) and face scan is the student's own act on their own phone, checked
+by the server; the rule of #318 is about one person marking another's attendance, which the self-scan is not.
+
+**Consequences.** A later migration that replaces `refuse_own_record` keeps the self-scan line (comment in 0071).
+The wipe rule for a staff phone runs when Me opens (not at app start, as for a student), so a staff phone holding a
+code the server has ended keeps it until then; the server refuses it anyway.
+
+## 435. LiteRT's GPU library stays in the APK; CI checks every native library's dependencies — 24 Oct 2026
+
+**Status: branch `face-scan` (placeholder number). Replaces #307's "GPU delegate library left out".**
+
+**What happened.** The first "Mridanga Seva TEST" APK (EAS build 4ef79554, 24-10-2026) closed at once on every start.
+`libNitroTflite.so` (react-native-fast-tflite 3.0.1) links `libtensorflowlite_gpu_jni.so` (its CMakeLists links
+`TFLITE_GPU`; TfliteHelpers.cpp calls `TfLiteGpuDelegateV2Create`), and Nitro loads it when the app starts
+(`NitroTflitePackage` init → `System.loadLibrary("NitroTflite")`). app.json's `packagingOptions.exclude` had taken that
+library out of the APK (P3-3, to save size), so Android could not load `libNitroTflite` and the app stopped. The
+Actions check only compiled the APK; nothing had ever launched it on a phone.
+
+**Decision.** No `packagingOptions.exclude`: the GPU library is in the APK (the app still uses the CPU delegate). The
+APK compile workflow now reads every arm64 `.so` in the APK with `readelf -d` and fails when a NEEDED library is neither
+in the APK nor a public Android system library (the NDK sysroot's list): this kind of fault fails in CI, not on a
+tester's phone. tests/face-enrolment.test.mjs refuses any packagingOptions in app.json.
+
+**Consequences.** app.json changed: a new fingerprint for the branch (with and without the variant) and a new
+facetest build (one more free build). The APK grows by the GPU library (measured by the next Actions run).
+
+## 436. The face models load from a file:// copy; a scan that keeps failing says so — 24 Oct 2026
+
+**Status: branch `face-scan` (placeholder number). JS only: fingerprint unchanged (facetest fde0a96f).**
+
+**What happened.** On the second facetest APK (EAS 560780b7) the enrolment stopped at "Hold still: picture 0 of 5".
+The developer screen (C26) showed the models never loaded: `java.net.MalformedURLException: no protocol:
+assets_models_sface_2021dec_int8`. In an installed APK a `require(..)` asset is an Android raw resource whose uri is a
+bare name; react-native-fast-tflite's Android loader opens every model with `java.net.URL`, which needs a scheme. The
+spike only ever ran with Metro (http:// uris), so this never showed. The enrolment screen swallowed the error and
+kept asking for pictures.
+
+**Decision.** `src/face/pipeline.ts` gives each model to fast-tflite as `{ url }` from expo-asset:
+`Asset.fromModule(require(..)).downloadAsync()` copies the resource to the app's cache once and returns a `file://`
+uri (expo-asset 57 opens bare names as raw resources). The face scanner stops after three failed pictures in the photo
+path and shows "The camera had a problem…" with Try again, instead of waiting for ever.
+
+**Why.** Loading straight from the APK's resources would need native code in fast-tflite (a new fingerprint); the
+expo-asset copy is JS only and is what Expo itself does for bundled files.
+
+## 437. A face guide over the live camera: oval, colour, sweeping light, filling ring — 24 Oct 2026
+
+**Status: branch `face-scan` (placeholder number). JS only (React Native Animated + react-native-svg): no new
+package, fingerprint unchanged, so it reaches the test app as an update.**
+
+**Decision.** Praveen, after the first real enrolment (24-10-2026): the camera showed no sign of working, unlike other
+face-check apps. The face scanner (enrolment at the desk and the daily self-scan) now draws `src/face/face-guide.tsx` over
+the camera: the view outside a face-shaped oval is dimmed; the oval's border is white until one face is seen, gold
+while the blink/turn prompts run, green while the pictures are taken and when done, red if the scan stopped; a ring
+fills clockwise from the top with each picture and flashes white once per picture; a soft light sweeps up and down
+inside the oval while the camera works. With the phone's "Remove animations" (reduced motion) there is no sweep and no
+flash. The rules are pure (`src/face/face-guide-state.ts`, tested); the guide is drawing only: touches pass through
+and screen readers skip it, since the prompt under the camera already says what to do.
 
 ## 470. Tap pad: a play-along graded on the sound's own clock — 22 Oct 2026
 

@@ -7,7 +7,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
 
-import { buildSettingsProblem } from '../scripts/eas-build-guard.mjs';
+import { BUILD_PROFILES, buildSettingsProblem } from '../scripts/eas-build-guard.mjs';
 import { PROJECTS, projectRefOf } from '../scripts/lib/supabase-projects.mjs';
 
 const TEST_URL = `https://${PROJECTS.preview}.supabase.co`;
@@ -38,6 +38,29 @@ test('a missing profile, unknown profile, missing setting, odd URL or secret key
   assert.match(buildSettingsProblem({ ...base, EXPO_PUBLIC_SUPABASE_KEY: '' }), /KEY is missing/);
   assert.match(buildSettingsProblem({ ...base, EXPO_PUBLIC_SUPABASE_KEY: 'sb_secret_' + 'x'.repeat(24) }), /neither a publishable/);
   assert.match(buildSettingsProblem({ ...base, EXPO_PUBLIC_SUPABASE_KEY: jwt('service_role') }), /neither a publishable/);
+});
+
+test('facetest (Mridanga Seva TEST, #430) builds only on TEST and only with its variant; the class apps only without one', () => {
+  const ok = { EXPO_PUBLIC_SUPABASE_KEY: PUBLISHABLE };
+  assert.equal(BUILD_PROFILES.facetest.project, PROJECTS.preview);
+  assert.equal(buildSettingsProblem({ ...ok, EAS_BUILD_PROFILE: 'facetest', APP_VARIANT: 'facetest', EXPO_PUBLIC_SUPABASE_URL: TEST_URL }), null);
+  assert.match(
+    buildSettingsProblem({ ...ok, EAS_BUILD_PROFILE: 'facetest', APP_VARIANT: 'facetest', EXPO_PUBLIC_SUPABASE_URL: LIVE_URL }),
+    /must use project fhuqyk/,
+  );
+  assert.match(buildSettingsProblem({ ...ok, EAS_BUILD_PROFILE: 'facetest', EXPO_PUBLIC_SUPABASE_URL: TEST_URL }), /must be built with APP_VARIANT=facetest/);
+  for (const profile of ['preview', 'production']) {
+    const url = profile === 'preview' ? TEST_URL : LIVE_URL;
+    assert.match(
+      buildSettingsProblem({ ...ok, EAS_BUILD_PROFILE: profile, APP_VARIANT: 'facetest', EXPO_PUBLIC_SUPABASE_URL: url }),
+      /must be built without APP_VARIANT/,
+    );
+    assert.equal(buildSettingsProblem({ ...ok, EAS_BUILD_PROFILE: profile, APP_VARIANT: ' ', EXPO_PUBLIC_SUPABASE_URL: url }), null);
+  }
+  // No profile of the guard may ever point a variant at the live project.
+  for (const [name, { project, variant }] of Object.entries(BUILD_PROFILES)) {
+    if (variant) assert.notEqual(project, PROJECTS.production, name);
+  }
 });
 
 test('projectRefOf reads only an exact Supabase address', () => {

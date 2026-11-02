@@ -1,0 +1,515 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Face scan explained</title>
+<style>
+  @page { size: A4; margin: 16mm 15mm 16mm; }
+  :root { --night: #1B1E4B; --night2: #262A66; --gold: #E0B25C; --cream: #FBF4E6; --ink: #1d1f33; --muted: #555a7a; --green: #2E7D32; --red: #C62828; --blue: #1f5fa8; }
+  * { box-sizing: border-box; }
+  body { font-family: "Segoe UI", "Nirmala UI", Arial, sans-serif; font-size: 10.5pt; line-height: 1.45; color: var(--ink); margin: 0; }
+  h1 { font-size: 26pt; margin: 0 0 4pt; color: #fff; }
+  h2 { font-size: 16pt; color: var(--night); margin: 0 0 8pt; padding-bottom: 4pt; border-bottom: 3px solid var(--gold); }
+  h3 { font-size: 12pt; color: var(--night); margin: 12pt 0 4pt; }
+  p { margin: 0 0 6pt; }
+  ul, ol { margin: 0 0 6pt 16pt; padding: 0; }
+  li { margin-bottom: 3pt; }
+  code, .mono { font-family: Consolas, "Cascadia Mono", monospace; font-size: 9pt; background: #f1ecdf; padding: 0 3px; border-radius: 3px; }
+  .section { page-break-before: always; }
+  .cover { background: linear-gradient(160deg, var(--night), var(--night2)); color: #fff; padding: 34mm 16mm 20mm; margin: -16mm -15mm 0; min-height: 120mm; }
+  .cover .kick { color: var(--gold); letter-spacing: 2px; text-transform: uppercase; font-weight: 700; font-size: 11pt; margin-bottom: 8pt; }
+  .cover p { color: #e8e6f5; font-size: 12pt; max-width: 150mm; }
+  .note { background: var(--cream); border-left: 5px solid var(--gold); padding: 7pt 10pt; margin: 8pt 0; }
+  .warn { background: #fdecea; border-left: 5px solid var(--red); padding: 7pt 10pt; margin: 8pt 0; }
+  .good { background: #eaf5ea; border-left: 5px solid var(--green); padding: 7pt 10pt; margin: 8pt 0; }
+  table { width: 100%; border-collapse: collapse; margin: 6pt 0 8pt; font-size: 9.5pt; }
+  th { background: var(--night); color: #fff; text-align: left; padding: 4pt 6pt; }
+  td { border-bottom: 1px solid #ddd5c2; padding: 4pt 6pt; vertical-align: top; }
+  tr:nth-child(even) td { background: #fbf8f1; }
+  .toc li { margin-bottom: 2pt; }
+  .two { display: flex; gap: 10pt; }
+  .two > div { flex: 1; }
+  .step { display: flex; gap: 8pt; margin-bottom: 5pt; }
+  .step b.n { flex: none; width: 18pt; height: 18pt; border-radius: 9pt; background: var(--night); color: #fff; text-align: center; line-height: 18pt; font-size: 9pt; }
+  svg text { font-family: "Segoe UI", Arial, sans-serif; }
+  .small { font-size: 9pt; color: var(--muted); }
+  .tree { font-family: Consolas, monospace; font-size: 8.8pt; background: #f7f3ea; padding: 8pt 10pt; border-radius: 6px; white-space: pre; line-height: 1.5; }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <div class="kick">Mridanga Seva · Phase 3 · for code maintainers (seva)</div>
+  <h1>Face scan, explained</h1>
+  <p>How a student checks in to class by looking at their own phone: what happens on the phone, on our server and at
+  Google; which file does what; how privacy is protected; and what we learned from the first real tests on
+  24 October 2026.</p>
+  <p style="margin-top:14pt;font-size:10.5pt;color:#c9c6e6">Written for beginners and college students. No face-recognition
+  background needed. Branch <span class="mono" style="background:#33377a;color:#fff">face-scan</span>, 25-10-2026.</p>
+</div>
+
+<h3>Contents</h3>
+<ol class="toc">
+  <li>What face scan is (and what it is not)</li>
+  <li>Four ideas you need first: detection, embedding, similarity, liveness</li>
+  <li>The big picture: phone, server, Google</li>
+  <li>Flow A: setting up a face at the desk (enrolment)</li>
+  <li>Flow B: checking in and out by face (self-scan)</li>
+  <li>The AI models and the native building blocks</li>
+  <li>The server side: tables, functions, the switch</li>
+  <li>Privacy and the law: what is kept, where, for how long</li>
+  <li>Code map: which file does what</li>
+  <li>The TEST app, builds and updates</li>
+  <li>Lessons from the first tests (three real bugs)</li>
+  <li>How to work on it safely, and a glossary</li>
+</ol>
+<div class="note"><b>One sentence summary.</b> The student's own phone checks that the person in front of it is alive and is
+the same person whose "face code" it stored at the desk, reads its location once, gets a "this phone and app are genuine"
+pass from Google, and asks our server to record the check-in; the server checks everything again before it saves.</div>
+
+<!-- 1 -->
+<div class="section">
+<h2>1. What face scan is (and what it is not)</h2>
+<p>Today a student checks in at the class door by showing the QR code in the app (or a printed QR card) to a
+coordinator. Face scan adds a second, optional way: the student taps <b>Check in</b> on their own phone, looks at the
+camera, and is checked in, but only <b>at the class</b>, only <b>during class hours</b>, and only if the face is
+<b>theirs</b>.</p>
+<div class="two">
+  <div class="good"><b>It is</b>
+    <ul>
+      <li><b>Optional</b> and separate: its own written consent. QR stays for everyone, for good.</li>
+      <li><b>1:1</b> ("is this the owner of this login?"), never 1:N ("who is this among everyone?").</li>
+      <li><b>On-device</b>: the face is turned into numbers on the phone; no photo leaves it.</li>
+      <li>Set up <b>once at the desk</b>, with a coordinator confirming it is the right person.</li>
+    </ul></div>
+  <div class="warn"><b>It is not</b>
+    <ul>
+      <li>A camera at the door, a tablet, or a scan of the whole room.</li>
+      <li>Location tracking: location is read <b>once</b>, at the tap, and only "inside / outside + distance" is kept.</li>
+      <li>A photo store: no picture is ever saved, on the phone or the server.</li>
+      <li>Switched on for the class yet: it runs only in the separate TEST app, on the TEST server.</li>
+    </ul></div>
+</div>
+<h3>Why so careful?</h3>
+<p>A face is <b>biometric</b> data: you cannot change it like a password. India's Digital Personal Data Protection
+Act 2023 (DPDP) and its Rules 2025 ask for clear consent, keeping only what is needed, deleting it when done, and extra
+care for children. Our design follows that strictly: adults first, a separate consent form, the face code only on the
+student's phone, and everything deleted at the end of a test.</p>
+<h3>Who decided what (the decisions log)</h3>
+<p>Every rule has a numbered entry in <code>docs/DECISIONS.md</code>. The important ones for face scan:
+<b>#212</b> no location tracking · <b>#213</b> face is a separate opt-in, QR stays · <b>#248</b> self-scan on the student's own
+phone only · <b>#295</b> "Gate 2": no face code on the server · <b>#296</b> "Gate 1": the Google integrity check ·
+<b>#344–#349</b> self-scan rules · <b>#430–#437</b> the TEST app and this week's fixes.</p>
+</div>
+
+<!-- 2 -->
+<div class="section">
+<h2>2. Four ideas you need first</h2>
+<h3>Idea 1: face <i>detection</i> (where is a face?)</h3>
+<p>Detection finds faces in a camera frame and gives their box and a few landmarks (eyes, nose, mouth corners), the head
+angles (turned left/right = <i>yaw</i>), and how open each eye is (0 to 1). It does <b>not</b> know who the person is. We use
+Google's <b>ML Kit</b> face detector, which runs on the phone.</p>
+<h3>Idea 2: an <i>embedding</i> (a "face code")</h3>
+<p>A recognition model (<b>SFace</b>) looks at a cropped, straightened face (112 x 112 pixels) and outputs a list of
+<b>128 numbers</b>. Pictures of the same person give similar lists; different people give different lists. That list is
+the <b>face code</b>. You cannot turn it back into a photo. At the desk we take <b>5</b> pictures and store the
+<b>average</b> of their codes.</p>
+<h3>Idea 3: <i>cosine similarity</i> (how alike are two codes?)</h3>
+<div class="two">
+  <div>
+    <p>Think of each code as an arrow in 128-dimensional space. Cosine similarity measures the angle between two arrows:
+    <b>1.0</b> = same direction (same face), <b>0</b> = unrelated. In code: <code>cosine(a, b)</code> in
+    <code>src/face/face-math.ts</code>.</p>
+    <p>Our first real test: Arjun scored <b>0.833</b> against his own code. In the October spike, the same person scored
+    about 0.81 and different people 0.11–0.31.</p>
+  </div>
+  <div>
+    <svg viewBox="0 0 300 150" width="100%">
+      <line x1="20" y1="135" x2="290" y2="135" stroke="#999"/>
+      <rect x="20" y="118" width="270" height="10" fill="#eee"/>
+      <rect x="47" y="118" width="57" height="10" fill="#e8a2a2"/>
+      <rect x="230" y="118" width="20" height="10" fill="#9ccc9c"/>
+      <line x1="183" y1="40" x2="183" y2="140" stroke="#1B1E4B" stroke-width="2" stroke-dasharray="5 3"/>
+      <text x="183" y="34" text-anchor="middle" font-size="11" fill="#1B1E4B">threshold 0.55</text>
+      <text x="75" y="110" text-anchor="middle" font-size="10" fill="#C62828">other people</text>
+      <text x="75" y="98" text-anchor="middle" font-size="10" fill="#C62828">0.11–0.31</text>
+      <text x="240" y="110" text-anchor="middle" font-size="10" fill="#2E7D32">same person</text>
+      <text x="240" y="98" text-anchor="middle" font-size="10" fill="#2E7D32">~0.81–0.83</text>
+      <text x="20" y="148" font-size="9" fill="#666">0</text><text x="282" y="148" font-size="9" fill="#666">1.0</text>
+      <text x="22" y="64" font-size="10" fill="#555">refused: use QR</text>
+      <text x="192" y="64" font-size="10" fill="#555">accepted</text>
+    </svg>
+  </div>
+</div>
+<h3>Thresholds: two kinds of mistakes</h3>
+<table>
+  <tr><th>Mistake</th><th>What happens</th><th>How bad</th><th>Our choice</th></tr>
+  <tr><td>False accept</td><td>Someone else is checked in as you</td><td>Serious: wrong attendance</td><td rowspan="2">Threshold <b>0.55</b> (strict, setting <code>face_match_percent</code> = 55). A refusal only means "use your QR or ask a coordinator".</td></tr>
+  <tr><td>False reject</td><td>You are refused, even though it is you</td><td>Annoying, harmless</td></tr>
+</table>
+<h3>Idea 4: <i>liveness</i> (is it a live person, not a photo?)</h3>
+<p>Two layers. <b>Active</b>: the app asks the person to <b>blink</b> and <b>turn their head</b>, in a random order
+(<code>src/face/liveness.ts</code>). A printed photo cannot do either. <b>Passive</b>: two small models (<b>MiniFASNet</b>) look
+at each picture for signs of paper or a screen and give a "real face" score; every picture must reach <b>0.8</b>.</p>
+</div>
+
+<!-- 3 -->
+<div class="section">
+<h2>3. The big picture: phone, server, Google</h2>
+<svg viewBox="0 0 700 330" width="100%">
+  <defs><marker id="ar" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#1B1E4B"/></marker></defs>
+  <rect x="10" y="20" width="250" height="290" rx="12" fill="#FBF4E6" stroke="#E0B25C" stroke-width="2"/>
+  <text x="135" y="44" text-anchor="middle" font-size="15" font-weight="700" fill="#1B1E4B">Student's phone</text>
+  <text x="135" y="62" text-anchor="middle" font-size="10" fill="#555">"Mridanga Seva TEST" app</text>
+  <rect x="25" y="75" width="220" height="34" rx="6" fill="#fff" stroke="#bbb"/><text x="135" y="96" text-anchor="middle" font-size="11">Camera + ML Kit (finds the face)</text>
+  <rect x="25" y="115" width="220" height="34" rx="6" fill="#fff" stroke="#bbb"/><text x="135" y="136" text-anchor="middle" font-size="11">Blink / turn challenge (liveness)</text>
+  <rect x="25" y="155" width="220" height="34" rx="6" fill="#fff" stroke="#bbb"/><text x="135" y="176" text-anchor="middle" font-size="11">SFace + MiniFASNet (TFLite models)</text>
+  <rect x="25" y="195" width="220" height="34" rx="6" fill="#fff" stroke="#2E7D32"/><text x="135" y="216" text-anchor="middle" font-size="11">Face code in the Keystore (locked)</text>
+  <rect x="25" y="235" width="220" height="34" rx="6" fill="#fff" stroke="#bbb"/><text x="135" y="256" text-anchor="middle" font-size="11">One location read (GPS)</text>
+  <text x="135" y="294" text-anchor="middle" font-size="10" fill="#2E7D32">Photos never leave the phone</text>
+  <rect x="440" y="20" width="250" height="160" rx="12" fill="#eef1fb" stroke="#1f5fa8" stroke-width="2"/>
+  <text x="565" y="44" text-anchor="middle" font-size="15" font-weight="700" fill="#1B1E4B">Our server (Supabase)</text>
+  <text x="565" y="62" text-anchor="middle" font-size="10" fill="#555">TEST: Singapore · LIVE: Sydney</text>
+  <text x="565" y="86" text-anchor="middle" font-size="11">Enrolment record (no face code)</text>
+  <text x="565" y="104" text-anchor="middle" font-size="11">self_scan: re-checks everything</text>
+  <text x="565" y="122" text-anchor="middle" font-size="11">Visits, match score (60 days)</text>
+  <text x="565" y="140" text-anchor="middle" font-size="11">Edge Function verify-integrity</text>
+  <text x="565" y="160" text-anchor="middle" font-size="10" fill="#555">switch: face_enabled</text>
+  <rect x="440" y="210" width="250" height="100" rx="12" fill="#f3f3f3" stroke="#888" stroke-width="2"/>
+  <text x="565" y="234" text-anchor="middle" font-size="15" font-weight="700" fill="#1B1E4B">Google Play Integrity</text>
+  <text x="565" y="256" text-anchor="middle" font-size="11">"Is this a real, untampered</text>
+  <text x="565" y="272" text-anchor="middle" font-size="11">phone running our app?"</text>
+  <text x="565" y="294" text-anchor="middle" font-size="10" fill="#555">gets no face, no location</text>
+  <line x1="262" y1="100" x2="436" y2="90" stroke="#1B1E4B" stroke-width="2" marker-end="url(#ar)"/>
+  <text x="350" y="84" text-anchor="middle" font-size="10">numbers + result only</text>
+  <line x1="262" y1="250" x2="436" y2="255" stroke="#1B1E4B" stroke-width="2" marker-end="url(#ar)"/>
+  <text x="350" y="245" text-anchor="middle" font-size="10">integrity token</text>
+  <line x1="565" y1="208" x2="565" y2="184" stroke="#1B1E4B" stroke-width="2" marker-end="url(#ar)"/>
+  <text x="600" y="200" font-size="10">verdict</text>
+</svg>
+<h3>The two "gates" (security rules from the October audit)</h3>
+<div class="two">
+  <div class="note"><b>Gate 2: no face code on the server (#295).</b> The server only keeps an <i>enrolment record</i>: who,
+  which phone (a random device key), which model, who confirmed it, when, until when. If the server were ever leaked, there
+  is nothing face-like to steal. A new phone = set up again at the desk.</div>
+  <div class="note"><b>Gate 1: the phone must prove it is genuine (#296).</b> Before every self-scan the server hands out a
+  one-time challenge; Google's Play Integrity signs a verdict about the phone and app; our Edge Function checks it and gives a
+  one-time pass valid 120 seconds. A rooted phone, an emulator or a modified app gets no pass.</div>
+</div>
+<p>Why check things twice (phone and server)? The phone does the face work because the face must not leave it; but a
+phone can be tampered with, so the <b>server never trusts the phone's word alone</b>: it re-checks the integrity pass, the
+consent, the enrolment of <i>this</i> phone, the location result, the class hours, the liveness flag and the score.</p>
+</div>
+
+<!-- 4 -->
+<div class="section">
+<h2>4. Flow A: setting up a face at the desk (enrolment)</h2>
+<p>Happens once per student (adults: valid 24 months; children later: 12 months). Two people and two phones: the
+<b>student</b> and a <b>coordinator</b>.</p>
+<svg viewBox="0 0 700 300" width="100%">
+  <defs><marker id="a2" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#1B1E4B"/></marker></defs>
+  <g font-size="12" font-weight="700" fill="#1B1E4B" text-anchor="middle">
+    <text x="90" y="20">Coordinator</text><text x="350" y="20">Server</text><text x="610" y="20">Student's phone</text></g>
+  <g stroke="#bbb" stroke-dasharray="4 4"><line x1="90" y1="28" x2="90" y2="295"/><line x1="350" y1="28" x2="350" y2="295"/><line x1="610" y1="28" x2="610" y2="295"/></g>
+  <g stroke="#1B1E4B" stroke-width="1.6" marker-end="url(#a2)" fill="none">
+    <line x1="92" y1="52" x2="346" y2="52"/><line x1="608" y1="92" x2="354" y2="92"/><line x1="354" y1="112" x2="606" y2="112"/>
+    <line x1="608" y1="160" x2="354" y2="160"/><line x1="354" y1="180" x2="606" y2="180"/><line x1="92" y1="222" x2="346" y2="222"/>
+    <line x1="608" y1="262" x2="354" y2="262"/></g>
+  <g font-size="10.5" fill="#222">
+    <text x="100" y="46">1 record_face_consent (signed form)</text>
+    <text x="372" y="86">2 my_face_enrolment: am I allowed?</text>
+    <text x="372" y="126">  yes (consent, age, switch on)</text>
+    <text x="480" y="140" text-anchor="middle" font-size="10" fill="#2E7D32">3 phone: blink + turn, 5 pictures → face code</text>
+    <text x="372" y="154">4 start_face_enrolment(device key)</text>
+    <text x="372" y="194">  6-digit code, valid 10 min</text>
+    <text x="100" y="216">5 approve_face_enrolment(code)</text>
+    <text x="372" y="256">6 enrol_face: done, until +24 months</text>
+    <text x="480" y="288" text-anchor="middle" font-size="10" fill="#2E7D32">phone keeps the face code (Keystore)</text>
+  </g>
+</svg>
+<div class="step"><b class="n">1</b><div><b>Consent.</b> The coordinator opens the student's profile → <i>Face scan at the desk</i> and records the signed
+form (<code>record_face_consent</code>). Nobody can record their own; under the minimum age (18 now) it refuses.</div></div>
+<div class="step"><b class="n">2</b><div><b>Allowed?</b> The student's phone (My profile → Face scan) asks the server (<code>my_face_enrolment</code>). No
+consent or switch off → the camera never opens.</div></div>
+<div class="step"><b class="n">3</b><div><b>Scan.</b> Blink and turn in random order; then 5 pictures 350 ms apart. Each picture: ML Kit finds the face again,
+it is cut and straightened, SFace gives 128 numbers, MiniFASNet gives a real-face score. Checks: at least 3 good pictures,
+every score ≥ 0.8, and every picture close to their average (≥ 0.5, "all one face"). The average is the face code.</div></div>
+<div class="step"><b class="n">4</b><div><b>Ask.</b> The phone sends only its random <b>device key</b> and the model name (<code>start_face_enrolment</code>);
+the server answers a <b>6-digit code</b> (10 minutes). The phone shows it.</div></div>
+<div class="step"><b class="n">5</b><div><b>Confirm.</b> A coordinator, on their own phone, types the code (<code>approve_face_enrolment</code>). This is the
+"supervised" part: a person checks it is the right student. 5 wrong codes end the request; you can never confirm your own.</div></div>
+<div class="step"><b class="n">6</b><div><b>Finish.</b> The student's phone notices (it asks every 4 s), calls <code>enrol_face</code>, and keeps the face code in
+Android's <b>Keystore</b>-encrypted storage (<code>expo-secure-store</code>). The server records "enrolled until …".</div></div>
+<p class="small">Screens: <code>app/src/app/student/face-scan.tsx</code> (student), <code>app/src/app/staff/face/[id].tsx</code> (desk).
+Logic: <code>src/face/enrolment.ts</code>, <code>src/face/face-scanner.tsx</code>, <code>src/data/face.ts</code>.</p>
+</div>
+
+<!-- 5 -->
+<div class="section">
+<h2>5. Flow B: checking in and out by face (self-scan)</h2>
+<p>The home screen shows a <b>Check in</b> circle only when: face scan is switched on, this phone holds a confirmed face
+code, and the class centre is open now (<code>self_scan_state</code>). After a check-in it shows <b>Check out</b>.</p>
+<table>
+  <tr><th>#</th><th>Step</th><th>Where</th><th>Refused if…</th></tr>
+  <tr><td>1</td><td><b>One location read</b>, in the foreground, at most 8 s, high accuracy</td><td>phone: <code>self-scan-location.ts</code></td><td>outside the area (radius + GPS accuracy), accuracy worse than 100 m, a "mock location" app, no position</td></tr>
+  <tr><td>2</td><td><b>Face</b>: blink + turn, then 3 pictures; each a real face (≥ 0.8), all one face, average close to the stored code (≥ 0.55)</td><td>phone: <code>self-scan-rules.ts</code> <code>verifyScan</code></td><td>not live, more than one face, no match</td></tr>
+  <tr><td>3</td><td><b>Integrity</b>: challenge → Play Integrity token bound to (login, action, challenge, location result) → <code>verify-integrity</code> → 120 s pass</td><td>phone: <code>integrity.ts</code>; server: Edge Function</td><td>rooted / emulator / modified app, wrong package or signing key, old challenge</td></tr>
+  <tr><td>4</td><td><b>self_scan</b>: server re-checks pass, switch, consent, this phone's enrolment, location, hours, liveness, score; saves the visit (method <i>face</i>, by the student)</td><td>server: migration <code>0071</code></td><td>any of the above; outside class hours; checked in less than 10 min ago (check-out)</td></tr>
+</table>
+<div class="note"><b>Check-out is never blocked by place.</b> If the phone is outside the area at check-out, the check-out is
+<b>saved and marked "away"</b> for the staff (<code>visits.check_out_location</code>). A parent of a child gets the usual
+check-out email (from the existing parent-notice feature).</div>
+<div class="note"><b>Three failed tries in a day</b> → the app only offers the coordinator's way (QR card or roll number). Every
+step shows "Or ask a coordinator". Failures are counted per centre and reason, <b>without the student's name</b>
+(<code>face_scan_failures</code>), for the staff page <i>Face scan use</i>.</div>
+<h3>What a check-in record looks like (first real one, 24-10-2026)</h3>
+<table>
+  <tr><th>check_in</th><th>method</th><th>liveness_ok</th><th>location</th><th>match score</th><th>marked by</th></tr>
+  <tr><td>20:05:07</td><td>face</td><td>true</td><td>inside, 7 m</td><td>0.833 (kept 60 days)</td><td>the student</td></tr>
+</table>
+</div>
+
+<!-- 6 -->
+<div class="section">
+<h2>6. The AI models and the native building blocks</h2>
+<h3>Models (all run on the phone, free, open licences)</h3>
+<table>
+  <tr><th>Model</th><th>Job</th><th>Input → output</th><th>File / size</th></tr>
+  <tr><td>Google ML Kit face detection</td><td>find faces, landmarks, eyes open, head angles</td><td>camera frame → boxes + points</td><td>inside the app library</td></tr>
+  <tr><td>SFace (OpenCV Zoo), int8</td><td>face code (recognition)</td><td>112×112 aligned face → 128 numbers</td><td><code>sface_2021dec_int8.tflite</code>, 9.9 MB</td></tr>
+  <tr><td>MiniFASNet V2 (x2.7 crop)</td><td>passive liveness</td><td>80×80 crop → real / fake</td><td><code>minifasnet_v2_2_7_int8.tflite</code>, 0.6 MB</td></tr>
+  <tr><td>MiniFASNet V1SE (x4.0 crop)</td><td>passive liveness, second view</td><td>80×80 wider crop → real / fake</td><td><code>minifasnet_v1se_4_0_int8.tflite</code>, 0.6 MB</td></tr>
+</table>
+<p class="small">"int8" = the model's weights are stored as small integers (smaller, faster on cheap phones). The model name is also
+a server setting (<code>face_model_version</code>): changing the model ends every enrolment, and everyone sets up again.</p>
+<h3>The picture pipeline (<code>src/face/pipeline.ts</code>)</h3>
+<ol>
+  <li>The camera hands a frame (VisionCamera) → ML Kit finds the face on the camera thread.</li>
+  <li>When a picture is wanted, the frame becomes an image (Nitro Image), saved to a temporary JPEG, ML Kit runs again on it
+  for exact landmarks, the file is <b>deleted in the same call</b>.</li>
+  <li>The face is rotated and scaled so the eyes, nose and mouth sit where SFace expects (<code>alignedFaceTensor</code> in
+  <code>face-math.ts</code>); two looser crops go to the two MiniFASNets.</li>
+  <li>TensorFlow Lite runs the three models; out come the 128 numbers and the real-face score.</li>
+</ol>
+<h3>Native libraries (why the app needs its own APK build)</h3>
+<table>
+  <tr><th>Library</th><th>What it does for us</th></tr>
+  <tr><td><code>react-native-vision-camera</code> 5 + <code>-worklets</code></td><td>front camera; runs code on each frame on a separate thread ("worklets"), so the screen stays smooth</td></tr>
+  <tr><td><code>react-native-vision-camera-face-detector</code></td><td>ML Kit face detection inside those frame worklets</td></tr>
+  <tr><td><code>react-native-fast-tflite</code></td><td>runs the .tflite models (TensorFlow Lite / LiteRT)</td></tr>
+  <tr><td><code>react-native-nitro-modules</code>, <code>-nitro-image</code></td><td>fast bridge between JavaScript and native code; images in memory</td></tr>
+  <tr><td><code>expo-secure-store</code></td><td>stores the face code encrypted with a key held by Android's Keystore</td></tr>
+  <tr><td><code>@expo/app-integrity</code></td><td>asks Google Play Integrity for a signed verdict</td></tr>
+  <tr><td><code>expo-location</code> (already in the app)</td><td>the one location read</td></tr>
+</table>
+<div class="note">Anything in this table is <b>native</b> code: adding or changing it changes the app's <b>fingerprint</b> and needs a new APK
+(section 10). Changes to our own TypeScript can reach phones as an over-the-air <b>update</b> instead.</div>
+</div>
+
+<!-- 7 -->
+<div class="section">
+<h2>7. The server side: tables, functions, the switch</h2>
+<p>Our backend is <b>Supabase</b> (PostgreSQL + login + small server functions). All face rules live in two SQL migrations on branch
+<code>face-scan</code>: <code>supabase/migrations/0070_face_enrolment.sql</code> (setup, consent, integrity) and
+<code>0071_face_selfscan.sql</code> (self check-in/out). The numbers 0070/0071 are placeholders, renumbered when face scan
+joins the main app.</p>
+<h3>Tables</h3>
+<table>
+  <tr><th>Table</th><th>Holds</th><th>Kept</th></tr>
+  <tr><td><code>face_enrolments</code></td><td>who, device key, model, who confirmed, dates, how it ended. <b>No face code.</b></td><td>until ended, then 400 days as proof</td></tr>
+  <tr><td><code>consents</code> (scope <i>face</i>)</td><td>the written consent; for a child also the parent and the child's own yes</td><td>as the class's consent rules</td></tr>
+  <tr><td><code>visits</code> + <code>visit_face_scores</code></td><td>the check-in/out; liveness ok; check-out location result; the match score</td><td>score 60 days</td></tr>
+  <tr><td><code>integrity_challenges</code></td><td>one-time challenges and passes (hash only)</td><td>1 day</td></tr>
+  <tr><td><code>face_scan_failures</code></td><td>centre, reason, time. <b>No student id.</b></td><td>400 days</td></tr>
+</table>
+<h3>Functions the app calls (each checks who is calling)</h3>
+<table>
+  <tr><th>Function</th><th>Who</th><th>Does</th></tr>
+  <tr><td><code>record_face_consent</code></td><td>staff</td><td>records the signed form (not for your own record)</td></tr>
+  <tr><td><code>my_face_enrolment</code></td><td>student</td><td>is this phone's enrolment current?</td></tr>
+  <tr><td><code>start_face_enrolment</code> / <code>enrol_face</code></td><td>student</td><td>ask for the 6-digit code / finish after confirmation</td></tr>
+  <tr><td><code>approve_face_enrolment</code></td><td>staff</td><td>type the code (never your own)</td></tr>
+  <tr><td><code>remove_face</code></td><td>student or staff</td><td>"Turn face scan off": ends the enrolment (and the consent if the person says no)</td></tr>
+  <tr><td><code>issue_integrity_challenge</code></td><td>student</td><td>one-time challenge, 60 s</td></tr>
+  <tr><td><code>self_scan_state</code> / <code>self_scan</code></td><td>student (or staff with an own record)</td><td>home circle / the check-in or check-out</td></tr>
+  <tr><td><code>face_use_counts</code></td><td>staff</td><td>counts for the <i>Face scan use</i> page</td></tr>
+</table>
+<p>The Edge Function <code>supabase/functions/verify-integrity</code> is the only caller of <code>begin_integrity_check</code> /
+<code>finish_integrity_check</code>; it holds the Google service-account key as a secret.</p>
+<h3>Settings (changed in the SQL editor only, never from the app)</h3>
+<table>
+  <tr><th>Setting</th><th>Value now</th><th>Meaning</th></tr>
+  <tr><td><code>face_enabled</code></td><td>false on LIVE · true on TEST for the test</td><td>the master switch: off = every face entry hidden</td></tr>
+  <tr><td><code>face_min_age</code></td><td>18</td><td>adults only until the Guru decides (recommended 13)</td></tr>
+  <tr><td><code>face_match_percent</code></td><td>55</td><td>the 1:1 threshold (cosine 0.55)</td></tr>
+  <tr><td><code>face_expiry_months_adult / _minor</code></td><td>24 / 12</td><td>set up again after this</td></tr>
+  <tr><td><code>face_score_days</code></td><td>60</td><td>match scores deleted after this</td></tr>
+</table>
+<p class="small">A nightly job <code>mridanga-face-housekeeping</code> ends expired and unfinished enrolments and deletes old scores,
+challenges and failure counts. A coordinator who is also a student (linked "own record") can use face scan too; only
+the self-scan may record their own visit (#434).</p>
+</div>
+
+<!-- 8 -->
+<div class="section">
+<h2>8. Privacy and the law</h2>
+<table>
+  <tr><th>Data</th><th>Where</th><th>How long</th></tr>
+  <tr><td>Photos / video</td><td>nowhere (memory only for a second; a temporary file deleted at once)</td><td>never kept</td></tr>
+  <tr><td>Face code (128 numbers)</td><td>only the student's phone, Keystore-encrypted</td><td>until turned off, sign-out, expiry or app removed</td></tr>
+  <tr><td>Enrolment record</td><td>server (TEST: Singapore; LIVE: Sydney, Australia)</td><td>until ended, then 400 days as proof</td></tr>
+  <tr><td>Location</td><td>only "inside / outside + distance" for each check-in / check-out</td><td>with the visit</td></tr>
+  <tr><td>Match score</td><td>server</td><td>60 days</td></tr>
+  <tr><td>Integrity verdict</td><td>Google sees the phone/app check, not the face or location</td><td>-</td></tr>
+</table>
+<h3>Rules we follow</h3>
+<ul>
+  <li><b>Consent first</b>, separate form, nothing pre-ticked; saying no changes nothing (QR stays). The person can stop any time
+  (Turn face scan off): the code is wiped and the server record ends.</li>
+  <li><b>Location once</b> (#212): only at the tap; never in the background, never a map, never in a parent email.</li>
+  <li><b>Children only later</b>: written, verifiable parent consent (DPDP Rules, rule 10), the child's own yes, minimum age
+  decided by the Guru, and only in the real class app after the full release (<code>docs/phase3/ADULT_TEST.md</code> §3).</li>
+  <li><b>Data outside India</b>: our server is in Australia (LIVE) and Singapore (TEST); the DPDP Act allows this unless a country
+  is restricted, and the privacy notice says so.</li>
+  <li><b>Test data is deleted</b> within 7 days of the last test session: phones (turn off, uninstall) and one SQL run on TEST
+  with a check query (<code>docs/OPERATIONS.md</code> "Face scan: deleting the test face data").</li>
+</ul>
+<div class="warn"><b>For maintainers:</b> never add a column that stores a face code on the server, never send pictures anywhere,
+never read location in the background, never log faces or scores with names. The smoke tests check several of these
+(e.g. "no column named template or embedding").</div>
+</div>
+
+<!-- 9 -->
+<div class="section">
+<h2>9. Code map: which file does what</h2>
+<div class="tree">app/
+  app.config.js              the "Mridanga Seva TEST" variant (APP_VARIANT=facetest); unchanged app otherwise
+  eas.json                   build profiles: preview, production, facetest
+  assets/models/             the three .tflite models + README (licences, checksums)
+  src/face/
+    face-camera.tsx          VisionCamera + ML Kit on every frame; picture capture
+    face-scanner.tsx         one scan: permission, blink/turn, pictures, errors (used by both flows)
+    face-guide.tsx           the oval guide, sweeping light and progress ring over the camera (#437)
+    face-guide-state.ts      the guide's rules (pure, tested)
+    liveness.ts              the blink/turn state machine (pure, tested)
+    pipeline.ts              picture → SFace code + MiniFASNet score; loads the models (#436)
+    face-math.ts             alignment, crops, cosine, averages (pure, tested)
+    enrolment.ts             what the phone keeps, the wipe rule, quality checks (pure, tested)
+    face-store.ts            Keystore-encrypted storage of the face code
+    face-status.ts           asks the server at start; applies the wipe rule
+    self-scan-rules.ts       verifyScan (1:1 decision), location rules (pure, tested)
+    self-scan-location.ts    the one location read
+    integrity.ts             Play Integrity token (Android only)
+    face-settings.ts         all numbers: frames, thresholds, timeouts, Cloud project number
+  src/data/face.ts, self-scan.ts      the server calls
+  src/app/student/face-scan.tsx       S15 set up / turn off
+  src/app/student/self-scan.tsx       S16 check in / check out
+  src/app/staff/face/[id].tsx         C25 Face scan at the desk
+  src/app/staff/face-counts.tsx       C27 Face scan use (counts)
+  src/app/staff/face-dev.tsx          C26 hidden developer screen (TEST builds only)
+  src/app/staff/me/face-scan.tsx, self-scan.tsx   the same for a coordinator's own record
+  tests/face-scan, face-enrolment, self-scan, app-variant, build-guard .test.mjs
+supabase/
+  migrations/0070_face_enrolment.sql, 0071_face_selfscan.sql
+  functions/verify-integrity/          the Edge Function (verdict rules in verdict.ts)
+  tests/smoke-test.mjs                 2,126 checks incl. every face rule and the deletion runbook
+docs/
+  DECISIONS.md (#295-#300, #307-#312, #344-#349, #430-#437), DATABASE.md, OPERATIONS.md, SCREENS.md
+  phase3/ ADULT_TEST.md, FACE_ATTENDANCE_PLAN.md, DPIA_DRAFT.md, CONSENT_DRAFT.md, print/</div>
+<p class="small">"Pure, tested" files have no React Native imports, so the unit tests run them in plain Node with made-up camera frames.
+Start reading at <code>face-scanner.tsx</code> and follow the imports.</p>
+</div>
+
+<!-- 10 -->
+<div class="section">
+<h2>10. The TEST app, builds and updates</h2>
+<h3>Why a separate app</h3>
+<p>Testers keep the real "Mridanga Seva" app (their real data) and install <b>"Mridanga Seva TEST"</b> next to it: a different
+package name <code>org.mridangaseva.app.test</code>, a red TEST band on the icon, the TEST server only. One line in
+<code>app.config.js</code> does it: when <code>APP_VARIANT=facetest</code>, the name, package, link scheme and icons change; when it
+is not set, the app config is <b>byte-for-byte</b> the real app's (we proved this, #432). A "build guard" script refuses any
+TEST-app build pointed at LIVE.</p>
+<h3>Fingerprint, builds and updates (the most important idea for releases)</h3>
+<div class="two">
+  <div class="note"><b>Build (APK)</b> = the whole app including native code. Made on Expo's servers (EAS Build), about 25 minutes,
+  15 free per month. Needed when native code or config changes (a new library, app.json, eas.json).</div>
+  <div class="note"><b>Update (OTA)</b> = only our JavaScript, downloaded by the installed app at start. Minutes, unlimited. It reaches
+  only APKs with the same <b>fingerprint</b>.</div>
+</div>
+<p>The <b>fingerprint</b> is a hash Expo computes from everything native (packages, app.json, eas.json, plugins). Same fingerprint =
+an update fits. The class's phones run fingerprint <code>23dc7e4a</code>; the face branch has native face libraries, so its
+fingerprint differs. That is why face scan stays on its own branch until a new production APK is planned: merging earlier
+would stop updates reaching the class's phones.</p>
+<table>
+  <tr><th>App</th><th>Channel</th><th>Fingerprint</th><th>Talks to</th></tr>
+  <tr><td>Class app (production)</td><td>production</td><td><code>23dc7e4a</code></td><td>LIVE</td></tr>
+  <tr><td>Mridanga Seva TEST (build 560780b7)</td><td>facetest</td><td><code>fde0a96f</code></td><td>TEST</td></tr>
+</table>
+<p class="small">Publishing a TEST-app update: <code>$env:APP_VARIANT='facetest'</code> then
+<code>npx eas-cli update --channel facetest --environment preview --platform android -m "…"</code> (OPERATIONS.md). Office network:
+unplug the cable and use a phone connection; the office firewall breaks uploads.</p>
+</div>
+
+<!-- 11 -->
+<div class="section">
+<h2>11. Lessons from the first tests (three real bugs)</h2>
+<p>All three were invisible in development and in automatic checks, and appeared only on a real phone. Each fix also added a
+check so it cannot come back.</p>
+<h3>Bug 1: the app closed the moment it opened (#435)</h3>
+<p><b>Cause.</b> To save space, an earlier change removed a GPU library (<code>libtensorflowlite_gpu_jni.so</code>) from the APK. But
+the TFLite library is <i>linked</i> to it and Android loads it at app start: a missing linked library = instant crash. The automatic
+check only <i>compiled</i> the APK, it never opened it.</p>
+<p><b>Fix.</b> Keep the library. <b>New check:</b> CI reads every native library in the APK (<code>readelf</code>) and fails if one needs
+a library that is missing. <b>Lesson:</b> "it builds" is not "it runs".</p>
+<h3>Bug 2: stuck at "picture 0 of 5" (#436)</h3>
+<p><b>Cause.</b> In an installed app, bundled files are Android resources with plain names like
+<code>assets_models_sface_2021dec_int8</code>; the model loader expected a web-style address and failed with
+<i>"MalformedURLException: no protocol"</i>. In development the files came from the dev server as <code>http://</code> addresses, so it
+always worked there. Worse, the screen <b>swallowed the error</b> and kept waiting.</p>
+<p><b>Fix.</b> Copy each model to the app's cache with <code>expo-asset</code> and load the <code>file://</code> copy. The scanner now stops
+after 3 failed pictures and says so. We found the real error with the hidden <b>developer screen</b>, which prints it.
+<b>Lessons:</b> test the release build, and never hide an error without telling the user.</p>
+<h3>Bug 3: uploads cut off at 9 MB</h3>
+<p><b>Cause.</b> The PC had the office cable and the phone's USB tethering both on; Windows preferred the office network, whose
+firewall breaks large uploads to Google's storage. <b>Fix:</b> unplug the office cable during builds and updates.
+<b>Lesson:</b> when something fails half-way, check the network path, not only the code.</p>
+<div class="good"><b>And what worked first time:</b> the 1:1 match (score 0.833), the blink/turn challenge, Google Play Integrity through our
+own Edge Function, the server's re-checks, the 10-minute rule, the "outside the area" refusal, and the "two faces in view" refusal.</div>
+</div>
+
+<!-- 12 -->
+<div class="section">
+<h2>12. How to work on it safely</h2>
+<ol>
+  <li><b>Never LIVE.</b> Work only with the TEST server (<code>fhuqyk…</code>) and the TEST app. The main folder's <code>app/.env</code> is LIVE: use a
+  worktree with TEST values (<code>app/.env.test</code> copied as <code>.env.development</code>).</li>
+  <li><b>Branch <code>face-scan</code>, never <code>main</code></b>, until the release lead merges it before a production APK.</li>
+  <li><b>Before every commit</b>, from <code>app/</code>: <code>npx tsc --noEmit</code> (0 errors), <code>npx expo lint</code> (clean),
+  <code>npm test</code> (all pass); from <code>supabase/tests/</code>: <code>npm test</code> (smoke + replay).</li>
+  <li><b>Native or JS?</b> Check the fingerprint (<code>npx expo-updates runtimeversion:resolve --platform android</code>, with
+  <code>APP_VARIANT=facetest</code> for the test app). Unchanged → an update is enough.</li>
+  <li><b>Write it down</b>: a numbered entry in <code>docs/DECISIONS.md</code> for every rule you add or change, and the docs it touches.</li>
+  <li><b>Test on a phone</b> with the developer screen (TEST builds: staff My profile → <i>Face scan test (developer)</i>): it shows
+  model load times, live face numbers, and the real error of any picture.</li>
+</ol>
+<h3>Glossary</h3>
+<table>
+  <tr><td><b>1:1 / 1:N</b></td><td>compare with one stored person / search among many. We only do 1:1.</td></tr>
+  <tr><td><b>Embedding / face code</b></td><td>128 numbers describing a face; not reversible to a photo.</td></tr>
+  <tr><td><b>Cosine similarity</b></td><td>how alike two face codes are, 0 to 1.</td></tr>
+  <tr><td><b>Liveness</b></td><td>proof that a live person, not a photo or video, is in front of the camera.</td></tr>
+  <tr><td><b>Enrolment</b></td><td>setting up the face once, at the desk, confirmed by a coordinator.</td></tr>
+  <tr><td><b>Keystore</b></td><td>Android's locked key storage; our face code is encrypted with a key kept there.</td></tr>
+  <tr><td><b>Play Integrity</b></td><td>Google's signed verdict that the phone and app are genuine.</td></tr>
+  <tr><td><b>Edge Function</b></td><td>a small server program on Supabase (ours: <code>verify-integrity</code>).</td></tr>
+  <tr><td><b>Migration</b></td><td>a numbered SQL file that changes the database; run on TEST first, LIVE much later.</td></tr>
+  <tr><td><b>Fingerprint</b></td><td>a hash of the app's native parts; updates only reach APKs with the same one.</td></tr>
+  <tr><td><b>OTA update</b></td><td>new JavaScript sent to installed apps without a new APK.</td></tr>
+  <tr><td><b>DPDP</b></td><td>India's Digital Personal Data Protection Act 2023 and Rules 2025.</td></tr>
+</table>
+<p class="small">Questions about privacy: Regula Sarvesh Chandra, privacy@mridangaseva.com. Code: the face-scan branch on GitHub
+(Praviadari/mridanga-seva). This document: <code>docs/phase3/print/face-scan-explained.html</code>.</p>
+</div>
+
+</body>
+</html>

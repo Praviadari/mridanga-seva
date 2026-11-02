@@ -7,6 +7,8 @@
 // a fact of the day closes the page (#242) while there is room for it. The level strip moved to the Learn tab.
 // Only notices stay above the cards: "A new version is ready" on the Android app (components/update-notice.tsx),
 // notifications off (components/push-notice.tsx, #305), could not load, and no student record.
+// Phase 3 (#344): a "Check in" / "Check out" circle first in the ring, before My QR, only on the Android app
+// while face scan is on and this phone keeps a face code (src/face/use-self-scan.ts); it opens S16.
 // Numbers: student_home() through src/data/home.ts; Today's Practice: data/today-practice.ts.
 // It loads again each time it comes back into view, so a count goes once the thing is done. It also
 // saves the My QR card on the phone once per run of the app (data/my-student.ts keepMyCardSaved).
@@ -26,6 +28,7 @@ import { BottomTabBarHeightContext } from 'expo-router/tabs';
 import { useAuth } from '@/auth/auth-provider';
 import { Button } from '@/components/button';
 import { CelebrationCard } from '@/components/celebration-card';
+import { FaceReEnrolNotice } from '@/components/face-entries';
 import { FactCard } from '@/components/fact-card';
 import { HomeHeader } from '@/components/home-header';
 import { Notice } from '@/components/notice';
@@ -42,6 +45,7 @@ import { fetchMyPath } from '@/data/level-path';
 import { keepMyCardSaved } from '@/data/my-student';
 import { fetchPollsToVote } from '@/data/polls';
 import { fetchTodayPractice } from '@/data/today-practice';
+import { useSelfScanState } from '@/face/use-self-scan';
 import { LEVEL_IDS } from '@/i18n/labels';
 import { useAboutPrompt } from '@/lib/about-prompt';
 import { celebrationEvents, takeDueCelebrations, type CelebrationEvent } from '@/lib/celebrations';
@@ -147,6 +151,11 @@ export default function StudentHomeScreen() {
     }, [load]),
   );
 
+  // Face self-scan (Phase 3, #344): Check in during the open hours, Check out while checked in; nothing while
+  // face scan is off, on the web, or on a phone without a face code.
+  const selfScan = useSelfScanState(profile?.id);
+  const selfScanAction = selfScan?.action ?? null;
+
   // Śloka Study stands out across the row (#674): Ishtagoshti was a tab until #670.
   const sloka: Shortcut[] = [
     {
@@ -171,6 +180,18 @@ export default function StudentHomeScreen() {
       badgeSpoken: t('home.badges.toDo', { count: assessmentsOpen }),
       onPress: () => router.push('/student/assessments'),
     },
+    ...(selfScanAction
+      ? [
+          {
+            key: 'selfScan',
+            icon: selfScanAction === 'check_in' ? 'hereNow' : 'signOut',
+            // The door's family, first in the ring before My QR (#368).
+            tone: 'blue',
+            label: t(selfScanAction === 'check_in' ? 'selfScan.checkIn' : 'selfScan.checkOut'),
+            onPress: () => router.push({ pathname: '/student/self-scan', params: { action: selfScanAction } }),
+          } satisfies Shortcut,
+        ]
+      : []),
     // My QR works without internet (#21), when it is needed most.
     { key: 'qr', icon: 'qr', tone: 'blue', label: t('tabs.myQr'), onPress: () => router.push('/student/my-qr') },
     // Events and polls (S11, S12; docs/DECISIONS.md #61).
@@ -222,13 +243,15 @@ export default function StudentHomeScreen() {
   const room = ringTop === null ? null : windowHeight - tabBar - ringTop - 8;
   const withFact = room === null || room - factHeight - 8 - LABEL_BELOW >= RING_WITH_FACT;
   const ringMax = room === null ? undefined : Math.max(RING_MIN, room - LABEL_BELOW - (withFact ? factHeight + 8 : 0));
-  const ring = ['qr', 'lessons', 'assessments', 'growth', 'ishtagoshti', 'events', 'about'].flatMap((k) => byKey.get(k) ?? []);
+  const ring = ['selfScan', 'qr', 'lessons', 'assessments', 'growth', 'ishtagoshti', 'events', 'about'].flatMap((k) => byKey.get(k) ?? []);
 
   return (
     <Screen wide compact header={<HomeHeader name={name} student onMe={() => router.navigate('/student/me')} />} onRefresh={() => load(true)}>
       <UpdateNotice />
       <PushNotice place="home" />
       <PrivacyNoticeCard />
+      {/* Face scan (Phase 3): only when this phone's enrolment ends within 30 days and the switch is on. */}
+      <FaceReEnrolNotice profileId={profile?.id} />
 
       {home === null ? (
         <>

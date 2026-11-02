@@ -6,8 +6,10 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useTranslation } from 'react-i18next';
 
+import { useAuth } from '@/auth/auth-provider';
 import { headerTitleOptions } from '@/components/header-title';
 import { webBackOptions } from '@/components/web-back-button';
+import { useFaceStatus } from '@/face/face-status';
 import { documentTitleLayout } from '@/lib/document-title';
 import { useHeadingFont } from '@/theme/fonts';
 import { headerBarOptions, useTheme } from '@/theme/use-theme';
@@ -25,6 +27,10 @@ export default function StudentLayout() {
   const titleFont = useHeadingFont();
   const bar = headerBarOptions(colors, titleFont);
   const { t } = useTranslation();
+  const { profile } = useAuth();
+  // Face scan (Phase 3, #310): at every start, ask the server about this phone's enrolment and apply the
+  // wipe rule (src/face/face-status.ts). Nothing on the web, and nothing to see while face scan is off.
+  useFaceStatus(profile?.id);
   return (
     <>
       {/* Light status-bar icons on the saffron headers. */}

@@ -24,6 +24,7 @@ import { useAuth } from '@/auth/auth-provider';
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { DetailGrid } from '@/components/detail-grid';
+import { FaceDeskEntry } from '@/components/face-entries';
 import { GuardianDigestLine, useGuardianDigests } from '@/components/guardian-digest';
 import { GuardianNoticeLine, useGuardianNotices } from '@/components/guardian-notices';
 import { GuruStudentTools } from '@/components/guru-student-tools';
@@ -386,6 +387,9 @@ function StudentProfileScreenContent() {
 
       {/* Phase 3 P3-1 (docs/DECISIONS.md #249-#252): print or replace the printed QR card. */}
       <QrCardPanel studentId={student.id} />
+
+      {/* Phase 3 P3-4 (docs/DECISIONS.md #307-#312): face scan at the desk; only while the switch is on. */}
+      <FaceDeskEntry studentId={student.id} name={student.fullName} rollNo={student.rollNo} minor={profile.minor} />
     </Screen>
   );
 }

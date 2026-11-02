@@ -119,6 +119,8 @@ with m(migration, present) as (values
   ('0067', exists (select 1 from pg_proc where proname = 'team_push_line' and pronamespace = 'public'::regnamespace and prosrc like '%ఫెసిలిటేటర్%')),
   ('0068', exists (select 1 from pg_proc where proname = 'my_data_summary' and pronamespace = 'public'::regnamespace and prosrc like '%play_rounds%')),
   ('0069', exists (select 1 from pg_trigger where tgname = 'playground_submission_guard' and not tgisinternal)),
+  ('0070', to_regclass('public.face_enrolments') is not null),
+  ('0071', exists (select 1 from pg_proc where proname = 'self_scan' and pronamespace = 'public'::regnamespace)),
   ('0072', exists (select 1 from pg_attribute where attrelid = 'public.syllabus_items'::regclass and attname = 'section' and not attisdropped))
 )
 select migration, case when present then 'yes' else 'no' end as present from m
@@ -133,7 +135,13 @@ order by 1;
 
 ## B. Migrations 0013-0072, one file per run
 
-**Next LIVE release (lead decision 30-10-2026, from main; LIVE then at 0062):** M0063 → M0064 → M0065 → M0066 → M0067 → M0068 → M0069 → M0072, one file per run in this order, probe after each (`LAST IN ORDER` = the file just run, `MISSING` `none`); then part F (`.claude/LIVE_verify_0072.sql`): row 1 `0072`, row 3 `17 of 17`. 0070/0071 are the face branch's and are not on main (the probe does not list them). The Playground stays off: `playground_enabled` stays false, `playground_allow_placeholders` false, no seed.
+**Face release, Sunday 08-11-2026 (with the production APK; [RELEASE_08-11.md](RELEASE_08-11.md)):** LIVE is at 0072 with
+0070 and 0071 missing (probe: `LAST IN ORDER` `0069`, `MISSING` `0070 0071`). Run **M0070 → M0071**, one file per run, probe
+after each: after M0070 `LAST IN ORDER` `0070`, `MISSING` `0071`; after M0071 `LAST IN ORDER` `0072`, `MISSING` `none`. Then
+part F: row 1 `0072`, row 2 `none`, row 3 `18 of 18` (the new job `mridanga-face-housekeeping`). `face_enabled` stays
+**false** until the facilitator switches face scan on.
+
+**LIVE release of 30-10-2026 (lead decision, from main; LIVE then at 0062):** M0063 → M0064 → M0065 → M0066 → M0067 → M0068 → M0069 → M0072, one file per run in this order, probe after each (`LAST IN ORDER` = the file just run, `MISSING` `none`); then part F (`.claude/LIVE_verify_0072.sql`): row 1 `0072`, row 3 `17 of 17`. 0070/0071 were the face branch's and not on main then (that probe did not list them). The Playground stays off: `playground_enabled` stays false, `playground_allow_placeholders` false, no seed.
 
 For each row: GitHub main → `supabase/migrations/<file>` → **Copy raw file** → LIVE → SQL Editor →
 New query → paste → check the project → **Run** → then paste the probe again (or keep it in a second
@@ -207,7 +215,9 @@ a second paste. So pasting a file twice by mistake is harmless; still, never do 
 | M0067 | `0067_facilitator_wording.sql` (branch `claude/facilitator-home-221f89`) | Praveen · dashboard | No rows; probe `0067`, `MISSING` `none`; verification row 3 `16 of 17` while 0065 waits, `17 of 17` after it (no new job) | **No Guru in the Telugu and Hindi notices** ([#706](DECISIONS.md), Facilitator SOP 360° review 27-10-2026): **`promotion_push_line` and `team_push_line` replaced** with the same lines except four te/hi ones (ఫెసిలిటేటర్ గారు / फ़ैसिलिटेटर instead of గురువుగారు / गुरुजी); English unchanged; privileges unchanged. No table, policy or stored row changes; queued notices keep their text. Safe to run twice. Any time after 0064 (independent of 0066); best with the OTA whose te/hi strings say ఫెసిలిటేటర్ |
 | M0068 | `0068_my_data_playground.sql` (main) | Praveen · dashboard | No rows; probe `0068`, `MISSING` `none`; verification row 3 `17 of 17` (no new job) | **My data lists the Playground** ([#770](DECISIONS.md)): **`my_data_summary` replaced** with the same body plus a `playground` part for a student (game settings, round counts by game, weekly summaries, the facilitator's ratings). Rights, logging and errors unchanged; changes no stored row. Safe to run twice. **Needs 0065** (run it right after 0065, with the Playground release) |
 | M0069 | `0069_playground_takes.sql` (main) | Praveen · dashboard | No rows; probe `0069`, `MISSING` `none`; verification row 3 `17 of 17` (no new job) | **Recordings sent from a game** ([#766](DECISIONS.md), #696): two triggers — `assessments.playground_game` must be a game id; a submission to a game's assessment is refused when the student already has **2 game recordings waiting for review** (`playground_takes_full`) or the file is not audio / over **2.5 MB** (`playground_take_too_long`; the app stops game takes at 90 s). `play_assets.bundled_key` may also be `synth:tone|instrument|kirtan:…` (sounds the app generates, #761). `submit_assessment` is not replaced; other assessments unchanged. Changes no stored row. Safe to run twice. **Needs 0065** (run with the Playground release) |
-| M0072 | `0072_syllabus_sections.sql` (branch `claude/syllabus-sections`) | Praveen · dashboard | No rows; probe `0072`, `MISSING` `none`; verification row 3 unchanged (no new job) | **Sections in the syllabus** ([#773](DECISIONS.md)): `syllabus_items` gets the optional column `section` (a heading over items in teaching order; null = no section, as before) and **`guard_syllabus_item` replaced** with the same rules plus the section (trimmed, spaces collapsed, at most 100 characters, `section_too_long`). Rights unchanged (table rights + row-level security: the Guru writes, the class reads). Changes no stored row. Safe to run twice. Independent of the Playground (0065-0069); 0070/0071 are the face branch's and may be missing. **Before** the OTA whose syllabus editor sends `section` (a newer app on a database without 0072 cannot load the syllabus) |
+| M0070 | `0070_face_enrolment.sql` (branch `face-scan`, release 08-11-2026) | Praveen · dashboard | `schedule` table (one job); probe `0070`, `MISSING` `0071` until M0071 runs; verification row 3 `18 of 18` (new job `mridanga-face-housekeeping`) | **Face scan, server side** ([#295-#300, #434](DECISIONS.md)), with the **08-11-2026 production APK** ([RELEASE_08-11.md](RELEASE_08-11.md)). The number stays the face branch's: **LIVE runs it after 0072** (LIVE ran 0063-0072 on 30-10-2026); the replay (step 4b) proves that order and TEST's (0070/0071 after 0054) end with the same schema as number order. Setting `face_enabled` **false** (SQL editor only; **stays off on LIVE until the facilitator switches face scan on**), face consent with the child's own yes, `face_enrolments` (an enrolment record, **no face code**), the desk-confirmed enrolment, the integrity challenge and pass for the Edge Function `verify-integrity` (deployed separately, [OPERATIONS.md "Face scan: integrity check"](OPERATIONS.md#face-scan-integrity-check)), `visits.liveness_ok`, the staff counts; `record_face_consent` answers `own_record` for a coordinator's own record. Replaces only `guard_setting` (last defined in 0048); no function of 0049-0069 or 0072 is replaced. Changes no stored row. Safe to run twice. TEST ran it 22-10-2026 (from 5e20020, same file) |
+| M0071 | `0071_face_selfscan.sql` (branch `face-scan`, release 08-11-2026) | Praveen · dashboard | No rows; probe `0072` (LAST IN ORDER: 0070-0072 all there), `MISSING` `none`; verification row 1 `0072`, row 3 `18 of 18` | **Face self-scan** ([#344-#349, #434](DECISIONS.md)), right after M0070, same release. The student's own face check-in / check-out: `self_scan_state` (the home's circle), `self_scan` (re-checks the integrity pass, consent, this phone's enrolment, location, open hours, liveness and score), `note_self_scan_failure` (counts only); `visits.check_out_location` / `check_out_distance_m` / `check_out_method` (a check-out outside is saved and flagged); setting `face_match_percent` 55 (SQL editor only). Replaces `guard_setting` (0070's), `guard_visit_location` (0024) and `refuse_own_record` (0053: a way through for a coordinator's own face check-in while `app.face_visit` is on). Nothing changes while `face_enabled` is false. Changes no stored row. Safe to run twice. TEST ran it 22-10-2026 |
+| M0072 | `0072_syllabus_sections.sql` (branch `claude/syllabus-sections`) | Praveen · dashboard | No rows; probe `0072`, `MISSING` `none`; verification row 3 unchanged (no new job) | **Sections in the syllabus** ([#773](DECISIONS.md)): `syllabus_items` gets the optional column `section` (a heading over items in teaching order; null = no section, as before) and **`guard_syllabus_item` replaced** with the same rules plus the section (trimmed, spaces collapsed, at most 100 characters, `section_too_long`). Rights unchanged (table rights + row-level security: the Guru writes, the class reads). Changes no stored row. Safe to run twice. Independent of the Playground (0065-0069) and of face scan (0070/0071 run after it on LIVE, 08-11-2026). **Before** the OTA whose syllabus editor sends `section` (a newer app on a database without 0072 cannot load the syllabus) |
 **A file newer than 0072 on main:** the replay's first check fails until this table lists it. Add it
 here, with its own steps, then run it last.
 
@@ -362,6 +372,8 @@ with m(migration, present) as (values
   ('0067', exists (select 1 from pg_proc where proname = 'team_push_line' and pronamespace = 'public'::regnamespace and prosrc like '%ఫెసిలిటేటర్%')),
   ('0068', exists (select 1 from pg_proc where proname = 'my_data_summary' and pronamespace = 'public'::regnamespace and prosrc like '%play_rounds%')),
   ('0069', exists (select 1 from pg_trigger where tgname = 'playground_submission_guard' and not tgisinternal)),
+  ('0070', to_regclass('public.face_enrolments') is not null),
+  ('0071', exists (select 1 from pg_proc where proname = 'self_scan' and pronamespace = 'public'::regnamespace)),
   ('0072', exists (select 1 from pg_attribute where attrelid = 'public.syllabus_items'::regclass and attname = 'section' and not attisdropped))
 ),
 last_in_order as (select coalesce(max(a.migration), 'before 0010') as v from m a
@@ -372,13 +384,13 @@ jobs(name) as (values ('mridanga-status-refresh'), ('mridanga-close-visits'), ('
   ('mridanga-assessments'), ('mridanga-events-polls'), ('mridanga-duty'), ('mridanga-access-log-purge'),
   ('mridanga-cron-history-purge'), ('mridanga-orphan-files'), ('mridanga-parent-notices'), ('mridanga-minor-signups'),
   ('mridanga-parent-digests'), ('mridanga-data-requests'), ('mridanga-retention'), ('mridanga-client-errors-purge'),
-  ('mridanga-playground')),
+  ('mridanga-playground'), ('mridanga-face-housekeeping')),
 checks(sort, check_name, ok, found, expected) as (
   select 1, 'last migration', (select v from last_in_order) = '0072', (select v from last_in_order), '0072'
   union all select 2, 'migrations missing', (select v from missing) = 'none', (select v from missing), 'none'
   union all select 3, 'scheduled jobs',
-    (select count(*) from jobs j join cron.job c on c.jobname = j.name and c.active) = 17,
-    (select count(*) from jobs j join cron.job c on c.jobname = j.name and c.active)::text || ' of 17', '17 of 17 (active)'
+    (select count(*) from jobs j join cron.job c on c.jobname = j.name and c.active) = 18,
+    (select count(*) from jobs j join cron.job c on c.jobname = j.name and c.active)::text || ' of 18', '18 of 18 (active)'
   union all select 4, 'other mridanga jobs', not exists (select 1 from cron.job where jobname like 'mridanga%' and jobname not in (select name from jobs)),
     coalesce((select string_agg(jobname, ', ') from cron.job where jobname like 'mridanga%' and jobname not in (select name from jobs)), 'none'),
     'none'

@@ -60,6 +60,8 @@ import { runWebPush } from '../functions/notify-announcements/web-send.ts';
 import { buildConsentEmail, consentPageUrl, runConsentCodes } from '../functions/notify-parents/consent.ts';
 import { runNotices } from '../functions/notify-parents/send.ts';
 import { buildDigestEmail, buildDigestPreview, runDigests } from '../functions/notify-parents/digest.ts';
+import { runVerify } from '../functions/verify-integrity/run.ts';
+import { requestText, sha256Hex } from '../functions/verify-integrity/verdict.ts';
 
 const supabaseDir = new URL('../', import.meta.url);
 const db = new PGlite({ extensions: { pgcrypto } });
@@ -157,7 +159,7 @@ process.on('uncaughtException', (error) => {
 // D14-10: every check is counted, and the run fails when fewer (or more) checks ran than expected,
 // so a block skipped by a renamed migration or a commented-out section cannot pass unseen.
 // Adding or removing checks? Run the suite and set this to the new total it prints.
-const EXPECTED_CHECKS = 2460; // 0072 syllabus sections, guna 1/2/4/8 and the team's syllabus seed: +10; W4 rhythm rounds: +2; 0069 game recordings and the W5 TEST seed: +11; 0068 my data with the Playground: +4; 0065 Rhythm Playground engine: +67; 0067 facilitator wording: +5; 0066 facilitator safeguards: +40 (0059/0026/0025/0049 checks adjusted for #710/#713); 0064 learn screens: +32; 0063 parent page: +32; 0062 web push: +33; 0061 staff sign-in codes and the error log: +53; 0060 privacy notice 1.0: +35; 0059 data rights: +56; 0058 weekly parent email: +64; 0057 practice while waiting: +24; 0056 practice extras: +35; 0055 learn more links: +23; 0054 after-launch forms: +49; 0053 staff own record: +55; 0052 more practice: +56; 0051 child's sign-up at home: +80; 0050 staff dashboard: +15; 0049 launch clean-up: +30; 0048 withdrawn records and leaks: +50; 0047 form rules: +109; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
+const EXPECTED_CHECKS = 2652; // face scan merged for the 08-11-2026 APK (branch face-scan): test data deleted (#433) +5, 0071 face self-scan +64 (6 of them #434), 0070 face scan server side +123; 0072 syllabus sections, guna 1/2/4/8 and the team's syllabus seed: +10; W4 rhythm rounds: +2; 0069 game recordings and the W5 TEST seed: +11; 0068 my data with the Playground: +4; 0065 Rhythm Playground engine: +67; 0067 facilitator wording: +5; 0066 facilitator safeguards: +40 (0059/0026/0025/0049 checks adjusted for #710/#713); 0064 learn screens: +32; 0063 parent page: +32; 0062 web push: +33; 0061 staff sign-in codes and the error log: +53; 0060 privacy notice 1.0: +35; 0059 data rights: +56; 0058 weekly parent email: +64; 0057 practice while waiting: +24; 0056 practice extras: +35; 0055 learn more links: +23; 0054 after-launch forms: +49; 0053 staff own record: +55; 0052 more practice: +56; 0051 child's sign-up at home: +80; 0050 staff dashboard: +15; 0049 launch clean-up: +30; 0048 withdrawn records and leaks: +50; 0047 form rules: +109; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
 let failures = 0;
 let passes = 0;
 
@@ -4239,6 +4241,12 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
     'play_audio_readable(text)', 'play_audio_uploadable(text)', 'play_audio_deletable(text)',
     // 0066: the first of the two Gurus approves an erasure (is_guru inside)
     'approve_data_erasure(uuid,text)', 'import_all_or_none(jsonb,boolean)',
+    // 0070: face scan (the desk, the student's phone, staff counts; each checks the caller and the switch inside)
+    'approve_face_enrolment(uuid,text)', 'enrol_face(bigint,text)', 'face_use_counts(date,date)', 'get_face_enrolments(uuid)',
+    'issue_integrity_challenge(text)', 'my_face_enrolment(text)', 'record_face_consent(uuid,boolean,uuid,text,boolean,text)',
+    'remove_face(uuid,text)', 'start_face_enrolment(text,text)',
+    // 0071: the face self-scan (the student's phone; each checks the caller and the switch inside)
+    'note_self_scan_failure(text,text)', 'self_scan(text,jsonb,text,text,boolean,real)', 'self_scan_state(text)',
   ];
   const runnableBy = async (role) => (await asOwner(`select p.oid::regprocedure::text as f from pg_proc p
     where p.pronamespace = 'public'::regnamespace
@@ -8952,6 +8960,751 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   check('0072 #775: ... a second run adds nothing', (await one(`select count(*)::int as n from syllabus_items`)).n === count75
     && seed75.indexOf('syllabus_beginner_test.sql refused') < seed75.indexOf('begin;'));
 }
+// ---------------------------------------------------------------- 0070 face scan, server side (DECISIONS #295-#300)
+// Phase 3, branch face-scan (placeholder number, was 0060 on p3-server). Gate 2: an enrolment record and no face code;
+// Gate 1: the integrity challenge, the Edge Function's two calls and the one-time pass.
+{
+  const file60 = readFileSync(new URL('migrations/0070_face_enrolment.sql', supabaseDir), 'utf8');
+  await db.exec(file60); // the 0046-0048 re-runs above replaced guard_setting: 0070's again
+  const adultDob60 = `${year - 30}-03-03`;
+  const signUp60 = async (email, name) => (await db.query(
+    `insert into auth.users (email, email_confirmed_at, raw_user_meta_data) values ($1, now(), $2) returning id`,
+    [email, JSON.stringify({ notice_version: 'v1', dob: adultDob60, centre_id: 1, full_name: name })])).rows[0].id;
+  const setting60 = (key, json) => asOwner(`update settings set value = '${json}' where key = '${key}'`);
+  const one = async (who, sql, params) => (await asApp('authenticated', who, sql, params))[0];
+  /** Like a security definer function the student's call runs (P3-5's self-scan RPC): the owner, signed in as `userId`. */
+  async function asOwnerSignedIn(userId, sql, params) {
+    await db.query(`select set_config('request.jwt.claim.sub', $1, false)`, [userId]);
+    try { return (await db.query(sql, params)).rows; } finally { await db.query(`select set_config('request.jwt.claim.sub', '', false)`); }
+  }
+  const DEV_A = 'deviceA-0123456789abcdef';
+  const DEV_B = 'deviceB-0123456789abcdef';
+  const MODEL = 'sface-2021dec-int8';
+  const adultFor60 = async (tag) => {
+    const login = await signUp60(`face60.${tag}@example.com`, `Face Sixty ${tag}`);
+    const rec = await register(coordinator, { p_full_name: `Face Sixty ${tag}`, p_dob: adultDob60, p_email: `face60.${tag}@example.com` });
+    return { login, id: rec.id };
+  };
+  const consent60 = (who, student, extra = {}) => asApp('authenticated', who,
+    `select record_face_consent(p_student => $1, p_signed_form => $2, p_guardian => $3, p_id_type_checked => $4,
+       p_child_assent => $5, p_notice_version => $6) as id`,
+    [student, extra.signed ?? true, extra.guardian ?? null, extra.idType ?? null, extra.assent ?? null, extra.notice ?? 'v0.3']);
+  const start60 = async (who, device = DEV_A, model = MODEL) => (await one(who, 'select start_face_enrolment($1, $2) as r', [device, model])).r;
+  const approve60 = async (who, student, code) => (await one(who, 'select approve_face_enrolment($1, $2) as r', [student, code])).r;
+  const enrol60 = async (who, request, device = DEV_A) => (await one(who, 'select enrol_face($1, $2) as r', [request, device])).r;
+  const mine60 = async (who, device = DEV_A) => (await one(who, 'select my_face_enrolment($1) as r', [device])).r;
+  const rows60 = (student) => asOwner(`select id, profile_id, device_key, enrolled_at, expires_at, revoked_at, revoke_reason, approved_by
+    from face_enrolments where student_id = '${student}' order by id`);
+  /** Start, confirm at the desk, complete: the whole supervised enrolment. Returns the request id. */
+  async function enrolFully(person, device = DEV_A) {
+    const s = await start60(person.login, device);
+    const a = await approve60(coordinator, person.id, s.code);
+    if (!a.ok) throw new Error(`approve failed ${JSON.stringify(a)}`);
+    await enrol60(person.login, s.request, device);
+    return s.request;
+  }
+
+  // #300: the switch, off by default, changed in the SQL editor only.
+  const settings60 = Object.fromEntries((await asOwner(`select key, value from settings where key like 'face%'`)).map((r) => [r.key, r.value]));
+  check('0070 #300: face scan is off by default; adults only (18); 12/24 months; scores 60 days; the spike\'s SFace model',
+    settings60.face_enabled === false && settings60.face_min_age === 18 && settings60.face_expiry_months_minor === 12
+    && settings60.face_expiry_months_adult === 24 && settings60.face_score_days === 60 && settings60.face_model_version === MODEL, JSON.stringify(settings60));
+  await refusesWith('0070 #300: the Guru cannot switch face scan on from the app (G10)', 'setting_owner_only', () =>
+    asApp('authenticated', guru, 'select save_settings($1::jsonb)', [JSON.stringify({ face_enabled: true })]));
+  await refusesWith('0070 #300: ... nor change the minimum age through the table', 'setting_owner_only', () =>
+    asApp('authenticated', guru, `update settings set value = '10' where key = 'face_min_age'`));
+  await refusesWith('0070 #300: the SQL editor gets true or false only', 'setting_invalid', () => setting60('face_enabled', '"yes"'));
+  await refusesWith('0070 #300: ... a minimum age of 5-18', 'setting_invalid', () => setting60('face_min_age', '4'));
+  await refusesWith('0070 #300: ... a model name in its shape', 'setting_invalid', () => setting60('face_model_version', '"SFace v2!"'));
+
+  const a60 = await adultFor60('Adult');
+  check('0070: (control) the adult record links its login', (await asOwner(`select profile_id from students where id = '${a60.id}'`))[0].profile_id === a60.login);
+  await refusesWith('0070 #300: while off, the desk cannot record a face consent', 'face_off', () => consent60(coordinator, a60.id));
+  await refusesWith('0070 #300: ... the phone cannot start an enrolment', 'face_off', () => start60(a60.login));
+  await refusesWith('0070 #300: ... nor ask for an integrity challenge', 'face_off', () => one(a60.login, `select issue_integrity_challenge('check_in')`));
+  const off60 = await mine60(a60.login);
+  check('0070 #300: (control) while off the phone still learns the state (face_enabled false, not enrolled)',
+    off60.face_enabled === false && off60.enrolled === false && off60.model_version === MODEL, JSON.stringify(off60));
+  await setting60('face_enabled', 'true');
+
+  // #298: face consent at the desk.
+  await refusesWith('0070 #298: a coordinator cannot add a face consent straight into the table', 'face_consent_at_desk', () =>
+    asApp('authenticated', coordinator, `insert into consents (student_id, scope, signed_form) values ($1, 'face', true)`, [a60.id]));
+  await refusesWith('0070 #298: a student cannot record a face consent', 'not_allowed', () => consent60(a60.login, a60.id));
+  await refusesWith('0070 #298: the signed form is required', 'written_consent_required', () => consent60(coordinator, a60.id, { signed: false }));
+  await refusesWith('0070 #298: ... and the notice version in its shape', 'notice_version_invalid', () => consent60(coordinator, a60.id, { notice: 'v1; drop' }));
+  const [{ id: c60 }] = await consent60(coordinator, a60.id);
+  const [cRow] = await asOwner(`select scope, guardian_id, child_assent, assent_read_by, verified_by, signed_form, notice_version from consents where id = '${c60}'`);
+  check('0070 #298: an adult\'s own face consent: no guardian, no assent fields, verified by the coordinator',
+    cRow.scope === 'face' && cRow.guardian_id === null && cRow.child_assent === null && cRow.assent_read_by === null
+    && cRow.verified_by === coordinator && cRow.signed_form === true && cRow.notice_version === 'v0.3', JSON.stringify(cRow));
+  await refusesWith('0070 #298: one current face consent at a time', 'face_consent_exists', () => consent60(coordinator, a60.id));
+
+  const kid60 = await register(coordinator, { p_full_name: 'Face Sixty Child', p_dob: `${year - 15}-01-10`, p_guardian_name: 'Parent Sixty',
+    p_guardian_phone: '9876543260', p_guardian_relation: 'father', p_id_type_checked: 'aadhaar', p_written_consent: true });
+  const [{ id: g60 }] = await asOwner(`select id from guardians where student_id = '${kid60.id}'`);
+  const kidFields = { guardian: g60, idType: 'aadhaar', assent: true };
+  await refusesWith('0070 #298: a minor under face_min_age (18 until the Guru and the lawyer answer) is refused', 'face_too_young', () =>
+    consent60(coordinator, kid60.id, kidFields));
+  await setting60('face_min_age', '13');
+  await refusesWith('0070 #298: a minor\'s face consent needs the parent', 'minor_needs_guardian', () => consent60(coordinator, kid60.id, { ...kidFields, guardian: null }));
+  await refusesWith('0070 #298: ... the ID seen', 'minor_needs_id_check', () => consent60(coordinator, kid60.id, { ...kidFields, idType: ' ' }));
+  await refusesWith('0070 #298: ... and the child\'s own yes', 'child_assent_required', () => consent60(coordinator, kid60.id, { ...kidFields, assent: false }));
+  const [{ id: otherG }] = await asOwner(`select id from guardians where student_id = '${child.id}'`);
+  await refusesWith('0070 #298: ... the child\'s own parent (0047)', 'consent_guardian_mismatch', () => consent60(coordinator, kid60.id, { ...kidFields, guardian: otherG }));
+  const [{ id: ck60 }] = await consent60(coordinator, kid60.id, kidFields);
+  const [kRow] = await asOwner(`select guardian_id, child_assent, assent_read_by, id_type_checked from consents where id = '${ck60}'`);
+  check('0070 #298: a minor\'s face consent keeps the parent, the ID type, the child\'s yes and who read it out',
+    kRow.guardian_id === g60 && kRow.child_assent === true && kRow.assent_read_by === coordinator && kRow.id_type_checked === 'aadhaar', JSON.stringify(kRow));
+  await refusesWith('0070 #298: assent fields belong to face consents only', /consents_assent_face_only/, () =>
+    asOwner(`insert into consents (student_id, guardian_id, scope, signed_form, child_assent) values ('${kid60.id}', '${g60}', 'photo', true, true)`));
+
+  // #295, #297: the supervised enrolment.
+  const cols60 = (await asOwner(`select column_name, data_type from information_schema.columns where table_name = 'face_enrolments'`));
+  check('0070 #295 (Gate 2): face_enrolments has no column that could hold a face code',
+    !cols60.some((c) => /template|embedding|vector|code$/.test(c.column_name) || ['bytea', 'ARRAY', 'jsonb'].includes(c.data_type)), cols60.map((c) => c.column_name).join(' '));
+  await refusesWith('0070 #297: only a student\'s phone starts an enrolment', 'not_allowed', () => start60(coordinator));
+  await refusesWith('0070 #297: the device key has its shape', 'device_key_invalid', () => start60(a60.login, 'short'));
+  await refusesWith('0070 #297: a phone with another model must update first', 'face_model_outdated', () => start60(a60.login, DEV_A, 'sface-2030'));
+  const b60 = await adultFor60('Second');
+  await refusesWith('0070 #297: no face consent, no enrolment', 'no_face_consent', () => start60(b60.login));
+  const s60 = await start60(a60.login);
+  const [hashRow] = await asOwner(`select code_hash, encode(sha256(convert_to('${s60.code}', 'UTF8')), 'hex') as h from face_enrolments where id = ${s60.request}`);
+  check('0070 #297: the phone gets a 6-digit code; the server keeps only its hash', /^\d{6}$/.test(s60.code) && hashRow.code_hash === hashRow.h, JSON.stringify(s60));
+  await refusesWith('0070 #297: the phone cannot complete before a coordinator confirms', 'face_not_confirmed', () => enrol60(a60.login, s60.request));
+  await refusesWith('0070 #297: the student cannot confirm their own request', 'not_allowed', () => approve60(a60.login, a60.id, s60.code));
+  const wrong60 = await approve60(coordinator, a60.id, s60.code === '000000' ? '111111' : '000000');
+  check('0070 #297: a wrong code is answered, not raised, with the tries left', wrong60.ok === false && wrong60.reason === 'code_wrong' && wrong60.tries_left === 4, JSON.stringify(wrong60));
+  const ok60 = await approve60(coordinator, a60.id, s60.code);
+  check('0070 #297: the right code confirms, naming the student for the coordinator', ok60.ok === true && ok60.full_name === 'Face Sixty Adult' && !!ok60.roll_no, JSON.stringify(ok60));
+  await refusesWith('0070 #297: another phone cannot complete the request', 'device_mismatch', () => enrol60(a60.login, s60.request, DEV_B));
+  await refusesWith('0070 #297: another student cannot complete it either', 'no_face_request', () => enrol60(b60.login, s60.request));
+  const e60 = await enrol60(a60.login, s60.request);
+  const [months] = await asOwner(`select (enrolled_at + interval '24 months' = expires_at) as ok, approved_by, code_hash from face_enrolments where id = ${s60.request}`);
+  check('0070 #297: the phone completes; an adult\'s enrolment lasts 24 months; the code is gone; approved_by kept',
+    months.ok === true && months.approved_by === coordinator && months.code_hash === null && e60.repeated === false, JSON.stringify(e60));
+  const m60 = await mine60(a60.login);
+  check('0070 #295: my_face_enrolment says this phone is enrolled, with its expiry', m60.enrolled === true && m60.face_enabled === true && !!m60.expires_at, JSON.stringify(m60));
+  check('0070 #295: ... and another phone of the same login is not (it wipes its code)', (await mine60(a60.login, DEV_B)).enrolled === false);
+  const got60 = await asApp('authenticated', coordinator, 'select * from get_face_enrolments($1)', [a60.id]);
+  check('0070: staff read the enrolment through get_face_enrolments (state current, no device key)',
+    got60.length === 1 && got60[0].state === 'current' && !('device_key' in got60[0]), JSON.stringify(got60));
+  check('0070: ... and the read is in access_log', (await asOwner(`select count(*)::int as n from access_log
+    where function_name = 'get_face_enrolments' and student_id = '${a60.id}' and actor_id = '${coordinator}'`))[0].n === 1);
+  await refusesWith('0070: a student cannot use get_face_enrolments', 'not_allowed', () => asApp('authenticated', a60.login, 'select * from get_face_enrolments($1)', [a60.id]));
+  for (const [who, id] of [['the student', a60.login], ['a coordinator', coordinator], ['the Guru', guru]]) {
+    await refusesWith(`0070 #295: ${who} cannot read face_enrolments directly`, 'permission denied for table face_enrolments', () =>
+      asApp('authenticated', id, 'select * from face_enrolments'));
+  }
+
+  // The desk code: 5 wrong codes end the request; 10 minutes; never one's own record; a repeat is harmless.
+  const t60 = await start60(a60.login, DEV_B);
+  let last60 = null;
+  for (let i = 0; i < 5; i++) last60 = await approve60(coordinator, a60.id, t60.code === '222222' ? '333333' : '222222');
+  check('0070 #297: the fifth wrong code ends the request (code_failed)', last60.tries_left === 0
+    && (await rows60(a60.id)).find((r) => r.id === t60.request)?.revoke_reason === 'code_failed');
+  await refusesWith('0070 #297: ... after which the right code finds no request', 'no_face_request', () => approve60(coordinator, a60.id, t60.code));
+  const u60 = await start60(a60.login, DEV_B);
+  await asOwner(`update face_enrolments set requested_at = now() - interval '11 minutes' where id = ${u60.request}`);
+  await refusesWith('0070 #297: a code older than 10 minutes is refused', 'face_request_expired', () => approve60(coordinator, a60.id, u60.code));
+  const v60 = await start60(a60.login, DEV_B);
+  check('0070 #297: a new request replaces the waiting one', (await rows60(a60.id)).find((r) => r.id === u60.request)?.revoke_reason === 'not_completed');
+  await approve60(coordinator, a60.id, v60.code);
+  check('0070 #297: confirming twice is harmless (repeated)', (await approve60(coordinator, a60.id, v60.code)).repeated === true);
+  await asOwner(`update face_enrolments set approved_at = now() - interval '11 minutes' where id = ${v60.request}`);
+  await refusesWith('0070 #297: the phone completes within 10 minutes of the confirmation', 'face_confirmation_expired', () => enrol60(a60.login, v60.request, DEV_B));
+  await asOwner(`update face_enrolments set requested_at = now() - interval '2 hours' where student_id = '${a60.id}'`);
+  const n60 = await start60(a60.login, DEV_B);
+  await approve60(coordinator, a60.id, n60.code);
+  await enrol60(a60.login, n60.request, DEV_B);
+  const after60 = await rows60(a60.id);
+  check('0070 #297: enrolling a new phone ends the old phone\'s enrolment (replaced); one current',
+    after60.find((r) => r.id === s60.request)?.revoke_reason === 'replaced' && after60.filter((r) => r.enrolled_at && !r.revoked_at).length === 1);
+  check('0070 #295: ... so the old phone learns to wipe its code', (await mine60(a60.login, DEV_A)).enrolled === false && (await mine60(a60.login, DEV_B)).enrolled === true);
+  const self60 = await r10Student('Face Sixty Coordinator Self');
+  await asOwner(`update students set profile_id = '${coordinator2}' where id = '${self60}'`);
+  await asOwner(`insert into face_enrolments (student_id, profile_id, device_key, model_version, code_hash)
+    values ('${self60}', '${coordinator2}', '${DEV_A}', '${MODEL}', encode(sha256(convert_to('123456', 'UTF8')), 'hex'))`);
+  await asOwner(`insert into consents (student_id, scope, signed_form) values ('${self60}', 'face', true)`);
+  await refusesWith('0070 #297: a coordinator never confirms their own record', 'not_allowed', () => approve60(coordinator2, self60, '123456'));
+  check('0070 #297: (control) another coordinator may', (await approve60(coordinator, self60, '123456')).ok === true);
+  await refusesWith('0070 #297: at most 5 requests an hour', 'too_many_requests', async () => {
+    for (let i = 0; i < 6; i++) await start60(a60.login, DEV_A);
+  });
+  await asOwner(`update face_enrolments set requested_at = now() - interval '2 hours' where student_id = '${a60.id}'`);
+
+  // A minor: the parent's consent plus the child's yes, 12 months.
+  const kidLogin = await signUp60('face60.kid@example.com', 'Face Sixty Child');
+  await asApp('authenticated', guru, 'select link_student_login($1, $2)', [kidLogin, kid60.id]);
+  await enrolFully({ login: kidLogin, id: kid60.id });
+  check('0070 #298: a minor\'s enrolment lasts 12 months', (await asOwner(`select (enrolled_at + interval '12 months' = expires_at) as ok
+    from face_enrolments where student_id = '${kid60.id}' and revoked_at is null`))[0]?.ok === true);
+  await asOwner(`update consents set child_assent = false where id = '${ck60}'`);
+  await refusesWith('0070 #298: without the child\'s yes the minor cannot start again', 'no_face_consent', () => start60(kidLogin, DEV_B));
+  await asOwner(`update consents set child_assent = true where id = '${ck60}'`);
+
+  // #296: the integrity challenge, the Edge Function's two calls, the one-time pass.
+  await refusesWith('0070 #296: a challenge needs a current enrolment', 'face_not_enrolled', async () => {
+    await consent60(coordinator, b60.id);
+    await one(b60.login, `select issue_integrity_challenge('check_in')`);
+  });
+  await refusesWith('0070 #296: the action is check_in or check_out', 'action_invalid', () => one(a60.login, `select issue_integrity_challenge('enrol')`));
+  await refusesWith('0070 #296: staff get no challenge', 'not_allowed', () => one(coordinator, `select issue_integrity_challenge('check_in')`));
+  const issue60 = async () => (await one(a60.login, `select issue_integrity_challenge('check_in') as r`)).r;
+  const begin60 = async (challenge, profile, action = 'check_in', location = 'inside') =>
+    (await asApp('service_role', null, 'select begin_integrity_check($1, $2, $3, $4) as r', [challenge, profile, action, location]))[0].r;
+  const finish60 = async (challenge, result, hash = null) =>
+    (await asApp('service_role', null, 'select finish_integrity_check($1, $2, $3) as r', [challenge, result, hash]))[0].r;
+  const passHash = async (pass) => (await asOwner(`select encode(sha256(convert_to('${pass}', 'UTF8')), 'hex') as h`))[0].h;
+  const ch1 = await issue60();
+  check('0070 #296: a challenge is 32 hex characters, for this login, valid 60 s',
+    /^[0-9a-f]{32}$/.test(ch1.challenge) && ch1.login === a60.login
+    && Math.abs(new Date(ch1.expires_at).getTime() - Date.now() - 60000) < 5000, JSON.stringify(ch1));
+  await refusesWith('0070 #296: the app cannot run the Edge Function\'s calls', 'permission denied for function begin_integrity_check', () =>
+    asApp('authenticated', a60.login, 'select begin_integrity_check($1, $2, $3, $4)', [ch1.challenge, a60.login, 'check_in', 'inside']));
+  const notYours = await begin60(ch1.challenge, b60.login);
+  check('0070 #296: another login\'s token cannot use the challenge', notYours.ok === false && notYours.reason === 'challenge_not_yours', JSON.stringify(notYours));
+  check('0070 #296: ... and the challenge is spent all the same (single use)', (await begin60(ch1.challenge, a60.login)).reason === 'challenge_used');
+  check('0070 #296: an unknown challenge', (await begin60('0'.repeat(32), a60.login)).reason === 'challenge_unknown');
+  const ch2 = await issue60();
+  check('0070 #296: the action must be the one the challenge was for', (await begin60(ch2.challenge, a60.login, 'check_out')).reason === 'action_mismatch');
+  const ch3 = await issue60();
+  await asOwner(`update integrity_challenges set expires_at = now() - interval '1 second' where challenge = '${ch3.challenge}'`);
+  check('0070 #296: an expired challenge (60 s)', (await begin60(ch3.challenge, a60.login)).reason === 'challenge_expired');
+  const ch4 = await issue60();
+  check('0070 #296: a location result in its shape only (never coordinates)', (await begin60(ch4.challenge, a60.login, 'check_in', '17.39,78.47')).reason === 'location_invalid');
+  const ch5 = await issue60();
+  const b5 = await begin60(ch5.challenge, a60.login);
+  check('0070 #296: (control) the right login, action and time pass to the verdict check, with the student and the issue time',
+    b5.ok === true && b5.student_id === a60.id && Math.abs(Number(b5.issued_at_ms) - Date.now()) < 10000, JSON.stringify(b5));
+  await refusesWith('0070 #296: a pass is stored as a SHA-256 only', 'pass_hash_invalid', () => finish60(ch5.challenge, 'pass', 'not-a-hash'));
+  const pass5 = 'pass-five-AbCdEfGhIjKlMnOpQrStUvWxYz012345';
+  const f5 = await finish60(ch5.challenge, 'pass', await passHash(pass5));
+  check('0070 #296: a passed verdict gives a pass valid 120 s', f5.ok === true
+    && Math.abs(new Date(f5.pass_expires_at).getTime() - Date.now() - 120000) < 5000, JSON.stringify(f5));
+  check('0070 #296: the result is recorded once', (await finish60(ch5.challenge, 'device_integrity')).reason === 'challenge_not_open');
+  await refusesWith('0070 #296: the app cannot spend a pass itself (the self-scan RPC does)', 'permission denied for function use_integrity_pass', () =>
+    asApp('authenticated', a60.login, 'select use_integrity_pass($1, $2, $3)', [pass5, 'check_in', 'inside']));
+  await refusesWith('0070 #296: another login cannot use the pass', 'integrity_required', () =>
+    asOwnerSignedIn(b60.login, 'select use_integrity_pass($1, $2, $3)', [pass5, 'check_in', 'inside']));
+  await refusesWith('0070 #296: the pass is for its own location result', 'integrity_pass_mismatch', () =>
+    asOwnerSignedIn(a60.login, 'select use_integrity_pass($1, $2, $3)', [pass5, 'check_in', 'outside']));
+  const [{ s: used5 }] = await asOwnerSignedIn(a60.login, 'select use_integrity_pass($1, $2, $3) as s', [pass5, 'check_in', 'inside']);
+  check('0070 #296: (control) the right login, action and location spend the pass and get the student', used5 === a60.id);
+  await refusesWith('0070 #296: a pass works once', 'integrity_pass_used', () =>
+    asOwnerSignedIn(a60.login, 'select use_integrity_pass($1, $2, $3)', [pass5, 'check_in', 'inside']));
+  const ch6 = await issue60();
+  await begin60(ch6.challenge, a60.login);
+  const pass6 = 'pass-six-AbCdEfGhIjKlMnOpQrStUvWxYz0123456';
+  await finish60(ch6.challenge, 'pass', await passHash(pass6));
+  await asOwner(`update integrity_challenges set pass_expires_at = now() - interval '1 second' where challenge = '${ch6.challenge}'`);
+  await refusesWith('0070 #296: a pass expires after 120 s', 'integrity_pass_expired', () =>
+    asOwnerSignedIn(a60.login, 'select use_integrity_pass($1, $2, $3)', [pass6, 'check_in', 'inside']));
+  await refusesWith('0070 #296: a made-up pass', 'integrity_required', () =>
+    asOwnerSignedIn(a60.login, 'select use_integrity_pass($1, $2, $3)', ['made-up', 'check_in', 'inside']));
+  const ch7 = await issue60();
+  await begin60(ch7.challenge, a60.login);
+  check('0070 #296: a failed verdict is recorded with its rule', (await finish60(ch7.challenge, 'device_integrity')).ok === true);
+  const ch8 = await issue60();
+  await begin60(ch8.challenge, a60.login);
+  await asOwner(`update integrity_challenges set used_at = now() - interval '61 seconds' where challenge = '${ch8.challenge}'`);
+  check('0070 #296: a verdict more than 60 s after the spend is too late', (await finish60(ch8.challenge, 'pass', await passHash('late-pass-x'))).reason === 'challenge_expired');
+  await asOwner(`update integrity_challenges set issued_at = now() - interval '11 minutes' where profile_id = '${a60.login}'`);
+  await refusesWith('0070 #296: at most 10 challenges per login in 10 minutes', 'too_many_requests', async () => {
+    for (let i = 0; i < 11; i++) await issue60();
+  });
+  await asOwner(`update integrity_challenges set issued_at = now() - interval '11 minutes' where profile_id = '${a60.login}'`);
+
+  // P3-6 staff view: counts only.
+  const counts60 = async (who) => (await one(who, 'select face_use_counts(current_date - 1, current_date + 1) as r')).r;
+  const coordView = await counts60(coordinator);
+  const abids = coordView.find((c) => c.centre_id === 1);
+  check('0070 P3-6: a coordinator sees their centre\'s counts: students with face scan, integrity failures by rule',
+    coordView.length === 1 && abids?.enrolled >= 2 && abids.failures.integrity >= 6 && abids.integrity.challenge_not_yours === 1
+    && abids.integrity.device_integrity === 1 && abids.integrity.challenge_expired === 2, JSON.stringify(coordView));
+  check('0070 P3-6: no student is named anywhere in it', !JSON.stringify(coordView).includes(a60.id) && !JSON.stringify(coordView).includes('Face Sixty'));
+  check('0070 P3-6: the failure counts keep no student id', !(await asOwner(`select column_name from information_schema.columns
+    where table_name = 'face_scan_failures'`)).some((c) => /student|profile/.test(c.column_name)));
+  check('0070 P3-6: the Guru sees every active centre', (await counts60(guru)).length === (await asOwner('select count(*)::int as n from centres where active'))[0].n);
+  await refusesWith('0070 P3-6: a student does not see the counts', 'not_allowed', () => counts60(a60.login));
+  await refusesWith('0070 P3-6: a period runs forwards', 'range_invalid', () => one(coordinator, 'select face_use_counts(current_date, current_date - 1)'));
+
+  // The Edge Function's flow (verify-integrity/run.ts) against this SQL, with an imitated Google:
+  // the names of the arguments and the shapes of the answers agree.
+  const rpc60 = async (name, args) => {
+    try {
+      const rows = await asApp('service_role', null, `select ${name}(${Object.keys(args).map((k, i) => `${k} => $${i + 1}`).join(', ')}) as r`, Object.values(args));
+      return { data: rows[0].r, error: null };
+    } catch (e) { return { data: null, error: { message: e.message } }; }
+  };
+  const cert60 = 'ab'.repeat(32);
+  const verdict60 = async (challenge, device = ['MEETS_DEVICE_INTEGRITY']) => ({
+    requestDetails: { requestPackageName: 'org.mridangaseva.app', timestampMillis: String(Date.now()),
+      requestHash: await sha256Hex(requestText(a60.login, 'check_in', challenge, 'inside')) },
+    appIntegrity: { appRecognitionVerdict: 'UNRECOGNIZED_VERSION', packageName: 'org.mridangaseva.app',
+      certificateSha256Digest: [Buffer.from(cert60, 'hex').toString('base64url')], versionCode: '7' },
+    deviceIntegrity: { deviceRecognitionVerdict: device } });
+  const PASS60 = 'pass-from-run-ts-AbCdEfGhIjKlMnOpQrStUvWxYz01';
+  const verify60 = async (challenge, payload) => runVerify(
+    { profileId: a60.login, body: { challenge, token: 'phone-token', action: 'check_in', location: 'inside' } },
+    { rpc: rpc60, decode: async () => payload, config: { packageName: 'org.mridangaseva.app', certDigests: [cert60], minVersionCode: null },
+      now: Date.now, newPass: () => PASS60, log: () => {} });
+  const chR = await issue60();
+  const okR = await verify60(chR.challenge, await verdict60(chR.challenge));
+  check('0070 #296: run.ts on the real SQL: a good verdict gives the phone a pass', okR.status === 200 && okR.body.ok === true && okR.body.pass === PASS60, JSON.stringify(okR));
+  const [{ s: usedR }] = await asOwnerSignedIn(a60.login, 'select use_integrity_pass($1, $2, $3) as s', [PASS60, 'check_in', 'inside']);
+  check('0070 #296: ... which the self-scan RPC can spend once', usedR === a60.id);
+  check('0070 #296: ... and the same request again finds the challenge spent', (await verify60(chR.challenge, await verdict60(chR.challenge))).body.reason === 'challenge_used');
+  const chD = await issue60();
+  const badR = await verify60(chD.challenge, await verdict60(chD.challenge, []));
+  check('0070 #296: run.ts on the real SQL: a rooted phone gets no pass, and the failure is counted by rule',
+    badR.body.ok === false && badR.body.rule === 'device_integrity'
+    && (await counts60(coordinator)).find((c) => c.centre_id === 1)?.integrity.device_integrity === 2, JSON.stringify(badR));
+  // S4F-01: method face and liveness_ok only from the self-scan path.
+  const v60s = await r10Student('Face Sixty Visit');
+  await refusesWith('0070 S4F-01: a QR scan / desk tap cannot record a face visit', 'face_visit_reserved', () =>
+    asApp('authenticated', coordinator, `select toggle_visit($1, 'face')`, [v60s]));
+  await refusesWith('0070 S4F-01: ... nor the dashboard', 'face_visit_reserved', () =>
+    asOwner(`insert into visits (student_id, method) values ('${v60s}', 'face')`));
+  await refusesWith('0070 S4F-01: ... nor a liveness result on another visit', 'face_visit_reserved', () =>
+    asOwner(`insert into visits (student_id, method, liveness_ok) values ('${v60s}', 'manual', true)`));
+  await db.query(`select set_config('app.face_visit', 'on', false)`);
+  const [{ id: fv60 }] = await asOwner(`insert into visits (student_id, method, liveness_ok) values ('${v60s}', 'face', true) returning id`);
+  await asOwner(`insert into visit_face_scores (visit_id, match_score) values (${fv60}, 0.81)`);
+  await setting60('face_enabled', 'false');
+  let offVisit = '';
+  try { await asOwner(`update visits set liveness_ok = false where id = ${fv60}`); } catch (e) { offVisit = e.message; }
+  await setting60('face_enabled', 'true');
+  await db.query(`select set_config('app.face_visit', '', false)`);
+  check('0070 S4F-01: (control) the self-scan path records a face visit with liveness and a score; never while face scan is off',
+    !!fv60 && offVisit === 'face_visit_reserved', offVisit);
+  await asOwner(`update visits set check_out = check_in + interval '1 hour' where id = ${fv60}`);
+  check('0070 #299: closing a face visit copies no score into audit_log', (await asOwner(`select count(*)::int as n from audit_log
+    where table_name = 'visits' and row_id = '${fv60}' and (old_row::text like '%match_score%' or new_row::text like '%match_score%')`))[0].n === 0);
+  await refusesWith('0070 #299: nobody reads the scores directly', 'permission denied for table visit_face_scores', () =>
+    asApp('authenticated', guru, 'select * from visit_face_scores'));
+
+  // #299: every way an enrolment ends.
+  const ended = async (student) => (await rows60(student)).filter((r) => r.revoked_at).map((r) => r.revoke_reason);
+  const rmOff = await one(a60.login, 'select remove_face() as r');
+  const [cAfter] = await asOwner(`select revoked_at is not null as revoked, revoked_by from consents where id = '${c60}'`);
+  check('0070 #298: the student turns face scan off in one tap: enrolment ended, face consent revoked by the student',
+    rmOff.r.removed >= 1 && rmOff.r.consent_revoked === true && cAfter.revoked && cAfter.revoked_by === a60.login
+    && (await ended(a60.id)).includes('student_off'), JSON.stringify(rmOff));
+  await refusesWith('0070 #298: ... after which a new consent is needed', 'no_face_consent', () => start60(a60.login));
+  await consent60(coordinator, a60.id);
+  await enrolFully(a60);
+  await refusesWith('0070 #298: the desk names a known reason', 'reason_invalid', () => one(coordinator, `select remove_face($1, 'bored')`, [a60.id]));
+  await refusesWith('0070 #298: a student cannot remove another student\'s', 'not_allowed', () => one(b60.login, 'select remove_face($1)', [a60.id]));
+  const lost = await one(coordinator, `select remove_face($1, 'lost_phone') as r`, [a60.id]);
+  check('0070 #298: a lost phone (desk): the enrolment ends, the face consent stays for the re-enrolment',
+    lost.r.removed === 1 && lost.r.consent_revoked === false && (await ended(a60.id)).includes('lost_phone'), JSON.stringify(lost));
+  await enrolFully(a60);
+  await setting60('face_enabled', 'false');
+  const deskOff = await one(coordinator, `select remove_face($1, 'desk') as r`, [a60.id]);
+  await setting60('face_enabled', 'true');
+  check('0070 #300: removal works while face scan is off (desk: the parent or adult says no; consent revoked)',
+    deskOff.r.removed === 1 && deskOff.r.consent_revoked === true, JSON.stringify(deskOff));
+
+  const endBy = async (tag, act, reason) => {
+    const p = await adultFor60(tag);
+    await consent60(coordinator, p.id);
+    await enrolFully(p);
+    await act(p);
+    check(`0070 #299: ${tag.toLowerCase()} ends the enrolment (${reason})`, (await ended(p.id)).includes(reason), JSON.stringify(await ended(p.id)));
+    return p;
+  };
+  const w60 = await endBy('Withdrawn', (p) => asApp('authenticated', guru, `select withdraw_consent($1, 'by phone')`, [p.id]), 'withdrawn');
+  await refusesWith('0070 #299: a withdrawn record gets no new face consent', 'student_withdrawn', () => consent60(coordinator, w60.id));
+  await refusesWith('0070 #299: ... nor an enrolment row, whatever the path', 'student_withdrawn', () =>
+    asOwner(`insert into face_enrolments (student_id, profile_id, device_key, model_version) values ('${w60.id}', '${w60.login}', '${DEV_A}', '${MODEL}')`));
+  const r60 = await endBy('Revoked', (p) => asApp('authenticated', guru,
+    `update consents set revoked_at = now() where student_id = $1 and scope = 'face' and revoked_at is null`, [p.id]), 'consent_withdrawn');
+  check('0070 #298: a revocation by the Guru records who revoked', (await asOwner(`select revoked_by from consents
+    where student_id = '${r60.id}' and scope = 'face'`))[0].revoked_by === guru);
+  await endBy('Unlinked', (p) => asApp('authenticated', guru, 'select unlink_student_login($1)', [p.id]), 'login_changed');
+  const off60p = await endBy('Switched', (p) => asApp('authenticated', guru, 'update profiles set active = false where id = $1', [p.login]), 'login_off');
+  await asApp('authenticated', guru, 'update profiles set active = true where id = $1', [off60p.login]);
+  const mc = await endBy('Model', () => setting60('face_model_version', '"sface-2027-int8"'), 'model_changed');
+  await refusesWith('0070 #299: after a model change a phone with the old model must update', 'face_model_outdated', () => start60(mc.login));
+  await setting60('face_model_version', `"${MODEL}"`);
+  check('0070 #299: (control) the model change left the other models\' rows ended, none current',
+    (await asOwner(`select count(*)::int as n from face_enrolments where revoked_at is null and enrolled_at is not null`))[0].n === 0);
+
+  // The nightly job: expiry, unfinished requests, Left for 30 days, old scores and rows.
+  const x60 = await adultFor60('Expiring');
+  await consent60(coordinator, x60.id);
+  await enrolFully(x60);
+  await asOwner(`update face_enrolments set enrolled_at = now() - interval '25 months', expires_at = now() - interval '1 month',
+    approved_at = now() - interval '25 months', requested_at = now() - interval '25 months' where student_id = '${x60.id}' and revoked_at is null`);
+  check('0070 #295: an expired enrolment is not current for the phone even before the night job', (await mine60(x60.login)).enrolled === false);
+  const l60 = await adultFor60('Leaving');
+  await consent60(coordinator, l60.id);
+  await enrolFully(l60);
+  await db.exec(`select set_config('app.via_call_log', 'on', false); update students set status = 'left' where id = '${l60.id}';
+    select set_config('app.via_call_log', '', false);
+    update status_history set changed_at = now() - interval '31 days' where student_id = '${l60.id}' and to_status = 'left'`);
+  await refusesWith('0070: a student marked Left cannot start an enrolment', 'student_left', () => start60(l60.login, DEV_B));
+  const p60 = await start60(b60.login);
+  await asOwner(`update face_enrolments set requested_at = now() - interval '2 hours' where id = ${p60.request}`);
+  await asOwner(`update visit_face_scores set scored_at = now() - interval '61 days' where visit_id = ${fv60}`);
+  await asOwner(`update face_enrolments set revoked_at = now() - interval '401 days' where student_id = '${w60.id}'`);
+  await asOwner(`update integrity_challenges set issued_at = now() - interval '2 days' where challenge = '${ch1.challenge}'`);
+  const hk = (await asOwner('select face_housekeeping() as r'))[0].r;
+  check('0070 #299: the night job ends expired, unfinished and Left+30 enrolments',
+    (await ended(x60.id)).includes('expired') && (await ended(l60.id)).includes('left')
+    && (await rows60(b60.id)).find((r) => r.id === p60.request)?.revoke_reason === 'not_completed', JSON.stringify(hk));
+  check('0070 #299: ... deletes scores after 60 days (the visit stays, method face, liveness kept)',
+    (await asOwner(`select count(*)::int as n from visit_face_scores where visit_id = ${fv60}`))[0].n === 0
+    && (await asOwner(`select method::text as m, liveness_ok from visits where id = ${fv60}`))[0].liveness_ok === true);
+  check('0070 #299: ... and ended rows after 400 days, challenges after a day', (await rows60(w60.id)).length === 0
+    && (await asOwner(`select count(*)::int as n from integrity_challenges where challenge = '${ch1.challenge}'`))[0].n === 0);
+  check('0070 #299: the night job is scheduled', (await asOwner(`select count(*)::int as n from cron.job
+    where jobname = 'mridanga-face-housekeeping' and command = 'select face_housekeeping()'`))[0].n === 1);
+
+  // Erasure leaves nothing of the face scan behind.
+  await consent60(coordinator, a60.id);
+  await enrolFully(a60);
+  const chE = await issue60();
+  await asApp('authenticated', guru, `select erase_student($1, 'parent asked')`, [a60.id]);
+  check('0070 #299: erase_student removes the enrolments and challenges with the record',
+    (await rows60(a60.id)).length === 0 && (await asOwner(`select count(*)::int as n from integrity_challenges where challenge = '${chE.challenge}'`))[0].n === 0);
+
+  // Safe to run twice.
+  const counts60b = async () => (await asOwner(`select (select count(*) from face_enrolments)::int as e, (select count(*) from consents)::int as c,
+    (select count(*) from settings)::int as s, (select string_agg(key || '=' || value::text, ',' order by key) from settings where key like 'face%') as f`))[0];
+  await setting60('face_enabled', 'false');
+  await setting60('face_min_age', '18');
+  const before60 = await counts60b();
+  let again60 = '';
+  try { await db.exec(file60); } catch (e) { again60 = String(e.message); }
+  check('0070 can run again and changes nothing (settings kept as set)', again60 === '' && JSON.stringify(await counts60b()) === JSON.stringify(before60),
+    `${again60} ${JSON.stringify(before60)}`);
+}
+
+// ---------------------------------------------------------------- 0071 face self-scan (DECISIONS #344-#349)
+// Phase 3 P3-5, branch face-scan (placeholder number, was 0064 on p3-selfscan). The student's own check-in / check-out:
+// every rule the server re-checks, the check-out flag, the counts, the parent's check-out email.
+{
+  const file64 = readFileSync(new URL('migrations/0071_face_selfscan.sql', supabaseDir), 'utf8');
+  await db.exec(file64); // the 0070 re-run above replaced guard_setting and guard_face_visit: 0071's again
+  const MODEL = 'sface-2021dec-int8';
+  const DEV_A = 'selfscanA-0123456789abcd';
+  const DEV_B = 'selfscanB-0123456789abcd';
+  const setting64 = (key, json) => asOwner(`update settings set value = '${json}' where key = '${key}'`);
+  const one = async (who, sql, params) => (await asApp('authenticated', who, sql, params))[0];
+  const [centreBefore] = await asOwner(`select lat, lng, radius_m, opens_at::text as o, closes_at::text as c from centres where id = 1`);
+  const area64 = (lat, lng) => asOwner(`update centres set lat = ${lat}, lng = ${lng}, radius_m = 100 where id = 1`);
+  const openAllDay = () => asOwner(`update centres set opens_at = '00:00', closes_at = '23:59:59' where id = 1`);
+  const closeNow = async () => {
+    const [{ am }] = await asOwner(`select (now() at time zone time_zone)::time < '12:00' as am from centres where id = 1`);
+    await asOwner(`update centres set opens_at = '${am ? '13:00' : '01:00'}', closes_at = '${am ? '14:00' : '02:00'}' where id = 1`);
+  };
+  await area64(17.385, 78.4867);
+  await openAllDay();
+  await setting64('qr_rescan_minutes', '10');
+  await setting64('face_min_age', '18');
+  await setting64('face_enabled', 'true');
+  const adultDob64 = `${year - 30}-04-04`;
+  const person64 = async (tag, fields = {}) => {
+    const email = `self64.${tag}@example.com`;
+    const login = (await db.query(`insert into auth.users (email, email_confirmed_at, raw_user_meta_data) values ($1, now(), $2) returning id`,
+      [email, JSON.stringify({ notice_version: 'v1', dob: adultDob64, centre_id: 1, full_name: `Self Scan ${tag}` })])).rows[0].id;
+    const rec = await register(coordinator, { p_full_name: `Self Scan ${tag}`, p_dob: adultDob64, p_email: email, ...fields.register });
+    return { login, id: rec.id };
+  };
+  const enrol64 = async (p, consent = {}) => {
+    await asApp('authenticated', coordinator, `select record_face_consent(p_student => $1, p_signed_form => true, p_guardian => $2,
+      p_id_type_checked => $3, p_child_assent => $4, p_notice_version => 'v0.3')`, [p.id, consent.guardian ?? null, consent.idType ?? null, consent.assent ?? null]);
+    const s = (await one(p.login, 'select start_face_enrolment($1, $2) as r', [DEV_A, MODEL])).r;
+    await one(coordinator, 'select approve_face_enrolment($1, $2)', [p.id, s.code]);
+    await one(p.login, 'select enrol_face($1, $2)', [s.request, DEV_A]);
+  };
+  /** Gate 1 as the Edge Function does it: a challenge, spent, a passed verdict, the one-time pass. */
+  const pass64 = async (login, action, location) => {
+    await asOwner(`update integrity_challenges set issued_at = now() - interval '11 minutes' where profile_id = '${login}'`);
+    const ch = (await one(login, 'select issue_integrity_challenge($1) as r', [action])).r;
+    await asApp('service_role', null, 'select begin_integrity_check($1, $2, $3, $4)', [ch.challenge, login, action, location]);
+    const pass = `p64-${randomUUID()}`;
+    const [{ h }] = await asOwner(`select encode(sha256(convert_to('${pass}', 'UTF8')), 'hex') as h`);
+    await asApp('service_role', null, 'select finish_integrity_check($1, $2, $3)', [ch.challenge, 'pass', h]);
+    return pass;
+  };
+  const AT = { status: 'fix', lat: 17.385, lng: 78.4867, accuracy: 12, mocked: false };
+  const FAR = { ...AT, lat: 17.395 }; // about 1.1 km north
+  const NEAR150 = { ...AT, lat: 17.385 + 150 / 111195 }; // 150 m north
+  const scan64 = async (p, action, loc, pass, extra = {}) => (await one(p.login, 'select self_scan($1, $2::jsonb, $3, $4, $5, $6) as r',
+    [action, JSON.stringify(loc), pass, extra.device ?? DEV_A, extra.live ?? true, extra.score ?? 0.8])).r;
+  const state64 = async (p, device = DEV_A) => (await one(p.login, 'select self_scan_state($1) as r', [device])).r;
+  const [{ n: failStart }] = await asOwner('select coalesce(max(id), 0)::int as n from face_scan_failures');
+  const fails64 = async () => Object.fromEntries((await asOwner(`select reason || coalesce(':' || detail, '') as k, count(*)::int as n
+    from face_scan_failures where id > ${failStart} group by 1`)).map((r) => [r.k, r.n]));
+  const visits64 = (p) => asOwner(`select v.id, v.method::text as method, v.marked_by, v.liveness_ok, v.location_check, v.location_distance_m,
+    v.check_out, v.check_out_location, v.check_out_distance_m, v.check_out_method::text as check_out_method, f.match_score
+    from visits v left join visit_face_scores f on f.visit_id = v.id where v.student_id = '${p.id}' order by v.id`);
+
+  // #348: the threshold, SQL editor only.
+  check('0071 #348: the match threshold is 55 (cosine 0.55) by default',
+    (await asOwner(`select value from settings where key = 'face_match_percent'`))[0]?.value === 55);
+  await refusesWith('0071 #348: the Guru cannot change it from the app', 'setting_owner_only', () =>
+    asApp('authenticated', guru, 'select save_settings($1::jsonb)', [JSON.stringify({ face_match_percent: 40 })]));
+  await refusesWith('0071 #348: the SQL editor gets 30-95 only', 'setting_invalid', () => setting64('face_match_percent', '96'));
+
+  const p = await person64('Adult');
+  await enrol64(p);
+  // #344: the home's state.
+  await setting64('face_enabled', 'false');
+  const off64 = await state64(p);
+  check('0071 #344: while face scan is off the home shows nothing (no circle)', off64.face_enabled === false && off64.action === null, JSON.stringify(off64));
+  await refusesWith('0071 #345: while off, no self-scan', 'face_off', () => scan64(p, 'check_in', AT, 'x'));
+  await refusesWith('0071 #346: while off, no failure count from the phone', 'face_off', () => one(p.login, `select note_self_scan_failure('liveness')`));
+  await setting64('face_enabled', 'true');
+  await refusesWith('0071 #344: staff have no self-scan state', 'not_allowed', () => one(coordinator, 'select self_scan_state($1)', [DEV_A]));
+  const on64 = await state64(p);
+  check('0071 #344: open hours, enrolled phone, not checked in: Check in, with the centre\'s point, radius and threshold',
+    on64.action === 'check_in' && on64.enrolled === true && on64.open_now === true && on64.blocked === null
+    && on64.centre?.radius_m === 100 && Number(on64.centre?.lat) === 17.385 && Number(on64.match_min) === 0.55, JSON.stringify(on64));
+  const otherPhone = await state64(p, DEV_B);
+  check('0071 #344: another phone of the same login is not enrolled: no circle', otherPhone.enrolled === false && otherPhone.action === null, JSON.stringify(otherPhone));
+  await closeNow();
+  const shut64 = await state64(p);
+  check('0071 #344: outside the open hours no Check in circle', shut64.action === null && shut64.open_now === false, JSON.stringify(shut64));
+  await openAllDay();
+
+  // #345: refusals raised (not a failed scan).
+  await refusesWith('0071 #345: the action is check_in or check_out', 'action_invalid', () => scan64(p, 'enter', AT, 'x'));
+  await refusesWith('0071 #345: staff cannot self-scan', 'not_allowed', () =>
+    one(coordinator, 'select self_scan($1, $2::jsonb, $3, $4, $5, $6)', ['check_in', JSON.stringify(AT), 'x', DEV_A, true, 0.8]));
+  await refusesWith('0071 #345: a position in its shape only', 'bad_location', () => scan64(p, 'check_in', { status: 'fix', lat: 'north' }, 'x'));
+
+  // #345: refusals answered and counted (Gate 1 first, then the rest).
+  const noPass = await scan64(p, 'check_in', AT, null);
+  check('0071 #345 Gate 1: no integrity pass, no check-in (answered, counted)', noPass.ok === false && noPass.reason === 'integrity'
+    && noPass.detail === 'integrity_required', JSON.stringify(noPass));
+  const wrongLoc = await scan64(p, 'check_in', AT, await pass64(p.login, 'check_in', 'outside'));
+  check('0071 #345 Gate 1: a pass bound to another location result than the server finds', wrongLoc.reason === 'integrity'
+    && wrongLoc.detail === 'integrity_pass_mismatch', JSON.stringify(wrongLoc));
+  const wrongAct = await scan64(p, 'check_in', AT, await pass64(p.login, 'check_out', 'inside'));
+  check('0071 #345 Gate 1: ... or to the other action', wrongAct.detail === 'integrity_pass_mismatch', JSON.stringify(wrongAct));
+  const spent = await pass64(p.login, 'check_in', 'inside');
+  const otherDev = await scan64(p, 'check_in', AT, spent, { device: DEV_B });
+  check('0071 #345: the enrolment must be THIS phone\'s', otherDev.ok === false && otherDev.reason === 'not_enrolled', JSON.stringify(otherDev));
+  const reused = await scan64(p, 'check_in', AT, spent);
+  check('0071 #345: a refused attempt spent its pass (one pass, one attempt)', reused.detail === 'integrity_pass_used', JSON.stringify(reused));
+  const noLive = await scan64(p, 'check_in', AT, await pass64(p.login, 'check_in', 'inside'), { live: false });
+  check('0071 #345: liveness not passed, no check-in', noLive.reason === 'liveness', JSON.stringify(noLive));
+  const low = await scan64(p, 'check_in', AT, await pass64(p.login, 'check_in', 'inside'), { score: 0.5 });
+  check('0071 #345/#348: a score under the threshold is no match (never a guess)', low.reason === 'no_match', JSON.stringify(low));
+  const odd = await scan64(p, 'check_in', AT, await pass64(p.login, 'check_in', 'inside'), { score: 1.5 });
+  check('0071 #345: ... and a score that cannot be is refused too', odd.reason === 'no_match', JSON.stringify(odd));
+  await closeNow();
+  const shutScan = await scan64(p, 'check_in', AT, await pass64(p.login, 'check_in', 'inside'));
+  await openAllDay();
+  check('0071 #345: outside the open hours, no check-in', shutScan.reason === 'window', JSON.stringify(shutScan));
+  const far = await scan64(p, 'check_in', FAR, await pass64(p.login, 'check_in', 'outside'));
+  check('0071 #345: outside the area, no check-in', far.reason === 'outside' && far.detail === 'outside', JSON.stringify(far));
+  const mocked = await scan64(p, 'check_in', { ...AT, mocked: true }, await pass64(p.login, 'check_in', 'mocked'));
+  check('0071 #345: a mocked position, no check-in', mocked.reason === 'mocked', JSON.stringify(mocked));
+  const vague = await scan64(p, 'check_in', { ...AT, accuracy: 150 }, await pass64(p.login, 'check_in', 'inaccurate'));
+  check('0071 #345: accuracy over 100 m, no check-in', vague.reason === 'outside' && vague.detail === 'inaccurate', JSON.stringify(vague));
+  const noAcc = await scan64(p, 'check_in', { ...AT, accuracy: null }, await pass64(p.login, 'check_in', 'inaccurate'));
+  check('0071 #345: ... nor without an accuracy', noAcc.detail === 'inaccurate', JSON.stringify(noAcc));
+  const noFix = await scan64(p, 'check_in', { status: 'no_fix' }, await pass64(p.login, 'check_in', 'no_fix'));
+  check('0071 #345: no position in time, no check-in', noFix.reason === 'outside' && noFix.detail === 'no_fix', JSON.stringify(noFix));
+  const edgeOut = await scan64(p, 'check_in', { ...NEAR150, accuracy: 40 }, await pass64(p.login, 'check_in', 'outside'));
+  check('0071 #345: 150 m away with 40 m accuracy is outside (radius 100 + 40)', edgeOut.detail === 'outside', JSON.stringify(edgeOut));
+  await asOwner('update centres set lat = null, lng = null where id = 1');
+  const noArea = await scan64(p, 'check_in', AT, await pass64(p.login, 'check_in', 'no_area'));
+  await area64(17.385, 78.4867);
+  check('0071 #345: a centre without its point refuses (nothing to compare with)', noArea.detail === 'no_area', JSON.stringify(noArea));
+  check('0071 #345: nothing above saved a visit', (await visits64(p)).length === 0);
+  const f1 = await fails64();
+  check('0071 #346: each failed self-scan is counted per reason, no student id',
+    f1['integrity:integrity_required'] === 1 && f1['integrity:integrity_pass_mismatch'] === 2 && f1['integrity:integrity_pass_used'] === 1
+    && f1.not_enrolled === 1 && f1.liveness === 1 && f1.no_match === 2 && f1.window === 1 && f1['outside:outside'] === 2
+    && f1.mocked === 1 && f1['outside:inaccurate'] === 2 && f1['outside:no_fix'] === 1 && f1['outside:no_area'] === 1, JSON.stringify(f1));
+
+  // #345: the check-in.
+  await asOwner(`insert into visits (student_id, centre_id, method, check_in) values ('${p.id}', 1, 'qr', now() - interval '2 days')`);
+  const inside = await scan64(p, 'check_in', { ...NEAR150, accuracy: 60 }, await pass64(p.login, 'check_in', 'inside'));
+  const v1 = await visits64(p);
+  const fresh = v1[v1.length - 1];
+  check('0071 #345: inside (150 m, accuracy 60: radius 100 + 60) and everything right: checked in', inside.ok === true && inside.action === 'in'
+    && inside.full_name === 'Self Scan Adult' && inside.flagged === false, JSON.stringify(inside));
+  check('0071 #345: the visit: method face, marked by the student, liveness kept, location inside with the distance, score kept apart',
+    fresh.method === 'face' && fresh.marked_by === p.login && fresh.liveness_ok === true && fresh.location_check === 'inside'
+    && fresh.location_distance_m === 150 && Math.abs(fresh.match_score - 0.8) < 1e-6 && fresh.check_out === null, JSON.stringify(fresh));
+  check('0071 #345: an earlier day\'s open visit was closed first (as at the desk)', v1.length === 2 && v1[0].check_out !== null);
+  const st2 = await state64(p);
+  check('0071 #344: checked in: the circle says Check out', st2.action === 'check_out' && !!st2.checked_in_at, JSON.stringify(st2));
+  const again = await scan64(p, 'check_in', AT, await pass64(p.login, 'check_in', 'inside'));
+  check('0071 #345 (0048): checking in again answers already_in and saves nothing', again.ok === true && again.action === 'already_in'
+    && (await visits64(p)).length === 2, JSON.stringify(again));
+  const soon = await scan64(p, 'check_out', AT, await pass64(p.login, 'check_out', 'inside'));
+  check('0071 #345 (0048 #289): a check-out within qr_rescan_minutes of the check-in is not taken (the desk can)',
+    soon.ok === false && soon.reason === 'too_soon' && soon.minutes === 10 && (await visits64(p))[1].check_out === null, JSON.stringify(soon));
+
+  // #345, #347: the check-out, never refused for the place.
+  await asOwner(`update visits set check_in = now() - interval '40 minutes' where id = ${fresh.id}`);
+  const out = await scan64(p, 'check_out', FAR, await pass64(p.login, 'check_out', 'outside'));
+  const vOut = (await visits64(p))[1];
+  check('0071 #345: a check-out outside the area is saved, and flagged', out.ok === true && out.action === 'out' && out.flagged === true
+    && out.location === 'outside' && out.minutes === 40, JSON.stringify(out));
+  check('0071 #347: the visit keeps the check-out\'s own result, distance and method',
+    vOut.check_out !== null && vOut.check_out_location === 'outside' && vOut.check_out_distance_m > 1000 && vOut.check_out_method === 'face'
+    && vOut.location_check === 'inside', JSON.stringify(vOut));
+  const outAgain = await scan64(p, 'check_out', AT, await pass64(p.login, 'check_out', 'inside'));
+  check('0071 #345: a repeated check-out within 30 s answers already_out', outAgain.ok === true && outAgain.action === 'already_out', JSON.stringify(outAgain));
+  await asOwner(`update visits set check_out = now() - interval '2 minutes', check_in = now() - interval '50 minutes' where id = ${fresh.id}`);
+  const notIn = await scan64(p, 'check_out', AT, await pass64(p.login, 'check_out', 'inside'));
+  check('0071 #345: no open visit, nothing to check out', notIn.ok === false && notIn.reason === 'not_checked_in', JSON.stringify(notIn));
+  await refusesWith('0071 #347: staff cannot change a check-out\'s location result', 'location_locked', () =>
+    asApp('authenticated', coordinator, `update visits set check_out_location = 'inside' where id = $1`, [fresh.id]));
+  await refusesWith('0071 #347: ... nor how it was recorded', 'location_locked', () =>
+    asApp('authenticated', coordinator, `update visits set check_out_method = 'manual' where id = $1`, [fresh.id]));
+  await refusesWith('0071 S4F-01: the dashboard cannot claim a face check-out', 'face_visit_reserved', () =>
+    asOwner(`update visits set check_out_method = 'face' where student_id = '${p.id}' and id <> ${fresh.id}`));
+
+  // A desk check-in (QR) closed by the student's own scan: mocked position = saved, flagged.
+  await asApp('authenticated', coordinator, `select toggle_visit($1, 'qr')`, [p.id]);
+  await asOwner(`update visits set check_in = now() - interval '30 minutes' where student_id = '${p.id}' and check_out is null`);
+  const mockOut = await scan64(p, 'check_out', { ...AT, mocked: true }, await pass64(p.login, 'check_out', 'mocked'));
+  const vDesk = (await visits64(p))[2];
+  check('0071 #345: a desk (QR) visit checked out by the self-scan with a mocked position: saved, flagged, method qr kept',
+    mockOut.ok === true && mockOut.flagged === true && vDesk.method === 'qr' && vDesk.check_out_location === 'mocked'
+    && vDesk.check_out_method === 'face' && vDesk.check_out_distance_m === null, JSON.stringify(vDesk));
+  const noLiveOut = await (async () => {
+    await asApp('authenticated', coordinator, `select toggle_visit($1, 'manual')`, [p.id]);
+    await asOwner(`update visits set check_in = now() - interval '30 minutes' where student_id = '${p.id}' and check_out is null`);
+    return scan64(p, 'check_out', AT, await pass64(p.login, 'check_out', 'inside'), { score: 0.3 });
+  })();
+  check('0071 #345: a check-out still needs the face match (no match = the desk checks out)', noLiveOut.reason === 'no_match'
+    && (await asOwner(`select count(*)::int as n from visits where student_id = '${p.id}' and check_out is null`))[0].n === 1, JSON.stringify(noLiveOut));
+  await asApp('authenticated', coordinator, `select mark_visit($1, 'out')`, [p.id]);
+
+  // The consent and the record are re-checked at the moment of saving.
+  const before = await pass64(p.login, 'check_in', 'inside');
+  await asApp('authenticated', guru, `update consents set revoked_at = now() where student_id = $1 and scope = 'face' and revoked_at is null`, [p.id]);
+  await refusesWith('0071 #345: a face consent revoked after the pass: no check-in', 'no_face_consent', () => scan64(p, 'check_in', AT, before));
+  const q = await person64('Withdrawn');
+  await enrol64(q);
+  const qPass = await pass64(q.login, 'check_in', 'inside');
+  await asApp('authenticated', guru, `select withdraw_consent($1, 'by phone')`, [q.id]);
+  await refusesWith('0071 #345: a withdrawn record gets nothing (0048: its login is switched off)', 'not_allowed', () => scan64(q, 'check_in', AT, qPass));
+
+  // #346: failures seen on the phone.
+  const r = await person64('Reporter');
+  await enrol64(r);
+  await refusesWith('0071 #346: staff do not report self-scan failures', 'not_allowed', () => one(coordinator, `select note_self_scan_failure('liveness')`));
+  await refusesWith('0071 #346: a known reason only', 'reason_invalid', () => one(r.login, `select note_self_scan_failure('integrity')`));
+  await refusesWith('0071 #346: a detail in its shape only', 'reason_invalid', () => one(r.login, `select note_self_scan_failure('outside', '17.38,78.48')`));
+  const counted = (await one(r.login, `select note_self_scan_failure('outside', 'inaccurate') as r`)).r;
+  const f2 = await fails64();
+  check('0071 #346: the phone counts a failure before the server is asked (outside: inaccurate)', counted === true && f2['outside:inaccurate'] === 3, JSON.stringify(f2));
+  check('0071 #346: a student whose enrolment ended is not counted', (await one(p.login, `select note_self_scan_failure('liveness') as r`)).r === false);
+  await asOwner(`insert into face_scan_failures (centre_id, reason) select 1, 'other' from generate_series(1, 200)`);
+  check('0071 #346: at most 200 counts a centre an hour from phones', (await one(r.login, `select note_self_scan_failure('liveness') as r`)).r === false);
+  await asOwner(`delete from face_scan_failures where id > ${failStart} and reason = 'other'`);
+  const view64 = (await one(coordinator, 'select face_use_counts(current_date - 1, current_date + 1) as r')).r.find((c) => c.centre_id === 1);
+  check('0071 P3-6: the staff counts show the self-scan reasons; no student named',
+    view64.failures.liveness >= 1 && view64.failures.no_match >= 3 && view64.failures.outside >= 7 && view64.failures.mocked >= 1
+    && view64.failures.window >= 1 && !JSON.stringify(view64).includes('Self Scan'), JSON.stringify(view64));
+
+  // The parent's check-out email (0043/0044), for a minor once the Guru lowers face_min_age.
+  await setting64('face_min_age', '13');
+  await asOwner(`update settings set value = 'true' where key in ('parent_notices_enabled', 'parent_notices_check_out')`);
+  await asOwner(`update settings set value = 'false' where key = 'parent_notices_check_in'`);
+  const kid = await person64('Child', { register: { p_dob: `${year - 15}-02-02`, p_email: null,
+    p_guardian_name: 'Parent Sixtyfour', p_guardian_phone: '9876543264', p_guardian_email: 'parent.64@example.com',
+    p_guardian_relation: 'mother', p_id_type_checked: 'aadhaar', p_written_consent: true } });
+  await asApp('authenticated', guru, 'select link_student_login($1, $2)', [kid.login, kid.id]);
+  const [{ id: g64 }] = await asOwner(`select id from guardians where student_id = '${kid.id}'`);
+  await enrol64(kid, { guardian: g64, idType: 'aadhaar', assent: true });
+  const kidIn = await scan64(kid, 'check_in', AT, await pass64(kid.login, 'check_in', 'inside'));
+  await asOwner(`update visits set check_in = now() - interval '45 minutes' where student_id = '${kid.id}' and check_out is null`);
+  const kidOut = await scan64(kid, 'check_out', AT, await pass64(kid.login, 'check_out', 'inside'));
+  const notices = await asOwner(`select p.kind from parent_notices p join visits v on v.id = p.visit_id where v.student_id = '${kid.id}'`);
+  check('0071 #345: a minor\'s self-scan check-out queues the parent\'s check-out email (and the check-in none)',
+    kidIn.action === 'in' && kidOut.action === 'out' && kidOut.flagged === false && notices.length === 1 && notices[0].kind === 'out', JSON.stringify(notices));
+  await asOwner(`update settings set value = 'false' where key = 'parent_notices_enabled'`);
+  await setting64('face_min_age', '18');
+  const kidState = await state64(kid);
+  check('0071 #344: back at 18, the minor\'s home shows no circle and says why', kidState.action === null && kidState.blocked === 'face_too_young', JSON.stringify(kidState));
+
+  // #434: a coordinator linked to their own record (0053) uses face scan like a student, through the self-scan only.
+  {
+    const DEV_C = 'selfscanC-0123456789abcd';
+    const email = 'self64.staff@example.com';
+    const staff = (await db.query(`insert into auth.users (email, email_confirmed_at, raw_user_meta_data) values ($1, now(), $2) returning id`,
+      [email, JSON.stringify({ notice_version: 'v1', dob: adultDob64, centre_id: 1, full_name: 'Self Scan Staff' })])).rows[0].id;
+    await asApp('authenticated', guru, `update profiles set role = 'coordinator' where id = $1`, [staff]);
+    const rec = await register(coordinator, { p_full_name: 'Self Scan Staff', p_dob: adultDob64, p_email: email });
+    await asApp('authenticated', guru, 'select link_staff_record($1, $2)', [staff, rec.id]);
+    const me = { login: staff, id: rec.id };
+    await refusesWith('0071 #434: a coordinator cannot record their own face consent', 'own_record', () =>
+      asApp('authenticated', staff, `select record_face_consent(p_student => $1, p_signed_form => true, p_notice_version => 'v0.3')`, [rec.id]));
+    await asApp('authenticated', coordinator, `select record_face_consent(p_student => $1, p_signed_form => true, p_notice_version => 'v0.3')`, [rec.id]);
+    const req = (await one(staff, 'select start_face_enrolment($1, $2) as r', [DEV_C, MODEL])).r;
+    await refusesWith('0071 #434: ... nor confirm their own enrolment', 'not_allowed', () => one(staff, 'select approve_face_enrolment($1, $2)', [rec.id, req.code]));
+    await one(coordinator, 'select approve_face_enrolment($1, $2)', [rec.id, req.code]);
+    await one(staff, 'select enrol_face($1, $2)', [req.request, DEV_C]);
+    const staffState = await state64(me, DEV_C);
+    check('0071 #434: a colleague records the consent and confirms: the coordinator\'s home state shows Check in',
+      staffState.action === 'check_in' && staffState.enrolled === true, JSON.stringify(staffState));
+    const staffIn = await scan64(me, 'check_in', AT, await pass64(staff, 'check_in', 'inside'), { device: DEV_C });
+    check('0071 #434: the coordinator checks themself in with their face', staffIn.ok === true && staffIn.action === 'in', JSON.stringify(staffIn));
+    await refusesWith('0071 #434: ... while every other own path stays refused (own_record)', 'own_record', () =>
+      asApp('authenticated', staff, `select mark_visit($1, 'out') as r`, [rec.id]));
+    await asOwner(`update visits set check_in = now() - interval '45 minutes' where student_id = '${rec.id}' and check_out is null`);
+    const staffOut = await scan64(me, 'check_out', AT, await pass64(staff, 'check_out', 'inside'), { device: DEV_C });
+    check('0071 #434: ... and out with their face', staffOut.ok === true && staffOut.action === 'out', JSON.stringify(staffOut));
+  }
+
+  // Safe to run twice.
+  const snap64 = async () => (await asOwner(`select (select count(*) from visits)::int as v, (select count(*) from face_scan_failures)::int as f,
+    (select string_agg(key || '=' || value::text, ',' order by key) from settings where key like 'face%') as s`))[0];
+  await setting64('face_enabled', 'false');
+  const before64 = await snap64();
+  let again64 = '';
+  try { await db.exec(file64); } catch (e) { again64 = String(e.message); }
+  check('0071 can run again and changes nothing (settings kept as set)', again64 === '' && JSON.stringify(await snap64()) === JSON.stringify(before64),
+    `${again64} ${JSON.stringify(before64)}`);
+  await asOwner(`update centres set lat = ${centreBefore.lat ?? 'null'}, lng = ${centreBefore.lng ?? 'null'}, radius_m = ${centreBefore.radius_m},
+    opens_at = '${centreBefore.o}', closes_at = '${centreBefore.c}' where id = 1`);
+}
+
+// ---------------------------------------------------------------- face test data deleted (#433)
+// OPERATIONS.md "Face scan: deleting the test face data": its two SQL blocks, run exactly as written, on the
+// database the face blocks above filled. A face table the runbook forgets fails here before it fails on TEST.
+{
+  const ops = readFileSync(new URL('../docs/OPERATIONS.md', supabaseDir), 'utf8');
+  const block = (name) => ops.match(new RegExp(`-- ${name}: begin\\n([\\s\\S]*?)-- ${name}: end`))?.[1] ?? '';
+  const deleteSql = block('face-test-delete');
+  const verifySql = block('face-test-verify');
+  check('face test data: OPERATIONS has the delete and the read-only verify block',
+    /^begin;$/m.test(deleteSql) && /^commit;$/m.test(deleteSql) && /^select$/m.test(verifySql) && !/\b(update|delete|insert)\b/i.test(verifySql.replace(/--.*$/gm, '')));
+  const counts = async () => (await asOwner(`select (select count(*) from face_enrolments)::int as enrolments,
+    (select count(*) from consents where scope = 'face')::int as face_consents, (select count(*) from consents where scope <> 'face')::int as other_consents,
+    (select count(*) from visits where method = 'face' or check_out_method = 'face')::int as face_visits,
+    (select count(*) from visits where method is distinct from 'face' and check_out_method is distinct from 'face' and liveness_ok is null)::int as other_visits,
+    (select count(*) from audit_log where table_name not in ('visits', 'consents', 'settings'))::int as other_audit`))[0];
+  const before = await counts();
+  check('face test data: (control) the face blocks left enrolments, face consents and face visits to delete',
+    before.enrolments > 0 && before.face_consents > 0 && before.face_visits > 0, JSON.stringify(before));
+  await asOwner(`update settings set value = 'true' where key = 'face_enabled'`);
+  await db.exec(deleteSql);
+  const verify = (await asOwner(verifySql))[0];
+  check('face test data: after the delete the verify row is false | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0',
+    JSON.stringify(Object.values(verify)) === JSON.stringify([false, 0, 0, 0, 0, 0, 0, 0, 0]), JSON.stringify(verify));
+  const after = await counts();
+  check('face test data: other consents, other visits and other audit rows stay (the audit rows of the switch aside)',
+    after.other_consents === before.other_consents && after.other_visits === before.other_visits && after.other_audit === before.other_audit,
+    JSON.stringify({ before, after }));
+  let again = '';
+  try { await db.exec(deleteSql); } catch (e) { again = String(e.message); }
+  check('face test data: the delete can run again', again === '', again);
+}
+
 // ---------------------------------------------------------------- row-level security
 const seen =await asApp('authenticated', arjun, 'select full_name from students');
 check('student sees only their own student record', seen.length === 1 && seen[0].full_name === 'Arjun Rao');

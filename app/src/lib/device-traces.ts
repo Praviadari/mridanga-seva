@@ -24,6 +24,8 @@
 //   (lib/playground/round-queue.ts, pack-cache.ts; #728), and the student's last Playground state (lib/playground-games/
 //   state-cache.ts; #736), and whether the Playground was on for this login (lib/playground-switch.ts, #781).
 // - the chapter the student opened last, for Continue learning (lib/last-chapter.ts, #787).
+// - the student's face code, if face scan was on (src/face/face-status.ts; audit S4F-06, #310): the
+//   server's enrolment stays, so the next sign-in on this phone asks for a new supervised enrolment.
 
 import { Directory, Paths } from 'expo-file-system';
 import { Image } from 'expo-image';
@@ -31,6 +33,7 @@ import { Platform } from 'react-native';
 
 import { clearSavedCard } from '@/data/my-student';
 import { forgetWaitingPractice } from '@/data/waiting-store';
+import { forgetFace } from '@/face/face-status';
 import { forgetMyRecordings } from '@/lib/my-recordings';
 import { forgetOfflineQueue } from '@/lib/offline-queue';
 import { forgetLastChapter } from '@/lib/last-chapter';
@@ -69,6 +72,7 @@ export async function clearDeviceTraces(): Promise<void> {
     forgetOfflineShell(),
     Image.clearMemoryCache().catch(() => false),
     Image.clearDiskCache().catch(() => false),
+    forgetFace().catch(() => undefined),
   ]);
   if (Platform.OS === 'web') return;
   for (const name of TRACE_FOLDERS) {
