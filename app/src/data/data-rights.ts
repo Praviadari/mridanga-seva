@@ -399,6 +399,23 @@ export type MyDataSummary = {
     weeks: { week: string; skill: string; rounds: number; opportunities: number; correct: number | null }[];
     ratings: { skill: string; rating: number; note: string | null; rated_at: string }[];
   };
+  /** Since 0073 (#799); absent on a database without it. Records only: the face code is never on the server. */
+  face?: {
+    consents: { given_at: string; revoked_at: string | null; child_assent: boolean | null }[];
+    enrolments: {
+      state: 'waiting' | 'confirmed' | 'enrolled' | 'ended';
+      model_version: string;
+      requested_at: string;
+      confirmed_at: string | null;
+      enrolled_at: string | null;
+      expires_at: string | null;
+      ended_at: string | null;
+      end_reason: string | null;
+    }[];
+    check_ins: number;
+    match_scores: number;
+    integrity_checks: number;
+  };
 };
 
 /** The signed-in person's summary. null = could not load; 'not_set_up' before 0059 has run. */

@@ -6,6 +6,9 @@ One new Android APK for the class. It carries three things that cannot come by u
   #344-#349, #430-#437](DECISIONS.md)). It stays **off** on LIVE until the facilitator switches it on.
 - **Smaller face models** (`.bin`, [#631](DECISIONS.md)).
 - **Wake-up alarm with the class's khol** and the **khol sound on notifications** ([#791-#796](DECISIONS.md)).
+- **Version 1.1.0** (was 1.0.0; [#798](DECISIONS.md)): the version line under Sign out and the website say 1.1.0.
+
+With it, the database gets 0070, 0071 (face scan) and 0073 (face scan in "My data", [#799](DECISIONS.md)).
 
 Everything is on the branch **`claude/release-0811-44b0e4`** (pushed to GitHub, not on `main`). `main` stays as it is
 until the production APK is built (part 3), because an update from `main` must keep reaching today's APK.
@@ -14,8 +17,8 @@ until the production APK is built (part 3), because an update from `main` must k
 
 | Build | Profile | App on the phone | Database | Fingerprint (runtime) | Built from |
 |---|---|---|---|---|---|
-| Face test app (part 1) | `facetest` | "Mridanga Seva TEST" (`org.mridangaseva.app.test`), next to the class app | TEST | **62d5706d…** (`62d5706d9ee9cb0eb648f8d432764bb3fec0dcef`) | the branch head the lead names |
-| Production APK (part 3) | `production` | "Mridanga Seva" (`org.mridangaseva.app`), replaces the class app | LIVE | **24f94a56…** (`24f94a564fa9acccfe9645b1de82edb1e144d31a`) | the branch head on the day, then `main` = that commit |
+| Face test app (part 1) | `facetest` | "Mridanga Seva TEST" (`org.mridangaseva.app.test`), next to the class app | TEST | **4b630e41…** (`4b630e413c2a476869e1602aff4588b0f72e105e`) | the branch head the lead names |
+| Production APK (part 3) | `production` | "Mridanga Seva" (`org.mridangaseva.app`), replaces the class app | LIVE | **e3ea1c10…** (`e3ea1c1042c6c5c455e1543b24fa1678bb9eadb8`) | the branch head on the day, then `main` = that commit |
 | Today's class APK (16-10-2026) | `production` | "Mridanga Seva" | LIVE | 23dc7e4a | main f835830 |
 
 - Both new builds use **the same `app/eas.json`** (it has both profiles). `eas.json` is part of the fingerprint
@@ -50,7 +53,7 @@ until the production APK is built (part 3), because an update from `main` must k
    npx eas-cli --version
    $env:APP_VARIANT = 'facetest'; (npx expo-updates runtimeversion:resolve --platform android | ConvertFrom-Json).runtimeVersion; Remove-Item Env:APP_VARIANT
    ```
-   Expected: the commit the lead named; `eas-cli/24.12.1`; `62d5706d9ee9cb0eb648f8d432764bb3fec0dcef`. Anything else:
+   Expected: the commit the lead named; `eas-cli/24.12.1`; `4b630e413c2a476869e1602aff4588b0f72e105e`. Anything else:
    stop and send the three lines to the lead.
 5. **Build:**
    ```powershell
@@ -59,7 +62,7 @@ until the production APK is built (part 3), because an update from `main` must k
    It must **not** ask to generate a new keystore (the test app has one since 24-10-2026). If it asks: answer **no**
    and tell the lead. The log shows `eas-build-guard: profile facetest → project fhuqykssenuhczdqbafu, app variant
    facetest` before the packages install. The free queue can take an hour.
-6. **Send the lead:** the build id (first 8 characters), the build page's **runtime version** (must be 62d5706d…),
+6. **Send the lead:** the build id (first 8 characters), the build page's **runtime version** (must be 4b630e41…),
    the version code, and after downloading the APK: `Get-FileHash .\<file>.apk -Algorithm SHA256`.
 7. Install it on the test phone over the old "Mridanga Seva TEST" (same key, it updates in place).
 
@@ -102,11 +105,11 @@ app", JS fixes); a native fix means a new test build.
 **Before:** the lead has sent the last update from `main` to LIVE, merged `main` into the release branch, re-run the
 checks and named the **build commit** and its fingerprint. Phone hotspot, the PowerShell lines of part 1 step 2.
 
-1. **LIVE database, 0070 then 0071** (Praveen pastes; the lead reads the result):
-   [GO_LIVE_CHECKLIST.md](GO_LIVE_CHECKLIST.md) part B, rows **M0070** and **M0071**, one file per run, the probe after
-   each: after 0070 `LAST IN ORDER` 0070, `MISSING` 0071; after 0071 `LAST IN ORDER` 0072, `MISSING` none. Then the
-   lead checks **part F**: row 1 `0072`, row 2 `none`, row 3 `18 of 18`. Face scan stays **off** (`face_enabled`
-   false): only the facilitator switches it on, later.
+1. **LIVE database, 0070 → 0071 → 0073** (Praveen pastes; the lead reads the result):
+   [GO_LIVE_CHECKLIST.md](GO_LIVE_CHECKLIST.md) part B, rows **M0070**, **M0071** and **M0073**, one file per run, the
+   probe after each: after 0070 `LAST IN ORDER` 0070, `MISSING` 0071; after 0071 `LAST IN ORDER` 0072, `MISSING` none;
+   after 0073 `LAST IN ORDER` 0073, `MISSING` none. Then the lead checks **part F**: row 1 `0073`, row 2 `none`, row 3
+   `18 of 18`. Face scan stays **off** (`face_enabled` false): only the facilitator switches it on, later.
 2. **Production APK** from `C:\Users\praveen.a\release-0811\app`, at the build commit:
    ```powershell
    cd C:\Users\praveen.a\release-0811; git fetch origin; git checkout --detach <build commit>; cd app; npm ci
@@ -115,7 +118,7 @@ checks and named the **build commit** and its fingerprint. Phone hotspot, the Po
    npx eas-cli env:list --environment production --format long
    npx eas-cli build -p android --profile production
    ```
-   `git status`: nothing to commit. The fingerprint: the one the lead named (24f94a56… unless main brought something
+   `git status`: nothing to commit. The fingerprint: the one the lead named (e3ea1c10… unless main brought something
    native). env:list: the URL `https://qeozvvizcojzxcjgnaei.supabase.co` and a key starting `sb_publishable_`. If the
    build offers to **generate a new keystore**: answer **no** and stop (the class's key must stay the same). The log
    shows `eas-build-guard: profile production → project qeozvvizcojzxcjgnaei`. Then as in
@@ -133,9 +136,9 @@ checks and named the **build commit** and its fingerprint. Phone hotspot, the Po
 5. **The lead puts the release on `main`:** `main` = the build commit (or `main` merged with it, nothing native on top);
    `npx expo-updates runtimeversion:resolve` on `main` = the APK's fingerprint; push. From now on updates from `main`
    reach only the new APK.
-6. **Download link:** the lead adds a GitHub Release (a new tag, e.g. `android-2026-11-08`, asset
-   `mridanga-seva-2026-11-08.apk`) and changes `website/site.config.mjs` `apkUrl` and `apkSha256`, then uploads the
-   website on Praveen's go. What's new: an entry of kind `installed` with the build id.
+6. **Download link:** the lead adds the GitHub Release **`android-1.1.0`** (asset `mridanga-seva-1.1.0.apk`,
+   [#798](DECISIONS.md)) and changes `website/site.config.mjs` `apkUrl` and `apkSha256` (and the text to 1.1.0), then
+   uploads the website on Praveen's go. What's new: an entry `version` 1.1.0, kind `installed`, with the build id.
 7. **Tell the class:** install the new APK over the old app (Get the app page or the Drive link); they stay signed in.
 
 **Updates after the release:**

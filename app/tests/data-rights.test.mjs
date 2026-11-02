@@ -182,3 +182,21 @@ test('My profile opens My data and rights; the To do lists the Guru\'s data requ
   assert.match(screen, /summary\.minor \?/);
   assert.match(screen, /isGuru \?/);
 });
+
+test('My data: the face scan line (0073, #799) only when a record of it is held; the face code never', () => {
+  const base = { login: { full_name: 'A', email: 'a@x', language: 'en', role: 'student', created_at: '2026-10-01' }, devices: 0, notices: 0, replies: 0, event_answers: 0, poll_votes: 0, ishtagoshti: false, requests: [] };
+  const lines = (face) => page.summarySections(t, { ...base, face }, fmt).flatMap((s) => s.rows).filter((r) => r.label === 'dataRights.fields.face');
+  const none = { consents: [], enrolments: [], check_ins: 0, match_scores: 0, integrity_checks: 0 };
+  assert.equal(lines(undefined).length, 0);
+  assert.equal(lines(none).length, 0);
+  const enrolled = { state: 'enrolled', model_version: 'sface', requested_at: '2026-11-01', confirmed_at: '2026-11-01', enrolled_at: '2026-11-01', expires_at: '2027-11-01', ended_at: null, end_reason: null };
+  const [row] = lines({ ...none, enrolments: [enrolled], check_ins: 4 });
+  assert.match(row.value, /"enrolments":1/);
+  assert.match(row.value, /"checkIns":4/);
+  assert.match(row.value, /2027-11-01/);
+  assert.match(en.get('dataRights.faceLine'), /phone only/);
+  // The summary itself never names the device or a code (0073).
+  const sql = repo('supabase/migrations/0073_face_privacy.sql');
+  const faceSql = sql.slice(sql.indexOf("'face', jsonb_build_object("));
+  assert.doesNotMatch(faceSql, /device_key|code_hash/);
+});

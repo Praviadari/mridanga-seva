@@ -159,7 +159,7 @@ process.on('uncaughtException', (error) => {
 // D14-10: every check is counted, and the run fails when fewer (or more) checks ran than expected,
 // so a block skipped by a renamed migration or a commented-out section cannot pass unseen.
 // Adding or removing checks? Run the suite and set this to the new total it prints.
-const EXPECTED_CHECKS = 2652; // face scan merged for the 08-11-2026 APK (branch face-scan): test data deleted (#433) +5, 0071 face self-scan +64 (6 of them #434), 0070 face scan server side +123; 0072 syllabus sections, guna 1/2/4/8 and the team's syllabus seed: +10; W4 rhythm rounds: +2; 0069 game recordings and the W5 TEST seed: +11; 0068 my data with the Playground: +4; 0065 Rhythm Playground engine: +67; 0067 facilitator wording: +5; 0066 facilitator safeguards: +40 (0059/0026/0025/0049 checks adjusted for #710/#713); 0064 learn screens: +32; 0063 parent page: +32; 0062 web push: +33; 0061 staff sign-in codes and the error log: +53; 0060 privacy notice 1.0: +35; 0059 data rights: +56; 0058 weekly parent email: +64; 0057 practice while waiting: +24; 0056 practice extras: +35; 0055 learn more links: +23; 0054 after-launch forms: +49; 0053 staff own record: +55; 0052 more practice: +56; 0051 child's sign-up at home: +80; 0050 staff dashboard: +15; 0049 launch clean-up: +30; 0048 withdrawn records and leaks: +50; 0047 form rules: +109; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
+const EXPECTED_CHECKS = 2659; // 0073 face scan in my data, the approver may go: +7; face scan merged for the 08-11-2026 APK (branch face-scan): test data deleted (#433) +5, 0071 face self-scan +64 (6 of them #434), 0070 face scan server side +123; 0072 syllabus sections, guna 1/2/4/8 and the team's syllabus seed: +10; W4 rhythm rounds: +2; 0069 game recordings and the W5 TEST seed: +11; 0068 my data with the Playground: +4; 0065 Rhythm Playground engine: +67; 0067 facilitator wording: +5; 0066 facilitator safeguards: +40 (0059/0026/0025/0049 checks adjusted for #710/#713); 0064 learn screens: +32; 0063 parent page: +32; 0062 web push: +33; 0061 staff sign-in codes and the error log: +53; 0060 privacy notice 1.0: +35; 0059 data rights: +56; 0058 weekly parent email: +64; 0057 practice while waiting: +24; 0056 practice extras: +35; 0055 learn more links: +23; 0054 after-launch forms: +49; 0053 staff own record: +55; 0052 more practice: +56; 0051 child's sign-up at home: +80; 0050 staff dashboard: +15; 0049 launch clean-up: +30; 0048 withdrawn records and leaks: +50; 0047 form rules: +109; 0046 registration accept: +36; 0035 asset labels: +38; 0036 account creation: +60; 0037 backlog: +47; 0038: +19; 0039: +15; 0040 ops: +16; 0042 app leftovers: +8; 0043 parent notices: +46; 0044 check-out only: +12; 0045 QR cards: +11
 let failures = 0;
 let passes = 0;
 
@@ -9704,6 +9704,47 @@ check('the app sends the website\'s privacy-notice version (one value in both pl
   let again = '';
   try { await db.exec(deleteSql); } catch (e) { again = String(e.message); }
   check('face test data: the delete can run again', again === '', again);
+}
+
+// ---------------------------------------------------------------- 0073 face scan in my data, the approver may go (DECISIONS #799)
+{
+  const file73 = readFileSync(new URL('migrations/0073_face_privacy.sql', supabaseDir), 'utf8');
+  await db.exec(file73); // the 0068 re-run above put back the summary without face scan
+  const [st] = await asOwner(`select s.id, s.profile_id from students s join profiles p on p.id = s.profile_id
+    where s.withdrawn_at is null and p.active and p.role = 'student' order by s.roll_no limit 1`);
+  const approver = await signUp('approver73@example.com', true);
+  await asOwner(`update profiles set role = 'coordinator' where id = '${approver}'`);
+  await asOwner(`insert into face_enrolments (student_id, profile_id, device_key, model_version, requested_at,
+      approved_by, approved_at, enrolled_at, expires_at, revoked_at, revoke_reason)
+    values ('${st.id}', '${st.profile_id}', 'device-key-0073-abcdef', 'sface-2021dec', now() - interval '3 days',
+      '${approver}', now() - interval '3 days', now() - interval '3 days', now() + interval '1 year', now() - interval '1 day', 'desk')`);
+  const mine = async () => (await asApp('authenticated', st.profile_id, 'select my_data_summary() as r'))[0].r;
+  const face = (await mine()).face;
+  const e = face?.enrolments?.find((x) => x.end_reason === 'desk' && x.model_version === 'sface-2021dec');
+  check('0073 #799: the summary lists the student\'s face enrolment with its state and dates',
+    !!e && e.state === 'ended' && !!e.requested_at && !!e.confirmed_at && !!e.enrolled_at && !!e.expires_at && !!e.ended_at,
+    JSON.stringify(face).slice(0, 300));
+  check('0073 #799: ... with the face consents, check-ins, match scores and integrity checks, and no device key or code',
+    Array.isArray(face.consents) && typeof face.check_ins === 'number' && typeof face.match_scores === 'number'
+      && typeof face.integrity_checks === 'number' && !/device-key-0073|device_key|code_hash|approved_by/.test(JSON.stringify(face)),
+    JSON.stringify(face).slice(0, 300));
+  check('0073 #799: a staff member without a record gets no face part', !('face' in (await asApp('authenticated', coordinator,
+    'select my_data_summary() as r'))[0].r));
+  const approvedBy = async () => (await asOwner(`select approved_by, approved_at from face_enrolments where device_key = 'device-key-0073-abcdef'`))[0];
+  await asOwner(`delete from auth.users where id = '${approver}'`);
+  await asOwner(`delete from profiles where id = '${approver}'`);
+  const left = await approvedBy();
+  check('0073 #799: deleting the login that confirmed an enrolment keeps the enrolment, without the approver',
+    left && left.approved_by === null && left.approved_at !== null, JSON.stringify(left));
+  await refusesWith('0073 #799: an approver still needs a time', /face_enrolments_approver_has_time/, () =>
+    asOwner(`update face_enrolments set approved_by = '${coordinator}', approved_at = null where device_key = 'device-key-0073-abcdef'`));
+  check('0073 #799: 0070\'s two-way approver check is gone', (await asOwner(`select count(*)::int as n from pg_constraint
+    where conrelid = 'face_enrolments'::regclass and pg_get_constraintdef(oid) like '%(approved_at IS NULL) = (approved_by IS NULL)%'`))[0].n === 0);
+  const before73 = JSON.stringify((await mine()).face);
+  let again73 = '';
+  try { await db.exec(file73); } catch (err) { again73 = String(err.message); }
+  check('0073 can run again', again73 === '' && JSON.stringify((await mine()).face) === before73, again73);
+  await asOwner(`delete from face_enrolments where device_key = 'device-key-0073-abcdef'`);
 }
 
 // ---------------------------------------------------------------- row-level security

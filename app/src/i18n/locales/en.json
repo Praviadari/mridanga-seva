@@ -4720,6 +4720,7 @@
       "events": "Events attended",
       "loans": "Instruments lent",
       "playground": "Playground games",
+      "face": "Face scan",
       "devices": "Phones and browsers for notifications",
       "notices": "Notices in your inbox",
       "replies": "Your replies",
@@ -4748,6 +4749,7 @@
     "visitsLine": "{{count}}, first {{first}}, last {{last}}",
     "callsLine": "{{count}}, last {{last}}",
     "playgroundLine": "{{count}} rounds, last {{last}} · {{weeks}} weekly summaries · {{ratings}} ratings",
+    "faceLine": "{{enrolments}} enrolment records, current until {{until}} · {{checkIns}} face check-ins · the face code is kept on the phone only",
     "yes": "Yes",
     "no": "No",
     "processors": {

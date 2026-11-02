@@ -10116,3 +10116,56 @@ phone test"); JS-only fixes after that go by preview OTA from the branch. The re
 production build. **Update 02-11-2026 (release-0811):** merged with face scan and app-size-native on the release branch
 `claude/release-0811-44b0e4` for the 08-11 production APK; 4bba2bc8 is superseded by the release branch's fingerprint
 (docs/RELEASE_08-11.md).
+
+## 797. The web's first download may be up to 2,800 KB (face scan and the alarm cost ~47 KB) — 2 Nov 2026
+
+**Status: lead decision 02-11-2026 (release-0811).**
+
+**Context.** The web version's first download (`npm run export:web -- --site test`, metro runtime + entry) was 2,742 KB
+on main (02-11-2026) against an informal budget of about 2,750 KB. With face scan and the wake-up alarm merged it is
+**2,789 KB**: English is the fallback language and sits in the entry (#651), so face scan's English texts (~16 KB of
+the `face`, `selfScan`, `faceCounts` groups) come with it, plus the face hooks the student layout and homes load and the
+alarm fold's texts.
+
+**Decision.** Accepted for this release. The budget is now **2,800 KB**: an export above it is a finding to bring to the
+lead (what grew, can it move to an area file), not a silent pass.
+
+**Consequences.** ~11 KB of room left. The next large text group belongs in an area file or a screen loaded later.
+
+## 798. The app becomes version 1.1.0 with the face APK; its download is the GitHub Release android-1.1.0 — 2 Nov 2026
+
+**Status: lead decision 02-11-2026 (release-0811).**
+
+**Decision.** `app/app.json` `version` 1.0.0 → **1.1.0** on the release branch, before both builds, so the face test app
+and the production APK of 08-11-2026 carry the same version (the version is part of the fingerprint: production
+**e3ea1c10…**, facetest **4b630e41…**, docs/RELEASE_08-11.md). The APK goes to a new GitHub Release, tag
+**android-1.1.0**, asset `mridanga-seva-1.1.0.apk`; the website's `apkUrl` and `apkSha256` and its text name 1.1.0.
+EAS still raises the version code by itself.
+
+**Why.** A version people can read tells the old APK (1.0.0, 16-10-2026) from the new one on the version line under
+Sign out, in error reports (#585 keeps `1.1.0+<update>`) and on the website; the release tag follows it.
+
+**Consequences.** What's new gets an entry `version` 1.1.0, kind `installed`, with the build id; updates after it show
+`1.1.0 · update of …`. Any later version change is native too (a new APK).
+
+## 799. Face scan in a person's data summary; an enrolment's approver login may be deleted (0073) — 2 Nov 2026
+
+**Status: lead decision 02-11-2026 (release-0811); migration 0073, TEST 02-11-2026, LIVE with 0070/0071.**
+
+**Context.** Two gaps found at the face merge. (1) `my_data_summary` (#550, #770) did not list what face scan keeps
+about a student, so "My data and rights" was incomplete once face scan is on. (2) `face_enrolments.approved_by`
+referenced `profiles` without ON DELETE: a staff login that had confirmed an enrolment could never be deleted
+(`anonymise_staff` would only scrub it in place).
+
+**Decision.** 0073 replaces `my_data_summary` with 0068's body plus a `face` part for a student record: the face
+consents (given, withdrawn, the child's own yes), each enrolment record (state waiting / confirmed / enrolled / ended,
+model version, requested, confirmed, enrolled, expires, ended and why), and counts of face check-ins, kept match scores
+and integrity checks. Never the device key, a code or the approver. The face code is not on the server (#298), so
+there is nothing more to give. My data shows one "Face scan" line when any of it exists ("the face code is kept on the
+phone only"). `approved_by` becomes ON DELETE SET NULL; 0070's check `(approved_at is null) = (approved_by is null)`
+becomes `face_enrolments_approver_has_time` (an approver needs a time; a confirmed enrolment may have lost its
+approver's login).
+
+**Consequences.** LIVE runs 0070 → 0071 → 0073 (GO_LIVE M0073; part F row 1 `0073`). Safe to run twice; changes no
+stored row. `consents.assent_read_by` (0070) keeps the same no-action reference as main's other consent columns:
+`anonymise_staff` scrubs such a login in place.

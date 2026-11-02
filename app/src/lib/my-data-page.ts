@@ -160,6 +160,19 @@ export function summarySections(t: TFunction, s: MyDataSummary, fmt: DateFormat,
       value: t('dataRights.playgroundLine', { count: pg.rounds.count, last: pg.rounds.last ? day(pg.rounds.last) : '-', weeks: pg.weeks.length, ratings: pg.ratings.length }),
     });
   }
+  // Face scan (0073, #799), also only when something is held: while face scan is off nobody has a record of it.
+  const face = s.face;
+  if (face && (face.enrolments.length || face.consents.length || face.check_ins)) {
+    const current = face.enrolments.find((e) => e.state === 'enrolled');
+    activity.push({
+      label: t('dataRights.fields.face'),
+      value: t('dataRights.faceLine', {
+        enrolments: face.enrolments.length,
+        until: current?.expires_at ? day(current.expires_at) : '-',
+        checkIns: face.check_ins,
+      }),
+    });
+  }
   activity.push(
     { label: t('dataRights.fields.devices'), value: String(s.devices) },
     { label: t('dataRights.fields.notices'), value: String(s.notices) },

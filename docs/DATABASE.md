@@ -2014,6 +2014,18 @@ update while `app.face_visit` is on (set only by `self_scan`, for its own transa
 linked to their own record checks themself in and out by face; every other own-record write stays `own_record`.
 0070's `record_face_consent` answers `own_record` for one's own record (a colleague records it).
 
+## Face scan in my data, the approver may go (0073)
+
+[DECISIONS.md #799](DECISIONS.md). Migration `0073_face_privacy.sql`; needs 0070 (LIVE: 0070 → 0071 → 0073).
+`my_data_summary` is 0068's plus a `face` part for a student record: `consents` (face scope: given, withdrawn,
+`child_assent`), `enrolments` (state waiting / confirmed / enrolled / ended, `model_version`, `requested_at`,
+`confirmed_at`, `enrolled_at`, `expires_at`, `ended_at`, `end_reason`), and the counts `check_ins` (method or check-out
+method face), `match_scores` (`visit_face_scores` still kept), `integrity_checks`. Never the device key, a code or the
+approver; the face code is only on the phone. `face_enrolments.approved_by` is ON DELETE SET NULL, and the check
+`face_enrolments_approver_has_time` (an approver needs `approved_at`) replaces 0070's two-way check. Changes no stored
+row; safe to run twice. Tests: section "0073" in `supabase/tests/smoke-test.mjs`; the My data line in
+`app/tests/data-rights.test.mjs`.
+
 ## Linking a login to a student
 
 A student record can exist without a login (many students never install the app). When a person

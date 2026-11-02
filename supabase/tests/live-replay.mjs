@@ -88,7 +88,9 @@ const GO_LIVE = ['0013', '0014', '0015', '0016', '0017', '0018', '0019', '0020',
   // 08-11-2026 production APK). LIVE runs them AFTER 0072 (step 4b below proves that order ends the same).
   '0070', '0071',
   // Sections in the syllabus: syllabus_items.section (#773).
-  '0072'];
+  '0072',
+  // Face scan in a person's data summary; an enrolment's approver login may be deleted (#799). LIVE: after 0071.
+  '0073'];
 
 let failures = 0;
 let passes = 0;
