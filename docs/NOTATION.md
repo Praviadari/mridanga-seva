@@ -1,94 +1,79 @@
-# One notation key for the class — DRAFT for Sarvesh Prji and the team
+# One notation key for the class — the C/O key
 
-**Status: DRAFT, 29-10-2026. Nothing in the app changes until the team confirms.** Written for the team from their two
-documents of 29-10-2026 (Beginner Level Lesson Plan, working copy; Intermediate Level Hand Practice Mantras, draft V1).
-The bol names, the strokes and the mantras are the team's and Śrīla Prabhupāda's; this page only proposes **one way to
-write them** so that every level, the app, WhatsApp and a printed page show the same thing. Each row says what the two
-documents do today, a proposal, and why. Please mark each row *yes*, or write the class's own choice — the app follows.
+**Status: AGREED 02-11-2026 (C/O).** Praveen and Sarvesh Prji (head facilitator) agreed the team's own scheme: a
+capital `I` per finger of the right hand, then **C** (closed) or **O** (open) — `IIIIC`, `IIIIO`, `IC`, `IO`. Bols stay
+written as words (`te re khe ta`). The bol names, the strokes and the mantras are the team's and Śrīla Prabhupāda's;
+this page only says **how to write them** so that every level, the app, WhatsApp and a printed page show the same thing.
 
-Decisions behind it: docs/DECISIONS.md #776 (this draft), #774 (guna 1/2/4/8, already agreed).
+Decisions: docs/DECISIONS.md #782 (this key), #783 (Playground bol cards), #784 (LIVE syllabus file), #776 (the
+first draft), #774 (guna 1/2/4/8).
 
-## Why a key is needed
+## The rule
 
-1. **The underline is lost.** In the Beginner notes `te` is four bars *underlined* and `ta` is four bars *plain*. App
-   text, WhatsApp and most phones cannot show an underline, so `te` and `ta` look the same. The Intermediate draft also
-   tells `ri` (underlined I) from `ta` (plain I) only by the underline.
-2. **The two levels use different marks** for the same stroke (`te` = four bars in Beginner, three in Intermediate; `ge`
-   = ▲ in Beginner, ● in Intermediate, the same mark as `khe`).
-3. **The bar `|` means two things**: a stroke (`||||` = ta) and the vibhāg line in a bol line (`tere kheta | tere`).
-
-## Team's first answer (30-10-2026)
-
-From the team via Praveen (mail "Photo", 30-10-2026 17:10, two pictures):
-- Brackets for a closed stroke "also work" (`te` = `[III]`, `ri` = `[I]`, `ti` = `[II]`).
-- **Their own proposal:** fingers as capital I's plus **C** (closed) or **O** (open): `IIIIC` four fingers closed,
-  `IIIIO` four fingers open, `IC` index finger closed, `IO` index finger open.
-- **The technique depends on the mantra, not only the bol or the level:** `te` is normally `IIIIC` (Beginner), but in
-  some Intermediate mantras `IC` (index finger). So one bol can have several marks; each mantra line shows its own.
-- The team sends the Beginner notes with complete notation by Sunday 01-11-2026.
-
-**Lead's advice (30-10):** take the team's C/O letters instead of brackets (they say open as well as closed, read
-aloud well, and are the team's own); one scheme only. Always capital I, never the digit 1 (the mail's `ri = [1]`).
-Marks then belong to each mantra/lesson line (lesson notes are plain text: works today, no app change); the Playground
-bol dictionary keeps one default mark per bol until a game needs per-mantra marks. Still open: `ti` II or III, `re` vs
-`ri`, `jha` vs `dha`, `ge` ▲, left-hand marks `●` `O`, the spellings below.
-
-## What other teachers write (lead's web research, 02-11-2026)
-
-Praveen spoke with Prji on 01-11: use the most widely recognised way. Findings:
-- **No single world-wide written key for khol hand strokes exists**; the tradition is oral. What every source shares is
-  the **bols as words** (`te re khe ta`): KKSongs Khol Guide (kksongs.org/khol), Art of Kirtan Mridanga 1, Mayapur
-  Mridanga (via the mridang.am format, github.com/krishnized/mridang.am), Bablu Das's Basic Mridanga Handbook.
-- Guides that do write the technique write **hand + fingers + open/closed** as text: 4evatalent Hasta-Sādhana
-  (te = RH 4 closed, ta = RH 4 open, re = RH thumb closed, khe = LH closed); `,` = one after the other, `+` = together.
-  The team's `IIIIC` / `IIIIO` (number of I's = fingers, C/O = closed/open) carries the same facts compactly.
-- **No source uses an underline for a closed stroke.** In Bhatkhande notation (the standard Indian way to write a
-  tāla), a curve under bols means "these bols share one mātrā", so an underline would clash with it.
-- For the tāla line, Bhatkhande's marks are the recognised standard: `X` sam, `0` khālī, `2 3 …` tālī, `|` vibhāg,
-  `–` a silent beat (the team already uses `|` and `–`).
-- Sources disagree on `re` (thumb closed in 4evatalent, thumb open in Bablu Das): the class decides.
-
-**Lead's recommendation (02-11):** C/O letters as the team proposed (not brackets, not underline, not images); bols
-stay words; Bhatkhande marks for tāla lines; a thumb = `T` (`TC`, `TO`) if the class writes thumb strokes.
-
-## The rule proposed
-
-- **Bols are written as words** (`te re khe ta`, `tere kheta`): this is how the app already writes them (Rhythm
-  Playground, lessons) and every lesson line in both documents. The **marks** below are for the notes' "Notation"
-  rows, where the team shows *how* the stroke is played.
-- **Right-hand marks are capital I's**, one per finger, as in the Intermediate draft and Prabhupāda's notes (`l`
-  = index finger, `lll` = three fingers). The capital I is never the vibhāg line, so `|` stays free for that.
-- **A closed (pressed) stroke is written in square brackets** instead of underlined: `[III]`. Brackets survive every
-  phone, keyboard and printer.
-- **Played together** = `+` (as both documents already do: `O+llll`, `ga + ta`).
-- **Lines:** `|` vibhāg, `||` end of the line or cycle, `–` (dash) a silent beat, as in both documents.
+- **Bols are written as words** (`te re khe ta`, `tere kheta`), as the app already writes them (Rhythm Playground,
+  lessons). The **marks** show *how* a stroke is played; they stand beside the bols, never in place of them.
+- **Right hand:** one capital `I` per finger, then `C` for a closed (pressed, damped) stroke or `O` for an open
+  (ringing) one: `IIIIC` four fingers closed, `IIIIO` four fingers open, `IC` index finger closed, `IO` index finger
+  open. Always the capital letter I — never `|` (the vibhāg line), the digit `1` or a small `l`.
+- **The finger count belongs to the mantra.** The technique depends on the mantra, not only the bol or the level, so
+  each lesson line keeps its own document's count: `te` is `IIIIC` in the Beginner lessons and `IIIC` in the
+  Intermediate notes. The Playground's bol cards show one default per bol (the Beginner one).
+- **Left hand** unchanged: `●` khe (closed), `O` ga (open), `▲` ge (Beginner; the Intermediate notes write ge `●`
+  "like khe at the left side top end"). An `O` on its own is ga; an `O` after I's means open.
+- **`/`** re, as the team writes it. **`+`** played together (`O+IIIIO` = ga + ta).
+- **Lines:** `|` vibhāg, `||` end of the line or cycle, `–` (dash) a silent beat. For tāla lines Bhatkhande's marks
+  are the recognised standard (`X` sam, `0` khālī, `2 3 …` tālī) if the team wants them later.
+- **Thumb strokes**, if the class writes them: `T` (`TC`, `TO`) — a lead suggestion, not yet used.
 
 ## The key, row by row
 
-| Stroke | Beginner (working copy) | Intermediate (draft V1) | Proposal | Why |
+| Stroke | Beginner (working copy) | Intermediate (draft V1) | Written now | Note |
 |---|---|---|---|---|
-| **ta** (right, open, index finger) | `\|\|\|\|` plain | `I` | **`I`** | Intermediate and Prabhupāda's notes ("index finger open sound") agree; one finger, one mark. Team to confirm that Beginner's four plain bars are this same stroke. |
-| **te** (right, closed) | `\|\|\|\|` underlined | `III` underlined | **`[III]`** | The underline becomes brackets. Three fingers as in the Intermediate draft; **team to confirm three or four** (Beginner has four). |
-| **re** | `/` | — | **`/`** | Only Beginner writes it; already plain text. **Question:** is Intermediate's `ri` the same stroke as `re`? |
-| **ri** | — | `I` underlined | **`[I]`** | The underline becomes brackets, so `ri` no longer looks like `ta`. |
-| **ti** | — | `II` underlined | **`[II]`** | As above. **Question:** Prabhupāda's notes write `ti` as `lll` (three fingers closed) — is that the class's `te`? See "Prabhupāda's mantra" below. |
-| **khe** (left, closed) | `●` | `●` | **`●`** | Both agree. |
-| **ga** (left, open) | `O` | `O` | **`O`** | Both agree. |
-| **ge** | `▲` | `●` "like khe at the left side top end" | **`▲`** | One mark per stroke: with `●` for both, `ge` and `khe` cannot be told apart in a line. Intermediate's words stay as the way to play it. |
-| **gam** (ga → ge, a slide) | — | "ga -> ge" | **`O→▲`** | Writes the slide with the two marks it joins; `O->▲` where `→` cannot be typed. |
-| **ga + ta** | `O+\|\|\|\|`, named **jha** | **Dha** = ga + ta | **`O+I`**; the name is the team's choice | **Question:** Beginner names this stroke `jha` (Lessons 1, 5, Bonus) but also writes `dha` in Lessons 6-8; Intermediate calls ga + ta `Dha`. Are `jha` and `dha` the same stroke? One name per stroke is easier for students. |
-| **khe + ta** | `●+\|\|\|\|`, named **tak** | — | **`●+I`** | Same rule. |
-| **Dhe / Dhar / Dher / Dham / Dhem** | — | ga+te, ge+ta, ge+te, gam+ta, gam+te | **`O+[III]`, `▲+I`, `▲+[III]`, `O→▲+I`, `O→▲+[III]`** | Follow from the rows above. |
-| **khene / tere / kheta** (Lesson 2) | `●/`, `\|\|\|\|/` underlined, `●\|\|\|\|` | — | **`●/`, `[III]/`, `●I`** | The same marks joined, as the team wrote them. |
+| **te** (right, closed) | `IIIIC` (was four bars underlined) | `IIIC` (was III underlined) | each document's own | Four fingers in Beginner, three in Intermediate: kept per mantra. |
+| **ta** (right, open) | `IIIIO` (was four bars plain) | `IO` (was I) | each document's own | Prabhupāda's notes: "index finger open sound". |
+| **re** | `/` | — | `/` | |
+| **ri** | — | `IC` (was I underlined) | `IC` | No longer looks like ta (`IO`). |
+| **ti** | — | `IIC` (was II underlined) | `IIC` | Prabhupāda's mantra writes ti `IIIC` (three fingers closed): kept as written there. |
+| **khe** (left, closed) | `●` | `●` | `●` | |
+| **ga** (left, open) | `O` | `O` | `O` | |
+| **ge** | `▲` | `●` (like khe, top end) | each document's own | |
+| **gam** (ga → ge) | — | "ga -> ge" | "ga -> ge" | |
+| **jha** (ga + ta) | `O+IIIIO` | — | `O+IIIIO` | Intermediate calls ga + ta **Dha**. |
+| **tak** (khe + ta) | `●+IIIIO` | — | `●+IIIIO` | |
+| **tere / kheta / khene** (Lesson 2) | `IIIIC/`, `●IIIIO`, `●/` | — | as the team joins them | |
+| **jere / ghena / tikhi / takhi** (HS1, HS2) | `(O+IIIIO)/`, `OIIIIO`, `IIIIC●`, `IIIIO●` | — | as the team joins them | |
+| **ghe ne re** (Lesson 4, HA 1) | `O IIIIC /` | — | as written | ghe is written `O` here (not `▲`). |
+| **ghenere** (HA1a) | `OIIIIC/` | — | as written | |
 
 ### Prabhupāda's mantra (Intermediate)
 
-The draft writes Śrīla Prabhupāda's hand-practice mantra with its own syllables `ki ti ta` / `gi ti ta` and its own
-key: `ki` ● (left closed), `gi` O (left open), `ti` lll (three fingers closed), `ta` l (index finger open).
-**Proposal:** keep the mantra's syllables exactly as Prabhupāda taught them, and write its marks with the class key:
-`ki` = `●`, `gi` = `O`, `ti` = `[III]`, `ta` = `I` — the same marks as the class's `khe`, `ga`, `te`, `ta`, so a
-student sees that the strokes are the ones they already know. **Question:** the Intermediate key gives `ti` two
-fingers (`II`) and Prabhupāda's notes give it three (`lll`): which is right for the class?
+The mantra keeps Śrīla Prabhupāda's syllables (`ki ti ta`, `gi ti ta`) and its own key, written with the class's
+letters: `ki` = `●` (left closed), `gi` = `O` (left open), `ti` = `IIIC` (three fingers closed), `ta` = `IO` (index
+finger open sound).
+
+## Where the app holds the marks (02-11-2026)
+
+- **Lessons** (plain text, no app change): TEST seed `supabase/seed/syllabus_beginner_test.sql` — Lessons 1, 2 and 4
+  and the Intermediate "Notations" and Prabhupāda's mantra carry the C/O marks, each with a one-line key. Lessons 3,
+  5-9, Bonus and the Intermediate exercises have no marks in the team's pages, so none were added. LIVE copy:
+  `supabase/seed/syllabus_live.sql` (same lessons, no TEST PDFs), pasted on the lead's word.
+- **Rhythm Playground:** Sound Detective's cards show the default mark beside the hand ("right hand · IIIIC") with the
+  key under the cards; the staff bol editor shows the bol's default mark and the key. Defaults: te `IIIIC`, ta
+  `IIIIO`, re `/`, khe `●`, ga `O`, ge `▲`, jha `O+IIIIO`, tak `●+IIIIO` (app/src/lib/playground/marks.ts). The
+  dictionary's `written` stays the spelling (`tā`); TEST's placeholder bols' technique words say the same marks.
+- **Not changed:** the practice tools' hand drawings (lib/bols.ts, #404) follow the kksongs khol course (te = middle
+  finger closed, ta = index finger at the edge of the syahi): they differ from the class key — see the questions.
+
+## Still open (for the team)
+
+| Question | Where |
+|---|---|
+| Is Intermediate's `ri` the same stroke as Beginner's `re`? Sources disagree on `re` (thumb closed in 4evatalent, thumb open in Bablu Das). | L1, Intermediate key |
+| `jha` and `dha`: Beginner names ga + ta `jha` (Lessons 1, 5, Bonus) but also writes `dha` in Lessons 6-8; Intermediate calls ga + ta `Dha`. Same stroke? | L1, L6-8, Intermediate |
+| `ti`: two fingers (`IIC`, Intermediate key) or three (`IIIC`, Prabhupāda's mantra) — or two different strokes? | Intermediate |
+| HS2, last line: the first `kheta` is marked `●/` (as khene), elsewhere kheta is `●IIIIO`. Typo? | Beginner L2 |
+| `ghe` is written `O` in HA 1 and ghena (the ga mark), `▲` in Lesson 1. Is ghe ga here? | Beginner L2, L4 |
+| The practice tools' hand drawings show te with the middle finger and ta with the index finger; the class key says four fingers. Redraw them to the class key? | app hand view |
 
 ## Spellings and small questions for the team
 
@@ -114,13 +99,21 @@ The app keeps the team's spelling everywhere until the team chooses (the TEST le
 | Lesson 7 taals | Das Pahira, Kaharaba, Bhajani | **No vibhāg marks** (`\|`): please add them, so the app's taal player and students know where each vibhāg starts. Only "Kaharba Lohara" has them. |
 | Kaharaba under Das Pahira | Beginner L7 | Is Kaharaba a separate taal (item 2) or part of Das Pahira? |
 | "1. Hand Practice Mantra…" | Intermediate p. 2 | The numbering starts again at 1: a new list (e.g. "Section 1, Mantras")? |
-| Section 2: Ārati Mantras, Kīrtana Mantras | Intermediate proposal | The lessons are not written yet; TEST shows the two titles only. |
+| Section 2: Ārati Mantras, Kīrtana Mantras | Intermediate proposal | The lessons are not written yet; the app shows the two titles with "The team will add this lesson". |
 
-## What the app does with the key, once confirmed
+## How the key was reached
 
-- Lesson text stays as words (`te re khe ta`); the confirmed marks go into each lesson's notes where the team wants
-  them (they show as plain text, no picture needed).
-- The Rhythm Playground's bol dictionary (`play_bols.written`) and taal player read the same words; a confirmed key
-  can add the marks to the bol cards.
-- Until then the team's own pages are attached to Lessons 1-4 and the Intermediate notations on TEST as PDFs, so
-  nothing of the original is lost.
+1. **29-10-2026, the problem.** In the Beginner notes `te` was four bars *underlined* and `ta` four bars *plain*; app
+   text, WhatsApp and most phones cannot show an underline, so the two looked the same (the Intermediate draft told
+   `ri` from `ta` the same way). The two levels also used different marks for the same stroke, and the bar `|` meant
+   both a stroke and the vibhāg line. The first draft (#776) proposed square brackets for closed.
+2. **30-10-2026, the team's answer** (mail "Photo"): brackets "also work", but their own proposal was capital I's plus
+   C or O; the technique depends on the mantra.
+3. **02-11-2026, research** (Prji, 01-11: use the most widely recognised way). No single world-wide written key for khol
+   hand strokes exists; the tradition is oral, and every source writes the **bols as words** (KKSongs Khol Guide, Art
+   of Kirtan Mridanga 1, Mayapur Mridanga via mridang.am, Bablu Das's Basic Mridanga Handbook). Guides that write the
+   technique write **hand + fingers + open/closed** as text (4evatalent Hasta-Sādhana: te = RH 4 closed, ta = RH 4
+   open, khe = LH closed; `+` together), which the team's `IIIIC` / `IIIIO` carries compactly. No source uses an
+   underline for a closed stroke; in Bhatkhande notation a curve under bols means "one mātrā", so an underline would
+   clash with it.
+4. **02-11-2026, agreed:** Praveen and Prji — the team's C/O letters, one scheme, capital I only.

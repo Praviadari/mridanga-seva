@@ -5066,6 +5066,7 @@
       "rounds": "Rounds",
       "freePlay": "Free play",
       "freePlayHint": "Free play: the bols of your level’s taals, no rounds kept.",
+      "marksKey": "C = closed, O = open, I = one finger (IIIIC = four fingers closed). Left hand: ● khe, O ga, ▲ ge. / = re.",
       "hands": {
         "right": "right hand",
         "left": "left hand",
@@ -5483,7 +5484,8 @@
       "idIs": "Id: {{id}}",
       "idProblem": "The id is 1-10 small letters a-z, without marks.",
       "written": "As the class writes it",
-      "writtenHint": "With its marks, e.g. dhā. At most 12 characters.",
+      "writtenHint": "The spelling with its accents, e.g. dhā (no finger marks). At most 12 characters.",
+      "mark": "The class's mark (Beginner): {{mark}}.",
       "writtenProblem": "Write the bol as the class writes it (1-12 characters).",
       "head": "Played on",
       "head_dayan": "Right hand (dayan)",

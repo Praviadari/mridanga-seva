@@ -37,11 +37,19 @@ declare
 begin
   -- 1. The dictionary: the four, approved placeholders (written as the class writes them).
   insert into play_bols (id, written, head, technique, open, level_id, sounds_like, close_pairs, status, placeholder, approved_at) values
-    ('te',  'te',  'dayan', 'TEST: middle finger on the black spot, closed', false, 1, '{}', '{re}', 'approved', true, now()),
-    ('re',  're',  'dayan', 'TEST: index finger on the black spot, closed',  false, 1, '{}', '{te}', 'approved', true, now()),
-    ('khe', 'khe', 'baya',  'TEST: flat hand on the left head, closed',      false, 1, '{}', '{}',   'approved', true, now()),
-    ('ta',  'tā',  'dayan', 'TEST: index finger at the edge of the black spot', true, 1, '{}', '{}', 'approved', true, now())
+    ('te',  'te',  'dayan', 'TEST: IIIIC – four fingers, closed (class key)', false, 1, '{}', '{re}', 'approved', true, now()),
+    ('re',  're',  'dayan', 'TEST: / – re as the class writes it',            false, 1, '{}', '{te}', 'approved', true, now()),
+    ('khe', 'khe', 'baya',  'TEST: ● – left hand, closed (class key)',         false, 1, '{}', '{}',   'approved', true, now()),
+    ('ta',  'tā',  'dayan', 'TEST: IIIIO – four fingers, open (class key)',    true,  1, '{}', '{}',   'approved', true, now())
   on conflict (id) do nothing;
+  get diagnostics v_n = row_count; v_changed := v_changed + v_n;
+  -- The class key of 02-11-2026 (docs/NOTATION.md, #783): an older seed's technique words take the Beginner marks.
+  -- `written` stays the spelling; the marks the cards show come from the app (lib/playground/marks.ts).
+  update play_bols set technique = case id when 'te' then 'TEST: IIIIC – four fingers, closed (class key)'
+                                           when 're' then 'TEST: / – re as the class writes it'
+                                           when 'khe' then 'TEST: ● – left hand, closed (class key)'
+                                           else 'TEST: IIIIO – four fingers, open (class key)' end
+   where placeholder and id = any (v_set) and technique like 'TEST: %' and technique not like '%class%';
   get diagnostics v_n = row_count; v_changed := v_changed + v_n;
   -- An earlier seed's te / re / ta carried other pairs: keep them to the four (an edit sends them back to review,
   -- so approve them again).

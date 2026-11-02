@@ -9265,3 +9265,42 @@ next LIVE release goes from main (0063-0072), so this had to hold before Praveen
 offline queue depends on; the settings are already readable and SQL-editor-only, the control 0065 chose.
 To launch: set `playground_enabled` true (and optionally `playground_pilot_group` to a group id) in the SQL editor;
 phones pick it up at the next start or return to the app. Checked by tests/playground-switch.test.mjs.
+
+## 782. The class's notation key is C/O: capital I per finger, then C (closed) or O (open) — 2 Nov 2026
+
+**Context.** #776's draft wrote a closed stroke in square brackets because the team's underline (te = four bars
+underlined, ta = plain) is lost in app text and WhatsApp. The team answered with their own scheme (30-10); research
+(02-11) found no written world standard, bols written as words everywhere, and hand + fingers + open/closed where the
+technique is written. Praveen and Sarvesh Prji agreed the team's scheme on 02-11-2026.
+
+**Decision.** docs/NOTATION.md is AGREED: bols stay words; right-hand marks are capital I's, one per finger, then `C`
+(closed) or `O` (open) — `IIIIC`, `IIIIO`, `IIIC`, `IC`, `IO`; never `|`, the digit 1 or a small l. Each lesson line
+keeps its own document's finger count (the technique depends on the mantra: te `IIIIC` in Beginner, `IIIC` in the
+Intermediate notes; Prabhupāda's ti `IIIC`). Left hand unchanged (`●` khe, `O` ga, `▲` ge, Intermediate's ge `●`); `/`
+re; `+` together; `|` vibhāg, `–` silent. The TEST seed (`syllabus_beginner_test.sql`) types the marks into Lessons 1, 2,
+4 and the Intermediate notations (each with a short key line, every description under the 1000-character limit) and now
+updates rows already there, so a re-run brings TEST to the file's text. Lines whose underline the team's pages leave in
+doubt are not guessed: they are questions in NOTATION.md (HS2's `●/` kheta, ghe as `O`, re/ri, jha/dha, ti II/III). No
+migration.
+
+## 783. The Playground's bol cards show one default mark per bol, from the app — 2 Nov 2026
+
+**Decision.** `app/src/lib/playground/marks.ts` holds the Beginner default per bol id (te `IIIIC`, ta `IIIIO`, re `/`,
+khe `●`, ga `O`, ge `▲`, jha `O+IIIIO`, tak `●+IIIIO`); a beat's marks run together as the team writes them (`te.re` →
+`IIIIC/`). Sound Detective's cards show it after the hand ("right hand · IIIIC") with a key under the cards ("C =
+closed, O = open, I = one finger …", en/te/hi, te/hi drafts); the staff bol editor shows the bol's default and the key.
+A bol without a mark shows none. **Why in the app, not in `play_bols`:** marks are separate from the bol by #722
+(`written` is the spelling, `tā`, used in every game's text) and a new column would need migration 0073 and a LIVE step
+for one default per bol; per-mantra marks live in the lesson text. TEST's placeholder bols' technique words say the same
+marks (playground_test.sql; pack v6, every game's count unchanged). The practice tools' hand drawings (#404, kksongs
+model: te middle finger, ta index finger) were left as they are and are a question for the team.
+
+## 784. LIVE syllabus: one SQL file for the lead's word, never run by a worker — 2 Nov 2026
+
+**Decision.** `supabase/seed/syllabus_live.sql` adds the same Beginner and Intermediate lessons (with C/O marks and the
+team's two Intermediate sections) to LIVE, without TEST's PDF materials, storage paths or retiring anything. It refuses
+the TEST project (seed.sql's example.com students) and a database without 0072; an item already there (same level and
+title) is left as it is and named in a notice, so a second run adds nothing and the Guru's edits win. Its lesson list is
+a copy of the TEST seed's step 2 (a test checks they are equal). It ends with a read-back (level, order, section,
+title, length). Praveen pastes it in the LIVE SQL editor on the lead's word; the guard and the body were checked on
+TEST (refused; a rolled-back dry run of the body parsed).

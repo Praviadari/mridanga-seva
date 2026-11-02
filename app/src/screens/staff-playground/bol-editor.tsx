@@ -2,7 +2,8 @@
 // plain id (dha for dhā, the form lib/bols.ts plainBol makes and every exercise uses), how the class writes it,
 // which hand, the first level, the technique in the teacher's words, open or closed, the bols that sound the same
 // (one card) and the close pairs ("hard" distractors), and its recording (a stroke sound of the library). Only an
-// approved bol can appear in a challenge; changing an approved one sends it back for approval.
+// approved bol can appear in a challenge; changing an approved one sends it back for approval. Under the spelling, the
+// class's default mark for the bol and the key (lib/playground/marks.ts, #783), read-only.
 
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
@@ -18,6 +19,7 @@ import { Section } from '@/components/section';
 import { TextField } from '@/components/text-field';
 import { saveBol, type AdminBol, type AdminContent } from '@/data/playground-admin';
 import { LEVEL_IDS, levelName } from '@/i18n/labels';
+import { bolMark } from '@/lib/playground/marks';
 import type { Head } from '@/lib/playground/types';
 
 import { BOL_ID, canEdit, readIds } from './content-rules';
@@ -77,6 +79,7 @@ function BolForm({ row, content }: { row: AdminBol | null; content: AdminContent
   const [error, setError] = useState<string | null>(null);
 
   const plainId = id.trim().toLowerCase();
+  const mark = bolMark(row?.id ?? plainId);
   const alike = readIds(soundsLike).filter((x) => x !== plainId);
   const pairs = readIds(closePairs).filter((x) => x !== plainId);
   const known = new Set(content.bols.map((b) => b.id));
@@ -125,6 +128,11 @@ function BolForm({ row, content }: { row: AdminBol | null; content: AdminContent
           <TextField label={t('staffPlayground.bol.id')} hint={t('staffPlayground.bol.idHint')} value={id} onChangeText={setId} autoCapitalize="none" maxLength={10} required />
         )}
         <TextField label={t('staffPlayground.bol.written')} hint={t('staffPlayground.bol.writtenHint')} value={written} onChangeText={setWritten} maxLength={12} editable={editable} required />
+        {mark ? (
+          <AppText variant="small" tone="muted">
+            {t('staffPlayground.bol.mark', { mark })} {t('playground.sd.marksKey')}
+          </AppText>
+        ) : null}
         <ChoiceGroup<Head>
           label={t('staffPlayground.bol.head')}
           value={head}

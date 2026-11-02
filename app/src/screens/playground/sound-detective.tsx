@@ -2,7 +2,8 @@
 // is "Which bol?" (#471) grown up, at the same address (/student/which-bol): Rounds play the engine's seeded rounds of
 // approved bols and phrases (2-4 cards) with two tries, and are saved for the student's progress; Free play is the
 // old quiz on the level's taals (with the hand drawings), kept on the phone only. A card shows the bol as the class
-// writes it and the hand that plays it; its sound is its label. After the answer every card can be heard.
+// writes it, the hand that plays it and the class's mark (lib/playground/marks.ts, #783) with the key under the cards;
+// its sound is its label. After the answer every card can be heard.
 
 import type { TFunction } from 'i18next';
 import { useEffect, useState } from 'react';
@@ -15,6 +16,7 @@ import { Notice } from '@/components/notice';
 import { ChoiceCards } from '@/components/playground/choice-cards';
 import { applySoundChoice } from '@/lib/khol-samples';
 import { createPracticePlayer } from '@/lib/practice-audio';
+import { keyMarks } from '@/lib/playground/marks';
 import { keyBeats, type BolIndex } from '@/lib/playground/notation';
 import type { Challenge, Choice } from '@/lib/playground/types';
 import { beatsPattern, choiceHands, choicePattern, choiceText } from '@/lib/playground-games/listening';
@@ -116,13 +118,18 @@ export function SoundDetective() {
             choices={challenge.choices.map((choice) => ({
               key: choice.key,
               label: choiceText(choice, game.index),
-              sublabel: handsWords(t, choice, game.index),
+              sublabel: [handsWords(t, choice, game.index), keyMarks(choice.key)].filter(Boolean).join(' · '),
             }))}
             onChoose={choose}
             chosen={picked}
             rightKey={game.done ? challenge.answer : null}
             onHear={hearCard}
           />
+          {challenge.choices.some((choice) => keyMarks(choice.key)) ? (
+            <AppText variant="small" tone="muted">
+              {t('playground.sd.marksKey')}
+            </AppText>
+          ) : null}
         </>
       ) : null}
     </GameFrame>

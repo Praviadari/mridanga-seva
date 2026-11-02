@@ -1,17 +1,20 @@
 -- Mridanga Seva — the team's syllabus on the TEST project ONLY (docs/DECISIONS.md #773, #775; team mail 29-10-2026:
 -- "Beginner Level Lesson Plan_Working Copy" and "Intermediate Level_Hand Practice Mantras_Draft_V1").
--- NEVER run on LIVE: LIVE's syllabus is the Guru's to enter in the app (Levels and syllabus), once the team has
--- confirmed the text and the notation key (docs/NOTATION.md is a DRAFT for Sarvesh Prji and the team).
+-- NEVER run on LIVE: LIVE gets the same lessons from supabase/seed/syllabus_live.sql (no TEST files), on the lead's
+-- word. Notation: the class key agreed 02-11-2026 (docs/NOTATION.md, #782): capital I per finger, then C (closed) or
+-- O (open) — IIIIC, IIIIO, IC, IO.
 -- Needs 0072 (sections). Run in the TEST project's SQL editor, or
 --   npx supabase@2.118.0 db query --linked --project-ref fhuqykssenuhczdqbafu -f supabase/seed/syllabus_beginner_test.sql
 -- (that command commits every statement on its own; there is no dry run). Safe to run twice: an item is added once
--- (same level and title), a material once (same file).
+-- (same level and title), a material once (same file); an item already there gets this file's text (so the C/O
+-- marks reach the rows added on 29-10-2026; a TEST edit of these descriptions is overwritten).
 --
 -- What it does:
 --   1. Retires seed.sql's six Beginner and five Intermediate example items (ticks stay, #44; Restore puts one back).
 --   2. Adds the 9 Beginner lessons and "Bonus Hand Practice Mantras" (no sections), and the Intermediate draft under
 --      the team's two sections. Titles and text are the team's own words, bols as text; only obvious typos are fixed
---      (listed in NOTES_syllabus.md). The notation symbols are NOT typed in: they wait for the agreed key.
+--      (listed in NOTES_syllabus.md). Where the team's pages write marks (Lessons 1, 2, 4; Intermediate notations),
+--      the marks are typed in with the C/O key, each line keeping the page's own finger count (#782).
 --   3. Attaches the team's PDF pages as PDF materials where the symbols matter (Lessons 1-4, the Intermediate draft,
 --      and the whole Beginner notes for the level), if those files were uploaded first to the private bucket
 --      material-files as '<a Guru's login id>/<file id>.pdf' (NOTES_syllabus.md has the upload commands). A file
@@ -55,13 +58,15 @@ begin
 
   -- 2. The team's items, in teaching order; each added once.
   for v_level, v_title, v_section, v_text in values
-    (1::smallint, 'Lesson 1: Varnas', null::text, $t$Smaller side varnas: 1. te  2. re  3. ta
-Bigger side varnas: 4. khe  5. ga  6. ge
-Combo varnas: 7. jha  8. tak
-The notation of each varna is on the team's page below (Lesson 1 notes).$t$),
-    (1, 'Lesson 2: Hastha Sadhana Mantras', null, $t$Bhija mantra: te re khe ta
+    (1::smallint, 'Lesson 1: Varnas', null::text, $t$Smaller side varnas: 1. te IIIIC  2. re /  3. ta IIIIO
+Bigger side varnas: 4. khe ●  5. ga O  6. ge ▲
+Combo varnas: 7. jha O+IIIIO  8. tak ●+IIIIO
+Key: I = one finger of the right hand, then C = closed or O = open (IIIIC = four fingers closed, IIIIO = four fingers open). Left hand: ● khe (closed), O ga (open), ▲ ge. / = re. + = played together.$t$),
+    (1, 'Lesson 2: Hastha Sadhana Mantras', null, $t$Bhija mantra: te re khe ta = IIIIC / ● IIIIO
+Marks: tere IIIIC/  kheta ●IIIIO  jere (O+IIIIO)/  ghena OIIIIO  tikhi IIIIC●  takhi IIIIO●  khene ●/
 HS1 – 16 Matras: tere kheta tere kheta | tere tere tere kheta | jere ghena jere ghena | jere jere jere ghena
 HS2 – 16 Matras: tere kheta tere kheta | tere tere tere kheta | tikhi takhi tere kheta | kheta takhi tere kheta
+(HS2: the team's page marks the first kheta of the last line ●/.)
 khene tere kheta:
 khene tere tere kheta | khene tere kheta khene | tere kheta tere kheta
 tere tere tere kheta | tere tere kheta tere | tere kheta tere kheta
@@ -76,7 +81,8 @@ tere tere kheta
 | tere kheta
 tere kheta
 Left-hand exercise 1: ga – – ge | – ga ga –
-Left-hand exercise 2: ge – (ga) ga ge | ga – – –$t$),
+Left-hand exercise 2: ge – (ga) ga ge | ga – – –
+Key (Lesson 1): I = one finger, C = closed, O = open.$t$),
     (1, 'Lesson 3: Three Levels of Speed Practice', null, $t$Mainly three levels of practice:
 1 Guna – Vilambit laya, slow beat – you are playing bole i.e. mantra once.
 2 Guna – Madhya laya, medium beat and you are playing bole i.e. mantra twice.
@@ -91,10 +97,13 @@ GUN1: te | re | khe | ta
 GUN2: tere | kheta | tere | kheta
 GUN4: terekheta | terekheta | terekheta | terekheta
 GUN8: terekhetaterekheta | terekhetaterekheta | terekhetaterekheta | terekhetaterekheta$t$),
-    (1, 'Lesson 4: Hatuthi Mantras', null, $t$HA 1: ghe ne re
+    (1, 'Lesson 4: Hatuthi Mantras', null, $t$HA 1: ghe ne re = O IIIIC /
 HA1a – Translation:
 jha | ghenere | ghena | jha
-ghenere | ghena | jha | ghena$t$),
+O+IIIIO | OIIIIC/ | OIIIIO | O+IIIIO
+ghenere | ghena | jha | ghena
+OIIIIC/ | OIIIIO | O+IIIIO | OIIIIO
+Key: I = one finger, C = closed, O = open; ● khe, O ga, ▲ ge; / re; + together.$t$),
     (1, 'Lesson 5: Tehais', null, $t$1. ta ta ghi ta ta ghi ta ta
 2. tere kheta jha
    tere kheta jha
@@ -157,10 +166,10 @@ ti khi ta khi te re khe ta
 khe ta ta khi tere kheta
 khe ne* ne re kne na khe ta$t$),
     -- Intermediate: "Hand and Finger Technique Practice (Mantras)", Draft V1, in the team's Section 1.
-    (2::smallint, 'Notations', v_core, $t$Right hand side: ta – I;  te – III;  ri – I;  ti – II
+    (2::smallint, 'Notations', v_core, $t$Right hand side: ta – IO;  te – IIIC;  ri – IC;  ti – IIC
 Left hand side: khe – ●;  ga – O;  ge – ● (like khe at the left side top end);  gam – ga -> ge
 Both sides: Dha = ga + ta;  Dhe = ga + te;  Dhar = ge + ta;  Dher = ge + te;  Dham = gam + ta;  Dhem = gam + te
-In the team's draft te, ri and ti are underlined; see the draft notes below.$t$),
+Key: I = one finger of the right hand, then C = closed or O = open (IIIC = three fingers closed, IO = index finger open). The finger count belongs to each mantra: te is IIIIC in the Beginner lessons, IIIC here.$t$),
     (2, 'Right-hand exercise in Dadra Taal', v_core, $t$Te Ta Ta | Te Ta Ta || Te Ta Ta | Te TeTe TaTa$t$),
     (2, 'Right-hand exercise in Keharwa Taal', v_core, $t$Te Ta Te Ta | Te Ta Te Ta || Te Ta Te Ta | TeTa TeTa Te Ta$t$),
     (2, 'Right-hand exercises in Double Keharwa Taal (D-Keharwa)', v_core, $t$Te – TaTa | Te – TaTa || Te – TaTa | TeTe TaTa$t$),
@@ -182,13 +191,17 @@ gi ti ta –
 gi ti ta –
 gi ti ta –
 gi ta – –
-Notations: ki – ● (left closed – bigger side);  gi – O (left open – bigger side);  ti – lll (three fingers closed – right side);  ta – l (index finger open sound – right side)$t$),
+Notations: ki – ● (left closed – bigger side);  gi – O (left open – bigger side);  ti – IIIC (three fingers closed – right side);  ta – IO (index finger open sound – right side)$t$),
     -- The team's Section 2 is named in the proposal; its lessons are not written yet.
     (2, 'Ārati Mantras', v_seva, $t$The team will add this lesson (Intermediate proposal, Section 2).$t$),
     (2, 'Kīrtana Mantras', v_seva, $t$The team will add this lesson (Intermediate proposal, Section 2).$t$)
   loop
     if not exists (select 1 from syllabus_items where level_id = v_level and title = v_title) then
       insert into syllabus_items (level_id, title, description, section) values (v_level, v_title, v_text, v_section);
+    else
+      -- Already there (29-10-2026): bring the text to this file's (the C/O marks, #782); unchanged rows are not touched.
+      update syllabus_items set description = v_text
+       where level_id = v_level and title = v_title and description is distinct from v_text;
     end if;
   end loop;
 
