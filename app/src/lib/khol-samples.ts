@@ -1,9 +1,8 @@
 // Real khol sounds, prepared (docs/DECISIONS.md #473): a setting "synthesised / real khol" and the loading of the
 // Guru's recorded strokes from the app's own files, used everywhere the practice tools sound a stroke (the taal player,
-// step mode, the tap pad, Which bol?, Echo me) in place of the synthesised ones (lib/practice-sounds.ts). NO
-// recordings ship yet: KHOL_SAMPLE_FILES is empty until the Guru records them (what to record: docs/KHOL_RECORDINGS.md),
-// so "real" is offered but greyed out and the synthesised strokes play. Adding them is a JS-only change (an OTA): the
-// WAV files go in app/assets/sounds/khol/ and one require() line each below; expo-asset is in the APK already.
+// step mode, the tap pad, Which bol?, Echo me) in place of the synthesised ones (lib/practice-sounds.ts). The class's
+// first recordings ship since #790 (what to record: docs/KHOL_RECORDINGS.md). Adding more is a JS-only change (an
+// OTA): the WAV files go in app/assets/sounds/khol/ and one require() line each below; expo-asset is in the APK already.
 // A stroke the recordings lack keeps its synthesised sound; the metronome clicks are always synthesised.
 // The recordings are instrument sounds, made at the class: no personal data.
 
@@ -17,11 +16,20 @@ import { parseWav, prepareStroke, resample } from './stroke-samples';
 export const RECORDED_STROKES = ['ta', 'na', 'ti', 'ra', 'te', 'ka', 'gha', 'ga', 'gin'] as const satisfies readonly SoundId[];
 
 /**
- * The recorded strokes in the app's files, by sound: WAV, 16-bit PCM, mono (docs/KHOL_RECORDINGS.md). Empty until the
- * Guru's recordings are added, for example:
- *   ta: require('../../assets/sounds/khol/ta.wav'),
+ * The recorded strokes in the app's files, by sound: WAV, 16-bit PCM, mono (docs/KHOL_RECORDINGS.md). The class's
+ * recordings of 02-11-2026 (#790): the team says the bol names are spoken variants of the same strokes, so one
+ * recording serves each group (te = ti, tā = nā, ga = gha). gin (the slide) is not recorded yet and stays synthesised.
  */
-export const KHOL_SAMPLE_FILES: Partial<Record<SoundId, number>> = {};
+export const KHOL_SAMPLE_FILES: Partial<Record<SoundId, number>> = {
+  te: require('../../assets/sounds/khol/te.wav'),
+  ti: require('../../assets/sounds/khol/te.wav'),
+  ta: require('../../assets/sounds/khol/ta.wav'),
+  na: require('../../assets/sounds/khol/ta.wav'),
+  ra: require('../../assets/sounds/khol/ra.wav'),
+  ka: require('../../assets/sounds/khol/ka.wav'),
+  ga: require('../../assets/sounds/khol/ga.wav'),
+  gha: require('../../assets/sounds/khol/ga.wav'),
+};
 
 /** Synthesised strokes, or the Guru's recordings. */
 export type SoundChoice = 'synth' | 'real';

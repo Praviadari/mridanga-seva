@@ -272,7 +272,12 @@ test('recorded strokes: stereo is mixed down; 24-bit read; none ship yet, and th
   bytes.set([0x00, 0x00, 0xc0], 44);
   assert.deepEqual([...parseWav(bytes.slice(0, 47)).samples], [-0.5]);
   const samples = src('lib/khol-samples.ts');
-  assert.match(samples, /export const KHOL_SAMPLE_FILES: Partial<Record<SoundId, number>> = \{\};/);
+  // The class's recordings (#790): every file named is in the app, and the slide gin stays synthesised.
+  for (const [, file] of samples.matchAll(/require\('\.\.\/\.\.\/assets\/sounds\/khol\/(\w+\.wav)'\)/g)) {
+    assert.ok(readFileSync(new URL(`../assets/sounds/khol/${file}`, import.meta.url)).length > 1000, file);
+  }
+  assert.match(samples, /te: require\('\.\.\/\.\.\/assets\/sounds\/khol\/te\.wav'\)/);
+  assert.doesNotMatch(samples, /gin: require/);
   assert.match(src('components/play-and-learn.tsx'), /realSoundsReady\(\)/);
   assert.match(src('lib/practice-sounds.ts'), /const real = recorded\?\.\(id, rate\);/);
   // Every stroke of bols.ts is on the Guru's list (docs/KHOL_RECORDINGS.md).

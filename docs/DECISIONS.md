@@ -9380,3 +9380,23 @@ when the card's exercise is of the Beginner level (`MARKS_LEVEL` 1); any other e
 alone, and no key line. The staff bol editor still shows "The class's mark (Beginner)". An exercise cannot carry marks of
 its own yet (no field; would need the team's per-mantra marks and an editor) — left until the team asks.
 **Bols in new displays are separated by spaces, never `|`** (`|` is the vibhāg line); lesson text stays as written.
+
+## 790. The class's first khol recordings ship; one recording per stroke for its spoken names — 2 Nov 2026
+
+**Context.** The team sent nine phone recordings (mail "Ppt", 02-11-2026, m4a): te, Te, Tā, re, ki, ge, tak, dher,
+dha-jha; each is the bol's name spoken, then one stroke. Room noise about 35-50 dB under the stroke, no voices or
+clipping. The team (via Praveen): the different names are spoken variants of the same strokes, chosen to say the
+mantra rhythmically (as Prabhupāda's key writes ki/gi/ti for khe/ga/te).
+
+**Decision.** The lead cut one stroke from each of five files (the sharpest attack after the spoken name; damped
+strokes kept 200-300 ms, ringing ones 1-1.5 s; 30 ms fade-out; 22.05 kHz 16-bit mono WAV, 145 KB in all) into
+`app/assets/sounds/khol/`: te.wav (from "te (1)"), ta.wav (Tā), ra.wav (re), ka.wav (ki), ga.wav (ge).
+`KHOL_SAMPLE_FILES` maps the app's strokes to them: te and ti → te.wav, tā and nā → ta.wav, ra, ka, ga and gha →
+ga.wav. gin (the slide) stays synthesised. Not used: "Te" (several sounds, unclear which is the stroke) and the
+both-hands takes tak, dher, dha-jha (the app makes those from two strokes; recorded ones are optional, #473).
+The setting "Drum sound: real khol" is no longer greyed out. **On TEST for the team to listen first; LIVE only by an
+OTA after their yes.**
+
+**Consequences.** re is faint (the stroke about 7 dB under the others; evened out by `prepareStroke`, which also
+raises its noise): to re-record louder. Open with the team: is ge the same stroke as ga (NOTATION ▲ vs O); a gam
+slide recording.

@@ -5,6 +5,11 @@ today. The app is ready to play the class's own khol instead ([DECISIONS.md #473
 sound: synthesised / real khol" appears under Practice → Play and learn as soon as recordings are in the app. No
 recording ships until the Guru has made them. This page says exactly what to record and how they get into the app.
 
+**Status 02-11-2026 ([#790](DECISIONS.md)):** the class's first recordings are in the app: te.wav (also plays ti),
+ta.wav (also nā), ra.wav, ka.wav, ga.wav (also gha). The team says the bol names are spoken variants of the same
+strokes, so one recording per stroke is enough. Still wanted: **re** again, louder; the **gin/gam** slide; and whether
+**ge** is the same stroke as ga.
+
 ## What to record: 9 strokes
 
 Each is **one stroke of one hand**, as `app/src/lib/bols.ts` plays it. The combined bols (dhā = tā + ga, dhin = tī + ga,
