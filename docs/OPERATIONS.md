@@ -644,6 +644,7 @@ to `app/dist/`. Always use this command, not a bare `npx expo export`, because
 
 | Date | Site | Commit | Built (UTC) | By |
 |---|---|---|---|---|
+| 02-11-2026 | test (Study Material: lessons fold open, chapter screen Video/Audio/Notes, Continue learning, #785-#789; also on walk alias) | 585f516 (main; entry-4fa06bdc…; deployment 7e9acf49, walk df4ae243) | 2026-11-02T12:43:10Z | Claude (wrangler, Praveen's login) |
 | 02-11-2026 | test (notation C/O key: TEST syllabus + Sound Detective cards, #782-#784; also on walk alias) | 58f4dae (main; entry-7669ab7e…; deployment c4fa5905, walk 432f4d49) | 2026-11-02T08:46:38Z | Claude (wrangler, Praveen's login) |
 | 30-10-2026 | test (same code as the LIVE release: pitch line by TEST site address 6972d46, What's new id 01a18dc8; also on walk alias) | 53f8035 (main; entry-a4f1437b…; deployment 1d792a9f, walk e6931b07) | 2026-10-30T17:12:31Z | Claude (wrangler, Praveen's login) |
 | 30-10-2026 | **live** at app.mridangaseva.com (ring homes #777-#780, learn screens 0064, parent page 0063 switched off, Playground 0065/0068/0069 hidden by the switch #781 with `playground_enabled` false, facilitator P0 0066, te/hi wording 0067, syllabus sections 0072; LIVE DB 0063-0072 pasted by Praveen **without the A2 backup (his waiver: no pg_dump on this PC)**, part F all ok; notify-parents deployed; same day production update group e89758d2 / Android 01a18dc8 from 6972d46; website unchanged) | 6972d46 (main; entry-245c7a28…; deployment 9e197bd6) | 2026-10-30T16:54:17Z | Claude (wrangler, Praveen's login); OTA Praveen |
