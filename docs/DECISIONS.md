@@ -10150,7 +10150,7 @@ Sign out, in error reports (#585 keeps `1.1.0+<update>`) and on the website; the
 
 ## 799. Face scan in a person's data summary; an enrolment's approver login may be deleted (0073) — 2 Nov 2026
 
-**Status: lead decision 02-11-2026 (release-0811); migration 0073, TEST 02-11-2026, LIVE with 0070/0071.**
+**Status: lead decision 02-11-2026 (release-0811); migration 0073, TEST 03-11-2026, LIVE with 0070/0071.**
 
 **Context.** Two gaps found at the face merge. (1) `my_data_summary` (#550, #770) did not list what face scan keeps
 about a student, so "My data and rights" was incomplete once face scan is on. (2) `face_enrolments.approved_by`
