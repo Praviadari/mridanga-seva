@@ -2,10 +2,10 @@
   "_comment": "What's new (My profile > What's new, docs/DECISIONS.md #406). Newest first. Add an entry before every production update (docs/OPERATIONS.md 'Publishing an update'). date: the day it is published (YYYY-MM-DD); null = not yet published, shown as 'Coming in the next update'. kind: 'installed' for an APK, 'update' for an update. id: the APK's build id or the update id the version line shows (first 8 characters), once known. notes: 3-8 plain lines in en, te and hi, the same number in each; te/hi are drafts for native review.",
   "releases": [
     {
-      "_comment": "Production update from main 892f42c+ (03-11-2026): C/O notation #782-#784, study material #785-#789, real khol #790. No LIVE DB change. The praṇām line waits until practice_mantra_pranam.sql is pasted on LIVE.",
+      "_comment": "Production update group 70cdbca0 (commit 2f2d33f, 03-11-2026); 01a1a1b8 is its Android update id: C/O notation #782-#784, study material #785-#789, real khol #790. No LIVE DB change. The praṇām line waits until practice_mantra_pranam.sql is pasted on LIVE.",
       "version": "1.0.0",
       "kind": "update",
-      "id": null,
+      "id": "01a1a1b8",
       "date": "2026-11-03",
       "notes": {
         "en": [

@@ -644,6 +644,7 @@ to `app/dist/`. Always use this command, not a bare `npx expo export`, because
 
 | Date | Site | Commit | Built (UTC) | By |
 |---|---|---|---|---|
+| 03-11-2026 | **live** at app.mridangaseva.com (C/O hand notation #782-#784, Study Material chapters #785-#789, real khol #790; no LIVE DB change) + production update group 70cdbca0 (Android update id 01a1a1b8, runtime 23dc7e4a, message "Hand notation C/O, study material chapters, real khol") | 2f2d33f (main; entry-720cb6a9…; deployment f719b611) | 2026-11-03T14:03:55Z | Praveen (publish script + wrangler, phone hotspot), Claude checked |
 | 02-11-2026 | test (real khol: the class's first recordings te/ta/ra/ka/ga, #790; also on walk alias) | a56452c (main; entry-6ab4e804…; deployment 5c2e3b70, walk 5c7341e6) | 2026-11-02T14:07:16Z | Claude (wrangler, Praveen's login) |
 | 02-11-2026 | test (Study Material: lessons fold open, chapter screen Video/Audio/Notes, Continue learning, #785-#789; also on walk alias) | 585f516 (main; entry-4fa06bdc…; deployment 7e9acf49, walk df4ae243) | 2026-11-02T12:43:10Z | Claude (wrangler, Praveen's login) |
 | 02-11-2026 | test (notation C/O key: TEST syllabus + Sound Detective cards, #782-#784; also on walk alias) | 58f4dae (main; entry-7669ab7e…; deployment c4fa5905, walk 432f4d49) | 2026-11-02T08:46:38Z | Claude (wrangler, Praveen's login) |
