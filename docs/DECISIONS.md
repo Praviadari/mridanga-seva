@@ -10300,3 +10300,21 @@ simplified, in two colours.
 
 **Consequences.** A later swap of the drawing: change the Python, run the one command, new APK. Native: part of the
 1.1.0 fingerprint.
+## 807. Icon draft 9: metallic gold, aura, shadow; the aura on the background layer — 3 Nov 2026
+
+**Status: as #806 (Praveen chose draft 9, 03-11-2026; masters re-copied from design_reference/).**
+
+**Decision.** The masters now carry a metallic gold gradient, a golden aura behind the drum, the drum's shadow on the
+cushion, gradient cushion and skins, a gloss line, thicker gold lines and tassels with a knob and cord.
+`make-app-icons.mjs` keeps rendering with headless Edge (Chromium), so gradients, `userSpaceOnUse` and fill/stroke
+opacity come out exactly as in a browser. Two changes to the cut: the **aura** (the `fill="url(#aura)"` shape) goes on
+the adaptive **background** layer, shrunk like the drum, not on the foreground (it would spread to the safe zone's
+edge and tint the monochrome); the **monochrome** drops pixels under 25 % alpha and ramps to solid by 63 %, so the
+shadow and thin cords leave no grey haze. The flat splash colour is measured on the radial alone (without the aura's
+gold): **#1A2F8F** (was #1A2E90), changed in app.json (splash, adaptive background), `theme/colors.ts`, the web's
+first splash and manifest. Safe zone: foreground and splash 29.6 %, monochrome 29.5 % (limit 30.6 %). The splash
+lettering is still drawn in the app's Cormorant Garamond, embedded in the page as data (not the PC's Georgia).
+Header mark unchanged (the outline did not change).
+
+**Consequences.** Fingerprints production **4260bfeb5a518b15ebfc49b8260b7a29545d49d7**, facetest
+**52f809dc971c99eb3761b1605ae748c714732acf** (3a91fab5 / c54e6ac4 superseded).

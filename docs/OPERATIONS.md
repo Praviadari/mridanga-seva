@@ -2237,7 +2237,7 @@ SVG masters beside it. **One command rebuilds every PNG** (from `app/`, on Windo
 monochrome without the navy), renders them with headless Edge (the lettering in the app's own heading font, embedded,
 so the PC's fonts do not matter), stops if a layer leaves the round-launcher safe zone (66/108 of the layer), and
 then runs `scripts/make-facetest-icons.mjs` for the TEST app's badged copies. It prints the flat royal blue
-(**#1A2E90**): that is `adaptiveIcon.backgroundColor` and the splash `backgroundColor` in `app.json`, `brand` in
+(**#1A2F8F**): that is `adaptiveIcon.backgroundColor` and the splash `backgroundColor` in `app.json`, `brand` in
 `app/src/theme/colors.ts`, the static web splash in `app/public/index.html` and `background_color` in
 `app/public/manifest.json`: keep them in step. Any change to these images or fields changes the fingerprint, so it
 needs a new APK. The header mark (`app/src/components/mridanga-mark.tsx`) is the same khol, simplified, drawn by hand.

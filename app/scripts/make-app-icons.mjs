@@ -53,10 +53,17 @@ const [letteredHead, letteredDrawing] = lettered.split(BG_RECT);
 /** The drawing without its background, shrunk about the centre by `scale`. */
 const alone = (svgHead, body, scale) =>
   `${svgHead}<g transform="translate(512 512) scale(${scale}) translate(-512 -512)">${body.replace(/<\/svg>\s*$/, '')}</g></svg>`;
+// The golden aura behind the drum (draft 9) is a glow on the background, not part of the drum: on the adaptive icon
+// it goes on the background layer (shrunk like the drum, so the two still line up), never on the foreground, where
+// it would spread past the safe zone and leave a haze in the monochrome.
+const AURA = /<[a-z]+ [^>]*fill="url\(#aura\)"[^>]*\/>/g;
+const aura = (drawing.match(AURA) ?? []).join('');
 const LAYERS = {
   full: master,
-  background: `${head}${BG_RECT}</svg>`,
-  foreground: alone(head, drawing, LAYER_SCALE),
+  // The royal-blue radial alone, only to measure the flat splash colour (without the aura's gold).
+  plain: `${head}${BG_RECT}</svg>`,
+  background: alone(`${head}${BG_RECT}`, aura, LAYER_SCALE),
+  foreground: alone(head, drawing.replace(AURA, ''), LAYER_SCALE),
   splash: alone(letteredHead, letteredDrawing, LAYER_SCALE)
     // The heading font, embedded below as data; Georgia was the drawing tool's stand-in.
     .replace(/font-family="[^"]*"/, 'font-family="MsHeading"')
@@ -232,20 +239,22 @@ function write(file, layer, size, { safe = false, paint } = {}) {
  * the dark navy (the cushion's body, the bands, the outlines and the heads' black syahi) is cut out and the red, gold
  * and cream stay: the drum, its stripes and heads, and the cushion's gold piping and lotus read as a drum on a cushion.
  */
+// Half-seen parts (the drum's shadow on the cushion, the tassels' thin cords) would tint as grey: alpha below 64 goes,
+// above 160 is solid, a ramp between keeps the edges smooth.
 const silhouette = ({ data }) => {
   for (let i = 0; i < data.length; i += 4) {
     const [r, g, b] = [data[i], data[i + 1], data[i + 2]];
     const light = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
     const navy = b >= r && light < 0.3;
     data.fill(255, i, i + 3);
-    if (navy) data[i + 3] = 0;
+    data[i + 3] = navy ? 0 : Math.round(255 * Math.min(1, Math.max(0, (data[i + 3] - 64) / 96)));
   }
 };
 
 // ---------------------------------------------------------------- 5. the files
 try {
   write('assets/images/icon.png', 'full', 1024);
-  const background = write('assets/images/android-icon-background.png', 'background', 1024);
+  write('assets/images/android-icon-background.png', 'background', 1024);
   write('assets/images/android-icon-foreground.png', 'foreground', 1024, { safe: true });
   write('assets/images/android-icon-monochrome.png', 'foreground', 1024, { safe: true, paint: silhouette });
   write('assets/images/splash-icon.png', 'splash', 1024, { safe: true });
@@ -255,6 +264,7 @@ try {
   write('public/icon-512.png', 'full', 512);
 
   // The splash and adaptive background colour: the royal blue's average, so the flat colour matches the radial.
+  const background = decode(render(LAYERS.plain, RENDER));
   const sum = [0, 0, 0];
   for (let i = 0; i < background.data.length; i += 4) for (let k = 0; k < 3; k++) sum[k] += background.data[i + k];
   const hex = sum.map((s) => Math.round(s / (background.data.length / 4)).toString(16).padStart(2, '0')).join('').toUpperCase();

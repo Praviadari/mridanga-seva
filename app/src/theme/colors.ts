@@ -11,7 +11,7 @@ import { chips, modules, semantic } from './tokens.generated';
  * prints it; docs/DECISIONS.md #806): the JS splash uses the same colour, so the start looks like one screen. Changes
  * with a new APK only.
  */
-export const brand = '#1A2E90';
+export const brand = '#1A2F8F';
 
 /** Text and the spinner on `brand` (the splash), before the theme is known: the band's ivory. */
 export const onBrand = '#FFF6E8';

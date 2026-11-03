@@ -22,8 +22,8 @@ until the production APK is built (part 3), because an update from `main` must k
 
 | Build | Profile | App on the phone | Database | Fingerprint (runtime) | Built from |
 |---|---|---|---|---|---|
-| Face test app (part 1) | `facetest` | "Mridanga Seva TEST" (`org.mridangaseva.app.test`), next to the class app | TEST | **c54e6ac4…** (`c54e6ac4a28697a02519f2ef63ba8d17ea3aa18b`) | the branch head the lead names |
-| Production APK (part 3) | `production` | "Mridanga Seva" (`org.mridangaseva.app`), replaces the class app | LIVE | **3a91fab5…** (`3a91fab5ecb94c35a46801f814f5b25dff49e90d`) | the branch head on the day, then `main` = that commit |
+| Face test app (part 1) | `facetest` | "Mridanga Seva TEST" (`org.mridangaseva.app.test`), next to the class app | TEST | **52f809dc…** (`52f809dc971c99eb3761b1605ae748c714732acf`) | the branch head the lead names |
+| Production APK (part 3) | `production` | "Mridanga Seva" (`org.mridangaseva.app`), replaces the class app | LIVE | **4260bfeb…** (`4260bfeb5a518b15ebfc49b8260b7a29545d49d7`) | the branch head on the day, then `main` = that commit |
 | Today's class APK (16-10-2026) | `production` | "Mridanga Seva" | LIVE | 23dc7e4a | main f835830 |
 
 - Both new builds use **the same `app/eas.json`** (it has both profiles). `eas.json` is part of the fingerprint
@@ -58,7 +58,7 @@ until the production APK is built (part 3), because an update from `main` must k
    npx eas-cli --version
    $env:APP_VARIANT = 'facetest'; (npx expo-updates runtimeversion:resolve --platform android | ConvertFrom-Json).runtimeVersion; Remove-Item Env:APP_VARIANT
    ```
-   Expected: the commit the lead named; `eas-cli/24.12.1`; `c54e6ac4a28697a02519f2ef63ba8d17ea3aa18b`. Anything else:
+   Expected: the commit the lead named; `eas-cli/24.12.1`; `52f809dc971c99eb3761b1605ae748c714732acf`. Anything else:
    stop and send the three lines to the lead.
 5. **Build:**
    ```powershell
@@ -67,7 +67,7 @@ until the production APK is built (part 3), because an update from `main` must k
    It must **not** ask to generate a new keystore (the test app has one since 24-10-2026). If it asks: answer **no**
    and tell the lead. The log shows `eas-build-guard: profile facetest → project fhuqykssenuhczdqbafu, app variant
    facetest` before the packages install. The free queue can take an hour.
-6. **Send the lead:** the build id (first 8 characters), the build page's **runtime version** (must be c54e6ac4…),
+6. **Send the lead:** the build id (first 8 characters), the build page's **runtime version** (must be 52f809dc…),
    the version code, and after downloading the APK: `Get-FileHash .\<file>.apk -Algorithm SHA256`.
 7. Install it on the test phone over the old "Mridanga Seva TEST" (same key, it updates in place).
 
@@ -158,7 +158,7 @@ checks and named the **build commit** and its fingerprint. Phone hotspot, the Po
    npx eas-cli env:list --environment production --format long
    npx eas-cli build -p android --profile production
    ```
-   `git status`: nothing to commit. The fingerprint: the one the lead named (3a91fab5… unless main brought something
+   `git status`: nothing to commit. The fingerprint: the one the lead named (4260bfeb… unless main brought something
    native). env:list: the URL `https://qeozvvizcojzxcjgnaei.supabase.co` and a key starting `sb_publishable_`. If the
    build offers to **generate a new keystore**: answer **no** and stop (the class's key must stay the same). The log
    shows `eas-build-guard: profile production → project qeozvvizcojzxcjgnaei`. Then as in

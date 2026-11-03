@@ -139,7 +139,7 @@ test('icon and splash from the SVG masters: every PNG there, one royal blue ever
   ]) {
     assert.deepEqual(size(path), [px, px], path);
   }
-  const blue = '#1A2E90';
+  const blue = '#1A2F8F';
   assert.equal(app.android.adaptiveIcon.backgroundColor, blue);
   assert.equal(plugin('expo-splash-screen')[1].backgroundColor, blue);
   assert.equal(plugin('expo-splash-screen')[1].imageWidth, 240);
