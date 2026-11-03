@@ -104,7 +104,11 @@ test('sign-out: the wake-up alarm goes with the other traces', async () => {
 test('sounds: two khol WAVs in res/raw through the expo-notifications plugin, exact alarms asked for (#793, #795)', () => {
   const app = JSON.parse(file('app.json').toString('utf8')).expo;
   const plugin = app.plugins.find((p) => Array.isArray(p) && p[0] === 'expo-notifications')[1];
-  assert.deepEqual(plugin.sounds, ['./assets/sounds/notification/khol_wake.wav', './assets/sounds/notification/khol_notify.wav']);
+  assert.deepEqual(plugin.sounds, [
+    './assets/sounds/notification/khol_wake.wav',
+    './assets/sounds/notification/khol_notify.wav',
+    './assets/sounds/notification/kartal_notify.wav', // #803
+  ]);
   assert.equal(plugin.defaultChannel, 'announcements-khol');
   assert.ok(app.android.permissions.includes('android.permission.SCHEDULE_EXACT_ALARM'));
   assert.ok(!app.android.permissions.includes('android.permission.USE_EXACT_ALARM'));
@@ -128,9 +132,11 @@ test('notification sounds: announcements and the practice reminder on new khol c
   assert.match(push, /NOTIFY_SOUND = 'khol_notify\.wav'/);
   assert.match(push, /renameOldChannel\(module, OLD_CHANNEL_ID/);
   assert.ok(!push.includes('deleteNotificationChannelAsync'), 'old channels are kept, never deleted');
+  // Since #803 the reminder's channel follows the phone's khol / kartal choice (lib/notify-sound.ts).
   const reminder = src('lib/practice-reminder.ts');
-  assert.match(reminder, /const CHANNEL_ID = 'practice-khol';/);
-  assert.match(reminder, /sound: NOTIFY_SOUND/);
+  assert.match(reminder, /const channelId = PRACTICE_CHANNEL\[sound\];/);
+  assert.match(reminder, /sound: SOUND_FILE\[sound\]/);
+  assert.match(src('lib/notify-sound.ts'), /PRACTICE_CHANNEL: Record<NotifySound, string> = \{ khol: 'practice-khol', kartal: 'practice-kartal' \}/);
   const sender = readFileSync(new URL('../../supabase/functions/notify-announcements/messages.ts', import.meta.url), 'utf8');
   assert.match(sender, /export const CHANNEL_ID = 'announcements-khol';/, 'the sender uses the app channel id');
 });

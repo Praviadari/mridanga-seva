@@ -1,10 +1,10 @@
 // Draws the icons of the "Mridanga Seva TEST" app (APP_VARIANT=facetest, app.config.js; docs/DECISIONS.md #430): the
 // app's own icon and Android adaptive layers with a red "TEST" band, so a tester never mistakes the face-scan test
-// app for the class's real app on the same phone. Reads the PNGs that scripts/make-emblem-icons.mjs wrote to
+// app for the class's real app on the same phone. Reads the PNGs that scripts/make-app-icons.mjs wrote to
 // assets/images/ and writes the badged copies to assets/images/facetest/. Run from app/ after the emblem changes:
 //   node scripts/make-facetest-icons.mjs
 // The band on an adaptive layer stays inside Android's safe zone (a circle of 66/108 of the layer). Uses only Node's
-// built-in zlib (8-bit RGBA, non-interlaced PNGs: what make-emblem-icons.mjs writes).
+// built-in zlib (8-bit RGBA, non-interlaced PNGs: what make-app-icons.mjs writes).
 
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { deflateSync, inflateSync } from 'node:zlib';

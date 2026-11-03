@@ -167,8 +167,8 @@ test('the bands and header titles use the brighter gold; the sign-in band too (#
 test('the app name spans its band, so Android cannot hide its last word (#372: "सेवा")', () => {
   const brand = src('components/brand.tsx');
   assert.match(brand, /line: \{\s*alignSelf: 'stretch',\s*textAlign: 'center',/);
-  // Splash (twice), the sign-in name, motto and tagline.
-  assert.equal((brand.match(/\[styles\.line\b/g) ?? []).length, 5);
+  // The slow splash, the sign-in name, motto and tagline (the quick splash's image carries the name since #806).
+  assert.equal((brand.match(/\[styles\.line\b/g) ?? []).length, 4);
   const home = src('components/home-header.tsx');
   assert.match(home, /brandName: \{\s*alignSelf: 'stretch',/);
   // The phone shrinks it onto one line; the web cannot, so there it is smaller on a narrow window and may take a

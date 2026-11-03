@@ -1,18 +1,19 @@
-// The app's own mark: a mridanga (khol) drawn from a few curves, with a wide bass head on the
-// left, a small treble head on the right and the lacing between them. Used in the header of the
-// home screens. It stands in for a logo until the team has one; the ISKCON logo needs the
-// temple's written permission (Praveen, 1 Oct 2026; docs/DECISIONS.md #36). Drawn with
-// react-native-svg, which the installed app already has, so it reaches phones as an update.
+// The app's own mark: the khol of the app icon, simplified (docs/DECISIONS.md #806; the icon is Prji's chosen khol,
+// assets/images/source/): the drum lying on its side, wide bass head on the left, small treble head on the right, two
+// stripes and the band by the big head, tilted a little so it rests on a round cushion with its piping. Two colours,
+// so it sits on any band: the drum and cushion in `color`, the lines between them in `accent`. Used in the headers,
+// the My QR pass and the welcome card. Drawn with react-native-svg, which the installed app already has, so a change
+// reaches phones as an update. The ISKCON logo needs the temple's written permission (Praveen, 1 Oct 2026; #36).
 
-import Svg, { Ellipse, Path } from 'react-native-svg';
+import Svg, { Ellipse, G, Path } from 'react-native-svg';
 
 /** Props for MridangaMark. */
 export type MridangaMarkProps = {
   /** Width and height in pixels. */
   size: number;
-  /** Colour of the drum's body. */
+  /** Colour of the drum and the cushion. */
   color: string;
-  /** Colour of the lacing and the drum heads; normally the colour behind the mark. */
+  /** Colour of the stripes, the heads' rims and the cushion's piping; normally the colour behind the mark. */
   accent: string;
 };
 
@@ -20,19 +21,27 @@ export type MridangaMarkProps = {
 export function MridangaMark({ size, color, accent }: MridangaMarkProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 64 64" aria-hidden>
-      {/* Body: widest a little left of the middle, like a khol. */}
-      <Path d="M9 18 C 21 10, 41 11, 55 24 L 55 40 C 41 53, 21 54, 9 46 Z" fill={color} />
-      {/* Lacing from head to head. */}
-      <Path
-        d="M9 25 C 23 20, 41 21, 55 29 M9 32 C 23 31, 41 31, 55 32 M9 39 C 23 44, 41 43, 55 35"
-        stroke={accent}
-        strokeWidth={2.4}
-        strokeLinecap="round"
-        fill="none"
-      />
-      {/* Bass head (left, wide) and treble head (right, small). */}
-      <Ellipse cx={9} cy={32} rx={3.5} ry={14} fill={color} stroke={accent} strokeWidth={2} />
-      <Ellipse cx={55} cy={32} rx={2.5} ry={8} fill={color} stroke={accent} strokeWidth={2} />
+      <G transform="translate(0 -6)">
+        {/* The cushion: a curved front, its top seen a little from above, the piping along the hem. */}
+        <Path d="M8 46 C6 48 6 54 9 56 Q32 62 55 56 C58 54 58 48 56 46 Z" fill={color} />
+        <Ellipse cx={32} cy={46} rx={24} ry={3.5} fill={color} stroke={accent} strokeWidth={1.6} />
+        <Path d="M10 54.5 Q32 60 54 54.5" stroke={accent} strokeWidth={1.4} strokeLinecap="round" fill="none" />
+        {/* The drum, tilted so its narrow end rests on the cushion too. */}
+        <G transform="translate(0 -1) rotate(7 10 44)">
+          <Path d="M10 20 C24 15 41 18 54 26 L54 36 C41 44 24 47 10 44 Z" fill={color} stroke={accent} strokeWidth={1.6} />
+          <Path
+            d="M10 26.5 C24 22.5 41 24 54 29 M10 37.5 C24 40 41 38 54 33 M17 18.6 C19.4 25 19.4 39 17 45.4"
+            stroke={accent}
+            strokeWidth={1.8}
+            strokeLinecap="round"
+            fill="none"
+          />
+          {/* Bass head (left, wide) and treble head (right, small), each with its black centre. */}
+          <Ellipse cx={10} cy={32} rx={4} ry={12} fill={color} stroke={accent} strokeWidth={1.8} />
+          <Ellipse cx={9.6} cy={32} rx={1.6} ry={4.5} fill={accent} />
+          <Ellipse cx={54} cy={31} rx={2.2} ry={5} fill={color} stroke={accent} strokeWidth={1.6} />
+        </G>
+      </G>
     </Svg>
   );
 }

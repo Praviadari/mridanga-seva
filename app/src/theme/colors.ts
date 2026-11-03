@@ -7,10 +7,11 @@
 import { chips, modules, semantic } from './tokens.generated';
 
 /**
- * Night of the native splash screen and the app icon (app.json and scripts/make-emblem-icons.mjs, docs/DECISIONS.md
- * #364): the JS splash uses the same colour, so the start looks like one screen. Changes with a new APK only.
+ * Royal blue of the native splash screen and the app icon's background (app.json and scripts/make-app-icons.mjs, which
+ * prints it; docs/DECISIONS.md #806): the JS splash uses the same colour, so the start looks like one screen. Changes
+ * with a new APK only.
  */
-export const brand = '#1B1E4B';
+export const brand = '#1A2E90';
 
 /** Text and the spinner on `brand` (the splash), before the theme is known: the band's ivory. */
 export const onBrand = '#FFF6E8';

@@ -1,8 +1,8 @@
 // The app's name and drum mark: a full-screen splash for loading, and the saffron header of the
-// sign-in screens. The splash keeps the drum image of the phone's own splash screen (a new one
-// needs a new APK); the header draws the app's own mark (components/mridanga-mark.tsx). Both
-// stand in for a logo until the team has one (docs/DECISIONS.md #36). A start that takes long says so on the
-// splash, with Try again (src/lib/slow-start.ts, docs/DECISIONS.md #237).
+// sign-in screens. The splash keeps the image of the phone's own splash screen, Prji's khol on its cushion lettered
+// "MRIDANGA SEVA" on royal blue (#806; a new one needs a new APK); the header draws the app's own mark, the same khol
+// simplified (components/mridanga-mark.tsx). A start that takes long says so on the splash, with Try again
+// (src/lib/slow-start.ts, docs/DECISIONS.md #237).
 
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
@@ -59,10 +59,8 @@ export function BrandSplash({ slow }: { slow?: boolean }) {
       role="progressbar"
       aria-busy
       accessibilityLabel={t('common.loading')}>
+      {/* The image carries the name, "MRIDANGA SEVA" on the cushion (#806), as on the phone's own splash. */}
       <Image source={drum} style={styles.splashImage} resizeMode="contain" />
-      <AppText variant="title" family="sans" style={[styles.line, styles.splashText]}>
-        {t('app.name')}
-      </AppText>
       <ActivityIndicator color={onBrand} />
     </View>
   );
@@ -116,8 +114,8 @@ const styles = StyleSheet.create({
   },
   // Same width as "imageWidth" for expo-splash-screen in app.json.
   splashImage: {
-    width: 200,
-    height: 200,
+    width: 240,
+    height: 240,
   },
   splashImageSmall: {
     width: 120,

@@ -31,12 +31,15 @@ test('without APP_VARIANT the config is app.json, unchanged (production and prev
   assert.deepEqual(configFor(''), appJson.expo);
 });
 
-test('APP_VARIANT=facetest changes only the name, package, scheme, icons and the google-services file', () => {
+test('APP_VARIANT=facetest changes only the name, package, scheme, icons, the google-services file and app links', () => {
   const facetest = configFor('facetest');
   assert.equal(facetest.name, 'Mridanga Seva TEST');
   assert.equal(facetest.android.package, 'org.mridangaseva.app.test');
   assert.equal(facetest.scheme, 'mridangasevatest');
   assert.equal(facetest.android.googleServicesFile, undefined);
+  // The https app links name the class's LIVE site and its assetlinks.json names only the class's app (#804).
+  assert.equal(facetest.android.intentFilters, undefined);
+  assert.ok(appJson.expo.android.intentFilters.length > 0);
   for (const file of [facetest.icon, facetest.android.adaptiveIcon.foregroundImage, facetest.android.adaptiveIcon.monochromeImage]) {
     assert.match(file, /^\.\/assets\/images\/facetest\//);
     assert.ok(existsSync(new URL(`../${file.slice(2)}`, import.meta.url)), file);
@@ -44,7 +47,7 @@ test('APP_VARIANT=facetest changes only the name, package, scheme, icons and the
   const strip = (c) => {
     const copy = structuredClone(c);
     for (const key of ['name', 'scheme', 'icon']) delete copy[key];
-    for (const key of ['package', 'googleServicesFile', 'adaptiveIcon']) delete copy.android[key];
+    for (const key of ['package', 'googleServicesFile', 'adaptiveIcon', 'intentFilters']) delete copy.android[key];
     return copy;
   };
   assert.deepEqual(strip(facetest), strip(appJson.expo));
