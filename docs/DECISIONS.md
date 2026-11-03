@@ -10169,3 +10169,134 @@ approver's login).
 **Consequences.** LIVE runs 0070 → 0071 → 0073 (GO_LIVE M0073; part F row 1 `0073`). Safe to run twice; changes no
 stored row. `consents.assent_read_by` (0070) keeps the same no-action reference as main's other consent columns:
 `anonymise_staff` scrubs such a login in place.
+
+## 800. My QR at full brightness while it is in view (expo-brightness, the app's window only) — 3 Nov 2026
+
+**Status: release branch `claude/release-0811-44b0e4`, native (1.1.0 APK, #798). Round 3 of the 08-11 release:
+Praveen 03-11-2026 "add all those modules also right now for test" — every native addition for the coming months goes
+into this APK, since builds are few and the class cannot reinstall often.**
+
+**Decision.** While My QR is in view (on focus, like its keep-awake, #342) the app's window goes to full brightness
+(`setBrightnessAsync(1)`), and leaving the screen hands it back to the phone (`restoreSystemBrightnessAsync` on Android;
+on iOS the earlier value is put back). `lib/bright-screen.ts`, nothing on the web (`.web.ts`). Only the window: the
+phone's own brightness setting is never written, so expo-brightness's config plugin (which adds `WRITE_SETTINGS`) is
+not listed and app.json `blockedPermissions` adds `WRITE_SETTINGS`.
+
+**Why.** A dim phone at a sunny door is the slowest scan; a person should not have to find the brightness slider.
+
+**Consequences.** No new permission. If the window cannot be brightened (app going to the background) the card still
+shows.
+
+## 801. Labels and QR cards print from the phone (expo-print); the browser keeps its own print — 3 Nov 2026
+
+**Status: as #800.**
+
+**Decision.** The labels screen (#158) and Print QR cards (#249) work in the Android app too: the same sheets
+(`lib/label-sheet.ts`, `lib/qr-card-sheet.ts`) go to Android's print window with `Print.printAsync({ html, width: 595,
+height: 842 })` (A4 in points; `components/label-print.tsx`), which shows them first and offers a printer or **Save as
+PDF**. The "printing works on a computer" page and its Open-in-browser button are gone (texts `labels.webOnly*`,
+`labels.openInBrowser`, `qrCards.webOnly` removed); under the Print button the phone says how to print (A4, 100 %,
+margins none). The web keeps its preview and `window.print()` (`label-print.web.tsx`). No preview on the phone screen:
+the print window is the preview. The printer nudge is kept only in a browser (no localStorage on the phone: 0 mm).
+
+**Why.** Coordinators are at the class with their phones; a PDF they can send to whoever has the printer is the
+common way here.
+
+**Consequences.** Label alignment on a real sheet still wants the calibration print; a PDF printed elsewhere at "fit to
+page" shrinks the labels (the hint says 100 %).
+
+## 802. Copy buttons where people retype: the sign-in code's key, the privacy email, a crash's detail — 3 Nov 2026
+
+**Status: as #800.**
+
+**Decision.** `components/copy-button.tsx`: a small "Copy" link-button that puts the exact text on the clipboard
+(expo-clipboard, imported on the first press so the web's first download does not grow, #797) and says "Copied" for
+2.5 s, read out by TalkBack. Placed at: **My sign-in code** (the setup key, to paste into an authenticator on the same
+phone), **My data and rights** (the privacy email), and the **crash screen** (the technical detail, to send to the
+maintainer). There are no invite or join codes in the app to copy (a referral code is said aloud; announcements and
+answers are already selectable).
+
+**Consequences.** One icon shape `copy` in the icon font (`npm run icons`).
+
+## 803. A kartal notification sound and a "Notification sound: khol / kartal" setting, on second channel ids — 3 Nov 2026
+
+**Status: as #800. Announcements follow the setting only after a later server change (0074, below).**
+
+**Decision.** `scripts/make-kartal-sound.mjs` synthesises **`kartal_notify.wav`** (1.2 s, 53 KB, 22.05 kHz 16-bit mono
+like the khol files, #793): two small brass cymbals, "cha-ching", five inharmonic partials each as two detuned sines
+over a short bright hiss, a 4 ms rise, peak 0.7, reproducible byte for byte. It is the third file in app.json
+expo-notifications `sounds` (res/raw). **My profile → Notification sound** (Android app only): Khol | Kartal, kept on
+this phone (`lib/notify-sound.ts`, not personal data, so sign-out leaves it). A choice never changes an existing
+channel: kartal uses **`practice-kartal`** and **`announcements-kartal`** (both made by the app when chosen), khol keeps
+`practice-khol` and `announcements-khol` (#794). The practice reminder follows the choice from its next schedule.
+
+**Why the server is not changed now.** A pushed notice's channel is set by the sender; the app cannot re-map it without
+native code, and the server has nowhere to keep a phone's choice (push_tokens has no free column) without a migration,
+which this round excludes. So: the APK carries the sound and the app makes the kartal channel; **later, with no new
+APK**, a migration 0074 (`push_tokens.sound` + a `p_sound` argument to `register_push_token`) and `notify-announcements`
+sending each token its channel make announcements follow too. Until then the setting's hint says announcements keep
+the khol (`myProfile.notifySoundHint`). Lead asked 03-11 (plan A vs allowing 0074 now).
+
+**Consequences.** A recorded kartal later replaces the synthesis: a new file name and new channel ids (OPERATIONS
+"Notification sounds"), so a new APK.
+
+## 804. Production app opens https://app.mridangaseva.com links (Android app links, verified) — 3 Nov 2026
+
+**Status: as #800. Works only once the class site serves assetlinks.json with the production key (part 3 of
+RELEASE_08-11.md).**
+
+**Decision.** app.json `android.intentFilters`: VIEW, BROWSABLE + DEFAULT, `autoVerify`, https host
+`app.mridangaseva.com`, path prefixes **`/i/`** (asset labels, #157), **`/student/`** and **`/staff/`**. Not
+`/reset-password`, `/sign-up`, `/parent-consent` and the other open pages: their mail links carry tokens the web
+version handles, and a parent may not have the app. The router already reads an https link's path
+(`auth/requested-path.ts`). **Production only:** the facetest variant drops `intentFilters` (app.config.js), since
+the site's file names only `org.mridangaseva.app`. The file is **`app/public/.well-known/assetlinks.json`** (the class
+site app.mridangaseva.com is the app's web export; the brief's `website/` is mridangaseva.com, another host) with the
+placeholder `__PRODUCTION_CERT_SHA256__`; `export-web` (step 6b) fills it from `PRODUCTION_CERT_SHA256` for `--site
+live` and **stops a live export while that is empty**; the test site gets no file. `_headers` serves it as JSON.
+
+**Why.** A label's QR scanned with the phone camera, or a link in WhatsApp, should open the app, not a second sign-in
+in the browser.
+
+**Consequences.** The production keystore's SHA-256 is read with `npx eas-cli credentials -p android` (interactive;
+not readable from this PC's tools) and put in export-web before the next live upload. Android checks the file at
+install: an APK installed before the file is up verifies again only after an update or `adb shell pm verify-app-links
+--re-verify org.mridangaseva.app`.
+
+## 805. The taal player can go on playing with the screen locked, off by default — 3 Nov 2026
+
+**Status: as #800.**
+
+**Decision.** A tick box **Keep playing with the screen locked** in the taal player (Android app only, off each time
+Practice tools opens). On: expo-audio's audio mode `shouldPlayInBackground` with `interruptionMode: 'doNotMix'`, and
+while it plays the loop is the lock-screen player (`setActiveForLockScreen`, the taal's name as title), since Android
+otherwise stops background sound after about 3 minutes. Off: as before (`mixWithOthers`, stops in the background).
+app.json expo-audio states `enableBackgroundPlayback: true` (its default: the `FOREGROUND_SERVICE` and
+`FOREGROUND_SERVICE_MEDIA_PLAYBACK` permissions and the AudioControlsService were already in the APK, so no new
+permission).
+
+**Consequences.** Leaving Practice tools still stops the sound (#403 focus rule). Pause on the lock screen pauses the
+loop; the screen's Stop button is the way to end it. A Play Store listing later must declare the media-playback
+foreground service.
+
+## 806. Icon and splash from Prji's khol on a cushion, drawn from SVG masters by one command — 3 Nov 2026
+
+**Status: as #800. Replaces #364's emblem icons.**
+
+**Decision.** Praveen chose (03-11-2026) the lead's vector drawing of Prji's picture: a red-and-gold khol lying on a
+round navy cushion, royal blue, no strap. **Launcher icon** = the lotus-ornament version (`app_icon_pillow.svg`),
+**splash** = the "MRIDANGA SEVA" lettered version (`app_icon_pillow_text.svg`); both made by
+`make_app_icon_pillow.py`, all three in `app/assets/images/source/`. **`node scripts/make-app-icons.mjs`** (replaces
+make-emblem-icons.mjs) runs the Python, cuts the layers from the masters (background = the royal-blue radial;
+foreground = drum and cushion on transparent at 85 %; monochrome = the same in white with the dark navy cut out so the
+drum reads; splash = the lettered drawing at 85 %), renders each with headless Edge at 1024 px (smaller files averaged
+down), checks the safe zone (29.3 % of 30.6 %), writes icon.png, the three adaptive layers, splash-icon.png,
+favicon.png and the web icons, prints the flat colour, and runs make-facetest-icons.mjs. The lettering is drawn in
+the app's own heading font (Cormorant Garamond SemiBold, embedded as data), so the PC's fonts never matter. Royal blue
+**#1A2E90** (the radial's average) for the splash and adaptive background, `theme/colors.ts` `brand` (the JS splash)
+and the web's first splash; the splash image is 240 wide (was 200) so the lettering reads, and the JS splash drops its
+separate name line (the image carries it). `components/mridanga-mark.tsx` is redrawn as the same khol on its cushion,
+simplified, in two colours.
+
+**Consequences.** A later swap of the drawing: change the Python, run the one command, new APK. Native: part of the
+1.1.0 fingerprint.

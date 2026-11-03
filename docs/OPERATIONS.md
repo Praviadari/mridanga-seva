@@ -1540,6 +1540,8 @@ OTA. Old channels are kept (renamed "… (earlier sound)" where a phone has them
 | `announcements-khol` | Announcements | `khol_notify.wav` (1.9 s) | `app/src/lib/push.ts` at push registration | `notify-announcements` (`messages.ts` CHANNEL_ID); app.json `defaultChannel` |
 | `practice-khol` | Practice reminder | `khol_notify.wav` | `app/src/lib/practice-reminder.ts` (#402) | the phone itself |
 | `wake-alarm-khol` | Wake-up alarm | `khol_wake.wav` (27 s), alarm audio usage, max importance | `app/src/lib/wake-alarm.ts` | the phone itself |
+| `practice-kartal` | Practice reminder (kartal) | `kartal_notify.wav` (1.2 s) | `practice-reminder.ts`, when My profile → Notification sound is Kartal (#803) | the phone itself |
+| `announcements-kartal` | Announcements (kartal) | `kartal_notify.wav` | `push.ts`, when Kartal is chosen (#803) | nobody yet: from 0074 (below) |
 | `announcements`, `practice` | … (earlier sound) | the phone's usual sound | APKs before #794 | the old function, until it is deployed |
 
 The sounds are made from the class's khol recordings (`app/assets/sounds/khol/`, #790) by
@@ -1551,11 +1553,15 @@ APK's `res/raw`. File names: lowercase letters, digits and `_` only.
 to TEST once the preview APK from that branch is on the test phone, and to LIVE together with the production APK. An
 APK from before #794 shows such a notice on a fallback channel with the usual sound (it still arrives).
 
-**A kartal sound later** (the team is asked for a recording): put the cut WAV (22.05 kHz 16-bit mono, as #790) in
-`app/assets/sounds/khol/`, add it to `STROKES` and to a phrase in the script (or a new `kartal_notify.wav`), run the
-script, add the file to app.json `sounds`, and give each channel that should use it a **new id** (e.g.
-`announcements-kartal`; change `CHANNEL_ID` in `push.ts` and in `messages.ts`, keep the old one renamed). That is a
-native change: new fingerprint, new APK, and the function deployed with it, as above.
+**The kartal** (1.1.0 APK, [#803](DECISIONS.md)): `kartal_notify.wav` is synthesised by
+`node scripts/make-kartal-sound.mjs` (from `app/`, the same file on every run) and is the third file in app.json
+`sounds`. The phone's choice (My profile → Notification sound, `lib/notify-sound.ts`) picks the channel ids; nothing is
+ever changed on an existing channel. **Announcements follow the choice only after 0074** (no new APK needed): a
+migration adding `push_tokens.sound` ('khol' | 'kartal', default 'khol') and a `p_sound` argument to
+`register_push_token`, `push.ts` sending `readNotifySound()` at registration (and again when the choice changes), and
+`notify-announcements` sending each token `announcements-<sound>`; deploy the function after the migration, as above.
+**A recorded kartal later:** a new file name (e.g. `kartal2_notify.wav`) and new channel ids (`-kartal2`), never the
+same ids with a new sound; that is a native change (new fingerprint, new APK).
 
 ## Wake-up alarm: phone test
 
@@ -2223,15 +2229,18 @@ How much of the free 1 GB is used: **Project Settings → Usage**, or
 `select sum((metadata ->> 'size')::bigint) / 1048576 as mb from storage.objects;`.
 
 ## App icon and splash screen
-
-`app/assets/images/` and the web version's home-screen icons in `app/public/` hold the website's emblem (gold
-lotus petals round a night disc, a clay drum) on the website's night (#1B1E4B), drawn by
-`node scripts/make-emblem-icons.mjs` (run from `app/`; about 75 s; [DECISIONS.md #364](DECISIONS.md)). The script
-prints how far each Android layer reaches from the centre and stops if it leaves the round-launcher safe zone
-(66/108 of the layer). The night is also `adaptiveIcon.backgroundColor` and the splash `backgroundColor` in
-`app.json`, `brand` in `app/src/theme/colors.ts` and the static web splash in `app/public/index.html`: keep them in
-step. Any change to these images or fields changes the fingerprint, so it needs a new APK. When the temple gives a
-designed logo, change the drawing in the script (or replace the PNGs at the same sizes).
+`app/assets/images/` and the web version's home-screen icons in `app/public/` hold Prji's khol lying on a round navy
+cushion, on royal blue ([DECISIONS.md #806](DECISIONS.md)): the launcher icon is the lotus version, the splash the
+"MRIDANGA SEVA" lettered one. The drawing is `app/assets/images/source/make_app_icon_pillow.py`, which writes the two
+SVG masters beside it. **One command rebuilds every PNG** (from `app/`, on Windows with Edge and Python):
+`node scripts/make-app-icons.mjs` — it runs the Python, cuts the adaptive layers (background, foreground, a
+monochrome without the navy), renders them with headless Edge (the lettering in the app's own heading font, embedded,
+so the PC's fonts do not matter), stops if a layer leaves the round-launcher safe zone (66/108 of the layer), and
+then runs `scripts/make-facetest-icons.mjs` for the TEST app's badged copies. It prints the flat royal blue
+(**#1A2E90**): that is `adaptiveIcon.backgroundColor` and the splash `backgroundColor` in `app.json`, `brand` in
+`app/src/theme/colors.ts`, the static web splash in `app/public/index.html` and `background_color` in
+`app/public/manifest.json`: keep them in step. Any change to these images or fields changes the fingerprint, so it
+needs a new APK. The header mark (`app/src/components/mridanga-mark.tsx`) is the same khol, simplified, drawn by hand.
 
 ## Backups
 
