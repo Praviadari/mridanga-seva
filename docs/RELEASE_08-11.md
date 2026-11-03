@@ -143,7 +143,11 @@ app", JS fixes); a native fix means a new test build.
 ## Part 3. Production day (Sunday 08-11-2026), in this order
 
 **Before:** the lead has sent the last update from `main` to LIVE, merged `main` into the release branch, re-run the
-checks and named the **build commit** and its fingerprint. Phone hotspot, the PowerShell lines of part 1 step 2.
+checks and named the **build commit** and its fingerprint. After any `npm install` or merge that touches
+`app/package-lock.json`, the lock must also pass EAS's npm: in `app/`,
+`npx -y npm@10.9.8 ci --include=dev --ignore-scripts --dry-run` must not say "Missing" (npm 11 on this PC drops entries
+npm 10 needs: the facetest build of c17bf99 failed on `typescript@5.9.3`, 03-11-2026). Fix with
+`npx -y npm@10.9.8 install --package-lock-only --ignore-scripts`. Phone hotspot, the PowerShell lines of part 1 step 2.
 
 1. **LIVE database, 0070 → 0071 → 0073** (Praveen pastes; the lead reads the result):
    [GO_LIVE_CHECKLIST.md](GO_LIVE_CHECKLIST.md) part B, rows **M0070**, **M0071** and **M0073**, one file per run, the
