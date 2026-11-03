@@ -14,16 +14,17 @@ import i18n from '@/i18n';
 
 import { localMoment, todayLocal } from './dates';
 import { readLocal, removeLocal, writeLocal } from './local-storage';
-import { notifications, NOTIFY_SOUND, renameOldChannel } from './push';
+import { PRACTICE_CHANNEL, readNotifySound, SOUND_FILE } from './notify-sound';
+import { notifications, renameOldChannel } from './push';
 import { reminderDays, type ReminderTime } from './reminder-days';
 
 export { REMINDER_TIMES, type ReminderTime } from './reminder-days';
 
 const KEY = 'practiceReminder';
 const PRACTISED_KEY = 'practisedToday';
-// With the khol sound since #794 (a channel's sound is fixed at creation, so a new id); the old "practice" channel
-// stays on phones that had it, renamed.
-const CHANNEL_ID = 'practice-khol';
+// With the khol sound since #794 (a channel's sound is fixed at creation, so a new id), or the kartal where the phone
+// chose it (#803, "practice-kartal", lib/notify-sound.ts); the old "practice" channel stays on phones that had it,
+// renamed.
 const OLD_CHANNEL_ID = 'practice';
 const KIND = 'practiceReminder';
 
@@ -73,10 +74,12 @@ async function schedule(profileId: string, time: ReminderTime): Promise<'on' | '
   const module = await notifications();
   if (!module) return 'failed';
   try {
-    await module.setNotificationChannelAsync(CHANNEL_ID, {
-      name: i18n.t('practice.reminderChannel'),
+    const sound = readNotifySound();
+    const channelId = PRACTICE_CHANNEL[sound];
+    await module.setNotificationChannelAsync(channelId, {
+      name: i18n.t(sound === 'kartal' ? 'practice.reminderChannelKartal' : 'practice.reminderChannel'),
       importance: module.AndroidImportance.DEFAULT,
-      sound: NOTIFY_SOUND,
+      sound: SOUND_FILE[sound],
     });
     await renameOldChannel(module, OLD_CHANNEL_ID, i18n.t('practice.reminderChannelOld'));
     const current = await module.getPermissionsAsync();
@@ -93,7 +96,7 @@ async function schedule(profileId: string, time: ReminderTime): Promise<'on' | '
           body: i18n.t('practice.reminderBody'),
           data: { kind: KIND, url: '/student/practice' },
         },
-        trigger: { type: module.SchedulableTriggerInputTypes.DATE, date: at, channelId: CHANNEL_ID },
+        trigger: { type: module.SchedulableTriggerInputTypes.DATE, date: at, channelId },
       });
     }
     return 'on';

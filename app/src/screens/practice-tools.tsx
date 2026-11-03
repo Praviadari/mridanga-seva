@@ -37,7 +37,7 @@ import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { router, Stack, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState, type PropsWithChildren } from 'react';
 import { useTranslation } from 'react-i18next';
-import { StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 
 import { useAuth } from '@/auth/auth-provider';
 import { AppText } from '@/components/app-text';
@@ -161,6 +161,8 @@ export function PracticeTools({ area }: PracticeToolsProps) {
   const [laya, setLaya] = useState<Laya>(1);
   const [kartalOn, setKartalOn] = useState(false);
   const [kartalVolume, setKartalVolume] = useState(0.5);
+  // The taal player plays on in the background (#805); the lock screen shows the taal's name.
+  const [background, setBackground] = useState(false);
   const [silent, setSilent] = useState<SilentSetting>({ on: false, play: 2, mute: 2 });
   // Students: the practice of the week and this week against the goal (0052); null where not loaded.
   const [mine, setMine] = useState<MyPracticePlan | null>(null);
@@ -225,6 +227,8 @@ export function PracticeTools({ area }: PracticeToolsProps) {
   useEffect(() => player.setLayerVolume('kartal', kartalVolume), [player, kartalVolume]);
 
   const taal: Taal | null = list?.taals.find((tl) => tl.id === taalId) ?? null;
+  const lockTitle = taal?.name ?? t('app.name');
+  useEffect(() => player.setBackground(background, lockTitle), [player, background, lockTitle]);
   const cycle = useMemo(() => cyclePattern(mode, beatsPerBar, taal, laya, kartalOn), [mode, beatsPerBar, taal, laya, kartalOn]);
   // Silent cycles make one long loop: only while it fits at the tempo set (the speed trainer only makes it shorter).
   const setBpm = mode === 'metronome' ? metronomeBpm : effectiveBpm(taalBpm, speed);
@@ -558,6 +562,15 @@ export function PracticeTools({ area }: PracticeToolsProps) {
             ) : null}
             <LayaChoice value={laya} onChange={setLaya} />
             <KartalFields on={kartalOn} onToggle={setKartalOn} volume={kartalVolume} onVolume={setKartalVolume} />
+            {/* Playing on with the screen locked (1.1.0 APK, #805): off by default, not kept. */}
+            {Platform.OS === 'android' ? (
+              <>
+                <Checkbox label={t('practice.background')} checked={background} onChange={setBackground} />
+                <AppText variant="small" tone="muted">
+                  {t('practice.backgroundHint')}
+                </AppText>
+              </>
+            ) : null}
             {playSettings('cycles')}
           </Section>
           {taal ? (

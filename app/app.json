@@ -30,7 +30,35 @@
         "android.permission.WRITE_EXTERNAL_STORAGE",
         "android.permission.READ_PHONE_STATE",
         "android.permission.USE_BIOMETRIC",
-        "android.permission.USE_FINGERPRINT"
+        "android.permission.USE_FINGERPRINT",
+        "android.permission.WRITE_SETTINGS"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "app.mridangaseva.com",
+              "pathPrefix": "/i/"
+            },
+            {
+              "scheme": "https",
+              "host": "app.mridangaseva.com",
+              "pathPrefix": "/student/"
+            },
+            {
+              "scheme": "https",
+              "host": "app.mridangaseva.com",
+              "pathPrefix": "/staff/"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
       ],
       "adaptiveIcon": {
         "backgroundColor": "#1B1E4B",
@@ -83,7 +111,8 @@
           "defaultChannel": "announcements-khol",
           "sounds": [
             "./assets/sounds/notification/khol_wake.wav",
-            "./assets/sounds/notification/khol_notify.wav"
+            "./assets/sounds/notification/khol_notify.wav",
+            "./assets/sounds/notification/kartal_notify.wav"
           ]
         }
       ],
@@ -105,7 +134,8 @@
         "expo-audio",
         {
           "microphonePermission": "Mridanga Seva uses the microphone only when you record your practice or an answer.",
-          "recordAudioAndroid": true
+          "recordAudioAndroid": true,
+          "enableBackgroundPlayback": true
         }
       ],
       [

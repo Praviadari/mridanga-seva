@@ -53,6 +53,10 @@
   Cache-Control: public, max-age=31536000, immutable
   Content-Type: application/wasm
 
+# Android app links (docs/DECISIONS.md #804): Android reads this file as JSON; on the class site only (export-web 6b).
+/.well-known/assetlinks.json
+  Content-Type: application/json
+
 # The service worker (scripts/service-worker.js, docs/DECISIONS.md #513): always asked fresh, so a new build's worker
 # is found at the next start. It runs under the policy above (script-src and worker-src 'self'; it fetches only this
 # site's own files, connect-src 'self').

@@ -189,6 +189,12 @@ class WebPracticePlayer implements PracticePlayer {
     this.tick();
   }
 
+  /** The browser decides itself whether a page in the background keeps playing (#805). */
+  setBackground(on: boolean, title: string): void {
+    void on;
+    void title;
+  }
+
   stop(): void {
     if (this.timer !== null) clearInterval(this.timer);
     this.timer = null;

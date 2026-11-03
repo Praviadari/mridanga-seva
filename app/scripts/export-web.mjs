@@ -232,6 +232,24 @@ const headers = readFileSync(join('public', '_headers'), 'utf8')
 if (/__[A-Z_]+__/.test(headers.replace(/^#.*$/gm, ''))) fail('public/_headers has a placeholder export-web does not know.');
 writeFileSync(join(DIST, '_headers'), headers);
 
+// ---------------------------------------------------------------- 6b. app links (docs/DECISIONS.md #804)
+// https://app.mridangaseva.com/i/…, /student/…, /staff/… open the production APK (app.json intentFilters, autoVerify)
+// once Android finds this file on that host: the class site gets public/.well-known/assetlinks.json with the production
+// keystore's SHA-256 (npx eas-cli credentials -p android → production → SHA256 Fingerprint) in PRODUCTION_CERT_SHA256;
+// the test site is another host and gets none. An empty value stops a live export: a wrong file would make Android
+// give up on the links until the next install.
+const PRODUCTION_CERT_SHA256 = '';
+const assetLinksFile = join(DIST, '.well-known', 'assetlinks.json');
+if (siteName === 'live') {
+  if (!/^([0-9A-F]{2}:){31}[0-9A-F]{2}$/.test(PRODUCTION_CERT_SHA256)) {
+    fail('fill in PRODUCTION_CERT_SHA256 in scripts/export-web.mjs (step 6b) before building the live site.');
+  }
+  if (!existsSync(assetLinksFile)) fail('the export has no .well-known/assetlinks.json (public/.well-known was not copied).');
+  writeFileSync(assetLinksFile, readFileSync(assetLinksFile, 'utf8').replace('__PRODUCTION_CERT_SHA256__', PRODUCTION_CERT_SHA256));
+} else {
+  rmSync(assetLinksFile, { force: true });
+}
+
 // ---------------------------------------------------------------- 7. build id
 // The entry bundle's name (a content hash) is what the site's index.html loads, so a look at the
 // live page's source ties it to this build and commit (audit SURF-09).

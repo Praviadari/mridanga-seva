@@ -26,6 +26,7 @@ import { isNoticeScreen } from '@/data/notifications';
 import i18n from '@/i18n';
 
 import { readLocal, removeLocal, writeLocal } from './local-storage';
+import { ANNOUNCE_CHANNEL, readNotifySound, SOUND_FILE } from './notify-sound';
 import { forgetRegistration, recentRegistration, rememberRegistration } from './push-registered';
 import { setPushState } from './push-state';
 import { storedLoginUserId, supabase } from './supabase';
@@ -183,6 +184,15 @@ async function register(ask: boolean): Promise<void> {
       sound: NOTIFY_SOUND,
     });
     await renameOldChannel(module, OLD_CHANNEL_ID, i18n.t('push.channelOldName'));
+    // The kartal's own channel where the phone chose it (#803), ready for when the server sends with it.
+    if (readNotifySound() === 'kartal') {
+      await module.setNotificationChannelAsync(ANNOUNCE_CHANNEL.kartal, {
+        name: i18n.t('push.channelNameKartal'),
+        description: i18n.t('push.channelDescription'),
+        importance: module.AndroidImportance.HIGH,
+        sound: SOUND_FILE.kartal,
+      });
+    }
     const current = await module.getPermissionsAsync();
     let status = current.status;
     if (status !== 'granted' && current.canAskAgain && ask) status = (await module.requestPermissionsAsync()).status;

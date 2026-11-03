@@ -20,6 +20,11 @@ export type PracticePlayer = {
   setTempo(bpm: number): void;
   /** A layer's volume, 0-1 (the kartal, #492); kept for the next start too. Changes while playing, in place. */
   setLayerVolume(layer: Layer, volume: number): void;
+  /**
+   * Keeps the sound going with the screen locked or another app in front (`on`, the taal player's tick box, off by
+   * default, #805), with `title` on the lock screen's player. Phone only; the browser does nothing.
+   */
+  setBackground(on: boolean, title: string): void;
   stop(): void;
   /** The beat being heard now, or null when stopped (or before the first beat). */
   position(): PlayerPosition | null;

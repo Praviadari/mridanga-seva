@@ -23,7 +23,8 @@ export type { PlayerPosition, PracticePlayer } from './practice-player';
 /** Samples a second of the rendered loop: enough for these sounds, half the file size of 44.1 kHz. */
 const RATE = 22050;
 
-let audioModeSet = false;
+/** The background setting the audio mode was last set for; null = not set yet. */
+let audioModeSet: boolean | null = null;
 
 /** Writes samples to a WAV in the cache folder and loads it into `player` (at most 2 s), not playing. */
 async function loadInto(player: AudioPlayer, name: string, samples: Float32Array, loop: boolean): Promise<void> {
@@ -56,11 +57,40 @@ class NativePracticePlayer implements PracticePlayer {
   /** The layers' volumes (#492): mixed into the loop, so a change mixes it again. */
   private volumes: LayerVolumes = {};
 
+  /** Playing on in the background (#805), and the lock screen's title. */
+  private background = false;
+  private title = '';
+
   private async audioMode(): Promise<void> {
-    if (!audioModeSet) {
-      await setAudioModeAsync({ playsInSilentMode: true, interruptionMode: 'mixWithOthers' });
-      audioModeSet = true;
+    if (audioModeSet !== this.background) {
+      // In the background the lock screen's player needs the sound to itself ('doNotMix', expo-audio's rule).
+      await setAudioModeAsync({
+        playsInSilentMode: true,
+        interruptionMode: this.background ? 'doNotMix' : 'mixWithOthers',
+        shouldPlayInBackground: this.background,
+      });
+      audioModeSet = this.background;
     }
+  }
+
+  /**
+   * Android stops background sound after about 3 minutes unless the player is on the lock screen, so the loop is put
+   * there while it plays in the background (the media notification of expo-audio's AudioControlsService).
+   */
+  private lockScreen(on: boolean): void {
+    try {
+      if (on && this.background && this.playing) this.player?.setActiveForLockScreen(true, { title: this.title });
+      else this.player?.setActiveForLockScreen(false);
+    } catch {
+      // No lock-screen player on this phone: the sound plays on as long as Android lets it.
+    }
+  }
+
+  setBackground(on: boolean, title: string): void {
+    this.background = on;
+    this.title = title;
+    void this.audioMode().catch(() => undefined);
+    this.lockScreen(on);
   }
 
   async start(pattern: Pattern, bpm: number, countIn = 0): Promise<boolean> {
@@ -72,12 +102,14 @@ class NativePracticePlayer implements PracticePlayer {
       if (countIn <= 0) {
         await this.load(0, true);
         this.playing = true;
+        this.lockScreen(true);
         return true;
       }
       await this.load(0, false);
       this.once ??= createAudioPlayer(null);
       await loadInto(this.once, 'practice-count-in.wav', renderOnce(metronomePattern(countIn), bpm, RATE), false);
       this.playing = true;
+      this.lockScreen(true);
       this.counting = true;
       this.once.play();
       this.countTimer = setTimeout(() => {
@@ -140,6 +172,7 @@ class NativePracticePlayer implements PracticePlayer {
 
   stop(): void {
     this.playing = false;
+    this.lockScreen(false);
     this.counting = false;
     if (this.countTimer !== null) clearTimeout(this.countTimer);
     this.countTimer = null;

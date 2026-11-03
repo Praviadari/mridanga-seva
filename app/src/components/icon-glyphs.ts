@@ -54,6 +54,8 @@ export const GLYPHS = {
   'construct-outline': 62087,
   'contrast': 62092,
   'contrast-outline': 62093,
+  'copy': 62095,
+  'copy-outline': 62096,
   'create': 62098,
   'create-outline': 62099,
   'document-attach': 62123,

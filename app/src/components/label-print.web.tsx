@@ -70,7 +70,12 @@ function firstSheetEnd(html: string): number {
   return next === -1 ? html.length : next;
 }
 
-/** Opens the browser's print dialog. */
-export function printLabels(): void {
+/**
+ * Opens the browser's print dialog, which prints the copy LabelPrint keeps under <body>. `html` and `css` match the
+ * phone's label-print.tsx (#801), which has no such copy.
+ */
+export async function printLabels(html?: string, css?: string): Promise<void> {
+  void html;
+  void css;
   window.print();
 }

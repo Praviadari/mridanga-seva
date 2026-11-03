@@ -2,12 +2,11 @@
 // labels on an A4 sheet of 18 (Avery L7161 type, 3 x 6), starting at any free position of a
 // half-used sheet. A calibration print (outlines, centre marks, 100 mm ruler) on plain paper
 // checks the alignment first; a small nudge in mm corrects a printer that prints off-centre and is
-// kept in this browser. Printing works in the web version only (no print module on the phones in
-// this build): the phone app opens this page in the browser. `ids` (comma-separated item ids)
-// preselects items, e.g. from an item's screen.
+// kept in this browser. Since the 1.1.0 APK (#801) the phone prints too: its print window offers a printer or
+// "Save as PDF" (components/label-print.tsx). `ids` (comma-separated item ids) preselects items, e.g. from an
+// item's screen.
 // Data: data/inventory.ts; layout: lib/label-sheet.ts; QR link: lib/asset-link.ts; migration 0035.
 
-import * as Linking from 'expo-linking';
 import { Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -92,8 +91,8 @@ export default function LabelsScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      if (isWeb) void load();
-    }, [load, isWeb]),
+      void load();
+    }, [load]),
   );
 
   const nudgeX = parseNudge(nudge.x);
@@ -119,35 +118,17 @@ export default function LabelsScreen() {
     name: item.label,
   }));
   // The React Compiler (app.json experiments) keeps this from being rebuilt when nothing changed.
-  const html = isWeb
-    ? sheetHtml(
-        labels,
-        {
-          brand: t('labels.brand'),
-          finder: t('labels.finder'),
-          calibrationTitle: t('labels.calibrationTitle'),
-          calibrationHelp: t('labels.calibrationHelp'),
-          ruler: t('labels.ruler'),
-        },
-        { startAt, calibration, nudgeX: nudgeX ?? 0, nudgeY: nudgeY ?? 0 },
-      )
-    : '';
-
-  if (!isWeb) {
-    const path = `/staff/inventory/labels${selected.size ? `?ids=${[...selected].join(',')}` : ''}`;
-    return (
-      <Screen underHeader>
-        <Stack.Screen options={{ title: t('labels.title') }} />
-        <Notice tone="info" title={t('labels.webOnlyTitle')}>
-          {t('labels.webOnly')}
-        </Notice>
-        <Button icon="open" label={t('labels.openInBrowser')} onPress={() => void Linking.openURL(origin + path)} />
-        <AppText variant="small" tone="muted">
-          {origin}
-        </AppText>
-      </Screen>
-    );
-  }
+  const html = sheetHtml(
+    labels,
+    {
+      brand: t('labels.brand'),
+      finder: t('labels.finder'),
+      calibrationTitle: t('labels.calibrationTitle'),
+      calibrationHelp: t('labels.calibrationHelp'),
+      ruler: t('labels.ruler'),
+    },
+    { startAt, calibration, nudgeX: nudgeX ?? 0, nudgeY: nudgeY ?? 0 },
+  );
 
   function toggle(id: number, on: boolean) {
     setPrinted(false);
@@ -267,14 +248,14 @@ export default function LabelsScreen() {
             label={calibration && labels.length === 0 ? t('labels.printCalibration') : t('labels.print')}
             disabled={nudgeError || (labels.length === 0 && !calibration)}
             onPress={() => {
-              printLabels();
+              void printLabels(html);
               if (labels.length > 0 && !calibration) setPrinted(true);
             }}
           />
           {printed ? <Button variant="secondary" icon="check" label={t('labels.markPrinted', { count: labels.length })} onPress={() => void markPrinted()} /> : null}
         </View>
         <AppText variant="small" tone="muted">
-          {t('labels.printSettings')}
+          {isWeb ? t('labels.printSettings') : t('labels.phonePrint')}
         </AppText>
       </Section>
 

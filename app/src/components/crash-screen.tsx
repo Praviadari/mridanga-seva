@@ -25,6 +25,7 @@ import { restartApp } from '@/lib/slow-start';
 
 import { AppText } from './app-text';
 import { Button } from './button';
+import { CopyButton } from './copy-button';
 import { Notice } from './notice';
 import { Screen } from './screen';
 import { UpdateNotice, VersionLine } from './update-notice';
@@ -95,6 +96,7 @@ export function CrashScreen({ error, retry }: ErrorBoundaryProps) {
       <AppText variant="small" tone="muted" selectable>
         {errorDetail(error)}
       </AppText>
+      <CopyButton text={errorDetail(error)} accessibilityLabel={t('crash.copyDetail')} />
       <VersionLine />
     </Screen>
   );

@@ -73,7 +73,9 @@
     "ownMentor": "A student is never their own mentor. Choose another coordinator of the same gender.",
     "staffLoginLinked": "This record is a staff member's own. Take the app login off it first (Coordinators), then withdraw or erase.",
     "more": "More",
-    "less": "Less"
+    "less": "Less",
+    "copy": "Copy",
+    "copied": "Copied"
   },
   "password": {
     "show": "Show",
@@ -1132,6 +1134,7 @@
   },
   "push": {
     "channelName": "Announcements",
+    "channelNameKartal": "Announcements (kartal)",
     "channelDescription": "New announcements from the class",
     "offTitle": "Notifications are off on this phone",
     "offBody": "New announcements will not pop up. They still arrive under the bell at the top of the home.",
@@ -1431,6 +1434,12 @@
     },
     "appearance": "Appearance",
     "appearanceHint": "Light or dark screens on this phone. Same as phone follows the phone's own setting.",
+    "notifySound": "Notification sound",
+    "notifySoundHint": "On this phone. The practice reminder uses it from its next time; announcements keep the khol until a later update brings the choice to them.",
+    "notifySoundChoices": {
+      "khol": "Khol",
+      "kartal": "Kartal"
+    },
     "appearanceChoices": {
       "system": "Same as phone",
       "light": "Light",
@@ -2651,6 +2660,9 @@
     "reminderFailed": "The reminder could not be set on this phone.",
     "reminderAppOnly": "Reminders work in the Android app.",
     "reminderChannel": "Practice reminder",
+    "reminderChannelKartal": "Practice reminder (kartal)",
+    "background": "Keep playing with the screen locked",
+    "backgroundHint": "While it plays, the taal shows in the notifications and on the locked screen. Stop it there or here. It uses more battery.",
     "reminderChannelOld": "Practice reminder (earlier sound)",
     "reminderTitle": "Khol practice",
     "reminderBody": "Time for your khol practice. Even 10 minutes helps. Hare Krishna!",
@@ -4029,9 +4041,6 @@
     "title": "Print labels",
     "printOne": "Print label",
     "intro": "Pick the items, choose where on the sheet to start, and print on A4 label sheets of 18 (3 across, 6 down). Print a test sheet on plain paper first and hold it against a label sheet.",
-    "webOnlyTitle": "Printing works on a computer",
-    "webOnly": "Labels are printed from the web version of the app, in a browser on a computer with a printer. Sign in there as yourself.",
-    "openInBrowser": "Open in the browser",
     "whichTitle": "Which items",
     "chosen_one": "{{count}} item chosen",
     "chosen_other": "{{count}} items chosen",
@@ -4063,6 +4072,7 @@
     "markedPrinted_one": "{{count}} label marked printed.",
     "markedPrinted_other": "{{count}} labels marked printed.",
     "printSettings": "In the print window: paper A4, scale 100 % (Actual size), margins None, headers and footers off.",
+    "phonePrint": "The phone's print window shows the sheets first. Choose a printer, or Save as PDF and print the file on a computer: paper A4, scale 100 % (Actual size), margins None.",
     "previewLabel": "Preview of the first sheet",
     "brand": "Mridanga Seva",
     "finder": "Seva property — if found: info@mridangaseva.com",
@@ -4304,6 +4314,7 @@
     "tryAgain": "Try again",
     "home": "Go to the home screen",
     "report": "If it keeps happening, tap Restart the app. To report it, send a screenshot of this page to the coordinator.",
+    "copyDetail": "Copy the technical detail",
     "restart": "Restart the app"
   },
   "drafts": {
@@ -4341,7 +4352,6 @@
   "qrCards": {
     "title": "Print QR cards",
     "intro": "For students without a phone: pick them, print an A4 sheet of 10 cards on plain paper or thin card, and cut along the dashed lines. At the door the coordinator scans the card like My QR.",
-    "webOnly": "QR cards are printed from the web version of the app, in a browser on a computer with a printer. Sign in there as yourself.",
     "loadFailed": "Could not load the students.",
     "whichTitle": "Which students",
     "chosen_one": "{{count}} student chosen",
@@ -4674,6 +4684,7 @@
     "keep": "Keep it",
     "contactTitle": "Who to contact",
     "contactLine": "Privacy contact and grievance officer: {{name}}, {{email}}, phone {{phone}}.",
+    "copyEmail": "Copy the email address",
     "replyLine": "We answer every request within {{days}} days.",
     "boardLine": "If you are not satisfied with our answer, you can complain to the Data Protection Board of India.",
     "noticeLink": "Read the privacy notice",
@@ -5888,6 +5899,7 @@
     "noApp": "No authenticator app opened. Install one, or type the key below into it.",
     "qrLabel": "QR code to add Mridanga Seva to an authenticator app",
     "keyHint": "The key (keep it to yourself):",
+    "copyKey": "Copy the setup key",
     "stepTwo": "2. Type the 6-digit code the app now shows for Mridanga Seva.",
     "confirm": "Turn on my sign-in code",
     "cancel": "Cancel",

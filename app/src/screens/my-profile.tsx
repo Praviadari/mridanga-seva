@@ -13,7 +13,7 @@
 import { router, Stack } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 
 import { useAuth } from '@/auth/auth-provider';
 import { AppText } from '@/components/app-text';
@@ -25,6 +25,7 @@ import { HeldItemsPanel } from '@/components/held-items';
 import { LanguagePicker } from '@/components/language-picker';
 import { LoadingCards } from '@/components/loading-cards';
 import { Notice } from '@/components/notice';
+import { NotifySoundPicker } from '@/components/notify-sound-picker';
 import { PersonHeader } from '@/components/person-header';
 import { PushNotice } from '@/components/push-notice';
 import { Screen } from '@/components/screen';
@@ -150,6 +151,13 @@ export function MyProfileScreen() {
       <Section icon="appearance" title={t('myProfile.appearance')} description={t('myProfile.appearanceHint')}>
         <AppearancePicker />
       </Section>
+
+      {/* The notifications' sound on this phone, khol or kartal (1.1.0 APK, #803). */}
+      {Platform.OS === 'android' ? (
+        <Section icon="bell" title={t('myProfile.notifySound')} description={t('myProfile.notifySoundHint')}>
+          <NotifySoundPicker />
+        </Section>
+      ) : null}
 
       {/* The sign-in account, lower and folded (#385): its name is not the roll card's, which confused students. */}
       <Section

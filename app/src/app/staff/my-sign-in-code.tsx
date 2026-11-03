@@ -14,6 +14,7 @@ import { useAuth } from '@/auth/auth-provider';
 import { CODE_LENGTH, groupedKey, typedCode } from '@/auth/mfa';
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
+import { CopyButton } from '@/components/copy-button';
 import { LoadingCards } from '@/components/loading-cards';
 import { ScreenIntro } from '@/components/more-text';
 import { Notice } from '@/components/notice';
@@ -142,6 +143,7 @@ export default function MySignInCodeScreen() {
           <AppText variant="label" family="sans" selectable>
             {groupedKey(setup.secret)}
           </AppText>
+          <CopyButton text={setup.secret} accessibilityLabel={t('myCode.copyKey')} />
           <AppText>{t('myCode.stepTwo')}</AppText>
           {errorKey ? <Notice tone="error">{t(errorKey)}</Notice> : null}
           <TextField

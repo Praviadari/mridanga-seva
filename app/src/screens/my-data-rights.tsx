@@ -15,6 +15,7 @@ import { StyleSheet, View } from 'react-native';
 import { useAuth } from '@/auth/auth-provider';
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
+import { CopyButton } from '@/components/copy-button';
 import { ChoiceGroup } from '@/components/choice-group';
 import { DetailGrid } from '@/components/detail-grid';
 import { Fold } from '@/components/fold';
@@ -285,6 +286,7 @@ export function MyDataRightsScreen() {
       {/* Who to write to, how long it takes, and the Board (Rule 14). */}
       <Section icon="info" title={t('dataRights.contactTitle')}>
         <AppText selectable>{t('dataRights.contactLine', PRIVACY_CONTACT)}</AppText>
+        <CopyButton text={PRIVACY_CONTACT.email} accessibilityLabel={t('dataRights.copyEmail')} />
         <AppText>{t('dataRights.replyLine', { days: ANSWER_DAYS })}</AppText>
         <AppText>{t('dataRights.boardLine')}</AppText>
         <PrivacyNoticeLink label={t('dataRights.noticeLink')} />

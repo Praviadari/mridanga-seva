@@ -149,6 +149,8 @@ const SHAPES = {
   settings: 'settings-outline',
   audit: 'document-lock-outline',
   about: 'id-card-outline',
+  // Copy buttons (#802).
+  copy: 'copy-outline',
 } as const;
 
 /** The icons the app may use. */

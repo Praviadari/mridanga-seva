@@ -2,12 +2,11 @@
 // students — by centre, level, "without the app" or one by one — and prints an A4 sheet of ten
 // wallet cards (QR, name, roll number, centre) to cut out. A student without a phone shows the card
 // at the door and C5 scans it like My QR. A coordinator sees only their own centre's students; the
-// Guru picks the centre. Printing works in the web version only, as for the asset labels (#158):
-// the phone app opens this page in the browser. `ids` (comma-separated student ids) preselects
+// Guru picks the centre. Printed from the browser, or since the 1.1.0 APK from the phone's print window (printer or
+// "Save as PDF", #801), as for the asset labels (#158). `ids` (comma-separated student ids) preselects
 // students, e.g. from a profile. A lost card is replaced on the student's profile (the Guru).
 // Data: src/data/qr-cards.ts; layout: src/lib/qr-card-sheet.ts; migration 0045.
 
-import * as Linking from 'expo-linking';
 import { Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -28,7 +27,6 @@ import { ScreenIntro } from '@/components/more-text';
 import { fetchMyCentreId } from '@/data/inventory';
 import { fetchCardStudents, fetchQrTexts, type CardStudent } from '@/data/qr-cards';
 import { LEVEL_IDS, levelName } from '@/i18n/labels';
-import { webAppOrigin } from '@/lib/asset-link';
 import { CARD_CSS, cardSheetHtml, cardSheetsNeeded, type CardContent } from '@/lib/qr-card-sheet';
 import { searchFold } from '@/lib/search-text';
 import { spacing } from '@/theme/use-theme';
@@ -67,8 +65,8 @@ export default function QrCardsScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      if (isWeb) void load();
-    }, [load, isWeb]),
+      void load();
+    }, [load]),
   );
 
   // A coordinator prints for their own centre only (#251); one without a centre set, and the
@@ -94,7 +92,6 @@ export default function QrCardsScreen() {
   const chosenKey = chosen.map((s) => s.id).join(',');
 
   useEffect(() => {
-    if (!isWeb) return;
     let live = true;
     void fetchQrTexts(chosenKey ? chosenKey.split(',') : []).then((result) => {
       if (live) setCodes(result);
@@ -102,33 +99,14 @@ export default function QrCardsScreen() {
     return () => {
       live = false;
     };
-  }, [chosenKey, isWeb]);
+  }, [chosenKey]);
 
   const cards: CardContent[] = chosen
     .filter((s) => codes?.has(s.id))
     .map((s) => ({ qrText: codes?.get(s.id) ?? '', fullName: s.fullName, rollNo: s.rollNo, centreName: s.centreName }));
   const ready = codes !== null && cards.length === chosen.length;
   // The React Compiler (app.json experiments) keeps this from being rebuilt when nothing changed.
-  const html = isWeb
-    ? cardSheetHtml(cards, { brand: t('labels.brand'), cardTitle: t('qrCards.cardTitle'), logo: t('qrCards.logo'), footer: t('qrCards.footer') })
-    : '';
-
-  if (!isWeb) {
-    const origin = webAppOrigin();
-    const path = `/staff/qr-cards${selected.size ? `?ids=${[...selected].join(',')}` : ''}`;
-    return (
-      <Screen underHeader>
-        <Stack.Screen options={{ title: t('qrCards.title') }} />
-        <Notice tone="info" title={t('labels.webOnlyTitle')}>
-          {t('qrCards.webOnly')}
-        </Notice>
-        <Button icon="open" label={t('labels.openInBrowser')} onPress={() => void Linking.openURL(origin + path)} />
-        <AppText variant="small" tone="muted">
-          {origin}
-        </AppText>
-      </Screen>
-    );
-  }
+  const html = cardSheetHtml(cards, { brand: t('labels.brand'), cardTitle: t('qrCards.cardTitle'), logo: t('qrCards.logo'), footer: t('qrCards.footer') });
 
   function toggle(id: string, on: boolean) {
     setSelected((current) => {
@@ -211,9 +189,9 @@ export default function QrCardsScreen() {
       <Section icon="print" title={t('qrCards.sheetTitle')} description={t('qrCards.sheetHint')}>
         {codes === null ? <Notice tone="error">{t('qrCards.codesFailed')}</Notice> : null}
         <AppText variant="label">{cards.length > 0 ? t('qrCards.summary', { count: cards.length, sheets }) : t('qrCards.nothingChosen')}</AppText>
-        <Button icon="print" label={t('qrCards.print')} disabled={cards.length === 0 || !ready} onPress={printLabels} />
+        <Button icon="print" label={t('qrCards.print')} disabled={cards.length === 0 || !ready} onPress={() => void printLabels(html, CARD_CSS)} />
         <AppText variant="small" tone="muted">
-          {t('labels.printSettings')}
+          {isWeb ? t('labels.printSettings') : t('labels.phonePrint')}
         </AppText>
         <AppText variant="small" tone="muted">
           {t('qrCards.keepSafe')}

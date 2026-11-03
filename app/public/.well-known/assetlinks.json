@@ -1,0 +1,10 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "org.mridangaseva.app",
+      "sha256_cert_fingerprints": ["__PRODUCTION_CERT_SHA256__"]
+    }
+  }
+]
